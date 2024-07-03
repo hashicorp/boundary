@@ -133,7 +133,6 @@ The Vault transit secrets engine provides the following key types which support 
 
 The Vault transit secrets engine supports both automatic and manual rotation of configured keys.
 
-The Vault transit secrets engine can be configured with [`auto_rotate_period`](https://developer.hashicorp.com/vault/api-docs/secret/transit#auto_rotate_period) to configure
-automatic rotation of the configured keys. Boundary will accommodate the automatic rotation of keys in the backend.
+You can configure the Vault transit secrets engine with an [`auto_rotate_period`](https://developer.hashicorp.com/vault/api-docs/secret/transit#auto_rotate_period) to enable the automatic rotation of the configured keys. Boundary automatically rotates the keys in the backend.
 
 Keys can also be [manually rotated](/boundary/docs/concepts/security/data-encryption#key-version-lifecycle-management) from the Boundary API or CLI.
