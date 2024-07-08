@@ -59,6 +59,7 @@ resource "docker_container" "vault" {
   capabilities {
     add = ["IPC_LOCK"]
   }
+  network_mode = "bridge"
   dynamic "networks_advanced" {
     for_each = var.network_name
     content {
