@@ -11,7 +11,7 @@ scenario "e2e_database" {
 
   locals {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-    local_boundary_dir       = abspath(var.local_boundary_dir)
+    local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
 
     tags = merge({

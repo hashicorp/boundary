@@ -94,11 +94,13 @@ variable "target_count" {
 variable "local_boundary_dir" {
   description = "Path to local boundary executable"
   type        = string
+  default     = null
 }
 
 variable "local_boundary_src_dir" {
   description = "Path to local boundary source code directory"
   type        = string
+  default     = null
 }
 
 variable "local_boundary_ui_src_dir" {
