@@ -111,7 +111,7 @@ scenario "e2e_aws_base" {
       enos_user            = var.enos_user
       instance_type        = var.target_instance_type
       vpc_id               = step.create_base_infra.vpc_id
-      target_count         = 1
+      target_count         = var.target_count
       subnet_ids           = step.create_boundary_cluster.subnet_ids
     }
   }
@@ -132,7 +132,7 @@ scenario "e2e_aws_base" {
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_address           = step.create_target.target_ips[0]
+      target_address           = step.create_target.target_private_ips[0]
       target_user              = "ubuntu"
       target_port              = "22"
       max_page_size            = step.create_boundary_cluster.max_page_size
@@ -142,5 +142,17 @@ scenario "e2e_aws_base" {
 
   output "test_results" {
     value = step.run_e2e_test.test_results
+  }
+
+  output "controller_ips" {
+    value = step.create_boundary_cluster.controller_ips
+  }
+
+  output "worker_ips" {
+    value = step.create_boundary_cluster.worker_ips
+  }
+
+  output "target_ips" {
+    value = step.create_target.target_public_ips
   }
 }
