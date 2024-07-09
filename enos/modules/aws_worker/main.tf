@@ -180,6 +180,11 @@ resource "enos_remote_exec" "update_path_worker" {
   }
 }
 
+locals {
+  audit_log_directory = "/var/log/boundary"
+  service_user        = "boundary"
+}
+
 resource "enos_file" "worker_config" {
   depends_on = [enos_bundle_install.worker]
 
@@ -192,6 +197,7 @@ resource "enos_file" "worker_config" {
     region                 = data.aws_availability_zone.worker_az.region
     controller_addresses   = jsonencode(var.controller_addresses)
     recording_storage_path = var.recording_storage_path
+    audit_log_dir          = local.audit_log_directory
   })
 
   transport = {
@@ -216,6 +222,26 @@ resource "enos_boundary_start" "worker_start" {
     }
   }
 }
+
+resource "enos_remote_exec" "create_worker_audit_log_dir" {
+  depends_on = [
+    enos_boundary_start.worker_start,
+  ]
+
+  environment = {
+    LOG_DIR      = local.audit_log_directory
+    SERVICE_USER = local.service_user
+  }
+
+  scripts = [abspath("${path.module}/scripts/create-audit-log-dir.sh")]
+
+  transport = {
+    ssh = {
+      host = aws_instance.worker.public_ip
+    }
+  }
+}
+
 
 resource "random_string" "cluster_id" {
   length  = 8

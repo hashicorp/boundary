@@ -89,6 +89,11 @@ resource "enos_remote_exec" "update_path_controller" {
   }
 }
 
+locals {
+  audit_log_directory = "/var/log/boundary"
+  service_user        = "boundary"
+}
+
 resource "enos_file" "controller_config" {
   depends_on  = [enos_bundle_install.controller]
   destination = "/etc/boundary/boundary.hcl"
@@ -107,6 +112,7 @@ resource "enos_file" "controller_config" {
     cluster_port            = var.listener_cluster_port
     region                  = var.aws_region
     max_page_size           = var.max_page_size
+    audit_log_dir           = local.audit_log_directory
   })
   for_each = toset([for idx in range(var.controller_count) : tostring(idx)])
 
@@ -154,6 +160,25 @@ resource "enos_boundary_start" "controller_start" {
   ]
 }
 
+resource "enos_remote_exec" "create_controller_audit_log_dir" {
+  depends_on = [
+    enos_boundary_start.controller_start
+  ]
+  for_each = toset([for idx in range(var.controller_count) : tostring(idx)])
+
+  environment = {
+    LOG_DIR      = local.audit_log_directory
+    SERVICE_USER = local.service_user
+  }
+
+  scripts = [abspath("${path.module}/scripts/create-audit-log-dir.sh")]
+
+  transport = {
+    ssh = {
+      host = aws_instance.controller[tonumber(each.value)].public_ip
+    }
+  }
+}
 resource "enos_bundle_install" "worker" {
   depends_on = [aws_instance.worker]
   for_each   = toset([for idx in range(var.worker_count) : tostring(idx)])
@@ -188,7 +213,6 @@ resource "enos_remote_exec" "update_path_worker" {
   }
 }
 
-
 resource "enos_file" "worker_config" {
   depends_on  = [enos_bundle_install.worker]
   destination = "/etc/boundary/boundary.hcl"
@@ -200,7 +224,7 @@ resource "enos_file" "worker_config" {
     region                 = var.aws_region
     type                   = jsonencode(var.worker_type_tags)
     recording_storage_path = var.recording_storage_path
-
+    audit_log_dir          = local.audit_log_directory
   })
   for_each = toset([for idx in range(var.worker_count) : tostring(idx)])
 
@@ -220,6 +244,26 @@ resource "enos_boundary_start" "worker_start" {
   config_path            = "/etc/boundary"
   license                = var.boundary_license
   recording_storage_path = var.recording_storage_path != "" ? var.recording_storage_path : null
+
+  transport = {
+    ssh = {
+      host = aws_instance.worker[tonumber(each.value)].public_ip
+    }
+  }
+}
+
+resource "enos_remote_exec" "create_worker_audit_log_dir" {
+  depends_on = [
+    enos_boundary_start.worker_start,
+  ]
+  for_each = toset([for idx in range(var.worker_count) : tostring(idx)])
+
+  environment = {
+    LOG_DIR      = local.audit_log_directory
+    SERVICE_USER = local.service_user
+  }
+
+  scripts = [abspath("${path.module}/scripts/create-audit-log-dir.sh")]
 
   transport = {
     ssh = {
