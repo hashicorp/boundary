@@ -59,7 +59,9 @@ begin;
     end if;
 
     -- If old state was connected, allow transition to closed
-    if upper(old.connected_time_range) = 'infinity' and upper(new.connected_time_range) != 'infinity' then
+    if upper(old.connected_time_range) =  'infinity'                      and
+       upper(new.connected_time_range) != 'infinity'                      and
+       lower(old.connected_time_range) =  lower(new.connected_time_range) then
       return new;
     else
       raise exception 'Invalid state transition from connected';
@@ -76,7 +78,7 @@ begin;
   as $$
     begin
       if new.closed_reason is not null then
-          if old.connected_time_range is null or old.connected_time_range = tstzrange(lower(old.connected_time_range), 'infinity'::timestamptz) then
+          if old.connected_time_range is null or upper(old.connected_time_range) = 'infinity'::timestamptz then
              new.connected_time_range = tstzrange(lower(old.connected_time_range), now(), '[]');
           end if;
       end if;
@@ -107,8 +109,8 @@ begin;
       if found then
         return new;
       end if;
-    insert into session_state (session_id,    state)
-                       values (new.public_id, 'terminated');
+      insert into session_state (session_id,    state)
+           values               (new.public_id, 'terminated');
     end if;
     return new;
   end;
@@ -177,11 +179,11 @@ begin;
   create function wh_insert_session_connection_state() returns trigger
   as $$
     declare
-         state text;
-      date_col text;
-      time_col text;
-        ts_col text;
-             q text;
+               state text;
+            date_col text;
+            time_col text;
+              ts_col text;
+                   q text;
       connection_row wh_session_connection_accumulating_fact%rowtype;
     begin
       if new.connected_time_range is null then
@@ -196,22 +198,18 @@ begin;
             update wh_session_connection_accumulating_fact
                set (connection_connected_date_key,
                     connection_connected_time_key,
-                    connection_connected_time) = (
-             select wh_date_key(new.update_time),
-                    wh_time_key(new.update_time),
-                    new.update_time::timestamptz)
+                    connection_connected_time) = (select wh_date_key(new.update_time),
+                                                         wh_time_key(new.update_time),
+                                                         new.update_time::timestamptz)
               where connection_id = new.public_id;
-        --  returning *;
       else
-          update wh_session_connection_accumulating_fact
+             update wh_session_connection_accumulating_fact
                 set (connection_closed_date_key,
                      connection_closed_time_key,
-                     connection_closed_time) = (
-              select wh_date_key(new.update_time),
-                     wh_time_key(new.update_time),
-                     new.update_time::timestamptz)
+                     connection_closed_time) = (select wh_date_key(new.update_time),
+                                                       wh_time_key(new.update_time),
+                                                       new.update_time::timestamptz)
                where connection_id = new.public_id;
-          -- returning *;
       end if;
 
       return null;

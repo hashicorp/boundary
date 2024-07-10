@@ -127,10 +127,9 @@ from
 	// connectConnection sets the connected time range to (now, infinity) to
 	// indicate the connection is connected.
 	connectConnection = `
-    update session_connection 
+     update session_connection 
         set connected_time_range=tstzrange(now(),'infinity') 
-    where 
-        public_id=@public_id
+      where public_id=@public_id
 `
 
 	terminateSessionIfPossible = `
@@ -342,13 +341,12 @@ where
 
 	// convert connected_time_range range into state string
 	fetchConnectionStatusCte = `
-select
-  case
-    when connected_time_range is null then 'authorized'
-	when upper(connected_time_range) > now() then 'connected'
-    else 'closed'
-	end status
-from session_connection
+select case
+         when connected_time_range is null        then 'authorized'
+	     when upper(connected_time_range) > now() then 'connected'
+         else 'closed'
+	   end as status
+ from session_connection
 where public_id = ?;
 `
 
