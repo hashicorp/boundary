@@ -686,7 +686,7 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		return
 	}
 
-	args = append(passthroughArgs, args...)
+	args = append(args, passthroughArgs...)
 
 	stringReplacer := func(in, typ, replacer string) string {
 		for _, style := range []string{
