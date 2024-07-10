@@ -21,8 +21,9 @@ if [[ -z ${DOWNSTREAM_WORKFLOW} ]]; then
     exit 0
 fi
 
-curl \
+CURL_RESPONSE=$(curl \
   --silent \
+  -w '%{http_code}\n' \
   -X POST \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer ${DOWNSTREAM_TOK}" \
@@ -37,3 +38,14 @@ curl \
   }
 }
 EOF
+)
+echo $CURL_RESPONSE
+
+# Get the first digit of the status code (get the last word of the last line,
+# and then get the first character of that word)
+CURL_STATUS_CODE=$(echo "$CURL_RESPONSE" | tail -n1 | awk '{print $NF}' | cut -c1)
+
+if [[ $CURL_STATUS_CODE -ne 2 ]]; then
+  echo "ERROR: failed to trigger downstream workflow"
+  exit 1
+fi
