@@ -32,11 +32,10 @@ begin;
 
   -- Migrate existing data from session_connection_state to session_connection
    update session_connection
-      set connected_time_range =
-  (select tstzrange(min(start_time), max(start_time))
-     from session_connection_state
-    where session_connection_state.connection_id = session_connection.public_id
- group by connection_id );
+      set connected_time_range = (select tstzrange(min(start_time), max(start_time))
+                                    from session_connection_state
+                                   where session_connection_state.connection_id = session_connection.public_id
+                                group by connection_id );
 
   drop table session_connection_state;
   drop table session_connection_state_enm;

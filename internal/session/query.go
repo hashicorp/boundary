@@ -273,21 +273,12 @@ where
 		)
 	) and
 	-- make sure there are no existing connections
- 	us.public_id not in (
-		select
-			session_id
-		from
-		  	session_connection
-     	where public_id in (
-			select
-				public_id
-			from
-				session_connection
-			where
-				upper(connected_time_range) > now() or
-                connected_time_range is null
-    )
-);
+    us.public_id not in (
+      select session_id
+        from session_connection
+       where upper(connected_time_range) > now()
+          or connected_time_range is null
+    );
 `
 
 	// closeConnectionsForDeadServersCte finds connections that are:
