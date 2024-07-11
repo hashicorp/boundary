@@ -107,6 +107,35 @@ message Worker {
   // - not configured: The worker does not have a local storage path configured
   // - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known
   string local_storage_state = 310 [json_name = "local_storage_state"]; // @gotags: `class:"public"`
+
+  // Output only. The remote_storage_state indicats the permission state of the storage buckets that the Worker
+  // is actively using. The possible permission state types include: write, read, and delete. The possible
+  // permission state values include: unknown, error, and ok.
+  map<string, RemoteStorageState> remote_storage_state = 320 [json_name = "remote_storage_state"]; // @gotags: `class:"public"`
+}
+
+message RemoteStorageState {
+  // Output only. The overall health status of the storage bucket. The possible values include: error and available.
+  // The status exists in an available state if each remote storage permission state does not have an error. An unknown remote
+  // storage permission state does not affect the overall health status.
+  string status = 10; // @gotags: `class:"public"`
+
+  // Output only. The remote storage permissions contains the permission state for each individual permission type.
+  RemoteStoragePermissions permissions = 20; // @gotags: `class:"public"`
+}
+
+message RemoteStoragePermissions {
+  // Output only. The status of the write permission state for the given storage bucket.
+  // Possible values are: unknown, error, and ok.
+  string write = 10; // @gotags: `class:"public"`
+
+  // Output only. The status of the read permission state for the given storage bucket.
+  // Possible values are: unknown, error, and ok.
+  string read = 20; // @gotags: `class:"public"`
+
+  // Output only. The status of the delete permission state for the given storage bucket.
+  // Possible values are: unknown, error, and ok.
+  string delete = 30; // @gotags: `class:"public"`
 }
 
 message Certificate {
