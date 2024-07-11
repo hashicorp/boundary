@@ -77,6 +77,13 @@ func (r *Repository) LookupWorkerByName(ctx context.Context, name string) (*Work
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	if w == nil {
+		return nil, nil
+	}
+	w.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, w.GetPublicId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	return w, nil
 }
 
@@ -135,6 +142,13 @@ func (r *Repository) LookupWorker(ctx context.Context, publicId string, _ ...Opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "publicId is empty")
 	}
 	w, err := lookupWorker(ctx, r.reader, publicId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if w == nil {
+		return nil, nil
+	}
+	w.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, w.GetPublicId())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -553,6 +567,10 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 				return errors.Wrap(ctx, err, op)
 			}
 			if ret, err = wAgg.toWorker(ctx); err != nil {
+				return err
+			}
+			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId())
+			if err != nil {
 				return err
 			}
 			return nil

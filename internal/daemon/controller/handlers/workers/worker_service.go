@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
@@ -924,8 +925,65 @@ func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing canonical tags proto"))
 		}
 	}
-
+	if outputFields.Has(globals.RemoteStorageStateField) && len(in.RemoteStorageStates) > 0 {
+		var err error
+		out.RemoteStorageState, err = remoteStorageStatesToMapProto(in.RemoteStorageStates)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing remote storage state proto"))
+		}
+	}
 	return &out, nil
+}
+
+func remoteStorageStatesToMapProto(in map[string]*plugin.StorageBucketCredentialState) (map[string]*pb.RemoteStorageState, error) {
+	ret := make(map[string]*pb.RemoteStorageState)
+	for storageBucketId, sbcState := range in {
+		status := server.RemoteStorageStateAvailable
+		writeState := server.PermissionStateUnknown.String()
+		readState := server.PermissionStateUnknown.String()
+		deleteState := server.PermissionStateUnknown.String()
+		if sbcState.GetState() != nil {
+			if sbcState.GetState().GetWrite() != nil {
+				writePermissionState, err := server.ParsePermissionState(sbcState.GetState().GetWrite().GetState())
+				if err != nil {
+					return nil, err
+				}
+				writeState = writePermissionState
+				if writeState == server.PermissionStateError.String() {
+					status = server.RemoteStorageStateError
+				}
+			}
+			if sbcState.GetState().GetRead() != nil {
+				readPermissionState, err := server.ParsePermissionState(sbcState.GetState().GetRead().GetState())
+				if err != nil {
+					return nil, err
+				}
+				readState = readPermissionState
+				if readState == server.PermissionStateError.String() {
+					status = server.RemoteStorageStateError
+				}
+			}
+			if sbcState.GetState().GetDelete() != nil {
+				deletePermissionState, err := server.ParsePermissionState(sbcState.GetState().GetDelete().GetState())
+				if err != nil {
+					return nil, err
+				}
+				deleteState = deletePermissionState
+				if deleteState == server.PermissionStateError.String() {
+					status = server.RemoteStorageStateError
+				}
+			}
+		}
+		ret[storageBucketId] = &pb.RemoteStorageState{
+			Status: status.String(),
+			Permissions: &pb.RemoteStoragePermissions{
+				Write:  writeState,
+				Read:   readState,
+				Delete: deleteState,
+			},
+		}
+	}
+	return ret, nil
 }
 
 func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, error) {

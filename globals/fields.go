@@ -123,4 +123,5 @@ const (
 	ValueField                                  = "value"
 	WithAliasesField                            = "with_aliases"
 	LocalStorageStateField                      = "local_storage_state"
+	RemoteStorageStateField                     = "remote_storage_state"
 )

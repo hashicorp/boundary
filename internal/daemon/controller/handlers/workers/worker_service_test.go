@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -26,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/rotation"
@@ -1597,6 +1599,7 @@ func TestCreateWorkerLed(t *testing.T) {
 					tc.res.Item.Scope = got.GetItem().Scope
 					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
 					tc.res.Item.LocalStorageState = got.GetItem().GetLocalStorageState()
+					tc.res.Item.DirectlyConnectedDownstreamWorkers = got.GetItem().GetDirectlyConnectedDownstreamWorkers()
 				}
 			}
 			assert.Equal(tc.res, got)
@@ -1945,6 +1948,7 @@ func TestCreateControllerLed(t *testing.T) {
 					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
 					tc.res.Item.ControllerGeneratedActivationToken = got.GetItem().GetControllerGeneratedActivationToken()
 					tc.res.Item.LocalStorageState = got.GetItem().GetLocalStorageState()
+					tc.res.Item.DirectlyConnectedDownstreamWorkers = got.GetItem().GetDirectlyConnectedDownstreamWorkers()
 				}
 			}
 			assert.Equal(tc.res, got)
@@ -2616,6 +2620,214 @@ func TestReinitializeCertificateAuthority(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
+		})
+	}
+}
+
+func Test_RemoteStorageStatesToMapProto(t *testing.T) {
+	t.Parallel()
+	testTime := timestamppb.New(time.Now().UTC().Round(time.Second))
+	tests := []struct {
+		name           string
+		input          map[string]*plugin.StorageBucketCredentialState
+		expectedErrMsg string
+		expectedOutput map[string]*pb.RemoteStorageState
+	}{
+		{
+			name:           "nil",
+			expectedOutput: map[string]*pb.RemoteStorageState{},
+		},
+		{
+			name:           "empty",
+			expectedOutput: map[string]*pb.RemoteStorageState{},
+		},
+		{
+			name: "available",
+			input: map[string]*plugin.StorageBucketCredentialState{
+				"sb_1234567890": {
+					State: &plugin.Permissions{
+						Write: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+						Read: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+						Delete: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+					},
+					Version: 1,
+				},
+			},
+			expectedOutput: map[string]*pb.RemoteStorageState{
+				"sb_1234567890": {
+					Status: "available",
+					Permissions: &pb.RemoteStoragePermissions{
+						Write:  "ok",
+						Read:   "ok",
+						Delete: "ok",
+					},
+				},
+			},
+		},
+		{
+			name: "write error",
+			input: map[string]*plugin.StorageBucketCredentialState{
+				"sb_1234567890": {
+					State: &plugin.Permissions{
+						Write: &plugin.Permission{
+							State:        plugin.StateType_STATE_TYPE_ERROR,
+							ErrorDetails: "invalid credentials",
+							CheckedAt:    testTime,
+						},
+						Read: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+						Delete: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+					},
+					Version: 1,
+				},
+			},
+			expectedOutput: map[string]*pb.RemoteStorageState{
+				"sb_1234567890": {
+					Status: "error",
+					Permissions: &pb.RemoteStoragePermissions{
+						Write:  "error",
+						Read:   "ok",
+						Delete: "ok",
+					},
+				},
+			},
+		},
+		{
+			name: "read error",
+			input: map[string]*plugin.StorageBucketCredentialState{
+				"sb_1234567890": {
+					State: &plugin.Permissions{
+						Write: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+						Read: &plugin.Permission{
+							State:        plugin.StateType_STATE_TYPE_ERROR,
+							ErrorDetails: "invalid credentials",
+							CheckedAt:    testTime,
+						},
+						Delete: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+					},
+					Version: 1,
+				},
+			},
+			expectedOutput: map[string]*pb.RemoteStorageState{
+				"sb_1234567890": {
+					Status: "error",
+					Permissions: &pb.RemoteStoragePermissions{
+						Write:  "ok",
+						Read:   "error",
+						Delete: "ok",
+					},
+				},
+			},
+		},
+		{
+			name: "delete error",
+			input: map[string]*plugin.StorageBucketCredentialState{
+				"sb_1234567890": {
+					State: &plugin.Permissions{
+						Write: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+						Read: &plugin.Permission{
+							State:     plugin.StateType_STATE_TYPE_OK,
+							CheckedAt: testTime,
+						},
+						Delete: &plugin.Permission{
+							State:        plugin.StateType_STATE_TYPE_ERROR,
+							ErrorDetails: "invalid credentials",
+							CheckedAt:    testTime,
+						},
+					},
+					Version: 1,
+				},
+			},
+			expectedOutput: map[string]*pb.RemoteStorageState{
+				"sb_1234567890": {
+					Status: "error",
+					Permissions: &pb.RemoteStoragePermissions{
+						Write:  "ok",
+						Read:   "ok",
+						Delete: "error",
+					},
+				},
+			},
+		},
+		{
+			name: "error",
+			input: map[string]*plugin.StorageBucketCredentialState{
+				"sb_1234567890": {
+					State: &plugin.Permissions{
+						Write: &plugin.Permission{
+							State:        plugin.StateType_STATE_TYPE_ERROR,
+							ErrorDetails: "invalid credentials",
+							CheckedAt:    testTime,
+						},
+						Read: &plugin.Permission{
+							State:        plugin.StateType_STATE_TYPE_ERROR,
+							ErrorDetails: "invalid credentials",
+							CheckedAt:    testTime,
+						},
+						Delete: &plugin.Permission{
+							State:        plugin.StateType_STATE_TYPE_ERROR,
+							ErrorDetails: "invalid credentials",
+							CheckedAt:    testTime,
+						},
+					},
+					Version: 1,
+				},
+			},
+			expectedOutput: map[string]*pb.RemoteStorageState{
+				"sb_1234567890": {
+					Status: "error",
+					Permissions: &pb.RemoteStoragePermissions{
+						Write:  "error",
+						Read:   "error",
+						Delete: "error",
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
+			actualOutput, err := remoteStorageStatesToMapProto(tc.input)
+			if tc.expectedErrMsg != "" {
+				require.Error(err)
+				assert.ErrorContains(err, tc.expectedErrMsg)
+				assert.Nil(actualOutput)
+				return
+			}
+			require.NoError(err)
+			require.Len(actualOutput, len(tc.expectedOutput))
+			for storageBucketId, expectedState := range tc.expectedOutput {
+				actualState, ok := actualOutput[storageBucketId]
+				require.True(ok)
+				assert.Equal(expectedState.GetStatus(), actualState.GetStatus())
+				assert.Equal(expectedState.GetPermissions().GetWrite(), actualState.GetPermissions().GetWrite())
+				assert.Equal(expectedState.GetPermissions().GetRead(), actualState.GetPermissions().GetRead())
+				assert.Equal(expectedState.GetPermissions().GetDelete(), actualState.GetPermissions().GetDelete())
+			}
 		})
 	}
 }

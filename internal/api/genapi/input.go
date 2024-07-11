@@ -1353,6 +1353,14 @@ var inputStructs = []*structInfo{
 		outFile: "workers/certificate.gen.go",
 	},
 	{
+		inProto: &workers.RemoteStorageState{},
+		outFile: "workers/remote_storage_state.gen.go",
+	},
+	{
+		inProto: &workers.RemoteStoragePermissions{},
+		outFile: "workers/remote_storage_permissions.gen.go",
+	},
+	{
 		inProto:             &workers.CertificateAuthority{},
 		outFile:             "workers/certificate_authority.gen.go",
 		createResponseTypes: []string{ReadResponseType},
@@ -1406,6 +1414,13 @@ var inputStructs = []*structInfo{
 			"WorkerTags": {
 				SliceType: "map[string][]string",
 				VarName:   "apiTags",
+			},
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:      "RemoteStorageState",
+				ProtoName: "remote_storage_state",
+				FieldType: "map[string]RemoteStorageState",
 			},
 		},
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},

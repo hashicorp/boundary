@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -126,6 +127,9 @@ type Worker struct {
 
 	// This is used to pass the token back to the calling function
 	ControllerGeneratedActivationToken string `gorm:"-"`
+
+	// RemoteStorageStates is a map of storage buckets and their storage bucket credential states
+	RemoteStorageStates map[string]*plugin.StorageBucketCredentialState `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
@@ -284,6 +288,7 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 			LocalStorageState: a.LocalStorageState,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
+		RemoteStorageStates:   map[string]*plugin.StorageBucketCredentialState{},
 	}
 	tags, err := tagsFromAggregatedTagString(ctx, a.ApiTags)
 	if err != nil {

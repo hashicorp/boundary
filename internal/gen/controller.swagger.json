@@ -8458,6 +8458,41 @@
         }
       }
     },
+    "controller.api.resources.workers.v1.RemoteStoragePermissions": {
+      "type": "object",
+      "properties": {
+        "write": {
+          "type": "string",
+          "description": "Output only. The status of the write permission state for the given storage bucket.\nPossible values are: unknown, error, and ok.",
+          "readOnly": true
+        },
+        "read": {
+          "type": "string",
+          "description": "Output only. The status of the read permission state for the given storage bucket.\nPossible values are: unknown, error, and ok.",
+          "readOnly": true
+        },
+        "delete": {
+          "type": "string",
+          "description": "Output only. The status of the delete permission state for the given storage bucket.\nPossible values are: unknown, error, and ok.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.workers.v1.RemoteStorageState": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Output only. The overall health status of the storage bucket. The possible values include: error and available.\nThe status exists in an available state if each remote storage permission state does not have an error. An unknown remote\nstorage permission state does not affect the overall health status.",
+          "readOnly": true
+        },
+        "permissions": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.RemoteStoragePermissions",
+          "description": "Output only. The remote storage permissions contains the permission state for each individual permission type.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.workers.v1.Worker": {
       "type": "object",
       "properties": {
@@ -8590,6 +8625,14 @@
           "type": "string",
           "description": "",
           "title": "Output only. The local_storage_state indicates the state of the local disk space of the worker.\nPossible values are:\n- available: The worker local storage state is at an acceptable state\n- low storage: The worker is below the minimum threshold for local storage\n- critically low storage: The worker local storage state is below the critical minimum threshold for local storage\n- out of storage: The worker is out of local disk space\n- not configured: The worker does not have a local storage path configured\n- unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known",
+          "readOnly": true
+        },
+        "remote_storage_state": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/controller.api.resources.workers.v1.RemoteStorageState"
+          },
+          "description": "Output only. The remote_storage_state indicats the permission state of the storage buckets that the Worker\nis actively using. The possible permission state types include: write, read, and delete. The possible\npermission state values include: unknown, error, and ok.",
           "readOnly": true
         }
       },

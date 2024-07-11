@@ -18,27 +18,28 @@ import (
 )
 
 type Worker struct {
-	Id                                 string              `json:"id,omitempty"`
-	ScopeId                            string              `json:"scope_id,omitempty"`
-	Scope                              *scopes.ScopeInfo   `json:"scope,omitempty"`
-	Name                               string              `json:"name,omitempty"`
-	Description                        string              `json:"description,omitempty"`
-	CreatedTime                        time.Time           `json:"created_time,omitempty"`
-	UpdatedTime                        time.Time           `json:"updated_time,omitempty"`
-	Version                            uint32              `json:"version,omitempty"`
-	Address                            string              `json:"address,omitempty"`
-	CanonicalTags                      map[string][]string `json:"canonical_tags,omitempty"`
-	ConfigTags                         map[string][]string `json:"config_tags,omitempty"`
-	LastStatusTime                     time.Time           `json:"last_status_time,omitempty"`
-	WorkerGeneratedAuthToken           string              `json:"worker_generated_auth_token,omitempty"`
-	ControllerGeneratedActivationToken string              `json:"controller_generated_activation_token,omitempty"`
-	ActiveConnectionCount              uint32              `json:"active_connection_count,omitempty"`
-	Type                               string              `json:"type,omitempty"`
-	ApiTags                            map[string][]string `json:"api_tags,omitempty"`
-	ReleaseVersion                     string              `json:"release_version,omitempty"`
-	DirectlyConnectedDownstreamWorkers []string            `json:"directly_connected_downstream_workers,omitempty"`
-	AuthorizedActions                  []string            `json:"authorized_actions,omitempty"`
-	LocalStorageState                  string              `json:"local_storage_state,omitempty"`
+	Id                                 string                        `json:"id,omitempty"`
+	ScopeId                            string                        `json:"scope_id,omitempty"`
+	Scope                              *scopes.ScopeInfo             `json:"scope,omitempty"`
+	Name                               string                        `json:"name,omitempty"`
+	Description                        string                        `json:"description,omitempty"`
+	CreatedTime                        time.Time                     `json:"created_time,omitempty"`
+	UpdatedTime                        time.Time                     `json:"updated_time,omitempty"`
+	Version                            uint32                        `json:"version,omitempty"`
+	Address                            string                        `json:"address,omitempty"`
+	CanonicalTags                      map[string][]string           `json:"canonical_tags,omitempty"`
+	ConfigTags                         map[string][]string           `json:"config_tags,omitempty"`
+	LastStatusTime                     time.Time                     `json:"last_status_time,omitempty"`
+	WorkerGeneratedAuthToken           string                        `json:"worker_generated_auth_token,omitempty"`
+	ControllerGeneratedActivationToken string                        `json:"controller_generated_activation_token,omitempty"`
+	ActiveConnectionCount              uint32                        `json:"active_connection_count,omitempty"`
+	Type                               string                        `json:"type,omitempty"`
+	ApiTags                            map[string][]string           `json:"api_tags,omitempty"`
+	ReleaseVersion                     string                        `json:"release_version,omitempty"`
+	DirectlyConnectedDownstreamWorkers []string                      `json:"directly_connected_downstream_workers,omitempty"`
+	AuthorizedActions                  []string                      `json:"authorized_actions,omitempty"`
+	LocalStorageState                  string                        `json:"local_storage_state,omitempty"`
+	RemoteStorageState                 map[string]RemoteStorageState `json:"remote_storage_state,omitempty"`
 }
 
 type WorkerReadResult struct {
