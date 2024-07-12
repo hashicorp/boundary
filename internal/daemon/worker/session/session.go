@@ -6,15 +6,20 @@ package session
 import (
 	"context"
 	"crypto"
+	"crypto/subtle"
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/go-secure-stdlib/base62"
+	"go.uber.org/atomic"
 )
 
 // ValidateSessionTimeout is the duration of the timeout when the worker queries the
@@ -40,6 +45,13 @@ type ConnInfo struct {
 	// The time the controller has successfully reported that this connection is
 	// closed.
 	CloseTime time.Time
+
+	// The unique key that can be used to activate the connection, usable only
+	// once
+	ConnectionKey *atomic.String
+
+	// The function used to create the connection
+	ConnectionFunc func(net.Conn)
 }
 
 // ConnectionCloseData encapsulates the data we need to send via CloseConnection
@@ -77,6 +89,9 @@ type Session interface {
 	GetCertificate() *x509.Certificate
 	GetPrivateKey() []byte
 	GetId() string
+
+	GetProxyVersion() string
+	SetProxyVersion(version string)
 
 	// CancelOpenLocalConnections closes the local connections in this session
 	//based on the connection's state by calling the connections context cancel
@@ -121,17 +136,21 @@ type Session interface {
 	// authorized.  The local connection's status is updated with the result of the
 	// call.
 	RequestConnectConnection(ctx context.Context, info *pbs.ConnectConnectionRequest) error
+
+	GetConnectionFn(connKey string) (func(net.Conn), error)
+	StoreConnectionFn(connId string, connFunc func(net.Conn)) (string, error)
 }
 
 type sess struct {
-	lock        sync.RWMutex
-	client      pbs.SessionServiceClient
-	connInfoMap map[string]*ConnInfo
-	resp        *pbs.LookupSessionResponse
-	status      pbs.SESSIONSTATUS
-	cert        *x509.Certificate
-	sessionId   string
-	tofuToken   string
+	lock         sync.RWMutex
+	client       pbs.SessionServiceClient
+	connInfoMap  map[string]*ConnInfo
+	resp         *pbs.LookupSessionResponse
+	status       pbs.SESSIONSTATUS
+	cert         *x509.Certificate
+	sessionId    string
+	tofuToken    string
+	proxyVersion string
 }
 
 func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (*sess, error) {
@@ -148,12 +167,13 @@ func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (
 	}
 
 	s := &sess{
-		client:      client,
-		connInfoMap: make(map[string]*ConnInfo),
-		resp:        resp,
-		status:      resp.GetStatus(),
-		cert:        parsedCert,
-		sessionId:   resp.GetAuthorization().GetSessionId(),
+		client:       client,
+		connInfoMap:  make(map[string]*ConnInfo),
+		resp:         resp,
+		status:       resp.GetStatus(),
+		cert:         parsedCert,
+		sessionId:    resp.GetAuthorization().GetSessionId(),
+		proxyVersion: globals.TcpProxyV1,
 	}
 	return s, nil
 }
@@ -295,6 +315,18 @@ func (s *sess) GetId() string {
 	return s.sessionId
 }
 
+func (s *sess) GetProxyVersion() string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.proxyVersion
+}
+
+func (s *sess) SetProxyVersion(version string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.proxyVersion = version
+}
+
 func (s *sess) RequestCancel(ctx context.Context) error {
 	st, err := cancel(ctx, s.client, s.GetId())
 	if err != nil {
@@ -332,6 +364,7 @@ func (s *sess) RequestAuthorizeConnection(ctx context.Context, workerId string, 
 	ci := &ConnInfo{
 		Id:                resp.GetConnectionId(),
 		Status:            resp.GetStatus(),
+		ConnectionKey:     new(atomic.String),
 		connCtxCancelFunc: connCancel,
 	}
 
@@ -421,6 +454,35 @@ func (s *sess) ApplyConnectionCounterCallbacks(connId string, bytesUp func() int
 	ci.BytesUp = bytesUp
 	ci.BytesDown = bytesDown
 	return nil
+}
+
+func (s *sess) GetConnectionFn(connKey string) (func(net.Conn), error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	for _, ci := range s.connInfoMap {
+		if subtle.ConstantTimeCompare([]byte(ci.ConnectionKey.Load()), []byte(connKey)) == 1 {
+			return ci.ConnectionFunc, nil
+		}
+	}
+	return nil, fmt.Errorf("failed to find connection function for connection key %q", connKey)
+}
+
+func (s *sess) StoreConnectionFn(connId string, connFunc func(net.Conn)) (string, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	ci, ok := s.connInfoMap[connId]
+	if !ok {
+		return "", fmt.Errorf("failed to find connection info for connection id %q", connId)
+	}
+	ci.ConnectionFunc = connFunc
+	connKey, err := base62.Random(32)
+	if err != nil {
+		return "", fmt.Errorf("error generating connection key: %w", err)
+	}
+	ci.ConnectionKey.Store(connKey)
+	return connKey, nil
 }
 
 // activate is a helper worker function that sends session activation request to the

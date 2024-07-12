@@ -1,11 +1,11 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package worker
+package proxy
 
 import (
 	"net"
-	"sync"
+	"sync/atomic"
 )
 
 // countingConn is a `net.Conn` implementation that records the bytes that go
@@ -15,34 +15,34 @@ import (
 type countingConn struct {
 	net.Conn
 
-	bytesRead    int64
-	bytesWritten int64
-	// Use mutex for counters as net.Conn methods may be called concurrently
-	// https://github.com/golang/go/issues/27203#issuecomment-415854958
-	mu sync.Mutex
+	// Use atomic for counters as net.Conn methods may be called concurrently
+	bytesRead    *atomic.Int64
+	bytesWritten *atomic.Int64
+}
+
+func NewCountingConn(conn net.Conn) *countingConn {
+	return &countingConn{
+		Conn:         conn,
+		bytesRead:    new(atomic.Int64),
+		bytesWritten: new(atomic.Int64),
+	}
 }
 
 // BytesRead reports the number of bytes read so far
 func (c *countingConn) BytesRead() int64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.bytesRead
+	return c.bytesRead.Load()
 }
 
 // BytesWritten reports the number of bytes written so far
 func (c *countingConn) BytesWritten() int64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.bytesWritten
+	return c.bytesWritten.Load()
 }
 
 // Read wraps the embedded conn's Read() and counts the number of bytes read
 // (the number of bytes the client sent to us).
 func (c *countingConn) Read(in []byte) (int, error) {
 	n, err := c.Conn.Read(in)
-	c.mu.Lock()
-	c.bytesRead += int64(n)
-	c.mu.Unlock()
+	c.bytesRead.Add(int64(n))
 	return n, err
 }
 
@@ -50,8 +50,6 @@ func (c *countingConn) Read(in []byte) (int, error) {
 // written (the number of bytes we sent to the client).
 func (c *countingConn) Write(in []byte) (int, error) {
 	n, err := c.Conn.Write(in)
-	c.mu.Lock()
-	c.bytesWritten += int64(n)
-	c.mu.Unlock()
+	c.bytesWritten.Add(int64(n))
 	return n, err
 }

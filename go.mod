@@ -17,7 +17,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
 	github.com/hashicorp/boundary/api v0.0.50
-	github.com/hashicorp/boundary/sdk v0.0.46
+	github.com/hashicorp/boundary/sdk v0.0.47
 	github.com/hashicorp/cap v0.5.1-0.20240315182732-faa330bfb8df
 	github.com/hashicorp/dawdle v0.5.0
 	github.com/hashicorp/eventlogger v0.2.9
@@ -79,7 +79,7 @@ require (
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.7 // indirect
 	mvdan.cc/gofumpt v0.5.0
-	nhooyr.io/websocket v1.8.10
+	nhooyr.io/websocket v1.8.11
 )
 
 require github.com/hashicorp/go-dbw v0.1.3-0.20240312210008-7ed943176e5b

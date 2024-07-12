@@ -9,6 +9,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -71,6 +72,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		return nil, fmt.Errorf("%s: missing listener config", op)
 	}
 	return func(wr http.ResponseWriter, r *http.Request) {
+		log.Println("GOT REQUEST")
 		ctx := r.Context()
 		if r.TLS == nil {
 			event.WriteError(ctx, op, stderrors.New("no request tls information found"))
@@ -125,8 +127,9 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 
 		opts := &websocket.AcceptOptions{
-			Subprotocols: []string{globals.TcpProxyV1},
+			Subprotocols: []string{globals.TcpProxyV2, globals.TcpProxyV1},
 		}
+		log.Println("STARTING WEBSOCKET ACCEPT")
 		conn, err := websocket.Accept(wr, r, opts)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error during websocket upgrade"))
@@ -135,6 +138,10 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 		// Later calls will cause this to noop if they return a different status
 		defer conn.Close(websocket.StatusNormalClosure, "done")
+
+		if conn.Subprotocol() == globals.TcpProxyV2 {
+			sess.SetProxyVersion(globals.TcpProxyV2)
+		}
 
 		connCtx, connCancel := context.WithDeadline(ctx, sess.GetExpiration())
 		defer connCancel()
@@ -219,45 +226,6 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", acResp.GetConnectionId())
 
-		// Wrapping the client websocket with a `net.Conn` implementation that
-		// records the bytes that go across Read() and Write().
-		cc := &countingConn{Conn: websocket.NetConn(connCtx, conn, websocket.MessageBinary)}
-		err = sess.ApplyConnectionCounterCallbacks(acResp.GetConnectionId(), cc.BytesRead, cc.BytesWritten)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to set counter callbacks for session connection"))
-			err = conn.Close(websocket.StatusInternalError, "unable to set counter callbacks for session connection")
-			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
-			}
-			return
-		}
-
-		defer func() {
-			ccd := map[string]*session.ConnectionCloseData{
-				acResp.GetConnectionId(): {
-					SessionId: sess.GetId(),
-					BytesUp:   cc.BytesRead(),
-					BytesDown: cc.BytesWritten(),
-				},
-			}
-			if sessionManager.RequestCloseConnections(ctx, ccd) {
-				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", acResp.GetConnectionId())
-			}
-		}()
-
-		handshakeResult := &proxy.HandshakeResult{
-			Expiration:      timestamppb.New(sess.GetExpiration()),
-			ConnectionLimit: sess.GetConnectionLimit(),
-			ConnectionsLeft: connsLeft,
-		}
-		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error sending handshake result to client"))
-			if err = conn.Close(websocket.StatusProtocolError, "unable to send handshake result"); err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
-			}
-			return
-		}
-
 		endpointUrl, err := url.Parse(sess.GetEndpoint())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("worker failed to parse target endpoint", "endpoint", sess.GetEndpoint()))
@@ -295,34 +263,99 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "error getting decryption function")
 			event.WriteError(ctx, op, err)
 		}
-		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, cc, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager)
+		runProxy, err := handleProxyFn(ctx, ctx, decryptFn, pDialer, acResp.GetConnectionId(), protocolCtx, w.recorderManager)
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to setup proxying")
 			event.WriteError(ctx, op, err)
 			return
 		}
 
-		// We connect connection only after we have confirmed as much as we can
-		// that we can establish the proxy.
-		endpointAddr := pDialer.LastConnectionAddr()
-		connectionInfo := &pbs.ConnectConnectionRequest{
-			ConnectionId:       acResp.GetConnectionId(),
-			ClientTcpAddress:   clientAddr.IP.String(),
-			ClientTcpPort:      uint32(clientAddr.Port),
-			EndpointTcpAddress: endpointAddr.Ip(),
-			EndpointTcpPort:    endpointAddr.Port(),
-			Type:               endpointUrl.Scheme,
-			UserClientIp:       userClientIp,
+		connectConnectionFn := func(cc net.Conn) {
+			// We connect connection only after we have confirmed as much as we can
+			// that we can establish the proxy.
+			endpointAddr := pDialer.LastConnectionAddr()
+			connectionInfo := &pbs.ConnectConnectionRequest{
+				ConnectionId:       acResp.GetConnectionId(),
+				ClientTcpAddress:   clientAddr.IP.String(),
+				ClientTcpPort:      uint32(clientAddr.Port),
+				EndpointTcpAddress: endpointAddr.Ip(),
+				EndpointTcpPort:    endpointAddr.Port(),
+				Type:               endpointUrl.Scheme,
+				UserClientIp:       userClientIp,
+			}
+
+			// FIXME: What context to use?
+			if err = sess.RequestConnectConnection(context.Background(), connectionInfo); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error requesting connect connection", "session_id", sess.GetId(), "connection_id", acResp.GetConnectionId()))
+				if err = conn.Close(websocket.StatusInternalError, "unable to establish proxy"); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
+				return
+			}
+
+			log.Println("STARTING PROXY")
+			runProxy(cc)
+
+			defer func() {
+				ccd := map[string]*session.ConnectionCloseData{
+					acResp.GetConnectionId(): {
+						SessionId: sess.GetId(),
+						// BytesUp:   cc.BytesRead(),
+						// BytesDown: cc.BytesWritten(),
+					},
+				}
+				// FIXME: What context to use?
+				if sessionManager.RequestCloseConnections(context.Background(), ccd) {
+					event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", acResp.GetConnectionId())
+				}
+			}()
 		}
-		if err = sess.RequestConnectConnection(ctx, connectionInfo); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error requesting connect connection", "session_id", sess.GetId(), "connection_id", acResp.GetConnectionId()))
-			if err = conn.Close(websocket.StatusInternalError, "unable to establish proxy"); err != nil {
+
+		var connectionKey string
+		switch sess.GetProxyVersion() {
+		case globals.TcpProxyV2:
+			connectionKey, err = sess.StoreConnectionFn(acResp.GetConnectionId(), connectConnectionFn)
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error storing connection function", "session_id", sess.GetId(), "connection_id", acResp.GetConnectionId()))
+				if err = conn.Close(websocket.StatusInternalError, "unable to store connection function"); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
+			}
+		}
+
+		handshakeResult := &proxy.HandshakeResult{
+			Expiration:      timestamppb.New(sess.GetExpiration()),
+			ConnectionLimit: sess.GetConnectionLimit(),
+			ConnectionsLeft: connsLeft,
+			SessionId:       sessionId,
+			ConnectionKey:   connectionKey,
+		}
+		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error sending handshake result to client"))
+			if err = conn.Close(websocket.StatusProtocolError, "unable to send handshake result"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
 		}
 
-		runProxy()
+		switch sess.GetProxyVersion() {
+		case globals.TcpProxyV1:
+			// Wrapping the client websocket with a `net.Conn` implementation that
+			// records the bytes that go across Read() and Write().
+			cc := proxyHandlers.NewCountingConn(websocket.NetConn(connCtx, conn, websocket.MessageBinary))
+			err = sess.ApplyConnectionCounterCallbacks(acResp.GetConnectionId(), cc.BytesRead, cc.BytesWritten)
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to set counter callbacks for session connection"))
+				err = conn.Close(websocket.StatusInternalError, "unable to set counter callbacks for session connection")
+				if err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
+				return
+			}
+			connectConnectionFn(cc)
+		default:
+			return
+		}
 	}, nil
 }
 

@@ -789,7 +789,7 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 		}
 
 		if sess.GetCertificate() == nil {
-			return nil, fmt.Errorf("requested session has no certifificate")
+			return nil, fmt.Errorf("requested session has no certificate")
 		}
 		if len(sess.GetCertificate().Raw) == 0 {
 			return nil, fmt.Errorf("requested session has no certificate DER")
@@ -809,7 +809,7 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 					Leaf:        sess.GetCertificate(),
 				},
 			},
-			NextProtos: []string{"http/1.1"},
+			NextProtos: []string{"http/1.1", globals.TcpProxyV2},
 			MinVersion: tls.VersionTLS13,
 
 			// These two are set this way so we can make use of VerifyConnection,

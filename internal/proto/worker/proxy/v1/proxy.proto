@@ -25,4 +25,6 @@ message HandshakeResult {
   google.protobuf.Timestamp expiration = 10;
   int32 connection_limit = 20;
   int32 connections_left = 30;
+  string session_id = 40;
+  string connection_key = 50;
 }

@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package worker
+package proxy
 
 import (
 	"fmt"
@@ -49,7 +49,7 @@ func TestCountingConn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conn := countingConn{Conn: tt.underlyingConn}
+			conn := NewCountingConn(tt.underlyingConn)
 
 			readBytes := make([]byte, tt.underlyingConn.bytesToRead)
 			read, err := conn.Read(readBytes)
@@ -97,7 +97,7 @@ func TestCountingConnConcurrentCalls(t *testing.T) {
 	concurrentReads := 1000
 	concurrentWrites := 1000
 
-	conn := &countingConn{Conn: newTestNetConn(bytesToRead, false, false, false)}
+	conn := NewCountingConn(newTestNetConn(bytesToRead, false, false, false))
 
 	wg := sync.WaitGroup{}
 	wg.Add(concurrentReads)

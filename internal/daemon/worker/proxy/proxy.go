@@ -39,14 +39,14 @@ type DecryptFn func(ctx context.Context, from []byte, to proto.Message) error
 
 // ProxyConnFn is called after the call to ConnectConnection on the cluster.
 // ProxyConnFn blocks until the specific request that is being proxied is finished
-type ProxyConnFn func()
+type ProxyConnFn func(net.Conn)
 
 // Handler is the type that all proxies need to implement to be called by the worker
 // when a new client connection is created.  If there is an error ProxyConnFn must
 // be nil. If there is no error ProxyConnFn must be set.  When Handler has
 // returned, it is expected that the initial connection to the endpoint has been
 // established.
-type Handler func(controlCtx context.Context, dataCtx context.Context, df DecryptFn, c net.Conn, pd *ProxyDialer, connId string, pb *anypb.Any, rm RecordingManager) (ProxyConnFn, error)
+type Handler func(controlCtx context.Context, dataCtx context.Context, df DecryptFn, pd *ProxyDialer, connId string, pb *anypb.Any, rm RecordingManager) (ProxyConnFn, error)
 
 func RegisterHandler(protocol string, handler Handler) error {
 	_, loaded := handlers.LoadOrStore(protocol, handler)

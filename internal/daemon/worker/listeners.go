@@ -15,6 +15,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/common"
@@ -233,9 +234,13 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	// Connections that come into here are not authed by nodeenrollment so are
 	// proxy connections
-	proxyListener, err := w.workerAuthSplitListener.GetListener(nodeenet.UnauthenticatedNextProto)
+	proxyListener, err := w.workerAuthSplitListener.GetListener(nodeenet.UnauthenticatedNextProto, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
+	}
+	multiPlexedProxyListener, err := nodeenet.NewMultiplexingListener(w.baseContext, proxyListener.Addr())
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating non-worker multiplexed listener: %w", err)
 	}
 
 	// Connections coming in here are authed by nodeenrollment and are for the
@@ -299,9 +304,114 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revWorkerTrackingListener, reverseGrpcListenerPurpose),
 			metric.InstrumentWorkerClusterTrackingListener(dataPlaneProxyTrackingListener, multihopProxyDataplaneListenerPurpose), w.downstreamReceiver)
 		go w.workerAuthSplitListener.Start()
-		go httpServer.Serve(proxyListener)
+		go w.startProxyListener(proxyListener, multiPlexedProxyListener)
+		go httpServer.Serve(multiPlexedProxyListener)
 		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(workerTrackingListener, grpcListenerPurpose))
 	}, nil
+}
+
+func (w *Worker) startProxyListener(l net.Listener, ml *nodeenet.MultiplexingListener) {
+	go func() {
+		<-w.baseContext.Done() // this also means ml will be closed
+		l.Close()
+	}()
+	for {
+		log.Println("WAITING TO ACCEPT")
+		conn, err := l.Accept()
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			log.Println("ERROR", err)
+		}
+		log.Println("ACCEPTED")
+
+		var clientProto string
+		var tlsConn *tls.Conn
+		switch t := conn.(type) {
+		case *tls.Conn:
+			log.Println("SENT TLS CONN")
+			ml.IngressConn(conn, err)
+			continue
+
+		case *protocol.Conn:
+			tlsConn = t.Conn
+			log.Println(fmt.Sprintf("PROTOS %#v", t.ClientNextProtos()))
+			for _, proto := range t.ClientNextProtos() {
+				if proto == globals.TcpProxyV2 {
+					clientProto = proto
+				}
+			}
+		}
+
+		switch clientProto {
+		case "":
+			if tlsConn == nil {
+				continue
+			}
+			log.Println("SENDING TLS CONN")
+			ml.IngressConn(tlsConn, err)
+			continue
+
+		case globals.TcpProxyV2:
+			// The rest of the logic will be this
+
+		default:
+			conn.Close()
+			continue
+		}
+
+		go func() {
+			log.Println("PERFORMING TCP PROXY V2")
+			var buf [45]byte
+			n, err := conn.Read(buf[:])
+			if err != nil {
+				conn.Close()
+				return
+			}
+			if n != 45 {
+				conn.Close()
+				return
+			}
+			log.Println("FULL", string(buf[:]))
+			sessionId, connKey := string(buf[:12]), string(buf[13:])
+			switch {
+			case sessionId == "":
+				conn.Close()
+				return
+			case connKey == "":
+				conn.Close()
+				return
+			}
+			n, err = conn.Write([]byte("OK"))
+			if err != nil {
+				conn.Close()
+				return
+			}
+			if n != 2 {
+				conn.Close()
+				return
+			}
+			log.Println("SESSION ID", sessionId)
+			log.Println("CONN KEY", connKey)
+
+			sess := w.sessionManager.Get(sessionId)
+			if sess == nil {
+				log.Println("SESSION IS NIL")
+				conn.Close()
+				return
+			}
+
+			connFn, err := sess.GetConnectionFn(connKey)
+			if err != nil {
+				log.Println("ERROR GETTING CONNECTION FUNCTION", err)
+				conn.Close()
+				return
+			}
+
+			connFn(conn)
+		}()
+	}
 }
 
 func (w *Worker) stopServersAndListeners() error {

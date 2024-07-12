@@ -103,7 +103,7 @@ func TestNew(t *testing.T) {
 			assert.Equal(p.SessionExpiration(), sessionAuth.Expiration)
 			assert.NotNil(p.ctx)
 			assert.NotNil(p.cancel)
-			assert.NotNil(p.transport)
+			assert.NotNil(p.controlClient)
 		})
 	}
 }
