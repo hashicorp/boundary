@@ -47,6 +47,12 @@ type RecordingStorage interface {
 	// that is currently being managed and will return the storage bucket that has the latest version.
 	// If the given storage bucket has the latest version, then the managed storage bucket will be updated.
 	UpsertStorageBucket(ctx context.Context, newBucket *storagebuckets.StorageBucket) (bucket.StorageBucketSingleton, error)
+
+	// AddDependant starts tracking the given resource as a dependant.
+	AddDependant(ctx context.Context, storageBucketId string, dependantId string) error
+
+	// RemoveDependant stops tracking the given resource as an dependant.
+	RemoveDependant(ctx context.Context, storageBucketId string, dependantId string) error
 }
 
 // Bucket is a resource that represents a bucket in an external object store
