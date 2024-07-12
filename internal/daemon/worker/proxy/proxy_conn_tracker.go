@@ -4,6 +4,7 @@
 package proxy
 
 import (
+	"net"
 	"net/http"
 	"sync/atomic"
 )
@@ -34,9 +35,9 @@ func ProxyHandlerCounter(h http.Handler) http.Handler {
 // proxyConnFnCounter wraps a ProxyState and keeps the proxyCount incremented
 // while it runs.
 func proxyConnFnCounter(fn ProxyConnFn) ProxyConnFn {
-	return func() {
+	return func(cc net.Conn) {
 		ProxyState.proxyCount.Add(1)
 		defer ProxyState.proxyCount.Add(-1)
-		fn()
+		fn(cc)
 	}
 }

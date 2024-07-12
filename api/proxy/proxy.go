@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/netip"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/consts"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
@@ -46,7 +48,8 @@ type ClientProxy struct {
 	expiration            time.Time
 	ctx                   context.Context
 	cancel                context.CancelFunc
-	transport             *http.Transport
+	controlClient         *http.Client
+	controlNegProto       string
 	workerAddr            string
 	listenAddrPort        netip.AddrPort
 	listener              *atomic.Value
@@ -148,16 +151,16 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	// try to actually make it
 	p.ctx, p.cancel = context.WithDeadlineCause(ctx, p.expiration, fmt.Errorf("Session has expired"))
 
-	transport := cleanhttp.DefaultTransport()
-	transport.DisableKeepAlives = false
+	controlTransport := cleanhttp.DefaultTransport()
+	controlTransport.DisableKeepAlives = false
 	// This isn't/shouldn't be used anyways really because the connection is
 	// hijacked, just setting for completeness
-	transport.IdleConnTimeout = 0
-	transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+	controlTransport.IdleConnTimeout = 0
+	controlTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		dialer := &tls.Dialer{Config: tlsConf}
 		return dialer.DialContext(ctx, network, addr)
 	}
-	p.transport = transport
+	p.controlClient = &http.Client{Transport: controlTransport}
 
 	return p, nil
 }
@@ -269,7 +272,7 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 				defer activeConnFn(-1)
 				defer listeningConn.Close()
 				defer p.connWg.Done()
-				wsConn, err := p.getWsConn(p.ctx)
+				wsConn, negProto, err := p.getWsConn(p.ctx)
 				if err != nil {
 					fin <- fmt.Errorf("error from getWsConn: %w", err)
 					// No reason to think we can successfully handle the next
@@ -278,10 +281,31 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					p.cancel()
 					return
 				}
-				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
-					fin <- fmt.Errorf("error from runTcpProxyV1: %w", err)
-					// No reason to think we can successfully handle the next
-					// connection that comes our way, so cancel the proxy
+				switch negProto {
+				case consts.WebsocketProtocolTcpProxyV1:
+					log.Println("RUNNING PROXY V1")
+					if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
+						fin <- fmt.Errorf("error from runTcpProxyV1: %w", err)
+						// No reason to think we can successfully handle the next
+						// connection that comes our way, so cancel the proxy
+						listenerCloseFunc()
+						p.cancel()
+						return
+					}
+				case consts.WebsocketProtocolTcpProxyV2:
+					log.Println("RUNNING PROXY V2")
+					if err := p.runTcpProxyV2(wsConn, listeningConn); err != nil {
+						log.Println("ERROR FROM RUN 2", err)
+						fin <- fmt.Errorf("error from runTcpProxyV2: %w", err)
+						// No reason to think we can successfully handle the next
+						// connection that comes our way, so cancel the proxy
+						listenerCloseFunc()
+						p.cancel()
+						return
+					}
+				default:
+					log.Println("UNSUP PROTO")
+					fin <- fmt.Errorf("unsupported protocol: %s", negProto)
 					listenerCloseFunc()
 					p.cancel()
 					return
@@ -296,6 +320,7 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					// tried.
 					sess, err := sessions.NewClient(p.apiClient).Read(p.ctx, p.sessionAuthzData.SessionId)
 					if err != nil || sess == nil || sess.Item == nil || sess.Item.Status == "active" {
+						log.Println("SESSION ACTIVE", err)
 						return
 					}
 
@@ -303,6 +328,7 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					// closed a connection for. Since the status isn't active
 					// we can treat the session as no longer being able to
 					// support connections, so close this proxy.
+					log.Println("SESSION NOT ACTIVE")
 					fin <- fmt.Errorf("session no longer active")
 					listenerCloseFunc()
 					p.cancel()
@@ -399,6 +425,7 @@ func (p *ClientProxy) CloseSession(sessionTeardownTimeout time.Duration) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), sessionTeardownTimeout)
 	defer cancel()
+	log.Println("SENDING SESSION TEARDOWN")
 	if err := p.sendSessionTeardown(ctx); err != nil {
 		return fmt.Errorf("error sending session teardown request to worker: %w", err)
 	}

@@ -130,6 +130,8 @@ type HandshakeResult struct {
 	Expiration      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expiration,proto3" json:"expiration,omitempty"`
 	ConnectionLimit int32                  `protobuf:"varint,20,opt,name=connection_limit,json=connectionLimit,proto3" json:"connection_limit,omitempty"`
 	ConnectionsLeft int32                  `protobuf:"varint,30,opt,name=connections_left,json=connectionsLeft,proto3" json:"connections_left,omitempty"`
+	SessionId       string                 `protobuf:"bytes,40,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ConnectionKey   string                 `protobuf:"bytes,50,opt,name=connection_key,json=connectionKey,proto3" json:"connection_key,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -185,6 +187,20 @@ func (x *HandshakeResult) GetConnectionsLeft() int32 {
 	return 0
 }
 
+func (x *HandshakeResult) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *HandshakeResult) GetConnectionKey() string {
+	if x != nil {
+		return x.ConnectionKey
+	}
+	return ""
+}
+
 var File_worker_proxy_v1_proxy_proto protoreflect.FileDescriptor
 
 const file_worker_proxy_v1_proxy_proto_rawDesc = "" +
@@ -194,14 +210,17 @@ const file_worker_proxy_v1_proxy_proto_rawDesc = "" +
 	"\n" +
 	"tofu_token\x18\n" +
 	" \x01(\tR\ttofuToken\x12;\n" +
-	"\acommand\x18\x14 \x01(\x0e2!.worker.proxy.v1.HANDSHAKECOMMANDR\acommand\"\xa3\x01\n" +
+	"\acommand\x18\x14 \x01(\x0e2!.worker.proxy.v1.HANDSHAKECOMMANDR\acommand\"\xe9\x01\n" +
 	"\x0fHandshakeResult\x12:\n" +
 	"\n" +
 	"expiration\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"expiration\x12)\n" +
 	"\x10connection_limit\x18\x14 \x01(\x05R\x0fconnectionLimit\x12)\n" +
-	"\x10connections_left\x18\x1e \x01(\x05R\x0fconnectionsLeft*Y\n" +
+	"\x10connections_left\x18\x1e \x01(\x05R\x0fconnectionsLeft\x12\x1d\n" +
+	"\n" +
+	"session_id\x18( \x01(\tR\tsessionId\x12%\n" +
+	"\x0econnection_key\x182 \x01(\tR\rconnectionKey*Y\n" +
 	"\x10HANDSHAKECOMMAND\x12 \n" +
 	"\x1cHANDSHAKECOMMAND_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fHANDSHAKECOMMAND_SESSION_CANCEL\x10\x01B3Z1github.com/hashicorp/boundary/sdk/pbs/proxy;proxyb\x06proto3"
