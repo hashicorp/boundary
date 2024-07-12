@@ -4,6 +4,7 @@
 package proxy
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -22,9 +23,9 @@ func TestProxyStateHelpers(t *testing.T) {
 
 	t.Run("proxyConnFnCounter", func(t *testing.T) {
 		assert.EqualValues(t, 0, ProxyState.CurrentProxiedConnections())
-		proxyConnFnCounter(func() {
+		proxyConnFnCounter(func(conn net.Conn) {
 			assert.EqualValues(t, 1, ProxyState.CurrentProxiedConnections())
-		})()
+		})(nil)
 		assert.EqualValues(t, 0, ProxyState.CurrentProxiedConnections())
 	})
 

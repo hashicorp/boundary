@@ -7,6 +7,7 @@ import "time"
 
 const (
 	TcpProxyV1     = "boundary-tcp-proxy-v1"
+	TcpProxyV2     = "boundary-tcp-proxy-v2"
 	ServiceTokenV1 = "s1"
 
 	AnyAuthenticatedUserId = "u_auth"
