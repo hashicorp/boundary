@@ -337,6 +337,23 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 		}
 	}
 
+	if len(item.RemoteStorageState) > 0 {
+		ret = append(ret,
+			"",
+			"  Remote Storage State:",
+		)
+		for storageBucketId, state := range item.RemoteStorageState {
+			ret = append(ret,
+				fmt.Sprintf("    %s:", storageBucketId),
+				fmt.Sprintf("        Status: %s", state.Status),
+				"        Permissions:",
+				fmt.Sprintf("            Write: %s", state.Permissions.Write),
+				fmt.Sprintf("            Read: %s", state.Permissions.Read),
+				fmt.Sprintf("            Delete: %s", state.Permissions.Delete),
+			)
+		}
+	}
+
 	if len(item.DirectlyConnectedDownstreamWorkers) > 0 {
 		ret = append(ret,
 			"",
