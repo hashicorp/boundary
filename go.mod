@@ -24,10 +24,10 @@ require (
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231208142215-efdb51ec090d
 	github.com/hashicorp/go-bexpr v0.1.13
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-hclog v1.6.2
+	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.17-0.20240313190905-91d44aa8e360
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/go-retryablehttp v0.7.5
+	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.11
@@ -69,7 +69,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	golang.org/x/crypto v0.21.0
 	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.18.0
+	golang.org/x/sys v0.20.0
 	golang.org/x/term v0.18.0
 	golang.org/x/tools v0.17.0
 	google.golang.org/genproto v0.0.0-20240205150955-31a09d347014
