@@ -5,12 +5,11 @@ go 1.21
 toolchain go1.21.5
 
 require (
-	github.com/hashicorp/boundary-plugin-aws v0.3.0
+	github.com/hashicorp/boundary-plugin-aws v0.3.1
 	github.com/hashicorp/boundary/sdk v0.0.41-0.20231117205527-08045ddb050e
 )
 
 require (
-	github.com/aws/aws-sdk-go v1.44.214 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.20.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.12 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.18.33 // indirect
