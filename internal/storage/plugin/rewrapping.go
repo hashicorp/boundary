@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/storage/storagebucketcredential/managedsecret"
 	"github.com/hashicorp/boundary/internal/util"
 )
 
@@ -17,12 +18,12 @@ const (
 )
 
 func init() {
-	kms.RegisterTableRewrapFn(storageBucketCredentialManagedSecretTablename, storageBucketCredentialManagedSecretRewrapFn)
+	kms.RegisterTableRewrapFn(storageBucketCredentialManagedSecretTablename, storageBucketCredentialRewrapFn)
 }
 
-// storageBucketRewrapFn provides a kms.Rewrapfn for the StorageBucketCredentialManagedSecret type
-func storageBucketCredentialManagedSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
-	const op = "storage.storageBucketRewrapFn"
+// storageBucketCredentialRewrapFn provides a kms.Rewrapfn for the StorageBucketCredentialManagedSecret type
+func storageBucketCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
+	const op = "storage.storageBucketCredentialRewrapFn"
 	switch {
 	case dataKeyVersionId == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")
@@ -35,7 +36,7 @@ func storageBucketCredentialManagedSecretRewrapFn(ctx context.Context, dataKeyVe
 	case kmsRepo == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repository")
 	}
-	var sbcms []*StorageBucketCredentialManagedSecret
+	var sbcms []*managedsecret.StorageBucketCredential
 	// The only index on this table is on the primary key (storage bucket id) and we can't find it that way.
 	// This is the fastest query we can use without creating a new index on key_id.
 	if err := reader.SearchWhere(ctx, &sbcms, "key_id=?", []any{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
@@ -46,10 +47,10 @@ func storageBucketCredentialManagedSecretRewrapFn(ctx context.Context, dataKeyVe
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
 	}
 	for _, secret := range sbcms {
-		if err := secret.decrypt(ctx, wrapper); err != nil {
+		if err := secret.Decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt storage bucket secret"))
 		}
-		if err := secret.encrypt(ctx, wrapper); err != nil {
+		if err := secret.Encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt storage bucket secret"))
 		}
 		if _, err := writer.Update(ctx, secret, []string{"CtSecrets", "KeyId"}, nil); err != nil {

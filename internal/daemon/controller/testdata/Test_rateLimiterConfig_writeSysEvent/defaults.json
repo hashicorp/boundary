@@ -6,7 +6,7 @@
   "data": {
     "data": {
       "limits": {
-        "alias":  {
+        "alias": {
           "create": [
             {
               "action": "create",
