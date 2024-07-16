@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-bexpr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,6 +59,10 @@ var (
 	// available in OSS and are a straight forward proxy with no additional
 	// fields needed.
 	getProtocolContext = noProtocolContext
+
+	// updateWorkerStorageBucketCredentialStatesFn will update the worker storage bucket
+	// credential state.
+	updateWorkerStorageBucketCredentialStatesFn = updateWorkerStorageBucketCredentialStates
 )
 
 // singleHopConnectionRoute returns a route consisting of the singlehop worker (the root worker id)
@@ -159,6 +164,12 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
+
+	// update storage states
+	if sbcStates := wStat.GetStorageBucketCredentialStates(); sbcStates != nil && wrk.GetPublicId() != "" {
+		updateWorkerStorageBucketCredentialStatesFn(ctx, serverRepo, wrk.GetPublicId(), sbcStates)
+	}
+
 	controllers, err := serverRepo.ListControllers(ctx, server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting current controllers"))
@@ -745,4 +756,9 @@ func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.Clo
 	}
 
 	return ret, nil
+}
+
+func updateWorkerStorageBucketCredentialStates(ctx context.Context, repo *server.Repository, workerId string, states map[string]*plugin.StorageBucketCredentialState) {
+	const op = "handlers.updateWorkerStorageBucketCredentialStates"
+	return
 }
