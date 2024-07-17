@@ -4,6 +4,16 @@
 package server
 
 const (
+	getStorageBucketCredentialStatesByWorkerId = `
+		select spsb.public_id as storage_bucket_id,
+			   wsbcs.permission_type, wsbcs.state, 
+			   wsbcs.checked_at, wsbcs.error_details
+		from worker_storage_bucket_credential_state wsbcs
+			   join storage_plugin_storage_bucket spsb
+				   on spsb.storage_bucket_credential_id = wsbcs.storage_bucket_credential_id
+		where wsbcs.worker_id = @worker_id;
+	`
+
 	deleteWhereCreateTimeSql = `create_time < ?`
 
 	deleteTagsByWorkerIdSql = `
