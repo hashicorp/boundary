@@ -13,18 +13,8 @@ module.exports = [
   //   permanent: true,
   // },
   {
-    source: '/boundary/docs/what-is-boundary',
-    destination: '/boundary/docs/overview/what-is-boundary',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/use-cases',
     destination: '/boundary/docs/overview/use-cases',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/roadmap',
-    destination: 'boundary/docs/overview/what-is-boundary',
     permanent: true,
   },
   {

@@ -1,6 +1,6 @@
 # Boundary
 
-- What is Boundary: https://developer.hashicorp.com/boundary/docs/overview/what-is-boundary
+- What is Boundary: https://developer.hashicorp.com/boundary/docs/what-is-boundary
 - Website: https://www.boundaryproject.io/
 - Forums: [HashiCorp Discuss](https://discuss.hashicorp.com/c/boundary/)
 - Documentation: [https://boundaryproject.io/docs](https://boundaryproject.io/docs)
@@ -13,25 +13,25 @@ Boundary is an identity-aware proxy that provides a simple, secure way to access
 With Boundary you can:
 
 * Integrate with your IdP of choice using OpenID Connect, enabling users to securely sign-in to their Boundary environment
-* Provide just-in-time network access to network resources, wherever they reside 
+* Provide just-in-time network access to network resources, wherever they reside
 * Manage session credentials via a native static credential store, or dynamically generate unique per-session credentials by integrating with HashiCorp Vault
 * Automate discovery of new endpoints
 * Manage privileged sessions using Boundary’s session controls
 * Standardize your team's access workflow with a consistent experience for any type of infrastructure across any provider
 
 
-Boundary is designed to be straightforward to understand, highly scalable, and 
+Boundary is designed to be straightforward to understand, highly scalable, and
 resilient. It can run in clouds, on-prem, secure enclaves and more, and does not require
 an agent to be installed on every end host, making it suitable for access to managed/cloud services and container-based workflows in addition to traditional host systems and services.
 
 
 <img src="https://www.boundaryproject.io/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F58478%2F1664218843-boundary-illustration-option2-1.png&w=3840&q=75" alt="Watch the video" width="320" height="180">
 
-For more information, refer to "[What is Boundary?](https://developer.hashicorp.com/boundary/docs/overview/what-is-boundary)" on the Boundary website.
+For more information, refer to "[What is Boundary?](https://developer.hashicorp.com/boundary/docs/what-is-boundary)" on the Boundary website.
 
 ## Getting Started
 
-Boundary consists of two server components: 
+Boundary consists of two server components:
 
 * **Controller**, which serves the API and coordinate session requests
 * **Workers**, which perform session handling
@@ -40,7 +40,7 @@ A real-world Boundary installation will likely consist of one or more
 controllers paired with one or more workers. A single Boundary binary can act
 in either, or both, of these two modes.
 
-Additionally, Boundary provides a Desktop client and CLI for end-users to request and establish 
+Additionally, Boundary provides a Desktop client and CLI for end-users to request and establish
 authorized sessions to resources across a network.
 
 <img src="boundary_desktop_example.gif" alt="Boundary Desktop GIF" width="66%" height="66%" loop="true">
@@ -49,22 +49,22 @@ Boundary does _not_ require software to be installed on your hosts and services.
 
 ## Requirements
 
-Boundary has two external dependencies: 
+Boundary has two external dependencies:
 - A SQL database
 - At least one KMS
 
 ### SQL database
-The database contains Boundary's configuration and session information. The 
-controller nodes must be able to access the database. 
+The database contains Boundary's configuration and session information. The
+controller nodes must be able to access the database.
 
 Values that are secrets (e.g credentials) are encrypted in the database. Currently, PostgreSQL is supported as a database and has been tested with Postgres 12 and above.
 
 Boundary uses only common extensions and both hosted and self-managed instances are supported. In most instances, all that you need is a database endpoint and the appropriate credentials.
 
-### KMS 
+### KMS
 Boundary uses KMS keys for various purposes, such as protecting secrets, authenticating workers, recovering data, encrypting values in Boundary’s configuration, and more. Boundary uses key derivation extensively to avoid key sprawl of these high-value keys.
 
-You can use [any cloud KMS or Vault's Transit Secrets Engine to satisfy the KMS requirement](https://developer.hashicorp.com/boundary/docs/configuration/kms). 
+You can use [any cloud KMS or Vault's Transit Secrets Engine to satisfy the KMS requirement](https://developer.hashicorp.com/boundary/docs/configuration/kms).
 
 ## Trying out Boundary
 
@@ -193,4 +193,3 @@ _please responsibly disclose_ by contacting us at
 
 Thank you for your interest in contributing! Please refer to
 [CONTRIBUTING.md](https://github.com/hashicorp/boundary/blob/main/CONTRIBUTING.md) for guidance.
-
