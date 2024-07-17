@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,6 +20,7 @@ func TestRepository_NewRepository(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	tests := []struct {
 		name            string
@@ -74,7 +76,7 @@ func TestRepository_NewRepository(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			ctx := context.Background()
 
-			repo, err := NewRepository(ctx, tt.in.reader, tt.in.writer, tt.in.kms)
+			repo, err := NewRepository(ctx, tt.in.reader, tt.in.writer, tt.in.kms, sche)
 			if tt.wantErrContains != "" {
 				require.ErrorContains(err, tt.wantErrContains)
 				return

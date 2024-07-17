@@ -410,7 +410,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return plugin.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.PluginStorageBucketRepoFn = func() (*pluginstorage.Repository, error) {
-		return pluginstorage.NewRepository(ctx, dbase, dbase, c.kms)
+		return pluginstorage.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, dbase, dbase, c.kms,
@@ -618,7 +618,7 @@ func (c *Controller) registerJobs() error {
 			serversjob.WithRotationFrequency(c.conf.TestOverrideWorkerAuthCaCertificateLifetime/2),
 		)
 	}
-	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, serverJobOpts...); err != nil {
+	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.ControllerExtension, c.workerStatusGracePeriod, serverJobOpts...); err != nil {
 		return err
 	}
 	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
