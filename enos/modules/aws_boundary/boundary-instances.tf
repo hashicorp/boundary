@@ -124,7 +124,7 @@ resource "enos_file" "controller_config" {
 }
 
 resource "enos_boundary_init" "controller" {
-  count = local.is_restored_db ? 0 : 1 // init not required when we restore from a snapshot
+  count = !local.is_restored_db && var.controller_count > 0 ? 1 : 0 // init not required when we restore from a snapshot
 
   bin_name    = var.boundary_binary_name
   bin_path    = var.boundary_install_dir
@@ -133,7 +133,7 @@ resource "enos_boundary_init" "controller" {
 
   transport = {
     ssh = {
-      host = aws_instance.controller[0].public_ip
+      host = try(aws_instance.controller[0].public_ip, null)
     }
   }
 
@@ -217,14 +217,15 @@ resource "enos_file" "worker_config" {
   depends_on  = [enos_bundle_install.worker]
   destination = "/etc/boundary/boundary.hcl"
   content = templatefile("${path.module}/${var.worker_config_file_path}", {
-    id                     = each.value
-    kms_key_id             = data.aws_kms_key.kms_key.id,
-    controller_ips         = jsonencode(aws_instance.controller.*.private_ip),
-    public_addr            = aws_instance.worker[tonumber(each.value)].public_ip
-    region                 = var.aws_region
-    type                   = jsonencode(var.worker_type_tags)
-    recording_storage_path = var.recording_storage_path
-    audit_log_dir          = local.audit_log_directory
+    id                      = each.value
+    kms_key_id              = data.aws_kms_key.kms_key.id,
+    controller_ips          = jsonencode(aws_instance.controller.*.private_ip),
+    public_addr             = aws_instance.worker[tonumber(each.value)].public_ip
+    region                  = var.aws_region
+    type                    = jsonencode(var.worker_type_tags)
+    recording_storage_path  = var.recording_storage_path
+    audit_log_dir           = local.audit_log_directory
+    hcp_boundary_cluster_id = var.hcp_boundary_cluster_id
   })
   for_each = toset([for idx in range(var.worker_count) : tostring(idx)])
 
@@ -265,6 +266,18 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
 
   scripts = [abspath("${path.module}/scripts/create-audit-log-dir.sh")]
 
+  transport = {
+    ssh = {
+      host = aws_instance.worker[tonumber(each.value)].public_ip
+    }
+  }
+}
+
+resource "enos_remote_exec" "get_worker_token" {
+  depends_on = [enos_boundary_start.worker_start]
+  for_each   = var.hcp_boundary_cluster_id != "" ? toset([for idx in range(var.worker_count) : tostring(idx)]) : []
+
+  inline = ["timeout 10s bash -c 'set -eo pipefail; until journalctl -u boundary.service | cat | grep \"Worker Auth Registration Request: .*\" | rev | cut -d \" \" -f 1 | rev | xargs; do sleep 2; done'"]
   transport = {
     ssh = {
       host = aws_instance.worker[tonumber(each.value)].public_ip

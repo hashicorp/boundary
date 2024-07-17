@@ -88,7 +88,7 @@ resource "aws_security_group" "boundary_alb_sg" {
       cidr_blocks = flatten([
         formatlist("%s/32", data.enos_environment.localhost.public_ipv4_addresses),
         join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
-        format("%s/32", aws_instance.controller.0.public_ip),
+        try(format("%s/32", aws_instance.controller.0.public_ip), []),
         formatlist("%s/32", var.alb_sg_additional_ips)
       ])
       description      = ingress.key
