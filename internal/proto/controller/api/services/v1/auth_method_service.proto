@@ -283,7 +283,7 @@ message AuthenticateRequest {
           "For password auth methods, the parameters are:\n"
           "```json\n"
           "{\n"
-          "  \"login\": \"login\",\n"
+          "  \"login_name\": \"login_name\",\n"
           "  \"password\": \"password\"\n"
           "}\n"
           "```\n"
