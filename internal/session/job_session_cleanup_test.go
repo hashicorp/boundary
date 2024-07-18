@@ -67,7 +67,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 		require.NoError(err)
 		c, _, err := AuthorizeConnection(ctx, sessionRepo, connectionRepo, sess.GetPublicId(), serverId)
 		require.NoError(err)
-		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.ConnectionStatus))
+		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.Status))
 		connIds = append(connIds, c.GetPublicId())
 		if i%2 == 0 {
 			connIdsByWorker[worker2.PublicId] = append(connIdsByWorker[worker2.PublicId], c.GetPublicId())
@@ -89,7 +89,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
-			require.Equal(StatusConnected, ConnectionStatusFromString(cc.ConnectionStatus))
+			require.Equal(StatusConnected, ConnectionStatusFromString(cc.Status))
 		}
 	}
 
@@ -121,7 +121,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 			conn, err := connectionRepo.LookupConnection(ctx, connId)
 			require.NoError(err)
 			var foundClosed bool
-			if ConnectionStatusFromString(conn.ConnectionStatus) == StatusClosed {
+			if ConnectionStatusFromString(conn.Status) == StatusClosed {
 				foundClosed = true
 			}
 			assert.Equal(closed, foundClosed)
@@ -226,7 +226,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		require.NoError(err)
 		c, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
 		require.NoError(err)
-		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.ConnectionStatus))
+		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.Status))
 		if i%3 == 0 {
 			worker1ConnIds = append(worker1ConnIds, c.GetPublicId())
 		} else if i%3 == 1 {
@@ -256,7 +256,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
-			require.Equal(StatusConnected, ConnectionStatusFromString(cc.ConnectionStatus))
+			require.Equal(StatusConnected, ConnectionStatusFromString(cc.Status))
 		} else if i%3 == 1 {
 			resp, err := connRepo.closeConnections(ctx, []CloseWith{
 				{
@@ -308,7 +308,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 
 			conn, err := connRepo.LookupConnection(ctx, connId)
 			require.NoError(err)
-			require.Equal(expected, ConnectionStatusFromString(conn.ConnectionStatus), "expected latest status for %q (index %d) to be %v", connId, i, expected)
+			require.Equal(expected, ConnectionStatusFromString(conn.Status), "expected latest status for %q (index %d) to be %v", connId, i, expected)
 		}
 	}
 
@@ -444,7 +444,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 
 		conn, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), workerId)
 		require.NoError(err)
-		require.Equal(StatusAuthorized, ConnectionStatusFromString(conn.ConnectionStatus))
+		require.Equal(StatusAuthorized, ConnectionStatusFromString(conn.Status))
 		return conn
 	}
 
@@ -476,19 +476,19 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 
 	con, err := connRepo.LookupConnection(ctx, dActiveConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.ConnectionStatus))
+	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.Status))
 
 	con, err = connRepo.LookupConnection(ctx, dClosedConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, ConnectionStatusFromString(con.ConnectionStatus))
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 
 	con, err = connRepo.LookupConnection(ctx, activeConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.ConnectionStatus))
+	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.Status))
 
 	con, err = connRepo.LookupConnection(ctx, closedConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, ConnectionStatusFromString(con.ConnectionStatus))
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 
 	// Run the job
 	numClosed, err := job.closeWorkerlessConnections(ctx)
@@ -498,17 +498,17 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	// This is the only one that the job should have actually closed.
 	con, err = connRepo.LookupConnection(ctx, dActiveConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, ConnectionStatusFromString(con.ConnectionStatus))
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 
 	con, err = connRepo.LookupConnection(ctx, dClosedConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, ConnectionStatusFromString(con.ConnectionStatus))
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 
 	con, err = connRepo.LookupConnection(ctx, activeConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.ConnectionStatus))
+	require.Equal(StatusAuthorized, ConnectionStatusFromString(con.Status))
 
 	con, err = connRepo.LookupConnection(ctx, closedConn.GetPublicId())
 	require.NoError(err)
-	require.Equal(StatusClosed, ConnectionStatusFromString(con.ConnectionStatus))
+	require.Equal(StatusClosed, ConnectionStatusFromString(con.Status))
 }

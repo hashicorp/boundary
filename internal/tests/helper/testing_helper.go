@@ -157,7 +157,7 @@ func (s *TestSession) ExpectConnectionStateOnController(
 		for i, conn := range conns {
 			c, err := connectionRepo.LookupConnection(ctx, conn.PublicId, nil)
 			require.NoError(err)
-			actualStates[i] = session.ConnectionStatusFromString(c.ConnectionStatus)
+			actualStates[i] = session.ConnectionStatusFromString(c.Status)
 		}
 
 		if reflect.DeepEqual(expectStates, actualStates) {

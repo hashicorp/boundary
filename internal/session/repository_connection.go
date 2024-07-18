@@ -165,14 +165,12 @@ func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionI
 			if err := reader.LookupById(ctx, &connection); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for session %s", sessionId)))
 			}
-
 			return nil
 		},
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	connection.ConnectionStatus = StatusAuthorized.String()
 
 	return &connection, nil
 }
@@ -187,7 +185,7 @@ func (r *ConnectionRepository) LookupConnection(ctx context.Context, connectionI
 	}
 	connection := AllocConnection()
 	connection.PublicId = connectionId
-	var status ConnectionStatus
+	//var status ConnectionStatus
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -196,12 +194,6 @@ func (r *ConnectionRepository) LookupConnection(ctx context.Context, connectionI
 			if err := read.LookupById(ctx, &connection); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", connectionId)))
 			}
-			var err error
-			status, err = fetchConnectionStatus(ctx, read, connectionId)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			connection.ConnectionStatus = status.String()
 			return nil
 		},
 	)
@@ -280,7 +272,7 @@ func (r *ConnectionRepository) ConnectConnection(ctx context.Context, c ConnectW
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	connection.ConnectionStatus = StatusConnected.String()
+	connection.Status = StatusConnected.String()
 	return &connection, nil
 }
 
@@ -434,24 +426,4 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error comparing state"))
 	}
 	return orphanedConns, nil
-}
-
-func fetchConnectionStatus(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) (ConnectionStatus, error) {
-	const op = "session.fetchConnectionStatus"
-	rows, err := r.Query(ctx, fetchConnectionStatusCte, []interface{}{connectionId}, opt...)
-	if err != nil {
-		return StatusUnspecified, errors.Wrap(ctx, err, op)
-	}
-	defer rows.Close()
-
-	var connectionState string
-	for rows.Next() {
-		if err := rows.Scan(&connectionState); err != nil {
-			return StatusUnspecified, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return StatusUnspecified, errors.Wrap(ctx, err, op, errors.WithMsg("error getting next row"))
-	}
-	return ConnectionStatusFromString(connectionState), nil
 }

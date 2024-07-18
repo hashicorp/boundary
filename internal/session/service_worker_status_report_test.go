@@ -420,7 +420,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				gotConn, err := connRepo.LookupConnection(ctx, dc)
 				require.NoError(err)
 				assert.Equal(session.ConnectionSystemError, session.ClosedReason(gotConn.ClosedReason))
-				assert.Equal(session.StatusClosed, session.ConnectionStatusFromString(gotConn.ConnectionStatus))
+				assert.Equal(session.StatusClosed, session.ConnectionStatusFromString(gotConn.Status))
 			}
 		})
 	}

@@ -150,8 +150,8 @@ func TestService_AuthorizeConnection(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(c)
-			require.NotNil(c.ConnectionStatus)
-			assert.Equal(StatusAuthorized, ConnectionStatusFromString(c.ConnectionStatus))
+			require.NotNil(c.Status)
+			assert.Equal(StatusAuthorized, ConnectionStatusFromString(c.Status))
 
 			assert.True(authzInfo.ExpirationTime.GetTimestamp().AsTime().Sub(tt.wantAuthzInfo.ExpirationTime.GetTimestamp().AsTime()) < 10*time.Millisecond)
 			tt.wantAuthzInfo.ExpirationTime = authzInfo.ExpirationTime

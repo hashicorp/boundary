@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultConnectionTableName = "session_connection"
+	defaultConnectionTableName = "session_connection_with_status_view" // "session_connection"
 )
 
 // Connection contains information about session's connection to a target
@@ -44,8 +44,8 @@ type Connection struct {
 	UpdateTime *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// Version of the connection
 	Version uint32 `json:"version,omitempty" gorm:"default:null"`
-	// ConnectionStatus is a field derived from connected_time_range
-	ConnectionStatus string `json:"connection_state,omitempty" gorm:"-"`
+	// Status is a field derived from connected_time_range
+	Status string `json:"status,omitempty" gorm:"default:null"`
 
 	tableName string `gorm:"-"`
 }
@@ -96,7 +96,7 @@ func (c *Connection) Clone() any {
 		BytesDown:          c.BytesDown,
 		ClosedReason:       c.ClosedReason,
 		Version:            c.Version,
-		ConnectionStatus:   c.ConnectionStatus,
+		Status:             c.Status,
 	}
 	if c.CreateTime != nil {
 		clone.CreateTime = &timestamp.Timestamp{

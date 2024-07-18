@@ -218,4 +218,26 @@ begin;
   create trigger wh_insert_session_connection_state after update of connected_time_range on session_connection
     for each row execute function wh_insert_session_connection_state();
 
+  create view session_connection_with_status_view as
+       select public_id,
+              session_id,
+              client_tcp_address,
+              client_tcp_port,
+              endpoint_tcp_address,
+              endpoint_tcp_port,
+              bytes_up,
+              bytes_down,
+              closed_reason,
+              version,
+              create_time,
+              update_time,
+              user_client_ip,
+              worker_id,
+              case
+                  when connected_time_range is null        then 'authorized'
+                  when upper(connected_time_range) > now() then 'connected'
+                  else                                          'closed'
+              end as status
+       from session_connection;
+
 commit;

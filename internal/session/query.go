@@ -329,18 +329,6 @@ where
 		and closed_reason is null
 	returning public_id;
 `
-
-	// convert connected_time_range range into state string
-	fetchConnectionStatusCte = `
-select case
-         when connected_time_range is null        then 'authorized'
-	     when upper(connected_time_range) > now() then 'connected'
-         else 'closed'
-	   end as status
- from session_connection
-where public_id = ?;
-`
-
 	orphanedConnectionsCte = `
 -- Find connections that are not closed so we can reference those IDs
 with

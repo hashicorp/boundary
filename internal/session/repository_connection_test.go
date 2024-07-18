@@ -248,7 +248,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(c)
-			assert.Equal(StatusConnected, ConnectionStatusFromString(c.ConnectionStatus))
+			assert.Equal(StatusConnected, ConnectionStatusFromString(c.Status))
 			gotConn, err := connRepo.LookupConnection(context.Background(), c.PublicId)
 			require.NoError(err)
 			assert.Equal(tt.connectWith.ClientTcpAddress, gotConn.ClientTcpAddress)
@@ -379,7 +379,7 @@ func TestRepository_orphanedConnections(t *testing.T) {
 		require.NoError(err)
 		c, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
 		require.NoError(err)
-		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.ConnectionStatus))
+		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.Status))
 		connIds = append(connIds, c.GetPublicId())
 		if i%2 == 0 {
 			worker2ConnIds = append(worker2ConnIds, c.GetPublicId())
@@ -401,7 +401,7 @@ func TestRepository_orphanedConnections(t *testing.T) {
 				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
-			require.Equal(StatusConnected, ConnectionStatusFromString(cc.ConnectionStatus))
+			require.Equal(StatusConnected, ConnectionStatusFromString(cc.Status))
 		}
 	}
 
@@ -630,7 +630,7 @@ func TestRepository_StateTransitions(t *testing.T) {
 	gotConn, err := connRepo.LookupConnection(context.Background(), c.PublicId)
 	require.NoError(t, err)
 	require.NotNil(t, gotConn)
-	require.Equal(t, StatusAuthorized, ConnectionStatusFromString(gotConn.ConnectionStatus))
+	require.Equal(t, StatusAuthorized, ConnectionStatusFromString(gotConn.Status))
 
 	_, err = connRepo.ConnectConnection(context.Background(), cw)
 	require.NoError(t, err)
@@ -638,7 +638,7 @@ func TestRepository_StateTransitions(t *testing.T) {
 	gotConn, err = connRepo.LookupConnection(context.Background(), c.PublicId)
 	require.NoError(t, err)
 	require.NotNil(t, gotConn)
-	require.Equal(t, StatusConnected, ConnectionStatusFromString(gotConn.ConnectionStatus))
+	require.Equal(t, StatusConnected, ConnectionStatusFromString(gotConn.Status))
 
 	// Attempt to connect again, expect failure
 	_, err = connRepo.ConnectConnection(context.Background(), cw)
@@ -660,7 +660,7 @@ func TestRepository_StateTransitions(t *testing.T) {
 	gotConn, err = connRepo.LookupConnection(context.Background(), c2.PublicId)
 	require.NoError(t, err)
 	require.NotNil(t, gotConn)
-	require.Equal(t, StatusAuthorized, ConnectionStatusFromString(gotConn.ConnectionStatus))
+	require.Equal(t, StatusAuthorized, ConnectionStatusFromString(gotConn.Status))
 
 	closeWith2 := CloseWith{
 		ConnectionId: c2.PublicId,
@@ -673,7 +673,7 @@ func TestRepository_StateTransitions(t *testing.T) {
 	gotConn, err = connRepo.LookupConnection(context.Background(), c2.PublicId)
 	require.NoError(t, err)
 	require.NotNil(t, gotConn)
-	require.Equal(t, StatusClosed, ConnectionStatusFromString(gotConn.ConnectionStatus))
+	require.Equal(t, StatusClosed, ConnectionStatusFromString(gotConn.Status))
 
 	// Now try to connect it while closed and ensure it can't transition to connected
 	cw2 := ConnectWith{
@@ -691,5 +691,5 @@ func TestRepository_StateTransitions(t *testing.T) {
 	gotConn, err = connRepo.LookupConnection(context.Background(), c2.PublicId)
 	require.NoError(t, err)
 	require.NotNil(t, gotConn)
-	require.Equal(t, StatusClosed, ConnectionStatusFromString(gotConn.ConnectionStatus))
+	require.Equal(t, StatusClosed, ConnectionStatusFromString(gotConn.Status))
 }

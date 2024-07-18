@@ -645,7 +645,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 
 	ret := &pbs.AuthorizeConnectionResponse{
 		ConnectionId:    connectionInfo.GetPublicId(),
-		Status:          session.ConnectionStatusFromString(connectionInfo.ConnectionStatus).ProtoVal(),
+		Status:          session.ConnectionStatusFromString(connectionInfo.Status).ProtoVal(),
 		ConnectionsLeft: authzSummary.ConnectionLimit,
 		Route:           route,
 	}
@@ -693,7 +693,7 @@ func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.C
 	}
 
 	return &pbs.ConnectConnectionResponse{
-		Status: session.ConnectionStatusFromString(connectionInfo.ConnectionStatus).ProtoVal(),
+		Status: session.ConnectionStatusFromString(connectionInfo.Status).ProtoVal(),
 	}, nil
 }
 

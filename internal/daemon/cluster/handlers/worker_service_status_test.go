@@ -826,7 +826,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	gotConn, err := connRepo.LookupConnection(ctx, deadConn.PublicId)
 	require.NoError(t, err)
 	assert.Equal(t, session.ConnectionSystemError, session.ClosedReason(gotConn.ClosedReason))
-	assert.Equal(t, session.StatusClosed, session.ConnectionStatusFromString(gotConn.ConnectionStatus))
+	assert.Equal(t, session.StatusClosed, session.ConnectionStatusFromString(gotConn.Status))
 }
 
 func TestStatusWorkerWithKeyId(t *testing.T) {
