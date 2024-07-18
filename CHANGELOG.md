@@ -6,6 +6,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* SBC (Storage Bucket Credential): This release introduces, SBC, a resource that represents credentials for 
+authentication and authorization with an external object store. There are two SBC types, managed secret and environmental.
+([PR]((https://github.com/hashicorp/boundary/pull/4933))), ([PR]((https://github.com/hashicorp/boundary-plugin-minio/pull/18))) and ([PR]((https://github.com/hashicorp/boundary-plugin-aws/pull/46)))
+  * SBC State: This release introduces, SBC State, which represents the ability for a worker to perform a specific action 
+  using the storage bucket. SBC permission types (write, read, & delete) represent an action that is required for the 
+  storage bucket to do as a routine task on an external object store. Each permission type has a permission state 
+  (ok, error, unknown). 
+  * SBC Worker Filtering: For protocol aware workers that require interaction with an external storage service, the 
+  workers will be filtered by the SBC state depending on the action and permission required.
+
 ### Bug Fixes
 
 ## 0.16.2 (2024/06/10)
