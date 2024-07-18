@@ -265,13 +265,15 @@ func (r *ConnectionRepository) ConnectConnection(ctx context.Context, c ConnectW
 			if rowsUpdated != 1 {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to connect connection %s", c.ConnectionId)))
 			}
+			if err := reader.LookupById(ctx, &connection); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for connection %s", c.ConnectionId)))
+			}
 			return nil
 		},
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	connection.Status = StatusConnected.String()
 	return &connection, nil
 }
 
