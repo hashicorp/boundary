@@ -80,6 +80,8 @@ The OIDC auth method has the following additional attributes:
   users to reauthenticate, and an unset `maxAge` results in a Terraform value of
   -1 and the default TTL of the chosen OIDC is used.
 
+  If you set a `max_age` value, it works in conjunction with the [`auth_token_time_to_live` parameter](/boundary/docs/configuration/controller#auth_token_time_to_live) set on the controller. Users are not challenged to authenticate again by the provider until the `auth_token_time_to_live` value has expired, even if the `max_age` expires first.
+
 - `prompt` (optional) If you configure this attribute, the OIDC authorization server prompts users for reauthentication, account selection, or consent when they log in.
 You can optionally configure one or more of the following additional attributes to customize the behavior of the authentication process:
    - `none` (optional) The authorization server does not display any authentication or consent prompts.
