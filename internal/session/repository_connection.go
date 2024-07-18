@@ -185,7 +185,6 @@ func (r *ConnectionRepository) LookupConnection(ctx context.Context, connectionI
 	}
 	connection := AllocConnection()
 	connection.PublicId = connectionId
-	//var status ConnectionStatus
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
