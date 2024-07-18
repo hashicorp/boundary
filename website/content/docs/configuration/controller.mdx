@@ -87,6 +87,8 @@ description will be read.
   to all tokens from all auth methods). Valid time units are anything specified by Golang's
   [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Default is 7 days.
 
+  Note that you cannot set a maximum time to live for auth tokens in HCP Boundary at this time. For HCP Boundary, all auth tokens' maximum time to live equal the default of 7 days.
+
 - `auth_token_time_to_stale` - Maximum time of inactivity for all auth tokens globally (pertains
   to all tokens from all auth methods). Valid time units are anything specified by Golang's
   [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Default is 1 day.
