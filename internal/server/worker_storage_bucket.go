@@ -19,20 +19,21 @@ import (
 const UpsertWorkerStorageBucketJobName = "upsert_worker_storage_bucket"
 
 type UpdateStorageBucketCredential struct {
-	StorageBucketId           string `gorm:"primary_key"`
-	Version                   int32
-	CtSecrets                 []byte
-	KeyId                     string
-	StorageBucketScopeId      string
-	StorageBucketName         string
-	StorageBucketDescription  string
-	StorageBucketBucketName   string
-	StorageBucketBucketPrefix string
-	StorageBucketWorkerFilter string
-	StorageBucketAttributes   []byte
+	PublicId                  string `gorm:"primary_key"`
+	StorageBucketCredentialId string
+	ScopeId                   string
+	Name                      string
+	Description               string
+	BucketName                string
+	BucketPrefix              string
+	WorkerFilter              string
+	Attributes                []byte
 	PluginId                  string
 	PluginName                string
 	PluginDescription         string
+	KeyId                     string
+	CtSecrets                 []byte
+	Version                   uint32
 }
 
 // TableName returns the table name for gorm
@@ -49,23 +50,24 @@ func ToPluginStorageBucket(ctx context.Context, usb *UpdateStorageBucketCredenti
 	}
 
 	sb := &storagebuckets.StorageBucket{
-		Id:           usb.StorageBucketId,
-		ScopeId:      usb.StorageBucketScopeId,
-		PluginId:     usb.PluginId,
-		Name:         wrapperspb.String(usb.StorageBucketBucketName),
-		Description:  wrapperspb.String(usb.StorageBucketDescription),
-		BucketName:   usb.StorageBucketBucketName,
-		BucketPrefix: usb.StorageBucketBucketPrefix,
-		WorkerFilter: usb.StorageBucketWorkerFilter,
+		Id:                        usb.PublicId,
+		StorageBucketCredentialId: usb.StorageBucketCredentialId,
+		ScopeId:                   usb.ScopeId,
+		PluginId:                  usb.PluginId,
+		Description:               wrapperspb.String(usb.Description),
+		BucketName:                usb.BucketName,
+		BucketPrefix:              usb.BucketPrefix,
+		WorkerFilter:              usb.WorkerFilter,
 		Plugin: &plugins.PluginInfo{
 			Id:          usb.PluginId,
 			Name:        usb.PluginName,
 			Description: usb.PluginDescription,
 		},
+		Version: usb.Version,
 	}
-	if usb.StorageBucketAttributes != nil {
+	if usb.Attributes != nil {
 		attrs := &structpb.Struct{}
-		if err := proto.Unmarshal(usb.StorageBucketAttributes, attrs); err != nil {
+		if err := proto.Unmarshal(usb.Attributes, attrs); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to unmarshal attributes"))
 		}
 		sb.Attributes = attrs
@@ -78,7 +80,7 @@ func ToPluginStorageBucket(ctx context.Context, usb *UpdateStorageBucketCredenti
 		sbc := allocFn()
 
 		sbc.SetKeyId(usb.KeyId)
-		sbc.SetStorageBucketId(usb.StorageBucketId)
+		sbc.SetStorageBucketId(usb.PublicId)
 		sbc.SetCtSecrets(usb.CtSecrets)
 
 		if sbc.Decrypt(ctx, wrapper) != nil {
