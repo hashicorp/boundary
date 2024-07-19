@@ -15,6 +15,8 @@ authentication and authorization with an external object store. There are two SB
   (ok, error, unknown). 
   * SBC Worker Filtering: For protocol aware workers that require interaction with an external storage service, the 
   workers will be filtered by the SBC state depending on the action and permission required.
+  * ui: Add multiple grant scope support for roles ([PR](https://github.com/hashicorp/boundary-ui/pull/2388))
+  * ui: Add API tags support for workers and improve worker filtering for targets ([PR](https://github.com/hashicorp/boundary-ui/pull/2393))
 
 ### Bug Fixes
 
