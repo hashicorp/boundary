@@ -509,7 +509,7 @@ func (c *Command) Run(args []string) int {
 	}
 	if c.Config.Controller != nil {
 		// append host-only plugins
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAzure)
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAzure, base.EnabledPluginGoogle)
 		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError

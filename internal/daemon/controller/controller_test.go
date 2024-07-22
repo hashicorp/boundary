@@ -257,6 +257,7 @@ func TestController_NewPluginsConfig(t *testing.T) {
 	conf.EnabledPlugins = []base.EnabledPlugin{
 		base.EnabledPluginAws,
 		base.EnabledPluginHostAzure,
+		base.EnabledPluginGoogle,
 	}
 
 	_, err = New(testCtx, conf)
@@ -272,7 +273,8 @@ func TestController_NewPluginsConfig(t *testing.T) {
 		name = name[0 : len(name)-6]
 		switch name {
 		case boundary_plugin_assets.PluginPrefix + "aws",
-			boundary_plugin_assets.PluginPrefix + "azure":
+			boundary_plugin_assets.PluginPrefix + "azure",
+			boundary_plugin_assets.PluginPrefix + "google":
 		default:
 			require.Fail("unexpected name", name)
 		}

@@ -308,6 +308,24 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
+		case enabledPlugin == base.EnabledPluginGoogle && !c.conf.SkipPlugins:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			client, cleanup, err := external_plugins.CreateHostPlugin(
+				ctx,
+				pluginType,
+				external_plugins.WithPluginOptions(
+					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+					pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
+				),
+				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
+			}
 		case enabledPlugin == base.EnabledPluginAws && !c.conf.SkipPlugins:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_plugins.CreateHostPlugin(
