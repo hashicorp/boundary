@@ -240,4 +240,6 @@ begin;
               end as status
        from session_connection;
 
+  create index connected_time_range_idx on session_connection (connected_time_range);
+
 commit;
