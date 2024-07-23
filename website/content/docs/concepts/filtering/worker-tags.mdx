@@ -13,7 +13,7 @@ locally. As an example, you can use filters to ensure that traffic going into a
 public cloud is only handled by workers running within that same cloud.
 Tags can also be used determine which worker should perform session recording duties.
 
-Worker tags can be configured using the worker config file, the Admin UI, the CLI, or the API. Select a tag below to view examples.
+You can configure worker tags using the worker config file, the Admin UI, the CLI, or the API. Select a tag below to view examples.
 
 <Tip>
 
@@ -24,7 +24,7 @@ Worker tags can be configured using the worker config file, the Admin UI, the CL
 <Tabs>
 <Tab heading="Worker config file" group="file">
 
-Workers can be tagged with a set of key/value tags in their configuration file. The keys and values can be any lower-cased printable value. Each key can have more than one value:
+You can tag workers with a set of key/value tags in their configuration file. The keys and values can be any lower-cased printable value. Each key can have more than one value:
 
 ```hcl
 worker {
@@ -85,7 +85,7 @@ worker {
 Notice that the syntax within the environment variable or file changes
 depending on how the configuration file is set:
 
-- For setting the entire `tags` block, both the keys and values must be specified in JSON or HCL format:
+- For setting the entire `tags` block, you must specify both the keys and values in JSON or HCL format:
 
   ```json
   {
@@ -93,7 +93,7 @@ depending on how the configuration file is set:
     "type": ["prod", "webservers"]
   }
   ```
-  
+
   ```hcl
   region = ["us-east-1"]
   type   = ["prod", "webservers"]
@@ -109,12 +109,12 @@ array with the tags intended for the particular key is required:
 </Tab>
 <Tab heading="UI" group="UI">
 
-Workers can be tagged with a set of key/value API tags in the Boundary Admin UI. The keys and values can be any lower-cased printable value. Each key can have more than one value:
+You can tag workers with a set of key/value API tags in the Boundary Admin UI. The keys and values can be any lower-cased printable value. Each key can have more than one value:
 
 ![Worker Config Tags in Boundary Admin UI](/img/ui/worker-tags-config_light.png#light-theme-only)
 ![Worker Config Tags in Boundary Admin UI](/img/ui/worker-tags-config_dark.png#dark-theme-only)
 
-In the image above, the tag type is `config`, which means the tags were defined in the worker config file. Config tags cannot be modified within the UI, and must be updated in the config file itself.
+In the image above, the tag type is `config`, which means the tags were defined in the worker config file. Config tags cannot be modified within the UI, you must update them in the config file itself.
 
 Below is an example of this tag definition in a worker's `config.hcl` file:
 
@@ -140,7 +140,7 @@ As HCL is JSON-compatible, this turns into an input JSON value of:
 }
 ```
 
-API tags can be added in the Admin UI. API tags are defined on the Boundary controller, and are not updated in the worker's config file.
+You can add API tags in the Admin UI. API tags are defined on the Boundary controller, and are not updated in the worker's config file.
 
 To add an API tag:
 
@@ -154,12 +154,12 @@ A tag key can have multiple values associated with it. In the image below, the `
 ![Worker API in Boundary Admin UI](/img/ui/worker-tags-api_light.png#light-theme-onlyapi
 ![Worker API in Boundary Admin UI](/img/ui/worker-tags-api_dark.png#dark-theme-only)
 
-API tags can be removed using the Admin UI, CLI, or API.
+You can remove API tags using the Admin UI, CLI, or API.
 
 </Tab>
 <Tab heading="CLI" group="cli">
 
-Workers can be tagged with a set of key/value API tags using the CLI. The keys and values can be any lower-cased printable value. Each key can have more than one value:
+You can tag workers with a set of key/value API tags using the CLI. The keys and values can be any lower-cased printable value. Each key can have more than one value:
 
 ```shell-session
 $ boundary workers read -id w_0BNbXUyy8D
@@ -198,7 +198,7 @@ Worker information:
     no-op
 ```
 
-In the output above, the tags listed as `Configuration`, were defined in the worker config file. Config tags cannot be modified using the CLI, and must be updated in the config file itself.
+In the output above, the tags listed as `Configuration`, were defined in the worker config file. Config tags cannot be modified using the CLI, you must update them in the config file itself.
 
 Below is an example of this tag definition:
 
@@ -213,9 +213,9 @@ worker {
 
 The `Canonical` tags in the output show all tags associated with a worker, including configuration tags and API tags.
 
-API tags can be added using the Admin UI, CLI, or API. API tags are defined on the Boundary controller, and are not updated in the worker's config file.
+You can add API tags using the Admin UI, CLI, or API. API tags are defined on the Boundary controller, and are not updated in the worker's config file.
 
-API tags can be added using the [boundary workers add-worker-tags](/boundary/docs/commands/workers/add-worker-tags) command using the CLI:
+You can add API tags using the [boundary workers add-worker-tags](/boundary/docs/commands/workers/add-worker-tags) CLI command:
 
 ```shell-session
 $ boundary workers add-worker-tags -id w_0BNbXUyy8D -tag "region=useast1"
@@ -308,7 +308,7 @@ Worker information:
 
 Now the worker includes both config tags and API tags with a `type` key. The updated `Canonical` tags in the output show all tags associated with a worker, including configuration tags and API tags.
 
-API tags can be removed using the Admin UI, CLI, or API. To remove an API tag using [boundary workers remove-worker-tags](/boundary/docs/commands/workers/remove-worker-tags)
+You can remove API tags using the Admin UI, CLI, or API. To remove an API tag using [boundary workers remove-worker-tags](/boundary/docs/commands/workers/remove-worker-tags):
 
 ```shell-session
 $ boundary workers remove-worker-tags -id w_0BNbXUyy8D -tag "region=useast1"
