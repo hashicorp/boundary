@@ -66,21 +66,22 @@ worker {
 
 ## Remote storage state
 
-Workers that are configured for session recording storage must have access to the configured storage bucket. Storage bucket represents a bucket in an external storage provider. The remote storage state of a worker is determined by the availability of the storage bucket.
-Workers are configured to report their permission state for actions using the storage bucket configured.
+The workers that you configure for session recording storage must have access to the external object store. Workers report permission states back to Boundary, depending on the availability of the external object store. 
+Boundary uses the permission states to determine what actions the worker can perform on the configured external storage.
 
-The permission states determine actions that the worker can perform on the storage bucket. The permission states are:
-- `read`: The worker can read from the storage bucket. Session recording playback is possible if the state is healthy.
-- `write`: The worker can write to the storage bucket. Session recording is possible if the state is healthy.
-- `delete`: The worker can delete from the storage bucket. Session recording cleanup is possible if the state is healthy.
+Workers can have the following permission states:
 
-The remote storage state of a worker is determined by the permission states. These are the possible remote storage states:
-- `available`: All the permission states are in a healthy state. The worker has the required access to the storage bucket.
-- `error`: Not all the permission states are in a healthy state. Certain actions on the storage bucket may not possible.
+- `read`: The worker can read from the external storage. It can also play back recorded sessions, if the permission state is `ok`.
+- `write`: The worker can write to the external storage. It can also record sessions, if the permission state is `ok`.
+- `delete`: The worker can delete data from the external storage. It can also clean up recorded sessions, if the permission state is `ok`.
 
-The permission states are checked periodically on applicable workers that are using the storage bucket and reported back to the controller. 
+Boundary uses the permission states to determine the remote storage state of a worker. The worker can have the following remote storage states:
+- `available`: All permission states are healthy. The worker has the required access to the external storage.
+- `error`: One or more of the permission sates are not healthy. Workers may not be able to perform certain actions on the external storage.
 
-The remote storage states can be read using the `boundary worker read -id $WORKER_ID` command.
+Boundary periodically checks the states of any workers that use the external storage, and then reports them back to the controller.
+
+You can check the remote storage state of a worker using the `boundary worker read -id $WORKER_ID` command.
 
 ```
 Worker information:
