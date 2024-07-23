@@ -9,10 +9,12 @@ description: |-
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-The addition of the [MinIO plugin](https://github.com/hashicorp/boundary-plugin-minio/) in Boundary version 0.16.0 made it possible for you to [configure MinIO storage](/boundary/docs/configuration/session-recording/storage-providers/configure-minio) for session recording if you do not want to use AWS.
-It also means that you should be able to configure other S3-compliant storage providers for session recording.
+The [MinIO plugin](https://github.com/hashicorp/boundary-plugin-minio/)lets you configure S3-compliant storage providers for session recording.
 
-HashiCorp has tested and confirmed that you can configure the Hitachi Content Platform for session recording using the MinIO plugin.
+HashiCorp has tested and confirmed that you can configure the following S3-compliant storage products for session recording using the MinIO plugin:
+
+- [Hitachi Content Platform](#hitachi-content-platform-configuration)
+
 It should also be possible to configure other S3-compliant storage providers to work for session recording storage, but we have not tested other providers.
 
 ## Requirements
@@ -88,7 +90,11 @@ export STORAGE_ACCESS_KEY_ID=<YOUR_HITACHI_ACCESS_KEY_ID>
 export STORAGE_SECRET_ACCESS_KEY=<YOUR_HITACHI_SECRET_KEY>
 ```
 
+<Note>
+
 Credential rotation is not supported for Hitachi Content Platform.
+
+</Note>
 
 ## Resources
 
