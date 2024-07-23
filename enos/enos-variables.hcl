@@ -192,3 +192,11 @@ variable "go_version" {
   type        = string
   default     = ""
 }
+
+variable "hcp_boundary_cluster_id" {
+  description = "ID of the Boundary cluster in HCP"
+  type        = string
+  default     = ""
+  // If using HCP int, ensure that the cluster id starts with "int-"
+  // Example: "int-19283a-123123-..."
+}
