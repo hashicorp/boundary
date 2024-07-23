@@ -240,7 +240,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			c, cs, err := connRepo.ConnectConnection(context.Background(), tt.connectWith)
+			c, err := connRepo.ConnectConnection(context.Background(), tt.connectWith)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
@@ -248,9 +248,8 @@ func TestRepository_ConnectConnection(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(c)
-			require.NotNil(cs)
-			assert.Equal(StatusConnected, cs[0].Status)
-			gotConn, _, err := connRepo.LookupConnection(context.Background(), c.PublicId)
+			assert.Equal(StatusConnected, ConnectionStatusFromString(c.Status))
+			gotConn, err := connRepo.LookupConnection(context.Background(), c.PublicId)
 			require.NoError(err)
 			assert.Equal(tt.connectWith.ClientTcpAddress, gotConn.ClientTcpAddress)
 			assert.Equal(tt.connectWith.ClientTcpPort, gotConn.ClientTcpPort)
@@ -336,7 +335,7 @@ func TestRepository_DeleteConnection(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			found, _, err := connRepo.LookupConnection(context.Background(), tt.args.connection.PublicId)
+			found, err := connRepo.LookupConnection(context.Background(), tt.args.connection.PublicId)
 			assert.NoError(err)
 			assert.Nil(found)
 
@@ -378,10 +377,9 @@ func TestRepository_orphanedConnections(t *testing.T) {
 		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithDbOpts(db.WithSkipVetForWrite(true)))
 		sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
 		require.NoError(err)
-		c, cs, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
+		c, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
 		require.NoError(err)
-		require.Len(cs, 1)
-		require.Equal(StatusAuthorized, cs[0].Status)
+		require.Equal(StatusAuthorized, ConnectionStatusFromString(c.Status))
 		connIds = append(connIds, c.GetPublicId())
 		if i%2 == 0 {
 			worker2ConnIds = append(worker2ConnIds, c.GetPublicId())
@@ -394,7 +392,7 @@ func TestRepository_orphanedConnections(t *testing.T) {
 	// This is just to ensure we have a spread when we test it out.
 	for i, connId := range connIds {
 		if i%2 == 0 {
-			_, cs, err := connRepo.ConnectConnection(ctx, ConnectWith{
+			cc, err := connRepo.ConnectConnection(ctx, ConnectWith{
 				ConnectionId:       connId,
 				ClientTcpAddress:   "127.0.0.1",
 				ClientTcpPort:      22,
@@ -403,18 +401,7 @@ func TestRepository_orphanedConnections(t *testing.T) {
 				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
-			require.Len(cs, 2)
-			var foundAuthorized, foundConnected bool
-			for _, status := range cs {
-				if status.Status == StatusAuthorized {
-					foundAuthorized = true
-				}
-				if status.Status == StatusConnected {
-					foundConnected = true
-				}
-			}
-			require.True(foundAuthorized)
-			require.True(foundConnected)
+			require.Equal(StatusConnected, ConnectionStatusFromString(cc.Status))
 		}
 	}
 
@@ -517,8 +504,8 @@ func TestRepository_CloseConnections(t *testing.T) {
 			assert.Equal(len(tt.closeWith), len(resp))
 			for _, r := range resp {
 				require.NotNil(r.Connection)
-				require.NotNil(r.ConnectionStates)
-				assert.Equal(StatusClosed, r.ConnectionStates[0].Status)
+				require.NotNil(r.ConnectionState)
+				assert.Equal(StatusClosed, r.ConnectionState)
 			}
 		})
 	}
@@ -561,7 +548,7 @@ func TestUpdateBytesUpDown(t *testing.T) {
 
 	// Assert that the bytes up and down values have been persisted.
 	for i := 0; i < len(conns); i++ {
-		c, _, err := connRepo.LookupConnection(ctx, conns[i].GetPublicId())
+		c, err := connRepo.LookupConnection(ctx, conns[i].GetPublicId())
 		require.NoError(t, err)
 
 		require.Equal(t, conns[i].BytesUp, c.BytesUp)
@@ -604,10 +591,105 @@ func TestUpdateBytesUpDown(t *testing.T) {
 
 	// BytesUp and BytesDown values should be set to the old ones.
 	for i := 0; i < len(conns); i++ {
-		c, _, err := connRepo.LookupConnection(ctx, conns[i].GetPublicId())
+		c, err := connRepo.LookupConnection(ctx, conns[i].GetPublicId())
 		require.NoError(t, err)
 
 		require.Equal(t, conns[i].BytesUp, c.BytesUp)
 		require.Equal(t, conns[i].BytesDown, c.BytesDown)
 	}
+}
+
+func TestRepository_StateTransitions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	s := TestDefaultSession(t, conn, wrapper, iamRepo)
+	tofu := TestTofu(t)
+	_, _, err = repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
+	require.NoError(t, err)
+
+	// First connection will transition authorized -> connected -> closed
+	c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
+	cw := ConnectWith{
+		ConnectionId:       c.PublicId,
+		ClientTcpAddress:   "127.0.0.1",
+		ClientTcpPort:      22,
+		EndpointTcpAddress: "127.0.0.1",
+		EndpointTcpPort:    2222,
+		UserClientIp:       "127.0.0.1",
+	}
+	gotConn, err := connRepo.LookupConnection(context.Background(), c.PublicId)
+	require.NoError(t, err)
+	require.NotNil(t, gotConn)
+	require.Equal(t, StatusAuthorized, ConnectionStatusFromString(gotConn.Status))
+
+	_, err = connRepo.ConnectConnection(context.Background(), cw)
+	require.NoError(t, err)
+
+	gotConn, err = connRepo.LookupConnection(context.Background(), c.PublicId)
+	require.NoError(t, err)
+	require.NotNil(t, gotConn)
+	require.Equal(t, StatusConnected, ConnectionStatusFromString(gotConn.Status))
+
+	// Attempt to connect again, expect failure
+	_, err = connRepo.ConnectConnection(context.Background(), cw)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid state transition from connected")
+
+	closeWith := CloseWith{
+		ConnectionId: c.PublicId,
+		ClosedReason: ConnectionClosedByUser,
+	}
+	resp, err := connRepo.closeConnections(context.Background(), []CloseWith{closeWith})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, StatusClosed, resp[0].ConnectionState)
+
+	// Second connection will transition from authorized -> closed
+	c2 := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
+
+	gotConn, err = connRepo.LookupConnection(context.Background(), c2.PublicId)
+	require.NoError(t, err)
+	require.NotNil(t, gotConn)
+	require.Equal(t, StatusAuthorized, ConnectionStatusFromString(gotConn.Status))
+
+	closeWith2 := CloseWith{
+		ConnectionId: c2.PublicId,
+		ClosedReason: ConnectionClosedByUser,
+	}
+	resp, err = connRepo.closeConnections(context.Background(), []CloseWith{closeWith2})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, StatusClosed, resp[0].ConnectionState)
+	gotConn, err = connRepo.LookupConnection(context.Background(), c2.PublicId)
+	require.NoError(t, err)
+	require.NotNil(t, gotConn)
+	require.Equal(t, StatusClosed, ConnectionStatusFromString(gotConn.Status))
+
+	// Now try to connect it while closed and ensure it can't transition to connected
+	cw2 := ConnectWith{
+		ConnectionId:       c2.PublicId,
+		ClientTcpAddress:   "127.0.0.1",
+		ClientTcpPort:      22,
+		EndpointTcpAddress: "127.0.0.1",
+		EndpointTcpPort:    2222,
+		UserClientIp:       "127.0.0.1",
+	}
+	_, err = connRepo.ConnectConnection(context.Background(), cw2)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid state transition from closed")
+
+	gotConn, err = connRepo.LookupConnection(context.Background(), c2.PublicId)
+	require.NoError(t, err)
+	require.NotNil(t, gotConn)
+	require.Equal(t, StatusClosed, ConnectionStatusFromString(gotConn.Status))
 }

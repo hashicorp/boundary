@@ -622,15 +622,12 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Errorf(codes.NotFound, "worker not found with name %q", req.GetWorkerId())
 	}
 
-	connectionInfo, connStates, err := connectionRepo.AuthorizeConnection(ctx, req.GetSessionId(), w.GetPublicId())
+	connectionInfo, err := connectionRepo.AuthorizeConnection(ctx, req.GetSessionId(), w.GetPublicId())
 	if err != nil {
 		return nil, err
 	}
 	if connectionInfo == nil {
 		return nil, status.Error(codes.Internal, "Invalid authorize connection response.")
-	}
-	if len(connStates) == 0 {
-		return nil, status.Error(codes.Internal, "Invalid connection state in authorize response.")
 	}
 
 	sessInfo, authzSummary, err := sessionRepo.LookupSession(ctx, req.GetSessionId())
@@ -648,7 +645,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 
 	ret := &pbs.AuthorizeConnectionResponse{
 		ConnectionId:    connectionInfo.GetPublicId(),
-		Status:          connStates[0].Status.ProtoVal(),
+		Status:          session.ConnectionStatusFromString(connectionInfo.Status).ProtoVal(),
 		ConnectionsLeft: authzSummary.ConnectionLimit,
 		Route:           route,
 	}
@@ -680,7 +677,7 @@ func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.C
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, connStates, err := connRepo.ConnectConnection(ctx, session.ConnectWith{
+	connectionInfo, err := connRepo.ConnectConnection(ctx, session.ConnectWith{
 		ConnectionId:       req.GetConnectionId(),
 		ClientTcpAddress:   req.GetClientTcpAddress(),
 		ClientTcpPort:      req.GetClientTcpPort(),
@@ -696,7 +693,7 @@ func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.C
 	}
 
 	return &pbs.ConnectConnectionResponse{
-		Status: connStates[0].Status.ProtoVal(),
+		Status: session.ConnectionStatusFromString(connectionInfo.Status).ProtoVal(),
 	}, nil
 }
 
@@ -742,12 +739,9 @@ func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.Clo
 		if v.Connection == nil {
 			return nil, status.Errorf(codes.Internal, "No connection found while closing one of the connection IDs: %v", closeIds)
 		}
-		if len(v.ConnectionStates) == 0 {
-			return nil, status.Errorf(codes.Internal, "No connection states found while closing one of the connection IDs: %v", closeIds)
-		}
 		closeData = append(closeData, &pbs.CloseConnectionResponseData{
 			ConnectionId: v.Connection.GetPublicId(),
-			Status:       v.ConnectionStates[0].Status.ProtoVal(),
+			Status:       v.ConnectionState.ProtoVal(),
 		})
 	}
 

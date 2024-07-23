@@ -124,6 +124,14 @@ from
 	session_connection_limit, session_connection_count;
 `
 
+	// connectConnection sets the connected time range to (now, infinity) to
+	// indicate the connection is connected.
+	connectConnection = `
+     update session_connection 
+        set connected_time_range=tstzrange(now(),'infinity') 
+      where public_id=@public_id
+`
+
 	terminateSessionIfPossible = `
     -- is terminate_session_id in a canceling state
     with session_version as (
@@ -197,17 +205,11 @@ from
         select 
           session_id 
         from 
-            session_connection
-          where public_id in (
-          select 
-            connection_id
-          from 
-            session_connection_state
-          where 
-            state != 'closed' and
-            end_time is null
-        )
-    )
+          session_connection
+        where 
+          upper(connected_time_range) > now() or 
+          connected_time_range is null
+      )
 `
 
 	// termSessionUpdate is one stmt that terminates sessions for the following
@@ -271,21 +273,12 @@ where
 		)
 	) and
 	-- make sure there are no existing connections
- 	us.public_id not in (
-		select
-			session_id
-		from
-		  	session_connection
-     	where public_id in (
-			select
-				connection_id
-			from
-				session_connection_state
-			where
-				state != 'closed' and
-               	end_time is null
-    )
-);
+    us.public_id not in (
+      select session_id
+        from session_connection
+       where upper(connected_time_range) > now()
+          or connected_time_range is null
+    );
 `
 
 	// closeConnectionsForDeadServersCte finds connections that are:
@@ -336,22 +329,20 @@ where
 		and closed_reason is null
 	returning public_id;
 `
-
 	orphanedConnectionsCte = `
 -- Find connections that are not closed so we can reference those IDs
 with
   unclosed_connections as (
-    select connection_id
-      from session_connection_state
+    select public_id
+      from session_connection
     where
-      -- It's the current state
-      end_time is null
-      -- Current state isn't closed state
-      and state in ('authorized', 'connected')
+      -- It's not closed
+      upper(connected_time_range) > now() or
+      connected_time_range is null
       -- It's not in limbo between when it moved into this state and when
       -- it started being reported by the worker, which is roughly every
       -- 2-3 seconds
-      and start_time < wt_sub_seconds_from_now(@worker_state_delay_seconds)
+      and update_time < wt_sub_seconds_from_now(@worker_state_delay_seconds)
   ),
   connections_to_close as (
 	select public_id
@@ -360,7 +351,7 @@ with
 		   -- Related to the worker that just reported to us
 		   worker_id = @worker_id
 		   -- Only unclosed ones
-		   and public_id in (select connection_id from unclosed_connections)
+		   and public_id in (select public_id from unclosed_connections)
 		   -- These are connection IDs that just got reported to us by the given
 		   -- worker, so they should not be considered closed.
 		   %s

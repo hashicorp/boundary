@@ -148,6 +148,7 @@ begin;
   create trigger default_create_time_column before insert on session_connection
     for each row execute procedure default_create_time();
 
+  -- Removed in 90/01_remove_session_connection_state.up.sql
   -- insert_new_connection_state() is used in an after insert trigger on the
   -- session_connection table.  it will insert a state of "authorized" in
   -- session_connection_state for the new session connection. 

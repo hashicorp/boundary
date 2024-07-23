@@ -7,6 +7,7 @@ begin;
 drop trigger update_connection_state_on_closed_reason on session_connection;
 drop function update_connection_state_on_closed_reason();
 
+-- Removed in 90/01_remove_session_connection_state.up.sql
 create function update_connection_state_on_closed_reason() returns trigger
 as $$
     begin
