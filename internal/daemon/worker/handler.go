@@ -270,7 +270,19 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 
-		connectConnectionFn := func(cc net.Conn) {
+		connectConnectionFn := func(conn net.Conn) {
+			cc := proxyHandlers.NewCountingConn(conn)
+
+			err = sess.ApplyConnectionCounterCallbacks(acResp.GetConnectionId(), cc.BytesRead, cc.BytesWritten)
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to set counter callbacks for session connection"))
+				err = cc.Close()
+				if err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
+				return
+			}
+
 			// We connect connection only after we have confirmed as much as we can
 			// that we can establish the proxy.
 			endpointAddr := pDialer.LastConnectionAddr()
@@ -287,7 +299,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			// FIXME: What context to use?
 			if err = sess.RequestConnectConnection(context.Background(), connectionInfo); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error requesting connect connection", "session_id", sess.GetId(), "connection_id", acResp.GetConnectionId()))
-				if err = conn.Close(websocket.StatusInternalError, "unable to establish proxy"); err != nil {
+				if err = cc.Close(); err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 				}
 				return
@@ -342,16 +354,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		case globals.TcpProxyV1:
 			// Wrapping the client websocket with a `net.Conn` implementation that
 			// records the bytes that go across Read() and Write().
-			cc := proxyHandlers.NewCountingConn(websocket.NetConn(connCtx, conn, websocket.MessageBinary))
-			err = sess.ApplyConnectionCounterCallbacks(acResp.GetConnectionId(), cc.BytesRead, cc.BytesWritten)
-			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to set counter callbacks for session connection"))
-				err = conn.Close(websocket.StatusInternalError, "unable to set counter callbacks for session connection")
-				if err != nil {
-					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
-				}
-				return
-			}
+			cc := websocket.NetConn(connCtx, conn, websocket.MessageBinary)
 			connectConnectionFn(cc)
 		default:
 			return
