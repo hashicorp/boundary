@@ -1,52 +1,56 @@
 [
   {
-    "title": "Introduction",
+    "heading": "Get started"
+  },
+  {
+    "title": "What is Boundary?",
     "routes": [
       {
         "title": "What is Boundary?",
-        "path": "overview/what-is-boundary"
-      },
-      {
-        "title": "Use cases",
-        "path": "overview/use-cases"
-      },
-      {
-        "title": "Boundary vs. other software",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "overview/vs/other-software"
-          },
-          {
-            "title": "Zero trust",
-            "path": "overview/vs/zero-trust"
-          },
-          {
-            "title": "Bastion hosts",
-            "path": "overview/vs/bastion-hosts"
-          },
-          {
-            "title": "VPNs",
-            "path": "overview/vs/vpn"
-          },
-          {
-            "title": "Privileged access management",
-            "path": "overview/vs/pam"
-          },
-          {
-            "title": "Software-defined perimeter",
-            "path": "overview/vs/sdp"
-          },
-          {
-            "title": "Secrets management tools",
-            "path": "overview/vs/secrets-management"
-          }
-        ]
+        "path": "what-is/what-is-boundary"
       }
     ]
   },
   {
-    "title": "Get started",
+    "title": "Use cases",
+    "routes": [
+      {
+        "title": "Use cases",
+        "path": "overview/use-cases",
+        "hidden": true
+      },
+      {
+        "title": "Overview",
+        "path": "overview/other-software"
+      },
+      {
+        "title": "Zero trust",
+        "path": "overview/zero-trust"
+      },
+      {
+        "title": "Bastion hosts",
+        "path": "overview/bastion-hosts"
+      },
+      {
+        "title": "VPNs",
+        "path": "overview/vpn"
+      },
+      {
+        "title": "Privileged access management",
+        "path": "overview/pam"
+      },
+      {
+        "title": "Software-defined perimeter",
+        "path": "overview/sdp"
+      },
+      {
+        "title": "Secrets management tools",
+        "path": "overview/secrets-management"
+      }
+    ]
+  },
+  {
+    "title": "Quickstart",
     "routes": [
       {
         "title": "Overview",
@@ -80,99 +84,6 @@
     ]
   },
   {
-    "title": "Install Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "install-boundary"
-      },
-      {
-        "title": "Architecture",
-        "routes": [
-          {
-            "title":"System requirements",
-            "path": "install-boundary/architecture/system-requirements"
-          },
-          {
-            "title": "Recommended architecture",
-            "path": "install-boundary/architecture/recommended-architecture"
-          },
-          {
-            "title": "Fault tolerance",
-            "path": "install-boundary/architecture/fault-tolerance"
-          },
-          {
-            "title": "High availability",
-            "path": "install-boundary/architecture/high-availability"
-          }
-        ]
-      },
-      {
-        "title": "Install Boundary",
-        "path": "install-boundary/install"
-      },
-      {
-        "title": "Configure controllers",
-        "path": "install-boundary/configure-controllers"
-      },
-      {
-        "title": "Configure workers",
-        "path": "install-boundary/configure-workers"
-      },
-      {
-        "title": "Initialize Boundary",
-        "path": "install-boundary/initialize"
-      },
-      {
-        "title": "Systemd install",
-        "hidden": true,
-        "path": "install-boundary/systemd"
-      },
-      {
-        "title": "Terraform patterns",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "install-boundary/terraform-patterns"
-          },
-          {
-            "title": "Scopes",
-            "path": "install-boundary/terraform-patterns/terraform-scopes"
-          },
-          {
-            "title": "Users and auth methods",
-            "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
-          },
-          {
-            "title": "Groups and RBAC",
-            "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
-          },
-          {
-            "title": "Hosts and host management",
-            "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
-          },
-          {
-            "title": "Credentials and credential stores",
-            "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
-          },
-          {
-            "title": "Session recording",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "install-boundary/terraform-patterns/terraform-session-recording"
-          },
-          {
-            "title": "Targets",
-            "path": "install-boundary/terraform-patterns/terraform-targets"
-          }
-        ]
-      }
-    ]
-  },
-  {
     "title": "Concepts",
     "routes": [
       {
@@ -198,23 +109,6 @@
       {
         "title": "Auditing",
         "path": "concepts/auditing"
-      },
-      {
-        "title": "Host discovery",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/host-discovery"
-          },
-          {
-            "title": "AWS dynamic hosts",
-            "path": "concepts/host-discovery/aws"
-          },
-          {
-            "title": "Azure dynamic hosts",
-            "path": "concepts/host-discovery/azure"
-          }
-        ]
       },
       {
         "title": "Connection workflows",
@@ -243,44 +137,6 @@
               "color": "neutral"
             },
             "path": "concepts/connection-workflows/multi-hop"
-          }
-        ]
-      },
-      {
-        "title": "Security",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/security"
-          },
-          {
-            "title": "Permissions",
-            "routes": [
-              {
-                "title": "Overview",
-                "path": "concepts/security/permissions"
-              },
-              {
-                "title": "Assignable permissions",
-                "path": "concepts/security/permissions/assignable-permissions"
-              },
-              {
-                "title": "Permission grant formats",
-                "path": "concepts/security/permissions/permission-grant-formats"
-              },
-              {
-                "title": "Resource tables",
-                "path": "concepts/security/permissions/resource-table"
-              }
-            ]
-          },
-          {
-            "title": "Data encryption",
-            "path": "concepts/security/data-encryption"
-          },
-          {
-            "title": "Connections/TLS",
-            "path": "concepts/security/connections-tls"
           }
         ]
       },
@@ -416,24 +272,148 @@
     ]
   },
   {
-    "title": "Configuration",
+    "title": "Architecture",
+    "routes": [
+      {
+        "title":"System requirements",
+        "path": "architecture/system-requirements"
+      },
+      {
+        "title": "Recommended architecture",
+        "path": "architecture/recommended-architecture"
+      },
+      {
+        "title": "Fault tolerance",
+        "path": "architecture/fault-tolerance"
+      },
+      {
+        "title": "High availability",
+        "path": "architecture/high-availability"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Boundary operations"
+  },
+  {
+    "title": "Deploy Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "install-boundary"
+      },
+      {
+        "title": "Install Boundary",
+        "path": "install-boundary/install"
+      },
+      {
+        "title": "Configure controllers",
+        "path": "install-boundary/configure-controllers"
+      },
+      {
+        "title": "Configure workers",
+        "path": "install-boundary/configure-workers"
+      },
+      {
+        "title": "Initialize Boundary",
+        "path": "install-boundary/initialize"
+      },
+      {
+        "title": "Systemd install",
+        "hidden": true,
+        "path": "install-boundary/systemd"
+      },
+      {
+        "title": "Terraform patterns",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "install-boundary/terraform-patterns"
+          },
+          {
+            "title": "Scopes",
+            "path": "install-boundary/terraform-patterns/terraform-scopes"
+          },
+          {
+            "title": "Users and auth methods",
+            "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
+          },
+          {
+            "title": "Groups and RBAC",
+            "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
+          },
+          {
+            "title": "Hosts and host management",
+            "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
+          },
+          {
+            "title": "Credentials and credential stores",
+            "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
+          },
+          {
+            "title": "Session recording",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "install-boundary/terraform-patterns/terraform-session-recording"
+          },
+          {
+            "title": "Targets",
+            "path": "install-boundary/terraform-patterns/terraform-targets"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Secure Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "security"
+      },
+      {
+        "title": "Permissions",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "security/permissions"
+          },
+          {
+            "title": "Assignable permissions",
+            "path": "security/permissions/assignable-permissions"
+          },
+          {
+            "title": "Permission grant formats",
+            "path": "security/permissions/permission-grant-formats"
+          },
+          {
+            "title": "Resource tables",
+            "path": "security/permissions/resource-table"
+          }
+        ]
+      },
+      {
+        "title": "Data encryption",
+        "path": "security/data-encryption"
+      },
+      {
+        "title": "Connections/TLS",
+        "path": "security/connections-tls"
+      }
+    ]
+  },
+  {
+    "title": "Manage Boundary",
     "routes": [
       {
         "title": "Overview/top-level parameters",
         "path": "configuration"
-      },
-      {
-        "title": "Worker",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/worker"
-          },
-          {
-            "title": "Configuration",
-            "path": "configuration/worker/worker-configuration"
-          }
-        ]
       },
       {
         "title": "Listener",
@@ -567,27 +547,6 @@
         ]
       },
       {
-        "title": "Events",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/events"
-          },
-          {
-            "title": "Common sink parameters",
-            "path": "configuration/events/common"
-          },
-          {
-            "title": "File sink",
-            "path": "configuration/events/file"
-          },
-          {
-            "title": "Stderr sink",
-            "path": "configuration/events/stderr"
-          }
-        ]
-      },
-      {
         "title": "Controller",
         "path": "configuration/controller"
       },
@@ -598,11 +557,32 @@
     ]
   },
   {
-    "title": "Operations",
+    "title": "Monitor Boundary",
     "routes": [
       {
         "title": "Overview",
         "path": "operations"
+      },
+      {
+        "title": "Events",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "operations/events"
+          },
+          {
+            "title": "Common sink parameters",
+            "path": "operations/events/common"
+          },
+          {
+            "title": "File sink",
+            "path": "operations/events/file"
+          },
+          {
+            "title": "Stderr sink",
+            "path": "operations/events/stderr"
+          }
+        ]
       },
       {
         "title": "Metrics",
@@ -639,6 +619,128 @@
         ]
       }
     ]
+  },
+  {
+    "title": "Upgrade Boundary",
+    "routes": [
+      {
+        "title": "Upgrade and database migration",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/self-managed-deployment/upgrade-version"
+      }
+    ]
+  },
+  {
+    "title": "Release notes",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "release-notes"
+      },
+      {
+        "title": "v0.16.0",
+        "path": "release-notes/v0_16_0"
+      },
+      {
+        "title": "v0.15.0",
+        "path": "release-notes/v0_15_0"
+      },
+      {
+        "title": "v0.14.0",
+        "path": "release-notes/v0_14_0"
+      },
+      {
+        "title": "v0.13.0",
+        "path": "release-notes/v0_13_0"
+      },
+      {
+        "title": "v0.12.0",
+        "path": "release-notes/v0_12_0"
+      },
+      {
+        "title": "v0.11.0",
+        "path": "release-notes/v0_11_0"
+      },
+      {
+        "title": "v0.10.0",
+        "path": "release-notes/v0_10_0"
+      },
+      {
+        "title": "v0.9.0",
+        "path": "release-notes/v0_9_0"
+      },
+      {
+        "title": "v0.8.0",
+        "path": "release-notes/v0_8_0"
+      },
+      {
+        "title": "v0.7.0",
+        "path": "release-notes/v0_7_0"
+      },
+      {
+        "title": "v0.6.0",
+        "path": "release-notes/v0_6_0"
+      },
+      {
+        "title": "v0.5.0",
+        "path": "release-notes/v0_5_0"
+      },
+      {
+        "title": "v0.4.0",
+        "path": "release-notes/v0_4_0"
+      },
+      {
+        "title": "v0.3.0",
+        "path": "release-notes/v0_3_0"
+      },
+      {
+        "title": "v0.2.0",
+        "path": "release-notes/v0_2_0"
+      },
+      {
+        "title": "v0.1.0",
+        "path": "release-notes/v0_1_0"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Access management"
+  },
+  {
+      "title": "Configure workers",
+      "routes": [
+        {
+          "title": "Overview",
+          "path": "worker"
+        },
+        {
+          "title": "Configuration",
+          "path": "worker/worker-configuration"
+        }
+      ]
+  },
+  {
+    "title": "Configure hosts",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "host-discovery"
+      },
+      {
+        "title": "AWS dynamic hosts",
+        "path": "host-discovery/aws"
+      },
+      {
+        "title": "Azure dynamic hosts",
+        "path": "host-discovery/azure"
+      }
+    ]
+  },
+  {
+    "title": "Configure targets",
+    "path": "targets"
   },
   {
     "title": "Troubleshoot",
@@ -691,6 +793,12 @@
         "path": "common-workflows/manage-users-groups"
       }
     ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Identity management"
   },
   {
     "title": "Commands (CLI)",
@@ -1685,9 +1793,6 @@
     ]
   },
   {
-    "divider": true
-  },
-  {
     "title": "Boundary Community Edition",
     "hidden": true,
     "routes": [
@@ -1696,6 +1801,12 @@
         "path": "oss"
       }
     ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Enterprise solutions"
   },
   {
     "title": "HCP Boundary",
@@ -1724,9 +1835,6 @@
     ]
   },
   {
-    "divider": true
-  },
-  {
     "title": "Boundary Enterprise",
     "routes": [
       {
@@ -1744,82 +1852,6 @@
       {
         "title": "Supported versions policy",
         "path": "enterprise/supported-versions"
-      }
-    ]
-  },
-  {
-    "divider": true
-  },
-  {
-    "title": "Release notes",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "release-notes"
-      },
-      {
-        "title": "v0.16.0",
-        "path": "release-notes/v0_16_0"
-      },
-      {
-        "title": "v0.15.0",
-        "path": "release-notes/v0_15_0"
-      },
-      {
-        "title": "v0.14.0",
-        "path": "release-notes/v0_14_0"
-      },
-      {
-        "title": "v0.13.0",
-        "path": "release-notes/v0_13_0"
-      },
-      {
-        "title": "v0.12.0",
-        "path": "release-notes/v0_12_0"
-      },
-      {
-        "title": "v0.11.0",
-        "path": "release-notes/v0_11_0"
-      },
-      {
-        "title": "v0.10.0",
-        "path": "release-notes/v0_10_0"
-      },
-      {
-        "title": "v0.9.0",
-        "path": "release-notes/v0_9_0"
-      },
-      {
-        "title": "v0.8.0",
-        "path": "release-notes/v0_8_0"
-      },
-      {
-        "title": "v0.7.0",
-        "path": "release-notes/v0_7_0"
-      },
-      {
-        "title": "v0.6.0",
-        "path": "release-notes/v0_6_0"
-      },
-      {
-        "title": "v0.5.0",
-        "path": "release-notes/v0_5_0"
-      },
-      {
-        "title": "v0.4.0",
-        "path": "release-notes/v0_4_0"
-      },
-      {
-        "title": "v0.3.0",
-        "path": "release-notes/v0_3_0"
-      },
-      {
-        "title": "v0.2.0",
-        "path": "release-notes/v0_2_0"
-      },
-      {
-        "title": "v0.1.0",
-        "path": "release-notes/v0_1_0"
       }
     ]
   }
