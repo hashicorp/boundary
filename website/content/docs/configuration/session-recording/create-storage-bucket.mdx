@@ -383,7 +383,7 @@ Complete the following steps to create a storage bucket in Boundary.
       - `access_key_id` (Required): The storage provider's service account's access key to use with this storage bucket.
       - `secret_access_key` (Required): The storage provider's service account's secret key to use with this storage bucket.
    - `attributes` or `-attr`: Attributes of the S3-compliant storage bucket.
-      - `endpoint_url` (Required): Fully-qualified endpoint pointing to an S3-compliant API.
+      - `endpoint_url` (Required): Fully-qualified endpoint pointing to an S3-compliant API. This example uses Hitachi, but you should substitute your storage provider's endpoint.
       - `region`: (Optional) The region to configure the storage bucket for.
       - `disable_credential_rotation`: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new storage service account. If this attribute is set to `false`, or not provided, the plugin will rotate the incoming credentials to create a new storage service account, then delete the incoming credentials.
 
