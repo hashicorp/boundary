@@ -51,22 +51,9 @@ The possible storage states determined by the `recording_storage_minimum_availab
 
 If a worker is in an unhealthy local storage state, Boundary does not allow new session recordings or session recording playback until the worker is in an `available` local storage state.
 
-## Example configuration
-
-Refer to the following example configuration to configure workers for session recording storage:
-
-```hcl
-worker {
-  auth_storage_path      = "/boundary/demo-worker-1"
-  initial_upstreams      = ["10.0.0.1"]
-  recording_storage_path = "/local/storage/directory"
-  recording_storage_minimum_available_capacity = "500MB"
-}
-```
-
 ## Remote storage state
 
-The workers that you configure for session recording storage must have access to the external object store. Workers report permission states back to Boundary, depending on the availability of the external object store. 
+The workers that you configure for session recording storage must have access to the external object store. Workers report permission states back to Boundary, depending on the availability of the external object store.
 Boundary uses the permission states to determine what actions the worker can perform on the configured external storage.
 
 Workers can have the following permission states:
@@ -91,23 +78,36 @@ Worker information:
   ID:                        w_RPfBj239to
   Last Status Time:          2024-06-04 20:55:35.589282 +0000 UTC
   Local Storage State:       available
-  Remote Storage State: 
+  Remote Storage State:
 	sb_fhde575e:
 		Status: available
-		Permissions: 
-			Write: ok 
-			Read: ok 
-			Delete: ok 
+		Permissions:
+			Write: ok
+			Read: ok
+			Delete: ok
 	sb_jksdgh4:
 		Status: error
-		Permissions: 
-			Write: error 
-			Read: ok 
-			Delete: ok 
+		Permissions:
+			Write: error
+			Read: ok
+			Delete: ok
   Release Version:           Boundary v0.17.0+ent
   Type:                      pki
   Updated Time:              Tue, 04 Jun 2024 13:55:35 PDT
   Version:                   1
+```
+
+## Example configuration
+
+Refer to the following example configuration to configure workers for session recording storage:
+
+```hcl
+worker {
+  auth_storage_path      = "/boundary/demo-worker-1"
+  initial_upstreams      = ["10.0.0.1"]
+  recording_storage_path = "/local/storage/directory"
+  recording_storage_minimum_available_capacity = "500MB"
+}
 ```
 
 ## Next steps
