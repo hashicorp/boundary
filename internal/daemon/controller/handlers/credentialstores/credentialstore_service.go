@@ -833,6 +833,9 @@ func toStorageVaultStore(ctx context.Context, scopeId string, in *pb.CredentialS
 	if attrs.GetWorkerFilter().GetValue() != "" {
 		opts = append(opts, vault.WithWorkerFilter(attrs.GetWorkerFilter().GetValue()))
 	}
+	if attrs.GetTokenWrapped().GetValue() {
+		opts = append(opts, vault.WithTokenWrapped(attrs.GetTokenWrapped().GetValue()))
+	}
 
 	// TODO (ICU-1478 and ICU-1479): Update the vault's interface around ca cert to match oidc's,
 	//  accepting x509.Certificate instead of []byte

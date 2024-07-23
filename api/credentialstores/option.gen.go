@@ -307,6 +307,30 @@ func WithVaultCredentialStoreToken(inToken string) Option {
 	}
 }
 
+func WithVaultCredentialStoreTokenWrapped(inTokenWrapped bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["token_wrapped"] = inTokenWrapped
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialStoreTokenWrapped() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["token_wrapped"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithVaultCredentialStoreWorkerFilter(inWorkerFilter string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
