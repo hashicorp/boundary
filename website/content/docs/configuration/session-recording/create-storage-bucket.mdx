@@ -25,6 +25,7 @@ Before you create a storage bucket in Boundary, you must:
 - Configure one of the following storage providers:
    - [Amazon S3](/boundary/docs/configuration/session-recording/storage-providers/configure-s3)
    - [MinIO](/boundary/docs/configuration/session-recording/storage-providers/configure-minio)
+   - [S3-compliant](/boundary/docs/configuration/session-recording/storage-providers/configure-s3-compliant)
 
 ## Create a storage bucket
 
@@ -310,6 +311,84 @@ Complete the following steps to create a storage bucket in Boundary.
       - `disable_credential_rotation`: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new MinIO service account. If this attribute is set to `false`, or not provided, the plugin will rotate the incoming credentials to create a new MinIO service account, then delete the incoming credentials.
 
       This option must be set to `true` if you use dynamic credentials.
+
+</Tab>
+</Tabs>
+
+</Tab>
+
+<Tab heading="S3-compliant">
+
+Complete the following steps to create a storage bucket in Boundary.
+
+<Note>
+
+  S3-compliant storage requires a service account and its associated access keys to set up a Boundary storage bucket. Refer to the [Configure S3-compliant storage](/boundary/docs/configuration/session-recording/storage-providers/configure-s3-compliant#s3-compliant-storage-provider-requirements) page to learn more.
+
+</Note>
+
+<Tabs>
+<Tab heading="UI">
+
+1. Log in to Boundary.
+1. Click **Storage Buckets** in the navigation bar.
+1. Click **New Storage Bucket**.
+1. Complete the following fields to create the Boundary storage bucket:
+   - **Name**: (Optional) The name field is optional, but if you enter a name it must be unique.
+   - **Description**: (Optional) An optional description of the Boundary storage bucket for identification purposes.
+   - **Scope**: (Required) A storage bucket can belong to the Global scope or an Org scope.
+   It can only be associated with targets from the scope it belongs to.
+   - **Provider**: (Required) The external storage bucket provider.
+   For S3-compliant storage, select **MinIO**.
+   - **Endpoint URL**: (Required) The fully-qualified endpoint pointing to a storage provider's S3 API, such as `https://my-hitachi-instance.dev:9000`.
+   - **Bucket name**: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
+   - **Region**: (Optional) The region to configure the storage bucket for.
+   - **Access key ID** (Required): The storage provider's service account's access key to use with this storage bucket.
+   - **Secret access key** (Required): The storage provider's service account's secret key to use with this storage bucket.
+   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Disable credential rotation**: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new storage service account. If this attribute is set to false, or not provided, the plugin will rotate the incoming credentials, using them to create a new storage service account, then delete the incoming credentials.
+
+     Note that credential rotation is not supported for Hitachi Content Platform, and it may not function for other S3-compatible providers.
+
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI">
+
+1. Log in to Boundary.
+1. Use the following command to create a storage bucket in Boundary:
+
+   ```shell-session
+   $ boundary storage-buckets create \
+      -bucket-name mystoragebucket \
+      -plugin-name minio \
+      -scope-id o_1234567890 \
+      -bucket-prefix="foo/bar/zoo" \
+      -worker-filter '"dev" in "/tags/type"' \
+      -attr endpoint_url="https://my-hitachi-instance.dev:9000" \
+      -attr region="REGION" \
+      -attr disable_credential_rotation=true \
+      -secret access_key_id="KEY" \
+      -secret secret_access_key="SECRET"
+   ```
+
+   Replace the values above with the following required secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
+
+   - `bucket-name`: (Required) Name of the S3-compliant storage bucket you want to associate with the Boundary storage bucket.
+   - `plugin-name`: (Required) The name of the Boundary storage plugin.
+   Use the `minio` plugin for S3-compatible storage.
+   - `scope_id`: (Required) A storage bucket can belong to the Global scope or an Org scope.
+   - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - `secret`: (Required) The storage provider's credentials to use.
+      - `access_key_id` (Required): The storage provider's service account's access key to use with this storage bucket.
+      - `secret_access_key` (Required): The storage provider's service account's secret key to use with this storage bucket.
+   - `attributes` or `-attr`: Attributes of the S3-compliant storage bucket.
+      - `endpoint_url` (Required): Fully-qualified endpoint pointing to an S3-compliant API.
+      - `region`: (Optional) The region to configure the storage bucket for.
+      - `disable_credential_rotation`: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new storage service account. If this attribute is set to `false`, or not provided, the plugin will rotate the incoming credentials to create a new storage service account, then delete the incoming credentials.
+
+      This option must be set to `true` if you use dynamic credentials.
+      Note that credential rotation is not supported for Hitachi Content Platform, and it may not function for other S3-compatible providers.
 
 </Tab>
 </Tabs>

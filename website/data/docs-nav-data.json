@@ -545,6 +545,10 @@
               {
                 "title": "MinIO",
                 "path": "configuration/session-recording/storage-providers/configure-minio"
+              },
+              {
+                "title": "S3-compliant",
+                "path": "configuration/session-recording/storage-providers/configure-s3-compliant"
               }
             ]
           },
