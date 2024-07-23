@@ -51,6 +51,52 @@ The possible storage states determined by the `recording_storage_minimum_availab
 
 If a worker is in an unhealthy local storage state, Boundary does not allow new session recordings or session recording playback until the worker is in an `available` local storage state.
 
+## Remote storage state
+
+The workers that you configure for session recording storage must have access to the external object store. Workers report permission states back to Boundary, depending on the availability of the external object store.
+Boundary uses the permission states to determine what actions the worker can perform on the configured external storage.
+
+Workers can have the following permission states:
+
+- `read`: The worker can read from the external storage. It can also play back recorded sessions, if the permission state is `ok`.
+- `write`: The worker can write to the external storage. It can also record sessions, if the permission state is `ok`.
+- `delete`: The worker can delete data from the external storage. It can also clean up recorded sessions, if the permission state is `ok`.
+
+Boundary uses the permission states to determine the remote storage state of a worker. The worker can have the following remote storage states:
+- `available`: All permission states are healthy. The worker has the required access to the external storage.
+- `error`: One or more of the permission sates are not healthy. Workers may not be able to perform certain actions on the external storage.
+
+Boundary periodically checks the states of any workers that use the external storage, and then reports them back to the controller.
+
+You can check the remote storage state of a worker using the `boundary worker read -id $WORKER_ID` command.
+
+```
+Worker information:
+  Active Connection Count:   0
+  Address:                   0.0.0.0:9202
+  Created Time:              Tue, 04 Jun 2024 13:52:27 PDT
+  ID:                        w_RPfBj239to
+  Last Status Time:          2024-06-04 20:55:35.589282 +0000 UTC
+  Local Storage State:       available
+  Remote Storage State:
+	sb_fhde575e:
+		Status: available
+		Permissions:
+			Write: ok
+			Read: ok
+			Delete: ok
+	sb_jksdgh4:
+		Status: error
+		Permissions:
+			Write: error
+			Read: ok
+			Delete: ok
+  Release Version:           Boundary v0.17.0+ent
+  Type:                      pki
+  Updated Time:              Tue, 04 Jun 2024 13:55:35 PDT
+  Version:                   1
+```
+
 ## Example configuration
 
 Refer to the following example configuration to configure workers for session recording storage:
