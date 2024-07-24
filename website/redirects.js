@@ -194,4 +194,24 @@ module.exports = [
     destination: '/boundary/docs/configuration/worker/worker-configuration',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/concepts/security/permissions/resource-table',
+    destination: '/boundary/docs/concepts/security/resource-table',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/security/permissions',
+    destination: '/boundary/docs/configuration/permissions',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/security/permissions/assignable-permissions',
+    destination: '/boundarydocs/configuration/permissions/assignable-permisisons',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/security/permissions/permission-grant-formats',
+    destination: '/boundary/docs/configuration/permissions/permission-grant-formats',
+    permanent: true,
+  },
 ]
