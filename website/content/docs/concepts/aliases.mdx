@@ -16,7 +16,8 @@ For example, if you have an alias `boundary.dev`, you can use it to connect to a
 When you create a resource in Boundary, it assigns the resource a randomly generated identifier.
 You must use those IDs to perform actions in Boundary.
 
-When you connect to a target using the terminal, you must reference the target ID or target name and scope name. As an example, to SSH to a target, you can execute the command `boundary connect ssh -target-id ttcp_123456789`.
+When you connect to a target using the terminal, you must reference the target ID or target name and scope name.
+As an example, to SSH to a target, you can execute the command `boundary connect ssh -target-id ttcp_123456789`.
 Since it can be difficult to remember the unique IDs, users frequently have to look up the identifiers for any resources they want to operate on.
 
 Aliases simplify this process.
@@ -41,8 +42,10 @@ Examples of valid aliases include `webserver` and `webserver.boundary`.
 
 ## Scopes
 
-At this time, you can only create aliases in the `global` scope.
-The destination target for an alias can be in any scope, however.
+You can only create aliases in the `global` scope.
+However, you can associate aliases with targets or hosts from any scope.
+Support for additional resource types may be added in the future.
+
 If you delete a project, Boundary clears the `destination_id` parameter for any aliases that resolve to targets in that project, so that they no longer function.
 
 ## Connect to a target using an alias
