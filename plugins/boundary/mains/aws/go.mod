@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.5
 
 require (
-	github.com/hashicorp/boundary-plugin-aws v0.3.2-0.20240717193727-5add0a1b53c0
+	github.com/hashicorp/boundary-plugin-aws v0.3.2-0.20240724155006-9af01109459c
 	github.com/hashicorp/boundary/sdk v0.0.43-0.20240717182311-a20aae98794a
 )
 
