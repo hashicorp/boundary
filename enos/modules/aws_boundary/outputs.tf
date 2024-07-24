@@ -225,3 +225,10 @@ output "pet_id" {
   description = "The ID of the random_pet used in this module"
   value       = random_pet.default.id
 }
+
+output "worker_tokens" {
+  description = "If available, worker tokens used to register to Boundary"
+  value = try([
+    for token in enos_remote_exec.get_worker_token : trimspace(token.stdout)
+  ], null)
+}

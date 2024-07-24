@@ -12,7 +12,8 @@ begin;
   update session_connection set
     bytes_up = 10,
     bytes_down = 5,
-    closed_reason = 'closed by end-user'
+    closed_reason = 'closed by end-user',
+    connected_time_range = tstzrange(now()::wh_timestamp, now()::wh_timestamp)
   where public_id = 's1c1___clare';
 
   select is(count(*),               2::bigint)                from wh_session_connection_accumulating_fact;

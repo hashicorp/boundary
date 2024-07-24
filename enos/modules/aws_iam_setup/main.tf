@@ -73,8 +73,7 @@ output "access_key_id" {
 }
 
 output "secret_access_key" {
-  value     = aws_iam_access_key.boundary.secret
-  sensitive = true
+  value = nonsensitive(aws_iam_access_key.boundary.secret)
 }
 
 output "user_name" {

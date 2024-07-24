@@ -17,7 +17,7 @@ You can specify multiple grant scopes per role.
 This example sets the complete set of grant scopes on a role with the ID `r_1234567890` in the current scope and any children scopes:
 
 ```shell-session
-$ boundary roles add-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"
+$ boundary roles set-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"
 ```
 
 ## Usage
@@ -25,7 +25,7 @@ $ boundary roles add-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant
 <CodeBlockConfig hideClipboard>
 
 ```shell-session
-$ boundary roles set-grants [options] [args]
+$ boundary roles set-grant-scopes [options] [args]
 ```
 
 </CodeBlockConfig>
