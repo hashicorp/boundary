@@ -61,16 +61,16 @@ Grant strings can be supplied via a human-friendly string syntax or via JSON.
 
 ## Roles
 
-Roles map grant strings to _principals_, currently users and groups. Every role
-assigns grants within a specific scope: either the scope in which the role
-exists, or a scope that is a child of the scope in which the role exists,
-controlled by the role's "grant scope ID" value
+Roles map grant strings to principals, which are users, groups, and managed groups.
+Every role assigns grants within a scope, as determined by the role's grant scope IDs.
 
-When a request is made, the scope in which to discover grants is either provided
-by the client (if against a resource collection itself) or is looked up using
-the resource's ID. This scope ID, along with the user's ID and the IDs of the
-groups the user belongs to, controls which roles are fetched to provide grants
-for the request.
+You can assign roles to multiple scopes to grant permissions to users who need access to resources across multiple scopes.
+You can also configure child scopes to inherit roles from parents.
+For example, the global scope could have multiple child scopes called "orgs".
+When you create a role in the global scope, you can configure it to apply to those children org scopes.
+
+When a user makes a request, the client may provide the scope or Boundary may look it up using the resource's ID.
+This scope ID, along with the user's ID and the IDs of the groups the user belongs to, control which roles Boundary fetches to provide grants for the request.
 
 A role provides grants for a request if the grant scope ID matches the request's
 scope ID and one or more of the following are true:
