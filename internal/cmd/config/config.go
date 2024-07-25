@@ -114,7 +114,7 @@ worker {
 	description = "A default worker created in dev mode"
 	initial_upstreams = ["127.0.0.1"]
 	tags {
-		type = ["dev", "local"]
+		type = ["dev howdy", "local"]
 	}
 }
 
