@@ -7,45 +7,45 @@ description: |-
 
 # Permission grant formats
 
-Because of the aforementioned properties of the permissions model, grants are
-relatively simple. All grants take one of four forms. These examples use the
-canonical string syntax; the JSON equivalents are simply an object with a string
+All grants take one of four forms. The following examples use the
+canonical string syntax.
+The JSON equivalents are an object with a string
 `id` value, a string `type` value, a string array `actions` value, and a string
 array `output_fields` value.
 
-~> `output_fields` is omitted in most example below for brevity but are valid
-in all of them. It is also valid in each case to omit `actions` and specify
-_only_ `output_fields`.
+In the examples below, `output_fields` is omitted for brevity, but they are valid for each example.
+It is also valid to omit `actions` and only specify `output_fields`.
 
 ## ID only
 
-This is the simplest form: for a given specific resource, allow these actions.
-Example:
+The simplest form of grant allows the specified actions for a given resource.
+Refer to the following example:
 
 `ids=hsst_1234567890;actions=read,update`
 
-This grants `read` and `update` actions to that single resource. It is invalid
-to specify `create` or `list` as actions in this format, as this format
-explicitly identifies a resource, whereas those actions operate exclusively on
-collections.
+This example grants `read` and `update` actions to the resource `hsst_1234567890`. It is invalid
+to specify `create` or `list` as actions in this format, because this format
+explicitly identifies a resource.
+The `create` and `list` actions are only supported for collections.
 
 ## Type only
 
-For a given type, allow these actions. Example:
+You can configure a grant to allow the specified actions for a given type.
+Refer to the following example:
 
 `type=host-catalog;actions=create,list`
 
 Because type specifies only a collection as opposed to specific resources within
 that collection, only collection actions are allowed in this format. Currently,
-this is `create` and `list`.
+this includes the `create` and `list` actions.
 
-There is one additional restriction: this is only valid against "top-level"
-resource types, which currently are:
+There is one additional restriction: this grant format is only valid against "top-level"
+resource types, which include:
 
-- Auth Methods
-- Auth Tokens
+- Auth methods
+- Auth tokens
 - Groups
-- Host Catalogs
+- Host catalogs
 - Roles
 - Scopes
 - Sessions
@@ -53,55 +53,60 @@ resource types, which currently are:
 - Users
 
 The reason for this is that other types of resources are contained within one of
-these resource types; for instance, accounts are instantiated within an auth
-method. To specify actions against those, you must also specify to which
-specific containing resource you want the grants to apply. This can be done with
-the pinned format shown below.
+these resource types.
+For example, accounts are instantiated within an auth
+method. To specify actions against an auth method, you must also specify the
+specific containing resource you want to apply the grants to.
+You can update those resources using the pinned format shown below.
 
 ## Pinned ID
 
-This form "pins" actions to a non-top-level type within a specific ID. It's
-easiest to explain with an example:
+This form "pins" actions to a non-top-level type within a specific ID.
+Refer to the following example:
 
 `ids=hcst_1234567890;type=host-set;actions=create,read,update`
 
 In this example, the user is able to create, read, or update host sets within
-the scope, but _only the host sets belonging to host catalog hcst_1234567890_.
+the scope, but only the host sets belonging to host catalog `hcst_1234567890`.
 Pinning is essentially a way to use top-level resources to create mini
 permission boundaries for their subordinate resources.
 
 ## Wildcards
 
-Various wildcard possibilities are allowed:
+You can use wildcards in grants.
+Refer to the following sections for the various wildcard possibilities that are supported.
 
 ### Wildcard ID
 
-When just the ID is `*`, it matches all IDs of the given type. This can be used
-with both top-level resource types and not. Example:
+When just the ID is `*`, it matches all IDs of the given type. You can use this grant format
+with both top-level resource types and non-top-level resource types.
+Refer to the following example:
 
 `ids=*;type=host-set;actions=create,read,update,set-hosts`
 
 ### Wildcard type
 
-For non-top-level resources with pinned IDs, the `type` can be a wildcard:
+For non-top-level resources with pinned IDs, the `type` can be a wildcard.
+Refer to the following example:
 
 `ids=hcst_1234567890;type=*;actions=create,read,update`
 
-This would allow `create`, `read`, and `update` actions for all types of
-subordinate resources (in this case host sets and hosts) underneath the host
+This grant format would allow `create`, `read`, and `update` actions for all types of
+subordinate resources underneath the host
 catalog with ID `hcst_1234567890`.
+In this example, that would include host sets and hosts.
 
 ### Wildcard ID and type
 
-If ID and type are both a wildcard, the grant is essentially a catch-all that
-will match any resource of any type within the scope and allow the given
-actions.
+If the ID and type are both wildcards, the grant is essentially a catch-all that matches any resource of any type within the scope and allows the given actions.
+Refer to the following example:
 
 `ids=*;type=*;actions=read,list`
 
 ### Wildcard ID, type, and actions
 
-Finally, ID, type, and actions can all be wildcards:
+ID, type, and actions can all be wildcards.
+Refer to the following example:
 
 `ids=*;type=*;actions=*`
 
@@ -109,22 +114,13 @@ Such a grant is essentially a full administrator grant for a scope.
 
 ## Templates
 
-A few template possibilities exist, which will at grant evaluation time
-substitute the given value into the ID field of the grant string:
+A few template possibilities exist for grants.
+The following templates substitute a given value into the ID field of the grant string at evaluation time:
 
 - `{{.Account.Id}}`: The substituted value is the account ID associated with the
   token used to perform the action. As an example,
   `ids={{.Account.Id}};actions=read,change-password"` is one of Boundary's
   default grants to allow users that have authenticated with the Password auth
   method to change their own password.
-  - **NOTE**: Prior to Boundary 0.11.1, `{{account.id}}` must be used instead.
-    Boundary 0.11.1+ changes this for consistency with other places within
-    Boundary that are gaining templating support, but supports both formats for
-    backwards compatibility.
-
 - `{{.User.Id}}`: The substituted value is the user ID associated with the token
   used to perform the action.
-  - **NOTE**: Prior to Boundary 0.11.1, `{{user.id}}` must be used instead.
-    Boundary 0.11.1+ changes this for consistency with other places within
-    Boundary that are gaining templating support, but supports both formats for
-    backwards compatibility.
