@@ -81,7 +81,7 @@ func (c *Command) Run(args []string) int {
 
 	ret := []string{
 		"",
-		"Version information:",
+		"Version information (custom build):",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 		"",
 	}
