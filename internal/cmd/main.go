@@ -134,18 +134,19 @@ func handleHighLevelShortcuts(args []string, runOpts *RunOptions) []string {
 	return newArgs
 }
 
-func handleDumpTimeout(args []string) (int32, []string) {
+func handleDumpTimeout(args []string) (time.Duration, []string) {
 	for i, a := range args {
 		if a == "-dump-timeout" {
 			if i+1 < len(args) {
-				timeout, err := strconv.Atoi(args[i+1])
+				timeout, err := time.ParseDuration(args[i+1])
 				if err == nil {
-					return int32(timeout), append(args[:i], args[i+2:]...)
+					return timeout, append(args[:i], args[i+2:]...)
 				}
+				return time.Duration(0), append(args[:i], args[i+2:]...)
 			}
 		}
 	}
-	return -1, args
+	return time.Duration(0), args
 }
 
 type RunOptions struct {
@@ -275,8 +276,8 @@ func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 	}
 
 	var err error
-	if timeout > 0 {
-		stackDumpTimer := time.After(time.Second * time.Duration(timeout))
+	if timeout > time.Duration(0) {
+		stackDumpTimer := time.After(timeout)
 		go func() {
 			select {
 			case <-stackDumpTimer:
