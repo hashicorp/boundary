@@ -24,6 +24,7 @@ const (
 	SupportIdInGrants
 	PluginDelete
 	LocalStorageState
+	StorageBucketCredentialState
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -90,6 +91,11 @@ func init() {
 	// Worker supports reporting local storage state
 	featureMap[LocalStorageState] = MetadataConstraint{
 		Constraints: mustNewConstraints(">= 0.16.0"),
+	}
+
+	// Worker supports reporting the state of storage bucket credentials
+	featureMap[StorageBucketCredentialState] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.17.0"),
 	}
 }
 
