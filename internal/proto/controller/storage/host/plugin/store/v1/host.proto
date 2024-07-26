@@ -60,6 +60,10 @@ message HostCatalog {
   // attributes is a jsonb formatted field.
   // @inject_tag: `gorm:"not_null"`
   bytes attributes = 10;
+
+  // worker_filter is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string worker_filter = 11;
 }
 
 message HostSet {

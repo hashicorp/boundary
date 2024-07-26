@@ -144,6 +144,24 @@ func TestHostCatalog_Create(t *testing.T) {
 				return hc
 			}(),
 		},
+		{
+			name: "valid-with-worker-filter",
+			args: args{
+				pluginId:  plg.GetPublicId(),
+				projectId: prj.GetPublicId(),
+				opts: []Option{
+					WithWorkerFilter(`"test" in "/tags/type"`),
+				},
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					PluginId:     plg.GetPublicId(),
+					ProjectId:    prj.GetPublicId(),
+					Attributes:   []byte{},
+					WorkerFilter: `"test" in "/tags/type"`,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -107,4 +107,10 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
 		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 	})
+	t.Run("WithWorkerFilter", func(t *testing.T) {
+		opts := getOpts(WithWorkerFilter(`"test" in "/tags/type"`))
+		testOpts := getDefaultOptions()
+		testOpts.withWorkerFilter = `"test" in "/tags/type"`
+		assert.Equal(t, opts, testOpts)
+	})
 }

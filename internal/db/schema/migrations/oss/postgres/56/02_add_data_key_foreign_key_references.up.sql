@@ -143,6 +143,7 @@ begin;
   comment on view oidc_auth_method_with_value_obj is
   'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
 
+  -- Replaced by 92/01_host_plugin_catalog_worker_filter.up.sql
   create view host_plugin_catalog_with_secret as
   select
     hc.public_id,

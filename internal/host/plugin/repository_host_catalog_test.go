@@ -258,6 +258,26 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}(),
 			wantPluginCalled: true,
 		},
+		{
+			name: "valid-with-worker-filter",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ProjectId:    prj.GetPublicId(),
+					PluginId:     plg.GetPublicId(),
+					Attributes:   []byte{},
+					WorkerFilter: `"test" in "/tags/type"`,
+				},
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ProjectId:    prj.GetPublicId(),
+					PluginId:     plg.GetPublicId(),
+					Attributes:   []byte{},
+					WorkerFilter: `"test" in "/tags/type"`,
+				},
+			},
+			wantPluginCalled: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -608,6 +628,13 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
+	changeWorkerFilter := func(s string) changeHostCatalogFunc {
+		return func(c *HostCatalog) *HostCatalog {
+			c.WorkerFilter = s
+			return c
+		}
+	}
+
 	// Define some checks that will be used in the below tests. Some of
 	// these are re-used, so we define them here. Most of these are
 	// assertions and no particular one is non-fatal in that they will
@@ -809,6 +836,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					db.WithCreateNotBefore(10*time.Second),
 				),
 			)
+		}
+	}
+
+	checkWorkerFilter := func(want string) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotCatalog.WorkerFilter)
 		}
 	}
 
@@ -1172,6 +1207,22 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
+		{
+			name:        "update worker filter",
+			changeFuncs: []changeHostCatalogFunc{changeWorkerFilter(`"test" in "/tags/type"`)},
+			version:     2,
+			fieldMask:   []string{"WorkerFilter"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkSecretsHmac(true),
+				checkWorkerFilter(`"test" in "/tags/type"`),
+				checkSecrets(map[string]any{
+					"one": "two",
+				}),
+				checkNumUpdated(1),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
 	}
 
 	// Finally define a function for bringing the test subject catalog.
@@ -1273,7 +1324,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
 	}
-	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId(), WithWorkerFilter(`"test" in "/tags/type"`))
 	badId, err := newHostCatalogId(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)

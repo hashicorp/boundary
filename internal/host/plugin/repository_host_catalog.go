@@ -322,6 +322,12 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				}
 				dbMask = append(dbMask, "SecretsHmac")
 			}
+		case strings.EqualFold("WorkerFilter", f) && c.WorkerFilter == "":
+			nullFields = append(nullFields, "WorkerFilter")
+			newCatalog.WorkerFilter = c.WorkerFilter
+		case strings.EqualFold("WorkerFilter", f) && c.WorkerFilter != "":
+			dbMask = append(dbMask, "WorkerFilter")
+			newCatalog.WorkerFilter = c.WorkerFilter
 		default:
 			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}

@@ -31,7 +31,8 @@ type HostCatalog struct {
 }
 
 // NewHostCatalog creates a new in memory HostCatalog assigned to a projectId
-// and pluginId. Name and description are the only valid options. All other
+// and pluginId. WithName, WithDescription, WithSecretsHmac, WithAttributes,
+// WithSecrets and WithWorkerFilter are the only valid options. All other
 // options are ignored.
 func NewHostCatalog(ctx context.Context, projectId, pluginId string, opt ...Option) (*HostCatalog, error) {
 	const op = "plugin.NewHostCatalog"
@@ -44,12 +45,13 @@ func NewHostCatalog(ctx context.Context, projectId, pluginId string, opt ...Opti
 
 	hc := &HostCatalog{
 		HostCatalog: &store.HostCatalog{
-			ProjectId:   projectId,
-			PluginId:    pluginId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			Attributes:  attrs,
-			SecretsHmac: opts.withSecretsHmac,
+			ProjectId:    projectId,
+			PluginId:     pluginId,
+			Name:         opts.withName,
+			Description:  opts.withDescription,
+			Attributes:   attrs,
+			SecretsHmac:  opts.withSecretsHmac,
+			WorkerFilter: opts.withWorkerFilter,
 		},
 		Secrets: opts.withSecrets,
 	}
@@ -151,6 +153,7 @@ type catalogAgg struct {
 	Version             uint32
 	SecretsHmac         []byte
 	Attributes          []byte
+	WorkerFilter        string
 	Secret              []byte
 	KeyId               string
 	PersistedCreateTime *timestamp.Timestamp
@@ -172,6 +175,7 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 	c.Version = agg.Version
 	c.SecretsHmac = agg.SecretsHmac
 	c.Attributes = agg.Attributes
+	c.WorkerFilter = agg.WorkerFilter
 
 	var s *HostCatalogSecret
 	if len(agg.Secret) > 0 {

@@ -37,6 +37,7 @@ type options struct {
 	withSetIds              []string
 	withSecretsHmac         []byte
 	withStartPageAfterItem  pagination.Item
+	withWorkerFilter        string
 }
 
 func getDefaultOptions() options {
@@ -151,5 +152,13 @@ func WithSecretsHmac(secretsHmac []byte) Option {
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) {
 		o.withStartPageAfterItem = item
+	}
+}
+
+// WithWorkerFilter provides an option to set a plugin host catalog worker
+// filter.
+func WithWorkerFilter(wf string) Option {
+	return func(o *options) {
+		o.withWorkerFilter = wf
 	}
 }
