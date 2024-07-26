@@ -9,7 +9,7 @@ description: |-
 
 Boundary's permissions model is a composable, RBAC, allow-only model that
 attempts to marry flexibility with usability.
-The following pages discuss the permission model's fundamental concepts, provide examples of the specific forms of allowed grants, and contain a table that acts as an easy cheat sheet to help you craft roles.
+The following pages discuss the permission model's fundamental concepts, provide examples of the specific forms of allowed grants, and contain a table that acts as a cheat sheet to help you craft roles.
 
 Boundary's [domain model](/boundary/docs/concepts/domain-model) is based on resource
 types. You can implement resource types directly, such as with targets, or they can be
@@ -19,43 +19,37 @@ catalog is a concrete type.
 
 From a permissions standpoint, all actions take place against directly
 implemented or abstract types. There may be actions that are only implemented by
-some concrete types (e.g., not all `auth-method` implementations will support a
-`change-password` action), but the permissions model still defines these
-capabilities at the abstract type level. This helps keep the overall system
-relatively simple and predictable.
+some concrete types, for example, not all `auth-method` implementations support a
+`change-password` action. But the permissions model still defines these
+capabilities at the abstract type level.
 
 At a very high level, permissions within Boundary are declared via grant strings
 and mapped to users via roles.
 
 ## Grant strings
 
+Each grant string is a mapping that describes a resource or set of resources and
+the permissions that should be granted on them.
+
 A grant string has a form similar to:
 
 `ids=<id>;type=<type>;actions=<action list>;output_fields=<fields list>`
 
-Each grant string is a mapping that describes a resource or set of resources and
-the permissions that should be granted on them.
+Selectors are used to indicate the resources on which the grant should apply,
+using specific IDs or wildcard IDs and type selectors.
 
-There are currently two types of selectors:
+You can supply grant strings using a human-friendly string syntax or using JSON.
 
-- An `id` field that indicates a specific resource or a wildcard to match all
+### Assigned permissions
 
-- A `type` field that indicates a specific resource type or a wildcard to match
-  all; this might also be used to grant permissions on collections of resources
-
-Selectors are used to indicate which resources on which the grant should apply,
-using specific IDs or wildcard IDs and type selectors. (The acceptable grant
-string formats are detailed later on this page.)
-
-Additionally, there are two types of assigned permissions:
+You can grant users permissions to any Boundary resources that are identified by ID or Type selectors.
+There are two types of assigned permissions:
 
 - An `actions` field indicating which actions to allow the client to perform on
   the resources matched by `id` and `type`
 
 - An `output_fields` field indicating which top-level fields to return in the
-  response (0.2.1+)
-
-You can supply grant strings using a human-friendly string syntax or using JSON.
+  response.
 
 ## Roles
 
@@ -63,7 +57,7 @@ Roles map grant strings to principals, which are users, groups, and managed grou
 Every role assigns grants within a scope, as determined by the role's grant scope IDs.
 
 You can assign roles to multiple scopes to grant permissions to users who need access to resources across multiple scopes.
-You can also configure child scopes to inherit roles from parents.
+Child scopes can inherit roles from parents.
 For example, the global scope could have multiple child scopes called "orgs".
 When you create a role in the global scope, you can configure it to apply to those children org scopes.
 
@@ -74,12 +68,9 @@ A role provides grants for a request if the grant scope ID matches the request's
 scope ID and one or more of the following are true:
 
 - The user's ID is contained in the principal IDs set on the role
-
 - A group the user belongs to is contained in the principal IDs set on the role
-
 - The user is logged in and the `u_auth` user is contained in the principal IDs
   set on the role
-
 - The role contains the `u_anon` user in the in the principal IDs set on the
   role
 
@@ -88,6 +79,6 @@ that originate from all matching roles.
 
 ## Next steps
 
-Refer to the [assignable permissions](/boundary/docs/configuration/permissions/assignable-permissions) documentation for more information about the permissions you can assign to Boundary principals.
-
-Refer to the [permission grant formats](/boundary/docs/configuration/permissions/permission-grant-formats) documentation for more information about configuring grant strings and examples.
+1. Refer to [Assignable permissions](/boundary/docs/configuration/permissions/assignable-permissions) for more information about the permissions you can assign to Boundary principals.
+1. Refer to [Permission grant formats](/boundary/docs/configuration/permissions/permission-grant-formats) for more information about configuring grant strings and to view examples.
+1. Refer to the manage roles documentation for more information.

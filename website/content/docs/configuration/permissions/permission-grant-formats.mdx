@@ -7,14 +7,30 @@ description: |-
 
 # Permission grant formats
 
-All grants take one of four forms. The following examples use the
-canonical string syntax.
-The JSON equivalents are an object with a string
-`id` value, a string `type` value, a string array `actions` value, and a string
-array `output_fields` value.
+Each grant string is a mapping that describes a resource or set of resources and
+the permissions that should be granted on them.
 
-In the examples below, `output_fields` is omitted for brevity, but they are valid for each example.
-It is also valid to omit `actions` and only specify `output_fields`.
+Refer to [Assignable permissons](/boundary/docs/configuration/permissions/assignable-permissions) for more information about the permissions you can include in grants.
+
+A grant string has a form similar to:
+
+`ids=<id>;type=<type>;actions=<action list>;output_fields=<fields list>`
+
+There are two types of selectors:
+
+- An `id` field that indicates a specific resource or a wildcard to match all
+- A `type` field that indicates a specific resource type or a wildcard to match
+  all; this might also be used to grant permissions on collections of resources
+
+Selectors are used to indicate the resources on which the grant should apply,
+using specific IDs or wildcard IDs and type selectors.
+
+You can supply grant strings using a human-friendly string syntax or using JSON.
+The following examples use the canonical string syntax.
+The JSON equivalents are an object with a string `id` value, a string `type` value, a string array `actions` value, and a string array `output_fields` value.
+
+In the following examples, `output_fields` is omitted for brevity, but they are valid for each example.
+It is also valid to omit `actions` and specify only `output_fields`.
 
 ## ID only
 
@@ -124,3 +140,7 @@ The following templates substitute a given value into the ID field of the grant 
   method to change their own password.
 - `{{.User.Id}}`: The substituted value is the user ID associated with the token
   used to perform the action.
+
+## Next steps
+
+Refer to Manage roles to map grant strings to principals using roles.
