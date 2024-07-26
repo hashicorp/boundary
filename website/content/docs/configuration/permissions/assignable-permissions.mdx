@@ -7,12 +7,6 @@ description: |-
 
 # Assignable permissions
 
-<!---
-Resources identified by the ID/Type selectors have permissions granted to the
-user in the form of actions and visibility (via `output_fields`). Each of these
-is detailed in the subsections below.
---->
-
 You can grant users permissions to any Boundary resources that are identified by ID or Type selectors.
 Permissions are comprised of actions and visibility.
 You can also use `output_fields` to configure fine-grained control over the visibility of data that is returned to users.
@@ -95,73 +89,3 @@ The defaults are implemented using the internal values for `output_fields` and v
 - If the user is anonymous: Boundary returns a useful, but restricted set of fields.
 They include `id`, `scope_id`, `scope`, `name`, and `description`.
 - If the user is authenticated: Boundary returns the full set of fields.
-
-
-<!---
-In many cases, `output_fields` will not need to be set directly. However, an
-example in the form of some history helps provide some context as to when this
-might be useful.
-
-In Boundary 0.2.0, we restricted the set of fields returned for some `list`
-calls (those on the `scopes` and `auth-methods` collections) to a small set if
-the user was the anonymous user `u_anon`. Although default behavior in Boundary
-was to display all resource fields when listing, because the default was also to
-allow anonymous access to perform `list` on scopes and auth methods (in order to
-discover auth methods and then authenticate to them), returning all
-configuration information for all scopes and auth methods felt like it was
-publicly disclosing more information to users than might be desired.
-
-At the same time, this was not an ideal solution for two reasons:
-
-1. There is no one-size-fits-all security policy, and what we thought were
-   reasonable defaults may not work in all situations
-
-2. It made the scopes and auth methods listing behavior work differently from
-   any other `list` action, which is not ideal
-
-As a result, we decided to approach this problem the same way we normally try to
-within Boundary: set resonable defaults, but give the administrator ultimate
-control.
-
-The resulting behavior is as follows: `output_fields` references the field names
-of the JSON object response, composes just like other parts of the RBAC model,
-and are action-specific. That is, a grant like:
-
-`ids=*;type=auth-methods;actions=list,no-op;output_fields=scope_id,name,description`
-
-will, if all by itself, result in those three identified output fields applying
-to `list` (and `no-op`) actions for all auth methods in the scope. Thus when
-performing a `list`, each item returned will have only those three fields
-populated. Any other actions (like `read` or `update`) are unaffected and will
-use defaults.
-
-A grant like:
-
-`ids=*;type=auth-methods;output_fields=id`
-
-will, if all by itself, result in _any_ action against auth methods in the scope
-having only `id` returned.
-
-However, if both of the above grants are included, since grants are composable
-the final set of output fields will be `id,scope_id,name,description` for `list`
-(and `no-op`) actions, and `id` for all other actions.
-
-If, after the grants are composed for a given request, none of the grants
-applicable to the resource/action contain `output_fields` definitions, the
-defaults are used. These defaults are implemented using internal values for
-`output_fields` and vary based on whether the user is the anonymous user:
-
-- If the user is the anonymous user, a useful but restricted set of fields is
-  returned. This includes `id`, `scope_id`, `scope`, `name`, `description`, and a
-  few more.
-
-- If the user is any authenticated user, the full set of fields is returned
-
-To think about it a different way, empty `output_fields`, after grant
-composition, is equivalent to using Boundary's default; however the moment that
-grants start specifying output fields, it is composed from an empty set and thus
-nothing is contained unless explicitly specified. (An actual empty set is not
-currently supported, as we don't perform validation on the values given.
-However, this means setting `output_fields=none` is functionally equivalent!)
-
---->
