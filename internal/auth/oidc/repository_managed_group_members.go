@@ -117,7 +117,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			}
 
 			// Figure out which ones to delete and which ones we already have
-			toDelete := make([]any, 0, len(mgs))
+			toDelete := make([]*ManagedGroupMemberAccount, 0, len(mgs))
 			for _, currMg := range currentMemberships {
 				currMgId := currMg.ManagedGroupId
 				if newMgPublicIds[currMgId] {
@@ -161,7 +161,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			if len(newMgPublicIds) > 0 {
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 				addOplogMsgs := make([]*oplog.Message, 0, len(newMgPublicIds))
-				toAdd := make([]any, 0, len(newMgPublicIds))
+				toAdd := make([]*ManagedGroupMemberAccount, 0, len(newMgPublicIds))
 				for mgId := range newMgPublicIds {
 					newMg := AllocManagedGroupMemberAccount()
 					newMg.ManagedGroupId = mgId

@@ -75,7 +75,7 @@ func (w *changeSafeDbwWriter) Create(ctx context.Context, i any, opt ...dbw.Opti
 	return dbw.New(w.db.underlying.wrapped.Load()).Create(ctx, i, opt...)
 }
 
-func (w *changeSafeDbwWriter) CreateItems(ctx context.Context, createItems []any, opt ...dbw.Option) error {
+func (w *changeSafeDbwWriter) CreateItems(ctx context.Context, createItems any, opt ...dbw.Option) error {
 	return dbw.New(w.db.underlying.wrapped.Load()).CreateItems(ctx, createItems, opt...)
 }
 
@@ -83,7 +83,7 @@ func (w *changeSafeDbwWriter) Delete(ctx context.Context, i any, opt ...dbw.Opti
 	return dbw.New(w.db.underlying.wrapped.Load()).Delete(ctx, i, opt...)
 }
 
-func (w *changeSafeDbwWriter) DeleteItems(ctx context.Context, deleteItems []any, opt ...dbw.Option) (int, error) {
+func (w *changeSafeDbwWriter) DeleteItems(ctx context.Context, deleteItems any, opt ...dbw.Option) (int, error) {
 	return dbw.New(w.db.underlying.wrapped.Load()).DeleteItems(ctx, deleteItems, opt...)
 }
 

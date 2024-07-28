@@ -141,14 +141,14 @@ func (am *AuthMethod) oplog(ctx context.Context, opType oplog.OpType) (oplog.Met
 }
 
 type convertedValues struct {
-	Urls                 []any
-	Certs                []any
-	UserEntrySearchConf  any
-	GroupEntrySearchConf any
-	ClientCertificate    any
-	BindCredential       any
-	AccountAttributeMaps []any
-	DerefAliases         any
+	Urls                 []*Url
+	Certs                []*Certificate
+	UserEntrySearchConf  *UserEntrySearchConf
+	GroupEntrySearchConf *GroupEntrySearchConf
+	ClientCertificate    *ClientCertificate
+	BindCredential       *BindCredential
+	AccountAttributeMaps []*AccountAttributeMap
+	DerefAliases         *DerefAliases
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -199,15 +199,15 @@ func (am *AuthMethod) convertValueObjects(ctx context.Context) (*convertedValues
 	return converted, nil
 }
 
-// convertCertificates converts any embedded URLs from []string
-// to []any where each slice element is a *Url. It will return an error if the
-// AuthMethod's public id is not set.
-func (am *AuthMethod) convertUrls(ctx context.Context) ([]any, error) {
+// convertUrls converts any embedded URLs from []string to []*Url where each
+// slice element is a *Url. It will return an error if the AuthMethod's public
+// id is not set.
+func (am *AuthMethod) convertUrls(ctx context.Context) ([]*Url, error) {
 	const op = "ldap.(AuthMethod).convertUrls"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newValObjs := make([]any, 0, len(am.Urls))
+	newValObjs := make([]*Url, 0, len(am.Urls))
 	for priority, u := range am.Urls {
 		parsed, err := url.Parse(u)
 		if err != nil {
@@ -223,14 +223,14 @@ func (am *AuthMethod) convertUrls(ctx context.Context) ([]any, error) {
 }
 
 // convertCertificates converts any embedded certificates from []string
-// to []any where each slice element is a *Certificate. It will return an error
-// if the AuthMethod's public id is not set.
-func (am *AuthMethod) convertCertificates(ctx context.Context) ([]any, error) {
+// to []*Certificate. It will return an error if the AuthMethod's public id is
+// not set.
+func (am *AuthMethod) convertCertificates(ctx context.Context) ([]*Certificate, error) {
 	const op = "ldap.(AuthMethod).convertCertificates"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newValObjs := make([]any, 0, len(am.Certificates))
+	newValObjs := make([]*Certificate, 0, len(am.Certificates))
 	for _, cert := range am.Certificates {
 		obj, err := NewCertificate(ctx, am.PublicId, cert)
 		if err != nil {
@@ -242,9 +242,9 @@ func (am *AuthMethod) convertCertificates(ctx context.Context) ([]any, error) {
 }
 
 // convertUserEntrySearchConf converts an embedded user entry search fields
-// into an any type.  It will return an error if the AuthMethod's public id is
-// not set.
-func (am *AuthMethod) convertUserEntrySearchConf(ctx context.Context) (any, error) {
+// into an *UserEntrySearchConf type.  It will return an error if the
+// AuthMethod's public id is not set.
+func (am *AuthMethod) convertUserEntrySearchConf(ctx context.Context) (*UserEntrySearchConf, error) {
 	const op = "ldap.(AuthMethod).convertUserEntrySearchConf"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
@@ -257,9 +257,9 @@ func (am *AuthMethod) convertUserEntrySearchConf(ctx context.Context) (any, erro
 }
 
 // convertGroupEntrySearchConf converts an embedded group entry search fields
-// into an any type.  It will return an error if the AuthMethod's public id is
-// not set.
-func (am *AuthMethod) convertGroupEntrySearchConf(ctx context.Context) (any, error) {
+// into an *GroupEntrySearchConf type.  It will return an error if the
+// AuthMethod's public id is not set.
+func (am *AuthMethod) convertGroupEntrySearchConf(ctx context.Context) (*GroupEntrySearchConf, error) {
 	const op = "ldap.(AuthMethod).convertGroupEntrySearchConf"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
@@ -272,9 +272,9 @@ func (am *AuthMethod) convertGroupEntrySearchConf(ctx context.Context) (any, err
 }
 
 // convertClientCertificate converts an embedded client certificate entry into
-// an any type.  It will return an error if the AuthMethod's public id is not
-// set.
-func (am *AuthMethod) convertClientCertificate(ctx context.Context) (any, error) {
+// an *ClientCertificate type.  It will return an error if the AuthMethod's
+// public id is not set.
+func (am *AuthMethod) convertClientCertificate(ctx context.Context) (*ClientCertificate, error) {
 	const op = "ldap.(AuthMethod).convertClientCertificate"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing auth method id")
@@ -287,9 +287,9 @@ func (am *AuthMethod) convertClientCertificate(ctx context.Context) (any, error)
 }
 
 // convertBindCredential converts an embedded bind credential entry into
-// an any type.  It will return an error if the AuthMethod's public id is not
-// set.
-func (am *AuthMethod) convertBindCredential(ctx context.Context) (any, error) {
+// an *BindCredential type.  It will return an error if the AuthMethod's public
+// id is not set.
+func (am *AuthMethod) convertBindCredential(ctx context.Context) (*BindCredential, error) {
 	const op = "ldap.(AuthMethod).convertBindCredentials"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing auth method id")
@@ -302,9 +302,9 @@ func (am *AuthMethod) convertBindCredential(ctx context.Context) (any, error) {
 }
 
 // convertDerefAliases converts an embedded deref aliases entry into
-// an any type.  It will return an error if the AuthMethod's public id is not
-// set.
-func (am *AuthMethod) convertDerefAliases(ctx context.Context) (any, error) {
+// an *DerefAliases type.  It will return an error if the AuthMethod's public id
+// is not set.
+func (am *AuthMethod) convertDerefAliases(ctx context.Context) (*DerefAliases, error) {
 	const op = "ldap.(AuthMethod).convertDerefAliases"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing auth method id")
@@ -317,15 +317,15 @@ func (am *AuthMethod) convertDerefAliases(ctx context.Context) (any, error) {
 }
 
 // convertAccountAttributeMaps converts the embedded account attribute maps from
-// []string to []interface{} where each slice element is a *AccountAttributeMap. It
-// will return an error if the AuthMethod's public id is not set or it can
-// convert the account attribute maps.
-func (am *AuthMethod) convertAccountAttributeMaps(ctx context.Context) ([]any, error) {
+// []string to []*AccountAttributeMap. It will return an error if the
+// AuthMethod's public id is not set or it can convert the account attribute
+// maps.
+func (am *AuthMethod) convertAccountAttributeMaps(ctx context.Context) ([]*AccountAttributeMap, error) {
 	const op = "ldap.(AuthMethod).convertAccountAttributeMaps"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newInterfaces := make([]any, 0, len(am.AccountAttributeMaps))
+	acctAttribMaps := make([]*AccountAttributeMap, 0, len(am.AccountAttributeMaps))
 	const (
 		from = 0
 		to   = 1
@@ -343,7 +343,7 @@ func (am *AuthMethod) convertAccountAttributeMaps(ctx context.Context) ([]any, e
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		newInterfaces = append(newInterfaces, obj)
+		acctAttribMaps = append(acctAttribMaps, obj)
 	}
-	return newInterfaces, nil
+	return acctAttribMaps, nil
 }

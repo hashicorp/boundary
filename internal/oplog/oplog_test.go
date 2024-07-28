@@ -407,7 +407,7 @@ func Test_Replay(t *testing.T) {
 		userCreateItems := &oplog_test.TestUser{
 			Name: "foo-" + testId(t),
 		}
-		require.NoError(dbw.New(db).CreateItems(context.Background(), []any{userCreateItems}))
+		require.NoError(dbw.New(db).CreateItems(context.Background(), []*oplog_test.TestUser{userCreateItems}))
 
 		err = newLogEntry.WriteEntryWith(context.Background(), &Writer{tx.DB()}, ticket,
 			&Message{Message: userCreate, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
@@ -536,7 +536,7 @@ func Test_Replay(t *testing.T) {
 		deleteUser2 := oplog_test.TestUser{
 			Id: userCreate2.Id,
 		}
-		_, err = tx2.DeleteItems(testCtx, []any{&deleteUser2})
+		_, err = tx2.DeleteItems(testCtx, []*oplog_test.TestUser{&deleteUser2})
 		require.NoError(err)
 
 		newLogEntry2, err := NewEntry(

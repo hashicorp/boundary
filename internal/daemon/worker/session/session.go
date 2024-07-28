@@ -63,11 +63,9 @@ type Session interface {
 	// in the SessionJobInfo are not present, however, it still applies the
 	// status change to the session and the connections which are present.
 	ApplyLocalStatus(st pbs.SESSIONSTATUS)
-
 	GetStatus() pbs.SESSIONSTATUS
 	// GetLocalConnections returns the connections this session is handling.
 	GetLocalConnections() map[string]ConnInfo
-
 	GetTofuToken() string
 	GetConnectionLimit() int32
 	GetEndpoint() string

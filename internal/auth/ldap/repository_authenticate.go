@@ -117,18 +117,13 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		}
 
 		for _, attrMap := range attrMaps {
-			aam, ok := attrMap.(*AccountAttributeMap)
-			if !ok {
-				return nil, errors.New(ctx, errors.Internal, op, "failed to convert attribute map into AccountAttributeMap type")
-			}
-
-			switch aam.ToAttribute {
+			switch attrMap.ToAttribute {
 			case DefaultEmailAttribute:
-				emailAttr = aam.FromAttribute
+				emailAttr = attrMap.FromAttribute
 			case DefaultFullNameAttribute:
-				fullNameAttr = aam.FromAttribute
+				fullNameAttr = attrMap.FromAttribute
 			default:
-				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid to attribute %q", aam.ToAttribute))
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid to attribute %q", attrMap.ToAttribute))
 			}
 		}
 

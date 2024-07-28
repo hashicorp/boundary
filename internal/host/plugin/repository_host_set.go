@@ -138,9 +138,9 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		}
 	}
 
-	var preferredEndpoints []any
+	var preferredEndpoints []*host.PreferredEndpoint
 	if s.PreferredEndpoints != nil {
-		preferredEndpoints = make([]any, 0, len(s.PreferredEndpoints))
+		preferredEndpoints = make([]*host.PreferredEndpoint, 0, len(s.PreferredEndpoints))
 		for i, e := range s.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, s.PublicId, uint32(i+1), e)
 			if err != nil {
@@ -392,9 +392,9 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 	}
 
 	// Get the preferred endpoints to write out.
-	var preferredEndpoints []any
+	var preferredEndpoints []*host.PreferredEndpoint
 	if endpointOp == endpointOpUpdate {
-		preferredEndpoints = make([]any, 0, len(newSet.PreferredEndpoints))
+		preferredEndpoints = make([]*host.PreferredEndpoint, 0, len(newSet.PreferredEndpoints))
 		for i, e := range newSet.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, newSet.PublicId, uint32(i+1), e)
 			if err != nil {
@@ -454,7 +454,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 			case endpointOpDelete, endpointOpUpdate:
 				if len(currentSet.PreferredEndpoints) > 0 {
 					// Delete all old endpoint entries.
-					var peps []any
+					var peps []*host.PreferredEndpoint
 					for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
 						p := host.AllocPreferredEndpoint()
 						p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)

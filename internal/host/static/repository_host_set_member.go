@@ -74,8 +74,8 @@ func (r *Repository) AddSetMembers(ctx context.Context, projectId string, setId 
 	return hosts, nil
 }
 
-func (r *Repository) newMembers(ctx context.Context, setId string, hostIds []string) ([]any, error) {
-	var members []any
+func (r *Repository) newMembers(ctx context.Context, setId string, hostIds []string) ([]*HostSetMember, error) {
+	var members []*HostSetMember
 	for _, id := range hostIds {
 		var m *HostSetMember
 		m, err := NewHostSetMember(ctx, setId, id)
@@ -87,7 +87,7 @@ func (r *Repository) newMembers(ctx context.Context, setId string, hostIds []str
 	return members, nil
 }
 
-func createMembers(ctx context.Context, w db.Writer, members []any) ([]*oplog.Message, error) {
+func createMembers(ctx context.Context, w db.Writer, members []*HostSetMember) ([]*oplog.Message, error) {
 	var msgs []*oplog.Message
 	if err := w.CreateItems(ctx, members, db.NewOplogMsgs(&msgs)); err != nil {
 		return nil, errors.Wrap(ctx, err, "static.createMembers")
@@ -214,7 +214,7 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, projectId string, set
 	return len(hostIds), nil
 }
 
-func deleteMembers(ctx context.Context, w db.Writer, members []any) ([]*oplog.Message, error) {
+func deleteMembers(ctx context.Context, w db.Writer, members []*HostSetMember) ([]*oplog.Message, error) {
 	const op = "static.deleteMembers"
 	var msgs []*oplog.Message
 	rowsDeleted, err := w.DeleteItems(ctx, members, db.NewOplogMsgs(&msgs))
@@ -261,7 +261,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, projectId string, setId 
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	var deletions, additions []any
+	var deletions, additions []*HostSetMember
 	for _, c := range changes {
 		m, err := NewHostSetMember(ctx, setId, c.HostId)
 		if err != nil {

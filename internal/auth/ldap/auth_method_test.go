@@ -348,9 +348,9 @@ func Test_convertValueObjects(t *testing.T) {
 	testCerts := []string{pem}
 	c, err := NewCertificate(testCtx, testPublicId, pem)
 	require.NoError(t, err)
-	testCertificates := []any{c}
+	testCertificates := []*Certificate{c}
 
-	testUrls := make([]any, 0, len(testLdapServers))
+	testUrls := make([]*Url, 0, len(testLdapServers))
 	for priority, uu := range TestConvertToUrls(t, testLdapServers...) {
 		u, err := NewUrl(testCtx, testPublicId, priority+1, uu)
 		require.NoError(t, err)
@@ -358,7 +358,7 @@ func Test_convertValueObjects(t *testing.T) {
 	}
 
 	testAttrMaps := []string{"email_address=email", "display_name=fullName"}
-	testAccountAttributeMaps := make([]any, 0, len(testAttrMaps))
+	testAccountAttributeMaps := make([]*AccountAttributeMap, 0, len(testAttrMaps))
 	acms, err := ParseAccountAttributeMaps(testCtx, testAttrMaps...)
 	require.NoError(t, err)
 	for _, m := range acms {
@@ -618,6 +618,23 @@ func (a converted) Less(i, j int) bool {
 }
 
 func testSortConverted(t *testing.T, c *convertedValues) {
-	sort.Sort(converted(c.Urls))
-	sort.Sort(converted(c.Certs))
+	t.Helper()
+	sort.Sort(sortableUrls(c.Urls))
+	sort.Sort(sortableCerts(c.Certs))
+}
+
+type sortableUrls []*Url
+
+func (u sortableUrls) Len() int      { return len(u) }
+func (u sortableUrls) Swap(i, j int) { u[i], u[j] = u[j], u[i] }
+func (u sortableUrls) Less(i, j int) bool {
+	return u[i].GetServerUrl() < u[j].GetServerUrl()
+}
+
+type sortableCerts []*Certificate
+
+func (c sortableCerts) Len() int      { return len(c) }
+func (c sortableCerts) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+func (c sortableCerts) Less(i, j int) bool {
+	return c[i].GetCert() < c[j].GetCert()
 }
