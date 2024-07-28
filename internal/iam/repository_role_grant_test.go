@@ -763,7 +763,6 @@ func TestGrantsForUser(t *testing.T) {
 	//   * directGrantProj on respective projects (4 grants total)
 	expGrantTuples := []perms.GrantTuple{
 		// No grants from noOrg/noProj
-
 		// Grants from direct org1 to org1/proj1a/proj1b:
 		{
 			RoleId:  directGrantOrg1Role.PublicId,

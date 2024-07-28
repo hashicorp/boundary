@@ -112,7 +112,7 @@ type Writer interface {
 	// cycle of the writer and if an error is returned the caller must decide
 	// what to do with the transaction, which almost always should be to
 	// rollback.
-	CreateItems(ctx context.Context, createItems []any, opt ...Option) error
+	CreateItems(ctx context.Context, createItems any, opt ...Option) error
 
 	// Delete an object in the db with options: WithOplog, WithDebug.
 	// The caller is responsible for the transaction life cycle of the writer
@@ -127,7 +127,7 @@ type Writer interface {
 	// transaction life cycle of the writer and if an error is returned the
 	// caller must decide what to do with the transaction, which almost always
 	// should be to rollback. Delete returns the number of rows deleted or an error.
-	DeleteItems(ctx context.Context, deleteItems []any, opt ...Option) (int, error)
+	DeleteItems(ctx context.Context, deleteItems any, opt ...Option) (int, error)
 
 	// Exec will execute the sql with the values as parameters. The int returned
 	// is the number of rows affected by the sql. No options are currently
@@ -311,7 +311,7 @@ func (rw *Db) Create(ctx context.Context, i any, opt ...Option) error {
 // WithDebug, WithOplog, WithOplogMsgs, WithReturnRowsAffected, OnConflict,
 // WithVersion, and WithWhere  WithOplog and WithOplogMsgs may not be used
 // together.  WithLookup is not a supported option.
-func (rw *Db) CreateItems(ctx context.Context, createItems []any, opt ...Option) error {
+func (rw *Db) CreateItems(ctx context.Context, createItems any, opt ...Option) error {
 	const op = "db.CreateItems"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -389,7 +389,7 @@ func (rw *Db) Delete(ctx context.Context, i any, opt ...Option) (int, error) {
 // DeleteItems will delete multiple items of the same type. Supported options:
 // WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
 // together.
-func (rw *Db) DeleteItems(ctx context.Context, deleteItems []any, opt ...Option) (int, error) {
+func (rw *Db) DeleteItems(ctx context.Context, deleteItems any, opt ...Option) (int, error) {
 	const op = "db.DeleteItems"
 	if rw.underlying == nil {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")

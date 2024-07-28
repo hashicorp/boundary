@@ -56,7 +56,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		}
 	}
 
-	newRoleGrantScopes := make([]any, 0, len(addRoleGrantScopes))
+	newRoleGrantScopes := make([]*RoleGrantScope, 0, len(addRoleGrantScopes))
 	for _, grantScope := range grantScopes {
 		roleGrantScope, err := NewRoleGrantScope(ctx, role.GetPublicId(), grantScope)
 		if err != nil {
@@ -116,11 +116,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	roleGrantScopes = make([]*RoleGrantScope, 0, len(newRoleGrantScopes))
-	for _, grantScope := range newRoleGrantScopes {
-		roleGrantScopes = append(roleGrantScopes, grantScope.(*RoleGrantScope))
-	}
-	return roleGrantScopes, nil
+	return newRoleGrantScopes, nil
 }
 
 // DeleteRoleGrantScopes will delete role grant scopes associated with the role ID in
@@ -178,7 +174,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 			}
 			msgs = append(msgs, &roleOplogMsg)
 
-			deleteRoleGrantScopes := make([]any, 0, len(grantScopes))
+			deleteRoleGrantScopes := make([]*RoleGrantScope, 0, len(grantScopes))
 			for _, grantScope := range grantScopes {
 				roleGrantScope, err := NewRoleGrantScope(ctx, roleId, grantScope)
 				if err != nil {
@@ -264,8 +260,8 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 
 	// Check incoming grant scopes to see if they exist and if so act appropriately
 	currentRoleGrantScopes := make([]*RoleGrantScope, 0, len(grantScopes)+len(found))
-	addRoleGrantScopes := make([]any, 0, len(grantScopes))
-	deleteRoleGrantScopes := make([]any, 0, len(grantScopes))
+	addRoleGrantScopes := make([]*RoleGrantScope, 0, len(grantScopes))
+	deleteRoleGrantScopes := make([]*RoleGrantScope, 0, len(grantScopes))
 	for _, grantScope := range grantScopes {
 		rgs, ok := found[grantScope]
 		if ok {

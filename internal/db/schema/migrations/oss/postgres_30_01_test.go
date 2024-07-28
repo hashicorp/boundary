@@ -474,6 +474,7 @@ type dek struct {
 	CreateTime time.Time
 	Purpose    string
 }
+
 type dekVersion struct {
 	PrivateId        string
 	DataKeyId        string

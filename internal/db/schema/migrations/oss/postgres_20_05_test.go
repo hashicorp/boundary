@@ -222,7 +222,7 @@ values
 			require.NoError(err)
 
 			// Add items to insert
-			var items []any
+			var items []*host.PreferredEndpoint
 			for _, cond := range tt.conditions {
 				ep := host.AllocPreferredEndpoint()
 				ep.HostSetId = tt.hostSetId

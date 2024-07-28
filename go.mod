@@ -7,7 +7,7 @@ replace github.com/hashicorp/boundary/api => ./api
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
 require (
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.17.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.4.0
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -46,7 +46,6 @@ require (
 	github.com/hashicorp/vault/api v1.12.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgconn v1.14.3
-	github.com/jackc/pgx/v4 v4.18.3 // indirect
 	github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0
@@ -67,22 +66,22 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.11.0
-	golang.org/x/crypto v0.21.0
-	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.20.0
-	golang.org/x/term v0.18.0
-	golang.org/x/tools v0.17.0
+	golang.org/x/crypto v0.25.0
+	golang.org/x/sync v0.7.0
+	golang.org/x/sys v0.22.0
+	golang.org/x/term v0.22.0
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d
 	google.golang.org/genproto v0.0.0-20240205150955-31a09d347014
 	google.golang.org/grpc v1.61.1
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
-	google.golang.org/protobuf v1.33.0
-	gorm.io/driver/postgres v1.5.7
-	gorm.io/gorm v1.25.7 // indirect
+	google.golang.org/protobuf v1.34.2
+	gorm.io/driver/postgres v1.5.9
+	gorm.io/gorm v1.25.11 // indirect
 	mvdan.cc/gofumpt v0.5.0
 	nhooyr.io/websocket v1.8.10
 )
 
-require github.com/hashicorp/go-dbw v0.1.3-0.20240312210008-7ed943176e5b
+require github.com/hashicorp/go-dbw v0.1.4
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -96,7 +95,7 @@ require (
 	github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.13
-	github.com/jackc/pgx/v5 v5.5.5
+	github.com/jackc/pgx/v5 v5.6.0
 	github.com/jimlambrt/gldap v0.1.10
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.1.58
@@ -104,13 +103,13 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3
-	golang.org/x/net v0.23.0
+	golang.org/x/net v0.25.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	modernc.org/libc v1.41.0 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
@@ -137,7 +136,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.23.1 // indirect
 	go.opentelemetry.io/otel/sdk v1.23.1 // indirect
 	go.opentelemetry.io/otel/trace v1.23.1 // indirect
-	gorm.io/driver/sqlite v1.5.5 // indirect
+	gorm.io/driver/sqlite v1.5.6 // indirect
 )
 
 require (
@@ -189,8 +188,7 @@ require (
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
-	github.com/jackc/pgtype v1.14.2 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jefferai/go-libsecret v0.0.0-20210525195240-b53481abef97 // indirect
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f // indirect
 	github.com/jinzhu/gorm v1.9.16 // indirect
@@ -222,10 +220,10 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	github.com/xo/dburl v0.21.1 // indirect
-	golang.org/x/mod v0.15.0 // indirect
+	github.com/xo/dburl v0.23.1 // indirect
+	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/oauth2 v0.17.0 // indirect
-	golang.org/x/text v0.14.0
+	golang.org/x/text v0.16.0
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240205150955-31a09d347014 // indirect

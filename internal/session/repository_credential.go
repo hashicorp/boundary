@@ -32,7 +32,7 @@ func (r *Repository) AddSessionCredentials(ctx context.Context, sessProjectId, s
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
-	addCreds := make([]any, 0, len(credData))
+	addCreds := make([]credential, 0, len(credData))
 	for _, cred := range credData {
 		if len(cred) == 0 {
 			return errors.New(ctx, errors.InvalidParameter, op, "missing credential")

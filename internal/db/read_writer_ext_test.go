@@ -219,7 +219,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			Target: db.Constraint("db_test_user_public_id_key"),
 			Action: db.SetColumns([]string{"name"}),
 		}
-		users := []any{}
+		users := []*db_test.TestUser{}
 		users = append(users, conflictUser)
 		var rowsAffected int64
 		err = rw.CreateItems(ctx, users, db.WithOnConflict(&onConflict), db.WithOplog(oplogWrapper, md), db.WithReturnRowsAffected(&rowsAffected))

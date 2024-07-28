@@ -155,17 +155,41 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
-	addUrls, deleteUrls, err := valueObjectChanges(ctx, origAm.PublicId, UrlVO, am.Urls, origAm.Urls, dbMask, nullFields)
+	au, du, err := valueObjectChanges(ctx, origAm.PublicId, UrlVO, am.Urls, origAm.Urls, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update urls"))
 	}
-	addCerts, deleteCerts, err := valueObjectChanges(ctx, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
+	addUrls := []*Url{}
+	for _, u := range au {
+		addUrls = append(addUrls, u.(*Url))
+	}
+	deleteUrls := []*Url{}
+	for _, u := range du {
+		deleteUrls = append(deleteUrls, u.(*Url))
+	}
+	ac, dc, err := valueObjectChanges(ctx, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update certificates"))
 	}
-	addMaps, deleteMaps, err := valueObjectChanges(ctx, origAm.PublicId, AccountAttributeMapsVO, am.AccountAttributeMaps, origAm.AccountAttributeMaps, dbMask, nullFields)
+	deleteCerts := []*Certificate{}
+	for _, c := range dc {
+		deleteCerts = append(deleteCerts, c.(*Certificate))
+	}
+	addCerts := []*Certificate{}
+	for _, c := range ac {
+		addCerts = append(addCerts, c.(*Certificate))
+	}
+	addM, deleteM, err := valueObjectChanges(ctx, origAm.PublicId, AccountAttributeMapsVO, am.AccountAttributeMaps, origAm.AccountAttributeMaps, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update account attribute maps"))
+	}
+	addMaps := []*AccountAttributeMap{}
+	for _, m := range addM {
+		addMaps = append(addMaps, m.(*AccountAttributeMap))
+	}
+	deleteMaps := []*AccountAttributeMap{}
+	for _, m := range deleteM {
+		deleteMaps = append(deleteMaps, m.(*AccountAttributeMap))
 	}
 
 	combinedMasks := append(dbMask, nullFields...)

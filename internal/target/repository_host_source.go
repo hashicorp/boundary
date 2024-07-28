@@ -29,7 +29,7 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	if len(hostSourceIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host source ids")
 	}
-	newHostSources := make([]any, 0, len(hostSourceIds))
+	newHostSources := make([]*TargetHostSet, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
 		ths, err := NewTargetHostSet(ctx, targetId, id)
 		if err != nil {
@@ -139,7 +139,7 @@ func (r *Repository) DeleteTargetHostSources(ctx context.Context, targetId strin
 	if len(hostSourceIds) == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing host source ids")
 	}
-	deleteTargetHostSources := make([]any, 0, len(hostSourceIds))
+	deleteTargetHostSources := make([]*TargetHostSet, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
 		ths, err := NewTargetHostSet(ctx, targetId, id)
 		if err != nil {
@@ -251,7 +251,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 	for _, s := range foundThs {
 		found[s.Id()] = s
 	}
-	addHostSources := make([]any, 0, len(hostSourceIds))
+	addHostSources := make([]*TargetHostSet, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
 		if _, ok := found[id]; ok {
 			// found a match, so do nothing (we want to keep it), but remove it
@@ -265,7 +265,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 		}
 		addHostSources = append(addHostSources, hs)
 	}
-	deleteHostSources := make([]any, 0, len(hostSourceIds))
+	deleteHostSources := make([]*TargetHostSet, 0, len(hostSourceIds))
 	if len(found) > 0 {
 		for _, s := range found {
 			hs, err := NewTargetHostSet(ctx, targetId, s.Id())

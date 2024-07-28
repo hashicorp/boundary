@@ -455,7 +455,7 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	// Otherwise, go through and stage each tuple for insertion
 	// below.
 	if len(tags) > 0 {
-		uTags := make([]any, 0, len(tags))
+		uTags := make([]*store.WorkerTag, 0, len(tags))
 		for _, v := range tags {
 			if v == nil {
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("found nil tag value for worker %s", id))
@@ -822,7 +822,7 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 	}
 
 	rowsDeleted := 0
-	deleteTags := make([]any, 0, len(tags))
+	deleteTags := make([]*store.WorkerTag, 0, len(tags))
 	for _, t := range tags {
 		if t == nil {
 			return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "found nil tag value in input")

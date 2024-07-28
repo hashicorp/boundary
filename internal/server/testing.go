@@ -131,7 +131,7 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.Equal(t, "kms", wrk.Type)
 
 	if len(opts.withWorkerTags) > 0 {
-		var tags []any
+		var tags []*store.WorkerTag
 		for _, t := range opts.withWorkerTags {
 			tags = append(tags, &store.WorkerTag{
 				WorkerId: wrk.GetPublicId(),
@@ -170,7 +170,7 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.NotNil(t, wrk)
 
 	if len(opts.withWorkerTags) > 0 {
-		var tags []any
+		var tags []*store.WorkerTag
 		for _, t := range opts.withWorkerTags {
 			tags = append(tags, &store.WorkerTag{
 				WorkerId: wrk.GetPublicId(),

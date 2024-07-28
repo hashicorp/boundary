@@ -155,47 +155,93 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 	}
 
-	addAlgs, deleteAlgs, err := valueObjectChanges(ctx, origAm.PublicId, SigningAlgVO, am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
+	aa, ad, err := valueObjectChanges(ctx, origAm.PublicId, SigningAlgVO, am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
+	addAlgs := []*SigningAlg{}
+	for _, a := range aa {
+		addAlgs = append(addAlgs, a.(*SigningAlg))
+	}
+	deleteAlgs := []*SigningAlg{}
+	for _, a := range ad {
+		deleteAlgs = append(deleteAlgs, a.(*SigningAlg))
+	}
 
-	addCerts, deleteCerts, err := valueObjectChanges(ctx, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
+	ac, dc, err := valueObjectChanges(ctx, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
+	addCerts := []*Certificate{}
+	for _, c := range ac {
+		addCerts = append(addCerts, c.(*Certificate))
+	}
+	deleteCerts := []*Certificate{}
+	for _, c := range dc {
+		deleteCerts = append(deleteCerts, c.(*Certificate))
+	}
 
-	addAuds, deleteAuds, err := valueObjectChanges(ctx, origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
+	aa, ad, err = valueObjectChanges(ctx, origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
+	addAuds := []*AudClaim{}
+	for _, a := range aa {
+		addAuds = append(addAuds, a.(*AudClaim))
+	}
+	deleteAuds := []*AudClaim{}
+	for _, a := range ad {
+		deleteAuds = append(deleteAuds, a.(*AudClaim))
+	}
 
-	addScopes, deleteScopes, err := valueObjectChanges(ctx, origAm.PublicId, ClaimsScopesVO, am.ClaimsScopes, origAm.ClaimsScopes, dbMask, nullFields)
+	as, ds, err := valueObjectChanges(ctx, origAm.PublicId, ClaimsScopesVO, am.ClaimsScopes, origAm.ClaimsScopes, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
+	addScopes := []*ClaimsScope{}
+	for _, s := range as {
+		addScopes = append(addScopes, s.(*ClaimsScope))
+	}
+	deleteScopes := []*ClaimsScope{}
+	for _, s := range ds {
+		deleteScopes = append(deleteScopes, s.(*ClaimsScope))
+	}
 
-	addMaps, deleteMaps, err := valueObjectChanges(ctx, origAm.PublicId, AccountClaimMapsVO, am.AccountClaimMaps, origAm.AccountClaimMaps, dbMask, nullFields)
+	aacm, dacm, err := valueObjectChanges(ctx, origAm.PublicId, AccountClaimMapsVO, am.AccountClaimMaps, origAm.AccountClaimMaps, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
+	addMaps := []*AccountClaimMap{}
+	for _, m := range aacm {
+		addMaps = append(addMaps, m.(*AccountClaimMap))
+	}
+	deleteMaps := []*AccountClaimMap{}
+	for _, m := range dacm {
+		deleteMaps = append(deleteMaps, m.(*AccountClaimMap))
+	}
 
-	addPrompts, deletePrompts, err := valueObjectChanges(ctx, origAm.PublicId, PromptsVO, am.Prompts, origAm.Prompts, dbMask, nullFields)
+	ap, dp, err := valueObjectChanges(ctx, origAm.PublicId, PromptsVO, am.Prompts, origAm.Prompts, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	addPrompts := []*Prompt{}
+	for _, p := range ap {
+		addPrompts = append(addPrompts, p.(*Prompt))
+	}
+	deletePrompts := []*Prompt{}
+	for _, p := range dp {
+		deletePrompts = append(deletePrompts, p.(*Prompt))
 	}
 
 	// we don't allow updates for "sub" claim maps, because we have no way to
 	// determine if the updated "from" claim in the map might create collisions
 	// with any existing account's subject.
-	for _, rawCm := range addMaps {
-		cm := rawCm.(*AccountClaimMap)
+	for _, cm := range addMaps {
 		if cm.ToClaim == string(ToSubClaim) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
 		}
 	}
-	for _, rawCm := range deleteMaps {
-		cm := rawCm.(*AccountClaimMap)
+	for _, cm := range deleteMaps {
 		if cm.ToClaim == string(ToSubClaim) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
 		}

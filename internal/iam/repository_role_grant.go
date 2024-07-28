@@ -32,7 +32,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	role := allocRole()
 	role.PublicId = roleId
 
-	newRoleGrants := make([]any, 0, len(grants))
+	newRoleGrants := make([]*RoleGrant, 0, len(grants))
 	for _, grant := range grants {
 		roleGrant, err := NewRoleGrant(ctx, roleId, grant)
 		if err != nil {
@@ -96,11 +96,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	roleGrants := make([]*RoleGrant, 0, len(newRoleGrants))
-	for _, grant := range newRoleGrants {
-		roleGrants = append(roleGrants, grant.(*RoleGrant))
-	}
-	return roleGrants, nil
+	return newRoleGrants, nil
 }
 
 // DeleteRoleGrants deletes grants (as strings) from a role (roleId). The role's
@@ -166,7 +162,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 
 			// Check incoming grants to see if they exist and if so add to
 			// delete slice
-			deleteRoleGrants := make([]any, 0, len(grants))
+			deleteRoleGrants := make([]*RoleGrant, 0, len(grants))
 			for _, grant := range grants {
 				// Use a fake scope, just want to get out a canonical string
 				perm, err := perms.Parse(ctx, "o_abcd1234", grant, perms.WithSkipFinalValidation(true))
@@ -257,8 +253,8 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 
 	// Check incoming grants to see if they exist and if so act appropriately
 	currentRoleGrants := make([]*RoleGrant, 0, len(grants)+len(found))
-	addRoleGrants := make([]any, 0, len(grants))
-	deleteRoleGrants := make([]any, 0, len(grants))
+	addRoleGrants := make([]*RoleGrant, 0, len(grants))
+	deleteRoleGrants := make([]*RoleGrant, 0, len(grants))
 	for _, grant := range grants {
 		// Use a fake scope, just want to get out a canonical string
 		perm, err := perms.Parse(ctx, "o_abcd1234", grant, perms.WithSkipFinalValidation(true))

@@ -360,7 +360,7 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 	require.NoError(err)
 
 	if len(opts.WithHostSources) > 0 {
-		newHostSets := make([]any, 0, len(opts.WithHostSources))
+		newHostSets := make([]*target.TargetHostSet, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
 			hostSet, err := target.NewTargetHostSet(ctx, tar.GetPublicId(), s)
 			require.NoError(err)
@@ -370,7 +370,7 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 		require.NoError(err)
 	}
 	if len(opts.WithCredentialLibraries) > 0 {
-		newCredLibs := make([]any, 0, len(opts.WithCredentialLibraries))
+		newCredLibs := make([]*target.CredentialLibrary, 0, len(opts.WithCredentialLibraries))
 		for _, cl := range opts.WithCredentialLibraries {
 			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)
