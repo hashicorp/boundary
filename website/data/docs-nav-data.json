@@ -260,10 +260,6 @@
           {
             "title": "Connections/TLS",
             "path": "concepts/security/connections-tls"
-          },
-          {
-            "title": "Resource tables",
-            "path": "concepts/security/resource-table"
           }
         ]
       },
@@ -503,19 +499,23 @@
         ]
       },
       {
-        "title": "Permissions",
+        "title": "Identity and access management",
         "routes": [
           {
             "title": "Overview",
-            "path": "configuration/permissions"
+            "path": "configuration/identity-access-management"
           },
           {
             "title": "Assignable permissions",
-            "path": "configuration/permissions/assignable-permissions"
+            "path": "configuration/identity-access-management/assignable-permissions"
           },
           {
             "title": "Permission grant formats",
-            "path": "configuration/permissions/permission-grant-formats"
+            "path": "configuration/identity-access-management/permission-grant-formats"
+          },
+          {
+            "title": "Resource table",
+            "path": "configuration/identity-access-management/resource-table"
           }
         ]
       },
