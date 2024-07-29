@@ -145,11 +145,21 @@ func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.
 			return nil, status.Errorf(err.ErrCode, err.ErrMsg)
 		}
 	}
-	secrets := req.GetBucket().GetSecrets()
-	if secrets == nil {
-		secrets = &structpb.Struct{
-			Fields: make(map[string]*structpb.Value),
-		}
+	secrets := &structpb.Struct{
+		Fields: make(map[string]*structpb.Value),
+	}
+	var hasDynamicCreds bool
+	attrs := req.GetBucket().GetAttributes()
+	if attrs != nil {
+		_, hasDynamicCreds = attrs.Fields[ConstDynamicCredentials]
+	}
+	var hasStaticCreds bool
+	if req.GetBucket().GetSecrets() != nil && len(req.GetBucket().GetSecrets().AsMap()) > 0 {
+		hasStaticCreds = true
+		secrets = req.GetBucket().GetSecrets()
+	}
+	if hasDynamicCreds && hasStaticCreds {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: cannot use both dynamic and static credentials", op)
 	}
 	return &plgpb.OnCreateStorageBucketResponse{
 		Persisted: &storagebuckets.StorageBucketPersisted{
@@ -179,14 +189,25 @@ func (l *LoopbackStorage) onUpdateStorageBucket(ctx context.Context, req *plgpb.
 			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
-	var secrets *structpb.Struct
-	if req.GetNewBucket().GetSecrets() != nil {
+	secrets := &structpb.Struct{
+		Fields: make(map[string]*structpb.Value),
+	}
+	var hasDynamicCreds bool
+	attrs := req.GetNewBucket().GetAttributes()
+	if attrs != nil {
+		_, hasDynamicCreds = attrs.Fields[ConstDynamicCredentials]
+	}
+	var hasStaticCreds bool
+	if req.GetNewBucket().GetSecrets() != nil && len(req.GetNewBucket().GetSecrets().AsMap()) > 0 {
+		hasStaticCreds = true
 		secrets = req.GetNewBucket().GetSecrets()
-	} else if req.GetPersisted().GetData() != nil {
-		secrets = req.GetPersisted().GetData()
-	} else {
-		secrets = &structpb.Struct{
-			Fields: make(map[string]*structpb.Value),
+	}
+	if hasDynamicCreds && hasStaticCreds {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: cannot use both dynamic and static credentials", op)
+	}
+	if !hasDynamicCreds && len(secrets.AsMap()) == 0 {
+		if req.GetPersisted() != nil && req.GetPersisted().GetData() != nil && len(req.GetPersisted().GetData().AsMap()) > 0 {
+			secrets = req.GetPersisted().GetData()
 		}
 	}
 	return &plgpb.OnUpdateStorageBucketResponse{
