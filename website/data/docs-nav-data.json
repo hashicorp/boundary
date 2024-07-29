@@ -514,6 +514,10 @@
             "path": "configuration/identity-access-management/permission-grant-formats"
           },
           {
+            "title": "Manage roles",
+            "href": "common-workflows/manage-roles"
+          },
+          {
             "title": "Resource table",
             "path": "configuration/identity-access-management/resource-table"
           }
