@@ -1,91 +1,44 @@
 ---
 layout: docs
-page_title: Manage Roles and Permissions
-description: How to manage Roles and Permissions
+page_title: Manage roles and permissions
+description: How to manage roles, permissions, and grants.
 ---
 
-# Manage Roles and Permissions
+# Manage roles and permissions
 
-[Roles](/boundary/docs/concepts/domain-model/roles) in Boundary manage the permissions given to principals ([Users](/boundary/docs/concepts/domain-model/users)/[Groups](/boundary/docs/concepts/domain-model/groups)). Roles can be defined at the global, org, or project scopes.
+[Roles](/boundary/docs/concepts/domain-model/roles) in Boundary manage the permissions assigned to principals: 
 
-In this example, we're going to show you how to create a role in Boundary, assign that roles grants, and assign principals to the role.
+- ([Users](/boundary/docs/concepts/domain-model/users)
+- [Groups](/boundary/docs/concepts/domain-model/groups))
+- [Managed Groups](/boundary/docs/concepts/domain-model/managed-groups))
 
-~> Note that all resource IDs in this example are illustration only - IDs are uniquely generated for every resource upon creation with the exception being
-generated resources in `dev` mode. Please make sure to use the resource IDs that are generated when running this example. For example, if you run
-`boundary roles create`, use the resource ID of the role seen in stdout, not the ID in the example command.
+You can define a role in the global, org, or project scopes.
 
-# Create a Role
+In this example, we show how to create a role in Boundary, assign that role a permission set using grants, and assign principals to the role.
 
-Roles can live in the global, org, or project scopes. In this example we will create a role in the generated org scope in `dev` mode.
+<Note>
 
-<Tabs>
-<Tab heading="CLI">
+All resource IDs in this guide are examples. IDs are uniquely generated for every resource upon creation, with except the resources created when testing using Boundary's `dev` mode. Please make sure to use your own resource IDs when following this example. For example, if you execute `boundary roles create`, use the resource ID of the role found in stdout, not the ID in the example command.
 
-```bash
-$ boundary roles create -scope-id o_1234567890 -name my_role -description "My first role"
+</Note>
 
-Role information:
-  Created Time:        Fri, 09 Oct 2020 14:19:22 PDT
-  Description:         My first role
-  Grant Scope ID:      o_1234567890
-  ID:                  r_kHY8tQteXr
-  Name:                my_role
-  Updated Time:        Fri, 09 Oct 2020 14:19:22 PDT
-  Version:             1
+## Create a role
 
-  Scope:
-    ID:                o_1234567890
-    Name:              Generated org scope
-    Parent Scope ID:   global
-    Type:              org
-```
-
-</Tab>
-<Tab heading="Admin Console">
-
-1. Navigate to an org, then to roles.
-1. Choose the **New** button.
-1. Fill the role details.
-1. Choose **Save** and view the role edit form page.
-
-<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
-  <source
-    type="video/mp4"
-    src="https://www.datocms-assets.com/2885/1602516687-boundary-clickthrough-role-create.mp4"
-  />
-</video>
-
-</Tab>
-<Tab heading="Terraform">
-
-```hcl
-resource "boundary_scope" "role" {
-  name        = "my_role"
-  description = "My first role!"
-  scope_id    = o_1234567890
-}
-```
-
-</Tab>
-</Tabs>
-
-# Assign Principals to a Role
-
-Users and groups are granted permissions to perform actions by assigning them to a role.
+Roles can live in the global, org, or project scopes. In this example we create a role in the generated org scope in [Boundary's `dev` mode](/boundary/docs/getting-started/dev-mode/dev-mode).
 
 <Tabs>
-<Tab heading="CLI">
+<Tab heading="CLI" group="cli">
 
-```bash
-boundary roles add-principals -id $role_id -principal $principal_id
+```shell-session
+$ boundary roles create -scope-id o_1234567890 -name list_all_resources -description "List all resources"
 
 Role information:
-  Created Time:        Fri, 09 Oct 2020 14:45:47 PDT
-  Description:         My first role
-  Grant Scope ID:      o_1234567890
-  ID:                  r_CqEl81Io1C
-  Name:                test
-  Updated Time:        Fri, 09 Oct 2020 16:31:39 PDT
+  Created Time:        Thu, 25 Jul 2024 17:21:22 MDT
+  Description:         List all resources
+  Grant Scope ID:      this
+  ID:                  r_22sVJoKZj3
+  Name:                list_all_resources
+  Updated Time:        Thu, 25 Jul 2024 17:21:22 MDT
   Version:             2
 
   Scope:
@@ -94,60 +47,110 @@ Role information:
     Parent Scope ID:   global
     Type:              org
 
-  Principals:
-    ID:             u_gAv6YgVtVs
-      Type:         user
-      Scope ID:     o_1234567890
+  Authorized Actions:
+    add-principals
+    set-grants
+    remove-grants
+    no-op
+    remove-principals
+    set-grant-scopes
+    read
+    update
+    add-grant-scopes
+    delete
+    add-grants
+    set-principals
+    remove-grant-scopes
+
+  Grant Scope IDs:
+    ID:             this
 ```
 
 </Tab>
-<Tab heading="Admin Console">
+<Tab heading="Admin UI" group="ui">
 
-1. From the role edit form, navigate to the **Principals** tab.
-1. Choose **Add Principals** from the **Manage** dropdown.
-1. Select one or more users and groups to associate with the role.
-1. Choose the **Add Principals** button and view the principals list.
+Complete the following steps in the Boundary Admin UI.
 
-<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
-  <source
-    type="video/mp4"
-    src="https://www.datocms-assets.com/2885/1602516684-boundary-clickthrough-role-add-principal.mp4"
-  />
-</video>
+1. Navigate to an org, then to the roles view.
+1. Choose the **New** button.
+1. Fill the role details, including the Name `List all resources`.
+1. Click **Save**. You at then directed to the role's Settings page.
+
+![How Boundary Works](/img/ui/new-role_light.png#light-theme-only)
+![How Boundary Works](/img/ui/new-role_dark.png#dark-theme-only)
 
 </Tab>
-<Tab heading="Terraform">
+<Tab heading="Terraform" group="terraform">
+
+Before creating a role, ensure the principals you wish to assign to the role exist.
+
+For example, to create an org, project, user, and a group in an org scope, use the following resources:
 
 ```hcl
-resource "boundary_scope" "role" {
-  name        = "my_role"
-  description = "My first role!"
-  scope_id    = o_1234567890 // sets the role's scope as the default generated org. To change the role's scope provide a different scope id.
-  principals  = u_1234567890 // assigns the default generated admin user to the role. To assign a different principal provide a different principal id.
+resource "boundary_scope" "org" {
+  name                     = "organization_one"
+  description              = "My org scope"
+  scope_id                 = "global"
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+
+resource "boundary_scope" "project" {
+  name                   = "project_one"
+  description            = "My project scope"
+  scope_id               = boundary_scope.org.id
+  auto_create_admin_role = true
+}
+
+resource "boundary_user" "foo" {
+  name     = "Foo user"
+  scope_id = boundary_scope.org.id
+}
+
+resource "boundary_group" "bar" {
+  name     = "Bar group"
+  scope_id = boundary_scope.org.id
+}
+```
+
+Next, add the `boundary_role` resource, adding the org scope for `scope_id`:
+
+```hcl
+resource "boundary_role" "listonly" {
+  name          = "listonly"
+  description   = "A list only role"
+  scope_id      = boundary_scope.org.id
 }
 ```
 
 </Tab>
 </Tabs>
 
-# Assign Grants to a Role
+## Assign principals to a role
 
-Grants describe the actions that the principals should be allowed to perform. For more information on how to format grants see [Permission Grant Formats](/boundary/docs/concepts/security/permissions#permission-grant-formats).
-In this example we give a role read and list permissions to all resources.
+You can grant users, groups, and managed groups permissions to perform actions by assigning them as a role principal.
 
 <Tabs>
-<Tab heading="CLI">
+<Tab heading="CLI" group="cli">
 
-```bash
-boundary roles add-grants -id $role_id -grant 'ids=*;type=*;actions=no-op,list'
+Examples of principal IDs include:
+
+- User: `u_tfRrCUIpGH`
+- Group: `g_qu2V5QMGQD`
+- Managed group: `mgldap_98UNHEqtmD`
+
+The following example adds a group as a role principal.
+
+```shell-session
+$ boundary roles add-principals -id r_22sVJoKZj3 -principal g_qu2V5QMGQD
 
 Role information:
-  Created Time:        Fri, 09 Oct 2020 14:45:47 PDT
-  Description:         My first role
-  Grant Scope ID:      o_1234567890
-  ID:                  r_CqEl81Io1C
-  Name:                test
-  Updated Time:        Fri, 09 Oct 2020 17:15:47 PDT
+  Created Time:        Thu, 25 Jul 2024 17:21:22 MDT
+  Description:         List all resources
+  Grant Scope ID:      this
+  ID:                  r_22sVJoKZj3
+  Name:                list_all_resources
+  Updated Time:        Thu, 25 Jul 2024 17:33:33 MDT
   Version:             3
 
   Scope:
@@ -156,53 +159,249 @@ Role information:
     Parent Scope ID:   global
     Type:              org
 
+  Authorized Actions:
+    set-grant-scopes
+    no-op
+    read
+    update
+    set-principals
+    add-principals
+    set-grants
+    remove-principals
+    remove-grant-scopes
+    delete
+    add-grants
+    add-grant-scopes
+    remove-grants
+
   Principals:
-    ID:             u_gAv6YgVtVs
-      Type:         user
-      Scope ID:     o_1234567890
+    ID:             g_qu2V5QMGQD
+      Type:         group
+      Scope ID:     global
 
-  Canonical Grants:
-    id=*;type=*;actions=list,no-op
-
+  Grant Scope IDs:
+    ID:             this
 ```
 
 </Tab>
-<Tab heading="Admin Console">
+<Tab heading="Admin UI" group="ui">
 
-1. From the role edit form, navigate to the **Grants** tab.
-1. Fill a new grant string.
-1. Choose **Add**.
-1. Choose **Save** to commit your grant changes.
+1. From the role's Setting page, click on the **Principals** tab.
+1. Click the **Add Principals** button, or select it from the **Manage** dropdown.
+1. Select one or more users, groups, or managed groups to associate with the role.
+1. Click the **Add Principals** button. The role's Principals page should now show the principals you selected before.
 
-<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
-  <source
-    type="video/mp4"
-    src="https://www.datocms-assets.com/2885/1602516681-boundary-clickthrough-role-add-grant.mp4"
-  />
-</video>
-
-1. From the role edit form, navigate to the **Grant Scope** section.
-1. Select a scope.
-1. Choose **Save** to commit your grant changes.
-
-<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
-  <source
-    type="video/mp4"
-    src="https://www.datocms-assets.com/2885/1605554373-boundary-clickthrough-manage-roles-role-assign-grant-scope-v0-1-2.mp4"
-  />
-</video>
+![How Boundary Works](/img/ui/add-role-scopes_light.png#light-theme-only)
+![How Boundary Works](/img/ui/add-role-scopes_dark.png#dark-theme-only)
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
 
-<Tab heading="Terraform">
+You can assign principals with the `principal_ids` attribute.
+
+The following example adds the `boundary_user.foo` and `boundary_group.bar` principals to the role.
 
 ```hcl
-resource "boundary_scope" "role" {
-  name        = "my_role"
-  description = "My first role!"
-  scope_id    = o_1234567890
-  principals  = u_1234567890
-  grants      = ["ids=*;type=*;action=read,list"]
+resource "boundary_role" "listonly" {
+  name          = "listonly"
+  description   = "A list only role"
+  principal_ids = [boundary_user.foo.id,boundary_group.bar.id]
+  scope_id      = boundary_scope.org.id
+}
+```
+
+</Tab>
+</Tabs>
+
+## Assign grants to a role
+
+Grants describe the actions that the principals are allowed to perform. For more information on how to format grants, refer to [Permission Grant Formats](/boundary/docs/concepts/security/permissions/permission-grant-formats).
+
+In this example we give a role read and list permissions for all resources. The grant we apply for the role is:
+
+```text
+ids=*;type=*;actions=no-op,list
+```
+
+The `no-op` action enables users that don't have any other assigned permissions, like read or update, the ability to list resources they cannot take any actions on.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+```shell-session
+$ boundary roles add-grants -id r_22sVJoKZj3 -grant 'ids=*;type=*;actions=no-op,list'
+
+Role information:
+  Created Time:        Thu, 25 Jul 2024 17:21:22 MDT
+  Description:         List all resources
+  Grant Scope ID:      this
+  ID:                  r_22sVJoKZj3
+  Name:                list_all_resources
+  Updated Time:        Thu, 25 Jul 2024 17:42:46 MDT
+  Version:             4
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    remove-grant-scopes
+    add-grants
+    add-grant-scopes
+    delete
+    add-principals
+    set-grant-scopes
+    set-principals
+    remove-principals
+    set-grants
+    remove-grants
+    no-op
+    read
+    update
+
+  Principals:
+    ID:             g_qu2V5QMGQD
+      Type:         group
+      Scope ID:     global
+
+  Canonical Grants:
+    ids=*;type=*;actions=list,no-op
+
+  Grant Scope IDs:
+    ID:             this
+```
+
+</Tab>
+<Tab heading="Admin UI" group="ui">
+
+1. From the role's Settings page, click on the **Grants** tab.
+1. Paste in the example grant: `ids=*;type=*;actions=no-op,list` 
+1. Click **Add**.
+1. Click **Save** to commit your grant changes.
+
+![How Boundary Works](/img/ui/add-role-grant_light.png#light-theme-only)
+![How Boundary Works](/img/ui/add-role-grant_dark.png#dark-theme-only)
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Grants are assigned with the `grant_strings` attribute.
+
+```hcl
+resource "boundary_role" "listonly" {
+  name          = "listonly"
+  description   = "A list only role"
+  principal_ids = [boundary_user.foo.id,boundary_group.bar.id]
+  grant_strings = ["ids=*;type=*;actions=no-op,list"]
+  scope_id      = boundary_scope.org.id
+}
+```
+
+</Tab>
+</Tabs>
+
+## Add grant scopes
+
+You can assign roles to multiple scopes, and configure role inheritance.
+
+Role can have a combination of the following grant scope IDs:
+
+- `this` (this scope)
+- `children` (all direct children of the assigned scopes, `global` and org scopes only)
+- `descendants` (all descendants of a scope, `global only`)
+- ID (such as `o_v2MpV4vBHN` or `p_0vfvaQPwhD`. Roles accept multiple grant scope IDs)
+
+Grants are automatically assigned the `this` scope when created. 
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+The following command adds the IDs of a project scope and the direct children of the assigned scopes to the role.
+
+```shell-session
+$ boundary roles add-grant-scopes -id r_22sVJoKZj3 -grant-scope-id "p_1234567890" -grant-scope-id "children"
+
+Role information:
+  Created Time:        Thu, 25 Jul 2024 17:21:22 MDT
+  Description:         List all resources
+  ID:                  r_22sVJoKZj3
+  Name:                list_all_resources
+  Updated Time:        Thu, 25 Jul 2024 18:06:08 MDT
+  Version:             6
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    remove-principals
+    set-grants
+    remove-grants
+    delete
+    add-principals
+    add-grants
+    set-grant-scopes
+    set-principals
+    add-grant-scopes
+    no-op
+    read
+    update
+    remove-grant-scopes
+
+  Principals:
+    ID:             g_qu2V5QMGQD
+      Type:         group
+      Scope ID:     global
+
+  Canonical Grants:
+    ids=*;type=*;actions=list,no-op
+
+  Grant Scope IDs:
+    ID:             children
+    ID:             p_1234567890
+    ID:             this
+```
+
+</Tab>
+<Tab heading="Admin UI" group="ui">
+
+1. Click on the **Scopes** tab. The `this` scope will already be applied.
+1. From the **Manage** dropdown, click **Manage Scopes**.
+1. Click **Manage custom scopes**.
+1. Select any additional scopes that should be assigned this grant, such as `p_1234567890` in Boundary's `dev` mode.
+
+<Note>
+
+  The settings defined for the role's children or descendants will apply to any scope assigned to this role.
+
+</Note>
+
+1. Click **Apply changes to org**.
+1. Toggle the switch beside **Add all children**.
+1. Click **Save**. The selected scope IDs and `children` will be listed under the Scopes tab.
+
+![How Boundary Works](/img/ui/how-boundary-works_light.png#light-theme-only)
+![How Boundary Works](/img/ui/how-boundary-works_dark.png#dark-theme-only)
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+You can declare scope inheritance with the `grant_scope_ids` attribute.
+
+The following example adds the assigned scope's id with `this`, the ID of a project scope, and the direct children of the assigned scopes to the role.
+
+```hcl
+resource "boundary_role" "listonly" {
+  name            = "listonly"
+  description     = "A list only role"
+  principal_ids   = [boundary_user.foo.id,boundary_group.bar.id]
+  grant_strings   = ["ids=*;type=*;actions=no-op,list"]
+  scope_id        = boundary_scope.org.id
+  grant_scope_ids = ["this",boundary_scope.project.id,"children"]
 }
 ```
 
