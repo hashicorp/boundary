@@ -38,6 +38,8 @@ We recommend that you use single quotes, because the filters contain double quot
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
 - `-include-terminated` - If set, Boundary includes terminated sessions in the `list` results.
 The default value is `false`.
+This field has been deprecated and will be removed from a future release.
+Boundary will include terminated sessions in all list results, unless you filter them out.
 - `recursive` - If set, runs the list operation recursively on any child scopes, if the type supports it.
 The default value is `false`.
 - `scope-id=<string>` - The scope from which to list sessions.

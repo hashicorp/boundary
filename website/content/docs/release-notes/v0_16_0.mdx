@@ -203,3 +203,53 @@ description: |-
   </tr>
   </tbody>
 </table>
+
+## Feature deprecations and EOL
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>EOL</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>boundary daemon</code> command
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     The <code>boundary daemon</code> command has been deprecated in favor of the new <code>boundary cache</code> command. The functionality remains the same.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/cache"><code>boundary cache</code></a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>include_terminated</code> field removed
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     The <code>include_terminated</code> field from the <code>list sessions</code> command has been deprecated and will be removed in an upcoming release. Boundary will return terminated sessions in all list session responses, unless they are filtered out.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/sessions/list#command-options"><code>sessions list</code> command options</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>grant_scope_id</code> field removed from roles
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     The <code>grant_scope_id</code> field, which was deprecated in release 0.15.0, has been removed from roles. You can now manage roles using the <code>add-grant-scopes</code>, <code>remove-grant-scopes</code>, and <code>set-grant-scopes</code> commands.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/roles/add-grant-scopes"><code>add-grant-scopes</code></a>, <a href="/boundary/docs/commands/roles/remove-grant-scopes"><code>remove-grant-scopes</code></a>, and <a href="/boundary/docs/commands/roles/set-grant-scopes"><code>set-grant-scopes</code></a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
