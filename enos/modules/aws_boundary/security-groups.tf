@@ -28,6 +28,13 @@ resource "aws_security_group" "boundary_sg" {
     cidr_blocks = flatten([formatlist("%s/32", data.enos_environment.localhost.public_ipv4_addresses)])
   }
 
+  ingress {
+    from_port   = var.listener_proxy_port
+    to_port     = var.listener_proxy_port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   dynamic "ingress" {
     for_each = local.listener_ports
 
