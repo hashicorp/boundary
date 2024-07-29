@@ -10,7 +10,7 @@ description: |-
 Each grant string is a mapping that describes a resource or set of resources and
 the permissions that should be granted on them.
 
-Refer to [Assignable permissons](/boundary/docs/configuration/permissions/assignable-permissions) for more information about the permissions you can include in grants.
+Refer to [Assignable permissons](/boundary/docs/configuration/identity-access-management/assignable-permissions) for more information about the permissions you can include in grants.
 
 A grant string has a form similar to:
 
@@ -140,6 +140,10 @@ The following templates substitute a given value into the ID field of the grant 
   method to change their own password.
 - `{{.User.Id}}`: The substituted value is the user ID associated with the token
   used to perform the action.
+
+## Resources
+
+Refer to [Resource tables](/boundary/docs/configuration/identity-access-management/resource-table) for lists of the available permissions per resource type.
 
 ## Next steps
 
