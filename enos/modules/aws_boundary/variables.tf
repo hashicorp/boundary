@@ -139,7 +139,7 @@ variable "db_class" {
 variable "db_version" {
   description = "AWS RDS DBS engine version (for postgres/mysql)"
   type        = string
-  default     = "15.3"
+  default     = "15.6"
 }
 
 variable "db_engine" {
