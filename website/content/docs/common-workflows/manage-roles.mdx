@@ -6,11 +6,11 @@ description: How to manage roles, permissions, and grants.
 
 # Manage roles and permissions
 
-[Roles](/boundary/docs/concepts/domain-model/roles) in Boundary manage the permissions assigned to principals: 
+[Roles](/boundary/docs/concepts/domain-model/roles) in Boundary manage the permissions assigned to principals:
 
-- ([Users](/boundary/docs/concepts/domain-model/users)
-- [Groups](/boundary/docs/concepts/domain-model/groups))
-- [Managed Groups](/boundary/docs/concepts/domain-model/managed-groups))
+- [Users](/boundary/docs/concepts/domain-model/users)
+- [Groups](/boundary/docs/concepts/domain-model/groups)
+- [Managed Groups](/boundary/docs/concepts/domain-model/managed-groups)
 
 You can define a role in the global, org, or project scopes.
 
@@ -74,7 +74,7 @@ Complete the following steps in the Boundary Admin UI.
 1. Navigate to an org, then to the roles view.
 1. Choose the **New** button.
 1. Fill the role details, including the Name `List all resources`.
-1. Click **Save**. You at then directed to the role's Settings page.
+1. Click **Save**. You are then directed to the role's Settings page.
 
 ![How Boundary Works](/img/ui/new-role_light.png#light-theme-only)
 ![How Boundary Works](/img/ui/new-role_dark.png#dark-theme-only)
@@ -277,7 +277,7 @@ Role information:
 <Tab heading="Admin UI" group="ui">
 
 1. From the role's Settings page, click on the **Grants** tab.
-1. Paste in the example grant: `ids=*;type=*;actions=no-op,list` 
+1. Paste in the example grant: `ids=*;type=*;actions=no-op,list`
 1. Click **Add**.
 1. Click **Save** to commit your grant changes.
 
@@ -313,7 +313,7 @@ Role can have a combination of the following grant scope IDs:
 - `descendants` (all descendants of a scope, `global only`)
 - ID (such as `o_v2MpV4vBHN` or `p_0vfvaQPwhD`. Roles accept multiple grant scope IDs)
 
-Grants are automatically assigned the `this` scope when created. 
+Grants are automatically assigned the `this` scope when created.
 
 <Tabs>
 <Tab heading="CLI" group="cli">
