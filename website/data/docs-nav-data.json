@@ -254,27 +254,6 @@
             "path": "concepts/security"
           },
           {
-            "title": "Permissions",
-            "routes": [
-              {
-                "title": "Overview",
-                "path": "concepts/security/permissions"
-              },
-              {
-                "title": "Assignable permissions",
-                "path": "concepts/security/permissions/assignable-permissions"
-              },
-              {
-                "title": "Permission grant formats",
-                "path": "concepts/security/permissions/permission-grant-formats"
-              },
-              {
-                "title": "Resource tables",
-                "path": "concepts/security/permissions/resource-table"
-              }
-            ]
-          },
-          {
             "title": "Data encryption",
             "path": "concepts/security/data-encryption"
           },
@@ -516,6 +495,31 @@
               "type": "outlined",
               "color": "neutral"
             }
+          }
+        ]
+      },
+      {
+        "title": "Identity and access management",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/identity-access-management"
+          },
+          {
+            "title": "Assignable permissions",
+            "path": "configuration/identity-access-management/assignable-permissions"
+          },
+          {
+            "title": "Permission grant formats",
+            "path": "configuration/identity-access-management/permission-grant-formats"
+          },
+          {
+            "title": "Manage roles",
+            "href": "common-workflows/manage-roles"
+          },
+          {
+            "title": "Resource table",
+            "path": "configuration/identity-access-management/resource-table"
           }
         ]
       },
