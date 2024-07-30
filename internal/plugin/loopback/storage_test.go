@@ -52,9 +52,11 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		request     *plgpb.OnCreateStorageBucketRequest
-		expectedErr codes.Code
+		name                 string
+		request              *plgpb.OnCreateStorageBucketRequest
+		expectedErr          codes.Code
+		expectedStaticCreds  bool
+		expectedDynamicCreds bool
 	}{
 		{
 			name:        "missing request",
@@ -105,6 +107,22 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 			expectedErr: codes.PermissionDenied,
 		},
 		{
+			name: "error both credential types",
+			request: &plgpb.OnCreateStorageBucketRequest{
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint":              structpb.NewStringValue("0.0.0.0"),
+							ConstDynamicCredentials: structpb.NewBoolValue(true),
+						},
+					},
+				},
+			},
+			expectedErr: codes.InvalidArgument,
+		},
+		{
 			name: "valid without credentials",
 			request: &plgpb.OnCreateStorageBucketRequest{
 				Bucket: &storagebuckets.StorageBucket{
@@ -116,9 +134,25 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 					},
 				},
 			},
+			expectedDynamicCreds: true,
 		},
 		{
-			name: "valid with credentials",
+			name: "valid with dynamic credentials",
+			request: &plgpb.OnCreateStorageBucketRequest{
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint":              structpb.NewStringValue("0.0.0.0"),
+							ConstDynamicCredentials: structpb.NewBoolValue(true),
+						},
+					},
+				},
+			},
+			expectedDynamicCreds: true,
+		},
+		{
+			name: "valid with static credentials",
 			request: &plgpb.OnCreateStorageBucketRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
@@ -130,6 +164,7 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 					},
 				},
 			},
+			expectedStaticCreds: true,
 		},
 	}
 	for _, tt := range tests {
@@ -148,7 +183,17 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 			require.NotNil(response)
 			assert.NotNil(response.GetPersisted())
 			assert.NotNil(response.GetPersisted().GetData())
-			assert.EqualValues(tt.request.GetBucket().GetSecrets().AsMap(), response.GetPersisted().GetData().AsMap())
+
+			if tt.expectedDynamicCreds {
+				assert.Empty(response.GetPersisted().GetData().AsMap())
+				return
+			}
+
+			if tt.expectedStaticCreds {
+				assert.NotEmpty(response.GetPersisted().GetData().AsMap())
+				assert.EqualValues(tt.request.GetBucket().GetSecrets().AsMap(), response.GetPersisted().GetData().AsMap())
+				return
+			}
 		})
 	}
 }
@@ -181,9 +226,11 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		request     *plgpb.OnUpdateStorageBucketRequest
-		expectedErr codes.Code
+		name                 string
+		request              *plgpb.OnUpdateStorageBucketRequest
+		expectedErr          codes.Code
+		expectedStaticCreds  bool
+		expectedDynamicCreds bool
 	}{
 		{
 			name:        "missing request",
@@ -236,7 +283,23 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 			expectedErr: codes.PermissionDenied,
 		},
 		{
-			name: "valid without credentials",
+			name: "error both credential types",
+			request: &plgpb.OnUpdateStorageBucketRequest{
+				NewBucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint":              structpb.NewStringValue("0.0.0.0"),
+							ConstDynamicCredentials: structpb.NewBoolValue(true),
+						},
+					},
+				},
+			},
+			expectedErr: codes.InvalidArgument,
+		},
+		{
+			name: "valid without static credentials",
 			request: &plgpb.OnUpdateStorageBucketRequest{
 				NewBucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
@@ -247,9 +310,25 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 					},
 				},
 			},
+			expectedDynamicCreds: true,
 		},
 		{
-			name: "valid with credentials",
+			name: "valid with dynamic credentials attribute",
+			request: &plgpb.OnUpdateStorageBucketRequest{
+				NewBucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint":              structpb.NewStringValue("0.0.0.0"),
+							ConstDynamicCredentials: structpb.NewBoolValue(true),
+						},
+					},
+				},
+			},
+			expectedDynamicCreds: true,
+		},
+		{
+			name: "valid with both persisted and static credentials",
 			request: &plgpb.OnUpdateStorageBucketRequest{
 				NewBucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
@@ -262,6 +341,37 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 				},
 				Persisted: persisted,
 			},
+			expectedStaticCreds: true,
+		},
+		{
+			name: "valid with only persisted static credentials",
+			request: &plgpb.OnUpdateStorageBucketRequest{
+				NewBucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+				Persisted: persisted,
+			},
+			expectedStaticCreds: true,
+		},
+		{
+			name: "valid with only static credentials",
+			request: &plgpb.OnUpdateStorageBucketRequest{
+				NewBucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedStaticCreds: true,
 		},
 	}
 	for _, tt := range tests {
@@ -280,7 +390,26 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 			require.NotNil(response)
 			assert.NotNil(response.GetPersisted())
 			assert.NotNil(response.GetPersisted().GetData())
-			assert.EqualValues(tt.request.GetNewBucket().GetSecrets().AsMap(), response.GetPersisted().GetData().AsMap())
+
+			if tt.expectedDynamicCreds {
+				assert.Empty(response.GetPersisted().GetData().AsMap())
+				return
+			}
+
+			if tt.expectedStaticCreds {
+				assert.NotEmpty(response.GetPersisted().GetData().AsMap())
+				newSecrets := tt.request.GetNewBucket().GetSecrets()
+				if newSecrets != nil && len(newSecrets.AsMap()) > 0 {
+					assert.EqualValues(newSecrets.AsMap(), response.GetPersisted().GetData().AsMap())
+					return
+				}
+				oldSecrets := tt.request.GetPersisted().GetData()
+				if oldSecrets != nil && len(oldSecrets.AsMap()) > 0 {
+					assert.EqualValues(oldSecrets.AsMap(), response.GetPersisted().GetData().AsMap())
+					return
+				}
+				return
+			}
 		})
 	}
 }
