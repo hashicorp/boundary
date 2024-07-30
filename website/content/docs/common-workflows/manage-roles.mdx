@@ -14,17 +14,17 @@ description: How to manage roles, permissions, and grants.
 
 You can define a role in the global, org, or project scopes.
 
-In this example, we show how to create a role in Boundary, assign that role a permission set using grants, and assign principals to the role.
+In this topic, we show how to create a role in Boundary, assign that role a permission set using grants, and assign principals to the role.
 
 <Note>
 
-All resource IDs in this guide are examples. IDs are uniquely generated for every resource upon creation, with except the resources created when testing using Boundary's `dev` mode. Please make sure to use your own resource IDs when following this example. For example, if you execute `boundary roles create`, use the resource ID of the role found in stdout, not the ID in the example command.
+All resource IDs in this guide are examples. Boundary generates unique IDs for every resource, with the exception of the resources that are created when you use Boundary's `dev` mode. Make sure you substitute your own resource IDs when you follow this example. For example, if you execute `boundary roles create`, use the resource ID of the role in your stdout, not the ID in the example command.
 
 </Note>
 
 ## Create a role
 
-Roles can live in the global, org, or project scopes. In this example we create a role in the generated org scope in [Boundary's `dev` mode](/boundary/docs/getting-started/dev-mode/dev-mode).
+Roles can live in the global, org, or project scopes. In this example, we create a role in the generated org scope in [Boundary's `dev` mode](/boundary/docs/getting-started/dev-mode/dev-mode).
 
 <Tabs>
 <Tab heading="CLI" group="cli">
@@ -71,18 +71,19 @@ Role information:
 
 Complete the following steps in the Boundary Admin UI.
 
-1. Navigate to an org, then to the roles view.
-1. Choose the **New** button.
-1. Fill the role details, including the Name `List all resources`.
-1. Click **Save**. You are then directed to the role's Settings page.
+1. Log in to Boundary.
+1. Navigate to an org, then select **Roles** on the navigation pane.
+1. Click the **New** button.
+1. Fill in the role details, including the name `List all resources`.
+1. Click **Save**. You are then directed to the role's **Settings** page.
 
-![How Boundary Works](/img/ui/new-role_light.png#light-theme-only)
-![How Boundary Works](/img/ui/new-role_dark.png#dark-theme-only)
+![The Create a new role dialog lets you name and describe the new role.](/img/ui/new-role_light.png#light-theme-only)
+![The Create a new role dialog lets you name and describe the new role.](/img/ui/new-role_dark.png#dark-theme-only)
 
 </Tab>
 <Tab heading="Terraform" group="terraform">
 
-Before creating a role, ensure the principals you wish to assign to the role exist.
+Before you create a role, ensure that the principals you want to assign to the role exist.
 
 For example, to create an org, project, user, and a group in an org scope, use the following resources:
 
@@ -186,10 +187,12 @@ Role information:
 </Tab>
 <Tab heading="Admin UI" group="ui">
 
-1. From the role's Setting page, click on the **Principals** tab.
+1. Log in to Boundary.
+1. Select **Roles** in the navigation pane, and then select the role you want to assign principals to.
+1. From the role's **Setting** page, click on the **Principals** tab.
 1. Click the **Add Principals** button, or select it from the **Manage** dropdown.
 1. Select one or more users, groups, or managed groups to associate with the role.
-1. Click the **Add Principals** button. The role's Principals page should now show the principals you selected before.
+1. Click the **Add Principals** button. The role's **Principals** page should now show the principals you selected before.
 
 ![How Boundary Works](/img/ui/add-role-scopes_light.png#light-theme-only)
 ![How Boundary Works](/img/ui/add-role-scopes_dark.png#dark-theme-only)
@@ -215,9 +218,9 @@ resource "boundary_role" "listonly" {
 
 ## Assign grants to a role
 
-Grants describe the actions that the principals are allowed to perform. For more information on how to format grants, refer to [Permission Grant Formats](/boundary/docs/concepts/security/permissions/permission-grant-formats).
+Grants describe the actions that the principals are allowed to perform. For more information on how to format grants, refer to [Permission grant formats](/boundary/docs/configuration/identity-access-management/permission-grant-formats).
 
-In this example we give a role read and list permissions for all resources. The grant we apply for the role is:
+In this example, we give a role read and list permissions for all resources. The grant we apply for the role is:
 
 ```text
 ids=*;type=*;actions=no-op,list
@@ -276,18 +279,20 @@ Role information:
 </Tab>
 <Tab heading="Admin UI" group="ui">
 
-1. From the role's Settings page, click on the **Grants** tab.
-1. Paste in the example grant: `ids=*;type=*;actions=no-op,list`
+1. Log in to Boundary.
+1. Select **Roles** in the navigation pane, and the select the role you want to assign grants to.
+1. From the role's **Settings** page, click on the **Grants** tab.
+1. In the **New Grant** field, paste in the example grant: `ids=*;type=*;actions=no-op,list`
 1. Click **Add**.
 1. Click **Save** to commit your grant changes.
 
-![How Boundary Works](/img/ui/add-role-grant_light.png#light-theme-only)
-![How Boundary Works](/img/ui/add-role-grant_dark.png#dark-theme-only)
+![The Grants tab on the Roles page lets you add grants to principals.](/img/ui/add-role-grant_light.png#light-theme-only)
+![The Grants tab on the Roles page lets you add grants to principals.](/img/ui/add-role-grant_dark.png#dark-theme-only)
 
 </Tab>
 <Tab heading="Terraform" group="terraform">
 
-Grants are assigned with the `grant_strings` attribute.
+You assign grants using the `grant_strings` attribute.
 
 ```hcl
 resource "boundary_role" "listonly" {
@@ -304,7 +309,7 @@ resource "boundary_role" "listonly" {
 
 ## Add grant scopes
 
-You can assign roles to multiple scopes, and configure role inheritance.
+You can assign roles to multiple scopes and configure role inheritance.
 
 Role can have a combination of the following grant scope IDs:
 
@@ -313,7 +318,7 @@ Role can have a combination of the following grant scope IDs:
 - `descendants` (all descendants of a scope, `global only`)
 - ID (such as `o_v2MpV4vBHN` or `p_0vfvaQPwhD`. Roles accept multiple grant scope IDs)
 
-Grants are automatically assigned the `this` scope when created.
+Boundary automatically assigns grants the `this` scope, when you create them.
 
 <Tabs>
 <Tab heading="CLI" group="cli">
@@ -369,20 +374,18 @@ Role information:
 </Tab>
 <Tab heading="Admin UI" group="ui">
 
-1. Click on the **Scopes** tab. The `this` scope will already be applied.
+1. Log in to Boundary.
+1. Select **Roles** in the navigation pane, and then select the role.
+1. Click on the **Scopes** tab. The `this` scope will already be applied to the grant.
 1. From the **Manage** dropdown, click **Manage Scopes**.
 1. Click **Manage custom scopes**.
-1. Select any additional scopes that should be assigned this grant, such as `p_1234567890` in Boundary's `dev` mode.
+1. Select any additional scopes that you want to assign this grant, such as `p_1234567890` in Boundary's `dev` mode.
 
-<Note>
-
-  The settings defined for the role's children or descendants will apply to any scope assigned to this role.
-
-</Note>
+   The settings you define for the role's children or descendants will apply to any scope you assign to this role.
 
 1. Click **Apply changes to org**.
 1. Toggle the switch beside **Add all children**.
-1. Click **Save**. The selected scope IDs and `children` will be listed under the Scopes tab.
+1. Click **Save**. The selected scope IDs and `children` are listed under the **Scopes** tab.
 
 ![How Boundary Works](/img/ui/how-boundary-works_light.png#light-theme-only)
 ![How Boundary Works](/img/ui/how-boundary-works_dark.png#dark-theme-only)
