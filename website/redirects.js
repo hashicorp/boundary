@@ -206,7 +206,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/security/permissions/assignable-permissions',
-    destination: '/boundarydocs/configuration/identity-access-management/assignable-permisisons',
+    destination: '/boundary/docs/configuration/identity-access-management/assignable-permisisons',
     permanent: true,
   },
   {
