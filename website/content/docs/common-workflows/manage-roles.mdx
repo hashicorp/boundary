@@ -89,7 +89,7 @@ For example, to create an org, project, user, and a group in an org scope, use t
 
 ```hcl
 resource "boundary_scope" "org" {
-  name                     = "organization_one"
+  name                     = "org_one"
   description              = "My org scope"
   scope_id                 = "global"
   auto_create_admin_role   = true
@@ -314,7 +314,7 @@ You can assign roles to multiple scopes and configure role inheritance.
 Role can have a combination of the following grant scope IDs:
 
 - `this` (this scope)
-- `children` (all direct children of the assigned scopes, `global` and org scopes only)
+- `children` (all direct children of the assigned scope, `global` and org scopes only)
 - `descendants` (all descendants of a scope, `global only`)
 - ID (such as `o_v2MpV4vBHN` or `p_0vfvaQPwhD`. Roles accept multiple grant scope IDs)
 
@@ -323,7 +323,7 @@ Boundary automatically assigns grants the `this` scope, when you create them.
 <Tabs>
 <Tab heading="CLI" group="cli">
 
-The following command adds the IDs of a project scope and the direct children of the assigned scopes to the role.
+The following command adds the IDs of a project scope and the direct children of the role's scope to the role. This includes projects within `o_1234567890` in this example.
 
 ```shell-session
 $ boundary roles add-grant-scopes -id r_22sVJoKZj3 -grant-scope-id "p_1234567890" -grant-scope-id "children"
@@ -395,7 +395,7 @@ Role information:
 
 You can declare scope inheritance with the `grant_scope_ids` attribute.
 
-The following example adds the assigned scope's id with `this`, the ID of a project scope, and the direct children of the assigned scopes to the role.
+The following example adds the assigned scope's ID with `this`, the ID of a project scope, and the direct children of the role's scope to the role. This includes projects within `org_one` in this example.
 
 ```hcl
 resource "boundary_role" "listonly" {
