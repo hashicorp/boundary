@@ -64,7 +64,7 @@ Workers can have the following permission states:
 
 Boundary uses the permission states to determine the remote storage state of a worker. The worker can have the following remote storage states:
 - `available`: All permission states are healthy. The worker has the required access to the external storage.
-- `error`: One or more of the permission sates are not healthy. Workers may not be able to perform certain actions on the external storage.
+- `error`: One or more of the permission states are not healthy. Workers may not be able to perform certain actions on the external storage.
 
 Boundary periodically checks the states of any workers that use the external storage, and then reports them back to the controller.
 
@@ -112,4 +112,4 @@ worker {
 
 ## Next steps
 
-After you configure worker storage, you can configure the external storage provider for [Amazon S3](/boundary/docs/configuration/session-recording/storage-providers/configure-s3) or [MinIO](/boundary/docs/configuration/session-recording/storage-providers/configure-minio).
+After you configure worker storage, you can configure the external storage for [Amazon S3](/boundary/docs/configuration/session-recording/storage-providers/configure-s3), [MinIO](/boundary/docs/configuration/session-recording/storage-providers/configure-minio), or an [S3-compliant provider](/boundary/docs/configuration/session-recording/storage-providers/configure-s3-compliant).
