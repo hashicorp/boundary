@@ -60,7 +60,7 @@ description: |-
     </td>
     <td style={{verticalAlign: 'middle'}}>
       When you attempt to connect to a target, Boundary randomly selects a worker that has the matching tags to proxy the connection. Before release 0.17.0, unhealthy workers that had issues related to the external storage provider were eligible to proxy connections. The connections would fail, and users had to restart the connection until Boundary selected a healthy worker. <br /><br />
-      In this release, Boundary removes workers from the connection pool if they have issues with the external storage provider for improved worker failure handling.
+      In this release, Boundary removes workers from the pool of available workers if they have issues with the external storage provider for improved worker failure handling.
       <br /><br />
       Learn more:&nbsp;<a href="/boundary/docs/configuration/session-recording/configure-worker-storage">Configure workers for session recording</a>.
     </td>
