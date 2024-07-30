@@ -6427,6 +6427,10 @@
           "description": "Output only. The HMAC of the last secrets supplied via the API, if any.",
           "readOnly": true
         },
+        "worker_filter": {
+          "type": "string",
+          "description": "Optional worker filter for plugin-subtype host catalogs. Boundary Enterprise only."
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

@@ -63,7 +63,10 @@ message HostCatalog {
 
   // worker_filter is optional.
   // @inject_tag: `gorm:"default:null"`
-  string worker_filter = 11;
+  string worker_filter = 11 [(custom_options.v1.mask_mapping) = {
+    this: "WorkerFilter"
+    that: "worker_filter"
+  }];
 }
 
 message HostSet {

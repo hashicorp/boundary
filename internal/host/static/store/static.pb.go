@@ -494,6 +494,56 @@ func (x *UnimplementedSetFields) GetSyncIntervalSeconds() int32 {
 	return 0
 }
 
+// These fields are not implemented yet on the host catalog. They are captured
+// here for the purpose of identifying the mask maps which are on the top level
+// api catalog resource but aren't present in the static host catalog storage.
+type UnimplementedCatalogFields struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	WorkerFilter string `protobuf:"bytes,11,opt,name=worker_filter,json=workerFilter,proto3" json:"worker_filter,omitempty"`
+}
+
+func (x *UnimplementedCatalogFields) Reset() {
+	*x = UnimplementedCatalogFields{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_host_static_store_v1_static_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UnimplementedCatalogFields) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnimplementedCatalogFields) ProtoMessage() {}
+
+func (x *UnimplementedCatalogFields) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_host_static_store_v1_static_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnimplementedCatalogFields.ProtoReflect.Descriptor instead.
+func (*UnimplementedCatalogFields) Descriptor() ([]byte, []int) {
+	return file_controller_storage_host_static_store_v1_static_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UnimplementedCatalogFields) GetWorkerFilter() string {
+	if x != nil {
+		return x.WorkerFilter
+	}
+	return ""
+}
+
 var File_controller_storage_host_static_store_v1_static_proto protoreflect.FileDescriptor
 
 var file_controller_storage_host_static_store_v1_static_proto_rawDesc = []byte{
@@ -599,12 +649,18 @@ var file_controller_storage_host_static_store_v1_static_proto_rawDesc = []byte{
 	0x72, 0x76, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x6f, 0x6e, 0x64, 0x73, 0x12, 0x15, 0x73, 0x79, 0x6e,
 	0x63, 0x5f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x5f, 0x73, 0x65, 0x63, 0x6f, 0x6e,
 	0x64, 0x73, 0x52, 0x13, 0x73, 0x79, 0x6e, 0x63, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c,
-	0x53, 0x65, 0x63, 0x6f, 0x6e, 0x64, 0x73, 0x42, 0x40, 0x5a, 0x3e, 0x67, 0x69, 0x74, 0x68, 0x75,
-	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f,
-	0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61,
-	0x6c, 0x2f, 0x68, 0x6f, 0x73, 0x74, 0x2f, 0x73, 0x74, 0x61, 0x74, 0x69, 0x63, 0x2f, 0x73, 0x74,
-	0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x53, 0x65, 0x63, 0x6f, 0x6e, 0x64, 0x73, 0x22, 0x64, 0x0a, 0x1a, 0x55, 0x6e, 0x69, 0x6d, 0x70,
+	0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64, 0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x46,
+	0x69, 0x65, 0x6c, 0x64, 0x73, 0x12, 0x46, 0x0a, 0x0d, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f,
+	0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x09, 0x42, 0x21, 0xc2, 0xdd,
+	0x29, 0x1d, 0x0a, 0x0c, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72,
+	0x12, 0x0d, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x52,
+	0x0c, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x42, 0x40, 0x5a,
+	0x3e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68,
+	0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69,
+	0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x68, 0x6f, 0x73, 0x74, 0x2f, 0x73, 0x74, 0x61,
+	0x74, 0x69, 0x63, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -619,22 +675,23 @@ func file_controller_storage_host_static_store_v1_static_proto_rawDescGZIP() []b
 	return file_controller_storage_host_static_store_v1_static_proto_rawDescData
 }
 
-var file_controller_storage_host_static_store_v1_static_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_controller_storage_host_static_store_v1_static_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_controller_storage_host_static_store_v1_static_proto_goTypes = []any{
-	(*HostCatalog)(nil),            // 0: controller.storage.host.static.store.v1.HostCatalog
-	(*Host)(nil),                   // 1: controller.storage.host.static.store.v1.Host
-	(*HostSet)(nil),                // 2: controller.storage.host.static.store.v1.HostSet
-	(*HostSetMember)(nil),          // 3: controller.storage.host.static.store.v1.HostSetMember
-	(*UnimplementedSetFields)(nil), // 4: controller.storage.host.static.store.v1.UnimplementedSetFields
-	(*timestamp.Timestamp)(nil),    // 5: controller.storage.timestamp.v1.Timestamp
+	(*HostCatalog)(nil),                // 0: controller.storage.host.static.store.v1.HostCatalog
+	(*Host)(nil),                       // 1: controller.storage.host.static.store.v1.Host
+	(*HostSet)(nil),                    // 2: controller.storage.host.static.store.v1.HostSet
+	(*HostSetMember)(nil),              // 3: controller.storage.host.static.store.v1.HostSetMember
+	(*UnimplementedSetFields)(nil),     // 4: controller.storage.host.static.store.v1.UnimplementedSetFields
+	(*UnimplementedCatalogFields)(nil), // 5: controller.storage.host.static.store.v1.UnimplementedCatalogFields
+	(*timestamp.Timestamp)(nil),        // 6: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_host_static_store_v1_static_proto_depIdxs = []int32{
-	5, // 0: controller.storage.host.static.store.v1.HostCatalog.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 1: controller.storage.host.static.store.v1.HostCatalog.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 2: controller.storage.host.static.store.v1.Host.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 3: controller.storage.host.static.store.v1.Host.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 4: controller.storage.host.static.store.v1.HostSet.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 5: controller.storage.host.static.store.v1.HostSet.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 0: controller.storage.host.static.store.v1.HostCatalog.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 1: controller.storage.host.static.store.v1.HostCatalog.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 2: controller.storage.host.static.store.v1.Host.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 3: controller.storage.host.static.store.v1.Host.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 4: controller.storage.host.static.store.v1.HostSet.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 5: controller.storage.host.static.store.v1.HostSet.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	6, // [6:6] is the sub-list for method output_type
 	6, // [6:6] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name
@@ -708,6 +765,18 @@ func file_controller_storage_host_static_store_v1_static_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_host_static_store_v1_static_proto_msgTypes[5].Exporter = func(v any, i int) any {
+			switch v := v.(*UnimplementedCatalogFields); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -715,7 +784,7 @@ func file_controller_storage_host_static_store_v1_static_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_host_static_store_v1_static_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -191,3 +191,15 @@ func DefaultSecrets() Option {
 		o.postMap["secrets"] = nil
 	}
 }
+
+func WithWorkerFilter(inWorkerFilter string) Option {
+	return func(o *options) {
+		o.postMap["worker_filter"] = inWorkerFilter
+	}
+}
+
+func DefaultWorkerFilter() Option {
+	return func(o *options) {
+		o.postMap["worker_filter"] = nil
+	}
+}

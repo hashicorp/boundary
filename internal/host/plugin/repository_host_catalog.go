@@ -723,19 +723,23 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 	if in == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
-	var name, description *wrapperspb.StringValue
+	var name, description, workerFilter *wrapperspb.StringValue
 	if inName := in.GetName(); inName != "" {
 		name = wrapperspb.String(inName)
 	}
 	if inDescription := in.GetDescription(); inDescription != "" {
 		description = wrapperspb.String(inDescription)
 	}
+	if inWorkerFilter := in.GetWorkerFilter(); inWorkerFilter != "" {
+		workerFilter = wrapperspb.String(inWorkerFilter)
+	}
 
 	hc := &pb.HostCatalog{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetProjectId(),
-		Name:        name,
-		Description: description,
+		Id:           in.GetPublicId(),
+		ScopeId:      in.GetProjectId(),
+		Name:         name,
+		Description:  description,
+		WorkerFilter: workerFilter,
 	}
 	if len(in.GetSecretsHmac()) > 0 {
 		hc.SecretsHmac = base58.Encode(in.GetSecretsHmac())

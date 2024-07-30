@@ -72,7 +72,14 @@ var (
 			),
 		},
 	}
+
+	validateWorkerFilterFn = validateWorkerFilterUnsupported
+	workerFilterToProto    = false
 )
+
+func validateWorkerFilterUnsupported(_ string) error {
+	return fmt.Errorf("Worker filter on host catalogs is an Enterprise-only feature")
+}
 
 const domain = "host"
 
@@ -80,7 +87,7 @@ func init() {
 	var err error
 	if staticMaskManager, err = handlers.NewMaskManager(
 		context.Background(),
-		handlers.MaskDestination{&store.HostCatalog{}},
+		handlers.MaskDestination{&store.HostCatalog{}, &store.UnimplementedCatalogFields{}},
 		handlers.MaskSource{&pb.HostCatalog{}},
 	); err != nil {
 		panic(err)
@@ -871,6 +878,11 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 		if outputFields.Has(globals.SecretsHmacField) {
 			out.SecretsHmac = base58.Encode(h.GetSecretsHmac())
 		}
+		if outputFields.Has(globals.WorkerFilterField) && h.GetWorkerFilter() != "" {
+			if workerFilterToProto {
+				out.WorkerFilter = wrapperspb.String(h.GetWorkerFilter())
+			}
+		}
 		if outputFields.Has(globals.AttributesField) {
 			attrs := &structpb.Struct{}
 			err := proto.Unmarshal(h.Attributes, attrs)
@@ -918,6 +930,9 @@ func toStoragePluginCatalog(ctx context.Context, projectId, plgId string, item *
 	if secrets := item.GetSecrets(); secrets != nil {
 		opts = append(opts, hostplugin.WithSecrets(secrets))
 	}
+	if workerFilter := item.GetWorkerFilter(); workerFilter != nil {
+		opts = append(opts, hostplugin.WithWorkerFilter(workerFilter.GetValue()))
+	}
 	hc, err := hostplugin.NewHostCatalog(ctx, projectId, plgId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
@@ -959,6 +974,12 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 				badFields[globals.PluginIdField] = "Can't set the plugin name field along with this field."
 				badFields[globals.PluginNameField] = "Can't set the plugin id field along with this field."
 			}
+			if req.GetItem().GetWorkerFilter() != nil {
+				err := validateWorkerFilterFn(req.GetItem().GetWorkerFilter().GetValue())
+				if err != nil {
+					badFields[globals.WorkerFilterField] = err.Error()
+				}
+			}
 		default:
 			badFields[globals.TypeField] = fmt.Sprintf("This is a required field and must be either %q or %q.", static.Subtype.String(), hostplugin.Subtype.String())
 		}
@@ -986,6 +1007,12 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 			}
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This is a read only field."
+			}
+			if req.GetItem().GetWorkerFilter() != nil {
+				err := validateWorkerFilterFn(req.GetItem().GetWorkerFilter().GetValue())
+				if err != nil {
+					badFields[globals.WorkerFilterField] = err.Error()
+				}
 			}
 		}
 		return badFields
