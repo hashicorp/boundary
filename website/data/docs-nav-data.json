@@ -1766,6 +1766,10 @@
         "path": "release-notes"
       },
       {
+        "title": "v0.17.0",
+        "path": "release-notes/v0_17_0"
+      },
+      {
         "title": "v0.16.0",
         "path": "release-notes/v0_16_0"
       },
