@@ -393,7 +393,7 @@ var resources = map[resource.Type]info{
 		},
 	},
 	resource.Alias: {
-		scopes: append(iamScopes, infraScope...),
+		scopes: []string{"Global"},
 	},
 	resource.AuthMethod: {
 		scopes: iamScopes,
