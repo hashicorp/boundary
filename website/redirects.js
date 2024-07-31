@@ -200,11 +200,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/security/permissions',
-    destination: '/boundary/docs/configuration/identity-access-management',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/concepts/security/permissions/assignable-permissions',
     destination: '/boundary/docs/configuration/identity-access-management/assignable-permisisons',
     permanent: true,
@@ -212,6 +207,11 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/security/permissions/permission-grant-formats',
     destination: '/boundary/docs/configuration/identity-access-management/permission-grant-formats',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/security/permissions',
+    destination: '/boundary/docs/configuration/identity-access-management',
     permanent: true,
   },
 ]
