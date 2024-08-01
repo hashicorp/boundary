@@ -8,11 +8,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/hashicorp/boundary/api"
@@ -131,6 +134,21 @@ func handleHighLevelShortcuts(args []string, runOpts *RunOptions) []string {
 	return newArgs
 }
 
+func handleDumpTimeout(args []string) (time.Duration, []string) {
+	for i, a := range args {
+		if a == "-dump-timeout" {
+			if i+1 < len(args) {
+				timeout, err := time.ParseDuration(args[i+1])
+				if err == nil {
+					return timeout, append(args[:i], args[i+2:]...)
+				}
+				return time.Duration(0), append(args[:i], args[i+2:]...)
+			}
+		}
+	}
+	return time.Duration(0), args
+}
+
 type RunOptions struct {
 	Stdout     io.Writer
 	Stderr     io.Writer
@@ -232,6 +250,7 @@ func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 	}
 
 	args = handleHighLevelShortcuts(args, runOpts)
+	timeout, args := handleDumpTimeout(args)
 
 	// Set args back
 	if compLine != "" {
@@ -257,6 +276,17 @@ func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 	}
 
 	var err error
+	if timeout > time.Duration(0) {
+		stackDumpTimer := time.After(timeout)
+		go func() {
+			select {
+			case <-stackDumpTimer:
+				buf := make([]byte, 1<<20)
+				stackLen := runtime.Stack(buf, true)
+				log.Printf("*** goroutine dump...\n%s\n*** end\n", buf[:stackLen])
+			}
+		}()
+	}
 	exitCode, err = cli.Run()
 	if outputCurlString {
 		if exitCode == 0 {
