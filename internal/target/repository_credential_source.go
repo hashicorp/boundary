@@ -88,7 +88,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			msgs = append(msgs, &targetOplogMsg)
 
 			if len(addCredLibs) > 0 {
-				i := make([]any, 0, len(addCredLibs))
+				i := make([]*CredentialLibrary, 0, len(addCredLibs))
 				for _, cl := range addCredLibs {
 					i = append(i, cl)
 				}
@@ -100,7 +100,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			}
 
 			if len(addStaticCreds) > 0 {
-				i := make([]any, 0, len(addStaticCreds))
+				i := make([]*StaticCredential, 0, len(addStaticCreds))
 				for _, c := range addStaticCreds {
 					i = append(i, c)
 				}
@@ -208,7 +208,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 			msgs = append(msgs, &targetOplogMsg)
 
 			if len(deleteCredLibs) > 0 {
-				i := make([]any, 0, len(deleteCredLibs))
+				i := make([]*CredentialLibrary, 0, len(deleteCredLibs))
 				for _, cl := range deleteCredLibs {
 					i = append(i, cl)
 				}
@@ -226,7 +226,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 			}
 
 			if len(deleteStaticCred) > 0 {
-				i := make([]any, 0, len(deleteStaticCred))
+				i := make([]*StaticCredential, 0, len(deleteStaticCred))
 				for _, cl := range deleteStaticCred {
 					i = append(i, cl)
 				}
@@ -362,7 +362,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// add new credential libraries
 			if len(addCredLibs) > 0 {
-				i := make([]any, 0, len(addCredLibs))
+				i := make([]*CredentialLibrary, 0, len(addCredLibs))
 				for _, cl := range addCredLibs {
 					i = append(i, cl)
 				}
@@ -377,7 +377,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// delete existing credential libraries not part of set
 			if len(delCredLibs) > 0 {
-				i := make([]any, 0, len(delCredLibs))
+				i := make([]*CredentialLibrary, 0, len(delCredLibs))
 				for _, cl := range delCredLibs {
 					i = append(i, cl)
 				}
@@ -396,7 +396,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// add new static credential
 			if len(addStaticCred) > 0 {
-				i := make([]any, 0, len(addStaticCred))
+				i := make([]*StaticCredential, 0, len(addStaticCred))
 				for _, cl := range addStaticCred {
 					i = append(i, cl)
 				}
@@ -411,7 +411,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// delete existing static credentials not part of set
 			if len(delStaticCred) > 0 {
-				i := make([]any, 0, len(delStaticCred))
+				i := make([]*StaticCredential, 0, len(delStaticCred))
 				for _, cl := range delStaticCred {
 					i = append(i, cl)
 				}

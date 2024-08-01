@@ -437,7 +437,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				{
 					if len(hi.ipsToRemove) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToRemove))
-						count, err := w.DeleteItems(ctx, hi.ipsToRemove.toArray(), db.NewOplogMsgs(&oplogMsgs))
+						count, err := w.DeleteItems(ctx, hi.ipsToRemove.toSlice(), db.NewOplogMsgs(&oplogMsgs))
 						if err != nil {
 							return err
 						}
@@ -452,8 +452,8 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 							Target: db.Constraint("host_ip_address_pkey"),
 							Action: db.DoNothing(true),
 						}
-						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
-							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toArray(), ret.GetPublicId())))
+						if err := w.CreateItems(ctx, hi.ipsToAdd.toSlice(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
+							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toSlice(), ret.GetPublicId())))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
@@ -463,7 +463,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				{
 					if len(hi.dnsNamesToRemove) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToRemove))
-						count, err := w.DeleteItems(ctx, hi.dnsNamesToRemove.toArray(), db.NewOplogMsgs(&oplogMsgs))
+						count, err := w.DeleteItems(ctx, hi.dnsNamesToRemove.toSlice(), db.NewOplogMsgs(&oplogMsgs))
 						if err != nil {
 							return err
 						}
@@ -478,7 +478,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 							Target: db.Constraint("host_dns_name_pkey"),
 							Action: db.DoNothing(true),
 						}
-						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
+						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toSlice(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
 							return err
 						}
 						msgs = append(msgs, oplogMsgs...)

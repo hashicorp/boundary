@@ -36,7 +36,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing any of users, groups, or managed groups to add")
 	}
 
-	newUserRoles := make([]any, 0, len(userIds))
+	newUserRoles := make([]*UserRole, 0, len(userIds))
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(ctx, roleId, id)
 		if err != nil {
@@ -44,7 +44,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		}
 		newUserRoles = append(newUserRoles, usrRole)
 	}
-	newGrpRoles := make([]any, 0, len(groupIds))
+	newGrpRoles := make([]*GroupRole, 0, len(groupIds))
 	for _, id := range groupIds {
 		grpRole, err := NewGroupRole(ctx, roleId, id)
 		if err != nil {
@@ -52,7 +52,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		}
 		newGrpRoles = append(newGrpRoles, grpRole)
 	}
-	newManagedGrpRoles := make([]any, 0, len(managedGroupIds))
+	newManagedGrpRoles := make([]*ManagedGroupRole, 0, len(managedGroupIds))
 	for _, id := range managedGroupIds {
 		managedGrpRole, err := NewManagedGroupRole(ctx, roleId, id)
 		if err != nil {
@@ -338,7 +338,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	role := allocRole()
 	role.PublicId = roleId
 
-	deleteUserRoles := make([]any, 0, len(userIds))
+	deleteUserRoles := make([]*UserRole, 0, len(userIds))
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(ctx, roleId, id)
 		if err != nil {
@@ -346,7 +346,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		}
 		deleteUserRoles = append(deleteUserRoles, usrRole)
 	}
-	deleteGrpRoles := make([]any, 0, len(groupIds))
+	deleteGrpRoles := make([]*GroupRole, 0, len(groupIds))
 	for _, id := range groupIds {
 		grpRole, err := NewGroupRole(ctx, roleId, id)
 		if err != nil {
@@ -354,7 +354,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		}
 		deleteGrpRoles = append(deleteGrpRoles, grpRole)
 	}
-	deleteManagedGrpRoles := make([]any, 0, len(managedGroupIds))
+	deleteManagedGrpRoles := make([]*ManagedGroupRole, 0, len(managedGroupIds))
 	for _, id := range managedGroupIds {
 		managedGrpRole, err := NewManagedGroupRole(ctx, roleId, id)
 		if err != nil {
@@ -465,12 +465,12 @@ func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt 
 }
 
 type PrincipalSet struct {
-	AddUserRoles            []any
-	AddGroupRoles           []any
-	AddManagedGroupRoles    []any
-	DeleteUserRoles         []any
-	DeleteGroupRoles        []any
-	DeleteManagedGroupRoles []any
+	AddUserRoles            []*UserRole
+	AddGroupRoles           []*GroupRole
+	AddManagedGroupRoles    []*ManagedGroupRole
+	DeleteUserRoles         []*UserRole
+	DeleteGroupRoles        []*GroupRole
+	DeleteManagedGroupRoles []*ManagedGroupRole
 	// unchangedPrincipalRoles is set iff there are no changes, that is, the
 	// length of all other members is zero
 	UnchangedPrincipalRoles []*PrincipalRole
@@ -503,7 +503,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is unknown principal type %s", p.PrincipalId, p.GetType()))
 		}
 	}
-	var newUserRoles []any
+	var newUserRoles []*UserRole
 	userIdsMap := map[string]struct{}{}
 	for _, id := range userIds {
 		userIdsMap[id] = struct{}{}
@@ -515,7 +515,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			newUserRoles = append(newUserRoles, usrRole)
 		}
 	}
-	var newGrpRoles []any
+	var newGrpRoles []*GroupRole
 	groupIdsMap := map[string]struct{}{}
 	for _, id := range groupIds {
 		groupIdsMap[id] = struct{}{}
@@ -527,7 +527,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			newGrpRoles = append(newGrpRoles, grpRole)
 		}
 	}
-	var newManagedGrpRoles []any
+	var newManagedGrpRoles []*ManagedGroupRole
 	managedGroupIdsMap := map[string]struct{}{}
 	for _, id := range managedGroupIds {
 		managedGroupIdsMap[id] = struct{}{}
@@ -539,7 +539,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			newManagedGrpRoles = append(newManagedGrpRoles, managedGrpRole)
 		}
 	}
-	var deleteUserRoles []any
+	var deleteUserRoles []*UserRole
 	for _, p := range existingUsers {
 		if _, ok := userIdsMap[p.PrincipalId]; !ok {
 			usrRole, err := NewUserRole(ctx, p.GetRoleId(), p.GetPrincipalId())
@@ -549,7 +549,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			deleteUserRoles = append(deleteUserRoles, usrRole)
 		}
 	}
-	var deleteGrpRoles []any
+	var deleteGrpRoles []*GroupRole
 	for _, p := range existingGroups {
 		if _, ok := groupIdsMap[p.PrincipalId]; !ok {
 			grpRole, err := NewGroupRole(ctx, p.GetRoleId(), p.GetPrincipalId())
@@ -559,7 +559,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			deleteGrpRoles = append(deleteGrpRoles, grpRole)
 		}
 	}
-	var deleteManagedGrpRoles []any
+	var deleteManagedGrpRoles []*ManagedGroupRole
 	for _, p := range existingManagedGroups {
 		if _, ok := managedGroupIdsMap[p.PrincipalId]; !ok {
 			managedGrpRole, err := NewManagedGroupRole(ctx, p.GetRoleId(), p.GetPrincipalId())

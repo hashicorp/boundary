@@ -232,7 +232,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 				}
 				roleGrantOplogMsgs := make([]*oplog.Message, 0, 1)
-				if err := w.CreateItems(ctx, []any{roleGrant}, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
+				if err := w.CreateItems(ctx, []*RoleGrant{roleGrant}, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
@@ -242,7 +242,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
 				}
 				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, 1)
-				if err := w.CreateItems(ctx, []any{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+				if err := w.CreateItems(ctx, []*RoleGrantScope{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope"))
 				}
 				msgs = append(msgs, roleGrantScopeOplogMsgs...)
@@ -252,7 +252,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role user"))
 				}
 				roleUserOplogMsgs := make([]*oplog.Message, 0, 1)
-				if err := w.CreateItems(ctx, []any{rolePrincipal}, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
+				if err := w.CreateItems(ctx, []*UserRole{rolePrincipal}, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleUserOplogMsgs...)
@@ -301,7 +301,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				// Grants
 				{
-					grants := []any{}
+					grants := []*RoleGrant{}
 
 					switch s.Type {
 					case scope.Project.String():
@@ -352,7 +352,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				// Principals
 				{
-					principals := []any{}
+					principals := []*UserRole{}
 					userId := globals.AnonymousUserId
 					if s.Type == scope.Project.String() {
 						userId = globals.AnyAuthenticatedUserId
@@ -375,7 +375,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
 				}
 				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, 1)
-				if err := w.CreateItems(ctx, []any{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+				if err := w.CreateItems(ctx, []*RoleGrantScope{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope"))
 				}
 				msgs = append(msgs, roleGrantScopeOplogMsgs...)

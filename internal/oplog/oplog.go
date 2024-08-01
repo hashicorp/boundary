@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	reflect "reflect"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -17,6 +18,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -463,7 +465,7 @@ func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tabl
 			// TODO: jimlambrt 12/2021 -> while this will work for
 			// CreateItems(...) it's hardly efficient.  We'll need to refactor
 			// oplog quite a bit to support a multi-message operation.
-			if err := rw.CreateItems(ctx, []any{m.Message}, m.Opts...); err != nil {
+			if err := rw.CreateItems(ctx, convertToSlice(m.Message), m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_UPDATE:
@@ -478,7 +480,7 @@ func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tabl
 			// TODO: jimlambrt 12/2021 -> while this will work for
 			// DeleteItems(...) it's hardly efficient.  We'll need to refactor
 			// oplog quite a bit to support a multi-message operation.
-			if _, err := rw.DeleteItems(ctx, []any{m.Message}, m.Opts...); err != nil {
+			if _, err := rw.DeleteItems(ctx, convertToSlice(m.Message), m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		default:
@@ -486,4 +488,12 @@ func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tabl
 		}
 	}
 	return nil
+}
+
+func convertToSlice(m protoreflect.ProtoMessage) any {
+	valueType := reflect.TypeOf(m) // Assume all values are the same type
+	sliceType := reflect.SliceOf(valueType)
+	sliceValue := reflect.MakeSlice(sliceType, 1, 1)
+	sliceValue.Index(0).Set(reflect.ValueOf(m))
+	return sliceValue.Interface()
 }

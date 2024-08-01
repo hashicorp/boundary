@@ -5,6 +5,7 @@ package plugin
 
 import (
 	"context"
+	"reflect"
 	"sort"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -13,22 +14,30 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
-// valueToInterfaceMap is a map that has a function to convert values into an
-// array
+// valueToInterfaceMap is a map that has a function to convert values into a
+// slice
 type valueToInterfaceMap map[string]any
 
-func (m valueToInterfaceMap) toArray() []any {
+func (m valueToInterfaceMap) toSlice() any {
 	switch {
 	case m == nil:
 		return nil
 	case len(m) == 0:
 		return make([]any, 0)
 	default:
-		ret := make([]any, 0, len(m))
-		for _, v := range m {
-			ret = append(ret, v)
+		var valueType reflect.Type
+		existingValues := make([]any, 0, len(m))
+		for _, value := range m {
+			valueType = reflect.TypeOf(value) // Assume all values are the same type
+			existingValues = append(existingValues, value)
 		}
-		return ret
+		// Create a slice of the concrete type
+		sliceType := reflect.SliceOf(valueType)
+		sliceValue := reflect.MakeSlice(sliceType, len(m), len(m))
+		for i := 0; i < len(m); i++ {
+			sliceValue.Index(i).Set(reflect.ValueOf(existingValues[i]))
+		}
+		return sliceValue.Interface()
 	}
 }
 

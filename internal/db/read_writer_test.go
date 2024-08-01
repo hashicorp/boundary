@@ -1682,8 +1682,8 @@ func TestDb_CreateItems(t *testing.T) {
 	oplogWrapper := TestOplogWrapper(t, db)
 	testOplogResourceId := testId(t)
 
-	createFn := func() []any {
-		results := []any{}
+	createFn := func() []*db_test.TestUser {
+		results := []*db_test.TestUser{}
 		for i := 0; i < 10; i++ {
 			u, err := db_test.NewTestUser()
 			require.NoError(t, err)
@@ -1705,7 +1705,7 @@ func TestDb_CreateItems(t *testing.T) {
 	returnedMsgs := []*oplog.Message{}
 
 	type args struct {
-		createItems []any
+		createItems any
 		opt         []Option
 	}
 	tests := []struct {
@@ -1865,21 +1865,19 @@ func TestDb_CreateItems(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			for _, item := range tt.args.createItems {
+			for _, item := range tt.args.createItems.([]*db_test.TestUser) {
 				u := db_test.AllocTestUser()
-				u.PublicId = item.(*db_test.TestUser).PublicId
+				u.PublicId = item.PublicId
 				err := rw.LookupByPublicId(context.Background(), &u)
 				assert.NoError(err)
-				if _, ok := item.(*db_test.TestUser); ok {
-					assert.Truef(proto.Equal(item.(*db_test.TestUser).StoreTestUser, u.StoreTestUser), "%s and %s should be equal", item, u)
-				}
+				assert.Truef(proto.Equal(item.StoreTestUser, u.StoreTestUser), "%s and %s should be equal", item, u)
 			}
 			if tt.wantOplogId != "" {
 				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(10*time.Second))
 				assert.NoError(err)
 			}
 			if tt.wantOplogMsgs {
-				assert.Equal(len(tt.args.createItems), len(returnedMsgs))
+				assert.Equal(len(tt.args.createItems.([]*db_test.TestUser)), len(returnedMsgs))
 				for _, m := range returnedMsgs {
 					assert.Equal(m.OpType, oplog.OpType_OP_TYPE_CREATE)
 				}
@@ -1894,8 +1892,8 @@ func TestDb_DeleteItems(t *testing.T) {
 	oplogWrapper := TestOplogWrapper(t, db)
 	testOplogResourceId := testId(t)
 
-	createFn := func() []any {
-		results := []any{}
+	createFn := func() []*db_test.TestUser {
+		results := []*db_test.TestUser{}
 		for i := 0; i < 10; i++ {
 			u := testUser(t, db, "", "", "")
 			results = append(results, u)
@@ -1906,7 +1904,7 @@ func TestDb_DeleteItems(t *testing.T) {
 	returnedMsgs := []*oplog.Message{}
 
 	type args struct {
-		deleteItems []any
+		deleteItems []*db_test.TestUser
 		opt         []Option
 	}
 	tests := []struct {
@@ -2034,7 +2032,7 @@ func TestDb_DeleteItems(t *testing.T) {
 			name:       "empty items",
 			underlying: db,
 			args: args{
-				deleteItems: []any{},
+				deleteItems: []*db_test.TestUser{},
 			},
 			wantErr:   true,
 			wantErrIs: errors.InvalidParameter,
@@ -2063,7 +2061,7 @@ func TestDb_DeleteItems(t *testing.T) {
 			assert.Equal(tt.wantRowsDeleted, rowsDeleted)
 			for _, item := range tt.args.deleteItems {
 				u := db_test.AllocTestUser()
-				u.PublicId = item.(*db_test.TestUser).PublicId
+				u.PublicId = item.PublicId
 				err := rw.LookupByPublicId(context.Background(), &u)
 				require.Error(err)
 				require.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "found item %s that should be deleted", u.PublicId)
