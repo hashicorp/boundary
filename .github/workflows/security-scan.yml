@@ -8,7 +8,7 @@ on:
       - 'main'
     paths-ignore:
       - 'website/**'
-      
+
 jobs:
   scan:
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
@@ -25,13 +25,13 @@ jobs:
         echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
 
     - name: Set up Go
-      uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: "${{ steps.get-go-version.outputs.go-version }}"
         cache: false
 
     - name: Set up Python
-      uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+      uses: actions/setup-python@39cd14951b08e74b54015e9e001cdefcf80e669f # v5.1.1
       with:
         python-version: 3.x
 
@@ -76,7 +76,7 @@ jobs:
         repository: "$PWD"
 
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@a57c67b89589d2d13d5ac85a9fc4679c7539f94c # codeql-bundle-v2.17.3
+      uses: github/codeql-action/upload-sarif@0e346f2c4a1b999b44f1ef93fe08bdb83dae63ab # codeql-bundle-v2.18.1
       with:
         sarif_file: results.sarif
 
