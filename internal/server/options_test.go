@@ -77,10 +77,11 @@ func Test_GetOpts(t *testing.T) {
 		tags := []*Tag{
 			{Key: "key1", Value: "val1"},
 			{Key: "key2", Value: "val2"},
+			nil,
 		}
 		opts := GetOpts(WithWorkerTags(tags...))
 		testOpts := getDefaultOptions()
-		testOpts.withWorkerTags = tags
+		testOpts.withWorkerTags = tags[:2]
 		opts.withNewIdFunc = nil
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)
