@@ -460,6 +460,7 @@ var inputStructs = map[string][]*cmdInfo{
 			SubActionPrefix:      "plugin",
 			SkipNormalHelp:       true,
 			HasExtraHelpFunc:     true,
+			HasExtraCommandVars:  true,
 			HasId:                true,
 			HasName:              true,
 			HasDescription:       true,

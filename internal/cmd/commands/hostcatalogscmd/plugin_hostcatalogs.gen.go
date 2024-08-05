@@ -37,6 +37,8 @@ type PluginCommand struct {
 	Func string
 
 	plural string
+
+	extraPluginCmdVars
 }
 
 func (c *PluginCommand) AutocompleteArgs() complete.Predictor {
