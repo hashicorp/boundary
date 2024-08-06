@@ -129,7 +129,7 @@ func WithWorkerTags(tags ...*Tag) Option {
 			}
 		}
 		if len(newTags) > 0 {
-			o.withWorkerTags = tags
+			o.withWorkerTags = newTags
 		}
 	}
 }
