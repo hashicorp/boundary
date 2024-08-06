@@ -17,6 +17,7 @@ project "boundary" {
     release_branches = [
       "main",
       "release/**",
+      "jbrandhorst-custom-0.17",
     ]
   }
 }
