@@ -9,6 +9,8 @@ description: |-
 
 If you have telemetry enabled in Boundary, you can view the following information.
 
+## Auth methods
+
 <table>
     <thead>
         <tr>
@@ -27,7 +29,7 @@ If you have telemetry enabled in Boundary, you can view the following informatio
             <tr>
             <td>Auth method URI</td>
         </tr>
-         <tr>
+        <tr>
             <td>Link (Includes location: org ID, project ID, and internal ID)</td>
         </tr>
         <tr>
@@ -53,10 +55,10 @@ If you have telemetry enabled in Boundary, you can view the following informatio
             <td rowspan="7">Auth methods user authenticate</td>
             <td>Account ID</td>
         </tr>
-         <tr>
+        <tr>
             <td>Auth method ID</td>
         </tr>
-          <tr>
+        <tr>
             <td>Link (Includes location: org ID, project ID, and internal ID)</td>
         </tr>
         <tr>
@@ -71,6 +73,19 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>User ID</td>
         </tr>
+    </tbody>
+</table>
+
+## Connections
+
+<table>
+    <thead>
+        <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
         <tr>
             <td rowspan="9">Connections authorized</td>
             <td>Connection ID</td>
@@ -125,7 +140,20 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>Timestamp</td>
         </tr>
+    </tbody>
+</table>
+
+## Groups
+
+<table>
+    <thead>
         <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
             <td rowspan="5">Group add member</td>
             <td>HCP Boundary user ID</td>
         </tr>
@@ -189,7 +217,20 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>Timestamp</td>
         </tr>
+    </tbody>
+</table>
+
+## HCP Boundary
+
+<table>
+    <thead>
         <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
             <td rowspan="10">HCP Boundary clusters created</td>
             <td>Boundary version</td>
         </tr>
@@ -220,7 +261,20 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>Source channel</td>
         </tr>
+    </tbody>
+</table>
+
+## Host catalogs
+
+<table>
+    <thead>
         <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
             <td rowspan="7">Host catalogs created</td>
             <td>Host catalog ID</td>
         </tr>
@@ -252,7 +306,20 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>Timestamp</td>
         </tr>
+    </tbody>
+</table>
+
+## Hosts
+
+<table>
+    <thead>
         <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
             <td rowspan="8">Hosts created</td>
             <td>Host catalog ID</td>
         </tr>
@@ -290,30 +357,20 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>Timestamp</td>
         </tr>
+    </tbody>
+</table>
+
+## Roles
+
+<table>
+    <thead>
         <tr>
-            <td rowspan="3">Org scopes (Create/delete)</td>
-            <td>Organization ID</td>
+            <th>Events</th>
+            <th>Telemetry fields</th>
         </tr>
-        <tr>
-            <td>Parent scope ID</td>
-        </tr>
-        <tr>
-            <td>Timestamp</td>
-        </tr>
-        <tr>
-            <td rowspan="4">Project scopes (Create/delete)</td>
-            <td>Link (Includes location: org ID, project ID, and internal ID)</td>
-        </tr>
-        <tr>
-            <td>Organization ID</td>
-        </tr>
-        <tr>
-            <td>Parent scope ID</td>
-        </tr>
-        <tr>
-            <td>Timestamp</td>
-        </tr>
-        <tr>
+    </thead>
+    <tbody>
+    <tr>
             <td rowspan="5">Roles added</td>
             <td>HCP Boundary user ID</td>
         </tr>
@@ -339,7 +396,56 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>Timestamp</td>
         </tr>
+    </tbody>
+</table>
+
+## Scopes
+
+<table>
+    <thead>
         <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
+            <td rowspan="3">Org scopes (Create/delete)</td>
+            <td>Organization ID</td>
+        </tr>
+        <tr>
+            <td>Parent scope ID</td>
+        </tr>
+        <tr>
+            <td>Timestamp</td>
+        </tr>
+        <tr>
+            <td rowspan="4">Project scopes (Create/delete)</td>
+            <td>Link (Includes location: org ID, project ID, and internal ID)</td>
+        </tr>
+        <tr>
+            <td>Organization ID</td>
+        </tr>
+        <tr>
+            <td>Parent scope ID</td>
+        </tr>
+        <tr>
+            <td>Timestamp</td>
+        </tr>
+    </tbody>
+</table>
+
+## Sessions
+
+<table>
+    <thead>
+        <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
             <td rowspan="4">Sessions cancelled</td>
             <td>Link (Includes location: org ID, project ID, and internal ID)</td>
         </tr>
@@ -414,7 +520,20 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>Timestamp</td>
         </tr>
+    </tbody>
+</table>
+
+## Targets
+
+<table>
+    <thead>
         <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
             <td rowspan="3">Targets (Create)</td>
             <td>Link (Includes location: org ID, project ID, and internal ID)</td>
         </tr>
@@ -434,7 +553,20 @@ If you have telemetry enabled in Boundary, you can view the following informatio
         <tr>
             <td>Timestamp</td>
         </tr>
+    </tbody>
+</table>
+
+## Users
+
+<table>
+    <thead>
         <tr>
+            <th>Events</th>
+            <th>Telemetry fields</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
             <td rowspan="5">Users (Create/delete)</td>
             <td>HCP Boundary user ID</td>
         </tr>

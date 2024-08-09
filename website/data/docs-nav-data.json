@@ -588,10 +588,6 @@
           {
             "title": "Telemetry data",
             "path": "configuration/events/telemetry-data"
-          },
-          {
-            "title": "Also telemetry",
-            "path": "configuration/events/telemetry-data-too"
           }
         ]
       },
