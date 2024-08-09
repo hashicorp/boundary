@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/workers"
@@ -43,4 +44,36 @@ func GetWorkerWithFilterCli(t testing.TB, ctx context.Context, filter string) (*
 	}
 
 	return items[0], nil
+}
+
+func GetWorkersByTagCli(t testing.TB, ctx context.Context, tagKey, tagValue string) ([]*workers.Worker, error) {
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "list",
+			"-format", "json",
+		),
+	)
+	if output.Err != nil {
+		return nil, fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var workersListResult workers.WorkerListResult
+	err := json.Unmarshal(output.Stdout, &workersListResult)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal workers list result: %w", err)
+	}
+
+	items := workersListResult.GetItems()
+	if len(items) == 0 {
+		return nil, fmt.Errorf("no workers found using tag key: %s", tagKey)
+	}
+
+	var workersWithTagKey []*workers.Worker
+	for _, worker := range items {
+		if slices.Contains(worker.CanonicalTags[tagKey], tagValue) {
+			workersWithTagKey = append(workersWithTagKey, worker)
+		}
+	}
+
+	return workersWithTagKey, nil
 }
