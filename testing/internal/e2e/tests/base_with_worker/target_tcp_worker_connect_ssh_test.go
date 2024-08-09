@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/workers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -202,4 +203,131 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		),
 	)
 	require.Error(t, output.Err, "Unexpectedly created a target with an ingress worker filter")
+
+	// Add an API tag and use that tag in the worker filter
+	t.Log("Adding API tag to worker...")
+	workerList, err := boundary.GetWorkersByTagCli(t, ctx, "type", "egress")
+	require.NoError(t, err)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "add-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", "k=v",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	t.Cleanup(func() {
+		_ = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"workers", "remove-worker-tags",
+				"-id", workerList[0].Id,
+				"-tag", "k=v",
+			),
+		)
+	})
+	// Update target to use new tag
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "update", "tcp",
+			"-id", targetId,
+			"-egress-worker-filter", `"v" in "/tags/k"`,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect", "ssh",
+			"-target-id", targetId,
+			"-remote-command", "hostname -i",
+			"--",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	t.Log("Successfully connected to target with new filter")
+
+	// Update worker to have a different tag. This should result in a failed connection
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "set-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", "a=v",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	t.Cleanup(func() {
+		_ = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"workers", "remove-worker-tags",
+				"-id", workerList[0].Id,
+				"-tag", "a=v",
+			),
+		)
+	})
+
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect", "ssh",
+			"-target-id", targetId,
+			"-remote-command", "hostname -i",
+			"--",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+		),
+	)
+	require.Error(t, output.Err)
+	require.Equal(t, 1, output.ExitCode)
+	t.Log("Successfully failed to connect to target with wrong filter")
+
+	// Update target to use new tag
+	t.Log("Changing API tag on worker...")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "update", "tcp",
+			"-id", targetId,
+			"-egress-worker-filter", `"v" in "/tags/a"`,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect", "ssh",
+			"-target-id", targetId,
+			"-remote-command", "hostname -i",
+			"--",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	t.Log("Successfully connected to target with new filter")
+
+	// Remove tags
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "remove-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", "a=v",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "read",
+			"-id", workerList[0].Id,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	var workerReadResult workers.WorkerReadResult
+	err = json.Unmarshal(output.Stdout, &workerReadResult)
+	require.NoError(t, err)
+	require.NotContains(t, workerReadResult.Item.CanonicalTags["k"], "v")
+	require.NotContains(t, workerReadResult.Item.CanonicalTags["a"], "v")
 }
