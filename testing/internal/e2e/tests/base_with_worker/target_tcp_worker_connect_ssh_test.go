@@ -308,7 +308,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
 	t.Log("Successfully connected to target with new filter")
 
-	// Remove tags
+	// Remove API tags
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"workers", "remove-worker-tags",
@@ -330,4 +330,71 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, workerReadResult.Item.CanonicalTags["k"], "v")
 	require.NotContains(t, workerReadResult.Item.CanonicalTags["a"], "v")
+
+	// Add an API tag that's the same as a config tag
+	t.Log("Adding API tag that's the same as a config tag...")
+	require.NoError(t, err)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "add-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", fmt.Sprintf("%s=%s", "type", c.WorkerTagEgress),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	t.Cleanup(func() {
+		_ = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"workers", "remove-worker-tags",
+				"-id", workerList[0].Id,
+				"-tag", fmt.Sprintf("%s=%s", "type", c.WorkerTagEgress),
+			),
+		)
+	})
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "update", "tcp",
+			"-id", targetId,
+			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect", "ssh",
+			"-target-id", targetId,
+			"-remote-command", "hostname -i",
+			"--",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	t.Log("Successfully connected to target")
+
+	// Remove API tag
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"workers", "remove-worker-tags",
+			"-id", workerList[0].Id,
+			"-tag", fmt.Sprintf("%s=%s", "type", c.WorkerTagEgress),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect", "ssh",
+			"-target-id", targetId,
+			"-remote-command", "hostname -i",
+			"--",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	t.Log("Successfully connected to target")
 }
