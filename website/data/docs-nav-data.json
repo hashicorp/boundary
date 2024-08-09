@@ -574,6 +574,10 @@
             "path": "configuration/events"
           },
           {
+            "title": "Configure event logging",
+            "path": "configuration/events/configure-events"
+          },
+          {
             "title": "Common sink parameters",
             "path": "configuration/events/common"
           },

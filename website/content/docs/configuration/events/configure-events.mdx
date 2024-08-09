@@ -1,0 +1,27 @@
+---
+layout: docs
+page_title: Configure events
+description: |-
+  Configure log event sinks to monitor Boundary resources and actions.
+---
+
+# Configure events
+
+You can log system information in a well-defined, structured format that give you visibility into emitted events.
+
+Event sinks provide a location for Boundary to write events to.
+You can configure sinks to allow or deny specific event types using filter syntax.
+There are two types of event sinks:
+
+- `stderr` - Sends events to a stderr.
+- `file` - Sends events to a file.
+
+You can repeat the `sink` stanza multiple times to send events to multiple sinks, but each file sink must have a unique path and file name.
+
+When you configure a sink, you can specify what types of events should be emitted by Boundary:
+
+- `audit_enabled` - Specifies if audit events should be emitted.
+- `observations_enabled` - Specifies if observation events should be emitted.
+- `sysevents_enabled` - Specifies if system events should be emitted.
+- `telemetry_enabled` - Specifies if telemetry events should be emitted.
+To receive telemetry events, you must also set `observations_enabled` to `true`.
