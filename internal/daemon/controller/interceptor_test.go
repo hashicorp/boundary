@@ -726,13 +726,13 @@ func Test_aliasResolutionInterceptor(t *testing.T) {
 			name:            "aliasable request with unknown alias",
 			req:             &pbs.GetTargetRequest{Id: "not.a.registered.alias"},
 			wantModifiedReq: &pbs.GetTargetRequest{Id: "not.a.registered.alias"},
-			errorIs:         handlers.UnauthenticatedError(),
+			errorIs:         handlers.NotFoundError(),
 		},
 		{
 			name:            "aliasable request with destinationless alias",
 			req:             &pbs.GetTargetRequest{Id: alWithoutDest.GetValue()},
 			wantModifiedReq: &pbs.GetTargetRequest{Id: alWithoutDest.GetValue()},
-			errorIs:         handlers.UnauthenticatedError(),
+			errorIs:         handlers.NotFoundError(),
 		},
 	}
 	for _, tc := range cases {
