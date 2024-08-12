@@ -187,8 +187,9 @@ type Worker struct {
 
 	// Timing variables. These are atomics for SIGHUP support, and are int64
 	// because they are casted to time.Duration.
-	successfulStatusGracePeriod *atomic.Int64
-	statusCallTimeoutDuration   *atomic.Int64
+	successfulStatusGracePeriod         *atomic.Int64
+	statusCallTimeoutDuration           *atomic.Int64
+	getDownstreamWorkersTimeoutDuration *atomic.Pointer[time.Duration]
 
 	// AuthRotationNextRotation is useful in tests to understand how long to
 	// sleep
@@ -222,17 +223,18 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		lastStatusSuccess:      new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
 		// controllerUpstreamMsgConn:   new(atomic.Value),
-		tags:                        new(atomic.Value),
-		updateTags:                  ua.NewBool(false),
-		nonceFn:                     base62.Random,
-		WorkerAuthCurrentKeyId:      new(ua.String),
-		operationalState:            new(atomic.Value),
-		downstreamConnManager:       cluster.NewDownstreamManager(),
-		localStorageState:           new(atomic.Value),
-		successfulStatusGracePeriod: new(atomic.Int64),
-		statusCallTimeoutDuration:   new(atomic.Int64),
-		upstreamConnectionState:     new(atomic.Value),
-		downstreamWorkers:           new(atomic.Pointer[downstreamersContainer]),
+		tags:                                new(atomic.Value),
+		updateTags:                          ua.NewBool(false),
+		nonceFn:                             base62.Random,
+		WorkerAuthCurrentKeyId:              new(ua.String),
+		operationalState:                    new(atomic.Value),
+		downstreamConnManager:               cluster.NewDownstreamManager(),
+		localStorageState:                   new(atomic.Value),
+		successfulStatusGracePeriod:         new(atomic.Int64),
+		statusCallTimeoutDuration:           new(atomic.Int64),
+		getDownstreamWorkersTimeoutDuration: new(atomic.Pointer[time.Duration]),
+		upstreamConnectionState:             new(atomic.Value),
+		downstreamWorkers:                   new(atomic.Pointer[downstreamersContainer]),
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)
@@ -333,6 +335,14 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
 	default:
 		w.statusCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+	}
+	switch conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		to := server.DefaultLiveness
+		w.getDownstreamWorkersTimeoutDuration.Store(&to)
+	default:
+		to := conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration
+		w.getDownstreamWorkersTimeoutDuration.Store(&to)
 	}
 	// FIXME: This is really ugly, but works.
 	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
