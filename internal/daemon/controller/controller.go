@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/alias"
 	talias "github.com/hashicorp/boundary/internal/alias/target"
@@ -91,7 +92,7 @@ var (
 	downstreamReceiverFactory func() downstreamReceiver
 
 	downstreamersFactory           func(context.Context, string, string) (common.Downstreamers, error)
-	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver) (downstreamWorkersTicker, error)
+	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver, time.Duration) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
 	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer, kms *kms.Kms) (intglobals.ControllerExtension, error)
 )
@@ -121,8 +122,9 @@ type Controller struct {
 
 	// Timing variables. These are atomics for SIGHUP support, and are int64
 	// because they are casted to time.Duration.
-	workerStatusGracePeriod *atomic.Int64
-	livenessTimeToStale     *atomic.Int64
+	workerStatusGracePeriod     *atomic.Int64
+	livenessTimeToStale         *atomic.Int64
+	getDownstreamWorkersTimeout *atomic.Pointer[time.Duration]
 
 	apiGrpcServer         *grpc.Server
 	apiGrpcServerListener grpcServerListener
@@ -176,18 +178,19 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
 	ratelimit.InitializeMetrics(conf.PrometheusRegisterer)
 	c := &Controller{
-		conf:                    conf,
-		logger:                  conf.Logger.Named("controller"),
-		started:                 ua.NewBool(false),
-		tickerWg:                new(sync.WaitGroup),
-		schedulerWg:             new(sync.WaitGroup),
-		workerAuthCache:         new(sync.Map),
-		workerStatusUpdateTimes: new(sync.Map),
-		enabledPlugins:          conf.Server.EnabledPlugins,
-		apiListeners:            make([]*base.ServerListener, 0),
-		downstreamConnManager:   cluster.NewDownstreamManager(),
-		workerStatusGracePeriod: new(atomic.Int64),
-		livenessTimeToStale:     new(atomic.Int64),
+		conf:                        conf,
+		logger:                      conf.Logger.Named("controller"),
+		started:                     ua.NewBool(false),
+		tickerWg:                    new(sync.WaitGroup),
+		schedulerWg:                 new(sync.WaitGroup),
+		workerAuthCache:             new(sync.Map),
+		workerStatusUpdateTimes:     new(sync.Map),
+		enabledPlugins:              conf.Server.EnabledPlugins,
+		apiListeners:                make([]*base.ServerListener, 0),
+		downstreamConnManager:       cluster.NewDownstreamManager(),
+		workerStatusGracePeriod:     new(atomic.Int64),
+		livenessTimeToStale:         new(atomic.Int64),
+		getDownstreamWorkersTimeout: new(atomic.Pointer[time.Duration]),
 	}
 
 	if downstreamReceiverFactory != nil {
@@ -236,6 +239,15 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		c.livenessTimeToStale.Store(int64(server.DefaultLiveness))
 	default:
 		c.livenessTimeToStale.Store(int64(conf.RawConfig.Controller.LivenessTimeToStaleDuration))
+	}
+
+	switch conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		to := server.DefaultLiveness
+		c.getDownstreamWorkersTimeout.Store(&to)
+	default:
+		to := conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration
+		c.getDownstreamWorkersTimeout.Store(&to)
 	}
 
 	clusterListeners := make([]*base.ServerListener, 0)
@@ -579,7 +591,7 @@ func (c *Controller) Start() error {
 		// we'll use "root" to designate that this is the root of the graph (aka
 		// a controller)
 		boundVer := version.Get().VersionNumber()
-		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", boundVer, c.downstreamWorkers, c.downstreamConns)
+		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", boundVer, c.downstreamWorkers, c.downstreamConns, *c.getDownstreamWorkersTimeout.Load())
 		if err != nil {
 			return fmt.Errorf("error creating downstream workers ticker: %w", err)
 		}
