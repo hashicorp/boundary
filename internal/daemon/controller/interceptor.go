@@ -393,16 +393,10 @@ func aliasResolutionInterceptor(
 		}
 		interceptorCtx, err = alias.ResolveRequestIds(interceptorCtx, reqMsg, r)
 		if err != nil {
-			// Since this is intercepted prior to checking that the requester
-			// is authorized to make the request, returning a 404 here and a 401
-			// when the request is checked in the handler would expose which
-			// aliases exist. Instead, we return a unauthenticated error here so there
-			// is no way to distinguish between a missing alias and an existing
-			// alias that points to a destination the requester is not allowed
-			// to perform an action on.
-			// handlers.UnauthenticatedError() turns into an http 401 status
-			// code "Unauthorized".
-			return nil, handlers.UnauthenticatedError()
+			// At this point, the request is unauthorized, therefore return a
+			// static error rather than exposing what the result of
+			// `ResolveRequestIds` was.
+			return nil, handlers.NotFoundError()
 		}
 		return handler(interceptorCtx, req)
 	}
