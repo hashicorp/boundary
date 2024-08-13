@@ -668,12 +668,12 @@ func Parse(d string) (*Config, error) {
 		if getDownstreamWorkersTimeout != nil {
 			t, err := parseutil.ParseDurationSecond(getDownstreamWorkersTimeout)
 			if err != nil {
-				return result, err
+				return result, fmt.Errorf("error trying to parse controller get_downstream_workers_timeout: %w", err)
 			}
 			result.Controller.GetDownstreamWorkersTimeoutDuration = t
 		}
-		if result.Controller.GetDownstreamWorkersTimeoutDuration < 0 {
-			return nil, errors.New("GetDownstreamWorkersTimeoutDuration value is negative")
+		if result.Controller.GetDownstreamWorkersTimeoutDuration <= 0 {
+			return nil, errors.New("get downstream workers timeout must be greater than 0")
 		}
 
 		if result.Controller.MaxPageSizeRaw != nil {
@@ -820,12 +820,12 @@ func Parse(d string) (*Config, error) {
 		if getDownstreamWorkersTimeoutDuration != nil {
 			t, err := parseutil.ParseDurationSecond(getDownstreamWorkersTimeoutDuration)
 			if err != nil {
-				return result, fmt.Errorf("error parsing get_downstream_worker_call_timeout: %w", err)
+				return result, fmt.Errorf("error trying to parse worker get_downstream_workers_timeout: %w", err)
 			}
 			result.Worker.GetDownstreamWorkersTimeoutDuration = t
 		}
-		if result.Worker.GetDownstreamWorkersTimeoutDuration < 0 {
-			return nil, errors.New("GetDownstreamWorkersTimeoutDuration call timeout value is negative")
+		if result.Worker.GetDownstreamWorkersTimeoutDuration <= 0 {
+			return nil, errors.New("get downstream workers timeout must be greater than 0")
 		}
 
 		successfulStatusGracePeriod := result.Worker.SuccessfulStatusGracePeriod
