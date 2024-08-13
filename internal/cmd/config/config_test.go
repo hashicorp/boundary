@@ -2890,7 +2890,7 @@ func TestGetDownstreamWorkersTimeout(t *testing.T) {
 			name: "worker_int_value_no_unit_assumes_seconds",
 			in: `
 			worker {
-				name = "example-controller"
+				name = "example-worker"
 				get_downstream_workers_timeout = 30
 			}`,
 			wantWorker: 30 * time.Second,
@@ -2911,7 +2911,7 @@ func TestGetDownstreamWorkersTimeout(t *testing.T) {
 			name: "worker_invalid_bool_value",
 			in: `
 			worker {
-				name = "example-controller"
+				name = "example-worker"
 				get_downstream_workers_timeout = false
 			}`,
 			assertErr: func(err error) {
@@ -2935,7 +2935,7 @@ func TestGetDownstreamWorkersTimeout(t *testing.T) {
 			name: "worker_invalid_empty_value",
 			in: `
 			worker {
-				name = "example-controller"
+				name = "example-worker"
 				get_downstream_workers_timeout = ""
 			}`,
 			assertErr: func(err error) {
@@ -2959,7 +2959,7 @@ func TestGetDownstreamWorkersTimeout(t *testing.T) {
 			name: "worker_invalid_zero_value",
 			in: `
 			worker {
-				name = "example-controller"
+				name = "example-worker"
 				get_downstream_workers_timeout = "0s"
 			}`,
 			assertErr: func(err error) {
