@@ -210,6 +210,12 @@ type Controller struct {
 	LivenessTimeToStale         any           `hcl:"liveness_time_to_stale"`
 	LivenessTimeToStaleDuration time.Duration `hcl:"-"`
 
+	// TODO: This isn't documented (on purpose) because the right place for this
+	// is central configuration so you can't drift across controllers and workers
+	// but we don't have that yet.
+	GetDownstreamWorkersTimeout         any           `hcl:"get_downstream_workers_timeout"`
+	GetDownstreamWorkersTimeoutDuration time.Duration `hcl:"-"`
+
 	// SchedulerRunJobInterval is the time interval between waking up the
 	// scheduler to run pending jobs.
 	//
@@ -278,6 +284,13 @@ type Worker struct {
 	// TODO: This is currently not documented and considered internal.
 	StatusCallTimeout         any           `hcl:"status_call_timeout"`
 	StatusCallTimeoutDuration time.Duration `hcl:"-"`
+
+	// GetDownstreamWorkersTimeout represents the period of time (as a duration) timeout
+	// for GetDownstreamWorkers call in DownstreamWorkerTicker
+	//
+	// TODO: This is currently not documented and considered internal.
+	GetDownstreamWorkersTimeout         any           `hcl:"get_downstream_workers_timeout"`
+	GetDownstreamWorkersTimeoutDuration time.Duration `hcl:"-"`
 
 	// SuccessfulStatusGracePeriod represents the period of time (as a duration)
 	// that the worker will wait before disconnecting connections if it cannot
@@ -648,6 +661,21 @@ func Parse(d string) (*Config, error) {
 			return nil, errors.New("Controller liveness time to stale value is negative")
 		}
 
+		getDownstreamWorkersTimeout := result.Controller.GetDownstreamWorkersTimeout
+		if util.IsNil(getDownstreamWorkersTimeout) {
+			getDownstreamWorkersTimeout = os.Getenv("BOUNDARY_CONTROLLER_GET_DOWNSTREAM_WORKERS_TIMEOUT")
+		}
+		if getDownstreamWorkersTimeout != nil {
+			t, err := parseutil.ParseDurationSecond(getDownstreamWorkersTimeout)
+			if err != nil {
+				return result, fmt.Errorf("error trying to parse controller get_downstream_workers_timeout: %w", err)
+			}
+			result.Controller.GetDownstreamWorkersTimeoutDuration = t
+		}
+		if result.Controller.GetDownstreamWorkersTimeoutDuration < 0 {
+			return nil, errors.New("get downstream workers timeout must be greater than 0")
+		}
+
 		if result.Controller.MaxPageSizeRaw != nil {
 			switch t := result.Controller.MaxPageSizeRaw.(type) {
 			case string:
@@ -783,6 +811,21 @@ func Parse(d string) (*Config, error) {
 		}
 		if result.Worker.StatusCallTimeoutDuration < 0 {
 			return nil, errors.New("Status call timeout value is negative")
+		}
+
+		getDownstreamWorkersTimeoutDuration := result.Worker.GetDownstreamWorkersTimeout
+		if util.IsNil(getDownstreamWorkersTimeoutDuration) {
+			getDownstreamWorkersTimeoutDuration = os.Getenv("BOUNDARY_WORKER_GET_DOWNSTREAM_WORKERS_TIMEOUT")
+		}
+		if getDownstreamWorkersTimeoutDuration != nil {
+			t, err := parseutil.ParseDurationSecond(getDownstreamWorkersTimeoutDuration)
+			if err != nil {
+				return result, fmt.Errorf("error trying to parse worker get_downstream_workers_timeout: %w", err)
+			}
+			result.Worker.GetDownstreamWorkersTimeoutDuration = t
+		}
+		if result.Worker.GetDownstreamWorkersTimeoutDuration < 0 {
+			return nil, errors.New("get downstream workers timeout must be greater than 0")
 		}
 
 		successfulStatusGracePeriod := result.Worker.SuccessfulStatusGracePeriod
