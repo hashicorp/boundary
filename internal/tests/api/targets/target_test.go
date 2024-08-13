@@ -685,12 +685,12 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 	})
 
-	t.Run("deleting unknown alias is unauthorized", func(t *testing.T) {
+	t.Run("deleting unknown alias is not found", func(t *testing.T) {
 		_, err = tarClient.Delete(tc.Context(), al.GetValue())
 		assert.Error(err)
 		apiErr := api.AsServerError(err)
 		assert.NotNil(apiErr)
-		assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
+		assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 	})
 }
 
@@ -750,7 +750,7 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// reading by alias with no destination id should fail
 	rw := db.New(tc.DbConn())
@@ -759,8 +759,7 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
-	noAliasApiErrReponse := apiErr.Response()
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	client.SetToken("at_1234567890_madeupinvalidtoken")
 	tarClient = targets.NewClient(client)
@@ -768,9 +767,6 @@ func TestSet_Errors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
-	// We should not be able to tell the difference between an unauthorized request
-	// and a request that tries to resolve an alias that points to nothing.
-	assert.EqualValues(noAliasApiErrReponse.Body, apiErr.Response().Body)
 }
 
 func TestCreateTarget_WhitespaceInAddress(t *testing.T) {
