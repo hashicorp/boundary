@@ -2832,6 +2832,162 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 	}
 }
 
+func TestGetDownstreamWorkersTimeout(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             string
+		wantController time.Duration
+		wantWorker     time.Duration
+		assertErr      func(error)
+	}{
+		{
+			name: "controller_valid_time_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = "10s"
+			}`,
+			wantController: 10 * time.Second,
+			wantWorker:     0,
+			assertErr:      nil,
+		},
+		{
+			name: "worker_valid_time_value",
+			in: `
+			worker {
+				name = "example-worker"
+				get_downstream_workers_timeout = "5s"
+			}`,
+			wantController: 0,
+			wantWorker:     5 * time.Second,
+			assertErr:      nil,
+		},
+		{
+			name: "both_valid_time_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = "5s"
+			}
+			worker {
+				name = "example-worker"
+				get_downstream_workers_timeout = "500ms"
+			}`,
+			wantController: 5 * time.Second,
+			wantWorker:     500 * time.Millisecond,
+			assertErr:      nil,
+		},
+		{
+			name: "controller_int_value_no_unit_assumes_seconds",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = 100
+			}`,
+			wantController: 100 * time.Second,
+		},
+		{
+			name: "worker_int_value_no_unit_assumes_seconds",
+			in: `
+			worker {
+				name = "example-controller"
+				get_downstream_workers_timeout = 30
+			}`,
+			wantWorker: 30 * time.Second,
+		},
+		{
+			name: "controller_invalid_bool_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = true
+			}`,
+			assertErr: func(err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, `error trying to parse controller get_downstream_workers_timeout`)
+			},
+		},
+		{
+			name: "worker_invalid_bool_value",
+			in: `
+			worker {
+				name = "example-controller"
+				get_downstream_workers_timeout = false
+			}`,
+			assertErr: func(err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, `error trying to parse worker get_downstream_workers_timeout`)
+			},
+		},
+		{
+			name: "controller_invalid_empty_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = ""
+			}`,
+			assertErr: func(err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, `get downstream workers timeout must be greater than 0`)
+			},
+		},
+		{
+			name: "worker_invalid_empty_value",
+			in: `
+			worker {
+				name = "example-controller"
+				get_downstream_workers_timeout = ""
+			}`,
+			assertErr: func(err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, `get downstream workers timeout must be greater than 0`)
+			},
+		},
+		{
+			name: "controller_invalid_zero_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = "0s"
+			}`,
+			assertErr: func(err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, `get downstream workers timeout must be greater than 0`)
+			},
+		},
+		{
+			name: "worker_invalid_zero_value",
+			in: `
+			worker {
+				name = "example-controller"
+				get_downstream_workers_timeout = "0s"
+			}`,
+			assertErr: func(err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, `get downstream workers timeout must be greater than 0`)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := Parse(tt.in)
+			if tt.assertErr != nil {
+				tt.assertErr(err)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantController != 0 {
+				require.NotNil(t, c.Controller)
+				require.Equal(t, tt.wantController, c.Controller.GetDownstreamWorkersTimeoutDuration)
+			}
+			if tt.wantWorker != 0 {
+				require.NotNil(t, c.Worker)
+				require.Equal(t, tt.wantWorker, c.Worker.GetDownstreamWorkersTimeoutDuration)
+			}
+		})
+	}
+}
+
 func TestMaxPageSize(t *testing.T) {
 	tests := []struct {
 		name           string
