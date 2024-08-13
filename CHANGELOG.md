@@ -2,6 +2,12 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+### Bug Fixes
+
+* fix(minio): disable multipart uploads to allow session recordings up to 5GB
+
 ## 0.17.0 (2024/07/17)
 
 ## 0.16.2 (2024/06/10)
