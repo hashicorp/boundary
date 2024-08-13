@@ -672,7 +672,7 @@ func Parse(d string) (*Config, error) {
 			}
 			result.Controller.GetDownstreamWorkersTimeoutDuration = t
 		}
-		if result.Controller.GetDownstreamWorkersTimeoutDuration <= 0 {
+		if result.Controller.GetDownstreamWorkersTimeoutDuration < 0 {
 			return nil, errors.New("get downstream workers timeout must be greater than 0")
 		}
 
