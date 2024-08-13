@@ -3,8 +3,8 @@ module github.com/hashicorp/boundary/plugins/boundary/mains/minio
 go 1.22.2
 
 require (
-	github.com/hashicorp/boundary-plugin-minio v0.1.3
-	github.com/hashicorp/boundary/sdk v0.0.42
+	github.com/hashicorp/boundary-plugin-minio v0.1.4
+	github.com/hashicorp/boundary/sdk v0.0.43-0.20240717182311-a20aae98794a
 )
 
 require (
@@ -65,11 +65,13 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect
-	google.golang.org/grpc v1.59.0 // indirect
+	google.golang.org/genproto v0.0.0-20240116215550-a9fa1716bcac // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect
+	google.golang.org/grpc v1.61.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
