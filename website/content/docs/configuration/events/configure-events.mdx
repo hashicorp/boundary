@@ -16,12 +16,54 @@ There are two types of event sinks:
 - `stderr` - Sends events to a stderr.
 - `file` - Sends events to a file.
 
-You can repeat the `sink` stanza multiple times to send events to multiple sinks, but each file sink must have a unique path and file name.
+You can repeat the `sink` stanza more than once to send events to multiple sinks, but each file sink must have a unique path and file name.
 
-When you configure a sink, you can specify what types of events should be emitted by Boundary:
+When you configure a sink, you can specify what types of events Boundary should emit:
 
-- `audit_enabled` - Specifies if audit events should be emitted.
-- `observations_enabled` - Specifies if observation events should be emitted.
-- `sysevents_enabled` - Specifies if system events should be emitted.
-- `telemetry_enabled` - Specifies if telemetry events should be emitted.
+- `audit_enabled` - Specifies if Boundary emits audit events.
+- `observations_enabled` - Specifies if Boundary emits observation events.
+- `sysevents_enabled` - Specifies if Boundary should emit system events.
+- `telemetry_enabled` - Specifies if Boundary should emit telemetry events.
 To receive telemetry events, you must also set `observations_enabled` to `true`.
+
+You configure event sinks in the configuration file for a controller or worker server.
+The following example includes the contents of the `events` stanza in the `compose/controller.hcl` configuration file:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+events {
+  audit_enabled        = true
+  observations_enabled = true
+  sysevents_enabled    = true
+  telemetry_enabled    = true
+
+  sink "stderr" {
+    name        = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format      = "cloudevents-json"
+  }
+
+  sink {
+    name        = "controller-audit-sink"
+    description = "Audit sent to a file"
+    event_types = ["audit"]
+    format      = "cloudevents-json"
+
+    file {
+      path      = "/logs"
+      file_name = "controller.log"
+    }
+
+    audit_config {
+      audit_filter_overrides {
+        secret    = "encrypt"
+        sensitive = "hmac-sha256"
+      }
+    }
+  }
+}
+```
+
+</CodeBlockConfig>
