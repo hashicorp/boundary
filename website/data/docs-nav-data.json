@@ -718,6 +718,10 @@
         {
           "title": "Configuration",
           "path": "worker/worker-configuration"
+        },
+        {
+          "title": "Worker stanza",
+          "path": "worker/worker-stanza"
         }
       ]
   },
