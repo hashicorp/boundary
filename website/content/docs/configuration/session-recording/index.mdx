@@ -32,6 +32,14 @@ When you estimate worker storage requirements, consider the number of concurrent
 
 When you estimate storage requirements for the external storage provider, consider your [storage policy](/boundary/docs/concepts/domain-model/storage-policy) and how long a BSR will be retained in the external storage bucket.
 
+<Warning>
+
+Boundary supports recorded session files up to 5 GB in size.
+If a recorded session file is over 5 GB, the session details show the recording state as `Failed` and you may not be able to play back the session.
+Be careful when you use Secure File Copy (SCP) to transfer large files during a recorded session because it can result in large recorded session files.
+
+</Warning>
+
 ## Enable session recording
 
 To enable session recording, you must:
