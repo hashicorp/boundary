@@ -643,7 +643,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
-	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id)
+	grantTuples, _, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op)
 		return

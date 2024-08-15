@@ -603,7 +603,7 @@ func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string) (per
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
-	grantTuples, err := iamRepo.GrantsForUser(ctx, userId)
+	grantTuples, _, err := iamRepo.GrantsForUser(ctx, userId)
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}

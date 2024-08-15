@@ -312,7 +312,7 @@ func TestGrantsForUserRandomized(t *testing.T) {
 
 				// just check if role shows up for the user now.
 				for userId := range ldapManagedGroupToUser[ldapManagedGroupId] {
-					tuples, err := iamRepo.GrantsForUser(ctx, userId)
+					tuples, _, err := iamRepo.GrantsForUser(ctx, userId)
 					t.Log("userId/tuples:", userId, tuples)
 					require.NoError(t, err)
 					found := false
@@ -338,7 +338,7 @@ func TestGrantsForUserRandomized(t *testing.T) {
 	for _, user := range users {
 		var rolesFromUsers, rolesFromGroups, rolesFromOidcManagedGroups, rolesFromLdapManagedGroups int
 
-		tuples, err := iamRepo.GrantsForUser(ctx, user.PublicId)
+		tuples, _, err := iamRepo.GrantsForUser(ctx, user.PublicId)
 		require.NoError(t, err)
 
 		// De-dupe role IDs

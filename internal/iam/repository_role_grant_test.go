@@ -959,7 +959,146 @@ func TestGrantsForUser(t *testing.T) {
 		},
 	}
 
-	grantTuples, err := repo.GrantsForUser(ctx, user.PublicId)
+	grantTuples, _, err := repo.GrantsForUser(ctx, user.PublicId)
 	require.NoError(err)
 	assert.ElementsMatch(grantTuples, expGrantTuples)
+}
+
+func TestRepository_TestRoleGrantCaching(t *testing.T) {
+	t.Parallel()
+	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo)
+
+	userUnderTest := TestUser(t, repo, org.PublicId)
+	roleWithUser := TestRole(t, conn, org.PublicId)
+	_, err := repo.AddRoleGrants(ctx, roleWithUser.PublicId, 1, []string{"actions=*;ids=*;type=scope"})
+	require.NoError(err)
+	otherUser := TestUser(t, repo, org.PublicId)
+	roleWithoutUser := TestRole(t, conn, org.PublicId)
+	_, err = repo.AddRoleGrants(ctx, roleWithoutUser.PublicId, 1, []string{"actions=*;ids=*;type=role"})
+	require.NoError(err)
+
+	dbCacheVersion, err := repo.GetCurrentAclCacheVersion(ctx)
+	require.NoError(err)
+
+	// BASELINE
+	{
+		// Ensure we can do a lookup and get the expected number of grants and no
+		// cache
+		grantTuples, cacheVersion, err := repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(0, cacheVersion) // Cache not used so cache version is zero
+		assert.Len(grantTuples, 6)
+
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(dbCacheVersion, cacheVersion)
+		assert.Len(grantTuples, 6)
+	}
+
+	// MODIFY ROLE MEMBERSHIP - role without user
+	{
+		_, err = repo.AddPrincipalRoles(ctx, roleWithoutUser.PublicId, 2, []string{otherUser.PublicId})
+		require.NoError(err)
+		dbCacheVersion++
+
+		// Ensure we can do a lookup and get the expected number of grants and no
+		// cache
+		grantTuples, cacheVersion, err := repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(0, cacheVersion) // Cache not used so cache version is zero
+		assert.Len(grantTuples, 6)
+
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(dbCacheVersion, cacheVersion)
+		assert.Len(grantTuples, 6)
+
+		_, err = repo.DeletePrincipalRoles(ctx, roleWithoutUser.PublicId, 3, []string{otherUser.PublicId})
+		require.NoError(err)
+		dbCacheVersion++
+
+		// Ensure we can do a lookup and get the expected number of grants and no
+		// cache
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(0, cacheVersion) // Cache not used so cache version is zero
+		assert.Len(grantTuples, 6)
+
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(dbCacheVersion, cacheVersion)
+		assert.Len(grantTuples, 6)
+
+		_, _, err = repo.SetPrincipalRoles(ctx, roleWithoutUser.PublicId, 4, []string{otherUser.PublicId})
+		require.NoError(err)
+		dbCacheVersion++
+
+		// Ensure we can do a lookup and get the expected number of grants and no
+		// cache
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(0, cacheVersion) // Cache not used so cache version is zero
+		assert.Len(grantTuples, 6)
+
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(dbCacheVersion, cacheVersion)
+		assert.Len(grantTuples, 6)
+	}
+
+	// MODIFY ROLE MEMBERSHIP - user under test
+	{
+		_, err = repo.AddPrincipalRoles(ctx, roleWithUser.PublicId, 2, []string{userUnderTest.PublicId})
+		require.NoError(err)
+		dbCacheVersion++
+
+		// Ensure we can do a lookup and get the expected number of grants and no
+		// cache
+		grantTuples, cacheVersion, err := repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(0, cacheVersion) // Cache not used so cache version is zero
+		assert.Len(grantTuples, 7)
+
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(dbCacheVersion, cacheVersion)
+		assert.Len(grantTuples, 7)
+
+		_, err = repo.DeletePrincipalRoles(ctx, roleWithUser.PublicId, 3, []string{userUnderTest.PublicId})
+		require.NoError(err)
+		dbCacheVersion++
+
+		// Ensure we can do a lookup and get the expected number of grants and no
+		// cache
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(0, cacheVersion) // Cache not used so cache version is zero
+		assert.Len(grantTuples, 6)
+
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(dbCacheVersion, cacheVersion)
+		assert.Len(grantTuples, 6)
+
+		_, _, err = repo.SetPrincipalRoles(ctx, roleWithUser.PublicId, 4, []string{userUnderTest.PublicId})
+		require.NoError(err)
+		dbCacheVersion++
+
+		// Ensure we can do a lookup and get the expected number of grants and no
+		// cache
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(0, cacheVersion) // Cache not used so cache version is zero
+		assert.Len(grantTuples, 7)
+
+		grantTuples, cacheVersion, err = repo.GrantsForUser(ctx, userUnderTest.PublicId)
+		require.NoError(err)
+		assert.EqualValues(dbCacheVersion, cacheVersion)
+		assert.Len(grantTuples, 7)
+	}
 }

@@ -7,15 +7,23 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 var ErrMetadataScopeNotFound = errors.New(context.Background(), errors.RecordNotFound, "iam", "scope not found for metadata", errors.WithoutEvent())
+
+type permsCacheEntry struct {
+	*sync.RWMutex
+	systemCacheVersion uint64
+	permsTuples        perms.GrantTuples
+}
 
 // Repository is the iam database repository
 type Repository struct {
@@ -25,6 +33,9 @@ type Repository struct {
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
+
+	// A sync.Map should be fine here as we will only ever write an entry one time
+	permsCache *sync.Map
 }
 
 // NewRepository creates a new iam Repository. Supports the options: WithLimit
@@ -50,6 +61,7 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		writer:       w,
 		kms:          kms,
 		defaultLimit: opts.withLimit,
+		permsCache:   new(sync.Map),
 	}, nil
 }
 

@@ -253,4 +253,8 @@ const (
 	estimateCountScopes = `
 		select reltuples::bigint as estimate from pg_class where oid in ('iam_scope'::regclass)
 	`
+
+	cacheVersionQuery = `
+    select last_value from acl_cache_version_seq as version
+  `
 )

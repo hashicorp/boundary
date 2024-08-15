@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -410,10 +411,57 @@ func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleIds []string, 
 	return roleGrantScopes, nil
 }
 
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) (perms.GrantTuples, error) {
+// GrantsForUser retrieves the grants for a user. The bool return value
+// indicates if the cache was the source of the data by returning the version
+// the cache matched.
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) (perms.GrantTuples, uint64, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+		return nil, 0, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+	}
+
+	// First look in the cache. We do this first so that we end up locking it before
+	// the lookup of the current cache version in the database
+
+	// Prepare a possible entry in case it's not there yet
+	possibleCacheEntry := &permsCacheEntry{
+		RWMutex: new(sync.RWMutex),
+	}
+	cacheEntry, _ := r.permsCache.LoadOrStore(userId, possibleCacheEntry)
+	permsCacheEntry := cacheEntry.(*permsCacheEntry)
+
+	dbCacheVersion, err := r.GetCurrentAclCacheVersion(ctx)
+	if err != nil {
+		permsCacheEntry.RUnlock()
+		return nil, 0, errors.Wrap(ctx, err, op)
+	}
+
+	// Read lock the entry we got back
+	permsCacheEntry.RLock()
+
+	// Only use the cache if the version matches. If the cache version is less,
+	// then we need to re-fetch to be safe; if it's more, then something is very
+	// wrong, and also do not trust it.
+	if permsCacheEntry.systemCacheVersion == dbCacheVersion {
+		defer permsCacheEntry.RUnlock()
+		return permsCacheEntry.permsTuples, dbCacheVersion, nil
+	}
+
+	// Store our original value so we can see if it's changed during the lock swap
+	originalCachedVersion := permsCacheEntry.systemCacheVersion
+
+	// Swap for a write lock
+	permsCacheEntry.RUnlock()
+	permsCacheEntry.Lock()
+	defer permsCacheEntry.Unlock()
+
+	// Check the version again in case another call updated the cache when the
+	// lock was switched. Basically this says: if we see that the system cache
+	// version is now higher, and it's at least the DB version we queried,
+	// we can be comfortable with this degree of eventual consistency
+	if originalCachedVersion < permsCacheEntry.systemCacheVersion &&
+		permsCacheEntry.systemCacheVersion >= dbCacheVersion {
+		return permsCacheEntry.permsTuples, dbCacheVersion, nil
 	}
 
 	const (
@@ -432,16 +480,48 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	var grants []perms.GrantTuple
 	rows, err := r.reader.Query(ctx, query, []any{userId})
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, 0, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := r.reader.ScanRows(ctx, rows, &grants); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, 0, errors.Wrap(ctx, err, op)
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, 0, errors.Wrap(ctx, err, op)
 	}
-	return grants, nil
+
+	// Update cache
+	permsCacheEntry.systemCacheVersion = dbCacheVersion
+	permsCacheEntry.permsTuples = grants
+
+	return grants, 0, nil
+}
+
+// GetCurrentAclCacheVersion gets the current global cache version from the
+// database
+func (r *Repository) GetCurrentAclCacheVersion(ctx context.Context) (uint64, error) {
+	const op = "iam.(Repository).GetCurrentAclCacheVersion"
+	cacheVersionRows, err := r.reader.Query(ctx, cacheVersionQuery, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get acl cache version"))
+	}
+	defer cacheVersionRows.Close()
+	rowCount := 0
+	var dbCacheVersion uint64
+	for cacheVersionRows.Next() {
+		if err := r.reader.ScanRows(ctx, cacheVersionRows, &dbCacheVersion); err != nil {
+			return 0, errors.Wrap(ctx, err, op)
+		}
+		rowCount++
+		if rowCount > 1 {
+			return 0, errors.New(ctx, errors.MultipleRecords, op, "multiple rows returned for cache version")
+		}
+	}
+	if err := cacheVersionRows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("error reading cache version"))
+	}
+
+	return dbCacheVersion, nil
 }
