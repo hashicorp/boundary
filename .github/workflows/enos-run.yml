@@ -119,7 +119,7 @@ jobs:
           key: ${{ needs.setup.outputs.go-cache-key }}
           restore-keys: |
             ${{ runner.os }}-go
-          fail-on-cache-miss: true
+          fail-on-cache-miss: false
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:

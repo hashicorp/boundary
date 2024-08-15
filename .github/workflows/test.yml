@@ -109,7 +109,7 @@ jobs:
           key: ${{ needs.setup.outputs.go-cache-key }}
           restore-keys: |
             ${{ runner.os }}-go
-          fail-on-cache-miss: true
+          fail-on-cache-miss: false
       - name: Test ${{ matrix.module }} Module
         run: |
           make test-${{ matrix.module }}
@@ -141,7 +141,7 @@ jobs:
           key: ${{ needs.setup.outputs.go-cache-key }}
           restore-keys: |
             ${{ runner.os }}-go
-          fail-on-cache-miss: true
+          fail-on-cache-miss: false
       - name: Set up plugin cache
         id: plugin-cache
         uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
