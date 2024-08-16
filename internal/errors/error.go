@@ -38,6 +38,10 @@ type Err struct {
 	// Wrapped is the error which this Err wraps and will be nil if there's no
 	// error to wrap.
 	Wrapped error
+
+	// ContextCause will be set if the context provided to the error creation
+	// was Done.
+	ContextCause error
 }
 
 // E creates a new Err with provided code and supports the options of:
@@ -78,6 +82,9 @@ func E(ctx context.Context, opt ...Option) error {
 		Op:      opts.withOp,
 		Wrapped: opts.withErrWrapped,
 		Msg:     fmt.Sprintf(opts.withErrMsg, opts.withErrMsgArgs...),
+	}
+	if ctx != nil {
+		err.ContextCause = context.Cause(ctx)
 	}
 	if opts.withoutEvent {
 		return err
@@ -227,6 +234,9 @@ func (e *Err) Error() string {
 	}
 	if e.Msg != "" {
 		join(&s, ": ", e.Msg)
+	}
+	if e.ContextCause != nil {
+		join(&s, " ", "("+e.ContextCause.Error()+")")
 	}
 
 	var skipInfo bool

@@ -4,6 +4,7 @@
 package errors_test
 
 import (
+	"cmp"
 	"context"
 	stderrors "errors"
 	"fmt"
@@ -19,10 +20,13 @@ import (
 func Test_ErrorE(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+	canceledCtx, cancel := context.WithCancelCause(ctx)
+	cancel(stderrors.New("this context was canceled"))
 	errRecordNotFound := errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.RecordNotFound))
 	tests := []struct {
 		name string
 		opt  []errors.Option
+		ctx  context.Context
 		want error
 	}{
 		{
@@ -77,15 +81,19 @@ func Test_ErrorE(t *testing.T) {
 				Wrapped: errRecordNotFound,
 			},
 		},
+		{
+			name: "context-with-cancel-cause",
+			ctx:  canceledCtx,
+			want: &errors.Err{
+				ContextCause: stderrors.New("this context was canceled"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := errors.E(ctx, tt.opt...)
-			require.Error(err)
-			assert.Equal(tt.want, err)
-
-			err = errors.E(context.TODO(), tt.opt...)
+			testCtx := cmp.Or(tt.ctx, ctx)
+			err := errors.E(testCtx, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
 		})
@@ -310,6 +318,8 @@ func TestError_Info(t *testing.T) {
 func TestError_Error(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+	canceledCtx, cancel := context.WithCancelCause(ctx)
+	cancel(stderrors.New("this context was canceled"))
 	tests := []struct {
 		name string
 		err  error
@@ -349,6 +359,11 @@ func TestError_Error(t *testing.T) {
 			name: "wrapped-same-error-codes",
 			err:  errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.E(ctx, errors.WithCode(errors.CheckConstraint), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
 			want: "test msg: wrapped msg: integrity violation: error #1000",
+		},
+		{
+			name: "error-with-cancel-cause",
+			err:  errors.E(canceledCtx, errors.WithoutEvent(), errors.WithMsg("test msg")),
+			want: "test msg (this context was canceled)",
 		},
 	}
 	for _, tt := range tests {
