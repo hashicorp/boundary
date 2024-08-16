@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/plugins/boundary/mains/minio
 
-go 1.22.2
+go 1.23.0
 
 require (
 	github.com/hashicorp/boundary-plugin-minio v0.1.4
