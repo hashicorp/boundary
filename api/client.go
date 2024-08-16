@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -307,6 +308,12 @@ func (c *Config) ReadEnvironment() error {
 		maxRetries, err := strconv.ParseUint(v, 10, 32)
 		if err != nil {
 			return err
+		}
+		// maxRetries is a 32-bit unsigned integer stored inside an uint64.
+		// c.MaxRetries is a signed integer that is at least 32 bits in size.
+		// Check bounds against lowest denominator before casting.
+		if maxRetries > math.MaxInt32 {
+			return fmt.Errorf("max retries must be less than or equal to %d", math.MaxInt32)
 		}
 		c.MaxRetries = int(maxRetries)
 	}
