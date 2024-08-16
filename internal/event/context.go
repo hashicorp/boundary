@@ -368,15 +368,8 @@ func newSendCtx(ctx context.Context) (context.Context, context.CancelFunc) {
 	switch {
 	case ctx == nil:
 		return context.Background(), nil
-	case ctx.Err() == context.Canceled || ctx.Err() == context.DeadlineExceeded:
-		sendCtx, sendCancel = context.WithTimeout(context.Background(), cancelledSendTimeout)
-		info, ok := RequestInfoFromContext(ctx)
-		if ok {
-			reqCtx, err := NewRequestInfoContext(sendCtx, info)
-			if err == nil {
-				sendCtx = reqCtx
-			}
-		}
+	case ctx.Err() != nil:
+		sendCtx, sendCancel = context.WithTimeout(context.WithoutCancel(ctx), cancelledSendTimeout)
 	default:
 		sendCtx = ctx
 	}
