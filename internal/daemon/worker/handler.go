@@ -100,7 +100,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		numPort, err := strconv.Atoi(clientPort)
+		numPort, err := strconv.ParseUint(clientPort, 10, 16)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to understand remote port"))
 			wr.WriteHeader(http.StatusInternalServerError)
@@ -108,7 +108,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 		clientAddr := &net.TCPAddr{
 			IP:   net.ParseIP(clientIp),
-			Port: numPort,
+			Port: int(numPort),
 		}
 
 		userClientIp, err := common.ClientIpFromRequest(ctx, listenerCfg, r)
