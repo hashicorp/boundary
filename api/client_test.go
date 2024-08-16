@@ -4,9 +4,13 @@
 package api
 
 import (
+	"math"
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigSetAddress(t *testing.T) {
@@ -76,6 +80,74 @@ func TestConfigSetAddress(t *testing.T) {
 				assert.Equal(t, v.err, err.Error())
 			}
 			assert.Equal(t, v.address, c.Addr)
+		})
+	}
+}
+
+func TestReadEnvironmentMaxRetries(t *testing.T) {
+	tests := []struct {
+		name           string
+		inp            string
+		expMaxRetries  int
+		expErrContains string
+	}{
+		{
+			name:           "invalidNaN",
+			inp:            "bad",
+			expErrContains: "strconv.ParseUint: parsing \"bad\": invalid syntax",
+		},
+		{
+			name:           "invalidNegativeNumber",
+			inp:            "-1",
+			expErrContains: "strconv.ParseUint: parsing \"-1\": invalid syntax",
+		},
+		{
+			name:           "invalidGreaterThanUint32",
+			inp:            strconv.Itoa(math.MaxUint32 + 10),
+			expErrContains: "strconv.ParseUint: parsing \"4294967305\": value out of range",
+		},
+		{
+			name:           "invalidGreaterThanInt32",
+			inp:            strconv.Itoa(math.MaxInt32 + 10),
+			expErrContains: "max retries must be less than or equal to 2147483647",
+		},
+		{
+			name:          "success1",
+			inp:           "0",
+			expMaxRetries: 0,
+		},
+		{
+			name:          "success2",
+			inp:           "10000",
+			expMaxRetries: 10000,
+		},
+		{
+			name:          "successMaxInt32",
+			inp:           strconv.Itoa(math.MaxInt32),
+			expMaxRetries: math.MaxInt32,
+		},
+		{
+			name:          "successNothing",
+			inp:           "",
+			expMaxRetries: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Setenv(EnvBoundaryMaxRetries, tt.inp)
+			t.Cleanup(func() { os.Unsetenv(EnvBoundaryMaxRetries) })
+
+			var c Config
+			err := c.ReadEnvironment()
+			if tt.expErrContains != "" {
+				require.ErrorContains(t, err, tt.expErrContains)
+				require.Equal(t, 0, c.MaxRetries)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expMaxRetries, c.MaxRetries)
 		})
 	}
 }
