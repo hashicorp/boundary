@@ -45,7 +45,7 @@ type extraLdapCmdVars struct {
 	flagBindPassword         string
 	flagUseTokenGroups       bool
 	flagAccountAttributeMaps []string
-	flagMaxPageSize          uint
+	flagMaxPageSize          uint64
 	flagDerefAliases         string
 }
 
@@ -232,7 +232,7 @@ func extraLdapFlagsFuncImpl(c *LdapCommand, set *base.FlagSets, _ *base.FlagSet)
 				Usage:  "The desired operational state of the auth method.",
 			})
 		case maxPageSizeFlagName:
-			f.UintVar(&base.UintVar{
+			f.Uint64Var(&base.Uint64Var{
 				Name:   maxPageSizeFlagName,
 				Target: &c.flagMaxPageSize,
 				Usage:  "MaximumPageSize specifies a maximum search result size to use when retrieving the authenticated user's groups (optional).",
