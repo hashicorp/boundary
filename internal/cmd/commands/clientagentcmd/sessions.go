@@ -58,7 +58,7 @@ func (c *SessionsCommand) Flags() *base.FlagSets {
 		Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
 	})
 
-	f.UintVar(&base.UintVar{
+	f.Uint64Var(&base.Uint64Var{
 		Name:    "client-agent-port",
 		Target:  &c.FlagClientAgentPort,
 		Default: 9300,
