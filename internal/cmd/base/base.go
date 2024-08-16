@@ -128,7 +128,7 @@ type Command struct {
 	FlagAuthMethodId      string
 	FlagHostCatalogId     string
 	FlagCredentialStoreId string
-	FlagVersion           int
+	FlagVersion           int64
 	FlagRecursive         bool
 	FlagFilter            string
 	FlagTags              map[string][]string
