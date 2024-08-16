@@ -62,7 +62,7 @@ type Command struct {
 
 	flagAuthzToken string
 	flagListenAddr string
-	flagListenPort int
+	flagListenPort int64
 	flagTargetId   string
 	flagTargetName string
 	flagHostId     string
@@ -210,7 +210,7 @@ func (c *Command) Flags() *base.FlagSets {
 			Usage:      `If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot, the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1).`,
 		})
 
-		f.IntVar(&base.IntVar{
+		f.Int64Var(&base.Int64Var{
 			Name:       "listen-port",
 			Target:     &c.flagListenPort,
 			EnvVar:     "BOUNDARY_CONNECT_LISTEN_PORT",

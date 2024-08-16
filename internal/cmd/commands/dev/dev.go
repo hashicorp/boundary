@@ -76,9 +76,9 @@ type Command struct {
 	flagIdSuffix                                       string
 	flagSecondaryIdSuffix                              string
 	flagHostAddress                                    string
-	flagTargetDefaultPort                              int
-	flagTargetSessionMaxSeconds                        int
-	flagTargetSessionConnectionLimit                   int
+	flagTargetDefaultPort                              int64
+	flagTargetSessionMaxSeconds                        int64
+	flagTargetSessionConnectionLimit                   int64
 	flagControllerApiListenAddr                        string
 	flagControllerClusterListenAddr                    string
 	flagControllerPublicClusterAddr                    string
@@ -219,7 +219,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Address to use for the default host that is created. Must be a bare host or IP address, no port.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Int64Var(&base.Int64Var{
 		Name:    "target-default-port",
 		Default: 22,
 		Target:  &c.flagTargetDefaultPort,
@@ -227,7 +227,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Default port to use for the default target that is created.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Int64Var(&base.Int64Var{
 		Name:    "target-session-connection-limit",
 		Target:  &c.flagTargetSessionConnectionLimit,
 		Default: -1,
@@ -235,7 +235,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Maximum number of connections per session to set on the default target. -1 means unlimited.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Int64Var(&base.Int64Var{
 		Name:   "target-session-max-seconds",
 		Target: &c.flagTargetSessionMaxSeconds,
 		EnvVar: "BOUNDARY_DEV_TARGET_SESSION_MAX_SECONDS",
