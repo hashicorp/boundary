@@ -6,7 +6,6 @@ begin;
 create table policy (
   public_id wt_public_id primary key,
   scope_id wt_scope_id not null
-  -- constraints replaced in internal/db/schema/migrations/postgres/91/01_storage_policies.up.sql
   constraint policy_scope_id_fkey
     references iam_scope(public_id)
     on delete restrict
@@ -18,7 +17,6 @@ comment on table policy is
 create table policy_storage_policy (
   public_id wt_public_id primary key,
   scope_id wt_scope_id not null
-  -- constraints replaced in internal/db/schema/migrations/postgres/91/01_storage_policies.up.sql
   constraint policy_storage_policy_scope_id_fkey
     references iam_scope(public_id)
     on delete restrict
