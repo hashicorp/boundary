@@ -4,21 +4,15 @@
   },
   {
     "title": "What is Boundary?",
-    "routes": [
-      {
-        "title": "What is Boundary?",
-        "path": "what-is/what-is-boundary"
-      }
-    ]
+    "path": "what-is-boundary"
   },
   {
     "title": "Use cases",
+    "path": "use-cases"
+  },
+  {
+    "title": "Why choose Boundary?",
     "routes": [
-      {
-        "title": "Use cases",
-        "path": "overview/use-cases",
-        "hidden": true
-      },
       {
         "title": "Overview",
         "path": "overview/other-software"
@@ -87,12 +81,8 @@
     "title": "Concepts",
     "routes": [
       {
-        "title": "Overview",
-        "path": "concepts"
-      },
-      {
-        "title": "Workers",
-        "path": "concepts/workers"
+        "title": "Auditing",
+        "path": "concepts/auditing"
       },
       {
         "title": "Identity and access management",
@@ -107,8 +97,12 @@
         "path": "concepts/aliases"
       },
       {
-        "title": "Auditing",
-        "path": "concepts/auditing"
+        "title": "Workers",
+        "path": "concepts/workers"
+      },
+      {
+        "title": "Host discovery",
+        "path": "concepts/host-discovery"
       },
       {
         "title": "Connection workflows",
@@ -302,32 +296,37 @@
     "title": "Deploy Boundary",
     "routes": [
       {
-        "title": "Overview",
-        "path": "install-boundary"
+        "title": "In a production environment",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "install-boundary/deploy-production"
+          },
+          {
+            "title": "Install Boundary",
+            "path": "install-boundary/deploy-production/install"
+          },
+          {
+            "title": "Configure controllers",
+            "path": "install-boundary/deploy-production/configure-controllers"
+          },
+          {
+            "title": "Configure workers",
+            "path": "install-boundary/deploy-production/configure-workers"
+          },
+          {
+            "title": "Initialize Boundary",
+            "path": "install-boundary/deploy-production/initialize"
+          },
+          {
+            "title": "Systemd install",
+            "hidden": true,
+            "path": "install-boundary/deploy-production/systemd"
+          }
+        ]
       },
       {
-        "title": "Install Boundary",
-        "path": "install-boundary/install"
-      },
-      {
-        "title": "Configure controllers",
-        "path": "install-boundary/configure-controllers"
-      },
-      {
-        "title": "Configure workers",
-        "path": "install-boundary/configure-workers"
-      },
-      {
-        "title": "Initialize Boundary",
-        "path": "install-boundary/initialize"
-      },
-      {
-        "title": "Systemd install",
-        "hidden": true,
-        "path": "install-boundary/systemd"
-      },
-      {
-        "title": "Terraform patterns",
+        "title": "Using Terraform",
         "routes": [
           {
             "title": "Overview",
@@ -374,37 +373,22 @@
     "title": "Secure Boundary",
     "routes": [
       {
-        "title": "Overview",
-        "path": "security"
-      },
-      {
-        "title": "Permissions",
+        "title": "Encrypt resources",
         "routes": [
           {
-            "title": "Overview",
-            "path": "security/permissions"
+            "title": "Data encryption",
+            "path": "security/encrypt/data-encryption"
           },
           {
-            "title": "Assignable permissions",
-            "path": "security/permissions/assignable-permissions"
-          },
-          {
-            "title": "Permission grant formats",
-            "path": "security/permissions/permission-grant-formats"
-          },
-          {
-            "title": "Resource tables",
-            "path": "security/permissions/resource-table"
+            "title": "Connections/TLS",
+            "path": "security/encrypt/connections-tls"
           }
         ]
       },
       {
-        "title": "Data encryption",
-        "path": "security/data-encryption"
-      },
-      {
-        "title": "Connections/TLS",
-        "path": "security/connections-tls"
+        "title": "Overview",
+        "hidden": "true",
+        "path": "security"
       }
     ]
   },
@@ -413,10 +397,12 @@
     "routes": [
       {
         "title": "Overview/top-level parameters",
+        "hidden": "true",
         "path": "configuration"
       },
       {
         "title": "Listener",
+        "hidden": "true",
         "routes": [
           {
             "title": "Overview",
@@ -434,6 +420,7 @@
       },
       {
         "title": "KMS",
+        "hidden": "true",
         "routes": [
           {
             "title": "Overview",
@@ -470,7 +457,7 @@
         ]
       },
       {
-        "title": "Credential management",
+        "title": "Manage credentials",
         "routes": [
           {
             "title": "Overview",
@@ -501,6 +488,7 @@
       },
       {
         "title": "Session recordings",
+        "hidden": "true",
         "badge": {
           "text": "HCP/ENT",
           "type": "outlined",
@@ -548,10 +536,12 @@
       },
       {
         "title": "Controller",
+        "hidden": "true",
         "path": "configuration/controller"
       },
       {
         "title": "Plugins",
+        "hidden": "true",
         "path": "configuration/plugins"
       }
     ]
@@ -803,6 +793,38 @@
   },
   {
     "heading": "Identity management"
+  },
+  {
+    "title": "Configure role-based access",
+    "routes": [
+      {
+        "title": "Limit access to resources using RBAC",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "rbac/permissions"
+          },
+          {
+            "title": "Assignable permissions",
+            "path": "rbac/permissions/assignable-permissions"
+          },
+          {
+            "title": "Permission grant formats",
+            "path": "rbac/permissions/permission-grant-formats"
+          },
+          {
+            "title": "Resource tables",
+            "path": "rbac/permissions/resource-table"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Clients"
   },
   {
     "title": "Commands (CLI)",

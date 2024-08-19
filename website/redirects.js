@@ -184,4 +184,69 @@ module.exports = [
     destination: '/boundary/docs/configuration/worker/worker-configuration',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/overview/use-cases',
+    destination: '/boundary/docs/use-cases',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/what-is-boundary',
+    destination: '/boundary/docs/what-is-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/use-cases',
+    destination: '/boundary/docs/use-cases',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/configure-controllers',
+    destination: '/boundary/docs/install-boundary/deploy-production/configure-controllers',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/configure-workers',
+    destination: '/boundary/docs/install-boundary/deploy-production/configure-workers',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/index',
+    destination: '/boundary/docs/install-boundary/deploy-production/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/initialize',
+    destination: '/boundary/docs/install-boundary/deploy-production/initialize',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/install',
+    destination: '/boundary/docs/install-boundary/deploy-production/install',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/systemd',
+    destination: '/boundary/docs/install-boundary/deploy-production/systemd',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/security/permissions',
+    destination: '/boundary/docs/rbac/permissions',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/security/permissions/assignable-permissions',
+    destination: '/boundary/docs/rbac/assignable-permissions',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/security/permissions/permission-grant-formats',
+    destination: '/boundary/docs/security/rbac/permission-grant-formats',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/security/permissions/resource-table',
+    destination: '/boundary/docs/security/rbac/resource-table',
+    permanent: true,
+  },
 ]
