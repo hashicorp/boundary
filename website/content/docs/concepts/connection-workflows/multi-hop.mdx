@@ -17,9 +17,9 @@ across multiple networks to form reverse proxy connections between the user and 
 ## Remove the requirement for inbound network rules
 
 With a multi-hop deployment, all connections are initiated outbound from the most downstream worker in the chain. When the connection is established between the workers, the proxied connections go over the established connection.
-These persistent TCP connections result in the requirement for only outbound connectivity. 
+These persistent TCP connections result in the requirement for only outbound connectivity.
 
-In the scenario where there may be a firewall(s) sitting inbetween ingress and egress workers, organizations do not need to create additional inbound rules to facilitate a Boundary multi-hop deployment. This not only helps to
+In the scenario where there may be a firewall(s) sitting between ingress and egress workers, organizations do not need to create additional inbound rules to facilitate a Boundary multi-hop deployment. This not only helps to
 simplify existing infrastructure configuration within your environment, but also ensures that your current security posture is not weakened or compromised.
 
 ## Multi-hop worker types
