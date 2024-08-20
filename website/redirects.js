@@ -13,11 +13,6 @@ module.exports = [
   //   permanent: true,
   // },
   {
-    source: '/boundary/docs/use-cases',
-    destination: '/boundary/docs/overview/use-cases',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/getting-started/connect-to-target',
     destination: '/boundary/docs/hcp/get-started/connect-to-target',
     permanent: true,
@@ -192,11 +187,6 @@ module.exports = [
   {
     source: '/boundary/docs/overview/what-is-boundary',
     destination: '/boundary/docs/what-is-boundary',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/overview/use-cases',
-    destination: '/boundary/docs/use-cases',
     permanent: true,
   },
   {

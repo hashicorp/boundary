@@ -135,110 +135,6 @@
         ]
       },
       {
-        "title": "Domain model",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/domain-model"
-          },
-          {
-            "title": "Accounts",
-            "path": "concepts/domain-model/accounts"
-          },
-          {
-            "title": "Aliases",
-            "path": "concepts/domain-model/aliases"
-          },
-          {
-            "title": "Auth methods",
-            "path": "concepts/domain-model/auth-methods"
-          },
-          {
-            "title": "Credentials",
-            "path": "concepts/domain-model/credentials"
-          },
-          {
-            "title": "Credential libraries",
-            "path": "concepts/domain-model/credential-libraries"
-          },
-          {
-            "title": "Credential stores",
-            "path": "concepts/domain-model/credential-stores"
-          },
-          {
-            "title": "Groups",
-            "path": "concepts/domain-model/groups"
-          },
-          {
-            "title": "Hosts",
-            "path": "concepts/domain-model/hosts"
-          },
-          {
-            "title": "Host catalogs",
-            "path": "concepts/domain-model/host-catalogs"
-          },
-          {
-            "title": "Host sets",
-            "path": "concepts/domain-model/host-sets"
-          },
-          {
-            "title": "Managed groups",
-            "path": "concepts/domain-model/managed-groups"
-          },
-          {
-            "title": "Scopes",
-            "path": "concepts/domain-model/scopes"
-          },
-          {
-            "title": "Sessions",
-            "path": "concepts/domain-model/sessions"
-          },
-          {
-            "title": "Session connections",
-            "path": "concepts/domain-model/session-connections"
-          },
-          {
-            "title": "Session recordings",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "concepts/domain-model/session-recordings"
-          },
-          {
-            "title": "Storage buckets",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "concepts/domain-model/storage-buckets"
-          },
-          {
-            "title": "Storage policies",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "concepts/domain-model/storage-policy"
-          },
-          {
-            "title": "Targets",
-            "path": "concepts/domain-model/targets"
-          },
-          {
-            "title": "Roles",
-            "path": "concepts/domain-model/roles"
-          },
-          {
-            "title": "Users",
-            "path": "concepts/domain-model/users"
-          }
-        ]
-      },
-      {
         "title": "Filtering",
         "routes": [
           {
@@ -401,24 +297,6 @@
         "path": "configuration"
       },
       {
-        "title": "Listener",
-        "hidden": "true",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/listener"
-          },
-          {
-            "title": "TCP",
-            "path": "configuration/listener/tcp"
-          },
-          {
-            "title": "Unix",
-            "path": "configuration/listener/unix"
-          }
-        ]
-      },
-      {
         "title": "KMS",
         "hidden": "true",
         "routes": [
@@ -453,6 +331,152 @@
           {
             "title": "Vault transit",
             "path": "configuration/kms/transit"
+          }
+        ]
+      },
+      {
+        "title": "Organize my Boundary resources",
+        "routes": [
+          {
+            "title": "Domain model overview",
+            "path": "configuration/domain-model"
+          },
+          {
+            "title": "Accounts",
+            "path": "configuration/domain-model/accounts"
+          },
+          {
+            "title": "Aliases",
+            "path": "configuration/domain-model/aliases"
+          },
+          {
+            "title": "Auth methods",
+            "path": "configuration/domain-model/auth-methods"
+          },
+          {
+            "title": "Credentials",
+            "path": "configuration/domain-model/credentials"
+          },
+          {
+            "title": "Credential libraries",
+            "path": "configuration/domain-model/credential-libraries"
+          },
+          {
+            "title": "Credential stores",
+            "path": "configuration/domain-model/credential-stores"
+          },
+          {
+            "title": "Groups",
+            "path": "configuration/domain-model/groups"
+          },
+          {
+            "title": "Hosts",
+            "path": "configuration/domain-model/hosts"
+          },
+          {
+            "title": "Host catalogs",
+            "path": "configuration/domain-model/host-catalogs"
+          },
+          {
+            "title": "Host sets",
+            "path": "configuration/domain-model/host-sets"
+          },
+          {
+            "title": "Managed groups",
+            "path": "configuration/domain-model/managed-groups"
+          },
+          {
+            "title": "Scopes",
+            "path": "configuration/domain-model/scopes"
+          },
+          {
+            "title": "Sessions",
+            "path": "configuration/domain-model/sessions"
+          },
+          {
+            "title": "Session connections",
+            "path": "configuration/domain-model/session-connections"
+          },
+          {
+            "title": "Session recordings",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "configuration/domain-model/session-recordings"
+          },
+          {
+            "title": "Storage buckets",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "configuration/domain-model/storage-buckets"
+          },
+          {
+            "title": "Storage policies",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "configuration/domain-model/storage-policy"
+          },
+          {
+            "title": "Targets",
+            "path": "configuration/domain-model/targets"
+          },
+          {
+            "title": "Roles",
+            "path": "configuration/domain-model/roles"
+          },
+          {
+            "title": "Users",
+            "path": "configuration/domain-model/users"
+          }
+        ]
+      },
+      {
+        "title": "Using Terraform",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/terraform-patterns"
+          },
+          {
+            "title": "Scopes",
+            "path": "configuration/terraform-patterns/terraform-scopes"
+          },
+          {
+            "title": "Users and auth methods",
+            "path": "configuration/terraform-patterns/terraform-users-and-auth-methods"
+          },
+          {
+            "title": "Groups and RBAC",
+            "path": "configuration/terraform-patterns/terraform-groups-and-rbac"
+          },
+          {
+            "title": "Hosts and host management",
+            "path": "configuration/terraform-patterns/terraform-hosts-and-host-management"
+          },
+          {
+            "title": "Credentials and credential stores",
+            "path": "configuration/terraform-patterns/terraform-credentials-and-credential-stores"
+          },
+          {
+            "title": "Session recording",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "configuration/terraform-patterns/terraform-session-recording"
+          },
+          {
+            "title": "Targets",
+            "path": "configuration/terraform-patterns/terraform-targets"
           }
         ]
       },
@@ -554,6 +578,31 @@
         "path": "operations"
       },
       {
+        "title": "Listener",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "operations/listener"
+          },
+          {
+            "title": "TCP",
+            "path": "operations/listener/tcp"
+          },
+          {
+            "title": "Unix",
+            "path": "operations/listener/unix"
+          }
+        ]
+      },
+      {
+        "title": "Metrics",
+        "path": "operations/metrics"
+      },
+      {
+        "title": "Health endpoint",
+        "path": "operations/health"
+      },
+      {
         "title": "Events",
         "routes": [
           {
@@ -575,15 +624,8 @@
         ]
       },
       {
-        "title": "Metrics",
-        "path": "operations/metrics"
-      },
-      {
-        "title": "Health endpoint",
-        "path": "operations/health"
-      },
-      {
         "title": "Session recordings",
+        "hidden": "true",
         "badge": {
           "text": "HCP/ENT",
           "type": "outlined",
@@ -702,16 +744,21 @@
       "title": "Configure workers",
       "routes": [
         {
-          "title": "Overview",
-          "path": "worker"
-        },
-        {
-          "title": "Configuration",
-          "path": "worker/worker-configuration"
-        },
-        {
-          "title": "Worker stanza",
-          "path": "worker/worker-stanza"
+          "title": "Provide access to hosts in my network",
+          "routes": [
+            {
+              "title": "Overview",
+              "path": "access-management/configure-workers"
+            },
+            {
+              "title": "Configuration",
+              "path": "access-management/configure-workers/worker-configuration"
+            },
+            {
+              "title": "Worker stanza",
+              "path": "access-management/configure-workers/worker-stanza"
+            }
+          ]
         }
       ]
   },
