@@ -11,6 +11,13 @@ description: |-
 
 @include 'release-notes/intro.mdx'
 
+## Important change
+
+As of version 0.17.1 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary Enterprise.
+If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>.
+
+Refer to [Known issues and breaking changes](#known-issues-and-breaking-changes) for more information.
+
 ## New features
 
 <table>
@@ -31,13 +38,13 @@ description: |-
       GA
     </td>
     <td style={{verticalAlign: 'middle'}}>
-     Prior to this version, if you wanted to edit or update worker tags, you had to do it using the worker configuration file, the CLI, or the API. Now, you can edit worker tags directly in the Boundary UI.
+    Prior to this version, if you wanted to edit or update worker tags, you had to do it using the worker configuration file, the CLI, or the API. Now, you can edit worker tags directly in the Boundary UI.
       <br /><br />
       Learn more:&nbsp;<a href="/boundary/docs/concepts/filtering/worker-tags">Worker tags</a>.
     </td>
   </tr>
 
-   <tr>
+  <tr>
     <td style={{verticalAlign: 'middle'}}>
       Multi-scope roles and inheritance
     </td>
@@ -122,6 +129,62 @@ description: |-
     <br /><br />
     Learn more:&nbsp;
     <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.1+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Docker image no longer contains <code>curl</code>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.17.1 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary Enterprise.
+    <br /><br />
+    If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>. Refer to the following commands for examples of using <code>apk</code> to install <code>curl</code>:
+    <br /><br />
+    <code>&lt;CONTAINER-ID&gt; apk add curl</code>
+    <br /><br />
+    or
+    <br /><br />
+    <code>kubectl exec -ti &lt;NAME&gt; -- apk add curl</code>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.0 (Fixed in 0.17.1)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Using an invalid alias results in a 401 message
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you tried to connect to an invalid alias, Boundary returned a message with the 401 status code. The 401 status code could cause users to believe that they did not properly authenticate, rather than realizing the alias resource was invalid.
+    <br /><br />
+    This issue is fixed in Boundary version 0.17.1. If you use an invalid alias, Boundary now properly returns a 404 status code, indicating that it could not find the alias resource.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/concepts/aliases">Aliases</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.0 (Fixed in 0.17.1)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Session recording fails when you use Secure File Copy (SCP)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you tried to use SCP during a recorded session, the session recording details may shown the recording state as Failed, and you may not have been able to play back the session.
+    <br /><br />
+    This issue occurs when a recorded session file is too large. It can happen when you use SCP to transfer large files during a recorded session, In Boundary version 0.17.1, we have increased the maximum size for recorded session files to 5 GB. This issue should happen less often now, but be careful when you use SCP during a recorded session, because it can result in large recorded session files.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/configuration/session-recording#storage-considerations">Session recording storage considerations</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
   </tr>
 
