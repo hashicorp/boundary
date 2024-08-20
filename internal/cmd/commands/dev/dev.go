@@ -76,7 +76,7 @@ type Command struct {
 	flagIdSuffix                                       string
 	flagSecondaryIdSuffix                              string
 	flagHostAddress                                    string
-	flagTargetDefaultPort                              int64
+	flagTargetDefaultPort                              uint16
 	flagTargetSessionMaxSeconds                        int64
 	flagTargetSessionConnectionLimit                   int64
 	flagControllerApiListenAddr                        string
@@ -219,7 +219,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Address to use for the default host that is created. Must be a bare host or IP address, no port.",
 	})
 
-	f.Int64Var(&base.Int64Var{
+	f.Uint16Var(&base.Uint16Var{
 		Name:    "target-default-port",
 		Default: 22,
 		Target:  &c.flagTargetDefaultPort,
