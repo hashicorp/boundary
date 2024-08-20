@@ -11,11 +11,38 @@ description: |-
 
 @include 'release-notes/intro.mdx'
 
-<Note>
+## Important changes
 
-  In a future version Boundary will no longer automatically create roles when new scopes are created. This was implemented prior to multi-scope grants to ensure administrators and users had default permissions in new scopes. Since Boundary 0.15, initial roles created for new clusters provide these permissions by default to all scopes using multi-scope grants.
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Change</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
 
-</Note>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Role creation
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In a future version Boundary will no longer automatically create roles when new scopes are created. This was implemented prior to multi-scope grants to ensure administrators and users had default permissions in new scopes. Since Boundary 0.15, initial roles created for new clusters provide these permissions by default to all scopes using multi-scope grants.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    <code>curl</code> no longer included in Boundary Enterprise
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.16.3 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary Enterprise. If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>.
+    <br /><br />
+    Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
+    </td>
+  </tr>
+  </tbody>
+</table>
 
 ## New features
 
@@ -37,13 +64,13 @@ description: |-
       GA
     </td>
     <td style={{verticalAlign: 'middle'}}>
-     A new resource was introduced in this release. Aliases let you associate a string with a Boundary target. You can then establish a session to the target by referencing its alias, instead of having to provide a target ID or target name and scope ID.
+    A new resource was introduced in this release. Aliases let you associate a string with a Boundary target. You can then establish a session to the target by referencing its alias, instead of having to provide a target ID or target name and scope ID.
       <br /><br />
       Learn more:&nbsp;<a href="/boundary/docs/concepts/aliases">Aliases</a>.
     </td>
   </tr>
 
-   <tr>
+  <tr>
     <td style={{verticalAlign: 'middle'}}>
       MinIO support for session recording
     </td>
@@ -148,6 +175,26 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
     0.16.0
     <br /><br />
+    (Fixed in 0.16.0)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Users cannot log in to Boundary Desktop
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A bug caused Boundary Desktop to incorrectly assume the controller was running an unsupported version. It would prevent users from being able to log in to the Desktop client.
+    <br /><br />
+    Learn more:&nbsp; <a href="https://github.com/hashicorp/boundary/issues/4370">Boundary Desktop issue #4370</a>
+    <br /><br />
+    This issue is fixed in Boundary version 0.16.0.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
     (Fixed in 0.16.1 for Community/Enterprise editions and 0.16.2 for HCP Boundary)
     </td>
     <td style={{verticalAlign: 'middle'}}>
@@ -202,27 +249,65 @@ description: |-
     </td>
   </tr>
 
-   <tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.3+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Docker image no longer contains <code>curl</code>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.16.3 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary Enterprise.
+    <br /><br />
+    If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>. Refer to the following commands for examples of using <code>apk</code> to install <code>curl</code>:
+    <br /><br />
+    <code>&lt;CONTAINER-ID&gt; apk add curl</code>
+    <br /><br />
+    or
+    <br /><br />
+    <code>kubectl exec -ti &lt;NAME&gt; -- apk add curl</code>
+    </td>
+  </tr>
+
+  <tr>
     <td style={{verticalAlign: 'middle'}}>
     0.16.0
     <br /><br />
-    (Fixed in 0.16.0)
+    (Fixed in 0.16.3)
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Users cannot log in to Boundary Desktop
+    Using an invalid alias results in a 401 message
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    A bug caused Boundary Desktop to incorrectly assume the controller was running an unsupported version. It would prevent users from being able to log in to the Desktop client.
+    If you tried to connect to an invalid alias, Boundary returned a message with the 401 status code. The 401 status code could cause users to believe that they did not properly authenticate, rather than realizing the alias resource was invalid.
     <br /><br />
-    Learn more:&nbsp;
+    This issue is fixed in Boundary version 0.16.3. If you use an invalid alias, Boundary now properly returns a 404 status code, indicating that it could not find the alias resource.
     <br /><br />
-    <a href="https://github.com/hashicorp/boundary/issues/4370">Boundary Desktop issue #4370</a>
-    <br /><br />
-    This issue is fixed in Boundary version 0.16.0.
+    Learn more:&nbsp; <a href="/boundary/docs/concepts/aliases">Aliases</a>
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
   </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />(Fixed in 0.16.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Session recording fails when you use Secure File Copy (SCP)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you tried to use SCP during a recorded session, the session recording details may shown the recording state as Failed, and you may not have been able to play back the session.
+    <br /><br />
+    This issue occurs when a recorded session file is too large. It can happen when you use SCP to transfer large files during a recorded session, In Boundary version 0.16.3, we have increased the maximum size for recorded session files to 5 GB. This issue should happen less often now, but be careful when you use SCP during a recorded session, because it can result in large recorded session files.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/configuration/session-recording#storage-considerations">Session recording storage considerations</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
   </tbody>
 </table>
 
@@ -242,7 +327,7 @@ description: |-
       <code>boundary daemon</code> command
     </td>
     <td style={{verticalAlign: 'middle'}}>
-     The <code>boundary daemon</code> command has been deprecated in favor of the new <code>boundary cache</code> command. The functionality remains the same.
+    The <code>boundary daemon</code> command has been deprecated in favor of the new <code>boundary cache</code> command. The functionality remains the same.
       <br /><br />
       Learn more:&nbsp;
       <a href="/boundary/docs/commands/cache"><code>boundary cache</code></a>
@@ -254,7 +339,7 @@ description: |-
       <code>include_terminated</code> field removed
     </td>
     <td style={{verticalAlign: 'middle'}}>
-     The <code>include_terminated</code> field from the <code>list sessions</code> command has been deprecated and will be removed in an upcoming release. Boundary will return terminated sessions in all list session responses, unless they are filtered out using the <code>filter</code> field. For more information, refer to the filter resource documentation.
+    The <code>include_terminated</code> field from the <code>list sessions</code> command has been deprecated and will be removed in an upcoming release. Boundary will return terminated sessions in all list session responses, unless they are filtered out using the <code>filter</code> field. For more information, refer to the filter resource documentation.
       <br /><br />
       Learn more:&nbsp;
       <a href="/boundary/docs/commands/sessions/list#command-options"><code>sessions list</code> command options</a> and <a href="/boundary/docs/concepts/filtering/resource-listing">Filter resource listings</a>
@@ -266,7 +351,7 @@ description: |-
       <code>grant_scope_id</code> field removed from roles
     </td>
     <td style={{verticalAlign: 'middle'}}>
-     The <code>grant_scope_id</code> field, which was deprecated in release 0.15.0, has been removed from roles. You can now manage roles using the <code>add-grant-scopes</code>, <code>remove-grant-scopes</code>, and <code>set-grant-scopes</code> commands.
+    The <code>grant_scope_id</code> field, which was deprecated in release 0.15.0, has been removed from roles. You can now manage roles using the <code>add-grant-scopes</code>, <code>remove-grant-scopes</code>, and <code>set-grant-scopes</code> commands.
       <br /><br />
       Learn more:&nbsp;<a href="/boundary/docs/commands/roles/add-grant-scopes"><code>add-grant-scopes</code></a>, <a href="/boundary/docs/commands/roles/remove-grant-scopes"><code>remove-grant-scopes</code></a>, and <a href="/boundary/docs/commands/roles/set-grant-scopes"><code>set-grant-scopes</code></a>
     </td>
