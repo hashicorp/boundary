@@ -226,6 +226,70 @@ func (i *uint64Value) String() string  { return strconv.FormatUint(uint64(*i.tar
 func (i *uint64Value) Example() string { return "uint" }
 func (i *uint64Value) Hidden() bool    { return i.hidden }
 
+// -- Uint16Var and uint16Value
+type Uint16Var struct {
+	Name       string
+	Aliases    []string
+	Usage      string
+	Default    uint16
+	Hidden     bool
+	EnvVar     string
+	Target     *uint16
+	Completion complete.Predictor
+}
+
+func (f *FlagSet) Uint16Var(i *Uint16Var) {
+	initial := i.Default
+	if v, exist := os.LookupEnv(i.EnvVar); exist {
+		if i, err := strconv.ParseUint(v, 0, 16); err == nil {
+			initial = uint16(i)
+		}
+	}
+
+	def := ""
+	if i.Default != 0 {
+		strconv.FormatUint(uint64(i.Default), 10)
+	}
+
+	f.VarFlag(&VarFlag{
+		Name:       i.Name,
+		Aliases:    i.Aliases,
+		Usage:      i.Usage,
+		Default:    def,
+		EnvVar:     i.EnvVar,
+		Value:      newUint16Value(initial, i.Target, i.Hidden),
+		Completion: i.Completion,
+	})
+}
+
+type uint16Value struct {
+	hidden bool
+	target *uint16
+}
+
+func newUint16Value(def uint16, target *uint16, hidden bool) *uint16Value {
+	*target = def
+	return &uint16Value{
+		hidden: hidden,
+		target: target,
+	}
+}
+
+func (i *uint16Value) Set(s string) error {
+	v, err := strconv.ParseUint(s, 0, 16)
+	if err != nil {
+		return err
+	}
+
+	*i.target = uint16(v)
+	return nil
+}
+
+func (i *uint16Value) Get() any        { return uint64(*i.target) }
+func (i *uint16Value) String() string  { return strconv.FormatUint(uint64(*i.target), 10) }
+func (i *uint16Value) Example() string { return "uint" }
+func (i *uint16Value) Hidden() bool    { return i.hidden }
+
 // -- StringVar and stringValue
 type StringVar struct {
 	Name       string
