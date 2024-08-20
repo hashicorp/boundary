@@ -11,12 +11,38 @@ description: |-
 
 @include 'release-notes/intro.mdx'
 
-## Important change
+## Important changes
 
-As of version 0.17.1 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary Enterprise.
-If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>.
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Change</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
 
-Refer to [Known issues and breaking changes](#known-issues-and-breaking-changes) for more information.
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Role creation
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In a future version Boundary will no longer automatically create roles when new scopes are created. This was implemented prior to multi-scope grants to ensure administrators and users had default permissions in new scopes. Since Boundary 0.15, initial roles created for new clusters provide these permissions by default to all scopes using multi-scope grants.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Docker image no longer contains <code>curl</code>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.17.1 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary Enterprise. If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>.
+    <br /><br />
+    Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
+    </td>
+  </tr>
+  </tbody>
+</table>
 
 ## New features
 
