@@ -102,22 +102,15 @@
       },
       {
         "title": "Filtering",
+        "hidden": "true",
         "routes": [
           {
             "title": "Overview",
             "path": "concepts/filtering"
           },
           {
-            "title": "Managed groups",
-            "path": "concepts/filtering/managed-groups"
-          },
-          {
             "title": "Resource listing",
             "path": "concepts/filtering/resource-listing"
-          },
-          {
-            "title": "Worker tags",
-            "path": "concepts/filtering/worker-tags"
           },
           {
             "title": "Events",
@@ -195,27 +188,27 @@
             "path": "install-boundary/terraform-patterns"
           },
           {
-            "title": "Scopes",
+            "title": "Configure scopes",
             "path": "install-boundary/terraform-patterns/terraform-scopes"
           },
           {
-            "title": "Users and auth methods",
+            "title": "Configure users and auth methods",
             "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
           },
           {
-            "title": "Groups and RBAC",
+            "title": "Configure groups and RBAC",
             "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
           },
           {
-            "title": "Hosts and host management",
+            "title": "Configure hosts and host management",
             "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
           },
           {
-            "title": "Credentials and credential stores",
+            "title": "Configure credentials and credential stores",
             "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
           },
           {
-            "title": "Session recording",
+            "title": "Configure session recording",
             "badge": {
               "text": "HCP/ENT",
               "type": "outlined",
@@ -224,7 +217,7 @@
             "path": "install-boundary/terraform-patterns/terraform-session-recording"
           },
           {
-            "title": "Targets",
+            "title": "Configure targets",
             "path": "install-boundary/terraform-patterns/terraform-targets"
           }
         ]
@@ -246,6 +239,10 @@
             "path": "security/encrypt/connections-tls"
           }
         ]
+      },
+      {
+        "title": "Control access using worker tags",
+        "path": "security/worker-tags"
       },
       {
         "title": "Overview",
@@ -496,35 +493,35 @@
         "path": "operations"
       },
       {
-        "title": "Listener",
+        "title": "Configure listener addresses and ports",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Listeners",
             "path": "operations/listener"
           },
           {
-            "title": "TCP",
+            "title": "TCP listeners",
             "path": "operations/listener/tcp"
           },
           {
-            "title": "Unix",
+            "title": "Unix listeners",
             "path": "operations/listener/unix"
           }
         ]
       },
       {
-        "title": "Metrics",
+        "title": "Monitor metrics",
         "path": "operations/metrics"
       },
       {
-        "title": "Health endpoint",
+        "title": "Monitor health",
         "path": "operations/health"
       },
       {
-        "title": "Events",
+        "title": "Monitor events",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Events",
             "path": "operations/events"
           },
           {
@@ -545,10 +542,27 @@
   },
   {
     "title": "Upgrade Boundary",
+    "href": "https://developer.hashicorp.com/boundary/tutorials/self-managed-deployment/upgrade-version"
+  },
+  {
+    "title": "Troubleshoot Boundary",
     "routes": [
       {
-        "title": "Upgrade and database migration",
-        "href": "https://developer.hashicorp.com/boundary/tutorials/self-managed-deployment/upgrade-version"
+        "title": "Common error messages",
+        "path": "troubleshoot/common-errors"
+      },
+      {
+        "title": "FAQ",
+        "path": "troubleshoot/faq"
+      },
+      {
+        "title": "Recorded sessions",
+        "path": "troubleshoot/troubleshoot-recorded-sessions",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
       }
     ]
   },
@@ -626,28 +640,6 @@
     ]
   },
   {
-    "title": "Troubleshoot",
-    "routes": [
-      {
-        "title": "Common error messages",
-        "path": "troubleshoot/common-errors"
-      },
-      {
-        "title": "FAQ",
-        "path": "troubleshoot/faq"
-      },
-      {
-        "title": "Recorded sessions",
-        "path": "troubleshoot/troubleshoot-recorded-sessions",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        }
-      }
-    ]
-  },
-  {
     "divider": true
   },
   {
@@ -657,14 +649,14 @@
       "title": "Configure workers",
       "routes": [
         {
+          "title": "Worker capabilities",
+          "path": "access-management"
+        },
+        {
           "title": "Provide access to hosts in my network",
           "routes": [
             {
-              "title": "Overview",
-              "path": "access-management/configure-workers"
-            },
-            {
-              "title": "Configuration",
+              "title": "Register workers",
               "path": "access-management/configure-workers/worker-configuration"
             },
             {
@@ -679,13 +671,8 @@
     "title": "Configure hosts",
     "routes": [
       {
-        "title": "Import existing hosts",
-        "routes": [
-          {
-            "title": "Host discovery",
-            "path": "hosts/host-discovery"
-          }
-        ]
+        "title": "Host discovery",
+        "path": "hosts"
       },
       {
         "title": "Sync hosts from my cloud provider",
@@ -705,6 +692,10 @@
   {
     "title": "Configure targets",
     "routes": [
+      {
+        "title": "Targets",
+        "path": "targets"
+      },
       {
         "title": "Configure a target",
         "routes": [
@@ -750,7 +741,7 @@
     "title": "Configure credentials",
     "routes": [
       {
-        "title": "Overview",
+        "title": "Credentials in Boundary",
         "path": "credentials"
       },
       {
@@ -789,7 +780,7 @@
     "title": "Monitor access",
     "routes": [
       {
-        "title": "Overview",
+        "title": "Session recording",
         "path": "monitor-access"
       },
       {
@@ -893,10 +884,6 @@
       {
         "title": "Manage targets",
         "path": "common-workflows/manage-targets"
-      },
-      {
-        "title": "Manage users and groups",
-        "path": "common-workflows/manage-users-groups"
       }
     ]
   },
@@ -929,6 +916,72 @@
             "path": "rbac/permissions/resource-table"
           }
         ]
+      },
+      {
+        "title": "Manage access to resources dynamically",
+        "routes": [
+          {
+            "title": "Manage principals",
+            "path": "rbac/dynamic/manage-users-groups"
+          },
+          {
+            "title": "Filter managed groups",
+            "path": "rbac/dynamic/managed-groups"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Enterprise solutions"
+  },
+  {
+    "title": "HCP Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "hcp"
+      },
+      {
+        "title": "Get started",
+        "routes": [
+          {
+            "title": "Deploy and login",
+            "path": "hcp/get-started/deploy-and-login"
+          },
+          {
+            "title": "Connect to target",
+            "path": "hcp/get-started/connect-to-target"
+          }
+        ]
+      },
+      {
+        "title": "Documentation",
+        "href": "https://cloud.hashicorp.com/docs/boundary/"
+      }
+    ]
+  },
+  {
+    "title": "Boundary Enterprise",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "enterprise"
+      },
+      {
+        "title": "Licensing",
+        "path": "enterprise/licensing"
+      },
+      {
+        "title": "Automated license reporting",
+        "path": "enterprise/automated-license-reporting"
+      },
+      {
+        "title": "Supported versions policy",
+        "path": "enterprise/supported-versions"
       }
     ]
   },
@@ -937,6 +990,95 @@
   },
   {
     "heading": "Clients"
+  },
+  {
+    "title": "Boundary clients",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "api-clients"
+      },
+      {
+        "title": "Go SDK",
+        "path": "api-clients/go-sdk"
+      },
+      {
+        "title": "Desktop",
+        "hidden": true,
+        "path": "api-clients/desktop"
+      },
+      {
+        "title": "Desktop",
+        "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
+      },
+      {
+        "title": "Client cache",
+        "path": "api-clients/client-cache"
+      }
+    ]
+  },
+  {
+    "title": "Integrations",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "integrations"
+      },
+      {
+        "title": "Vault",
+        "path": "integrations/vault"
+      }
+    ]
+  },
+  {
+    "title": "Develop Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "developing"
+      },
+      {
+        "title": "Build Boundary",
+        "path": "developing/building"
+      },
+      {
+        "title": "Develop the UI",
+        "path": "developing/ui"
+      }
+    ]
+  },
+  {
+    "title": "Boundary Community Edition",
+    "hidden": true,
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "oss"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Reference documentation "
+  },
+  {
+    "title": "API",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "api"
+      },
+      {
+        "title": "Rate limiting",
+        "path": "api/rate-limiting"
+      },
+      {
+        "title": "List pagination",
+        "path": "api/pagination"
+      }
+    ]
   },
   {
     "title": "Commands (CLI)",
@@ -1854,142 +1996,6 @@
             "path": "commands/workers/update"
           }
         ]
-      }
-    ]
-  },
-  {
-    "title": "API and clients",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "api-clients"
-      },
-      {
-        "title": "API",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "api-clients/api"
-          },
-          {
-            "title": "Rate limiting",
-            "path": "api-clients/api/rate-limiting"
-          },
-          {
-            "title": "List pagination",
-            "path": "api-clients/api/pagination"
-          }
-        ]
-      },
-      {
-        "title": "Go SDK",
-        "path": "api-clients/go-sdk"
-      },
-      {
-        "title": "Desktop",
-        "hidden": true,
-        "path": "api-clients/desktop"
-      },
-      {
-        "title": "Desktop",
-        "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
-      },
-      {
-        "title": "Client cache",
-        "path": "api-clients/client-cache"
-      }
-    ]
-  },
-  {
-    "title": "Integrations",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "integrations"
-      },
-      {
-        "title": "Vault",
-        "path": "integrations/vault"
-      }
-    ]
-  },
-  {
-    "title": "Develop Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "developing"
-      },
-      {
-        "title": "Build Boundary",
-        "path": "developing/building"
-      },
-      {
-        "title": "Develop the UI",
-        "path": "developing/ui"
-      }
-    ]
-  },
-  {
-    "title": "Boundary Community Edition",
-    "hidden": true,
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "oss"
-      }
-    ]
-  },
-  {
-    "divider": true
-  },
-  {
-    "heading": "Enterprise solutions"
-  },
-  {
-    "title": "HCP Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "hcp"
-      },
-      {
-        "title": "Get started",
-        "routes": [
-          {
-            "title": "Deploy and login",
-            "path": "hcp/get-started/deploy-and-login"
-          },
-          {
-            "title": "Connect to target",
-            "path": "hcp/get-started/connect-to-target"
-          }
-        ]
-      },
-      {
-        "title": "Documentation",
-        "href": "https://cloud.hashicorp.com/docs/boundary/"
-      }
-    ]
-  },
-  {
-    "title": "Boundary Enterprise",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "enterprise"
-      },
-      {
-        "title": "Licensing",
-        "path": "enterprise/licensing"
-      },
-      {
-        "title": "Automated license reporting",
-        "path": "enterprise/automated-license-reporting"
-      },
-      {
-        "title": "Supported versions policy",
-        "path": "enterprise/supported-versions"
       }
     ]
   }

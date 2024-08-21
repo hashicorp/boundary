@@ -1,0 +1,30 @@
+---
+layout: docs
+page_title: Worker overview
+description: |-
+  An overview of worker capabilities in Boundary.
+---
+
+# Worker capabilities
+
+@include 'concepts/workers.mdx'
+
+## Session recording
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+[Session recording](/boundary/docs/configuration/session-recording) requires at least one Worker with access to local and remote storage.
+Workers used for session recording require an accessible directory defined by `recording_storage_path` for storing in-progress session recordings. On session closure, a local session recording is moved to remote storage and deleted locally.
+
+The `recording_storage_minimum_available_capacity` value determines the minimum amount of storage space that is required for workers to perform session recording operations. If a worker is at or below the storage threshold, Boundary does not use the worker to record sessions or play back recordings.
+
+Development example:
+
+```hcl
+worker {
+  auth_storage_path="/var/lib/boundary"
+  initial_upstreams = ["10.0.0.1"]
+  recording_storage_path="/local/storage/directory"
+  recording_storage_minimum_available_capacity="500MB"
+}
+```
