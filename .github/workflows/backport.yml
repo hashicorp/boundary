@@ -14,8 +14,26 @@ jobs:
   backport:
     if: github.event.pull_request.merged
     runs-on: ${{ fromJSON(vars.RUNNER) }}
-    container: hashicorpdev/backport-assistant:0.2.3
+    container: hashicorpdev/backport-assistant:0.5.1
     steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          fetch-depth: 0 # Fetch all branches and tags
+      - name: Check if any migrations have changed
+        run: |
+          if git diff --exit-code --name-only "origin/${{ github.event.pull_request.base.ref }}"...HEAD -- internal/db/schema/migrations; then
+            echo "No migrations have changed, continuing with backport"
+          else
+            # Post comment on PR.
+            echo "Posting new backport-failure GitHub comment under PR #${{ github.event.pull_request.number }}"
+            curl -sX POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"body": "Backport Assistant: you attempted to automatically backport changes in this PR, but because it contained changes to migration files, this was rejected. Please carefully manually backport the changes."}' \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments"
+            echo "Migrations have changed, refusing to backport. Please carefully manually backport the changes."
+            exit 1
+          fi
       - name: Backport changes to stable-website
         run: |
           backport-assistant backport -automerge
