@@ -477,54 +477,6 @@
         ]
       },
       {
-        "title": "Session recordings",
-        "hidden": "true",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/session-recording"
-          },
-          {
-            "title": "Configure workers for storage",
-            "path": "configuration/session-recording/configure-worker-storage"
-          },
-          {
-            "title": "Configure storage provider",
-            "routes": [
-              {
-                "title": "Amazon S3",
-                "path": "configuration/session-recording/storage-providers/configure-s3"
-              },
-              {
-                "title": "MinIO",
-                "path": "configuration/session-recording/storage-providers/configure-minio"
-              }
-            ]
-          },
-          {
-            "title": "Create storage buckets",
-            "path": "configuration/session-recording/create-storage-bucket"
-          },
-          {
-            "title": "Enable session recording",
-            "path": "configuration/session-recording/enable-session-recording"
-          },
-          {
-            "title": "Configure storage policies",
-            "path": "configuration/session-recording/configure-storage-policy"
-          },
-          {
-            "title": "Update storage policies",
-            "path": "configuration/session-recording/update-storage-policy"
-          }
-        ]
-      },
-      {
         "title": "Controller",
         "hidden": "true",
         "path": "configuration/controller"
@@ -586,33 +538,6 @@
           {
             "title": "Stderr sink",
             "path": "operations/events/stderr"
-          }
-        ]
-      },
-      {
-        "title": "Session recordings",
-        "hidden": "true",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "operations/session-recordings"
-          },
-          {
-            "title": "Find and view recorded sessions",
-            "path": "operations/session-recordings/manage-recorded-sessions"
-          },
-          {
-            "title": "Validate recorded sessions",
-            "path": "operations/session-recordings/validate-session-recordings"
-          },
-          {
-            "title": "Validate external data store",
-            "path": "operations/session-recordings/validate-data-store"
           }
         ]
       }
@@ -855,6 +780,91 @@
           {
             "title": "Configure targets with credential injection",
             "path": "credentials/dynamic/configure-targets-credential-injection"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Monitor access",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "monitor-access"
+      },
+      {
+        "title": "Record and play back session activity",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "monitor-access/session-recording"
+          },
+          {
+            "title": "Configure workers for storage",
+            "path": "monitor-access/session-recording/configure-worker-storage"
+          },
+          {
+            "title": "Configure storage provider",
+            "routes": [
+              {
+                "title": "Amazon S3",
+                "path": "monitor-access/session-recording/storage-providers/configure-s3"
+              },
+              {
+                "title": "MinIO",
+                "path": "monitor-access/session-recording/storage-providers/configure-minio"
+              }
+            ]
+          },
+          {
+            "title": "Create storage buckets",
+            "path": "monitor-access/session-recording/create-storage-bucket"
+          },
+          {
+            "title": "Enable session recording",
+            "path": "monitor-access/session-recording/enable-session-recording"
+          },
+          {
+            "title": "Find and view recorded sessions",
+            "path": "monitor-access/session-recording/manage-recorded-sessions"
+          }
+        ]
+      },
+      {
+        "title": "Implement session recording compliance standards",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "monitor-access/compliance-standards"
+          },
+          {
+            "title": "Configure storage policies",
+            "path": "monitor-access/compliance-standards/configure-storage-policy"
+          },
+          {
+            "title": "Update storage policies",
+            "path": "monitor-access/compliance-standards/update-storage-policy"
+          },
+          {
+            "title": "Validate recorded sessions",
+            "path": "monitor-access/compliance-standards/validate-session-recordings"
+          },
+          {
+            "title": "Validate external data store",
+            "path": "monitor-access/compliance-standards/validate-data-store"
+          }
+        ]
+      },
+      {
+        "title": "Understand the BSR data file",
+        "routes": [
+          {
+            "title": "BSR file data structure",
+            "path": "monitor-access/understand-bsr/bsr-structure"
+          },
+          {
+            "title": "Read a BSR file",
+            "path": "monitor-access/understand-bsr/read-bsr-file"
           }
         ]
       }

@@ -1,0 +1,77 @@
+---
+layout: docs
+page_title: Session recording
+description: |-
+  An overview of using session recording to audit for compliance and threat management
+---
+
+# Session recording
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Boundary provides auditing capabilities via [session recording](/boundary/docs/concepts/domain-model/session-recordings).
+In Boundary, a session represents a set of connections between a user and a host from a target.
+The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+All sessions have a fixed time limit, and all connections are proxied through a worker.
+
+Sessions are recorded by workers.
+Workers are the proxy between an end user and a target.
+No session data is routed through a controller during the recording stage.
+The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated. Session recordings are stored in the [BSR](#bsr-directory-structure) (Boundary Session Recording) format.
+Any credentials needed to access the external object store are passed from the controller to the recording worker when the session is established.
+
+In a multi-hop session, the worker that is configured to access the external object store is the worker that records the session.
+If no worker can access the storage backend, the session is canceled and an error is returned.
+
+You view session recordings with a session player that runs in a web browser.
+The session player is an aggregation of web components that work together to present the different parts of a session recording as a logical whole.
+A controller retrieves the contents of a recording from a worker with access to the external object store.
+The controller decodes the contents of the recording into a format that is usable by the player.
+The player then retrieves the data from the controller.
+
+### Session recording audit events
+
+Boundary emits audit events for actions performed by users. Here are **some** of the possible event field types that are emitted:
+
+- `timestamp` - The timestamp of the event
+- `auth` - Authentication information about the user who performed the action.
+- `response.details.item.connection_recordings.`
+   - `id` - Session recording ID.
+   - `channel_recordings.id` - Session recording channel ID.
+   - `start_time.seconds` - Start time of session recording.
+   - `end_time.seconds` - End time of session recording.
+   - `bytes_up` - Upload bytes during session.
+   - `bytes_down` - Download bytes during session.
+   - `channel_recordings.duration.seconds`- Length of time a session took, recorded in seconds.
+- `request_info.client_ip` - The client IP address used by the user.
+- `response.details.item.create_time_values.`
+   - `target.name` - The name of the targets.
+   - `target.id` - The ID of the target accessed during the recording.
+   - `target.type` - The type of protocol used.
+   - `target.scope.name` - Name of the scope the target accessed belongs to.
+   - `target.scope.parent_scope_id` - Parent ID of the scope the target accessed belongs to.
+- `response.details.item.Attrs.SshTargetAttributes.`
+   - `storage_bucket_id.value` - Storage bucket ID attached to a target that is used for storing session recordings.
+   - `enable_session_recording.value` - Determines if session recording is enabled on a target.
+
+## Storage buckets
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-buckets) is used to store the recorded sessions.
+The storage bucket represents a bucket in an external object store.
+At this time, the only supported storage for storage buckets is AWS S3.
+In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the secret key.
+
+Before you can use a storage bucket to record sessions, you must configure a worker with local storage to act as a cache.
+The entire recording is written to the local storage cache before it is uploaded.
+Once the session is complete, the files are automatically synced with the external storage bucket and deleted from the worker's local storage.
+
+A storage bucket exists in either the Global scope or an Org scope.
+A storage bucket that is associated with the Global scope can be associated with any target.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
+Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
+
+Deleting a storage bucket in Boundary does not delete the bucket in the external object store, nor does it delete the recorded sessions in the bucket.
+The storage bucket's lifecycle does not affect the lifecycle of the bucket in the external object store.
+Any session recording metadata that is attached to the storage bucket is deleted when the storage bucket is deleted.
