@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/util"
+	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -32,19 +33,22 @@ import (
 
 // normalizeCatalogAttributes allows a plugin to normalize set attributes before
 // they are saved
-func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHs *pb.HostSet) error {
+func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHc *hcpb.HostCatalog, plgHs *pb.HostSet) error {
 	const op = "plugin.(Repository).normalizeSetAttributes"
 	switch {
 	case util.IsNil(plgClient):
 		return errors.New(ctx, errors.InvalidParameter, op, "plugin client is nil")
 	case plgHs == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "host set is nil")
+	case plgHc.GetWorkerFilter().GetValue() != "" && plgHc.GetPlugin() == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin data is not available on host catalog with worker filter")
 	case plgHs.GetAttributes() == nil:
 		return nil
 	}
 
 	ret, err := plgClient.NormalizeSetData(ctx, &plgpb.NormalizeSetDataRequest{
 		Attributes: plgHs.GetAttributes(),
+		Plugin:     plgHc.GetPlugin(),
 	})
 	switch {
 	case err == nil:
@@ -120,7 +124,11 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
 
-	plgHc, err := toPluginCatalog(ctx, c)
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -130,7 +138,7 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	}
 
 	if plgHs.GetAttributes() != nil {
-		if err := normalizeSetAttributes(ctx, plgClient, plgHs); err != nil {
+		if err := normalizeSetAttributes(ctx, plgClient, plgHc, plgHs); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		if s.Attributes, err = proto.Marshal(plgHs.GetAttributes()); err != nil {
@@ -213,10 +221,6 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	// The set now exists in the plugin, sync it immediately.
 	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0, scheduler.WithRunNow(true))
 
-	plg, err := r.getPlugin(ctx, c.GetPluginId())
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
 	return returnedHostSet, plg, nil
 }
 
@@ -367,7 +371,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
-	plgHc, err := toPluginCatalog(ctx, catalog)
+	plgHc, err := toPluginCatalog(ctx, catalog, plg)
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -382,7 +386,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 
 	if updateAttributes {
 		if newPlgSet.GetAttributes() != nil {
-			if err := normalizeSetAttributes(ctx, plgClient, newPlgSet); err != nil {
+			if err := normalizeSetAttributes(ctx, plgClient, plgHc, newPlgSet); err != nil {
 				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			if newSet.Attributes, err = proto.Marshal(newPlgSet.GetAttributes()); err != nil {
@@ -737,7 +741,7 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	if !ok || plgClient == nil {
 		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
-	plgHc, err := toPluginCatalog(ctx, c)
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}

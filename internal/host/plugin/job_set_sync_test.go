@@ -165,7 +165,8 @@ func TestSetSyncJob_Run(t *testing.T) {
 
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
-	plgServer.ListHostsFn = func(_ context.Context, _ *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+	plgServer.ListHostsFn = func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+		require.NotNil(req.GetCatalog().GetPlugin())
 		return &plgpb.ListHostsResponse{}, nil
 	}
 	// Start with a set with a member that should be removed
@@ -189,6 +190,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	set1 := TestSet(t, conn, kmsCache, sched, cat, plgm)
 	counter := new(uint32)
 	plgServer.ListHostsFn = func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+		require.NotNil(req.GetCatalog().GetPlugin())
 		assert.GreaterOrEqual(1, len(req.GetSets()))
 		var setIds []string
 		for _, s := range req.GetSets() {

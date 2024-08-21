@@ -262,7 +262,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 		if !ok {
 			return errors.New(ctx, errors.NotSpecificIntegrity, op, "catalog returned when no set requested it")
 		}
-		plgCat, err := toPluginCatalog(ctx, c)
+		plgCat, err := toPluginCatalog(ctx, c, ca.plugin())
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin catalog conversion"))
 		}

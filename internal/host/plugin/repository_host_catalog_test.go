@@ -22,8 +22,10 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
+	plgstore "github.com/hashicorp/boundary/internal/plugin/store"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
@@ -139,7 +141,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte{},
 				},
 			},
-			wantIsErr: errors.InvalidParameter,
+			wantIsErr: errors.RecordNotFound,
 		},
 		{
 			name: "valid-with-name",
@@ -313,11 +315,13 @@ func TestRepository_CreateCatalog(t *testing.T) {
 							retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
 								Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
 							})
+							require.NotNil(req.GetPlugin())
 							return &plgpb.NormalizeCatalogDataResponse{Attributes: retAttrs}, nil
 						},
 						OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 							pluginCalled = true
 							gotPluginAttrs = req.GetCatalog().GetAttributes()
+							require.NotNil(req.GetCatalog().GetPlugin())
 							return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
 						},
 					},
@@ -540,6 +544,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
 						Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
 					})
+					require.NotNil(t, req.GetPlugin())
 					return &plgpb.NormalizeCatalogDataResponse{Attributes: retAttrs}, nil
 				},
 				OnUpdateCatalogFn: func(_ context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
@@ -549,7 +554,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 						respSecrets = nil
 						setRespSecretsNil = false
 					}
-
+					require.NotNil(t, req.GetCurrentCatalog().GetPlugin())
+					require.NotNil(t, req.GetNewCatalog().GetPlugin())
 					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: respSecrets}}, pluginError
 				},
 			},
@@ -1453,6 +1459,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			pluginInstance.OnDeleteCatalogFn = func(_ context.Context, request *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error) {
+				require.NotNil(t, request.GetCatalog().GetPlugin())
 				return nil, tt.pluginChecker(t, request)
 			}
 			got, err := repo.DeleteCatalog(context.Background(), tt.id)
@@ -1660,6 +1667,25 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, jj)
 	require.Less(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
+}
+
+func TestToPluginInfo(t *testing.T) {
+	require.Nil(t, toPluginInfo(nil))
+
+	plg := &plugin.Plugin{
+		Plugin: &plgstore.Plugin{
+			PublicId:    "plg_1234567890",
+			Name:        "A Plugin Name",
+			Description: "A Plugin Description",
+		},
+	}
+	pi := toPluginInfo(plg)
+	require.NotNil(t, pi)
+	require.Equal(t, &plugins.PluginInfo{
+		Id:          "plg_1234567890",
+		Name:        "A Plugin Name",
+		Description: "A Plugin Description",
+	}, pi)
 }
 
 func assertPluginBasedPublicId(t *testing.T, prefix, actual string) {

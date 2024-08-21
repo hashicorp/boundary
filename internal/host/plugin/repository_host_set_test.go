@@ -303,11 +303,13 @@ func TestRepository_CreateSet(t *testing.T) {
 						retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
 							Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
 						})
+						require.NotNil(req.GetPlugin())
 						return &plgpb.NormalizeSetDataResponse{Attributes: retAttrs}, nil
 					},
 					OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 						pluginCalled = true
 						pluginReceivedAttrs = req.GetSet().GetAttributes()
+						require.NotNil(req.GetCatalog().GetPlugin())
 						return &plgpb.OnCreateSetResponse{}, nil
 					},
 				}),
@@ -1226,6 +1228,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 							retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
 								Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
 							})
+							require.NotNil(req.GetPlugin())
 							return &plgpb.NormalizeSetDataResponse{Attributes: retAttrs}, nil
 						},
 						OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
@@ -1233,6 +1236,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 							for _, check := range tt.wantCheckPluginReqFuncs {
 								check(t, req)
 							}
+							require.NotNil(req.GetCatalog().GetPlugin())
 							return &plgpb.OnUpdateSetResponse{}, tt.withPluginError
 						},
 					},

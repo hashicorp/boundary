@@ -29,10 +29,17 @@ begin;
     hcs.secret,
     hcs.key_id,
     hcs.create_time as persisted_create_time,
-    hcs.update_time as persisted_update_time
+    hcs.update_time as persisted_update_time,
+    plg.name        as plugin_name,
+    plg.scope_id    as plugin_scope_id,
+    plg.description as plugin_description,
+    plg.create_time as plugin_create_time,
+    plg.update_time as plugin_update_time,
+    plg.version     as plugin_version
   from
     host_plugin_catalog hc
-      left outer join host_plugin_catalog_secret hcs   on hc.public_id = hcs.catalog_id;
+      left outer join host_plugin_catalog_secret hcs   on hc.public_id = hcs.catalog_id
+      left outer join plugin plg                       on hc.plugin_id = plg.public_id;
   comment on view host_plugin_catalog_with_secret is
     'host plugin catalog with its associated persisted data';
 

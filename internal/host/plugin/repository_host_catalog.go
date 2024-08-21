@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pbset "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
@@ -37,12 +38,15 @@ func normalizeCatalogAttributes(ctx context.Context, plgClient plgpb.HostPluginS
 		return errors.New(ctx, errors.InvalidParameter, op, "plugin client is nil")
 	case plgHc == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "host catalog is nil")
+	case plgHc.GetWorkerFilter().GetValue() != "" && plgHc.GetPlugin() == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin data is not available on host catalog with worker filter")
 	case plgHc.GetAttributes() == nil:
 		return nil
 	}
 
 	ret, err := plgClient.NormalizeCatalogData(ctx, &plgpb.NormalizeCatalogDataRequest{
 		Attributes: plgHc.GetAttributes(),
+		Plugin:     plgHc.GetPlugin(),
 	})
 	switch {
 	case err == nil:
@@ -116,7 +120,11 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		}
 	}
 
-	plgHc, err := toPluginCatalog(ctx, c)
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -208,10 +216,6 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s: name %s already exists", c.ProjectId, c.Name)))
 		}
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s", c.ProjectId)))
-	}
-	plg, err := r.getPlugin(ctx, newHostCatalog.GetPluginId())
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return newHostCatalog, plg, nil
 }
@@ -345,10 +349,10 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		needSetSync = true
 	}
 
-	// Get the plugin for the host catalog - this is to return it back
-	// after the update is complete. We don't actually do anything with
-	// the record otherwise. Fetch it here so that if there's an
-	// integrity error, we don't call the plugin.
+	// Get the plugin for the host catalog - this is to return it back after the
+	// update is complete, as well as forwarding it to the actual plugin given
+	// that it is necessary if we're using a worker filter. Fetch it here so
+	// that if there's an integrity error, we don't call the plugin.
 	plg, err := r.getPlugin(ctx, currentCatalog.GetPluginId())
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
@@ -362,11 +366,11 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
-	currPlgHc, err := toPluginCatalog(ctx, currentCatalog)
+	currPlgHc, err := toPluginCatalog(ctx, currentCatalog, plg)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	newPlgHc, err := toPluginCatalog(ctx, newCatalog)
+	newPlgHc, err := toPluginCatalog(ctx, newCatalog, plg)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -612,7 +616,12 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 	if c == nil {
 		return db.NoRowsAffected, nil
 	}
-	plgHc, err := toPluginCatalog(ctx, c)
+
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -718,7 +727,7 @@ func (r *Repository) getPlugin(ctx context.Context, plgId string) (*plg.Plugin, 
 
 // toPluginCatalog returns a host catalog, with it's secret if available, in the format expected
 // by the host plugin system.
-func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, error) {
+func toPluginCatalog(ctx context.Context, in *HostCatalog, plg *plg.Plugin) (*pb.HostCatalog, error) {
 	const op = "plugin.toPluginCatalog"
 	if in == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
@@ -740,6 +749,7 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		Name:         name,
 		Description:  description,
 		WorkerFilter: workerFilter,
+		Plugin:       toPluginInfo(plg),
 	}
 	if len(in.GetSecretsHmac()) > 0 {
 		hc.SecretsHmac = base58.Encode(in.GetSecretsHmac())
@@ -757,6 +767,18 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		hc.Secrets = in.Secrets
 	}
 	return hc, nil
+}
+
+// toPluginInfo converts a Plugin object into PluginInfo.
+func toPluginInfo(plg *plg.Plugin) *plugins.PluginInfo {
+	if plg == nil {
+		return nil
+	}
+	return &plugins.PluginInfo{
+		Id:          plg.GetPublicId(),
+		Name:        plg.GetName(),
+		Description: plg.GetDescription(),
+	}
 }
 
 // toPluginPersistedData converts a *HostCatalogSecret from storage to a
