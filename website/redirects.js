@@ -160,11 +160,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/service-discovery',
-    destination: '/boundary/docs/concepts/host-discovery',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/concepts/filtering/oidc-managed-groups',
     destination: '/boundary/docs/concepts/filtering/managed-groups',
     permanent: true,

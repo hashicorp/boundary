@@ -93,46 +93,12 @@
         "path": "concepts/credential-management"
       },
       {
-        "title": "Aliases",
-        "path": "concepts/aliases"
-      },
-      {
         "title": "Workers",
         "path": "concepts/workers"
       },
       {
         "title": "Host discovery",
         "path": "concepts/host-discovery"
-      },
-      {
-        "title": "Connection workflows",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/connection-workflows"
-          },
-          {
-            "title": "Connect helpers",
-            "path": "concepts/connection-workflows/connect-helpers"
-          },
-          {
-            "title": "Exec flag",
-            "path": "concepts/connection-workflows/exec-flag"
-          },
-          {
-            "title": "SSH ProxyCommand",
-            "path": "concepts/connection-workflows/workflow-ssh-proxycommand"
-          },
-          {
-            "title": "Multi-hop sessions",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "concepts/connection-workflows/multi-hop"
-          }
-        ]
       },
       {
         "title": "Filtering",
@@ -735,6 +701,28 @@
     ]
   },
   {
+    "title": "Troubleshoot",
+    "routes": [
+      {
+        "title": "Common error messages",
+        "path": "troubleshoot/common-errors"
+      },
+      {
+        "title": "FAQ",
+        "path": "troubleshoot/faq"
+      },
+      {
+        "title": "Recorded sessions",
+        "path": "troubleshoot/troubleshoot-recorded-sessions",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      }
+    ]
+  },
+  {
     "divider": true
   },
   {
@@ -766,42 +754,109 @@
     "title": "Configure hosts",
     "routes": [
       {
-        "title": "Overview",
-        "path": "host-discovery"
+        "title": "Import existing hosts",
+        "routes": [
+          {
+            "title": "Host discovery",
+            "path": "hosts/host-discovery"
+          }
+        ]
       },
       {
-        "title": "AWS dynamic hosts",
-        "path": "host-discovery/aws"
-      },
-      {
-        "title": "Azure dynamic hosts",
-        "path": "host-discovery/azure"
+        "title": "Sync hosts from my cloud provider",
+        "routes": [
+          {
+            "title": "AWS dynamic hosts",
+            "path": "hosts/host-providers/aws"
+          },
+          {
+            "title": "Azure dynamic hosts",
+            "path": "hosts/host-providers/azure"
+          }
+        ]
       }
     ]
   },
   {
     "title": "Configure targets",
-    "path": "targets"
-  },
-  {
-    "title": "Troubleshoot",
     "routes": [
       {
-        "title": "Common error messages",
-        "path": "troubleshoot/common-errors"
+        "title": "Configure a target",
+        "routes": [
+          {
+            "title": "Aliases",
+            "path": "targets/configure-targets/aliases"
+          },
+          {
+            "title": "Multi-hop sessions",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "targets/configure-targets/multi-hop"
+          }
+        ]
       },
       {
-        "title": "FAQ",
-        "path": "troubleshoot/faq"
+        "title": "Connect to a target",
+        "routes": [
+          {
+            "title": "Connection workflows",
+            "path": "targets/connect-targets"
+          },
+          {
+            "title": "Connect helpers",
+            "path": "targets/connect-targets/connect-helpers"
+          },
+          {
+            "title": "Exec flag",
+            "path": "targets/connect-targets/exec-flag"
+          },
+          {
+            "title": "SSH ProxyCommand",
+            "path": "targets/connect-targets/workflow-ssh-proxycommand"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Configure credentials",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "credentials"
       },
       {
-        "title": "Recorded sessions",
-        "path": "troubleshoot/troubleshoot-recorded-sessions",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        }
+        "title": "Provide static credentials for targets",
+        "routes": [
+          {
+            "title": "Create a static credential store",
+            "path": "credentials/static/create-static-credential-store"
+          },
+          {
+            "title": "Configure targets with credential brokering",
+            "path": "credentials/static/configure-targets-credential-brokering"
+          }
+        ]
+      },
+      {
+        "title": "Set up dynamic credentials for just-in-time access",
+        "routes": [
+          {
+            "title": "Create a Vault credential store",
+            "path": "credentials/dynamic/create-vault-credential-store"
+          },
+          {
+            "title": "Configure targets with credential brokering",
+            "path": "credentials/dynamic/configure-targets-credential-brokering"
+          },
+          {
+            "title": "Configure targets with credential injection",
+            "path": "credentials/dynamic/configure-targets-credential-injection"
+          }
+        ]
       }
     ]
   },
