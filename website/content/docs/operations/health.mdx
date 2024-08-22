@@ -2,46 +2,27 @@
 layout: docs
 page_title: Boundary health endpoints
 description: |-
-  Verify the Boundary controller server is up and able to receive requests
+  Verify the Boundary controller and worker server status using health endpoints.
 ---
 
 # Boundary health endpoints
 
-Boundary provides health monitoring through the `/health` path using a listener
-with the `"ops"` purpose. By default, a listener with that purpose runs on port
-`9203`. See the [example configuration](#example-configuration) section for an
-example listener stanza in a `config.hcl` file.
+Boundary provides health monitoring through the `/health` path using a listener with the `"ops"` purpose. By default, a listener with that purpose runs on port `9203`. See the [example configuration](#example-configuration) section for an example listener stanza in a `config.hcl` file.
 
 ## Requirements
 
-To enable the controller health endpoint, any Boundary instance must be
-started with a controller. That is, a `controller` block and a `purpose = "api"`
-listener must be defined in Boundary's configuration file. Additionally, a
-`purpose = "ops"` listener must also be defined in Boundary's configuration
-file. Under these conditions, the `ops` server (which hosts the controller health
-api) will be exposed.
+To enable the controller health endpoint, any Boundary instance must be started with a controller. That is, a `controller` block and a `purpose = "api"`
+listener must be defined in Boundary's configuration file. Additionally, a `purpose = "ops"` listener must also be defined in Boundary's configuration file. Under these conditions, the `ops` server (which hosts the controller health api) will be exposed.
 
 ## Shutdown grace period
 
-Optionally, when the controller health endpoint is enabled, Boundary can be
-configured to change the controller health response to `503 Service Unavailable`
-upon receiving a shutdown signal, and wait a configurable amount of time before
-starting the shutdown process.
+Optionally, when the controller health endpoint is enabled, you can configure the controller health response to `503 Service Unavailable` upon receiving a shutdown signal, and wait a configurable amount of time before starting the shutdown process.
 
-This feature is designed to integrate with load balancers to reduce the risk of
-an outgoing Boundary instance causing disruption to incoming requests.
+This feature supports load balancing by reducing the risk of an outgoing Boundary instance causing disruption to incoming requests.
 
-In this state, Boundary is still capable of processing requests as normal, but
-will report as unhealthy through the controller health endpoint. In
-load-balanced environments, this would cause this "unhealthy" instance to be
-removed from the pool of instances eligible to handle requests, and thereby, reducing the
-likelihood that it will receive a request to handle during shutdown.
+In this state, Boundary is still capable of processing requests as normal, but will report as unhealthy through the controller health endpoint. In load-balanced environments, this would cause this "unhealthy" instance to be removed from the pool of instances eligible to handle requests, reducing the likelihood that it will receive a request to handle during shutdown.
 
-This feature is disabled by default, even if the controller health endpoint is
-enabled. You can set it up by defining `graceful_shutdown_wait_duration` in the
-`controller` block of Boundary's configuration file. The value should be set to
-a string that is parseable by
-[ParseDuration](https://pkg.go.dev/time#ParseDuration).
+This feature is disabled by default, even if the controller health endpoint is enabled. You can enable it by defining `graceful_shutdown_wait_duration` in the `controller` block of Boundary's configuration file. The value should be set to a string that is parseable by [ParseDuration](https://pkg.go.dev/time#ParseDuration).
 
 ## API
 
@@ -57,14 +38,12 @@ All responses return empty bodies. `GET /health` does not support any input.
 
 ## Check the health endpoint using `wget`
 
-The Boundary Enterprise binary includes `wget`.
-It is also available to HCP Boundary users.
-You can use it to check the health endpoint.
+The Boundary Enterprise binary includes `wget`. It is also available to HCP Boundary users. You can use it to check the health endpoint.
 
 Use the following command to check a worker's status to determine if it is healthy:
 
 ```shell-session
-wget -q -O - http://localhost:9203/health?worker_info=1 | grep -c 'READY'
+$ wget -q -O - http://localhost:9203/health?worker_info=1 | grep -c 'READY'
 ```
 
 - `-q` - Prints the response instead of saving it to a file.
@@ -75,7 +54,7 @@ If Boundary returns a `1`, it means the worker is healthy.
 You can also use the following command without `grep -c 'READY'` to print a more verbose response that includes the worker's state, active session count, and connection state:
 
 ```shell-session
-wget -q -O - http://localhost:9203/health?worker_info=1
+$ wget -q -O - http://localhost:9203/health?worker_info=1
 ```
 
 ## Example response
@@ -83,14 +62,14 @@ wget -q -O - http://localhost:9203/health?worker_info=1
 When you check the health endpoint using `wget`, Boundary returns a response with the following worker information:
 
 ```shell-session
+$ wget -q -O - http://localhost:9203/health?worker_info=1 | grep -c 'READY'
 {"worker_process_info":{"state":"active", "active_session_count":0, "upstream_connection_state":"READY"}}
 ```
 
 When you check the health endpoint using `curl`, Boundary returns a response with the following worker information:
 
-```json
-❯ curl "worker:9403/health?worker_info=1"
-
+```shell-session
+$ curl "worker:9403/health?worker_info=1"
 {
    "worker_process_info":{
       "state":"active",
@@ -99,14 +78,20 @@ When you check the health endpoint using `curl`, Boundary returns a response wit
    }
 }
 ```
+
 The response contains the following fields:
 
 - `state` - The operational state of the worker.
+
 Possible worker states include active, shutdown, and unknown.
+
 - `active_session_count` - The number of active sessions on the worker.
 - `upstream_connection_state` - The connection state of the worker.
+
 This value indicates whether the worker can connect to an upstream address or connection.
+
 It can be any of the following states:
+
    - `CONNECTING` - The channel is trying to make a connection and is waiting for name resolution or the connection establishment.
    - `READY` - The channel has successfully established a connection, and any attempts to communicate have succeeded.
    - `TRANSIENT_FAILURE` - The channel suffered a transient failure such as a time out or socket error.
@@ -118,9 +103,7 @@ It can be any of the following states:
 
 ## Example configuration
 
-Health checks are available for a controller defined with a `purpose = "ops"`
-listener stanza. For details on what fields are allowed in this stanza, refer to
-the documentation about [TCP Listener](/boundary/docs/configuration/listener/tcp).
+Health checks are available for a controller defined with a `purpose = "ops"` listener stanza. For details on what fields are allowed in this stanza, refer to the documentation about [TCP Listener](/boundary/docs/configuration/listener/tcp).
 
 An example listener stanza:
 
@@ -143,8 +126,7 @@ listener "tcp" {
 }
 ```
 
-To enable a shutdown grace period, update the `controller` block with a defined
-wait duration:
+To enable a shutdown grace period, update the `controller` block with a defined wait duration:
 
 ```hcl
 controller {
@@ -156,6 +138,4 @@ controller {
 }
 ```
 
-A complete example can be viewed under the [Controller
-configuration](/boundary/docs/configuration/controller#complete-configuration-example)
-docs.
+A complete example can be found under the [Controller configuration](/boundary/docs/configuration/controller#complete-configuration-example) docs.
