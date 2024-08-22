@@ -4,9 +4,46 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.17.1 (2024/08/21)
+
+### New and Improved
+
+* Add `GetDownstreamWorkersTimeout` config option which represents the period of time (as a duration) timeout
+  for GetDownstreamWorkers call in DownstreamWorkerTicker. This is currently not documented and considered internal.
+  ([PR](https://github.com/hashicorp/boundary/pull/5007))
+
 ### Bug Fixes
 
-* fix(minio): disable multipart uploads to allow session recordings up to 5GB
+* Fixed issue where storage policies were not deleted when scopes are deleted
+  ([PR](https://github.com/hashicorp/boundary/pull/5014))
+* Contains Bug Fixes from 0.16.3 
+
+### Security
+
+* Contains Security Fixes from 0.16.3
+
+## 0.16.3 (2024/08/21)
+
+### New and Improved
+
+* Add `GetDownstreamWorkersTimeout` config option which represents the period of time (as a duration) timeout
+  for GetDownstreamWorkers call in DownstreamWorkerTicker. This is currently not documented and considered internal.
+  ([PR](https://github.com/hashicorp/boundary/pull/5007))
+
+### Bug Fixes
+
+* Minio large file support: Disable multipart uploads via minio to fix an issue where the file checksum is set incorrectly on each part 
+  of the upload, causing it to fail. This change fixes file uploads larger than 16MB and limits upload sizes to 5GB.
+  ([PR](https://github.com/hashicorp/boundary/pull/5013)) and ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/21))
+* Resolved an issue where session authorization was returning a `401` if the alias is non-existent or the alias does not resolve to anything.
+  A `404` status code is now returned.
+  ([PR](https://github.com/hashicorp/boundary/pull/5006)))
+
+### Security
+
+* curl (enterprise): The curl binary is no longer included in the published Docker container images for Boundary Enterprise to address the 
+  CVE-2024-7264 vulnerability.
+  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)  
 
 ## 0.17.0 (2024/07/17)
 
