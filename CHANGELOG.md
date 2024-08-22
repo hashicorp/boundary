@@ -14,23 +14,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* Minio large file support: Disable multipart uploads via minio to fix an issue where the file checksum is set incorrectly on each part 
-  of the upload, causing it to fail. This change fixes file uploads larger than 16MB and limits upload sizes to 5GB.
-  ([PR](https://github.com/hashicorp/boundary/pull/5013)) and ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/21))
-* Resolved an issue where session authorization was returning a `401` if the alias is non-existent or the alias does not resolve to anything.
-  A `404` status code is now returned.
-  ([PR](https://github.com/hashicorp/boundary/pull/5006))
-* Fixed a bug where the wrapping job was referencing a dropped `storage_plugin_storage_bucket_secret` table which was replaced by a new
-  `storage_bucket_credential_managed_secret` table.
-  ([PR](https://github.com/hashicorp/boundary/pull/4993))
 * Fixed issue where storage policies were not deleted when scopes are deleted
   ([PR](https://github.com/hashicorp/boundary/pull/5014))
+* Contains Bug Fixes from 0.16.3 
 
 ### Security
 
-* curl (enterprise): The curl binary is no longer included in the published Docker container images for Boundary Enterprise to address the
-CVE-2024-7264 vulnerability.
-  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)
+* Contains Security Fixes from 0.16.3
 
 ## 0.16.3 (2024/08/21)
 
