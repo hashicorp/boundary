@@ -49,7 +49,7 @@ $ wget -q -O - http://localhost:9203/health?worker_info=1 | grep -c 'READY'
 - `-q` - Prints the response instead of saving it to a file.
 - `-0` - Allows Boundary to pass the worker's URL.
 
-If Boundary returns a `1`, it means the worker is healthy.
+If the command prints 1 to `stdout` or  exits with exit code 0, it means the worker is healthy. Exit code > 0, is unhealthy
 
 You can also use the following command without `grep -c 'READY'` to print a more verbose response that includes the worker's state, active session count, and connection state:
 
