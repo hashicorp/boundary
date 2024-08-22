@@ -38,7 +38,7 @@ All responses return empty bodies. `GET /health` does not support any input.
 
 ## Check the health endpoint using `wget`
 
-The Boundary Enterprise Docker image includes `wget`. It is also available to HCP Boundary users. You can use it to check the health endpoint.
+The Boundary Docker image includes `wget`. You can use it to check the health endpoint. Enterprise and Community edition users can check the health of controllers and workers. HCP Boundary users can check the health of their self-managed workers.
 
 Use the following command to check a worker's status to determine if it is healthy:
 
@@ -49,7 +49,7 @@ $ wget -q -O - http://localhost:9203/health?worker_info=1 | grep -c 'READY'
 - `-q` - Prints the response instead of saving it to a file.
 - `-0` - Allows Boundary to pass the worker's URL.
 
-If the command prints 1 to `stdout` or  exits with exit code 0, it means the worker is healthy. Exit code > 0, is unhealthy
+If the command prints 1 to `stdout` or exits with exit code 0, it means the worker is healthy. If the exit code is greater than 0, the worker is unhealthy.
 
 You can also use the following command without `grep -c 'READY'` to print a more verbose response that includes the worker's state, active session count, and connection state:
 
