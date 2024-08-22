@@ -55,9 +55,37 @@ The controller health service introduces a single read-only endpoint:
 
 All responses return empty bodies. `GET /health` does not support any input.
 
+## Check the health endpoint using `wget`
+
+You can use `wget` to check the health endpoint.
+The Boundary Enterprise binary includes `wget`.
+
+Use the following `wget` command to check a worker's status to determine if it is healthy:
+
+```shell-session
+wget -q -O - http://localhost:9203/health?worker_info=1 | grep -c 'READY'
+```
+
+- `-q` - Prints the response instead of saving it to a file.
+- `-0` - Allows Boundary to pass the worker's URL.
+
+If Boundary returns a `1`, it means the worker is healthy.
+
+You can also use the following command without `grep -c 'READY'` to print a more verbose response that includes the worker's state, active session count, and connection state:
+
+```shell-session
+wget -q -O - http://localhost:9203/health?worker_info=1
+```
+
 ## Example response
 
-When you check the health endpoint, Boundary returns a response with the following worker information:
+When you check the health endpoing using `wget`, Boundary returns a response with the folowing worker information:
+
+```shell-session
+{"worker_process_info":{"state":"active", "active_session_count":0, "upstream_connection_state":"READY"}}
+```
+
+When you check the health endpoint using `curl`, Boundary returns a response with the following worker information:
 
 ```json
 ❯ curl "worker:9403/health?worker_info=1"
