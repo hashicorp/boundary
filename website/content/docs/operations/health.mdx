@@ -57,10 +57,11 @@ All responses return empty bodies. `GET /health` does not support any input.
 
 ## Check the health endpoint using `wget`
 
-You can use `wget` to check the health endpoint.
 The Boundary Enterprise binary includes `wget`.
+It is also available to HCP Boundary users.
+You can use it to check the health endpoint.
 
-Use the following `wget` command to check a worker's status to determine if it is healthy:
+Use the following command to check a worker's status to determine if it is healthy:
 
 ```shell-session
 wget -q -O - http://localhost:9203/health?worker_info=1 | grep -c 'READY'
