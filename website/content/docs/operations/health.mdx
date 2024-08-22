@@ -81,17 +81,9 @@ $ curl "worker:9403/health?worker_info=1"
 
 The response contains the following fields:
 
-- `state` - The operational state of the worker.
-
-Possible worker states include active, shutdown, and unknown.
-
+- `state` - The operational state of the worker. Possible worker states include active, shutdown, and unknown.
 - `active_session_count` - The number of active sessions on the worker.
-- `upstream_connection_state` - The connection state of the worker.
-
-This value indicates whether the worker can connect to an upstream address or connection.
-
-It can be any of the following states:
-
+- `upstream_connection_state` - The connection state of the worker. This value indicates whether the worker can connect to an upstream address or connection. It can be any of the following states:
    - `CONNECTING` - The channel is trying to make a connection and is waiting for name resolution or the connection establishment.
    - `READY` - The channel has successfully established a connection, and any attempts to communicate have succeeded.
    - `TRANSIENT_FAILURE` - The channel suffered a transient failure such as a time out or socket error.
