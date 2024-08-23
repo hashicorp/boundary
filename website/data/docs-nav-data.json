@@ -607,7 +607,7 @@
     "divider": true
   },
   {
-    "heading": "Access management"
+    "heading": "Secure access"
   },
   {
       "title": "Configure workers",
@@ -741,6 +741,45 @@
     ]
   },
   {
+    "title": "Configure role-based access",
+    "routes": [
+      {
+        "title": "Limit access to resources using RBAC",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "rbac/permissions"
+          },
+          {
+            "title": "Assignable permissions",
+            "path": "rbac/permissions/assignable-permissions"
+          },
+          {
+            "title": "Permission grant formats",
+            "path": "rbac/permissions/permission-grant-formats"
+          },
+          {
+            "title": "Resource tables",
+            "path": "rbac/permissions/resource-table"
+          }
+        ]
+      },
+      {
+        "title": "Manage access to resources dynamically",
+        "routes": [
+          {
+            "title": "Manage principals",
+            "path": "rbac/dynamic/manage-users-groups"
+          },
+          {
+            "title": "Filter managed groups",
+            "path": "rbac/dynamic/managed-groups"
+          }
+        ]
+      }
+    ]
+  },
+  {
     "title": "Monitor access",
     "routes": [
       {
@@ -848,51 +887,6 @@
       {
         "title": "Manage targets",
         "path": "common-workflows/manage-targets"
-      }
-    ]
-  },
-  {
-    "divider": true
-  },
-  {
-    "heading": "Identity management"
-  },
-  {
-    "title": "Configure role-based access",
-    "routes": [
-      {
-        "title": "Limit access to resources using RBAC",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "rbac/permissions"
-          },
-          {
-            "title": "Assignable permissions",
-            "path": "rbac/permissions/assignable-permissions"
-          },
-          {
-            "title": "Permission grant formats",
-            "path": "rbac/permissions/permission-grant-formats"
-          },
-          {
-            "title": "Resource tables",
-            "path": "rbac/permissions/resource-table"
-          }
-        ]
-      },
-      {
-        "title": "Manage access to resources dynamically",
-        "routes": [
-          {
-            "title": "Manage principals",
-            "path": "rbac/dynamic/manage-users-groups"
-          },
-          {
-            "title": "Filter managed groups",
-            "path": "rbac/dynamic/managed-groups"
-          }
-        ]
       }
     ]
   },
