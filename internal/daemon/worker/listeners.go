@@ -321,6 +321,7 @@ func (w *Worker) stopServersAndListeners() error {
 }
 
 func (w *Worker) stopHttpServer() error {
+	const op = "worker.stopHttpServer"
 	if w.proxyListener == nil {
 		return nil
 	}
@@ -329,7 +330,11 @@ func (w *Worker) stopHttpServer() error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(w.baseContext, w.proxyListener.Config.MaxRequestDuration)
+	ctx, cancel := context.WithTimeoutCause(
+		w.baseContext,
+		w.proxyListener.Config.MaxRequestDuration,
+		fmt.Errorf("%s: max request duration exceeded", op),
+	)
 	w.proxyListener.HTTPServer.Shutdown(ctx)
 	cancel()
 

@@ -736,6 +736,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 // Do takes a properly configured request and applies client configuration to
 // it, returning the response.
 func (c *Client) Do(r *retryablehttp.Request, opt ...Option) (*Response, error) {
+	const op = "api.(Client).Do"
 	opts := getOpts(opt...)
 	c.modifyLock.RLock()
 	limiter := c.config.Limiter
@@ -772,7 +773,11 @@ func (c *Client) Do(r *retryablehttp.Request, opt ...Option) (*Response, error) 
 
 	if timeout != 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		ctx, cancel = context.WithTimeoutCause(
+			ctx,
+			timeout,
+			fmt.Errorf("%s: client configured timeout exceeded", op),
+		)
 		// This dance is just to ignore vet warnings; we don't want to cancel
 		// this as it will make reading the response body impossible
 		_ = cancel
@@ -841,6 +846,9 @@ func (c *Client) Do(r *retryablehttp.Request, opt ...Option) (*Response, error) 
 	}
 
 	if err != nil {
+		if ctxCause := context.Cause(ctx); ctxCause != nil {
+			return nil, fmt.Errorf("%w (%w)", err, ctxCause)
+		}
 		if strings.Contains(err.Error(), "tls: oversized") {
 			err = fmt.Errorf(
 				"%w\n\n"+

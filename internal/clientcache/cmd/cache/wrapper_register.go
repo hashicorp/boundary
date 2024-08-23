@@ -80,6 +80,7 @@ func silentUi() *cli.BasicUi {
 // addTokenToCache runs AddTokenCommand with the token used in, or retrieved by
 // the wrapped command.
 func addTokenToCache(ctx context.Context, baseCmd *base.Command, token string) bool {
+	const op = "cache.addTokenToCache"
 	com := AddTokenCommand{Command: base.NewCommand(baseCmd.UI)}
 	client, err := baseCmd.Client()
 	if err != nil {
@@ -95,7 +96,11 @@ func addTokenToCache(ctx context.Context, baseCmd *base.Command, token string) b
 
 	// Since the daemon might have just started, we need to wait until it can
 	// respond to our requests
-	waitCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	waitCtx, cancel := context.WithTimeoutCause(
+		ctx,
+		3*time.Second,
+		fmt.Errorf("%s: daemon startup timeout exceeded", op),
+	)
 	defer cancel()
 	if err := waitForDaemon(waitCtx); err != nil {
 		// TODO: Print the result of this out into a log in the dot directory

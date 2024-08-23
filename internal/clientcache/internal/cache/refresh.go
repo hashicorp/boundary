@@ -154,7 +154,11 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 	const op = "cache.(RefreshService).RefreshForSearch"
 	if r.maxSearchRefreshTimeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, r.maxSearchRefreshTimeout)
+		ctx, cancel = context.WithTimeoutCause(
+			ctx,
+			r.maxSearchRefreshTimeout,
+			fmt.Errorf("%s: search refresh timeout exceeded", op),
+		)
 		defer cancel()
 	}
 	at, err := r.repo.LookupToken(ctx, authTokenid)

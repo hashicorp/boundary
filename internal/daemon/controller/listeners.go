@@ -299,6 +299,7 @@ func (c *Controller) stopClusterGrpcServerAndListener() error {
 }
 
 func (c *Controller) stopHttpServersAndListeners() error {
+	const op = "controller.Controller.stopHttpServersAndListeners"
 	var closeErrors error
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
@@ -306,8 +307,12 @@ func (c *Controller) stopHttpServersAndListeners() error {
 			continue
 		}
 
-		ctx, cancel := context.WithTimeout(c.baseContext, ln.Config.MaxRequestDuration)
-		ln.HTTPServer.Shutdown(ctx)
+		ctx, cancel := context.WithTimeoutCause(
+			c.baseContext,
+			ln.Config.MaxRequestDuration,
+			fmt.Errorf("%s: max request duration exceeded", op),
+		)
+		_ = ln.HTTPServer.Shutdown(ctx)
 		cancel()
 
 		err := ln.ApiListener.Close() // The HTTP Shutdown call should close this, but just in case.

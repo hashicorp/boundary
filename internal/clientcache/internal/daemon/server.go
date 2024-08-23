@@ -139,11 +139,15 @@ func (s *CacheServer) Shutdown(ctx context.Context) error {
 		if s.conf.ContextCancel != nil {
 			s.conf.ContextCancel()
 		}
-		srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		srvCtx, srvCancel := context.WithTimeoutCause(
+			context.Background(),
+			5*time.Second,
+			fmt.Errorf("%s: http server shutdown timeout exceeded", op),
+		)
 		defer srvCancel()
 		err := s.httpSrv.Shutdown(srvCtx)
 		if err != nil {
-			shutdownErr = fmt.Errorf("error shutting down server: %w", err)
+			shutdownErr = errors.Wrap(ctx, err, op, errors.WithMsg("error shutting down server"), errors.WithoutEvent())
 			return
 		}
 		s.tickerWg.Wait()

@@ -888,7 +888,11 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string)
 	ctx := context.TODO()
 	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerStatusName)
 	waitStatusStart := time.Now()
-	ctx, cancel := context.WithTimeout(tc.ctx, time.Duration(tc.c.workerStatusGracePeriod.Load()))
+	ctx, cancel := context.WithTimeoutCause(
+		tc.ctx,
+		time.Duration(tc.c.workerStatusGracePeriod.Load()),
+		fmt.Errorf("%s: worker status grace period exceeded", op),
+	)
 	defer cancel()
 	var err error
 	for {

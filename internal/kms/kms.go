@@ -499,7 +499,11 @@ func (k *Kms) MonitorTableRewrappingRuns(ctx context.Context, tableName string, 
 		if retErr != nil {
 			// Create new context in case we failed because the context was canceled
 			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel = context.WithTimeoutCause(
+				context.Background(),
+				5*time.Second,
+				fmt.Errorf("%s: exec timeout exceeded", op),
+			)
 			defer cancel()
 		}
 		// Update the progress of this run

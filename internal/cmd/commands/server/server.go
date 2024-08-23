@@ -172,6 +172,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	const op = "server.(Command).Run"
 	c.CombineLogs = c.flagCombineLogs
 
 	defer func() {
@@ -479,12 +480,23 @@ func (c *Command) Run(args []string) int {
 			// 1 second is chosen so the shutdown is still responsive and this is a mostly
 			// non critical step since the lock should be released when the session with the
 			// database is closed.
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cancel := context.WithTimeoutCause(
+				context.Background(),
+				1*time.Second,
+				fmt.Errorf("%s: database lock release timeout exceeded", op),
+			)
 			defer cancel()
 
 			err := c.schemaManager.Close(ctx)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
+				// Use errors.E to capture the context cause if there is one
+				c.UI.Error(errors.Wrap(
+					ctx,
+					err,
+					op,
+					errors.WithMsg("Unable to release shared lock to the database"),
+					errors.WithoutEvent(),
+				).Error())
 			}
 		}()
 

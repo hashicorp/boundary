@@ -93,7 +93,11 @@ func (w *Worker) LastStatusSuccess() *LastStatusInformation {
 func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	const op = "worker.(Worker).WaitForNextSuccessfulStatusUpdate"
 	waitStatusStart := time.Now()
-	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(w.successfulStatusGracePeriod.Load()))
+	ctx, cancel := context.WithTimeoutCause(
+		w.baseContext,
+		time.Duration(w.successfulStatusGracePeriod.Load()),
+		fmt.Errorf("%s: status grace period exceeded", op),
+	)
 	defer cancel()
 	event.WriteSysEvent(ctx, op, "waiting for next status report to controller")
 	for {
@@ -189,7 +193,11 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	if w.updateTags.Load() {
 		tags = w.tags.Load().([]*pb.TagPair)
 	}
-	statusCtx, statusCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
+	statusCtx, statusCancel := context.WithTimeoutCause(
+		cancelCtx,
+		time.Duration(w.statusCallTimeoutDuration.Load()),
+		fmt.Errorf("%s: status call timeout exceeded", op),
+	)
 	defer statusCancel()
 
 	keyId := w.WorkerAuthCurrentKeyId.Load()
@@ -312,7 +320,11 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		}
 	} else if checkHCPBUpstreams != nil && checkHCPBUpstreams(w) {
 		// This is a worker that is one hop away from managed workers, so attempt to get that list
-		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
+		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeoutCause(
+			cancelCtx,
+			time.Duration(w.statusCallTimeoutDuration.Load()),
+			fmt.Errorf("%s: status call timeout exceeded", op),
+		)
 		defer hcpbWorkersCancel()
 		workersResp, err := client.ListHcpbWorkers(hcpbWorkersCtx, &pbs.ListHcpbWorkersRequest{})
 		if err != nil {

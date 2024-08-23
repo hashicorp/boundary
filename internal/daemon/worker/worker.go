@@ -725,7 +725,11 @@ func (w *Worker) Shutdown() error {
 	// at our default liveness value, which is also our default status grace
 	// period timeout
 	waitStatusStart := time.Now()
-	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, server.DefaultLiveness)
+	nextStatusCtx, nextStatusCancel := context.WithTimeoutCause(
+		w.baseContext,
+		server.DefaultLiveness,
+		fmt.Errorf("%s: liveness timeout exceeded", op),
+	)
 	defer nextStatusCancel()
 	for {
 		if err := nextStatusCtx.Err(); err != nil {
@@ -813,7 +817,11 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 			return nil, fmt.Errorf("no last status information found at session acceptance time")
 		}
 
-		timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
+		timeoutContext, cancel := context.WithTimeoutCause(
+			w.baseContext,
+			session.ValidateSessionTimeout,
+			fmt.Errorf("%s: session validation timeout exceeded", op),
+		)
 		defer cancel()
 		sess, err := sessionManager.LoadLocalSession(timeoutContext, sessionId, lastSuccess.GetWorkerId())
 		if err != nil {

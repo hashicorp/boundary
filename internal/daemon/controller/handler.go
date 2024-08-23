@@ -476,7 +476,11 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		w.Header().Set("Cache-Control", "no-store")
 
 		// Start with the request context and our timeout
-		ctx, cancelFunc := context.WithTimeout(r.Context(), maxRequestDuration)
+		ctx, cancelFunc := context.WithTimeoutCause(
+			r.Context(),
+			maxRequestDuration,
+			fmt.Errorf("%s: max request duration exceeded", op),
+		)
 		defer cancelFunc()
 
 		// Add a size limiter if desired
