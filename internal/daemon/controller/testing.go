@@ -937,7 +937,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string)
 			break
 		}
 
-		if waitStatusCurrent.Sub(waitStatusStart) > 0 {
+		if waitStatusCurrent.After(waitStatusStart) {
 			break
 		}
 	}

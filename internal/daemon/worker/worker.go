@@ -711,7 +711,7 @@ func (w *Worker) Shutdown() error {
 			break
 		}
 
-		if w.lastSuccessfulStatusTime().Sub(waitStatusStart) > 0 {
+		if w.lastSuccessfulStatusTime().After(waitStatusStart) {
 			break
 		}
 
