@@ -1,0 +1,19 @@
+The `worker` stanza configures Boundary worker-specific parameters.
+
+All workers within Boundary use certificates and encryption keys to identify
+themselves and protect data in transit. However, there are three different
+ways to register them so that registration of workers can fit into any workflow; controller-led, worker-led, and via external KMS.
+
+The differences in how they are configured are in the sub-pages linked at the
+bottom of this page.
+
+Workers registered via the worker-led or controller-led methods must be registered in
+the system via an API call, and require storage on disk to store the current set
+of credentials. Workers registering via an external KMS auto-register after successful authentication, making them an easy mechanism to
+use for automatic scaling. This also means they are not required to store
+credentials locally; each time they connect the KMS is used to reauthenticate
+them.
+
+~> Prior to version 0.15 of Boundary, there were two different types of workers, PKI & KMS workers.
+If you are using pre-0.15 workers, with pre-0.15 upstreams please be sure to switch the documentation
+version to `0.13.x` - `0.14.x` for correct information.

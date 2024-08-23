@@ -99,24 +99,6 @@
       {
         "title": "Host discovery",
         "path": "concepts/host-discovery"
-      },
-      {
-        "title": "Filtering",
-        "hidden": "true",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/filtering"
-          },
-          {
-            "title": "Resource listing",
-            "path": "concepts/filtering/resource-listing"
-          },
-          {
-            "title": "Events",
-            "path": "concepts/filtering/events"
-          }
-        ]
       }
     ]
   },
@@ -254,11 +236,6 @@
   {
     "title": "Manage Boundary",
     "routes": [
-      {
-        "title": "Overview/top-level parameters",
-        "hidden": "true",
-        "path": "configuration"
-      },
       {
         "title": "KMS",
         "hidden": "true",
@@ -472,16 +449,6 @@
             }
           }
         ]
-      },
-      {
-        "title": "Controller",
-        "hidden": "true",
-        "path": "configuration/controller"
-      },
-      {
-        "title": "Plugins",
-        "hidden": "true",
-        "path": "configuration/plugins"
       }
     ]
   },
@@ -546,11 +513,8 @@
   },
   {
     "title": "Troubleshoot Boundary",
+    "hidden": "true",
     "routes": [
-      {
-        "title": "Common error messages",
-        "path": "troubleshoot/common-errors"
-      },
       {
         "title": "FAQ",
         "path": "troubleshoot/faq"
@@ -847,7 +811,7 @@
         ]
       },
       {
-        "title": "Understand the BSR data file",
+        "title": "Work with BSR data files",
         "routes": [
           {
             "title": "BSR file data structure",
@@ -936,6 +900,16 @@
     "divider": true
   },
   {
+    "heading": "Integrations"
+  },
+  {
+    "title": "Vault",
+    "path": "vault"
+  },
+  {
+    "divider": true
+  },
+  {
     "heading": "Enterprise solutions"
   },
   {
@@ -992,46 +966,21 @@
     "heading": "Clients"
   },
   {
-    "title": "Boundary clients",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "api-clients"
-      },
-      {
-        "title": "Go SDK",
-        "path": "api-clients/go-sdk"
-      },
-      {
-        "title": "Desktop",
-        "hidden": true,
-        "path": "api-clients/desktop"
-      },
-      {
-        "title": "Desktop",
-        "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
-      },
-      {
-        "title": "Client cache",
-        "path": "api-clients/client-cache"
-      }
-    ]
+    "title": "Go SDK",
+    "path": "go-sdk"
   },
   {
-    "title": "Integrations",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "integrations"
-      },
-      {
-        "title": "Vault",
-        "path": "integrations/vault"
-      }
-    ]
+    "title": "Desktop",
+    "hidden": true,
+    "path": "desktop"
+  },
+  {
+    "title": "Desktop",
+    "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
   },
   {
     "title": "Develop Boundary",
+    "hidden": "true",
     "routes": [
       {
         "title": "Overview",
@@ -1071,12 +1020,21 @@
         "path": "api"
       },
       {
+        "title": "API/clients",
+        "hidden": "true",
+        "path": "api/api-clients"
+      },
+      {
         "title": "Rate limiting",
         "path": "api/rate-limiting"
       },
       {
         "title": "List pagination",
         "path": "api/pagination"
+      },
+      {
+        "title": "Client cache",
+        "path": "api/client-cache"
       }
     ]
   },
@@ -1996,6 +1954,52 @@
             "path": "commands/workers/update"
           }
         ]
+      }
+    ]
+  },
+  {
+    "title": "Error messages",
+    "path": "common-errors"
+  },
+  {
+    "title": "Configuration reference",
+    "routes": [
+      {
+        "title": "Top-level parameters",
+        "path": "configuration-reference"
+      },
+      {
+        "title": "Workers",
+        "path": "configuration-reference/workers"
+      },
+      {
+        "title": "Controllers",
+        "path": "configuration-reference/controller"
+      },
+      {
+        "title": "Plugins",
+        "path": "configuration-reference/plugins"
+      },
+      {
+        "title": "Events",
+        "path": "configuration-reference/events"
+      }
+    ]
+  },
+  {
+    "title": "Filtering",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "filters"
+      },
+      {
+        "title": "Resource listing",
+        "path": "filters/filter-resource-listing"
+      },
+      {
+        "title": "Events",
+        "path": "filters/filter-events"
       }
     ]
   }

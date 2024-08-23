@@ -7,111 +7,15 @@ description: |-
 
 # Worker stanza
 
-The `worker` stanza configures Boundary worker-specific parameters.
-
-All workers within Boundary use certificates and encryption keys to identify
-themselves and protect data in transit. However, there are three different
-ways to register them so that registration of workers can fit into any workflow; controller-led, worker-led, and via external KMS.
-
-The differences in how they are configured are in the sub-pages linked at the
-bottom of this page.
-
-Workers registered via the worker-led or controller-led methods must be registered in
-the system via an API call, and require storage on disk to store the current set
-of credentials. Workers registering via an external KMS auto-register after successful authentication, making them an easy mechanism to
-use for automatic scaling. This also means they are not required to store
-credentials locally; each time they connect the KMS is used to reauthenticate
-them.
-
-~> Prior to version 0.15 of Boundary, there were two different types of workers, PKI & KMS workers.
-If you are using pre-0.15 workers, with pre-0.15 upstreams please be sure to switch the documentation
-version to `0.13.x` - `0.14.x` for correct information.
+@include '/configuration-reference/workers/worker-stanza-intro.mdx'
 
 ## Common worker parameters
-Regardless of registration mechanism, the following fields are supported.
 
-```hcl
-worker {
-  public_addr = "5.1.23.198"
-
-  # Local storage path required if session recording is enabled
-  recording_storage_path = "tmp/boundary/"
-
-  # Minimum available disk space required in the local storage path if session recording is enabled
-  recording_storage_minimum_available_capacity = "500MB"
-
-  # Mutually exclusive with hcp_boundary_cluster_id
-  initial_upstreams = [
-    "10.0.0.1",
-    "10.0.0.2",
-  ]
-
-  tags {
-    type   = ["prod", "webservers"]
-    region = ["us-east-1"]
-  }
-
-  # HCP Boundary only
-  # hcp_boundary_cluster_id = "....."
-}
-```
-
-- `public_addr` - Specifies the public host or IP address (and optionally port)
-  at which the worker can be reached _by clients for proxying_. This defaults to
-  the address of the listener marked for `proxy` purpose. This is especially
-  useful for cloud environments that do not bind a publicly accessible IP to a
-  NIC on the host directly, such as an Amazon EIP.
-
-  This value can reference any of the following:
-  - a direct address string
-  - a file on disk (file://) from which an address will be read
-  - an env var (env://) from which the address will be read
-
-- `initial_upstreams` - A list of hosts/IP addresses and optionally ports for
-  reaching the boundary cluster. The port will default to `:9201` if not
-  specified. This value can be a direct access string array with the addresses,
-  or it can refer to a file on disk (`file://`) from which the addresses will be
-  read, or an env var (`env://`) from which the addresses will be read. When
-  using env or file, their contents must formatted as a JSON array:
-  `["127.0.0.1", "192.168.0.1", "10.0.0.1"]`
-
-  HCP Boundary workers require the [`hcp_boundary_cluster_id`](/boundary/docs/configuration/worker/#hcp_boundary_cluster_id) parameter instead of `initial upstreams`.
-  If you configure an HCP worker with `initial_upstreams`, the worker configuration fails.
-
-- `hcp_boundary_cluster_id` - A string required to configure workers using worker-led or controller-led registration
-  to connect to your HCP Boundary cluster rather than specifying
-  `initial_upstreams`. This parameter is currently only valid for workers using the worker-led or controller-led
-  registration method and for workers directly connected to HCP Boundary.
-
-- `recording_storage_path` - A path to the local storage for recorded sessions.
-   Session recordings are stored in the local storage while they are in progress.
-   When the session is complete, Boundary moves the local session recording to remote storage and deletes the local copy.
-
-- `recording_storage_minimum_available_capacity` - A value measured in bytes that defines the worker's local storage state.
-   Boundary compares this value with the available local disk space found in the `recording_storage_path` to determine if a worker can be used for session recording operations.
-   The supported suffixes are kb, kib, mb, mib, gb, gib, tb, tib, which are not case sensitive. Example: 2GB, 2gb, 2GiB, 2gib.
-   The possible storage states based on the `recording_storage_minimum_available_capacity` are:
-    - Available - The worker is above the storage threshold and is available to proxy sessions that are enabled with session recording.
-    - Low storage - The worker is below the storage threshold. Existing sessions can continue without interruption, but new sessions that are enabled with session recording cannot be proxied. The worker is not available to record new sessions or play back existing recordings.
-    - Critically low storage - The worker is below half the storage threshold. Existing sessions that are enabled with session recording will be forcefully closed. The worker is not available to record new sessions or play back existing recordings.
-    - Out of storage - The worker is out of local disk space. It is not available to record new sessions or play back existing recordings. The worker is in a unrecoverable state. An administrator must intervene to remedy the issue.
-    - Not configured - The worker does not have a local storage path configured.
-    - Unknown - The default local storage state of a worker. This state indicates that the local storage state of a worker is not yet known.
-
-- `tags` - A map of key-value pairs where values are an array of strings. Most
-  commonly used for [filtering](/boundary/docs/concepts/filtering) targets a
-  worker can proxy via [worker
-  tags](/boundary/docs/concepts/filtering/worker-tags). On `SIGHUP`, the tags
-  set here will be re-parsed and new values used. It can also be a string
-  referring to a file on disk (`file://`) or an env var (`env://`).
+@include '/configuration-reference/workers/worker-parameters.mdx'
 
 ## Signals
 
-The `SIGHUP` signal causes a worker to reload its configuration file to pick up any updates for the `initial_upstreams` and `tags` values.
-Any other updated values are ignored.
-
-The `SIGTERM` and `SIGINT` signals initiate a graceful shutdown on a worker. The worker waits for any sessions to drain
-before shutting down. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
+@include '/configuration-reference/workers/worker-signals.mdx'
 
 ## Multi-hop worker capabilities
 
@@ -167,49 +71,7 @@ upstream worker and outbound access to the destination host or service.
 
 ## Complete configuration example
 
-```hcl
-listener "tcp" {
-	purpose = "proxy"
-	tls_disable = true
-	address = "127.0.0.1"
-}
-
-worker {
-  # Path for worker storage, assuming worker-led or controller-led registration. Must be unique across workers
-  auth_storage_path="/boundary/demo-worker-1"
-
-  # Local storage path required if session recording is enabled
-  recording_storage_path = "tmp/boundary/"
-
-  # Minimum available disk space required in the local storage path if session recording is enabled
-  recording_storage_minimum_available_capacity = "500MB"
-
-  # Workers typically need to reach upstreams on :9201
-  initial_upstreams = [
-    "10.0.0.1",
-    "10.0.0.2",
-    "10.0.0.3",
-  ]
-
-  public_addr = "myhost.mycompany.com"
-
-  tags {
-    type   = ["prod", "webservers"]
-    region = ["us-east-1"]
-  }
-}
-
-# The following KMS config is an example only
-# Use a production KMS such as AWS KMS for production installs
-kms "aead" {
-  purpose = "worker-auth-storage"
-	aead_type = "aes-gcm"
-	key = "X+IJMVT6OnsrIR6G/9OTcJSX+lM9FSPN"
-	key_id = "worker-auth-storage"
-}
-
-
-```
+@include '/configuration-reference/workers/worker-config-example.mdx'
 
 ## Tutorials
 

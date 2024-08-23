@@ -1,0 +1,5 @@
+The `SIGHUP` signal causes a worker to reload its configuration file to pick up any updates for the `initial_upstreams` and `tags` values.
+Any other updated values are ignored.
+
+The `SIGTERM` and `SIGINT` signals initiate a graceful shutdown on a worker. The worker waits for any sessions to drain
+before shutting down. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
