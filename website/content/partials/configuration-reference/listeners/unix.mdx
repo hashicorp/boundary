@@ -1,0 +1,195 @@
+The `unix` listener configures Boundary to listen on a Unix domain socket.
+
+~> **Note:** This is only available for listeners for `api` and `cluster` purpose.
+Unix sockets cannot currently be used for `"proxy"` purpose on a Worker.
+
+```hcl
+listener "unix" {
+  purpose = "api"
+  address = "/var/run/boundary-api.sock"
+}
+```
+
+The `listener` stanza may be specified more than once to make Boundary listen on
+multiple interfaces; however, only one listener marked for `cluster` purpose is
+allowed.
+
+## `unix` listener parameters
+
+Refer to the following sections for the supported `unix` listener parameters.
+
+### General
+
+- `purpose` `(string: "")` - Specifies the purpose. Can be `api`, `ops` or `cluster`.
+
+- `address` `(string: "")` – Specifies the address (filesystem path) to bind to
+  for listening.
+
+- `http_idle_timeout` `(string: "5m")` - Specifies the maximum amount of time to
+  wait for the next request when keep-alives are enabled. If `http_idle_timeout`
+  is zero, the value of `http_read_timeout` is used. If both are zero, the value
+  of `http_read_header_timeout` is used. This is specified using a label suffix
+  like `"30s"` or `"1h"`.
+
+- `http_read_header_timeout` `(string: "10s")` - Specifies the amount of time
+  allowed to read request headers. This is specified using a label suffix like
+  `"30s"` or `"1h"`.
+
+- `http_read_timeout` `(string: "30s")` - Specifies the maximum duration for
+  reading the entire request, including the body. This is specified using a
+  label suffix like `"30s"` or `"1h"`.
+
+- `http_write_timeout` `(string: "0")` - Specifies the maximum duration before
+  timing out writes of the response and is reset whenever a new request's header
+  is read. The default value of `"0"` means infinity. This is specified using a
+  label suffix like `"30s"` or `"1h"`.
+
+<!-- We don't have this implemented yet
+- `max_request_size` `(int: 33554432)` – Specifies a hard maximum allowed
+  request size, in bytes. Defaults to 32 MB. Specifying a number less than or
+  equal to `0` turns off limiting altogether.
+!-->
+
+- `max_request_duration` `(string: "90s")` – Specifies the maximum
+  request duration allowed before Boundary cancels the request. This overrides
+  `default_max_request_duration` for this listener.
+
+- `cors_enabled` `(boolean: true)` - Specifies if CORS should be enabled, which
+  allows Boundary to support external browser-based clients (not including admin
+  UI), such as Boundary Desktop. If not specified, CORS will be enabled with an
+  allowed origin that grants access to Boundary Desktop, unless overridden with
+  `cors_disable_default_allowed_origin_values`.
+
+- `cors_disable_default_allowed_origin_values` `(boolean: false)` - Specifies
+  that Boundary should not append default allowed origin values to any specified
+  in `cors_allowed_origins`, such as Boundary Desktop's origin. This also
+  disables the behavior of enabling CORS if `cors_enabled` is not specified.
+
+- `cors_allowed_origins` `(array(string): ["serve://boundary"])` - An array of
+  allowed CORS origins. Origins must include protocol, host, and port (if port
+  is different than the default for the specified protocol). To allow all
+  origins, set to `['*']`. By default, Boundary Desktop's origin
+  `serve://boundary` is appended to any values included here, unless
+  `cors_disable_default_allowed_origin_values` is specified.
+
+- `cors_allowed_headers` `(array(string): [])` – An array specifying headers
+  that are permitted to be on cross-origin requests. Headers set via this
+  parameter will be appended to the list of headers that Boundary allows by
+  default, such as `"Content-Type"`, `"X-Requested-With"`, and
+  `"Authorization"`.
+
+### TLS
+
+~> `tls` parameters are valid for `api` and `ops` listeners. `cluster`
+and `proxy` connections use their own ephemeral TLS stacks. For more
+information, see [the connections security concepts
+page](/boundary/docs/concepts/security/connections-tls).
+
+- `tls_disable` `(string: "false")` – Specifies if TLS will be disabled. Boundary
+  assumes TLS by default, so you must explicitly disable TLS to opt-in to
+  insecure communication.
+
+- `tls_cert_file` `(string: <required-if-enabled, reloads-on-SIGHUP>)` –
+  Specifies the path to the certificate for TLS. To configure the listener to
+  use a CA certificate, concatenate the primary certificate and the CA
+  certificate together. The primary certificate should appear first in the
+  combined file. On `SIGHUP`, the path set here _at Boundary startup_ will be
+  used for reloading the certificate; modifying this value while Boundary is
+  running will have no effect for `SIGHUP`s.
+
+- `tls_key_file` `(string: <required-if-enabled, reloads-on-SIGHUP>)` –
+  Specifies the path to the private key for the certificate. If the key file is
+  encrypted, you will be prompted to enter the passphrase on server startup. The
+  passphrase must stay the same between key files when reloading your
+  configuration using `SIGHUP`. On `SIGHUP`, the path set here _at Boundary
+  startup_ will be used for reloading the certificate; modifying this value
+  while Boundary is running will have no effect for `SIGHUP`s.
+
+- `tls_min_version` `(string: "tls12")` – Specifies the minimum supported
+  version of TLS. Accepted values are "tls10", "tls11", "tls12" or "tls13".
+
+  !> TLS 1.1 and lower are generally considered insecure.
+
+- `tls_max_version` `(string: "tls13")` – Specifies the maximum supported
+  version of TLS, useful if appliances (e.g. load balancers) are not yet capable
+  of higher levels. Accepted values are "tls10", "tls11", "tls12" or "tls13".
+
+  !> TLS 1.1 and lower are generally considered insecure.
+
+- `tls_cipher_suites` `(string: "")` – Override the default list of supported
+  ciphersuites (which varies by TLS version) with the the specified
+  comma-delimited list. The list of all available ciphersuites is available in
+  the [Golang TLS documentation][golang-tls].
+
+- `tls_prefer_server_cipher_suites` `(string: "false")` – Specifies to prefer the
+  server's ciphersuite over the client ciphersuites.
+
+- `tls_require_and_verify_client_cert` `(string: "false")` – Turns on client
+  authentication for this listener; the listener will require a presented
+  client cert that successfully validates against system CAs.
+
+- `tls_client_ca_file` `(string: "")` – PEM-encoded Certificate Authority file
+  used for checking the authenticity of client.
+
+<!-- Not enabled yet
+- `x_forwarded_for_authorized_addrs` `(string: <required-to-enable>)` –
+  Specifies the list of source IP CIDRs for which an X-Forwarded-For header
+  will be trusted. Comma-separated list or JSON array. This turns on
+  X-Forwarded-For support.
+
+- `x_forwarded_for_hop_skips` `(string: "0")` – The number of addresses that will be
+  skipped from the _rear_ of the set of hops. For instance, for a header value
+  of `1.2.3.4, 2.3.4.5, 3.4.5.6`, if this value is set to `"1"`, the address that
+  will be used as the originating client IP is `2.3.4.5`.
+
+- `x_forwarded_for_reject_not_authorized` `(string: "true")` – If set false,
+  if there is an X-Forwarded-For header in a connection from an unauthorized
+  address, the header will be ignored and the client connection used as-is,
+  rather than the client connection rejected.
+
+- `x_forwarded_for_reject_not_present` `(string: "true")` – If set false, if
+  there is no X-Forwarded-For header or it is empty, the client address will be
+  used as-is, rather than the client connection rejected.
+
+### `telemetry` parameters
+
+- `unauthenticated_metrics_access` `(string: "false")` - If set to true, allows
+  unauthenticated access to the `/v1/sys/metrics` endpoint.
+!-->
+
+## `unix` listener examples
+
+Refer to the following sections for examples of `unix` listeners.
+
+### Configure TLS
+
+This example shows enabling a TLS listener.
+
+```hcl
+listener "unix" {
+  purpose = "api"
+  address = "/var/run/boundary-api.sock"
+  tls_cert_file = "/etc/certs/Boundary.crt"
+  tls_key_file  = "/etc/certs/Boundary.key"
+}
+```
+
+### Listen on multiple interfaces
+
+This example shows Boundary listening on a private interface, as well as localhost.
+
+```hcl
+listener "tcp" {
+  purpose = "api"
+  address = "/var/run/boundary-api.sock"
+}
+
+listener "tcp" {
+  purpose = "cluster"
+  address = "/var/run/boundary-cluster.sock"
+}
+```
+
+[golang-tls]: https://golang.org/src/crypto/tls/cipher_suites.go
+[api-addr]: /boundary/docs/configuration#api_addr
+[cluster-addr]: /boundary/docs/configuration#cluster_addr

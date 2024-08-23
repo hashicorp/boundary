@@ -1,0 +1,24 @@
+The `purpose` field is used to determine what part of Boundary's functionality is
+started and exposed for a given listener block. Each listener must have a `purpose` set.
+
+Currently, Boundary recognizes the following listener purposes:
+
+- `api`: Starts up and exposes Boundary's controller API.
+  At least one `api` listener must be present if a Boundary
+  instance is set-up as a controller.
+  By default, it runs on `:9200`.
+
+- `cluster`: Starts up and exposes Boundary's worker and
+  controller communication layer. Only one `cluster` listener
+  is allowed per Boundary instance. Must be present if a Boundary
+  instance is set-up as a controller.
+  By default, it runs on `:9201`.
+
+- `proxy`: Starts up a Boundary Worker. By default, it runs
+on `:9202`.
+
+- `ops`: Starts up and exposes Boundary's operational
+endpoints (eg: /health). By default, it runs on `:9203`.
+This listener's exposed functionality depends on what Boundary
+components you're running on any given Boundary instance (eg: Health does not
+run unless your Boundary instance has a controller running)

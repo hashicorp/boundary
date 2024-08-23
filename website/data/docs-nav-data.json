@@ -237,44 +237,6 @@
     "title": "Manage Boundary",
     "routes": [
       {
-        "title": "KMS",
-        "hidden": "true",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/kms"
-          },
-          {
-            "title": "AEAD",
-            "path": "configuration/kms/aead"
-          },
-          {
-            "title": "AWS KMS",
-            "path": "configuration/kms/awskms"
-          },
-          {
-            "title": "AliCloud KMS",
-            "path": "configuration/kms/alicloudkms"
-          },
-          {
-            "title": "Azure Key Vault",
-            "path": "configuration/kms/azurekeyvault"
-          },
-          {
-            "title": "GCP Cloud KMS",
-            "path": "configuration/kms/gcpckms"
-          },
-          {
-            "title": "OCI KMS",
-            "path": "configuration/kms/ocikms"
-          },
-          {
-            "title": "Vault transit",
-            "path": "configuration/kms/transit"
-          }
-        ]
-      },
-      {
         "title": "Organize my Boundary resources",
         "routes": [
           {
@@ -1977,12 +1939,83 @@
         "path": "configuration-reference/controller"
       },
       {
+        "title": "KMS",
+        "routes": [
+          {
+            "title": "KMS",
+            "path": "configuration-reference/kms"
+          },
+          {
+            "title": "AEAD",
+            "path": "configuration-reference/kms/aead"
+          },
+          {
+            "title": "AWS KMS",
+            "path": "configuration-reference/kms/awskms"
+          },
+          {
+            "title": "AliCloud KMS",
+            "path": "configuration-reference/kms/alicloudkms"
+          },
+          {
+            "title": "Azure Key Vault",
+            "path": "configuration-reference/kms/azurekeyvault"
+          },
+          {
+            "title": "GCP Cloud KMS",
+            "path": "configuration-reference/kms/gcpckms"
+          },
+          {
+            "title": "OCI KMS",
+            "path": "configuration-reference/kms/ocikms"
+          },
+          {
+            "title": "Vault transit",
+            "path": "configuration-reference/kms/transit"
+          }
+        ]
+      },
+      {
+        "title": "Listeners",
+        "routes": [
+          {
+            "title": "Listeners",
+            "path": "configuration-reference/listeners"
+          },
+          {
+            "title": "TCP",
+            "path": "configuration-reference/listeners/tcp-listeners"
+          },
+          {
+            "title": "File sink",
+            "path": "configuration-reference/listeners/unix-listeners"
+          }
+        ]
+      },
+      {
         "title": "Plugins",
         "path": "configuration-reference/plugins"
       },
       {
         "title": "Events",
-        "path": "configuration-reference/events"
+        "routes": [
+          {
+            "title": "Events",
+            "path": "configuration-reference/events"
+          },
+          {
+            "title": "Common sink parameters",
+            "path": "configuration-reference/events/common-sink-parameters"
+          },
+          {
+            "title": "File sink",
+            "path": "configuration-reference/events/file-sink"
+          },
+          {
+            "title": "Stderr sink",
+            "path": "configuration-reference/events/stderr-sink"
+          }
+        ]
       }
     ]
   },
