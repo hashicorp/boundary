@@ -1,0 +1,13 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
+rules:
+  - id: with-info-msg-string-interpolation
+    languages:
+      - go
+    severity: ERROR
+    message: Use of WithInfoMsg with string interpolation. WithInfoMsg expects kv
+      tuples.
+    # Source for Go string interpolation verbs:
+    # https://pkg.go.dev/fmt#hdr-Printing.
+    pattern: event.WithInfoMsg("=~/.*%(((\[\d+\])|[\d|\.|#|+|\-| |\*])*)?[s|v|q|d|T|t|b|c|o|O|x|X|U|e|E|f|F|g|G|p].*/",...)
