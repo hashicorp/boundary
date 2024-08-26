@@ -269,6 +269,7 @@ func sharedRequestInterceptorLogic(
 		Method:   requestInfo.Method,
 		Path:     requestInfo.Path,
 		ClientIp: requestInfo.ClientIp,
+		Actions:  requestInfo.Actions,
 	}
 	interceptorCtx, err = event.NewRequestInfoContext(interceptorCtx, info)
 	if err != nil {

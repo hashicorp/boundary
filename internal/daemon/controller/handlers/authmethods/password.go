@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
@@ -143,8 +144,15 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 	)
 }
 
-func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest, requestInfo *authpb.RequestInfo) error {
 	badFields := make(map[string]string)
+
+	for _, action := range requestInfo.Actions {
+		switch action {
+		case "callback":
+			badFields["request_path"] = "callback is not a valid action for this auth method."
+		}
+	}
 
 	attrs := req.GetPasswordLoginAttributes()
 	switch {

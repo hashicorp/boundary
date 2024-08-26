@@ -969,6 +969,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 		name            string
 		acctId          string
 		request         *pbs.AuthenticateRequest
+		actions         []string
 		wantType        string
 		wantGroups      []string
 		wantErr         error
@@ -1096,6 +1097,24 @@ func TestAuthenticate_Ldap(t *testing.T) {
 			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
 			wantErrContains: `Details: {{name: "attributes", desc: "This is a required field."}}`,
 		},
+		{
+			name:    "with-callback-action",
+			acctId:  testAcct.PublicId,
+			actions: []string{"callback"},
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "token",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantGroups:      []string{testManagedGrp.PublicId},
+			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: `Details: {{name: "request_path", desc: "callback is not a valid action for this auth method."}}`,
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1103,7 +1122,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err)
 
-			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
+			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithActions(tc.actions)), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)

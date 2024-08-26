@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	cAuth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
@@ -526,13 +527,19 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).Authenticate"
+	authVerifier, ok := ctx.Value(cAuth.VerifierKey).(*cAuth.Verifier)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no auth verifier found")
+	}
+	requestInfo := authVerifier.RequestInfo
+
 	if err := validateAuthenticateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
 	switch globals.ResourceInfoFromPrefix(req.GetAuthMethodId()).Subtype {
 	case password.Subtype:
-		if err := validateAuthenticatePasswordRequest(req); err != nil {
+		if err := validateAuthenticatePasswordRequest(req, requestInfo); err != nil {
 			return nil, err
 		}
 	case oidc.Subtype:
@@ -540,7 +547,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 			return nil, err
 		}
 	case ldap.Subtype:
-		if err := validateAuthenticateLdapRequest(req); err != nil {
+		if err := validateAuthenticateLdapRequest(req, requestInfo); err != nil {
 			return nil, err
 		}
 	}

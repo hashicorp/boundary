@@ -498,6 +498,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			requestInfo.EventId = info.EventId
 			requestInfo.TraceId = info.Id
 			requestInfo.ClientIp = info.ClientIp
+			requestInfo.Actions = getActions(info.Path)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 			event.WriteError(ctx, op, errors.New("unable to read event request info from context"))
@@ -736,4 +737,18 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 
 		h.ServeHTTP(w, req)
 	})
+}
+
+// getActions takes in a URL and returns the actions from the URL
+func getActions(url string) []string {
+	parts := strings.Split(url, "/")
+	lastPart := parts[len(parts)-1]
+
+	items := strings.Split(lastPart, ":")
+
+	if len(items) > 1 {
+		return items[1:]
+	}
+
+	return []string{}
 }

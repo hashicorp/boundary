@@ -132,13 +132,13 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			}
 			ctx := NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 
-			v, ok := ctx.Value(verifierKey).(*verifier)
+			v, ok := ctx.Value(VerifierKey).(*Verifier)
 			require.True(t, ok)
 			require.NotNil(t, v)
 
 			v.decryptToken(context.TODO())
 
-			at, err := tokenRepo.ValidateToken(ctx, v.requestInfo.PublicId, v.requestInfo.Token)
+			at, err := tokenRepo.ValidateToken(ctx, v.RequestInfo.PublicId, v.RequestInfo.Token)
 			require.NoError(t, err)
 			assert.Equal(t, tc.userId, at.GetIamUserId())
 		})

@@ -14,12 +14,13 @@ type (
 
 // RequestInfo defines the fields captured about a Boundary request.
 type RequestInfo struct {
-	EventId  string `json:"-"`
-	Id       string `json:"id,omitempty" class:"public"`
-	Method   string `json:"method,omitempty" class:"public"`
-	Path     string `json:"path,omitempty" class:"public"`
-	PublicId string `json:"public_id,omitempty" class:"public"`
-	ClientIp string `json:"client_ip,omitempty" class:"public"`
+	EventId  string   `json:"-"`
+	Id       string   `json:"id,omitempty" class:"public"`
+	Method   string   `json:"method,omitempty" class:"public"`
+	Path     string   `json:"path,omitempty" class:"public"`
+	PublicId string   `json:"public_id,omitempty" class:"public"`
+	ClientIp string   `json:"client_ip,omitempty" class:"public"`
+	Actions  []string `json:"actions,omitempty" class:"public"`
 }
 
 // UserInfo defines the fields captured about a user for a Boundary request.
