@@ -8,7 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"math"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/ldap"
@@ -295,6 +297,12 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 			}
 			if u.Scheme != "ldap" && u.Scheme != "ldaps" {
 				badUrlMsgs = append(badUrlMsgs, fmt.Sprintf("%s scheme in url %q is not either ldap or ldaps", u.Scheme, u.String()))
+			}
+			if u.Port() != "" {
+				port, err := strconv.Atoi(u.Port())
+				if err != nil || port > math.MaxUint16 {
+					badUrlMsgs = append(badUrlMsgs, fmt.Sprintf("port %s in url %s is not valid", u.Port(), u.String()))
+				}
 			}
 		}
 		if len(badUrlMsgs) > 0 {

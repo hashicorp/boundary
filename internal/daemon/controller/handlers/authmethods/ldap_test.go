@@ -821,6 +821,56 @@ func Test_UpdateLdap(t *testing.T) {
 			err:         handlers.ApiErrorWithCode(codes.NotFound),
 			errContains: "no changes were made to the existing AuthMethod",
 		},
+		{
+			name: "valid-port-number",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.urls"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls: []string{"ldaps://ldap2:8156"},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Version:     2,
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        ldap.Subtype.String(),
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls:  []string{"ldaps://ldap2:8156"},
+							State: "active-private",
+						},
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           ldapAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "invalid-port-number",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.urls"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls: []string{"ldaps://ldap2:9999999"},
+						},
+					},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "port 9999999 in url ldaps://ldap2:9999999 is not valid",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
