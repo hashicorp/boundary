@@ -7,6 +7,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"strings"
@@ -40,9 +41,10 @@ var (
 
 type SearchCommand struct {
 	*base.Command
-	flagQuery        string
-	flagResource     string
-	flagForceRefresh bool
+	flagQuery            string
+	flagResource         string
+	flagForceRefresh     bool
+	flagMaxResultSetSize int64
 }
 
 func (c *SearchCommand) Synopsis() string {
@@ -112,6 +114,12 @@ func (c *SearchCommand) Flags() *base.FlagSets {
 		Usage:      `Specifies the resource type to search over`,
 		Completion: complete.PredictSet(supportedResourceTypes...),
 	})
+	f.Int64Var(&base.Int64Var{
+		Name:       "max-result-set-size",
+		Target:     &c.flagMaxResultSetSize,
+		Usage:      `Specifies an override to the default maximum result set size. Set to -1 to disable the limit. 0 will use the default.`,
+		Completion: complete.PredictNothing,
+	})
 	f.BoolVar(&base.BoolVar{
 		Name:   "force-refresh",
 		Target: &c.flagForceRefresh,
@@ -148,6 +156,15 @@ func (c *SearchCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
+	switch {
+	case c.flagMaxResultSetSize < -1:
+		c.PrintCliError(stderrors.New("Max result set size must be greater than or equal to -1"))
+		return base.CommandUserError
+	case c.flagMaxResultSetSize > math.MaxInt:
+		c.PrintCliError(stderrors.New(fmt.Sprintf("Max result set size must be less than or equal to the %v", math.MaxInt)))
+		return base.CommandUserError
+	}
+
 	resp, result, apiErr, err := c.Search(ctx)
 	if err != nil {
 		c.PrintCliError(err)
@@ -164,6 +181,9 @@ func (c *SearchCommand) Run(args []string) int {
 			return base.CommandCliError
 		}
 	default:
+		if result.Incomplete {
+			c.UI.Warn("The maximum result set size was reached and the search results are incomplete. Please narrow your search or adjust the -max-result-set-size parameter.")
+		}
 		switch {
 		case len(result.ResolvableAliases) > 0:
 			c.UI.Output(printAliasListTable(result.ResolvableAliases))
@@ -199,6 +219,9 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.Sear
 		authTokenId:  strings.Join(tSlice[:2], "_"),
 		forceRefresh: c.flagForceRefresh,
 	}
+	if c.flagMaxResultSetSize != 0 {
+		tf.maxResultSetSize = int(c.flagMaxResultSetSize)
+	}
 	var opts []client.Option
 	if c.FlagOutputCurlString {
 		opts = append(opts, client.WithOutputCurlString())
@@ -229,6 +252,9 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 	q.Add("filter", fb.flagFilter)
 	if fb.forceRefresh {
 		q.Add("force_refresh", "true")
+	}
+	if fb.maxResultSetSize != 0 {
+		q.Add("max_result_set_size", fmt.Sprintf("%d", fb.maxResultSetSize))
 	}
 	resp, err := c.Get(ctx, "/v1/search", q, opt...)
 	if err != nil {
@@ -424,9 +450,10 @@ func printSessionListTable(items []*sessions.Session) string {
 }
 
 type filterBy struct {
-	flagFilter   string
-	flagQuery    string
-	authTokenId  string
-	resource     string
-	forceRefresh bool
+	flagFilter       string
+	flagQuery        string
+	authTokenId      string
+	resource         string
+	forceRefresh     bool
+	maxResultSetSize int
 }

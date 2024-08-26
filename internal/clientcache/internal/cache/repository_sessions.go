@@ -290,20 +290,20 @@ func upsertSessions(ctx context.Context, w db.Writer, u *user, in []*sessions.Se
 	return nil
 }
 
-func (r *Repository) ListSessions(ctx context.Context, authTokenId string) ([]*sessions.Session, error) {
+func (r *Repository) ListSessions(ctx context.Context, authTokenId string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).ListSessions"
 	switch {
 	case authTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	}
-	ret, err := r.searchSessions(ctx, "true", nil, withAuthTokenId(authTokenId))
+	ret, err := r.searchSessions(ctx, "true", nil, append(opt, withAuthTokenId(authTokenId))...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) QuerySessions(ctx context.Context, authTokenId, query string) ([]*sessions.Session, error) {
+func (r *Repository) QuerySessions(ctx context.Context, authTokenId, query string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).QuerySessions"
 	switch {
 	case authTokenId == "":
@@ -316,14 +316,14 @@ func (r *Repository) QuerySessions(ctx context.Context, authTokenId, query strin
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
-	ret, err := r.searchSessions(ctx, w.Condition, w.Args, withAuthTokenId(authTokenId))
+	ret, err := r.searchSessions(ctx, w.Condition, w.Args, append(opt, withAuthTokenId(authTokenId))...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) searchSessions(ctx context.Context, condition string, searchArgs []any, opt ...Option) ([]*sessions.Session, error) {
+func (r *Repository) searchSessions(ctx context.Context, condition string, searchArgs []any, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).searchSessions"
 	switch {
 	case condition == "":
@@ -348,7 +348,7 @@ func (r *Repository) searchSessions(ctx context.Context, condition string, searc
 	}
 
 	var cachedSessions []*Session
-	if err := r.rw.SearchWhere(ctx, &cachedSessions, condition, searchArgs, db.WithLimit(-1)); err != nil {
+	if err := r.rw.SearchWhere(ctx, &cachedSessions, condition, searchArgs, db.WithLimit(opts.withMaxResultSetSize+1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
@@ -360,7 +360,15 @@ func (r *Repository) searchSessions(ctx context.Context, condition string, searc
 		}
 		retSessions = append(retSessions, &sess)
 	}
-	return retSessions, nil
+
+	sr := &SearchResult{
+		Sessions: retSessions,
+	}
+	if opts.withMaxResultSetSize > 0 && len(sr.Sessions) > opts.withMaxResultSetSize {
+		sr.Sessions = sr.Sessions[:opts.withMaxResultSetSize]
+		sr.Incomplete = true
+	}
+	return sr, nil
 }
 
 type Session struct {

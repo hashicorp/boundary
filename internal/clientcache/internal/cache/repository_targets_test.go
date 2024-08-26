@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -264,7 +265,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 
 	got, err := r.ListTargets(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	assert.Len(t, got.Targets, 2)
 
 	// Refreshing again uses the refresh token and get additional sessions, appending
 	// them to the response
@@ -274,7 +275,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListTargets(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 3)
+	assert.Len(t, got.Targets, 3)
 
 	// Refreshing again wont return any more resources, but also none should be
 	// removed
@@ -284,7 +285,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListTargets(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 3)
+	assert.Len(t, got.Targets, 3)
 
 	// Refresh again with the refresh token being reported as invalid.
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
@@ -293,7 +294,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListTargets(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	assert.Len(t, got.Targets, 2)
 }
 
 func TestRepository_ListTargets(t *testing.T) {
@@ -349,13 +350,73 @@ func TestRepository_ListTargets(t *testing.T) {
 	t.Run("wrong user gets no targets", func(t *testing.T) {
 		l, err := r.ListTargets(ctx, kt2.AuthTokenId)
 		assert.NoError(t, err)
-		assert.Empty(t, l)
+		assert.Empty(t, l.Targets)
 	})
 	t.Run("correct token gets targets", func(t *testing.T) {
 		l, err := r.ListTargets(ctx, kt1.AuthTokenId)
 		assert.NoError(t, err)
-		assert.Len(t, l, len(ts))
-		assert.ElementsMatch(t, l, ts)
+		assert.Len(t, l.Targets, len(ts))
+		assert.ElementsMatch(t, l.Targets, ts)
+	})
+}
+
+func TestRepository_ListTargetsLimiting(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at",
+		Token:  "at_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}
+
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k", "t"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	var ts []*targets.Target
+	for i := 0; i < defaultLimitedResultSetSize*2; i++ {
+		ts = append(ts, target("t"+strconv.Itoa(i)))
+	}
+	require.NoError(t, r.refreshTargets(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
+
+	searchService, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+	params := SearchParams{
+		Resource:    Targets,
+		AuthTokenId: kt.AuthTokenId,
+	}
+
+	t.Run("default limit", func(t *testing.T) {
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Targets, defaultLimitedResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("custom limit", func(t *testing.T) {
+		params.MaxResultSetSize = 20
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Targets, params.MaxResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("no limit", func(t *testing.T) {
+		params.MaxResultSetSize = -1
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Targets, defaultLimitedResultSetSize*2)
+		assert.False(t, searchResult.Incomplete)
 	})
 }
 
@@ -456,13 +517,74 @@ func TestRepository_QueryTargets(t *testing.T) {
 	t.Run("wrong token gets no targets", func(t *testing.T) {
 		l, err := r.QueryTargets(ctx, kt2.AuthTokenId, query)
 		assert.NoError(t, err)
-		assert.Empty(t, l)
+		assert.Empty(t, l.Targets)
 	})
 	t.Run("correct token gets targets", func(t *testing.T) {
 		l, err := r.QueryTargets(ctx, kt1.AuthTokenId, query)
 		assert.NoError(t, err)
-		assert.Len(t, l, 2)
-		assert.ElementsMatch(t, l, ts[0:2])
+		assert.Len(t, l.Targets, 2)
+		assert.ElementsMatch(t, l.Targets, ts[0:2])
+	})
+}
+
+func TestRepository_QueryTargetsLimiting(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at",
+		Token:  "at_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}
+
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k", "t"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	var ts []*targets.Target
+	for i := 0; i < defaultLimitedResultSetSize*2; i++ {
+		ts = append(ts, target("t"+strconv.Itoa(i)))
+	}
+	require.NoError(t, r.refreshTargets(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
+
+	searchService, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+	params := SearchParams{
+		Resource:    Targets,
+		AuthTokenId: kt.AuthTokenId,
+		Query:       `(name % 'name')`,
+	}
+
+	t.Run("default limit", func(t *testing.T) {
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Targets, defaultLimitedResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("custom limit", func(t *testing.T) {
+		params.MaxResultSetSize = 20
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Targets, params.MaxResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("no limit", func(t *testing.T) {
+		params.MaxResultSetSize = -1
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Targets, defaultLimitedResultSetSize*2)
+		assert.False(t, searchResult.Incomplete)
 	})
 }
 

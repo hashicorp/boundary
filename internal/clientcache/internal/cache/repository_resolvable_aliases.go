@@ -288,20 +288,20 @@ func upsertResolvableAliases(ctx context.Context, w db.Writer, u *user, in []*al
 	return nil
 }
 
-func (r *Repository) ListResolvableAliases(ctx context.Context, authTokenId string) ([]*aliases.Alias, error) {
+func (r *Repository) ListResolvableAliases(ctx context.Context, authTokenId string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).ListResolvableAliases"
 	switch {
 	case authTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	}
-	ret, err := r.searchResolvableAliases(ctx, "true", nil, withAuthTokenId(authTokenId))
+	ret, err := r.searchResolvableAliases(ctx, "true", nil, append(opt, withAuthTokenId(authTokenId))...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) QueryResolvableAliases(ctx context.Context, authTokenId, query string) ([]*aliases.Alias, error) {
+func (r *Repository) QueryResolvableAliases(ctx context.Context, authTokenId, query string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).QueryResolvableAliases"
 	switch {
 	case authTokenId == "":
@@ -314,14 +314,14 @@ func (r *Repository) QueryResolvableAliases(ctx context.Context, authTokenId, qu
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
-	ret, err := r.searchResolvableAliases(ctx, w.Condition, w.Args, withAuthTokenId(authTokenId))
+	ret, err := r.searchResolvableAliases(ctx, w.Condition, w.Args, append(opt, withAuthTokenId(authTokenId))...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) searchResolvableAliases(ctx context.Context, condition string, searchArgs []any, opt ...Option) ([]*aliases.Alias, error) {
+func (r *Repository) searchResolvableAliases(ctx context.Context, condition string, searchArgs []any, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).searchResolvableAliases"
 	switch {
 	case condition == "":
@@ -346,7 +346,7 @@ func (r *Repository) searchResolvableAliases(ctx context.Context, condition stri
 	}
 
 	var cachedResolvableAliases []*ResolvableAlias
-	if err := r.rw.SearchWhere(ctx, &cachedResolvableAliases, condition, searchArgs, db.WithLimit(-1)); err != nil {
+	if err := r.rw.SearchWhere(ctx, &cachedResolvableAliases, condition, searchArgs, db.WithLimit(opts.withMaxResultSetSize+1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
@@ -358,7 +358,15 @@ func (r *Repository) searchResolvableAliases(ctx context.Context, condition stri
 		}
 		retAliases = append(retAliases, &a)
 	}
-	return retAliases, nil
+
+	sr := &SearchResult{
+		ResolvableAliases: retAliases,
+	}
+	if opts.withMaxResultSetSize > 0 && len(sr.ResolvableAliases) > opts.withMaxResultSetSize {
+		sr.ResolvableAliases = sr.ResolvableAliases[:opts.withMaxResultSetSize]
+		sr.Incomplete = true
+	}
+	return sr, nil
 }
 
 type ResolvableAlias struct {
