@@ -133,7 +133,7 @@
     "title": "Deploy Boundary",
     "routes": [
       {
-        "title": "In a production environment",
+        "title": "In a self-managed environment",
         "routes": [
           {
             "title": "Overview",
@@ -161,6 +161,10 @@
             "path": "install-boundary/deploy-production/systemd"
           }
         ]
+      },
+      {
+        "title": "On HashiCorp Cloud Platform (HCP)",
+        "href": "hcp/get-started/deploy-and-login"
       },
       {
         "title": "Using Terraform",
@@ -230,187 +234,6 @@
         "title": "Overview",
         "hidden": "true",
         "path": "security"
-      }
-    ]
-  },
-  {
-    "title": "Manage Boundary",
-    "routes": [
-      {
-        "title": "Organize my Boundary resources",
-        "routes": [
-          {
-            "title": "Domain model overview",
-            "path": "configuration/domain-model"
-          },
-          {
-            "title": "Accounts",
-            "path": "configuration/domain-model/accounts"
-          },
-          {
-            "title": "Aliases",
-            "path": "configuration/domain-model/aliases"
-          },
-          {
-            "title": "Auth methods",
-            "path": "configuration/domain-model/auth-methods"
-          },
-          {
-            "title": "Credentials",
-            "path": "configuration/domain-model/credentials"
-          },
-          {
-            "title": "Credential libraries",
-            "path": "configuration/domain-model/credential-libraries"
-          },
-          {
-            "title": "Credential stores",
-            "path": "configuration/domain-model/credential-stores"
-          },
-          {
-            "title": "Groups",
-            "path": "configuration/domain-model/groups"
-          },
-          {
-            "title": "Hosts",
-            "path": "configuration/domain-model/hosts"
-          },
-          {
-            "title": "Host catalogs",
-            "path": "configuration/domain-model/host-catalogs"
-          },
-          {
-            "title": "Host sets",
-            "path": "configuration/domain-model/host-sets"
-          },
-          {
-            "title": "Managed groups",
-            "path": "configuration/domain-model/managed-groups"
-          },
-          {
-            "title": "Scopes",
-            "path": "configuration/domain-model/scopes"
-          },
-          {
-            "title": "Sessions",
-            "path": "configuration/domain-model/sessions"
-          },
-          {
-            "title": "Session connections",
-            "path": "configuration/domain-model/session-connections"
-          },
-          {
-            "title": "Session recordings",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "configuration/domain-model/session-recordings"
-          },
-          {
-            "title": "Storage buckets",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "configuration/domain-model/storage-buckets"
-          },
-          {
-            "title": "Storage policies",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "configuration/domain-model/storage-policy"
-          },
-          {
-            "title": "Targets",
-            "path": "configuration/domain-model/targets"
-          },
-          {
-            "title": "Roles",
-            "path": "configuration/domain-model/roles"
-          },
-          {
-            "title": "Users",
-            "path": "configuration/domain-model/users"
-          }
-        ]
-      },
-      {
-        "title": "Using Terraform",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/terraform-patterns"
-          },
-          {
-            "title": "Scopes",
-            "path": "configuration/terraform-patterns/terraform-scopes"
-          },
-          {
-            "title": "Users and auth methods",
-            "path": "configuration/terraform-patterns/terraform-users-and-auth-methods"
-          },
-          {
-            "title": "Groups and RBAC",
-            "path": "configuration/terraform-patterns/terraform-groups-and-rbac"
-          },
-          {
-            "title": "Hosts and host management",
-            "path": "configuration/terraform-patterns/terraform-hosts-and-host-management"
-          },
-          {
-            "title": "Credentials and credential stores",
-            "path": "configuration/terraform-patterns/terraform-credentials-and-credential-stores"
-          },
-          {
-            "title": "Session recording",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "configuration/terraform-patterns/terraform-session-recording"
-          },
-          {
-            "title": "Targets",
-            "path": "configuration/terraform-patterns/terraform-targets"
-          }
-        ]
-      },
-      {
-        "title": "Manage credentials",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/credential-management"
-          },
-          {
-            "title": "Create a static credential store",
-            "path": "configuration/credential-management/static-cred-boundary"
-          },
-          {
-            "title": "Create a Vault credential store",
-            "path": "configuration/credential-management/static-cred-vault"
-          },
-          {
-            "title": "Configure targets with credential brokering",
-            "path": "configuration/credential-management/configure-credential-brokering"
-          },
-          {
-            "title": "Configure targets with credential injection",
-            "path": "configuration/credential-management/configure-credential-injection",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            }
-          }
-        ]
       }
     ]
   },
@@ -569,7 +392,7 @@
     "divider": true
   },
   {
-    "heading": "Access management"
+    "heading": "Secure access"
   },
   {
       "title": "Configure workers",
@@ -623,7 +446,7 @@
         "path": "targets"
       },
       {
-        "title": "Configure a target",
+        "title": "Set up a target",
         "routes": [
           {
             "title": "Aliases",
@@ -814,12 +637,6 @@
     ]
   },
   {
-    "divider": true
-  },
-  {
-    "heading": "Identity management"
-  },
-  {
     "title": "Configure role-based access",
     "routes": [
       {
@@ -918,6 +735,14 @@
       {
         "title": "Supported versions policy",
         "path": "enterprise/supported-versions"
+      },
+      {
+        "title": "Deployment guide",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/enterprise/ent-deployment-guide"
+      },
+      {
+        "title": "Reference architecture",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/enterprise/ent-reference-architecture"
       }
     ]
   },
@@ -1924,6 +1749,110 @@
     "path": "common-errors"
   },
   {
+    "title": "Domain model",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "domain-model"
+      },
+      {
+        "title": "Accounts",
+        "path": "domain-model/accounts"
+      },
+      {
+        "title": "Aliases",
+        "path": "domain-model/aliases"
+      },
+      {
+        "title": "Auth methods",
+        "path": "domain-model/auth-methods"
+      },
+      {
+        "title": "Credentials",
+        "path": "domain-model/credentials"
+      },
+      {
+        "title": "Credential libraries",
+        "path": "domain-model/credential-libraries"
+      },
+      {
+        "title": "Credential stores",
+        "path": "domain-model/credential-stores"
+      },
+      {
+        "title": "Groups",
+        "path": "domain-model/groups"
+      },
+      {
+        "title": "Hosts",
+        "path": "domain-model/hosts"
+      },
+      {
+        "title": "Host catalogs",
+        "path": "domain-model/host-catalogs"
+      },
+      {
+        "title": "Host sets",
+        "path": "domain-model/host-sets"
+      },
+      {
+        "title": "Managed groups",
+        "path": "domain-model/managed-groups"
+      },
+      {
+        "title": "Scopes",
+        "path": "domain-model/scopes"
+      },
+      {
+        "title": "Sessions",
+        "path": "domain-model/sessions"
+      },
+      {
+        "title": "Session connections",
+        "path": "domain-model/session-connections"
+      },
+      {
+        "title": "Session recordings",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "domain-model/session-recordings"
+      },
+      {
+        "title": "Storage buckets",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "domain-model/storage-buckets"
+      },
+      {
+        "title": "Storage policies",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "domain-model/storage-policy"
+      },
+      {
+        "title": "Targets",
+        "path": "domain-model/targets"
+      },
+      {
+        "title": "Roles",
+        "path": "domain-model/roles"
+      },
+      {
+        "title": "Users",
+        "path": "domain-model/users"
+      }
+    ]
+  },
+  {
     "title": "Configuration reference",
     "routes": [
       {
@@ -1987,7 +1916,7 @@
             "path": "configuration-reference/listeners/tcp-listeners"
           },
           {
-            "title": "File sink",
+            "title": "Unix",
             "path": "configuration-reference/listeners/unix-listeners"
           }
         ]
