@@ -65,6 +65,7 @@ func newGrpcGatewayMux() *runtime.ServeMux {
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler()),
 		runtime.WithForwardResponseOption(handlers.OutgoingResponseFilter),
+		runtime.WithDisablePathLengthFallback(),
 	)
 }
 
