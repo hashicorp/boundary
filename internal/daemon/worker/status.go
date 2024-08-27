@@ -106,7 +106,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 			return ctx.Err()
 		}
 
-		if w.lastSuccessfulStatusTime().Sub(waitStatusStart) > 0 {
+		if w.lastSuccessfulStatusTime().After(waitStatusStart) {
 			break
 		}
 	}
