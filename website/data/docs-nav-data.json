@@ -822,6 +822,10 @@
       {
         "title": "Client cache",
         "path": "api/client-cache"
+      },
+      {
+        "title": "API documentation",
+        "href": "https://developer.hashicorp.com/boundary/api-docs"
       }
     ]
   },
