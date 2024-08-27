@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
@@ -144,12 +143,18 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 	)
 }
 
-func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest, requestInfo *authpb.RequestInfo) error {
+func validateAuthenticatePasswordRequest(ctx context.Context, req *pbs.AuthenticateRequest) error {
+	const op = "authmethods.(Service).validateAuthenticatePasswordRequest"
 	badFields := make(map[string]string)
+
+	requestInfo, ok := auth.GetRequestInfo(ctx)
+	if !ok {
+		return errors.New(ctx, errors.Internal, op, "no request info found")
+	}
 
 	for _, action := range requestInfo.Actions {
 		switch action {
-		case "callback":
+		case auth.CallbackAction:
 			badFields["request_path"] = "callback is not a valid action for this auth method."
 		}
 	}

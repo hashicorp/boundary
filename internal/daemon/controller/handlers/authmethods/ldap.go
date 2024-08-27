@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"google.golang.org/grpc/codes"
@@ -341,12 +340,18 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 	}
 }
 
-func validateAuthenticateLdapRequest(req *pbs.AuthenticateRequest, requestInfo *authpb.RequestInfo) error {
+func validateAuthenticateLdapRequest(ctx context.Context, req *pbs.AuthenticateRequest) error {
+	const op = "authmethods.(Service).validateAuthenticateLdapRequest"
 	badFields := make(map[string]string)
+
+	requestInfo, ok := auth.GetRequestInfo(ctx)
+	if !ok {
+		return errors.New(ctx, errors.Internal, op, "no request info found")
+	}
 
 	for _, action := range requestInfo.Actions {
 		switch action {
-		case "callback":
+		case auth.CallbackAction:
 			badFields["request_path"] = "callback is not a valid action for this auth method."
 		}
 	}

@@ -325,7 +325,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 	return s.convertToAuthenticateResponse(ctx, req, authResults, responseToken)
 }
 
-func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticateOidcRequest(_ context.Context, req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
 	switch req.GetCommand() {

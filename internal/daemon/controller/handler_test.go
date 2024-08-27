@@ -422,3 +422,45 @@ func TestStreamingResponse(t *testing.T) {
 	require.True(t, string(read) == string(blob), "Got: %q", string(read))
 	require.Equal(t, i, n)
 }
+
+func TestGetActions(t *testing.T) {
+	testCases := []struct {
+		name     string
+		url      string
+		expected []string
+	}{
+		{
+			name:     "No actions",
+			url:      "/v1/auth-methods/amoidc_1234567890",
+			expected: []string{},
+		},
+		{
+			name:     "1 Action",
+			url:      "/v1/auth-methods/amoidc_1234567890:authenticate",
+			expected: []string{"authenticate"},
+		},
+		{
+			name:     "Multiple Actions",
+			url:      "/v1/auth-methods/amoidc_1234567890:authenticate:callback",
+			expected: []string{"authenticate", "callback"},
+		},
+		{
+			name:     "1 Action with query params",
+			url:      "/v1/auth-methods/amoidc_1234567890:authenticate?state=foo&token=bar",
+			expected: []string{"authenticate"},
+		},
+		{
+			name:     "Multiple Actions with query params",
+			url:      "/v1/auth-methods/amoidc_1234567890:authenticate:callback?state=foo&token=bar",
+			expected: []string{"authenticate", "callback"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require := require.New(t)
+			actions := getActions(tc.url)
+			require.Equal(tc.expected, actions)
+		})
+	}
+}

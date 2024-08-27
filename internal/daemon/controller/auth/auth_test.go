@@ -132,7 +132,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			}
 			ctx := NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 
-			v, ok := ctx.Value(VerifierKey).(*Verifier)
+			v, ok := ctx.Value(verifierKey).(*verifier)
 			require.True(t, ok)
 			require.NotNil(t, v)
 

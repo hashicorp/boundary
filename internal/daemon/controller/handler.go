@@ -650,7 +650,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			return
 		}
 
-		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":callback")
+		req.URL.Path = strings.TrimSuffix(req.URL.Path, fmt.Sprintf(":%s", auth.CallbackAction))
 
 		// How we get the parameters changes based on the method. Right now only
 		// GET is supported with query args, but this can support POST with JSON
@@ -739,9 +739,12 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 	})
 }
 
-// getActions takes in a URL and returns the actions from the URL
-func getActions(url string) []string {
-	parts := strings.Split(url, "/")
+// getActions takes in a URL Path and returns the actions from the URL
+func getActions(path string) []string {
+	// Remove any query parameters
+	path = strings.Split(path, "?")[0]
+
+	parts := strings.Split(path, "/")
 	lastPart := parts[len(parts)-1]
 
 	items := strings.Split(lastPart, ":")

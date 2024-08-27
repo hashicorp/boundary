@@ -55,9 +55,11 @@ const (
 	AuthTokenTypeRecoveryKms
 )
 
+const CallbackAction = "callback"
+
 type key int
 
-var VerifierKey key
+var verifierKey key
 
 type VerifyResults struct {
 	UserData template.Data
@@ -95,13 +97,13 @@ type VerifyResults struct {
 	RoundTripValue any
 
 	// Used for additional verification
-	v *Verifier
+	v *verifier
 
 	// Used to generate a hash of all grants
 	grants perms.GrantTuples
 }
 
-type Verifier struct {
+type verifier struct {
 	iamRepoFn          common.IamRepoFactory
 	authTokenRepoFn    common.AuthTokenRepoFactory
 	serversRepoFn      common.ServersRepoFactory
@@ -136,7 +138,7 @@ func NewVerifierContextWithAccounts(ctx context.Context,
 	kms *kms.Kms,
 	requestInfo *authpb.RequestInfo,
 ) context.Context {
-	return context.WithValue(ctx, VerifierKey, &Verifier{
+	return context.WithValue(ctx, verifierKey, &verifier{
 		iamRepoFn:          iamRepoFn,
 		authTokenRepoFn:    authTokenRepoFn,
 		serversRepoFn:      serversRepoFn,
@@ -170,7 +172,7 @@ func NewVerifierContext(ctx context.Context,
 func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	const op = "auth.Verify"
 	ret.Error = handlers.ForbiddenError()
-	v, ok := ctx.Value(VerifierKey).(*Verifier)
+	v, ok := ctx.Value(verifierKey).(*verifier)
 	if !ok {
 		// We don't have a logger yet and this should never happen in any
 		// context we won't catch in tests
@@ -358,7 +360,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	return
 }
 
-func (v *Verifier) decryptToken(ctx context.Context) {
+func (v *verifier) decryptToken(ctx context.Context) {
 	const op = "auth.(verifier).decryptToken"
 	switch v.RequestInfo.TokenFormat {
 	case uint32(AuthTokenTypeUnknown):
@@ -484,7 +486,7 @@ func (v *Verifier) decryptToken(ctx context.Context) {
 	}
 }
 
-func (v Verifier) performAuthCheck(ctx context.Context) (
+func (v verifier) performAuthCheck(ctx context.Context) (
 	aclResults perms.ACLResults,
 	userData template.Data,
 	scopeInfo *scopes.ScopeInfo,
@@ -944,4 +946,12 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 // GrantsHash returns a stable hash of all the grants in the verify results.
 func (r *VerifyResults) GrantsHash(ctx context.Context) ([]byte, error) {
 	return r.grants.GrantHash(ctx)
+}
+
+func GetRequestInfo(ctx context.Context) (*authpb.RequestInfo, bool) {
+	v, ok := ctx.Value(verifierKey).(*verifier)
+	if !ok {
+		return nil, false
+	}
+	return v.RequestInfo, true
 }
