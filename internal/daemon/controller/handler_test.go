@@ -441,17 +441,17 @@ func TestGetActions(t *testing.T) {
 		},
 		{
 			name:     "Multiple Actions",
-			url:      "/v1/auth-methods/amoidc_1234567890:authenticate:callback",
+			url:      "https://hello.com/v1/auth-methods/amoidc_1234567890:authenticate:callback",
 			expected: []string{"authenticate", "callback"},
 		},
 		{
 			name:     "1 Action with query params",
-			url:      "/v1/auth-methods/amoidc_1234567890:authenticate?state=foo&token=bar",
+			url:      "https://hello.com/v1/auth-methods/amoidc_1234567890:authenticate?state=foo&token=bar",
 			expected: []string{"authenticate"},
 		},
 		{
 			name:     "Multiple Actions with query params",
-			url:      "/v1/auth-methods/amoidc_1234567890:authenticate:callback?state=foo&token=bar",
+			url:      "https://hello.com/v1/auth-methods/amoidc_1234567890:authenticate:callback?state=foo&token=bar",
 			expected: []string{"authenticate", "callback"},
 		},
 	}
@@ -460,6 +460,7 @@ func TestGetActions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
 			actions := getActions(tc.url)
+			fmt.Println("actions", len(actions))
 			require.Equal(tc.expected, actions)
 		})
 	}

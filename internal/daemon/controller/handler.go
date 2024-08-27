@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -650,7 +651,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			return
 		}
 
-		req.URL.Path = strings.TrimSuffix(req.URL.Path, fmt.Sprintf(":%s", auth.CallbackAction))
+		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":"+auth.CallbackAction)
 
 		// How we get the parameters changes based on the method. Right now only
 		// GET is supported with query args, but this can support POST with JSON
@@ -740,18 +741,17 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 }
 
 // getActions takes in a URL Path and returns the actions from the URL
-func getActions(path string) []string {
+func getActions(urlPath string) []string {
 	// Remove any query parameters
-	path = strings.Split(path, "?")[0]
+	urlPath = strings.Split(urlPath, "?")[0]
 
-	parts := strings.Split(path, "/")
-	lastPart := parts[len(parts)-1]
+	lastPart := path.Base(urlPath)
 
-	items := strings.Split(lastPart, ":")
-
-	if len(items) > 1 {
-		return items[1:]
+	_, rest, _ := strings.Cut(lastPart, ":")
+	if rest == "" {
+		return []string{}
 	}
 
-	return []string{}
+	// Split the rest on ":", returning all actions and sub-actions
+	return strings.Split(rest, ":")
 }

@@ -111,7 +111,7 @@ type verifier struct {
 	oidcAuthRepoFn     common.OidcAuthRepoFactory
 	ldapAuthRepoFn     common.LdapAuthRepoFactory
 	kms                *kms.Kms
-	RequestInfo        *authpb.RequestInfo
+	requestInfo        *authpb.RequestInfo
 	res                *perms.Resource
 	act                action.Type
 	ctx                context.Context
@@ -146,7 +146,7 @@ func NewVerifierContextWithAccounts(ctx context.Context,
 		oidcAuthRepoFn:     oidcAuthRepoFn,
 		ldapAuthRepoFn:     ldapAuthRepoFn,
 		kms:                kms,
-		RequestInfo:        requestInfo,
+		requestInfo:        requestInfo,
 	})
 }
 
@@ -209,11 +209,11 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	// In tests we often simply disable auth so we can test the service handlers
 	// without fuss
-	if v.RequestInfo.DisableAuthEntirely {
+	if v.requestInfo.DisableAuthEntirely {
 		yes := true
 		ea.DisabledAuthEntirely = &yes
 		const op = "auth.(disabled).lookupScope"
-		ret.Scope.Id = v.RequestInfo.ScopeIdOverride
+		ret.Scope.Id = v.requestInfo.ScopeIdOverride
 		if ret.Scope.Id == "" {
 			ret.Scope.Id = opts.withScopeId
 		}
@@ -253,7 +253,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 				ParentScopeId: scp.GetParentId(),
 			}
 		}
-		ret.UserId = v.RequestInfo.UserIdOverride
+		ret.UserId = v.requestInfo.UserIdOverride
 		ret.UserData.User.Id = util.Pointer(ret.UserId)
 		if reqInfo != nil {
 			reqInfo.UserId = ret.UserId
@@ -275,7 +275,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		v.res.ScopeId = scope.Global.String()
 	}
 
-	if v.RequestInfo.EncryptedToken != "" {
+	if v.requestInfo.EncryptedToken != "" {
 		v.decryptToken(ctx)
 	}
 
@@ -291,10 +291,10 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	if ret.UserData.User.Id != nil {
 		ret.UserId = *ret.UserData.User.Id
 	}
-	ret.AuthTokenId = v.RequestInfo.PublicId
+	ret.AuthTokenId = v.requestInfo.PublicId
 	ret.AuthenticationFinished = authResults.AuthenticationFinished
 	if !authResults.Authorized {
-		if v.RequestInfo.DisableAuthzFailures {
+		if v.requestInfo.DisableAuthzFailures {
 			ret.Error = nil
 			// TODO: Decide whether to remove this
 			err := event.WriteObservation(ctx, op,
@@ -362,7 +362,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 func (v *verifier) decryptToken(ctx context.Context) {
 	const op = "auth.(verifier).decryptToken"
-	switch v.RequestInfo.TokenFormat {
+	switch v.requestInfo.TokenFormat {
 	case uint32(AuthTokenTypeUnknown):
 		// Nothing to decrypt
 		return
@@ -370,97 +370,97 @@ func (v *verifier) decryptToken(ctx context.Context) {
 	case uint32(AuthTokenTypeBearer), uint32(AuthTokenTypeSplitCookie):
 		if v.kms == nil {
 			event.WriteError(ctx, op, stderrors.New("no KMS object available to authz system"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("failed to get authtoken repo"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
-		at, err := tokenRepo.LookupAuthToken(v.ctx, v.RequestInfo.PublicId)
+		at, err := tokenRepo.LookupAuthToken(v.ctx, v.requestInfo.PublicId)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("failed to look up auth token by public ID"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 		if at == nil {
 			event.WriteError(ctx, op, stderrors.New("nil result from looking up auth token by public ID"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
 		tokenWrapper, err := v.kms.GetWrapper(v.ctx, at.GetScopeId(), kms.KeyPurposeTokens)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to get wrapper for tokens; continuing as anonymous user"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
-		version := v.RequestInfo.EncryptedToken[0:len(globals.ServiceTokenV1)]
+		version := v.requestInfo.EncryptedToken[0:len(globals.ServiceTokenV1)]
 		switch version {
 		case globals.ServiceTokenV1:
 		default:
 			event.WriteError(ctx, op, stderrors.New("unknown token encryption version; continuing as anonymous user"), event.WithInfo("version", version))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
-		marshaledToken, err := base58.FastBase58Decoding(v.RequestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
+		marshaledToken, err := base58.FastBase58Decoding(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error unmarshaling base58 token; continuing as anonymous user"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
 		blobInfo := new(wrapping.BlobInfo)
 		if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error decoding encrypted token; continuing as anonymous user"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
-		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, wrapping.WithAad([]byte(v.RequestInfo.PublicId)))
+		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, wrapping.WithAad([]byte(v.requestInfo.PublicId)))
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error decrypting encrypted token; continuing as anonymous user"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
 		var s1Info tokens.S1TokenInfo
 		if err := proto.Unmarshal(s1Bytes, &s1Info); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error unmarshaling token info; continuing as anonymous user"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
-		if v.RequestInfo.TokenFormat == uint32(AuthTokenTypeUnknown) || s1Info.Token == "" || v.RequestInfo.PublicId == "" {
+		if v.requestInfo.TokenFormat == uint32(AuthTokenTypeUnknown) || s1Info.Token == "" || v.requestInfo.PublicId == "" {
 			event.WriteError(ctx, op, stderrors.New("after parsing, could not find valid token; continuing as anonymous user"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
-		v.RequestInfo.Token = s1Info.Token
+		v.requestInfo.Token = s1Info.Token
 		return
 
 	case uint32(AuthTokenTypeRecoveryKms):
 		if v.kms == nil {
 			event.WriteError(ctx, op, stderrors.New("no KMS object available to authz system"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 		wrapper := v.kms.GetExternalWrappers(ctx).Recovery()
 		if wrapper == nil {
 			event.WriteError(ctx, op, stderrors.New("no recovery KMS is available"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
-		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.RequestInfo.EncryptedToken)
+		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.EncryptedToken)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("decrypt recovery token: error parsing and validating recovery token"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 		// If we add the validity period to the creation time (which we've
@@ -468,21 +468,21 @@ func (v *verifier) decryptToken(ctx context.Context) {
 		// it's before now, it's expired and might be a replay.
 		if info.CreationTime.Add(globals.RecoveryTokenValidityPeriod).Before(time.Now()) {
 			event.WriteError(ctx, op, stderrors.New("recovery token has expired (possible replay attack)"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 		repo, err := v.serversRepoFn()
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("decrypt recovery token: error fetching server repo"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 		if err := repo.AddNonce(v.ctx, info.Nonce, server.NoncePurposeRecovery); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("decrypt recovery token: error adding nonce to database (possible replay attack)"))
-			v.RequestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
+			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
-		event.WriteError(ctx, op, stderrors.New("recovery KMS was used to authorize a call"), event.WithInfo("url", v.RequestInfo.Path, "method", v.RequestInfo.Method))
+		event.WriteError(ctx, op, stderrors.New("recovery KMS was used to authorize a call"), event.WithInfo("url", v.requestInfo.Path, "method", v.requestInfo.Method))
 	}
 }
 
@@ -506,7 +506,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	userData.User.Id = util.Pointer(globals.AnonymousUserId)
 
 	// Validate the token and fetch the corresponding user ID
-	switch v.RequestInfo.TokenFormat {
+	switch v.requestInfo.TokenFormat {
 	case uint32(AuthTokenTypeUnknown):
 		// Nothing; remain as the anonymous user
 
@@ -516,7 +516,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		userData.User.Id = util.Pointer(globals.RecoveryUserId)
 
 	case uint32(AuthTokenTypeBearer), uint32(AuthTokenTypeSplitCookie):
-		if v.RequestInfo.Token == "" {
+		if v.requestInfo.Token == "" {
 			// This will end up staying as the anonymous user
 			break
 		}
@@ -525,7 +525,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			retErr = errors.Wrap(ctx, err, op)
 			return
 		}
-		at, err := tokenRepo.ValidateToken(v.ctx, v.RequestInfo.PublicId, v.RequestInfo.Token)
+		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 		if err != nil {
 			// Continue as the anonymous user as maybe this token is expired but
 			// we can still perform the action
@@ -634,7 +634,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	}
 
 	// At this point we don't need to look up grants since it's automatically allowed
-	if v.RequestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms) {
+	if v.requestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms) {
 		aclResults.AuthenticationFinished = true
 		aclResults.Authorized = true
 		retErr = nil
@@ -699,8 +699,8 @@ func (r *VerifyResults) FetchActionSetForType(ctx context.Context, typ resource.
 
 func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
 	switch {
-	case r.v.RequestInfo.DisableAuthEntirely,
-		r.v.RequestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms):
+	case r.v.requestInfo.DisableAuthEntirely,
+		r.v.requestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms):
 		// TODO: See if we can be better about what we return with the anonymous
 		// user and recovery KMS, perhaps given exclusionary options for each
 		return availableActions
@@ -745,9 +745,9 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) *perms.OutputFields {
 	var ret *perms.OutputFields
 	switch {
-	case r.v.RequestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms):
+	case r.v.requestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms):
 		return ret.AddFields([]string{"*"})
-	case r.v.RequestInfo.DisableAuthEntirely:
+	case r.v.requestInfo.DisableAuthEntirely:
 		return ret
 	case r.UserData.User.Id == nil:
 		// If there is no user ID set by definition there are no actions to fetch.
@@ -948,10 +948,12 @@ func (r *VerifyResults) GrantsHash(ctx context.Context) ([]byte, error) {
 	return r.grants.GrantHash(ctx)
 }
 
+// GetRequestInfo extracts the request info stored in the context, if it exists.
+// This returns nil, false if the request info could not be found.
 func GetRequestInfo(ctx context.Context) (*authpb.RequestInfo, bool) {
 	v, ok := ctx.Value(verifierKey).(*verifier)
 	if !ok {
 		return nil, false
 	}
-	return v.RequestInfo, true
+	return v.requestInfo, true
 }

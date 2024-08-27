@@ -138,7 +138,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 
 			v.decryptToken(context.TODO())
 
-			at, err := tokenRepo.ValidateToken(ctx, v.RequestInfo.PublicId, v.RequestInfo.Token)
+			at, err := tokenRepo.ValidateToken(ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 			require.NoError(t, err)
 			assert.Equal(t, tc.userId, at.GetIamUserId())
 		})
