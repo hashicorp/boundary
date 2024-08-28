@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
-	"github.com/mitchellh/go-homedir"
 	"github.com/posener/complete"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -243,7 +242,7 @@ func (c *StartCommand) Run(args []string) int {
 // DefaultDotDirectory returns the default path to the boundary dot directory.
 func DefaultDotDirectory(ctx context.Context) (string, error) {
 	const op = "cache.DefaultDotDirectory"
-	homeDir, err := homedir.Dir()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

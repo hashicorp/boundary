@@ -101,4 +101,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithHomeDir", func(t *testing.T) {
+		opts, err := getOpts(WithHomeDir(ctx, "/tmp"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withHomeDir = "/tmp"
+		assert.Equal(t, opts, testOpts)
+	})
 }
