@@ -291,20 +291,20 @@ func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Targ
 	return nil
 }
 
-func (r *Repository) ListTargets(ctx context.Context, authTokenId string) ([]*targets.Target, error) {
+func (r *Repository) ListTargets(ctx context.Context, authTokenId string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).ListTargets"
 	switch {
 	case authTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	}
-	ret, err := r.searchTargets(ctx, "true", nil, withAuthTokenId(authTokenId))
+	ret, err := r.searchTargets(ctx, "true", nil, append(opt, withAuthTokenId(authTokenId))...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) QueryTargets(ctx context.Context, authTokenId, query string) ([]*targets.Target, error) {
+func (r *Repository) QueryTargets(ctx context.Context, authTokenId, query string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).QueryTargets"
 	switch {
 	case authTokenId == "":
@@ -317,14 +317,14 @@ func (r *Repository) QueryTargets(ctx context.Context, authTokenId, query string
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
-	ret, err := r.searchTargets(ctx, w.Condition, w.Args, withAuthTokenId(authTokenId))
+	ret, err := r.searchTargets(ctx, w.Condition, w.Args, append(opt, withAuthTokenId(authTokenId))...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) searchTargets(ctx context.Context, condition string, searchArgs []any, opt ...Option) ([]*targets.Target, error) {
+func (r *Repository) searchTargets(ctx context.Context, condition string, searchArgs []any, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).searchTargets"
 	switch {
 	case condition == "":
@@ -349,7 +349,7 @@ func (r *Repository) searchTargets(ctx context.Context, condition string, search
 	}
 
 	var cachedTargets []*Target
-	if err := r.rw.SearchWhere(ctx, &cachedTargets, condition, searchArgs, db.WithLimit(-1)); err != nil {
+	if err := r.rw.SearchWhere(ctx, &cachedTargets, condition, searchArgs, db.WithLimit(opts.withMaxResultSetSize+1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
@@ -361,7 +361,15 @@ func (r *Repository) searchTargets(ctx context.Context, condition string, search
 		}
 		retTargets = append(retTargets, &tar)
 	}
-	return retTargets, nil
+
+	sr := &SearchResult{
+		Targets: retTargets,
+	}
+	if opts.withMaxResultSetSize > 0 && len(sr.Targets) > opts.withMaxResultSetSize {
+		sr.Targets = sr.Targets[:opts.withMaxResultSetSize]
+		sr.Incomplete = true
+	}
+	return sr, nil
 }
 
 type Target struct {
