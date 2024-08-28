@@ -494,34 +494,20 @@
         "path": "credentials"
       },
       {
-        "title": "Provide static credentials for targets",
-        "routes": [
-          {
-            "title": "Create a static credential store",
-            "path": "credentials/static/create-static-credential-store"
-          },
-          {
-            "title": "Configure targets with credential brokering",
-            "path": "credentials/static/configure-targets-credential-brokering"
-          }
-        ]
+        "title": "Create a static credential store",
+        "path": "credentials/create-static-credential-store"
       },
       {
-        "title": "Set up dynamic credentials for just-in-time access",
-        "routes": [
-          {
-            "title": "Create a Vault credential store",
-            "path": "credentials/dynamic/create-vault-credential-store"
-          },
-          {
-            "title": "Configure targets with credential brokering",
-            "path": "credentials/dynamic/configure-targets-credential-brokering"
-          },
-          {
-            "title": "Configure targets with credential injection",
-            "path": "credentials/dynamic/configure-targets-credential-injection"
-          }
-        ]
+        "title": "Create a Vault credential store",
+        "path": "credentials/create-vault-credential-store"
+      },
+      {
+        "title": "Configure targets with credential brokering",
+        "path": "credentials/configure-targets-credential-brokering"
+      },
+      {
+        "title": "Configure targets with credential injection",
+        "path": "credentials/configure-targets-credential-injection"
       }
     ]
   },
