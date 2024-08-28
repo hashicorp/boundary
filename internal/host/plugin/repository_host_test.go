@@ -163,7 +163,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 			in: func() *input {
 				ph := phs[1]
 				e := exp[1]
-				newIp := testGetIpAddress(t)
+				newIp := testGetIpv4Address(t)
 				newName := testGetDnsName(t)
 				ph.IpAddresses = append(ph.IpAddresses, newIp)
 				e.IpAddresses = append(e.IpAddresses, newIp)
