@@ -30,7 +30,6 @@ import (
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/mitchellh/go-homedir"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -543,7 +542,7 @@ func defaultDbUrl(ctx context.Context, opt ...Option) (string, error) {
 		return "", errors.Wrap(ctx, err, op)
 	}
 	if opts.withHomeDir == "" {
-		opts.withHomeDir, err = homedir.Dir()
+		opts.withHomeDir, err = os.UserHomeDir()
 		if err != nil {
 			return "", errors.Wrap(ctx, err, op)
 		}
