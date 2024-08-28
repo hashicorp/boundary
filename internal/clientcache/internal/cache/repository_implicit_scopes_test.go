@@ -117,10 +117,8 @@ func TestRepository_ImplicitScopes(t *testing.T) {
 		assert.Len(t, l.ImplicitScopes, len(expectedScopes))
 		assert.ElementsMatch(t, l.ImplicitScopes, expectedScopes)
 	})
-	t.Run("correct token gets implicit scopes from querying", func(t *testing.T) {
-		l, err := r.QueryImplicitScopes(ctx, kt1.AuthTokenId, "anything")
-		require.NoError(t, err)
-		assert.Len(t, l.ImplicitScopes, len(expectedScopes))
-		assert.ElementsMatch(t, l.ImplicitScopes, expectedScopes)
+	t.Run("querying returns error", func(t *testing.T) {
+		_, err := r.QueryImplicitScopes(ctx, kt1.AuthTokenId, "anything")
+		require.Error(t, err)
 	})
 }

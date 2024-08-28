@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -24,21 +25,14 @@ func (r *Repository) ListImplicitScopes(ctx context.Context, authTokenId string,
 	return ret, nil
 }
 
-// QueryImplicitScopes does nothing currently; it's not its own table, but a
-// union of scope info from other types. So it just calls searchImplicitScopes
-// as if it was a list. It is required to fulfill the interface, but will return
-// an error if used from the API.
+// QueryImplicitScopes is not supported currently so we return an error message
 func (r *Repository) QueryImplicitScopes(ctx context.Context, authTokenId, query string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).QueryImplicitScopes"
-	switch {
-	case authTokenId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
-	}
-	ret, err := r.searchImplicitScopes(ctx, "true", nil, append(opt, withAuthTokenId(authTokenId))...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return ret, nil
+
+	// Internal is used as we have checks at the handler level to ensure this
+	// can't be used so it's an internal error if we actually call this
+	// function.
+	return nil, errors.New(ctx, errors.Internal, op, "querying implicit scopes is not supported")
 }
 
 func (r *Repository) searchImplicitScopes(ctx context.Context, condition string, searchArgs []any, opt ...Option) (*SearchResult, error) {
@@ -103,12 +97,17 @@ func (r *Repository) searchImplicitScopes(ctx context.Context, condition string,
 	for _, res := range scopeIdsResults {
 		dedupMap[res.ScopeId] = struct{}{}
 	}
+	scopeIds := make([]string, 0, len(dedupMap))
+	for k := range dedupMap {
+		scopeIds = append(scopeIds, k)
+	}
+	slices.Sort(scopeIds)
 
 	sr := &SearchResult{
 		ImplicitScopes: make([]*scopes.Scope, 0, len(dedupMap)),
 	}
-	for k := range dedupMap {
-		sr.ImplicitScopes = append(sr.ImplicitScopes, &scopes.Scope{Id: k})
+	for _, scopeId := range scopeIds {
+		sr.ImplicitScopes = append(sr.ImplicitScopes, &scopes.Scope{Id: scopeId})
 	}
 
 	return sr, nil
