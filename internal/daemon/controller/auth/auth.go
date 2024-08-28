@@ -55,6 +55,10 @@ const (
 	AuthTokenTypeRecoveryKms
 )
 
+// CallbackAction represents the action type for
+// callback operations in a request's URL path.
+// This is currently only used during auth method
+// authentication.
 const CallbackAction = "callback"
 
 type key int
