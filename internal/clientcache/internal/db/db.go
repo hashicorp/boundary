@@ -6,7 +6,6 @@ package db
 import (
 	"context"
 	_ "embed"
-	stderrors "errors"
 	"fmt"
 	"strings"
 	"time"
@@ -145,12 +144,6 @@ type schema struct {
 const (
 	schemaTableName      = "schema_version"
 	schemaCurrentVersion = "v0.0.1"
-)
-
-var (
-	// ErrInvalidVersion represents a runtime error when the database version
-	// doesn't match the require version of the module.
-	ErrInvalidVersion = stderrors.New("invalid version")
 )
 
 // TableName returns the table name
