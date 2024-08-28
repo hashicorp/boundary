@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/api/aliases"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,11 +24,12 @@ const (
 	ResolvableAliases SearchableResource = "resolvable-aliases"
 	Targets           SearchableResource = "targets"
 	Sessions          SearchableResource = "sessions"
+	ImplicitScopes    SearchableResource = "implicit-scopes"
 )
 
 func (r SearchableResource) Valid() bool {
 	switch r {
-	case ResolvableAliases, Targets, Sessions:
+	case ResolvableAliases, Targets, Sessions, ImplicitScopes:
 		return true
 	}
 	return false
@@ -41,6 +43,8 @@ func ToSearchableResource(s string) SearchableResource {
 		return Targets
 	case strings.EqualFold(s, string(Sessions)):
 		return Sessions
+	case strings.EqualFold(s, string(ImplicitScopes)):
+		return ImplicitScopes
 	}
 	return Unknown
 }
@@ -64,6 +68,7 @@ type SearchResult struct {
 	ResolvableAliases []*aliases.Alias    `json:"resolvable_aliases,omitempty"`
 	Targets           []*targets.Target   `json:"targets,omitempty"`
 	Sessions          []*sessions.Session `json:"sessions,omitempty"`
+	ImplicitScopes    []*scopes.Scope     `json:"implicit_scopes,omitempty"`
 
 	// Incomplete is true if the search results are incomplete, that is, we are
 	// returning only a subset based on the max result set size
@@ -123,6 +128,19 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 						}
 					}
 					in.Sessions = finalResults
+				},
+			},
+			ImplicitScopes: &resourceSearchFns[*scopes.Scope]{
+				list:  repo.ListImplicitScopes,
+				query: repo.QueryImplicitScopes,
+				filter: func(in *SearchResult, e *bexpr.Evaluator) {
+					finalResults := make([]*scopes.Scope, 0, len(in.ImplicitScopes))
+					for _, item := range in.ImplicitScopes {
+						if m, err := e.Evaluate(filterItem{item}); err == nil && m {
+							finalResults = append(finalResults, item)
+						}
+					}
+					in.ImplicitScopes = finalResults
 				},
 			},
 		},
