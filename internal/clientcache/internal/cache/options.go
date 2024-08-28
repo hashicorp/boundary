@@ -5,6 +5,7 @@ package cache
 
 import (
 	stderrors "errors"
+	"time"
 
 	"github.com/hashicorp/go-dbw"
 )
@@ -19,6 +20,7 @@ type options struct {
 	withSessionRetrievalFunc         SessionRetrievalFunc
 	withIgnoreSearchStaleness        bool
 	withMaxResultSetSize             int
+	withTestRefreshSleepDuration     time.Duration
 }
 
 // Option - how options are passed as args
@@ -110,6 +112,16 @@ func WithMaxResultSetSize(with int) Option {
 			return stderrors.New("max result set size must be -1 or greater")
 		}
 		o.withMaxResultSetSize = with
+		return nil
+	}
+}
+
+// WithTestRefreshSleepDuration provides an option for specifying an amount of time a
+// refresh operation should sleep. This allows testing the logic that ensures
+// only one is running at a time.
+func WithTestRefreshSleepDuration(with time.Duration) Option {
+	return func(o *options) error {
+		o.withTestRefreshSleepDuration = with
 		return nil
 	}
 }

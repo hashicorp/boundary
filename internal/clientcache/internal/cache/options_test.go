@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/sessions"
@@ -105,5 +106,13 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 		_, err = getOpts(WithMaxResultSetSize(-2))
 		require.Error(t, err)
+	})
+	t.Run("withTestRefreshSleepDuration", func(t *testing.T) {
+		opts, err := getOpts(WithTestRefreshSleepDuration(time.Second))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.Empty(t, testOpts.withTestRefreshSleepDuration)
+		testOpts.withTestRefreshSleepDuration = time.Second
+		assert.Equal(t, opts, testOpts)
 	})
 }
