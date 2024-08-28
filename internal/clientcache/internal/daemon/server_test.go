@@ -15,6 +15,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_openStore(t *testing.T) {
+	ctx := context.Background()
+	t.Run("success", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		db, err := openStore(ctx, WithUrl(ctx, tmpDir+"/test.db"+fkPragma))
+		require.NoError(t, err)
+		require.NotNil(t, db)
+		assert.FileExists(t, tmpDir+"/test.db")
+	})
+	t.Run("homedir", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		db, err := openStore(ctx, WithHomeDir(ctx, tmpDir))
+		require.NoError(t, err)
+		require.NotNil(t, db)
+		assert.FileExists(t, tmpDir+"/"+dotDirname+"/"+dbFileName)
+	})
+}
+
 // Note: the name of this test must remain short because the temp dir created
 // includes the name of the test and there is a 108 character limit in allowed
 // unix socket path names.
