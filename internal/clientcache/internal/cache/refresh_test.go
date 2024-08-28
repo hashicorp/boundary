@@ -440,15 +440,18 @@ func TestRefreshForSearch(t *testing.T) {
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
 
 		cachedTargets, err := r.ListTargets(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, cachedTargets)
+		require.NoError(t, err)
+		assert.Empty(t, cachedTargets.Targets)
+		assert.Empty(t, cachedTargets.ResolvableAliases)
+		assert.Empty(t, cachedTargets.Sessions)
+		assert.False(t, cachedTargets.Incomplete)
 
 		// Now load up a few resources and a token, and trying again should
 		// see the RefreshForSearch update more fields.
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedTargets, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets[:3], cachedTargets)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets.Targets)
 
 		// Let 2 milliseconds pass so the items are stale enough
 		time.Sleep(2 * time.Millisecond)
@@ -456,7 +459,7 @@ func TestRefreshForSearch(t *testing.T) {
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
 		cachedTargets, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets[2:], cachedTargets)
+		assert.ElementsMatch(t, retTargets[2:], cachedTargets.Targets)
 	})
 
 	t.Run("targets forced refreshed for searching", func(t *testing.T) {
@@ -492,27 +495,30 @@ func TestRefreshForSearch(t *testing.T) {
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
 
 		cachedTargets, err := r.ListTargets(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, cachedTargets)
+		require.NoError(t, err)
+		assert.Empty(t, cachedTargets.Targets)
+		assert.Empty(t, cachedTargets.ResolvableAliases)
+		assert.Empty(t, cachedTargets.Sessions)
+		assert.False(t, cachedTargets.Incomplete)
 
 		// Now load up a few resources and a token, and trying again should
 		// see the RefreshForSearch update more fields.
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedTargets, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets[:3], cachedTargets)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets.Targets)
 
 		// No refresh happened because it is not considered stale
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
 		cachedTargets, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets[:3], cachedTargets)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets.Targets)
 
 		// Now force refresh
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, append(opts, WithIgnoreSearchStaleness(true))...))
 		cachedTargets, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets[2:], cachedTargets)
+		assert.ElementsMatch(t, retTargets[2:], cachedTargets.Targets)
 	})
 
 	t.Run("no refresh token no refresh for search", func(t *testing.T) {
@@ -537,8 +543,11 @@ func TestRefreshForSearch(t *testing.T) {
 		assert.ErrorContains(t, err, ErrRefreshNotSupported.Error())
 
 		got, err := r.ListTargets(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 
 		// Now that we know that this user doesn't support refresh tokens, they
 		// wont be refreshed any more, and we wont see the error when refreshing
@@ -556,8 +565,11 @@ func TestRefreshForSearch(t *testing.T) {
 		assert.Nil(t, err)
 
 		got, err = r.ListTargets(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 
 		// Now simulate the controller updating to support refresh tokens and
 		// the resources starting to be cached.
@@ -569,7 +581,7 @@ func TestRefreshForSearch(t *testing.T) {
 
 		got, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.Len(t, got, 2)
+		assert.Len(t, got.Targets, 2)
 	})
 
 	t.Run("sessions refreshed for searching", func(t *testing.T) {
@@ -605,19 +617,22 @@ func TestRefreshForSearch(t *testing.T) {
 		// First call doesn't sync anything because no sessions were already synced yet
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
 		cachedSessions, err := r.ListSessions(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, cachedSessions)
+		require.NoError(t, err)
+		assert.Empty(t, cachedSessions.Targets)
+		assert.Empty(t, cachedSessions.ResolvableAliases)
+		assert.Empty(t, cachedSessions.Sessions)
+		assert.False(t, cachedSessions.Incomplete)
 
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedSessions, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retSess[:3], cachedSessions)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions.Sessions)
 
 		// Second call removes the first 2 resources from the cache and adds the last
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
 		cachedSessions, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retSess[2:], cachedSessions)
+		assert.ElementsMatch(t, retSess[2:], cachedSessions.Sessions)
 	})
 
 	t.Run("sessions forced refreshed for searching", func(t *testing.T) {
@@ -654,25 +669,28 @@ func TestRefreshForSearch(t *testing.T) {
 		// First call doesn't sync anything because no sessions were already synced yet
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
 		cachedSessions, err := r.ListSessions(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, cachedSessions)
+		require.NoError(t, err)
+		assert.Empty(t, cachedSessions.Targets)
+		assert.Empty(t, cachedSessions.ResolvableAliases)
+		assert.Empty(t, cachedSessions.Sessions)
+		assert.False(t, cachedSessions.Incomplete)
 
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedSessions, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retSess[:3], cachedSessions)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions.Sessions)
 
 		// Refresh for search doesn't refresh anything because it isn't stale
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
 		cachedSessions, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retSess[:3], cachedSessions)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions.Sessions)
 
 		// Now force the refresh and see things get updated
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, append(opts, WithIgnoreSearchStaleness(true))...))
 		cachedSessions, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retSess[2:], cachedSessions)
+		assert.ElementsMatch(t, retSess[2:], cachedSessions.Sessions)
 	})
 
 	t.Run("aliases refreshed for searching", func(t *testing.T) {
@@ -708,19 +726,22 @@ func TestRefreshForSearch(t *testing.T) {
 		// First call doesn't sync anything because no aliases were already synced yet
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, opts...))
 		cachedAliases, err := r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, cachedAliases)
+		require.NoError(t, err)
+		assert.Empty(t, cachedAliases.Targets)
+		assert.Empty(t, cachedAliases.ResolvableAliases)
+		assert.Empty(t, cachedAliases.Sessions)
+		assert.False(t, cachedAliases.Incomplete)
 
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedAliases, err = r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, retAl[:3], cachedAliases)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, retAl[:3], cachedAliases.ResolvableAliases)
 
 		// Second call removes the first 2 resources from the cache and adds the last
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, opts...))
 		cachedAliases, err = r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, retAl[2:], cachedAliases)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, retAl[2:], cachedAliases.ResolvableAliases)
 	})
 
 	t.Run("aliases forced refreshed for searching", func(t *testing.T) {
@@ -757,25 +778,28 @@ func TestRefreshForSearch(t *testing.T) {
 		// First call doesn't sync anything because no aliases were already synced yet
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, opts...))
 		cachedAliases, err := r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, cachedAliases)
+		require.NoError(t, err)
+		assert.Empty(t, cachedAliases.Targets)
+		assert.Empty(t, cachedAliases.ResolvableAliases)
+		assert.Empty(t, cachedAliases.Sessions)
+		assert.False(t, cachedAliases.Incomplete)
 
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedAliases, err = r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, retAls[:3], cachedAliases)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, retAls[:3], cachedAliases.ResolvableAliases)
 
 		// Refresh for search doesn't refresh anything because it isn't stale
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, opts...))
 		cachedAliases, err = r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, retAls[:3], cachedAliases)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, retAls[:3], cachedAliases.ResolvableAliases)
 
 		// Now force the refresh and see things get updated
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, append(opts, WithIgnoreSearchStaleness(true))...))
 		cachedAliases, err = r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, retAls[2:], cachedAliases)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, retAls[2:], cachedAliases.ResolvableAliases)
 	})
 }
 
@@ -829,13 +853,13 @@ func TestRefresh(t *testing.T) {
 
 		cachedTargets, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets[:3], cachedTargets)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets.Targets)
 
 		// Second call removes the first 2 resources from the cache and adds the last
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedTargets, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets[2:], cachedTargets)
+		assert.ElementsMatch(t, retTargets[2:], cachedTargets.Targets)
 	})
 
 	t.Run("set sessions", func(t *testing.T) {
@@ -870,13 +894,13 @@ func TestRefresh(t *testing.T) {
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedSessions, err := r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retSess[:3], cachedSessions)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions.Sessions)
 
 		// Second call removes the first 2 resources from the cache and adds the last
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedSessions, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retSess[2:], cachedSessions)
+		assert.ElementsMatch(t, retSess[2:], cachedSessions.Sessions)
 	})
 
 	t.Run("set aliases", func(t *testing.T) {
@@ -911,13 +935,13 @@ func TestRefresh(t *testing.T) {
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedAliases, err := r.ListResolvableAliases(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retAls[:3], cachedAliases)
+		assert.ElementsMatch(t, retAls[:3], cachedAliases.ResolvableAliases)
 
 		// Second call removes the first 2 resources from the cache and adds the last
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedAliases, err = r.ListResolvableAliases(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retAls[2:], cachedAliases)
+		assert.ElementsMatch(t, retAls[2:], cachedAliases.ResolvableAliases)
 	})
 
 	t.Run("error propagates up", func(t *testing.T) {
@@ -1022,8 +1046,11 @@ func TestRecheckCachingSupport(t *testing.T) {
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 
 		got, err := r.ListTargets(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
@@ -1032,8 +1059,11 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		got, err = r.ListTargets(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 
 		// now a full fetch will work since the user has resources and no refresh token
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
@@ -1057,8 +1087,11 @@ func TestRecheckCachingSupport(t *testing.T) {
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 
 		got, err := r.ListSessions(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
@@ -1067,16 +1100,22 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		got, err = r.ListSessions(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 		got, err = r.ListSessions(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 	})
 
 	t.Run("aliases", func(t *testing.T) {
@@ -1094,8 +1133,11 @@ func TestRecheckCachingSupport(t *testing.T) {
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 
 		got, err := r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
@@ -1104,16 +1146,22 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		got, err = r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 		got, err = r.ListResolvableAliases(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, err)
+		assert.Empty(t, got.Targets)
+		assert.Empty(t, got.ResolvableAliases)
+		assert.Empty(t, got.Sessions)
+		assert.False(t, got.Incomplete)
 	})
 
 	t.Run("error propagates up", func(t *testing.T) {
