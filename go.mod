@@ -100,7 +100,6 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.1.58
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/net v0.29.0
@@ -127,6 +126,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/user v0.3.0 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect

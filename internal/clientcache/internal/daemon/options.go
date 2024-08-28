@@ -20,8 +20,9 @@ type options struct {
 	WithReadyToServeNotificationCh         chan struct{}
 	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
 
-	withUrl    string
-	withLogger hclog.Logger
+	withUrl     string
+	withLogger  hclog.Logger
+	withHomeDir string
 }
 
 // Option - how options are passed as args
@@ -40,6 +41,14 @@ func getOpts(opt ...Option) (options, error) {
 		}
 	}
 	return opts, nil
+}
+
+// WithHomeDir provides an optional home directory to use.
+func WithHomeDir(_ context.Context, dir string) Option {
+	return func(o *options) error {
+		o.withHomeDir = dir
+		return nil
+	}
 }
 
 // withRefreshInterval provides an optional refresh interval.

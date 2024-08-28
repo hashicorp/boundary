@@ -2,6 +2,40 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
+
+-- schema_version is a one row table to keep the version
+create table if not exists schema_version (
+    version text not null,
+    create_time timestamp not null default current_timestamp,
+    update_time timestamp not null default current_timestamp
+);
+
+-- ensure that it's only ever one row
+create unique index schema_version_one_row
+ON schema_version((version is not null));
+
+create trigger immutable_columns_schema_version
+before update on schema_version
+for each row 
+  when 
+    new.create_time <> old.create_time 
+	begin
+	  select raise(abort, 'immutable column');
+	end;
+
+
+create trigger update_time_column_schema_version
+before update on schema_version
+for each row 
+when 
+  new.version <> old.version 
+  begin
+    update schema_version set update_time = datetime('now','localtime') where rowid == new.rowid;
+  end;
+
+
+insert into schema_version(version) values('v0.0.1');
+
 -- user contains the boundary user information for the boundary user that owns
 -- the information in the cache.
 create table if not exists user (

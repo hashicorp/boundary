@@ -9,6 +9,7 @@ import (
 )
 
 type options struct {
+	withSchemaVersion string
 	withDebug         bool
 	withUrl           string
 	withDbType        dbw.DbType
@@ -38,6 +39,15 @@ func getOpts(opt ...Option) (options, error) {
 func WithGormFormatter(logger hclog.Logger) Option {
 	return func(o *options) error {
 		o.withGormFormatter = logger
+		return nil
+	}
+}
+
+// withTestValidSchemaVersion provides optional valid schema version for testing
+// purposes. This is used to simulate a schema version that is valid/invalid.
+func withTestValidSchemaVersion(useVersion string) Option {
+	return func(o *options) error {
+		o.withSchemaVersion = useVersion
 		return nil
 	}
 }

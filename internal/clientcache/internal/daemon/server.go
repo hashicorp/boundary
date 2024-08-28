@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -499,6 +500,10 @@ func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *
 	return nil
 }
 
+// openStore will open the underlying store for the db. If no options are
+// provided, it will default to an on disk store using the user's home dir +
+// ".boundary/cache.db". If a url is provided, it will use that as the store.
+// Supported options: WithUrl, WithLogger, WithHomeDir
 func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 	const op = "daemon.openStore"
 	opts, err := getOpts(opt...)
@@ -514,6 +519,12 @@ func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		dbOpts = append(dbOpts, cachedb.WithUrl(url))
+	default:
+		url, err := defaultDbUrl(ctx, opt...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		dbOpts = append(dbOpts, cachedb.WithUrl(url))
 	}
 	if !util.IsNil(opts.withLogger) {
 		dbOpts = append(dbOpts, cachedb.WithGormFormatter(opts.withLogger))
@@ -524,3 +535,31 @@ func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 	}
 	return store, nil
 }
+
+// defaultDbUrl returns the default db name including the path. It will ensure
+// the directory exists by creating it if it doesn't.
+func defaultDbUrl(ctx context.Context, opt ...Option) (string, error) {
+	const op = "daemon.DefaultDotDirectory"
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	if opts.withHomeDir == "" {
+		opts.withHomeDir, err = os.UserHomeDir()
+		if err != nil {
+			return "", errors.Wrap(ctx, err, op)
+		}
+	}
+	dotDir := filepath.Join(opts.withHomeDir, dotDirname)
+	if err := os.MkdirAll(dotDir, 0o700); err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	fileName := filepath.Join(dotDir, dbFileName)
+	return fmt.Sprintf("%s%s", fileName, fkPragma), nil
+}
+
+const (
+	dotDirname = ".boundary"
+	dbFileName = "cache.db"
+	fkPragma   = "?_pragma=foreign_keys(1)"
+)
