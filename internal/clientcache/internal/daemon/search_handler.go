@@ -26,14 +26,16 @@ type SearchResult struct {
 	ResolvableAliases []*aliases.Alias    `json:"resolvable_aliases,omitempty"`
 	Targets           []*targets.Target   `json:"targets,omitempty"`
 	Sessions          []*sessions.Session `json:"sessions,omitempty"`
+	Incomplete        bool                `json:"incomplete,omitempty"`
 }
 
 const (
-	filterKey       = "filter"
-	queryKey        = "query"
-	resourceKey     = "resource"
-	forceRefreshKey = "force_refresh"
-	authTokenIdKey  = "auth_token_id"
+	filterKey           = "filter"
+	queryKey            = "query"
+	resourceKey         = "resource"
+	forceRefreshKey     = "force_refresh"
+	authTokenIdKey      = "auth_token_id"
+	maxResultSetSizeKey = "max_result_set_size"
 )
 
 func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService, logger hclog.Logger) (http.HandlerFunc, error) {
@@ -54,8 +56,11 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		reqCtx := r.Context()
-		resource := r.URL.Query().Get(resourceKey)
-		authTokenId := r.URL.Query().Get(authTokenIdKey)
+		q := r.URL.Query()
+		resource := q.Get(resourceKey)
+		authTokenId := q.Get(authTokenIdKey)
+		maxResultSetSizeStr := q.Get(maxResultSetSizeKey)
+		maxResultSetSizeInt, maxResultSetSizeIntErr := strconv.Atoi(maxResultSetSizeStr)
 
 		searchableResource := cache.ToSearchableResource(resource)
 		switch {
@@ -70,6 +75,14 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		case authTokenId == "":
 			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey)))
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey), http.StatusBadRequest)
+			return
+		case maxResultSetSizeStr != "" && maxResultSetSizeIntErr != nil:
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is not able to be parsed as an integer", maxResultSetSizeStr)))
+			writeError(w, fmt.Sprintf("%s is not able to be parsed as an integer", maxResultSetSizeStr), http.StatusBadRequest)
+			return
+		case maxResultSetSizeInt < -1:
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s must be greater than or equal to -1", maxResultSetSizeStr)))
+			writeError(w, fmt.Sprintf("%s must be greater than or equal to -1", maxResultSetSizeStr), http.StatusBadRequest)
 			return
 		}
 
@@ -114,10 +127,11 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		filter := r.URL.Query().Get(filterKey)
 
 		res, err := s.Search(reqCtx, cache.SearchParams{
-			AuthTokenId: authTokenId,
-			Resource:    searchableResource,
-			Query:       query,
-			Filter:      filter,
+			AuthTokenId:      authTokenId,
+			Resource:         searchableResource,
+			Query:            query,
+			Filter:           filter,
+			MaxResultSetSize: maxResultSetSizeInt,
 		})
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("when performing search", "auth_token_id", authTokenId, "resource", searchableResource, "query", query, "filter", filter))
@@ -152,6 +166,7 @@ func toApiResult(sr *cache.SearchResult) *SearchResult {
 		ResolvableAliases: sr.ResolvableAliases,
 		Targets:           sr.Targets,
 		Sessions:          sr.Sessions,
+		Incomplete:        sr.Incomplete,
 	}
 }
 
