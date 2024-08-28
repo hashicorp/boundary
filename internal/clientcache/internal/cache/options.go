@@ -4,6 +4,8 @@
 package cache
 
 import (
+	stderrors "errors"
+
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -16,6 +18,7 @@ type options struct {
 	withTargetRetrievalFunc          TargetRetrievalFunc
 	withSessionRetrievalFunc         SessionRetrievalFunc
 	withIgnoreSearchStaleness        bool
+	withMaxResultSetSize             int
 }
 
 // Option - how options are passed as args
@@ -23,7 +26,8 @@ type Option func(*options) error
 
 func getDefaultOptions() options {
 	return options{
-		withDbType: dbw.Sqlite,
+		withDbType:           dbw.Sqlite,
+		withMaxResultSetSize: defaultLimitedResultSetSize,
 	}
 }
 
@@ -91,6 +95,21 @@ func WithSessionRetrievalFunc(fn SessionRetrievalFunc) Option {
 func WithIgnoreSearchStaleness(b bool) Option {
 	return func(o *options) error {
 		o.withIgnoreSearchStaleness = b
+		return nil
+	}
+}
+
+// WithMaxResultSetSize provides an option for limiting the result set, e.g.
+// when no filter is provided on a list. A 0 does nothing (keeps the default).
+func WithMaxResultSetSize(with int) Option {
+	return func(o *options) error {
+		switch {
+		case with == 0:
+			return nil
+		case with < -1:
+			return stderrors.New("max result set size must be -1 or greater")
+		}
+		o.withMaxResultSetSize = with
 		return nil
 	}
 }

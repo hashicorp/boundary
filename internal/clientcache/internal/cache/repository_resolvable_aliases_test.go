@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -222,7 +223,7 @@ func TestRepository_RefreshAliases_withRefreshTokens(t *testing.T) {
 
 	got, err := r.ListResolvableAliases(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	assert.Len(t, got.ResolvableAliases, 2)
 
 	// Refreshing again uses the refresh token and get additional aliases, appending
 	// them to the response
@@ -232,7 +233,7 @@ func TestRepository_RefreshAliases_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListResolvableAliases(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 3)
+	assert.Len(t, got.ResolvableAliases, 3)
 
 	// Refreshing again wont return any more resources, but also none should be
 	// removed
@@ -242,7 +243,7 @@ func TestRepository_RefreshAliases_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListResolvableAliases(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 3)
+	assert.Len(t, got.ResolvableAliases, 3)
 
 	// Refresh again with the refresh token being reported as invalid.
 	require.NoError(t, r.refreshResolvableAliases(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
@@ -251,7 +252,7 @@ func TestRepository_RefreshAliases_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListResolvableAliases(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	assert.Len(t, got.ResolvableAliases, 2)
 }
 
 func TestRepository_ListAliases(t *testing.T) {
@@ -332,13 +333,73 @@ func TestRepository_ListAliases(t *testing.T) {
 	t.Run("wrong user gets no aliases", func(t *testing.T) {
 		l, err := r.ListResolvableAliases(ctx, kt2.AuthTokenId)
 		assert.NoError(t, err)
-		assert.Empty(t, l)
+		assert.Empty(t, l.ResolvableAliases)
 	})
 	t.Run("correct token gets aliases", func(t *testing.T) {
 		l, err := r.ListResolvableAliases(ctx, kt1.AuthTokenId)
 		assert.NoError(t, err)
-		assert.Len(t, l, len(ss))
-		assert.ElementsMatch(t, l, ss)
+		assert.Len(t, l.ResolvableAliases, len(ss))
+		assert.ElementsMatch(t, l.ResolvableAliases, ss)
+	})
+}
+
+func TestRepository_ListAliasesLimiting(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at",
+		Token:  "at_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}
+
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k", "t"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	var ts []*aliases.Alias
+	for i := 0; i < defaultLimitedResultSetSize*2; i++ {
+		ts = append(ts, alias("s"+strconv.Itoa(i)))
+	}
+	require.NoError(t, r.refreshResolvableAliases(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ts}, [][]string{nil}))))
+
+	searchService, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+	params := SearchParams{
+		Resource:    ResolvableAliases,
+		AuthTokenId: kt.AuthTokenId,
+	}
+
+	t.Run("default limit", func(t *testing.T) {
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.ResolvableAliases, defaultLimitedResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("custom limit", func(t *testing.T) {
+		params.MaxResultSetSize = 20
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.ResolvableAliases, params.MaxResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("no limit", func(t *testing.T) {
+		params.MaxResultSetSize = -1
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.ResolvableAliases, defaultLimitedResultSetSize*2)
+		assert.False(t, searchResult.Incomplete)
 	})
 }
 
@@ -442,13 +503,74 @@ func TestRepository_QueryAliases(t *testing.T) {
 	t.Run("wrong token gets no aliases", func(t *testing.T) {
 		l, err := r.QueryResolvableAliases(ctx, kt2.AuthTokenId, query)
 		assert.NoError(t, err)
-		assert.Empty(t, l)
+		assert.Empty(t, l.ResolvableAliases)
 	})
 	t.Run("correct token gets aliases", func(t *testing.T) {
 		l, err := r.QueryResolvableAliases(ctx, kt1.AuthTokenId, query)
 		assert.NoError(t, err)
-		assert.Len(t, l, 2)
-		assert.ElementsMatch(t, l, ss[0:2])
+		assert.Len(t, l.ResolvableAliases, 2)
+		assert.ElementsMatch(t, l.ResolvableAliases, ss[0:2])
+	})
+}
+
+func TestRepository_QueryResolvableAliasesLimiting(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at",
+		Token:  "at_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}
+
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k", "t"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	var ts []*aliases.Alias
+	for i := 0; i < defaultLimitedResultSetSize*2; i++ {
+		ts = append(ts, alias("s"+strconv.Itoa(i)))
+	}
+	require.NoError(t, r.refreshResolvableAliases(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ts}, [][]string{nil}))))
+
+	searchService, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+	params := SearchParams{
+		Resource:    ResolvableAliases,
+		AuthTokenId: kt.AuthTokenId,
+		Query:       `(type % 'target')`,
+	}
+
+	t.Run("default limit", func(t *testing.T) {
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.ResolvableAliases, defaultLimitedResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("custom limit", func(t *testing.T) {
+		params.MaxResultSetSize = 20
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.ResolvableAliases, params.MaxResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("no limit", func(t *testing.T) {
+		params.MaxResultSetSize = -1
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.ResolvableAliases, defaultLimitedResultSetSize*2)
+		assert.False(t, searchResult.Incomplete)
 	})
 }
 

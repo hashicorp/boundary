@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -239,7 +240,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 
 	got, err := r.ListSessions(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	assert.Len(t, got.Sessions, 2)
 
 	// Refreshing again uses the refresh token and get additional sessions, appending
 	// them to the response
@@ -249,7 +250,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListSessions(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 3)
+	assert.Len(t, got.Sessions, 3)
 
 	// Refreshing again wont return any more resources, but also none should be
 	// removed
@@ -259,7 +260,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListSessions(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 3)
+	assert.Len(t, got.Sessions, 3)
 
 	// Refresh again with the refresh token being reported as invalid.
 	require.NoError(t, r.refreshSessions(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
@@ -268,7 +269,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 
 	got, err = r.ListSessions(ctx, at.Id)
 	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	assert.Len(t, got.Sessions, 2)
 }
 
 func TestRepository_ListSessions(t *testing.T) {
@@ -355,13 +356,73 @@ func TestRepository_ListSessions(t *testing.T) {
 	t.Run("wrong user gets no sessions", func(t *testing.T) {
 		l, err := r.ListSessions(ctx, kt2.AuthTokenId)
 		assert.NoError(t, err)
-		assert.Empty(t, l)
+		assert.Empty(t, l.Sessions)
 	})
 	t.Run("correct token gets sessions", func(t *testing.T) {
 		l, err := r.ListSessions(ctx, kt1.AuthTokenId)
 		assert.NoError(t, err)
-		assert.Len(t, l, len(ss))
-		assert.ElementsMatch(t, l, ss)
+		assert.Len(t, l.Sessions, len(ss))
+		assert.ElementsMatch(t, l.Sessions, ss)
+	})
+}
+
+func TestRepository_ListSessionsLimiting(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at",
+		Token:  "at_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}
+
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k", "t"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	var ts []*sessions.Session
+	for i := 0; i < defaultLimitedResultSetSize*2; i++ {
+		ts = append(ts, session("s"+strconv.Itoa(i)))
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ts}, [][]string{nil}))))
+
+	searchService, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+	params := SearchParams{
+		Resource:    Sessions,
+		AuthTokenId: kt.AuthTokenId,
+	}
+
+	t.Run("default limit", func(t *testing.T) {
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Sessions, defaultLimitedResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("custom limit", func(t *testing.T) {
+		params.MaxResultSetSize = 20
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Sessions, params.MaxResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("no limit", func(t *testing.T) {
+		params.MaxResultSetSize = -1
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Sessions, defaultLimitedResultSetSize*2)
+		assert.False(t, searchResult.Incomplete)
 	})
 }
 
@@ -471,13 +532,74 @@ func TestRepository_QuerySessions(t *testing.T) {
 	t.Run("wrong token gets no sessions", func(t *testing.T) {
 		l, err := r.QuerySessions(ctx, kt2.AuthTokenId, query)
 		assert.NoError(t, err)
-		assert.Empty(t, l)
+		assert.Empty(t, l.Sessions)
 	})
 	t.Run("correct token gets sessions", func(t *testing.T) {
 		l, err := r.QuerySessions(ctx, kt1.AuthTokenId, query)
 		assert.NoError(t, err)
-		assert.Len(t, l, 2)
-		assert.ElementsMatch(t, l, ss[0:2])
+		assert.Len(t, l.Sessions, 2)
+		assert.ElementsMatch(t, l.Sessions, ss[0:2])
+	})
+}
+
+func TestRepository_QuerySessionsLimiting(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := &user{
+		Id:      "u",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at",
+		Token:  "at_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}
+
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k", "t"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	var ts []*sessions.Session
+	for i := 0; i < defaultLimitedResultSetSize*2; i++ {
+		ts = append(ts, session("t"+strconv.Itoa(i)))
+	}
+	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ts}, [][]string{nil}))))
+
+	searchService, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+	params := SearchParams{
+		Resource:    Sessions,
+		AuthTokenId: kt.AuthTokenId,
+		Query:       `(id % 'session')`,
+	}
+
+	t.Run("default limit", func(t *testing.T) {
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Sessions, defaultLimitedResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("custom limit", func(t *testing.T) {
+		params.MaxResultSetSize = 20
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Sessions, params.MaxResultSetSize)
+		assert.True(t, searchResult.Incomplete)
+	})
+	t.Run("no limit", func(t *testing.T) {
+		params.MaxResultSetSize = -1
+		searchResult, err := searchService.Search(ctx, params)
+		require.NoError(t, err)
+		assert.Len(t, searchResult.Sessions, defaultLimitedResultSetSize*2)
+		assert.False(t, searchResult.Incomplete)
 	})
 }
 
