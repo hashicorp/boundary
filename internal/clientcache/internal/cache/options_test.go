@@ -22,7 +22,8 @@ func Test_GetOpts(t *testing.T) {
 		opts, err := getOpts()
 		require.NoError(t, err)
 		testOpts := options{
-			withDbType: dbw.Sqlite,
+			withDbType:           dbw.Sqlite,
+			withMaxResultSetSize: defaultLimitedResultSetSize,
 		}
 		assert.Equal(t, opts, testOpts)
 	})
@@ -92,5 +93,17 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withIgnoreSearchStaleness = true
 		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withMaxResultSetSize", func(t *testing.T) {
+		opts, err := getOpts(WithMaxResultSetSize(defaultLimitedResultSetSize))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withMaxResultSetSize = defaultLimitedResultSetSize
+		assert.Equal(t, opts, testOpts)
+		opts, err = getOpts(WithMaxResultSetSize(0))
+		require.Nil(t, err)
+		assert.Equal(t, opts, testOpts)
+		_, err = getOpts(WithMaxResultSetSize(-2))
+		require.Error(t, err)
 	})
 }
