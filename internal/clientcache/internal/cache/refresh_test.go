@@ -870,7 +870,7 @@ func TestRefreshNonBlocking(t *testing.T) {
 		}()
 		wg.Wait()
 
-		// Unlike in the TestRefreshForSearch test, since we are did a force
+		// Unlike in the TestRefreshForSearch test, since we did a force
 		// refresh we do expect to see values
 		cachedTargets, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)

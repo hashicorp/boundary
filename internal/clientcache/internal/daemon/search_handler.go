@@ -26,9 +26,17 @@ import (
 type RefreshStatus string
 
 const (
+	// Not refreshing means the result is complete, that is, the cache is not in
+	// the process of being built or refreshed
 	NotRefreshing RefreshStatus = "not-refreshing"
-	Refreshing    RefreshStatus = "refreshing"
-	RefreshError  RefreshStatus = "refresh-error"
+	// Refreshing means that the cache is in the process of being refreshed, so
+	// the result may not be complete and the caller should try again later for
+	// more complete results
+	Refreshing RefreshStatus = "refreshing"
+	// RefreshError means that there was an error refreshing the cache. It says
+	// nothing about the completeness of the result, only that when attempting
+	// to refresh the cache in-line with the search an error was encountered.
+	RefreshError RefreshStatus = "refresh-error"
 )
 
 // SearchResult is the struct returned to search requests.
