@@ -140,7 +140,9 @@ func TestSearch(t *testing.T) {
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
-		assert.EqualValues(t, r, &daemon.SearchResult{})
+		assert.EqualValues(t, r, &daemon.SearchResult{
+			RefreshStatus: daemon.NotRefreshing,
+		})
 	})
 
 	t.Run("empty response from query", func(t *testing.T) {
@@ -154,7 +156,9 @@ func TestSearch(t *testing.T) {
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
-		assert.EqualValues(t, r, &daemon.SearchResult{})
+		assert.EqualValues(t, r, &daemon.SearchResult{
+			RefreshStatus: daemon.NotRefreshing,
+		})
 	})
 
 	t.Run("unsupported boundary instance", func(t *testing.T) {
