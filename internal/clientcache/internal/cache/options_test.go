@@ -106,4 +106,16 @@ func Test_GetOpts(t *testing.T) {
 		_, err = getOpts(WithMaxResultSetSize(-2))
 		require.Error(t, err)
 	})
+	t.Run("withTestRefreshWaitChs", func(t *testing.T) {
+		waitCh := &testRefreshWaitChs{
+			firstSempahore:  make(chan struct{}),
+			secondSemaphore: make(chan struct{}),
+		}
+		opts, err := getOpts(WithTestRefreshWaitChs(waitCh))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.Empty(t, testOpts.withTestRefreshWaitChs)
+		testOpts.withTestRefreshWaitChs = waitCh
+		assert.Equal(t, opts, testOpts)
+	})
 }
