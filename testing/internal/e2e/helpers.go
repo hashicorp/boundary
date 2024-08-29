@@ -133,7 +133,7 @@ func WithEnv(name string, value string) Option {
 func MaybeSkipTest(t testing.TB) {
 	if _, ok := os.LookupEnv(EnvToCheckSkip); !ok {
 		t.Skipf(
-			"Skipping test because environment variable '%s' is not set. This is needed for e2e tests.",
+			"Skipping test because environment variable %q is not set. This is needed for e2e tests.",
 			EnvToCheckSkip,
 		)
 	}
@@ -144,7 +144,7 @@ func MaybeSkipSlowTest(t testing.TB) {
 	MaybeSkipTest(t)
 	if _, ok := os.LookupEnv(EnvToCheckSlowSkip); !ok {
 		t.Skipf(
-			"Skipping test because environment variable '%s' is not set. This is needed for slow e2e tests.",
+			"Skipping test because environment variable %q is not set. This is needed for slow e2e tests.",
 			EnvToCheckSlowSkip,
 		)
 	}
