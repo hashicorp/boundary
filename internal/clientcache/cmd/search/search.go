@@ -15,6 +15,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cachecmd "github.com/hashicorp/boundary/internal/clientcache/cmd/cache"
@@ -34,6 +35,7 @@ var (
 		"resolvable-aliases",
 		"targets",
 		"sessions",
+		"implicit-scopes",
 	}
 
 	errCacheNotRunning = stderrors.New("The cache process is not running.")
@@ -181,9 +183,6 @@ func (c *SearchCommand) Run(args []string) int {
 			return base.CommandCliError
 		}
 	default:
-		if result.Incomplete {
-			c.UI.Warn("The maximum result set size was reached and the search results are incomplete. Please narrow your search or adjust the -max-result-set-size parameter.")
-		}
 		switch {
 		case len(result.ResolvableAliases) > 0:
 			c.UI.Output(printAliasListTable(result.ResolvableAliases))
@@ -191,8 +190,16 @@ func (c *SearchCommand) Run(args []string) int {
 			c.UI.Output(printTargetListTable(result.Targets))
 		case len(result.Sessions) > 0:
 			c.UI.Output(printSessionListTable(result.Sessions))
+		case len(result.ImplicitScopes) > 0:
+			c.UI.Output(printImplicitScopesListTable(result.ImplicitScopes))
 		default:
 			c.UI.Output("No items found")
+		}
+
+		// Put this at the end or people may not see it as they may not scroll
+		// all the way up.
+		if result.Incomplete {
+			c.UI.Warn("The maximum result set size was reached and the search results are incomplete. Please narrow your search or adjust the -max-result-set-size parameter.")
 		}
 	}
 	return base.CommandSuccess
@@ -442,6 +449,33 @@ func printSessionListTable(items []*sessions.Session) string {
 			output = append(output,
 				"    Authorized Actions:",
 				base.WrapSlice(6, item.AuthorizedActions),
+			)
+		}
+	}
+
+	return base.WrapForHelpText(output)
+}
+
+func printImplicitScopesListTable(items []*scopes.Scope) string {
+	if len(items) == 0 {
+		return "No implicit scopes found"
+	}
+	var output []string
+	output = []string{
+		"",
+		"Scope information:",
+	}
+	for i, item := range items {
+		if i > 0 {
+			output = append(output, "")
+		}
+		if item.Id != "" {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
 	}
