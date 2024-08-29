@@ -803,6 +803,209 @@ func TestRefreshForSearch(t *testing.T) {
 	})
 }
 
+func TestRefreshNonBlocking(t *testing.T) {
+	ctx := context.Background()
+
+	boundaryAddr := "address"
+	u := &user{Id: "u1", Address: boundaryAddr}
+	at := &authtokens.AuthToken{
+		Id:             "at_1",
+		Token:          "at_1_token",
+		UserId:         u.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	atMap := make(map[ringToken]*authtokens.AuthToken)
+
+	atMap[ringToken{"k", "t"}] = at
+
+	t.Run("targets refreshed for searching", func(t *testing.T) {
+		t.Parallel()
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), time.Millisecond, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retTargets := []*targets.Target{
+			target("1"),
+			target("2"),
+			target("3"),
+			target("4"),
+		}
+		opts := []Option{
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
+				[][]*targets.Target{
+					retTargets[:3],
+					retTargets[3:],
+				},
+				[][]string{
+					nil,
+					{retTargets[0].Id, retTargets[1].Id},
+				},
+			)),
+		}
+
+		refreshWaitChs := &testRefreshWaitChs{
+			firstSempahore:  make(chan struct{}),
+			secondSemaphore: make(chan struct{}),
+		}
+		wg := new(sync.WaitGroup)
+		wg.Add(2)
+		extraOpts := []Option{WithTestRefreshWaitChs(refreshWaitChs), WithIgnoreSearchStaleness(true)}
+		go func() {
+			defer wg.Done()
+			blockingRefreshError := rs.RefreshForSearch(ctx, at.Id, Targets, append(opts, extraOpts...)...)
+			assert.NoError(t, blockingRefreshError)
+		}()
+		go func() {
+			defer wg.Done()
+			// Sleep here to ensure ordering of the calls since both goroutines
+			// are spawned at the same time
+			<-refreshWaitChs.firstSempahore
+			nonblockingRefreshError := rs.RefreshForSearch(ctx, at.Id, Targets, append(opts, extraOpts...)...)
+			close(refreshWaitChs.secondSemaphore)
+			assert.ErrorIs(t, nonblockingRefreshError, ErrRefreshInProgress)
+		}()
+		wg.Wait()
+
+		// Unlike in the TestRefreshForSearch test, since we did a force
+		// refresh we do expect to see values
+		cachedTargets, err := r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets.Targets)
+	})
+
+	t.Run("sessions refreshed for searching", func(t *testing.T) {
+		t.Parallel()
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retSess := []*sessions.Session{
+			session("1"),
+			session("2"),
+			session("3"),
+			session("4"),
+		}
+		opts := []Option{
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
+				[][]*sessions.Session{
+					retSess[:3],
+					retSess[3:],
+				},
+				[][]string{
+					nil,
+					{retSess[0].Id, retSess[1].Id},
+				},
+			)),
+		}
+
+		refreshWaitChs := &testRefreshWaitChs{
+			firstSempahore:  make(chan struct{}),
+			secondSemaphore: make(chan struct{}),
+		}
+		wg := new(sync.WaitGroup)
+		wg.Add(2)
+		extraOpts := []Option{WithTestRefreshWaitChs(refreshWaitChs), WithIgnoreSearchStaleness(true)}
+		go func() {
+			defer wg.Done()
+			blockingRefreshError := rs.RefreshForSearch(ctx, at.Id, Sessions, append(opts, extraOpts...)...)
+			assert.NoError(t, blockingRefreshError)
+		}()
+		go func() {
+			defer wg.Done()
+			// Sleep here to ensure ordering of the calls since both goroutines
+			// are spawned at the same time
+			<-refreshWaitChs.firstSempahore
+			nonblockingRefreshError := rs.RefreshForSearch(ctx, at.Id, Sessions, append(opts, extraOpts...)...)
+			close(refreshWaitChs.secondSemaphore)
+			assert.ErrorIs(t, nonblockingRefreshError, ErrRefreshInProgress)
+		}()
+
+		wg.Wait()
+
+		// Unlike in the TestRefreshForSearch test, since we are did a force
+		// refresh we do expect to see values
+		cachedSessions, err := r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions.Sessions)
+	})
+
+	t.Run("aliases refreshed for searching", func(t *testing.T) {
+		t.Parallel()
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, hclog.Default(), 0, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retAl := []*aliases.Alias{
+			alias("1"),
+			alias("2"),
+			alias("3"),
+			alias("4"),
+		}
+		opts := []Option{
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t,
+				[][]*aliases.Alias{
+					retAl[:3],
+					retAl[3:],
+				},
+				[][]string{
+					nil,
+					{retAl[0].Id, retAl[1].Id},
+				},
+			)),
+		}
+
+		refreshWaitChs := &testRefreshWaitChs{
+			firstSempahore:  make(chan struct{}),
+			secondSemaphore: make(chan struct{}),
+		}
+		wg := new(sync.WaitGroup)
+		wg.Add(2)
+		extraOpts := []Option{WithTestRefreshWaitChs(refreshWaitChs), WithIgnoreSearchStaleness(true)}
+		go func() {
+			defer wg.Done()
+			blockingRefreshError := rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, append(opts, extraOpts...)...)
+			assert.NoError(t, blockingRefreshError)
+		}()
+		go func() {
+			defer wg.Done()
+			// Sleep here to ensure ordering of the calls since both goroutines
+			// are spawned at the same time
+			<-refreshWaitChs.firstSempahore
+			nonblockingRefreshError := rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, append(opts, extraOpts...)...)
+			close(refreshWaitChs.secondSemaphore)
+			assert.ErrorIs(t, nonblockingRefreshError, ErrRefreshInProgress)
+		}()
+
+		wg.Wait()
+
+		// Unlike in the TestRefreshForSearch test, since we are did a force
+		// refresh we do expect to see values
+		cachedAliases, err := r.ListResolvableAliases(ctx, at.Id)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, retAl[:3], cachedAliases.ResolvableAliases)
+	})
+}
+
 func TestRefresh(t *testing.T) {
 	ctx := context.Background()
 

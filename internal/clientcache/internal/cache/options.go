@@ -9,6 +9,11 @@ import (
 	"github.com/hashicorp/go-dbw"
 )
 
+type testRefreshWaitChs struct {
+	firstSempahore  chan struct{}
+	secondSemaphore chan struct{}
+}
+
 type options struct {
 	withUpdateLastAccessedTime       bool
 	withDbType                       dbw.DbType
@@ -19,6 +24,7 @@ type options struct {
 	withSessionRetrievalFunc         SessionRetrievalFunc
 	withIgnoreSearchStaleness        bool
 	withMaxResultSetSize             int
+	withTestRefreshWaitChs           *testRefreshWaitChs
 }
 
 // Option - how options are passed as args
@@ -110,6 +116,16 @@ func WithMaxResultSetSize(with int) Option {
 			return stderrors.New("max result set size must be -1 or greater")
 		}
 		o.withMaxResultSetSize = with
+		return nil
+	}
+}
+
+// WithTestRefreshWaitChs provides an option for specifying channels to wait on
+// before proceeding. This allows testing the logic that ensures only one is
+// running at a time.
+func WithTestRefreshWaitChs(with *testRefreshWaitChs) Option {
+	return func(o *options) error {
+		o.withTestRefreshWaitChs = with
 		return nil
 	}
 }
