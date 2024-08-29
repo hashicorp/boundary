@@ -851,10 +851,13 @@ func TestRefreshNonBlocking(t *testing.T) {
 			)),
 		}
 
-		testRefreshDuration := 5 * time.Second
+		refreshWaitChs := &testRefreshWaitChs{
+			firstSempahore:  make(chan struct{}),
+			secondSemaphore: make(chan struct{}),
+		}
 		wg := new(sync.WaitGroup)
 		wg.Add(2)
-		extraOpts := []Option{WithTestRefreshSleepDuration(testRefreshDuration), WithIgnoreSearchStaleness(true)}
+		extraOpts := []Option{WithTestRefreshWaitChs(refreshWaitChs), WithIgnoreSearchStaleness(true)}
 		go func() {
 			defer wg.Done()
 			blockingRefreshError := rs.RefreshForSearch(ctx, at.Id, Targets, append(opts, extraOpts...)...)
@@ -864,8 +867,9 @@ func TestRefreshNonBlocking(t *testing.T) {
 			defer wg.Done()
 			// Sleep here to ensure ordering of the calls since both goroutines
 			// are spawned at the same time
-			time.Sleep(testRefreshDuration / 2)
+			<-refreshWaitChs.firstSempahore
 			nonblockingRefreshError := rs.RefreshForSearch(ctx, at.Id, Targets, append(opts, extraOpts...)...)
+			close(refreshWaitChs.secondSemaphore)
 			assert.ErrorIs(t, nonblockingRefreshError, ErrRefreshInProgress)
 		}()
 		wg.Wait()
@@ -876,6 +880,7 @@ func TestRefreshNonBlocking(t *testing.T) {
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, retTargets[:3], cachedTargets.Targets)
 	})
+
 	t.Run("sessions refreshed for searching", func(t *testing.T) {
 		t.Parallel()
 		s, err := db.Open(ctx)
@@ -907,10 +912,13 @@ func TestRefreshNonBlocking(t *testing.T) {
 			)),
 		}
 
-		testRefreshDuration := 5 * time.Second
+		refreshWaitChs := &testRefreshWaitChs{
+			firstSempahore:  make(chan struct{}),
+			secondSemaphore: make(chan struct{}),
+		}
 		wg := new(sync.WaitGroup)
 		wg.Add(2)
-		extraOpts := []Option{WithTestRefreshSleepDuration(testRefreshDuration), WithIgnoreSearchStaleness(true)}
+		extraOpts := []Option{WithTestRefreshWaitChs(refreshWaitChs), WithIgnoreSearchStaleness(true)}
 		go func() {
 			defer wg.Done()
 			blockingRefreshError := rs.RefreshForSearch(ctx, at.Id, Sessions, append(opts, extraOpts...)...)
@@ -920,8 +928,9 @@ func TestRefreshNonBlocking(t *testing.T) {
 			defer wg.Done()
 			// Sleep here to ensure ordering of the calls since both goroutines
 			// are spawned at the same time
-			time.Sleep(testRefreshDuration / 2)
+			<-refreshWaitChs.firstSempahore
 			nonblockingRefreshError := rs.RefreshForSearch(ctx, at.Id, Sessions, append(opts, extraOpts...)...)
+			close(refreshWaitChs.secondSemaphore)
 			assert.ErrorIs(t, nonblockingRefreshError, ErrRefreshInProgress)
 		}()
 
@@ -965,10 +974,13 @@ func TestRefreshNonBlocking(t *testing.T) {
 			)),
 		}
 
-		testRefreshDuration := 5 * time.Second
+		refreshWaitChs := &testRefreshWaitChs{
+			firstSempahore:  make(chan struct{}),
+			secondSemaphore: make(chan struct{}),
+		}
 		wg := new(sync.WaitGroup)
 		wg.Add(2)
-		extraOpts := []Option{WithTestRefreshSleepDuration(testRefreshDuration), WithIgnoreSearchStaleness(true)}
+		extraOpts := []Option{WithTestRefreshWaitChs(refreshWaitChs), WithIgnoreSearchStaleness(true)}
 		go func() {
 			defer wg.Done()
 			blockingRefreshError := rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, append(opts, extraOpts...)...)
@@ -978,8 +990,9 @@ func TestRefreshNonBlocking(t *testing.T) {
 			defer wg.Done()
 			// Sleep here to ensure ordering of the calls since both goroutines
 			// are spawned at the same time
-			time.Sleep(testRefreshDuration / 2)
+			<-refreshWaitChs.firstSempahore
 			nonblockingRefreshError := rs.RefreshForSearch(ctx, at.Id, ResolvableAliases, append(opts, extraOpts...)...)
+			close(refreshWaitChs.secondSemaphore)
 			assert.ErrorIs(t, nonblockingRefreshError, ErrRefreshInProgress)
 		}()
 

@@ -230,8 +230,9 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 				args = append(args, "alias staleness", time.Since(rtv.UpdateTime))
 			}
 
-			if opts.withTestRefreshSleepDuration > 0 {
-				time.Sleep(opts.withTestRefreshSleepDuration)
+			if opts.withTestRefreshWaitChs != nil {
+				close(opts.withTestRefreshWaitChs.firstSempahore)
+				<-opts.withTestRefreshWaitChs.secondSemaphore
 			}
 
 			r.logger.Debug("refreshing aliases before performing search", args...)
@@ -260,8 +261,9 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 				args = append(args, "target staleness", time.Since(rtv.UpdateTime))
 			}
 
-			if opts.withTestRefreshSleepDuration > 0 {
-				time.Sleep(opts.withTestRefreshSleepDuration)
+			if opts.withTestRefreshWaitChs != nil {
+				close(opts.withTestRefreshWaitChs.firstSempahore)
+				<-opts.withTestRefreshWaitChs.secondSemaphore
 			}
 
 			r.logger.Debug("refreshing targets before performing search", args...)
@@ -290,8 +292,9 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 				args = append(args, "session staleness", time.Since(rtv.UpdateTime))
 			}
 
-			if opts.withTestRefreshSleepDuration > 0 {
-				time.Sleep(opts.withTestRefreshSleepDuration)
+			if opts.withTestRefreshWaitChs != nil {
+				close(opts.withTestRefreshWaitChs.firstSempahore)
+				<-opts.withTestRefreshWaitChs.secondSemaphore
 			}
 
 			r.logger.Debug("refreshing sessions before performing search", args...)

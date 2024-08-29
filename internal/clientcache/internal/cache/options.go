@@ -5,10 +5,14 @@ package cache
 
 import (
 	stderrors "errors"
-	"time"
 
 	"github.com/hashicorp/go-dbw"
 )
+
+type testRefreshWaitChs struct {
+	firstSempahore  chan struct{}
+	secondSemaphore chan struct{}
+}
 
 type options struct {
 	withUpdateLastAccessedTime       bool
@@ -20,7 +24,7 @@ type options struct {
 	withSessionRetrievalFunc         SessionRetrievalFunc
 	withIgnoreSearchStaleness        bool
 	withMaxResultSetSize             int
-	withTestRefreshSleepDuration     time.Duration
+	withTestRefreshWaitChs           *testRefreshWaitChs
 }
 
 // Option - how options are passed as args
@@ -116,12 +120,12 @@ func WithMaxResultSetSize(with int) Option {
 	}
 }
 
-// WithTestRefreshSleepDuration provides an option for specifying an amount of time a
-// refresh operation should sleep. This allows testing the logic that ensures
-// only one is running at a time.
-func WithTestRefreshSleepDuration(with time.Duration) Option {
+// WithTestRefreshWaitChs provides an option for specifying channels to wait on
+// before proceeding. This allows testing the logic that ensures only one is
+// running at a time.
+func WithTestRefreshWaitChs(with *testRefreshWaitChs) Option {
 	return func(o *options) error {
-		o.withTestRefreshSleepDuration = with
+		o.withTestRefreshWaitChs = with
 		return nil
 	}
 }
