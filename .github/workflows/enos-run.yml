@@ -327,7 +327,7 @@ jobs:
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
       - name: Send Slack message if Run and Retry fails (or if something else went wrong)
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
         # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
         # failure() captures errors before `Run Enos scenario`
         # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
@@ -341,7 +341,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
       - name: Send Slack message if Run but Retry passes
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
         if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
         with:
           channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
