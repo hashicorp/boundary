@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
@@ -26,6 +27,7 @@ type SearchResult struct {
 	ResolvableAliases []*aliases.Alias    `json:"resolvable_aliases,omitempty"`
 	Targets           []*targets.Target   `json:"targets,omitempty"`
 	Sessions          []*sessions.Session `json:"sessions,omitempty"`
+	ImplicitScopes    []*scopes.Scope     `json:"implicit_scopes,omitempty"`
 	Incomplete        bool                `json:"incomplete,omitempty"`
 }
 
@@ -61,6 +63,8 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		authTokenId := q.Get(authTokenIdKey)
 		maxResultSetSizeStr := q.Get(maxResultSetSizeKey)
 		maxResultSetSizeInt, maxResultSetSizeIntErr := strconv.Atoi(maxResultSetSizeStr)
+		query := q.Get(queryKey)
+		filter := q.Get(filterKey)
 
 		searchableResource := cache.ToSearchableResource(resource)
 		switch {
@@ -83,6 +87,18 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		case maxResultSetSizeInt < -1:
 			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s must be greater than or equal to -1", maxResultSetSizeStr)))
 			writeError(w, fmt.Sprintf("%s must be greater than or equal to -1", maxResultSetSizeStr), http.StatusBadRequest)
+			return
+		case searchableResource == cache.ImplicitScopes && maxResultSetSizeStr != "":
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("max result set size is not supported for resource %q", resource)))
+			writeError(w, fmt.Sprintf("max result set size is not supported for resource %q", resource), http.StatusBadRequest)
+			return
+		case searchableResource == cache.ImplicitScopes && query != "":
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("query is not supported for resource %q", resource)))
+			writeError(w, fmt.Sprintf("query is not supported for resource %q", resource), http.StatusBadRequest)
+			return
+		case searchableResource == cache.ImplicitScopes && filter != "":
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("filter is not supported for resource %q", resource)))
+			writeError(w, fmt.Sprintf("filter is not supported for resource %q", resource), http.StatusBadRequest)
 			return
 		}
 
@@ -118,13 +134,14 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		// Refresh the resources for the provided user, if possible. This is best
 		// effort, so if there is any problem refreshing, we just log the error
 		// and move on to handling the search request.
-		if err := refreshService.RefreshForSearch(reqCtx, authTokenId, searchableResource, opts...); err != nil {
-			// we don't stop the search, we just log that the inline refresh failed
-			event.WriteError(ctx, op, err, event.WithInfoMsg("when refreshing the resources inline for search", "auth_token_id", authTokenId, "resource", searchableResource))
+		switch searchableResource {
+		case cache.ImplicitScopes:
+		default:
+			if err := refreshService.RefreshForSearch(reqCtx, authTokenId, searchableResource, opts...); err != nil {
+				// we don't stop the search, we just log that the inline refresh failed
+				event.WriteError(ctx, op, err, event.WithInfoMsg("when refreshing the resources inline for search", "auth_token_id", authTokenId, "resource", searchableResource))
+			}
 		}
-
-		query := r.URL.Query().Get(queryKey)
-		filter := r.URL.Query().Get(filterKey)
 
 		res, err := s.Search(reqCtx, cache.SearchParams{
 			AuthTokenId:      authTokenId,
@@ -166,6 +183,7 @@ func toApiResult(sr *cache.SearchResult) *SearchResult {
 		ResolvableAliases: sr.ResolvableAliases,
 		Targets:           sr.Targets,
 		Sessions:          sr.Sessions,
+		ImplicitScopes:    sr.ImplicitScopes,
 		Incomplete:        sr.Incomplete,
 	}
 }
