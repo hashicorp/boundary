@@ -351,9 +351,6 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 	for i, item := range target.Items {
 		idToIndex[item.Id] = i
 	}
-	// Removed IDs in the response may contain duplicates,
-	// maintain a set to avoid returning duplicates to the user.
-	removedIds := map[string]struct{}{}
 	for {
 		req, err := c.client.NewRequest(ctx, "GET", "managed-groups", nil, apiOpts...)
 		if err != nil {
@@ -391,9 +388,8 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 				idToIndex[item.Id] = len(target.Items) - 1
 			}
 		}
-		for _, removedId := range page.RemovedIds {
-			removedIds[removedId] = struct{}{}
-		}
+		// RemovedIds contain any ManagedGroup that were deleted since the last response.
+		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
 		target.EstItemCount = page.EstItemCount
 		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
@@ -402,21 +398,26 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 			break
 		}
 	}
+	// For now, removedIds will only be populated if this pagination cycle was the result of a
+	// "refresh" operation (i.e., the caller provided a list token option to this call).
+	//
+	// Sort to make response deterministic
+	slices.Sort(target.RemovedIds)
+	// Remove any duplicates
+	target.RemovedIds = slices.Compact(target.RemovedIds)
+	// Remove items that were deleted since the end of the last iteration.
+	// If a ManagedGroup has been updated and subsequently removed, we don't want
+	// it to appear both in the Items and RemovedIds, so we remove it from the Items.
 	for _, removedId := range target.RemovedIds {
 		if i, ok := idToIndex[removedId]; ok {
 			// Remove the item at index i without preserving order
 			// https://github.com/golang/go/wiki/SliceTricks#delete-without-preserving-order
 			target.Items[i] = target.Items[len(target.Items)-1]
 			target.Items = target.Items[:len(target.Items)-1]
-			// Update the index of the last element
+			// Update the index of the previously last element
 			idToIndex[target.Items[i].Id] = i
 		}
 	}
-	for deletedId := range removedIds {
-		target.RemovedIds = append(target.RemovedIds, deletedId)
-	}
-	// Sort to make response deterministic
-	slices.Sort(target.RemovedIds)
 	// Since we paginated to the end, we can avoid confusion
 	// for the user by setting the estimated item count to the
 	// length of the items slice. If we don't set this here, it
