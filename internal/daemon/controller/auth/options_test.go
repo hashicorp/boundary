@@ -31,6 +31,7 @@ func Test_GetOpts(t *testing.T) {
 		WithRecoveryTokenNotAllowed(true),
 		WithAnonymousUserNotAllowed(true),
 		WithResource(res),
+		WithActions([]string{"callback"}),
 	)
 	exp := options{
 		withScopeId:                 "foo",
@@ -43,6 +44,7 @@ func Test_GetOpts(t *testing.T) {
 		withRecoveryTokenNotAllowed: true,
 		withAnonymousUserNotAllowed: true,
 		withResource:                res,
+		withActions:                 []string{"callback"},
 	}
 	assert.Equal(t, exp, opts)
 }
