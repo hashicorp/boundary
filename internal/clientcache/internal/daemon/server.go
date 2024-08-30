@@ -90,6 +90,8 @@ type Config struct {
 	// The maximum amount of time a refresh should block a search request from
 	// completing before it times out.
 	MaxSearchRefreshTimeout time.Duration
+	// Force resetting the schema, that is, drop all existing data
+	ForceResetSchema bool
 }
 
 func (sc *Config) validate(ctx context.Context) error {
@@ -230,6 +232,7 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	store, err = openStore(ctx,
 		WithUrl(ctx, s.conf.DatabaseUrl),
 		WithLogger(ctx, s.logger),
+		WithForceResetSchema(ctx, s.conf.ForceResetSchema),
 	)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
@@ -534,6 +537,7 @@ func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 			dbOpts = append(dbOpts, cachedb.WithGormFormatter(opts.withLogger))
 		}
 	}
+	dbOpts = append(dbOpts, cachedb.WithForceResetSchema(opts.withForceResetSchema))
 	store, err := cachedb.Open(ctx, dbOpts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

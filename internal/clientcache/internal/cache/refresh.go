@@ -420,28 +420,47 @@ func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Optio
 			continue
 		}
 
-		if err := r.repo.checkCachingTargets(ctx, u, tokens, opt...); err != nil {
-			if err == ErrRefreshNotSupported {
-				// This is expected so no need to propagate the error up
-				continue
+		cacheKey := fmt.Sprintf("%s-%s", u.Id, Targets)
+		semaphore, _ := r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.checkCachingTargets(ctx, u, tokens, opt...); err != nil {
+				if err == ErrRefreshNotSupported {
+					semaphore.(*atomic.Bool).Store(false)
+					// This is expected so no need to propagate the error up
+					continue
+				}
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 			}
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
-		}
-		if err := r.repo.checkCachingSessions(ctx, u, tokens, opt...); err != nil {
-			if err == ErrRefreshNotSupported {
-				// This is expected so no need to propagate the error up
-				continue
-			}
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
-		}
-		if err := r.repo.checkCachingResolvableAliases(ctx, u, tokens, opt...); err != nil {
-			if err == ErrRefreshNotSupported {
-				// This is expected so no need to propagate the error up
-				continue
-			}
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			semaphore.(*atomic.Bool).Store(false)
 		}
 
+		cacheKey = fmt.Sprintf("%s-%s", u.Id, ResolvableAliases)
+		semaphore, _ = r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.checkCachingResolvableAliases(ctx, u, tokens, opt...); err != nil {
+				if err == ErrRefreshNotSupported {
+					// This is expected so no need to propagate the error up
+					semaphore.(*atomic.Bool).Store(false)
+					continue
+				}
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			}
+			semaphore.(*atomic.Bool).Store(false)
+		}
+
+		cacheKey = fmt.Sprintf("%s-%s", u.Id, Sessions)
+		semaphore, _ = r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.checkCachingSessions(ctx, u, tokens, opt...); err != nil {
+				if err == ErrRefreshNotSupported {
+					semaphore.(*atomic.Bool).Store(false)
+					// This is expected so no need to propagate the error up
+					continue
+				}
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			}
+			semaphore.(*atomic.Bool).Store(false)
+		}
 	}
 	return retErr
 }

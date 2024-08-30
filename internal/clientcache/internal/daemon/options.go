@@ -19,9 +19,10 @@ type options struct {
 	testWithIntervalRandomizationFactorSet bool
 	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
 
-	withUrl     string
-	withLogger  hclog.Logger
-	withHomeDir string
+	withUrl              string
+	withLogger           hclog.Logger
+	withHomeDir          string
+	withForceResetSchema bool
 }
 
 // Option - how options are passed as args
@@ -105,6 +106,13 @@ func WithLogger(_ context.Context, logger hclog.Logger) Option {
 func WithBoundaryTokenReaderFunc(_ context.Context, fn cache.BoundaryTokenReaderFn) Option {
 	return func(o *options) error {
 		o.withBoundaryTokenReaderFunc = fn
+		return nil
+	}
+}
+
+func WithForceResetSchema(_ context.Context, force bool) Option {
+	return func(o *options) error {
+		o.withForceResetSchema = force
 		return nil
 	}
 }

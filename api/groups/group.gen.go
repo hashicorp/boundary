@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -67,6 +68,13 @@ type GroupListResult struct {
 	ListToken    string   `json:"list_token,omitempty"`
 	ResponseType string   `json:"response_type,omitempty"`
 	Response     *api.Response
+
+	// The following fields are used for cached information when client-directed
+	// pagination is used.
+	recursive     bool
+	pageSize      uint32
+	scopeId       string
+	allRemovedIds []string
 }
 
 func (n GroupListResult) GetItems() []*Group {
@@ -339,96 +347,93 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 		return nil, apiErr
 	}
 	target.Response = resp
+
 	if target.ResponseType == "complete" || target.ResponseType == "" {
 		return target, nil
 	}
+
+	// In case we shortcut out due to client directed pagination, ensure these
+	// are set
+
+	target.recursive = opts.withRecursive
+
+	target.pageSize = opts.withPageSize
+	target.scopeId = scopeId
+	target.allRemovedIds = target.RemovedIds
+	if opts.withClientDirectedPagination {
+		return target, nil
+	}
+
+	allItems := make([]*Group, 0, target.EstItemCount)
+	allItems = append(allItems, target.Items...)
+
 	// If there are more results, automatically fetch the rest of the results.
 	// idToIndex keeps a map from the ID of an item to its index in target.Items.
 	// This is used to update updated items in-place and remove deleted items
 	// from the result after pagination is done.
 	idToIndex := map[string]int{}
-	for i, item := range target.Items {
+	for i, item := range allItems {
 		idToIndex[item.Id] = i
 	}
+
+	// If we're here there are more pages and the client does not want to
+	// paginate on their own; fetch them as this call returns all values.
+	currentPage := target
 	for {
-		req, err := c.client.NewRequest(ctx, "GET", "groups", nil, apiOpts...)
+		nextPage, err := c.ListNextPage(ctx, currentPage, opt...)
 		if err != nil {
-			return nil, fmt.Errorf("error creating List request: %w", err)
+			return nil, fmt.Errorf("error getting next page in List call: %w", err)
 		}
 
-		opts.queryMap["list_token"] = target.ListToken
-		if len(opts.queryMap) > 0 {
-			q := url.Values{}
-			for k, v := range opts.queryMap {
-				q.Add(k, v)
-			}
-			req.URL.RawQuery = q.Encode()
-		}
-
-		resp, err := c.client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("error performing client request during List call: %w", err)
-		}
-
-		page := new(GroupListResult)
-		apiErr, err := resp.Decode(page)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding List response: %w", err)
-		}
-		if apiErr != nil {
-			return nil, apiErr
-		}
-		for _, item := range page.Items {
+		for _, item := range nextPage.Items {
 			if i, ok := idToIndex[item.Id]; ok {
 				// Item has already been seen at index i, update in-place
-				target.Items[i] = item
+				allItems[i] = item
 			} else {
-				target.Items = append(target.Items, item)
-				idToIndex[item.Id] = len(target.Items) - 1
+				allItems = append(allItems, item)
+				idToIndex[item.Id] = len(allItems) - 1
 			}
 		}
-		// RemovedIds contain any Group that were deleted since the last response.
-		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
-		target.EstItemCount = page.EstItemCount
-		target.ListToken = page.ListToken
-		target.ResponseType = page.ResponseType
-		target.Response = resp
-		if target.ResponseType == "complete" {
+
+		currentPage = nextPage
+
+		if currentPage.ResponseType == "complete" {
 			break
 		}
 	}
-	// For now, removedIds will only be populated if this pagination cycle was the result of a
-	// "refresh" operation (i.e., the caller provided a list token option to this call).
-	//
-	// Sort to make response deterministic
-	slices.Sort(target.RemovedIds)
-	// Remove any duplicates
-	target.RemovedIds = slices.Compact(target.RemovedIds)
+
+	// The current page here is the final page of the results, that is, the
+	// response type is "complete"
+
 	// Remove items that were deleted since the end of the last iteration.
 	// If a Group has been updated and subsequently removed, we don't want
 	// it to appear both in the Items and RemovedIds, so we remove it from the Items.
-	for _, removedId := range target.RemovedIds {
+	for _, removedId := range currentPage.RemovedIds {
 		if i, ok := idToIndex[removedId]; ok {
 			// Remove the item at index i without preserving order
 			// https://github.com/golang/go/wiki/SliceTricks#delete-without-preserving-order
-			target.Items[i] = target.Items[len(target.Items)-1]
-			target.Items = target.Items[:len(target.Items)-1]
+			allItems[i] = allItems[len(allItems)-1]
+			allItems = allItems[:len(allItems)-1]
 			// Update the index of the previously last element
-			idToIndex[target.Items[i].Id] = i
+			idToIndex[allItems[i].Id] = i
 		}
 	}
+	// Sort the results again since in-place updates and deletes
+	// may have shuffled items. We sort by created time descending
+	// (most recently created first), same as the API.
+	slices.SortFunc(allItems, func(i, j *Group) int {
+		return j.CreatedTime.Compare(i.CreatedTime)
+	})
 	// Since we paginated to the end, we can avoid confusion
 	// for the user by setting the estimated item count to the
 	// length of the items slice. If we don't set this here, it
 	// will equal the value returned in the last response, which is
 	// often much smaller than the total number returned.
-	target.EstItemCount = uint(len(target.Items))
-	// Sort the results again since in-place updates and deletes
-	// may have shuffled items. We sort by created time descending
-	// (most recently created first), same as the API.
-	slices.SortFunc(target.Items, func(i, j *Group) int {
-		return j.CreatedTime.Compare(i.CreatedTime)
-	})
+	currentPage.EstItemCount = uint(len(allItems))
+	// Set items to the full list we have collected here
+	currentPage.Items = allItems
+	// Set the returned value to the last page with calculated values
+	target = currentPage
 	// Finally, since we made at least 2 requests to the server to fulfill this
 	// function call, resp.Body and resp.Map will only contain the most recent response.
 	// Overwrite them with the true response.
@@ -442,6 +447,89 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 	// Note: the HTTP response body is consumed by resp.Decode in the loop,
 	// so it doesn't need to be updated (it will always be, and has always been, empty).
 	return target, nil
+
+}
+
+func (c *Client) ListNextPage(ctx context.Context, currentPage *GroupListResult, opt ...Option) (*GroupListResult, error) {
+	if currentPage == nil {
+		return nil, fmt.Errorf("empty currentPage value passed into ListNextPage request")
+	}
+	if currentPage.scopeId == "" {
+		return nil, fmt.Errorf("empty scopeId value in currentPage passed into ListNextPage request")
+	}
+	if c.client == nil {
+		return nil, fmt.Errorf("nil client")
+	}
+	if currentPage.ResponseType == "complete" || currentPage.ResponseType == "" {
+		return nil, fmt.Errorf("no more pages available in ListNextPage request")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+	opts.queryMap["scope_id"] = currentPage.scopeId
+
+	// Don't require them to re-specify recursive
+	if currentPage.recursive {
+		opts.queryMap["recursive"] = "true"
+	}
+
+	if currentPage.pageSize != 0 {
+		opts.queryMap["page_size"] = strconv.FormatUint(uint64(currentPage.pageSize), 10)
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", "targets", nil, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	opts.queryMap["list_token"] = currentPage.ListToken
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during List call during ListNextPage: %w", err)
+	}
+
+	nextPage := new(GroupListResult)
+	apiErr, err := resp.Decode(nextPage)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding List response during ListNextPage: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+
+	// Ensure values are carried forward to the next call
+	nextPage.scopeId = currentPage.scopeId
+
+	nextPage.recursive = currentPage.recursive
+
+	nextPage.pageSize = currentPage.pageSize
+	// Cache the removed IDs from this page
+	nextPage.allRemovedIds = append(currentPage.allRemovedIds, nextPage.RemovedIds...)
+	// Set the response body to the current response
+	nextPage.Response = resp
+	// If we're done iterating, pull the full set of removed IDs into the last
+	// response
+	if nextPage.ResponseType == "complete" {
+		// Collect up the last values
+		nextPage.RemovedIds = nextPage.allRemovedIds
+		// For now, removedIds will only be populated if this pagination cycle
+		// was the result of a "refresh" operation (i.e., the caller provided a
+		// list token option to this call).
+		//
+		// Sort to make response deterministic
+		slices.Sort(nextPage.RemovedIds)
+		// Remove any duplicates
+		nextPage.RemovedIds = slices.Compact(nextPage.RemovedIds)
+	}
+
+	return nextPage, nil
 }
 
 func (c *Client) AddMembers(ctx context.Context, id string, version uint32, memberIds []string, opt ...Option) (*GroupUpdateResult, error) {

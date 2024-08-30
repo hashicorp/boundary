@@ -190,11 +190,11 @@ func TestStatus(t *testing.T) {
 			target("4"),
 		}
 		err = r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil})))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
 		require.NoError(t, err)
 
 		err = r.refreshTargets(ctx, u2, map[AuthToken]string{{Id: "id"}: "something"},
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts[:2]}, [][]string{nil})))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts[:2]}, [][]string{nil}))))
 		require.NoError(t, err)
 
 		sess := []*sessions.Session{
@@ -312,7 +312,7 @@ func TestStatus_unsupported(t *testing.T) {
 	require.ErrorIs(t, err, ErrRefreshNotSupported)
 
 	err = r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 	require.ErrorIs(t, err, ErrRefreshNotSupported)
 
 	err = r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},

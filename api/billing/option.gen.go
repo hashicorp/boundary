@@ -6,6 +6,7 @@ package billing
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/api"
@@ -21,12 +22,14 @@ import (
 type Option func(*options)
 
 type options struct {
-	postMap                 map[string]any
-	queryMap                map[string]string
-	withAutomaticVersioning bool
-	withSkipCurlOutput      bool
-	withFilter              string
-	withListToken           string
+	postMap                      map[string]any
+	queryMap                     map[string]string
+	withAutomaticVersioning      bool
+	withSkipCurlOutput           bool
+	withFilter                   string
+	withListToken                string
+	withClientDirectedPagination bool
+	withPageSize                 uint32
 }
 
 func getDefaultOptions() options {
@@ -52,6 +55,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	}
 	if opts.withListToken != "" {
 		opts.queryMap["list_token"] = opts.withListToken
+	}
+	if opts.withPageSize != 0 {
+		opts.queryMap["page_size"] = strconv.FormatUint(uint64(opts.withPageSize), 10)
 	}
 	return opts, apiOpts
 }
@@ -88,6 +94,21 @@ func WithListToken(listToken string) Option {
 func WithFilter(filter string) Option {
 	return func(o *options) {
 		o.withFilter = strings.TrimSpace(filter)
+	}
+}
+
+// WithClientDirectedPagination tells the List function to return only the first
+// page, if more pages are available
+func WithClientDirectedPagination(with bool) Option {
+	return func(o *options) {
+		o.withClientDirectedPagination = with
+	}
+}
+
+// WithPageSize controls the size of pages used during List
+func WithPageSize(with uint32) Option {
+	return func(o *options) {
+		o.withPageSize = with
 	}
 }
 
