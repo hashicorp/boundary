@@ -122,9 +122,9 @@ type Server struct {
 	DevSecondaryTargetId             string // Target using host sources.
 	DevHostAddress                   string // Host address for target using host sources.
 	DevTargetAddress                 string // Network address for target with address.
-	DevTargetDefaultPort             int
-	DevTargetSessionMaxSeconds       int
-	DevTargetSessionConnectionLimit  int
+	DevTargetDefaultPort             uint16
+	DevTargetSessionMaxSeconds       int64
+	DevTargetSessionConnectionLimit  int64
 	DevLoopbackPluginId              string
 
 	EnabledPlugins []EnabledPlugin
