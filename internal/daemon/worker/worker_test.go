@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	wpbs "github.com/hashicorp/boundary/internal/gen/worker/servers/services"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-hclog"
@@ -170,6 +171,24 @@ func TestWorkerNew(t *testing.T) {
 				assert.Equal(t, w.localStorageState.Load().(server.LocalStorageState).String(), server.UnknownLocalStorageState.String())
 			},
 		},
+		{
+			name: "worker host service server is the unimplemented one by default",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+				},
+				RawConfig: &config.Config{
+					Worker:       &config.Worker{},
+					SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				},
+			},
+			expErr: false,
+			assertions: func(t *testing.T, w *Worker) {
+				assert.Equal(t, wpbs.UnimplementedHostServiceServer{}, w.HostServiceServer)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -184,6 +203,10 @@ func TestWorkerNew(t *testing.T) {
 				t.Cleanup(func() { event.TestResetSystEventer(t) })
 				tt.in.Eventer = event.SysEventer()
 			}
+
+			currentHostServiceFactory := hostServiceServerFactory
+			hostServiceServerFactory = nil
+			t.Cleanup(func() { hostServiceServerFactory = currentHostServiceFactory })
 
 			w, err := New(context.Background(), tt.in)
 			if tt.expErr {

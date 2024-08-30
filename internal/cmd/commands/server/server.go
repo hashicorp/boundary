@@ -499,14 +499,12 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	// append storage-enabled plugins
-	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws)
+	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure)
 	if base.MinioEnabled {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginMinio)
 	}
+
 	if c.Config.Controller != nil {
-		// append host-only plugins
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError

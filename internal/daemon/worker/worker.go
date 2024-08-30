@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	wpbs "github.com/hashicorp/boundary/internal/gen/worker/servers/services"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/storage"
 	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
@@ -114,6 +115,12 @@ var eventListenerFactory func(*Worker) (event.EventListener, error)
 var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
 
 func noopInitializePromCollectors(r prometheus.Registerer) {}
+
+var hostServiceServerFactory func(
+	ctx context.Context,
+	plgClients map[string]plgpb.HostPluginServiceClient,
+	enableLoopback bool,
+) (wpbs.HostServiceServer, error)
 
 const (
 	authenticationStatusNeverAuthenticated uint32 = iota
@@ -203,6 +210,8 @@ type Worker struct {
 	statusLock sync.Mutex
 
 	downstreamConnManager *cluster.DownstreamManager
+
+	HostServiceServer wpbs.HostServiceServer
 }
 
 func New(ctx context.Context, conf *Config) (*Worker, error) {
@@ -252,11 +261,47 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		w.localStorageState.Store(server.NotConfiguredLocalStorageState)
 	}
 
-	if w.conf.RawConfig.Worker.RecordingStoragePath != "" && recordingStorageFactory != nil {
-		pluginLogger, err := event.NewHclogLogger(ctx, w.conf.Server.Eventer)
-		if err != nil {
-			return nil, fmt.Errorf("error creating storage catalog plugin logger: %w", err)
+	pluginLogger, err := event.NewHclogLogger(ctx, w.conf.Server.Eventer)
+	if err != nil {
+		return nil, fmt.Errorf("error creating plugin logger: %w", err)
+	}
+
+	w.HostServiceServer = wpbs.UnimplementedHostServiceServer{}
+	if hostServiceServerFactory != nil {
+		enableLoopback := false
+
+		hostPlgClients := make(map[string]plgpb.HostPluginServiceClient)
+		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
+			switch {
+			case enabledPlugin == base.EnabledPluginHostAzure && !w.conf.SkipPlugins,
+				enabledPlugin == base.EnabledPluginAws && !w.conf.SkipPlugins:
+				pluginType := strings.ToLower(enabledPlugin.String())
+				client, cleanup, err := external_plugins.CreateHostPlugin(
+					ctx,
+					pluginType,
+					external_plugins.WithPluginOptions(
+						pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+						pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
+					),
+					external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				)
+				if err != nil {
+					return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
+				}
+				conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+				hostPlgClients[pluginType] = client
+			case enabledPlugin == base.EnabledPluginLoopback:
+				enableLoopback = true
+			}
 		}
+		hs, err := hostServiceServerFactory(ctx, hostPlgClients, enableLoopback)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create host service server: %w", err)
+		}
+		w.HostServiceServer = hs
+	}
+
+	if w.conf.RawConfig.Worker.RecordingStoragePath != "" && recordingStorageFactory != nil {
 		plgClients := make(map[string]plgpb.StoragePluginServiceClient)
 		var enableStorageLoopback bool
 
