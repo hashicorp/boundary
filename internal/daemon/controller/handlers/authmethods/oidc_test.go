@@ -1624,9 +1624,10 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 	s := getSetup(t)
 
 	cases := []struct {
-		name    string
-		request *pbs.AuthenticateRequest
-		wantErr error
+		name       string
+		request    *pbs.AuthenticateRequest
+		beforeTest func(t *testing.T)
+		wantErr    error
 	}{
 		{
 			name: "no command",
@@ -1656,6 +1657,57 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 				Command:      "start",
 				AuthMethodId: s.authMethod.GetPublicId(),
 			},
+		},
+		{
+			name: "auth method does not exist",
+			request: &pbs.AuthenticateRequest{
+				Command:      "start",
+				AuthMethodId: "amoidc_1234",
+				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
+					OidcStartAttributes: &pbs.OidcStartAttributes{
+						RoundtripPayload: func() *structpb.Struct {
+							ret, err := structpb.NewStruct(map[string]any{
+								"foo": "bar",
+								"baz": true,
+							})
+							require.NoError(t, err)
+							return ret
+						}(),
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "auth method is inactive",
+			beforeTest: func(t *testing.T) {
+				r, err := s.oidcRepoFn()
+				require.NoError(t, err)
+				_, err = r.MakeInactive(s.ctx, s.authMethod.GetPublicId(), 2)
+				require.NoError(t, err)
+
+				t.Cleanup(func() {
+					_, err = r.MakePublic(s.ctx, s.authMethod.GetPublicId(), 3)
+					require.NoError(t, err)
+				})
+			},
+			request: &pbs.AuthenticateRequest{
+				Command:      "start",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
+					OidcStartAttributes: &pbs.OidcStartAttributes{
+						RoundtripPayload: func() *structpb.Struct {
+							ret, err := structpb.NewStruct(map[string]any{
+								"foo": "bar",
+								"baz": true,
+							})
+							require.NoError(t, err)
+							return ret
+						}(),
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.FailedPrecondition),
 		},
 		// NOTE: We can't really test bad roundtrip payload attributes because
 		// any type structpb lets us use in creation will be valid for JSON, and
@@ -1692,6 +1744,10 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.beforeTest != nil {
+				tc.beforeTest(t)
+			}
+
 			assert, require := assert.New(t), require.New(t)
 			got, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()), tc.request)
 			if tc.wantErr != nil {
