@@ -53,7 +53,7 @@ type ManagedGroupDeleteResult struct {
 }
 
 // GetItem will always be nil for ManagedGroupDeleteResult
-func (n ManagedGroupDeleteResult) GetItem() interface{} {
+func (n ManagedGroupDeleteResult) GetItem() any {
 	return nil
 }
 

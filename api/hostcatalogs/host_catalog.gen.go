@@ -58,7 +58,7 @@ type HostCatalogDeleteResult struct {
 }
 
 // GetItem will always be nil for HostCatalogDeleteResult
-func (n HostCatalogDeleteResult) GetItem() interface{} {
+func (n HostCatalogDeleteResult) GetItem() any {
 	return nil
 }
 

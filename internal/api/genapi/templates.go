@@ -748,7 +748,7 @@ type {{ .Name }}DeleteResult struct {
 }
 
 // GetItem will always be nil for {{ .Name }}DeleteResult
-func (n {{ .Name }}DeleteResult) GetItem() interface{} {
+func (n {{ .Name }}DeleteResult) GetItem() any {
 	return nil
 }
 
@@ -839,7 +839,7 @@ import (
 type Option func(*options)
 
 type options struct {
-	postMap map[string]interface{}
+	postMap map[string]any
 	queryMap map[string]string
 	withAutomaticVersioning bool
 	withSkipCurlOutput bool
@@ -850,7 +850,7 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		postMap: make(map[string]interface{}),
+		postMap: make(map[string]any),
 		queryMap: make(map[string]string),
 	}
 }
@@ -894,7 +894,7 @@ func WithAutomaticVersioning(enable bool) Option {
 // Useful for when we need to look up versions.
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
-		o.withSkipCurlOutput = true
+		o.withSkipCurlOutput = skip
 	}
 }
 
@@ -921,7 +921,7 @@ func WithFilter(filter string) Option {
 // resource
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
-		o.withRecursive = true
+		o.withRecursive = recurse
 	}
 }
 {{ end }}
@@ -935,9 +935,9 @@ func With{{ $subtypeName }}{{ $field.Name }}(in{{ $field.Name }} {{ $field.Field
 	return func(o *options) {		{{ if ( not ( eq $subtypeName "" ) ) }}
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["{{ $field.ProtoName }}"] = in{{ $field.Name }}
 		o.postMap["attributes"] = val
 		{{ else if $field.Query }}
@@ -951,9 +951,9 @@ func Default{{ $subtypeName }}{{ $field.Name }}() Option {
 	return func(o *options) {		{{ if ( not ( eq $subtypeName "" ) ) }}
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["{{ $field.ProtoName }}"] = nil
 		o.postMap["attributes"] = val
 		{{ else }}
@@ -971,7 +971,7 @@ var mapstructureConversionTemplate = template.Must(template.New("").Funcs(
 		"kebabCase":       kebabCase,
 	},
 ).Parse(`
-func AttributesMapTo{{ .Name }}(in map[string]interface{}) (*{{ .Name }}, error) {
+func AttributesMapTo{{ .Name }}(in map[string]any) (*{{ .Name }}, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

@@ -18,7 +18,7 @@ type LdapAccountAttributes struct {
 	MemberOfGroups []string `json:"member_of_groups,omitempty"`
 }
 
-func AttributesMapToLdapAccountAttributes(in map[string]interface{}) (*LdapAccountAttributes, error) {
+func AttributesMapToLdapAccountAttributes(in map[string]any) (*LdapAccountAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

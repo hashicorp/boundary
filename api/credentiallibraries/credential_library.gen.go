@@ -54,7 +54,7 @@ type CredentialLibraryDeleteResult struct {
 }
 
 // GetItem will always be nil for CredentialLibraryDeleteResult
-func (n CredentialLibraryDeleteResult) GetItem() interface{} {
+func (n CredentialLibraryDeleteResult) GetItem() any {
 	return nil
 }
 
