@@ -36,49 +36,6 @@ provider "enos" {
   }
 }
 
-variable "aws_region" {
-  description = "The AWS region to deploy resources in."
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "hcp_boundary_cluster_id" {
-  description = "The ID of the HCP Boundary cluster. If on HCP int, prepend the cluster ID with 'int-'. If on HCP dev, prepend the cluster ID with 'dev-'."
-  type        = string
-}
-
-variable "boundary_zip_path" {
-  description = "Path to Boundary zip file. Version should be a linux_amd64 enterprise variant."
-  type        = string
-}
-
-variable "boundary_license_path" {
-  description = "Path to the Boundary license file"
-  type        = string
-}
-
-variable "aws_ssh_keypair_name" {
-  description = "Name of the AWS EC2 keypair to use for SSH access"
-  type        = string
-}
-
-variable "aws_ssh_private_key_path" {
-  description = "Path to the private key file for the AWS EC2 keypair"
-  type        = string
-}
-
-variable "worker_count" {
-  description = "Number of workers to create"
-  type        = number
-  default     = 1
-}
-
-variable "target_count" {
-  description = "Number of targets to create"
-  type        = number
-  default     = 1
-}
-
 locals {
   worker_instance_type = "t3a.small"
   target_instance_type = "t2.micro"
@@ -181,46 +138,4 @@ module "target" {
   vpc_id               = module.base_infra.vpc_id
   subnet_ids           = module.worker.subnet_ids
   additional_tags      = module.target_tags.tag_map
-}
-
-output "bucket_access_key_id" {
-  value = module.iam_user.access_key_id
-}
-
-output "bucket_secret_access_key" {
-  sensitive = true
-  value     = module.iam_user.secret_access_key
-}
-
-output "bucket_name" {
-  value = module.storage_bucket.bucket_name
-}
-
-output "host_set_filter" {
-  value = module.target_tags.tag_string
-}
-
-output "target_public_ip" {
-  value = module.target.target_public_ips
-}
-
-output "target_private_ip" {
-  value = module.target.target_private_ips
-}
-
-output "target_ssh_user" {
-  value = "ubuntu"
-}
-
-output "worker_ip" {
-  value = module.worker.worker_ips
-}
-
-output "worker_tokens" {
-  sensitive = true
-  value     = module.worker.worker_tokens
-}
-
-output "region" {
-  value = var.aws_region
 }
