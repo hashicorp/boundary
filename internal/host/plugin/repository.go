@@ -8,14 +8,18 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	apihc "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
+
+var pluginClientFactoryFn = pluginClientFactory
 
 // A Repository stores and retrieves the persistent types in the plugin
 // package. It is not safe to use a repository concurrently.
@@ -73,4 +77,18 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		plugins:      plgs,
 		defaultLimit: opts.WithLimit,
 	}, nil
+}
+
+func pluginClientFactory(ctx context.Context, hc *apihc.HostCatalog, controllerClients map[string]plgpb.HostPluginServiceClient) (plgpb.HostPluginServiceClient, error) {
+	const op = "plugin.getPluginClient"
+	if hc == nil {
+		return nil, errors.New(ctx, errors.Internal, op, "host catalog object not present")
+	}
+
+	cl, ok := controllerClients[hc.GetPluginId()]
+	if !ok || cl == nil {
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("controller plugin %q not available", hc.GetPluginId()))
+	}
+
+	return cl, nil
 }

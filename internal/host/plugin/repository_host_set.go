@@ -119,11 +119,6 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	s.LastSyncTime = timestamp.New(time.Unix(0, 0))
 	s.NeedSync = true
 
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
-	}
-
 	plg, err := r.getPlugin(ctx, c.GetPluginId())
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
@@ -133,6 +128,11 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	plgHs, err := toPluginSet(ctx, s)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -363,12 +363,6 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in project id %q", newSet.CatalogId, projectId))
 	}
 
-	// Get the plugin client.
-	plgClient, ok := r.plugins[catalog.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", catalog.GetPluginId()))
-	}
-
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
 	plgHc, err := toPluginCatalog(ctx, catalog, plg)
@@ -380,6 +374,11 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	newPlgSet, err := toPluginSet(ctx, newSet)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -737,10 +736,6 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 		return db.NoRowsAffected, nil
 	}
 
-	plgClient, ok := r.plugins[plg.GetPublicId()]
-	if !ok || plgClient == nil {
-		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
-	}
 	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
@@ -749,6 +744,12 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
+
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op)
+	}
+
 	// Even if the plugin returns an error, we ignore it and proceed with
 	// deleting the set, hence we don't check the error here. This is because we
 	// may get errors from the plugin that we can't do anything about (say, it's

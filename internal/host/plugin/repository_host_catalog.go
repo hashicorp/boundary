@@ -128,9 +128,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	if plgHc.GetAttributes() != nil {
@@ -358,12 +358,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
-	// Get the plugin client.
-	plgClient, ok := r.plugins[currentCatalog.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", currentCatalog.GetPluginId()))
-	}
-
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
 	currPlgHc, err := toPluginCatalog(ctx, currentCatalog, plg)
@@ -371,6 +365,11 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	newPlgHc, err := toPluginCatalog(ctx, newCatalog, plg)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	plgClient, err := pluginClientFactoryFn(ctx, newPlgHc, r.plugins)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -639,9 +638,9 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 		plgSets = append(plgSets, ps)
 	}
 
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
-		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	_, err = plgClient.OnDeleteCatalog(ctx, &plgpb.OnDeleteCatalogRequest{
 		Catalog:   plgHc,
@@ -749,6 +748,7 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog, plg *plg.Plugin) (*pb
 		Name:         name,
 		Description:  description,
 		WorkerFilter: workerFilter,
+		PluginId:     in.GetPluginId(),
 		Plugin:       toPluginInfo(plg),
 	}
 	if len(in.GetSecretsHmac()) > 0 {
