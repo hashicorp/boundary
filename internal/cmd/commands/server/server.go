@@ -859,6 +859,10 @@ func (c *Command) Reload(newConf *config.Config) error {
 		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller api rate limits: %w", err))
 	}
 
+	if err := c.reloadControllerTimings(newConf); err != nil {
+		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller timings: %w", err))
+	}
+
 	if newConf != nil && c.worker != nil {
 		workerReloadErr := func() error {
 			if newConf.Controller != nil {
@@ -975,6 +979,14 @@ func (c *Command) reloadControllerRateLimits(newConfig *config.Config) error {
 		return nil
 	}
 	return c.controller.ReloadRateLimiter(newConfig)
+}
+
+func (c *Command) reloadControllerTimings(newConfig *config.Config) error {
+	if c.controller == nil || newConfig == nil || newConfig.Controller == nil {
+		return nil
+	}
+
+	return c.controller.ReloadTimings(newConfig)
 }
 
 // acquireSchemaManager returns a schema manager and generally acquires a shared lock on
