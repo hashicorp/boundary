@@ -15,7 +15,7 @@ type PasswordAccountAttributes struct {
 	Password  string `json:"password,omitempty"`
 }
 
-func AttributesMapToPasswordAccountAttributes(in map[string]interface{}) (*PasswordAccountAttributes, error) {
+func AttributesMapToPasswordAccountAttributes(in map[string]any) (*PasswordAccountAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

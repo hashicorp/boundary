@@ -63,7 +63,7 @@ type WorkerDeleteResult struct {
 }
 
 // GetItem will always be nil for WorkerDeleteResult
-func (n WorkerDeleteResult) GetItem() interface{} {
+func (n WorkerDeleteResult) GetItem() any {
 	return nil
 }
 

@@ -14,7 +14,7 @@ type LdapManagedGroupAttributes struct {
 	GroupNames []string `json:"group_names,omitempty"`
 }
 
-func AttributesMapToLdapManagedGroupAttributes(in map[string]interface{}) (*LdapManagedGroupAttributes, error) {
+func AttributesMapToLdapManagedGroupAttributes(in map[string]any) (*LdapManagedGroupAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

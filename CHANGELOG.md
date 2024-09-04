@@ -4,19 +4,28 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.17.1 (2024/08/22)
+## 0.17.2 (Unreleased)
+
+### Changes
+
+* The Go API properly uses the passed in value for `WithRecursive` and
+  `WithSkipCurlOutput` instead of always setting to true regardless of the
+  passed-in value. ([PR](https://github.com/hashicorp/boundary/pull/5066))
+
+## 0.17.1 (2024/08/21)
 
 ### New and Improved
 
-* Add `GetDownstreamWorkersTimeout` config option which represents the period of time (as a duration) timeout
-  for GetDownstreamWorkers call in DownstreamWorkerTicker. This is currently not documented and considered internal.
-  ([PR](https://github.com/hashicorp/boundary/pull/5007))
+* Add `GetDownstreamWorkersTimeout` config option which represents the period of
+  time (as a duration) timeout for GetDownstreamWorkers call in
+  DownstreamWorkerTicker. This is currently not documented and considered
+  internal. ([PR](https://github.com/hashicorp/boundary/pull/5007))
 
 ### Bug Fixes
 
 * Fixed issue where storage policies were not deleted when scopes are deleted
   ([PR](https://github.com/hashicorp/boundary/pull/5014))
-* Contains Bug Fixes from 0.16.3 
+* Contains Bug Fixes from 0.16.3
 
 ### Security
 
@@ -26,55 +35,74 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* Add `GetDownstreamWorkersTimeout` config option which represents the period of time (as a duration) timeout
-  for GetDownstreamWorkers call in DownstreamWorkerTicker. This is currently not documented and considered internal.
-  ([PR](https://github.com/hashicorp/boundary/pull/5007))
+* Add `GetDownstreamWorkersTimeout` config option which represents the period of
+  time (as a duration) timeout for GetDownstreamWorkers call in
+  DownstreamWorkerTicker. This is currently not documented and considered
+  internal. ([PR](https://github.com/hashicorp/boundary/pull/5007))
 
 ### Bug Fixes
 
-* Minio large file support: Disable multipart uploads via minio to fix an issue where the file checksum is set incorrectly on each part 
-  of the upload, causing it to fail. This change fixes file uploads larger than 16MB and limits upload sizes to 5GB.
-  ([PR](https://github.com/hashicorp/boundary/pull/5013)) and ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/21))
-* Resolved an issue where session authorization was returning a `401` if the alias is non-existent or the alias does not resolve to anything.
-  A `404` status code is now returned.
-  ([PR](https://github.com/hashicorp/boundary/pull/5006))
+* Minio large file support: Disable multipart uploads via minio to fix an issue
+  where the file checksum is set incorrectly on each part of the upload, causing
+  it to fail. This change fixes file uploads larger than 16MB and limits upload
+  sizes to 5GB. ([PR](https://github.com/hashicorp/boundary/pull/5013)) and
+  ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/21))
+* Resolved an issue where session authorization was returning a `401` if the
+  alias is non-existent or the alias does not resolve to anything. A `404`
+  status code is now returned.
+  ([PR](https://github.com/hashicorp/boundary/pull/5006)))
 
 ### Security
 
-* curl (enterprise): The curl binary is no longer included in the published Docker container images for Boundary Enterprise to address the 
-  CVE-2024-7264 vulnerability.
+* curl (enterprise): The curl binary is no longer included in the published
+  Docker container images for Boundary Enterprise to address the CVE-2024-7264
+  vulnerability.
   [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)  
 
 ## 0.17.0 (2024/07/17)
 
 ### New and Improved
 
-* SBC (Storage Bucket Credential): This release introduces, SBC, a resource that represents credentials for 
-authentication and authorization with an external object store. There are two SBC types, managed secret and environmental.
-([PR](https://github.com/hashicorp/boundary/pull/4933)), ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/18)) and ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/46))
-  * SBC State: This release introduces, SBC State, which represents the ability for a worker to perform a specific action 
-  using the storage bucket. SBC permission types (write, read, & delete) represent an action that is required for the 
-  storage bucket to do as a routine task on an external object store. Each permission type has a permission state 
-  (ok, error, unknown). 
-  * SBC Worker Filtering: For protocol aware workers that require interaction with an external storage service, the 
-  workers will be filtered by the SBC state depending on the action and permission required.
-* ui: Add multiple grant scope support for roles ([PR](https://github.com/hashicorp/boundary-ui/pull/2388))
-* ui: Add API tags support for workers and improve worker filtering for targets ([PR](https://github.com/hashicorp/boundary-ui/pull/2393))
+* SBC (Storage Bucket Credential): This release introduces, SBC, a resource that
+represents credentials for authentication and authorization with an external
+object store. There are two SBC types, managed secret and environmental.
+([PR](https://github.com/hashicorp/boundary/pull/4933)),
+([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/18)) and
+([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/46))
+  * SBC State: This release introduces, SBC State, which represents the ability
+  for a worker to perform a specific action using the storage bucket. SBC
+  permission types (write, read, & delete) represent an action that is required
+  for the storage bucket to do as a routine task on an external object store.
+  Each permission type has a permission state (ok, error, unknown). 
+  * SBC Worker Filtering: For protocol aware workers that require interaction
+  with an external storage service, the workers will be filtered by the SBC
+  state depending on the action and permission required.
+* ui: Add multiple grant scope support for roles
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2388))
+* ui: Add API tags support for workers and improve worker filtering for targets
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2393))
 
 ## 0.16.2 (2024/06/10)
 
 ### New and Improved
 
-* Updated Minio plugin to allow for potential use with other S3-compatible storage providers.
-([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/16)) and ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/17))
+* Updated Minio plugin to allow for potential use with other S3-compatible
+storage providers.
+([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/16)) and
+([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/17))
 
 ### Bug Fixes
-* Fixed a bug where a worker credential rotation request suceeded on the controller but the response to the worker was lost.
-This resulted in the controller using a separate set of credentials than the worker, causing the worker to be unable to connect 
-to the controller. The fix implements the new nodeenrollment library NodeIdLoader interface, which ensures that on store, 
-if worker NodeInformation has a previous key set, the worker will check and correct its stored credential set to match. 
-LodeNodeInformation was also updated to fix a bug where in this split credential scenario, the current credential key was
-assumed to be the incoming worker key, which caused the wrong key information to be populated for the key id.
+
+* Fixed a bug where a worker credential rotation request suceeded on the
+controller but the response to the worker was lost. This resulted in the
+controller using a separate set of credentials than the worker, causing the
+worker to be unable to connect to the controller. The fix implements the new
+nodeenrollment library NodeIdLoader interface, which ensures that on store, if
+worker NodeInformation has a previous key set, the worker will check and correct
+its stored credential set to match. LodeNodeInformation was also updated to fix
+a bug where in this split credential scenario, the current credential key was
+assumed to be the incoming worker key, which caused the wrong key information to
+be populated for the key id.
 ([PR](https://github.com/hashicorp/boundary/pull/4870))
 
 ### New and Improved
@@ -135,17 +163,24 @@ assumed to be the incoming worker key, which caused the wrong key information to
 
 ### New and Improved
 
-* Target aliases have been added: You can now create an alias for a target.
-  In most situations where you would use a target id, you can now instead use
-  the alias value. Create an alias with
-  `boundary aliases create target -value example.boundary -destination-id ttcp_1234567890`
-  and connect to a target using an alias using `boundary connect example.boundary`
-* Worker local storage state: Self managed workers that are configured to be used for
-  session recordings will report the state of the its disk space. To learn more about this
-  new feature, refer to the [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket#local-storage).
-* MinIO storage plugin: You can now create a storage bucket that allows Boundary to interoperate
-  with a MinIO cluster for Session Recording storage. This includes some added functionality such
-  as credential rotation and credential management. To learn more about the plugin, refer to the [readme](https://github.com/hashicorp/boundary-plugin-minio?tab=readme-ov-file#minio-plugin-for-hashicorp-boundary). *Note:* Due to a library incompatibility, this release is not yet compatible with the `netbsd` operating system. Please refer to the following [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket) to learn how to create a storage bucket.
+* Target aliases have been added: You can now create an alias for a target. In
+  most situations where you would use a target id, you can now instead use the
+  alias value. Create an alias with `boundary aliases create target -value
+  example.boundary -destination-id ttcp_1234567890` and connect to a target
+  using an alias using `boundary connect example.boundary`
+* Worker local storage state: Self managed workers that are configured to be
+  used for session recordings will report the state of the its disk space. To
+  learn more about this new feature, refer to the
+  [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket#local-storage).
+* MinIO storage plugin: You can now create a storage bucket that allows Boundary
+  to interoperate with a MinIO cluster for Session Recording storage. This
+  includes some added functionality such as credential rotation and credential
+  management. To learn more about the plugin, refer to the
+  [readme](https://github.com/hashicorp/boundary-plugin-minio?tab=readme-ov-file#minio-plugin-for-hashicorp-boundary).
+  *Note:* Due to a library incompatibility, this release is not yet compatible
+  with the `netbsd` operating system. Please refer to the following
+  [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket)
+  to learn how to create a storage bucket.
 * ui: Add UI support for filtering and pagination
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2237))
 * ui: Add UI support for MinIO (Enterprise and HCP Boundary only)

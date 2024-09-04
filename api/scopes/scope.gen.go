@@ -53,7 +53,7 @@ type ScopeDeleteResult struct {
 }
 
 // GetItem will always be nil for ScopeDeleteResult
-func (n ScopeDeleteResult) GetItem() interface{} {
+func (n ScopeDeleteResult) GetItem() any {
 	return nil
 }
 

@@ -54,7 +54,7 @@ type AliasDeleteResult struct {
 }
 
 // GetItem will always be nil for AliasDeleteResult
-func (n AliasDeleteResult) GetItem() interface{} {
+func (n AliasDeleteResult) GetItem() any {
 	return nil
 }
 

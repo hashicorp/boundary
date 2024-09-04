@@ -21,7 +21,7 @@ type VaultSSHCertificateCredentialLibraryAttributes struct {
 	AdditionalValidPrincipals []string          `json:"additional_valid_principals,omitempty"`
 }
 
-func AttributesMapToVaultSSHCertificateCredentialLibraryAttributes(in map[string]interface{}) (*VaultSSHCertificateCredentialLibraryAttributes, error) {
+func AttributesMapToVaultSSHCertificateCredentialLibraryAttributes(in map[string]any) (*VaultSSHCertificateCredentialLibraryAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}
