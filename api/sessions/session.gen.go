@@ -60,7 +60,7 @@ type SessionDeleteResult struct {
 }
 
 // GetItem will always be nil for SessionDeleteResult
-func (n SessionDeleteResult) GetItem() interface{} {
+func (n SessionDeleteResult) GetItem() any {
 	return nil
 }
 

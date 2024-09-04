@@ -14,7 +14,7 @@ type StaticHostAttributes struct {
 	Address string `json:"address,omitempty"`
 }
 
-func AttributesMapToStaticHostAttributes(in map[string]interface{}) (*StaticHostAttributes, error) {
+func AttributesMapToStaticHostAttributes(in map[string]any) (*StaticHostAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

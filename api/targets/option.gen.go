@@ -21,7 +21,7 @@ import (
 type Option func(*options)
 
 type options struct {
-	postMap                 map[string]interface{}
+	postMap                 map[string]any
 	queryMap                map[string]string
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
@@ -32,7 +32,7 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		postMap:  make(map[string]interface{}),
+		postMap:  make(map[string]any),
 		queryMap: make(map[string]string),
 	}
 }
@@ -74,7 +74,7 @@ func WithAutomaticVersioning(enable bool) Option {
 // Useful for when we need to look up versions.
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
-		o.withSkipCurlOutput = true
+		o.withSkipCurlOutput = skip
 	}
 }
 
@@ -99,7 +99,7 @@ func WithFilter(filter string) Option {
 // resource
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
-		o.withRecursive = true
+		o.withRecursive = recurse
 	}
 }
 
@@ -149,9 +149,9 @@ func WithSshTargetDefaultClientPort(inDefaultClientPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["default_client_port"] = inDefaultClientPort
 		o.postMap["attributes"] = val
 	}
@@ -161,9 +161,9 @@ func DefaultSshTargetDefaultClientPort() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["default_client_port"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -173,9 +173,9 @@ func WithTcpTargetDefaultClientPort(inDefaultClientPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["default_client_port"] = inDefaultClientPort
 		o.postMap["attributes"] = val
 	}
@@ -185,9 +185,9 @@ func DefaultTcpTargetDefaultClientPort() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["default_client_port"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -197,9 +197,9 @@ func WithSshTargetDefaultPort(inDefaultPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["default_port"] = inDefaultPort
 		o.postMap["attributes"] = val
 	}
@@ -209,9 +209,9 @@ func DefaultSshTargetDefaultPort() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["default_port"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -221,9 +221,9 @@ func WithTcpTargetDefaultPort(inDefaultPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["default_port"] = inDefaultPort
 		o.postMap["attributes"] = val
 	}
@@ -233,9 +233,9 @@ func DefaultTcpTargetDefaultPort() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["default_port"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -269,9 +269,9 @@ func WithSshTargetEnableSessionRecording(inEnableSessionRecording bool) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["enable_session_recording"] = inEnableSessionRecording
 		o.postMap["attributes"] = val
 	}
@@ -359,9 +359,9 @@ func WithSshTargetStorageBucketId(inStorageBucketId string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["storage_bucket_id"] = inStorageBucketId
 		o.postMap["attributes"] = val
 	}
@@ -371,9 +371,9 @@ func DefaultSshTargetStorageBucketId() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["storage_bucket_id"] = nil
 		o.postMap["attributes"] = val
 	}

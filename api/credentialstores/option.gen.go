@@ -21,7 +21,7 @@ import (
 type Option func(*options)
 
 type options struct {
-	postMap                 map[string]interface{}
+	postMap                 map[string]any
 	queryMap                map[string]string
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
@@ -32,7 +32,7 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		postMap:  make(map[string]interface{}),
+		postMap:  make(map[string]any),
 		queryMap: make(map[string]string),
 	}
 }
@@ -74,7 +74,7 @@ func WithAutomaticVersioning(enable bool) Option {
 // Useful for when we need to look up versions.
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
-		o.withSkipCurlOutput = true
+		o.withSkipCurlOutput = skip
 	}
 }
 
@@ -99,7 +99,7 @@ func WithFilter(filter string) Option {
 // resource
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
-		o.withRecursive = true
+		o.withRecursive = recurse
 	}
 }
 
@@ -107,9 +107,9 @@ func WithVaultCredentialStoreAddress(inAddress string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["address"] = inAddress
 		o.postMap["attributes"] = val
 	}
@@ -131,9 +131,9 @@ func WithVaultCredentialStoreCaCert(inCaCert string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["ca_cert"] = inCaCert
 		o.postMap["attributes"] = val
 	}
@@ -143,9 +143,9 @@ func DefaultVaultCredentialStoreCaCert() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["ca_cert"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -155,9 +155,9 @@ func WithVaultCredentialStoreClientCertificate(inClientCertificate string) Optio
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["client_certificate"] = inClientCertificate
 		o.postMap["attributes"] = val
 	}
@@ -167,9 +167,9 @@ func DefaultVaultCredentialStoreClientCertificate() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["client_certificate"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -179,9 +179,9 @@ func WithVaultCredentialStoreClientCertificateKey(inClientCertificateKey string)
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["client_certificate_key"] = inClientCertificateKey
 		o.postMap["attributes"] = val
 	}
@@ -191,9 +191,9 @@ func DefaultVaultCredentialStoreClientCertificateKey() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["client_certificate_key"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -227,9 +227,9 @@ func WithVaultCredentialStoreNamespace(inNamespace string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["namespace"] = inNamespace
 		o.postMap["attributes"] = val
 	}
@@ -239,9 +239,9 @@ func DefaultVaultCredentialStoreNamespace() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["namespace"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -251,9 +251,9 @@ func WithVaultCredentialStoreTlsServerName(inTlsServerName string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["tls_server_name"] = inTlsServerName
 		o.postMap["attributes"] = val
 	}
@@ -263,9 +263,9 @@ func DefaultVaultCredentialStoreTlsServerName() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["tls_server_name"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -275,9 +275,9 @@ func WithVaultCredentialStoreTlsSkipVerify(inTlsSkipVerify bool) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["tls_skip_verify"] = inTlsSkipVerify
 		o.postMap["attributes"] = val
 	}
@@ -287,9 +287,9 @@ func DefaultVaultCredentialStoreTlsSkipVerify() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["tls_skip_verify"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -299,9 +299,9 @@ func WithVaultCredentialStoreToken(inToken string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["token"] = inToken
 		o.postMap["attributes"] = val
 	}
@@ -311,9 +311,9 @@ func WithVaultCredentialStoreWorkerFilter(inWorkerFilter string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["worker_filter"] = inWorkerFilter
 		o.postMap["attributes"] = val
 	}
@@ -323,9 +323,9 @@ func DefaultVaultCredentialStoreWorkerFilter() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["worker_filter"] = nil
 		o.postMap["attributes"] = val
 	}

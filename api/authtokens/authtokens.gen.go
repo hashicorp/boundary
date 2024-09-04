@@ -51,7 +51,7 @@ type AuthTokenDeleteResult struct {
 }
 
 // GetItem will always be nil for AuthTokenDeleteResult
-func (n AuthTokenDeleteResult) GetItem() interface{} {
+func (n AuthTokenDeleteResult) GetItem() any {
 	return nil
 }
 

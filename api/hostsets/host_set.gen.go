@@ -57,7 +57,7 @@ type HostSetDeleteResult struct {
 }
 
 // GetItem will always be nil for HostSetDeleteResult
-func (n HostSetDeleteResult) GetItem() interface{} {
+func (n HostSetDeleteResult) GetItem() any {
 	return nil
 }
 

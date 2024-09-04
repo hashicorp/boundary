@@ -19,7 +19,7 @@ type OidcAccountAttributes struct {
 	UserinfoClaims map[string]interface{} `json:"userinfo_claims,omitempty"`
 }
 
-func AttributesMapToOidcAccountAttributes(in map[string]interface{}) (*OidcAccountAttributes, error) {
+func AttributesMapToOidcAccountAttributes(in map[string]any) (*OidcAccountAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

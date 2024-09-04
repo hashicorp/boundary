@@ -58,7 +58,7 @@ type SessionRecordingDeleteResult struct {
 }
 
 // GetItem will always be nil for SessionRecordingDeleteResult
-func (n SessionRecordingDeleteResult) GetItem() interface{} {
+func (n SessionRecordingDeleteResult) GetItem() any {
 	return nil
 }
 

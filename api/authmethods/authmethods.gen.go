@@ -54,7 +54,7 @@ type AuthMethodDeleteResult struct {
 }
 
 // GetItem will always be nil for AuthMethodDeleteResult
-func (n AuthMethodDeleteResult) GetItem() interface{} {
+func (n AuthMethodDeleteResult) GetItem() any {
 	return nil
 }
 
