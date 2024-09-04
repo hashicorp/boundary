@@ -15,7 +15,7 @@ type SshTargetAttributes struct {
 	DefaultClientPort uint32 `json:"default_client_port,omitempty"`
 }
 
-func AttributesMapToSshTargetAttributes(in map[string]interface{}) (*SshTargetAttributes, error) {
+func AttributesMapToSshTargetAttributes(in map[string]any) (*SshTargetAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

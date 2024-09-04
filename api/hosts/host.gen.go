@@ -59,7 +59,7 @@ type HostDeleteResult struct {
 }
 
 // GetItem will always be nil for HostDeleteResult
-func (n HostDeleteResult) GetItem() interface{} {
+func (n HostDeleteResult) GetItem() any {
 	return nil
 }
 

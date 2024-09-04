@@ -15,7 +15,7 @@ type StoragePolicyAttributes struct {
 	DeleteAfter *StoragePolicyDeleteAfter `json:"delete_after,omitempty"`
 }
 
-func AttributesMapToStoragePolicyAttributes(in map[string]interface{}) (*StoragePolicyAttributes, error) {
+func AttributesMapToStoragePolicyAttributes(in map[string]any) (*StoragePolicyAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

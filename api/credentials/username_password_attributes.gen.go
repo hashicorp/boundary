@@ -16,7 +16,7 @@ type UsernamePasswordAttributes struct {
 	PasswordHmac string `json:"password_hmac,omitempty"`
 }
 
-func AttributesMapToUsernamePasswordAttributes(in map[string]interface{}) (*UsernamePasswordAttributes, error) {
+func AttributesMapToUsernamePasswordAttributes(in map[string]any) (*UsernamePasswordAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

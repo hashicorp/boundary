@@ -14,7 +14,7 @@ type TargetAliasAttributes struct {
 	AuthorizeSessionArguments *AuthorizeSessionArguments `json:"authorize_session_arguments,omitempty"`
 }
 
-func AttributesMapToTargetAliasAttributes(in map[string]interface{}) (*TargetAliasAttributes, error) {
+func AttributesMapToTargetAliasAttributes(in map[string]any) (*TargetAliasAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

@@ -38,7 +38,7 @@ type LdapAuthMethodAttributes struct {
 	DereferenceAliases       string   `json:"dereference_aliases,omitempty"`
 }
 
-func AttributesMapToLdapAuthMethodAttributes(in map[string]interface{}) (*LdapAuthMethodAttributes, error) {
+func AttributesMapToLdapAuthMethodAttributes(in map[string]any) (*LdapAuthMethodAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

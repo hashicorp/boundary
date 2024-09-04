@@ -15,7 +15,7 @@ type PasswordAuthMethodAttributes struct {
 	MinPasswordLength  uint32 `json:"min_password_length,omitempty"`
 }
 
-func AttributesMapToPasswordAuthMethodAttributes(in map[string]interface{}) (*PasswordAuthMethodAttributes, error) {
+func AttributesMapToPasswordAuthMethodAttributes(in map[string]any) (*PasswordAuthMethodAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

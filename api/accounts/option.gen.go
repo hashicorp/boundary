@@ -20,7 +20,7 @@ import (
 type Option func(*options)
 
 type options struct {
-	postMap                 map[string]interface{}
+	postMap                 map[string]any
 	queryMap                map[string]string
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
@@ -30,7 +30,7 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		postMap:  make(map[string]interface{}),
+		postMap:  make(map[string]any),
 		queryMap: make(map[string]string),
 	}
 }
@@ -69,7 +69,7 @@ func WithAutomaticVersioning(enable bool) Option {
 // Useful for when we need to look up versions.
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
-		o.withSkipCurlOutput = true
+		o.withSkipCurlOutput = skip
 	}
 }
 
@@ -118,9 +118,9 @@ func WithOidcAccountIssuer(inIssuer string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["issuer"] = inIssuer
 		o.postMap["attributes"] = val
 	}
@@ -130,9 +130,9 @@ func DefaultOidcAccountIssuer() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["issuer"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -142,9 +142,9 @@ func WithLdapAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["login_name"] = inLoginName
 		o.postMap["attributes"] = val
 	}
@@ -154,9 +154,9 @@ func DefaultLdapAccountLoginName() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["login_name"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -166,9 +166,9 @@ func WithPasswordAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["login_name"] = inLoginName
 		o.postMap["attributes"] = val
 	}
@@ -178,9 +178,9 @@ func DefaultPasswordAccountLoginName() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["login_name"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -202,9 +202,9 @@ func WithPasswordAccountPassword(inPassword string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["password"] = inPassword
 		o.postMap["attributes"] = val
 	}
@@ -214,9 +214,9 @@ func DefaultPasswordAccountPassword() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["password"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -226,9 +226,9 @@ func WithOidcAccountSubject(inSubject string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["subject"] = inSubject
 		o.postMap["attributes"] = val
 	}
@@ -238,9 +238,9 @@ func DefaultOidcAccountSubject() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["subject"] = nil
 		o.postMap["attributes"] = val
 	}

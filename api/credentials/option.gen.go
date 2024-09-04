@@ -20,7 +20,7 @@ import (
 type Option func(*options)
 
 type options struct {
-	postMap                 map[string]interface{}
+	postMap                 map[string]any
 	queryMap                map[string]string
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
@@ -30,7 +30,7 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		postMap:  make(map[string]interface{}),
+		postMap:  make(map[string]any),
 		queryMap: make(map[string]string),
 	}
 }
@@ -69,7 +69,7 @@ func WithAutomaticVersioning(enable bool) Option {
 // Useful for when we need to look up versions.
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
-		o.withSkipCurlOutput = true
+		o.withSkipCurlOutput = skip
 	}
 }
 
@@ -130,9 +130,9 @@ func WithJsonCredentialObject(inObject map[string]interface{}) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["object"] = inObject
 		o.postMap["attributes"] = val
 	}
@@ -142,9 +142,9 @@ func WithUsernamePasswordCredentialPassword(inPassword string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["password"] = inPassword
 		o.postMap["attributes"] = val
 	}
@@ -154,9 +154,9 @@ func WithSshPrivateKeyCredentialPrivateKey(inPrivateKey string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["private_key"] = inPrivateKey
 		o.postMap["attributes"] = val
 	}
@@ -166,9 +166,9 @@ func WithSshPrivateKeyCredentialPrivateKeyPassphrase(inPrivateKeyPassphrase stri
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["private_key_passphrase"] = inPrivateKeyPassphrase
 		o.postMap["attributes"] = val
 	}
@@ -178,9 +178,9 @@ func DefaultSshPrivateKeyCredentialPrivateKeyPassphrase() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["private_key_passphrase"] = nil
 		o.postMap["attributes"] = val
 	}
@@ -190,9 +190,9 @@ func WithSshPrivateKeyCredentialUsername(inUsername string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["username"] = inUsername
 		o.postMap["attributes"] = val
 	}
@@ -202,9 +202,9 @@ func WithUsernamePasswordCredentialUsername(inUsername string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
-			raw = interface{}(map[string]interface{}{})
+			raw = any(map[string]any{})
 		}
-		val := raw.(map[string]interface{})
+		val := raw.(map[string]any)
 		val["username"] = inUsername
 		o.postMap["attributes"] = val
 	}
