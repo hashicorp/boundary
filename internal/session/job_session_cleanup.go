@@ -37,7 +37,7 @@ type sessionConnectionCleanupJob struct {
 	// The amount of time to give disconnected workers before marking their
 	// connections as closed. This should be larger than the liveness setting
 	// for the worker.
-	gracePeriod *atomic.Int64
+	workerStatusGracePeriod *atomic.Int64
 
 	// The total number of connections closed in the last run.
 	totalClosed int
@@ -47,21 +47,21 @@ type sessionConnectionCleanupJob struct {
 func newSessionConnectionCleanupJob(
 	ctx context.Context,
 	writer db.Writer,
-	gracePeriod *atomic.Int64,
+	workerStatusGracePeriod *atomic.Int64,
 ) (*sessionConnectionCleanupJob, error) {
 	const op = "session.newNewSessionConnectionCleanupJob"
 	switch {
 	case writer == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db writer")
-	case gracePeriod == nil:
+	case workerStatusGracePeriod == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grace period")
-	case gracePeriod.Load() == 0:
+	case workerStatusGracePeriod.Load() == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "grace period is zero")
 	}
 
 	return &sessionConnectionCleanupJob{
-		writer:      writer,
-		gracePeriod: gracePeriod,
+		writer:                  writer,
+		workerStatusGracePeriod: workerStatusGracePeriod,
 	}, nil
 }
 
@@ -98,7 +98,7 @@ func (j *sessionConnectionCleanupJob) Run(ctx context.Context) error {
 	j.totalClosed = 0
 
 	// Run the atomic dead worker cleanup job.
-	gracePeriod := time.Duration(j.gracePeriod.Load())
+	gracePeriod := time.Duration(j.workerStatusGracePeriod.Load())
 	results, err := j.closeConnectionsForDeadWorkers(ctx, gracePeriod)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
