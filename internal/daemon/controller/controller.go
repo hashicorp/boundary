@@ -682,3 +682,39 @@ func (c *Controller) Shutdown() error {
 func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 	return c.workerStatusUpdateTimes
 }
+
+// ReloadTimings reloads timing related parameters
+func (c *Controller) ReloadTimings(newConfig *config.Config) error {
+	const op = "controller.(Controller).ReloadTimings"
+
+	switch {
+	case newConfig == nil:
+		return errors.New(c.baseContext, errors.InvalidParameter, op, "nil config")
+	case newConfig.Controller == nil:
+		return errors.New(c.baseContext, errors.InvalidParameter, op, "nil config.Controller")
+	}
+
+	switch newConfig.Controller.WorkerStatusGracePeriodDuration {
+	case 0:
+		c.workerStatusGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		c.workerStatusGracePeriod.Store(int64(newConfig.Controller.WorkerStatusGracePeriodDuration))
+	}
+	switch newConfig.Controller.LivenessTimeToStaleDuration {
+	case 0:
+		c.livenessTimeToStale.Store(int64(server.DefaultLiveness))
+	default:
+		c.livenessTimeToStale.Store(int64(newConfig.Controller.LivenessTimeToStaleDuration))
+	}
+
+	switch newConfig.Controller.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		to := server.DefaultLiveness
+		c.getDownstreamWorkersTimeout.Store(&to)
+	default:
+		to := newConfig.Controller.GetDownstreamWorkersTimeoutDuration
+		c.getDownstreamWorkersTimeout.Store(&to)
+	}
+
+	return nil
+}
