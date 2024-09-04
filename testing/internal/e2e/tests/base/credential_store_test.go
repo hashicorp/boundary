@@ -142,7 +142,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 				e2e.WithArgs("credential-stores", "read", "-id", storeId, "-format", "json"),
 			)
 			if output.Err == nil {
-				return fmt.Errorf("Deleted credential can still be read: '%s'", output.Stdout)
+				return fmt.Errorf("Deleted credential can still be read: %q", output.Stdout)
 			}
 
 			var response boundary.CliError

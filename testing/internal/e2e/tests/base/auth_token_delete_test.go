@@ -85,6 +85,6 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	)
 
 	// Expect error as the user got logged out
-	require.Error(t, output.Err, fmt.Sprintf("User '%s' is still logged in", testAccountName))
+	require.Error(t, output.Err, fmt.Sprintf("User %q is still logged in", testAccountName))
 	t.Log("Successfully verified that token name is invalid")
 }
