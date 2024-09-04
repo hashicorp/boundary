@@ -42,15 +42,12 @@ You should be aware of the following security concerns that could result from th
 
 - asciicast only includes the last value that you send in the header, any previous values are overwritten.
 An attacker may be able to use a malicious shell value at the beginning of a session, and then switch to `shell=/bin/bash` at the end of the session to conceal the malicious activity.
-Boundary displays a warning when a user provides multiple environment requests to set the shell variable.
 
 - asciicast does not display other variables such as `path` in the header, but they can cause drastic changes to code execution during the SSH session.
 An attacker could change the `path` variable to point to a malicious program or change the beahvior of a normal program so that it performs a malicious action.
-Boundary displays a warning when a request that is recorded in the BSR file is not included in the asciicast.
 
 - asciicast silently ignores any requests that do not have an explicit handler, even though they may cause signficant changes to code execution during the SSH session.
 An attacker could execute malicious code using a request without an explicit handler.
-Boundary displays a warning when a request that is recorded in the BSR file is not included in the asciicast.
 
 ## Next steps
 
