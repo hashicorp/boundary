@@ -9,19 +9,10 @@ description: |-
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
+Boundary converts recorded sessions into an asciicast format so that you can play back interactive SSH sessions.
+Make sure to refer to the [asciicast](/boundary/docs/operations/session-recordings#asciicast) section to understand potential limitations to the asciicast format.
+
 You can view a list of all recorded sessions, or if you know the ID of a specific recorded session, you can find any channels associated with that recording.
-
-<Note>
-
-The asciicast format is well suited for the playback of interactive shell activity.
-However, some aspects of the recording cannot be translated into asciicast.
-For example, if an SSH session uses the `RemoteCommand` option, or is used to `exec` a command, the command is not displayed in the asciicast.
-The output of the command may be displayed, though.
-If you use SSH for something other than an interactive shell, such as for file transfer, X11 forwarding, or port forwarding, Boundary does not attempt to create an asciicast.
-
-In all cases, the SSH session is still recorded in the [BSR file](/boundary/docs/concepts/auditing/#bsr-directory-structure) and you can view the BSR file in the external storage bucket.
-
-</Note>
 
 <Tabs>
 <Tab heading="CLI">
