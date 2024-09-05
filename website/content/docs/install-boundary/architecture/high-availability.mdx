@@ -31,6 +31,9 @@ The workers must be able to establish a connection to the hosts with which they 
 
 Boundary requires an external [Postgres](https://www.postgresql.org/) and [KMS](https://aws.amazon.com/kms/). In the example above, we're using AWS managed services for these components. For Postgres, we're using [RDS](https://aws.amazon.com/rds/) and for KMS we're using Amazon's [Key Management Service](https://aws.amazon.com/kms/).
 
+For more information about configuring the Postgres database for high availability, refer to the [Postgres high availability, load balancing, and replication documentation](https://www.postgresql.org/docs/current/high-availability.html).
+If you use a managed service, refer to your provider's PostgreSQL high availability documentation.
+
 ### API and console load balancer
 
 Load balancing the controller allows operators to secure the ingress to the Boundary system. We recommend placing all Boundary servers in private networks and using load balancing techniques to expose services such as the API and administrative console to public networks. In the high availability architecture, we recommend load balancing using a layer 7 load balancer and further constraining ingress to that load balancer with layer 4 constraints such as [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html) or [IP tables](https://wiki.archlinux.org/index.php/Iptables).
