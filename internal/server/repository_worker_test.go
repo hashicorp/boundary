@@ -499,6 +499,72 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, workers, 2)
 	})
+
+	t.Run("ipv4 address", func(t *testing.T) {
+		status := server.NewWorker(scope.Global.String(),
+			server.WithName("worker-with-ipv4-address"),
+			server.WithAddress("8.8.8.8"),
+			server.WithReleaseVersion("Boundary v0.11.0"))
+		_, err = repo.UpsertWorkerStatus(ctx, status)
+		require.NoError(t, err)
+
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+		require.NoError(t, err)
+		require.NotEmpty(t, workers)
+		var actualWorker *server.Worker
+		for _, w := range workers {
+			if w.Name == "worker-with-ipv4-address" {
+				actualWorker = w
+				break
+			}
+		}
+		require.NotNil(t, actualWorker)
+		assert.Equal(t, actualWorker.Address, "8.8.8.8")
+	})
+
+	t.Run("ipv6 address", func(t *testing.T) {
+		status := server.NewWorker(scope.Global.String(),
+			server.WithName("worker-with-ipv6-address"),
+			server.WithAddress("2001:4860:4860:0:0:0:0:8888"),
+			server.WithReleaseVersion("Boundary v0.11.0"))
+		_, err = repo.UpsertWorkerStatus(ctx, status)
+		require.NoError(t, err)
+
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+		require.NoError(t, err)
+		require.NotEmpty(t, workers)
+		var actualWorker *server.Worker
+		for _, w := range workers {
+			if w.Name == "worker-with-ipv6-address" {
+				actualWorker = w
+				break
+			}
+		}
+		require.NotNil(t, actualWorker)
+		assert.Equal(t, actualWorker.Address, "2001:4860:4860:0:0:0:0:8888")
+	})
+
+	t.Run("ipv6 abbreviated address", func(t *testing.T) {
+		status := server.NewWorker(scope.Global.String(),
+			server.WithName("worker-with-abbreviated-ipv6-address"),
+			server.WithAddress("2001:4860:4860::8888"),
+			server.WithReleaseVersion("Boundary v0.11.0"))
+		_, err = repo.UpsertWorkerStatus(ctx, status)
+		require.NoError(t, err)
+
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+		require.NoError(t, err)
+		require.NotEmpty(t, workers)
+		var actualWorker *server.Worker
+		for _, w := range workers {
+			if w.Name == "worker-with-abbreviated-ipv6-address" {
+				actualWorker = w
+				break
+			}
+		}
+		require.NotNil(t, actualWorker)
+		assert.Equal(t, actualWorker.Address, "2001:4860:4860::8888")
+	})
 }
 
 func TestTagUpdatingListing(t *testing.T) {
