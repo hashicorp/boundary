@@ -71,14 +71,44 @@ func TestRepository_CreateTarget(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with-address",
+			name: "with-ipv4-address",
 			args: args{
 				target: func() target.Target {
 					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
-						target.WithName("with-address"),
-						target.WithDescription("with-address"),
+						target.WithName("with-ipv4-address"),
+						target.WithDescription("with-ipv4-address"),
 						target.WithDefaultPort(80),
 						target.WithAddress("8.8.8.8"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "with-abbreviated-ipv6-address",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("with-abbreviated-ipv6-address"),
+						target.WithDescription("with-abbreviated-ipv6-address"),
+						target.WithDefaultPort(80),
+						target.WithAddress("2001:4860:4860::8888"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "with-ipv6-address",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("with-ipv6-address"),
+						target.WithDescription("with-ipv6-address"),
+						target.WithDefaultPort(80),
+						target.WithAddress("2001:4860:4860:0:0:0:0:8888"))
 					require.NoError(t, err)
 					return target
 				}(),
@@ -360,12 +390,38 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 		},
 
 		{
-			name: "valid-address",
+			name: "valid-ipv4-address",
 			args: args{
-				name:           "valid-address" + id,
+				name:           "valid-ipv4-address" + id,
 				fieldMaskPaths: []string{"Name", "Address"},
 				ProjectId:      proj.PublicId,
 				address:        "8.8.8.8",
+			},
+			newProjectId:    proj.PublicId,
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: false,
+		},
+		{
+			name: "valid-abbreviated-ipv6-address",
+			args: args{
+				name:           "valid-abbreviated-ipv6-address" + id,
+				fieldMaskPaths: []string{"Name", "Address"},
+				ProjectId:      proj.PublicId,
+				address:        "2001:4860:4860::8888",
+			},
+			newProjectId:    proj.PublicId,
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: false,
+		},
+		{
+			name: "valid-ipv6-address",
+			args: args{
+				name:           "valid-ipv6-address" + id,
+				fieldMaskPaths: []string{"Name", "Address"},
+				ProjectId:      proj.PublicId,
+				address:        "2001:4860:4860:0:0:0:0:8888",
 			},
 			newProjectId:    proj.PublicId,
 			wantErr:         false,
