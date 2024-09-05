@@ -145,6 +145,9 @@ If you use a [high availability](/boundary/docs/install-boundary/high-availabili
 In non-HA configurations, the Boundary servers must have access.
 Worker nodes never need access to the database.
 
+For more information about configuring the Postgres database for HA, refer to the [Postgres high availability, load balancing, and replication documentation](https://www.postgresql.org/docs/current/high-availability.html).
+If you use a managed service, refer to your provider's PostgreSQL high availability documentation.
+
 ### Database users and roles
 
 After the database has been initialized, the database user for a Boundary controller requires only permissions for [data manipulation](https://www.postgresql.org/docs/current/dml.html) operations (select, insert, update, and delete).
