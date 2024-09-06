@@ -136,9 +136,9 @@ func TestSearch(t *testing.T) {
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
-		assert.EqualValues(t, r, &daemon.SearchResult{
+		assert.EqualValues(t, &daemon.SearchResult{
 			RefreshStatus: daemon.NotRefreshing,
-		})
+		}, r)
 	})
 
 	t.Run("empty response from query", func(t *testing.T) {
