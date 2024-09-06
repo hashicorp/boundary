@@ -24,6 +24,7 @@ func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
 	})
 	err := event.InitSysEventer(testLogger, testLock, "TestWorkerWaitForNextSuccessfulStatusUpdate", event.WithEventerConfig(testConfig))
 	require.NoError(t, err)
+	t.Cleanup(func() { event.TestResetSystEventer(t) })
 	for _, name := range []string{"ok", "timeout"} {
 		t.Run(name, func(t *testing.T) {
 			require := require.New(t)
