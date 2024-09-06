@@ -37,6 +37,9 @@ func NewTestServer(t *testing.T, cmd Commander, opt ...Option) *TestServer {
 		RecheckSupportInterval: DefaultRecheckSupportInterval,
 		LogWriter:              io.Discard,
 		DotDirectory:           dotDir,
+		// we need to provide this, otherwise it will open a store in the user's
+		// home dir. See db.Open(...)
+		DatabaseUrl: dotDir + "cache.db?_pragma=foreign_keys(1)",
 	}
 
 	s, err := New(ctx, cfg)
