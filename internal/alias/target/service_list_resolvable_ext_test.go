@@ -56,12 +56,12 @@ func TestService_ListResolvableAliases(t *testing.T) {
 	}
 	byIdPerms := []perms.Permission{
 		{
-			ScopeId:     proj.GetPublicId(),
-			Resource:    resource.Target,
-			Action:      action.ListResolvableAliases,
-			ResourceIds: []string{tar.GetPublicId(), "ttcp_unknownid"},
-			OnlySelf:    false,
-			All:         false,
+			GrantScopeId: proj.GetPublicId(),
+			Resource:     resource.Target,
+			Action:       action.ListResolvableAliases,
+			ResourceIds:  []string{tar.GetPublicId(), "ttcp_unknownid"},
+			OnlySelf:     false,
+			All:          false,
 		},
 	}
 	// Reverse since we read items in descending order (newest first)
@@ -76,11 +76,11 @@ func TestService_ListResolvableAliases(t *testing.T) {
 	}
 	byScopePerms := []perms.Permission{
 		{
-			ScopeId:  proj2.GetPublicId(),
-			Resource: resource.Target,
-			Action:   action.ListResolvableAliases,
-			OnlySelf: false,
-			All:      true,
+			GrantScopeId: proj2.GetPublicId(),
+			Resource:     resource.Target,
+			Action:       action.ListResolvableAliases,
+			OnlySelf:     false,
+			All:          true,
 		},
 	}
 	// Reverse since we read items in descending order (newest first)

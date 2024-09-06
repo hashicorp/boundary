@@ -337,7 +337,14 @@ func (s *Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		scopeInfo := &pb.ScopeInfo{
+			Id:            p.GetPublicId(),
+			Type:          p.Type,
+			Name:          p.GetName(),
+			Description:   p.GetDescription(),
+			ParentScopeId: p.GetParentId(),
+		}
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], scopeInfo, "")
 		if err != nil {
 			return nil, err
 		}
@@ -382,7 +389,14 @@ func (s *Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) 
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		scopeInfo := &pb.ScopeInfo{
+			Id:            p.GetPublicId(),
+			Type:          p.Type,
+			Name:          p.GetName(),
+			Description:   p.GetDescription(),
+			ParentScopeId: p.GetParentId(),
+		}
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], scopeInfo, "")
 		if err != nil {
 			return nil, err
 		}
@@ -427,7 +441,14 @@ func (s *Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) 
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		scopeInfo := &pb.ScopeInfo{
+			Id:            p.GetPublicId(),
+			Type:          p.Type,
+			Name:          p.GetName(),
+			Description:   p.GetDescription(),
+			ParentScopeId: p.GetParentId(),
+		}
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], scopeInfo, "")
 		if err != nil {
 			return nil, err
 		}
@@ -1137,7 +1158,14 @@ func newOutputOpts(ctx context.Context, item *iam.Scope, authResults auth.Verify
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], item.GetPublicId(), "")
+		scopeInfo := &pb.ScopeInfo{
+			Id:            item.GetPublicId(),
+			Type:          item.Type,
+			Name:          item.GetName(),
+			Description:   item.GetDescription(),
+			ParentScopeId: item.GetParentId(),
+		}
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], scopeInfo, "")
 		if err != nil {
 			return nil, false, err
 		}

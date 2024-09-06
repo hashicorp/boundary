@@ -7,13 +7,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/kr/pretty"
 )
 
 // targetAndScopeIdsForDestinations returns the target ids for which there is
@@ -24,7 +28,7 @@ func targetAndScopeIdsForDestinations(perms []perms.Permission) ([]string, []str
 	for _, perm := range perms {
 		switch {
 		case perm.All:
-			scopeIds = append(scopeIds, perm.ScopeId)
+			scopeIds = append(scopeIds, perm.GrantScopeId)
 		case len(perm.ResourceIds) > 0:
 			targetIds = append(targetIds, perm.ResourceIds...)
 		}
@@ -41,7 +45,50 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 	case len(permissions) == 0:
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing permissions")
 	}
-	toTargetIds, toTargetsInScopeIds := targetAndScopeIdsForDestinations(permissions)
+
+	var allDescendants bool
+	// First check for all descendants. Since what we are querying for below is
+	// for targets (either IDs, or targets within specific scopes), and targets
+	// are not in global, if this matches we can actually ignore everything
+	// else.
+	for _, perm := range permissions {
+		if perm.GrantScopeId == globals.GrantScopeDescendants && perm.All {
+			allDescendants = true
+		}
+	}
+
+	directIds := make([]string, 0, len(permissions))
+	directScopeIds := make([]string, 0, len(permissions))
+	childAllScopes := make([]string, 0, len(permissions))
+	for _, perm := range permissions {
+		switch {
+		case allDescendants:
+			// See the above check; we don't need any other info
+		case perm.GrantScopeId == scope.Global.String() || strings.HasPrefix(perm.GrantScopeId, globals.OrgPrefix):
+			// There are no targets in global or orgs
+		case perm.RoleScopeId == scope.Global.String() && perm.GrantScopeId == globals.GrantScopeChildren:
+			// A role in global that includes children will include only orgs,
+			// which do not have targets, so ignore
+		case perm.GrantScopeId == globals.GrantScopeChildren && perm.All:
+			// Because of the above check this will match only grants from org
+			// roles. If the grant scope is children and all, we store the scope
+			// ID.
+			childAllScopes = append(childAllScopes, perm.RoleScopeId)
+		case perm.All:
+			// We ignore descendants and if this was a children grant scope and
+			// perm.All it would match the above case. So this is a grant
+			// directly on a scope. Since only projects contain targets, we can
+			// ignore any grant scope ID that doesn't match targets.
+			if strings.HasPrefix(perm.GrantScopeId, globals.ProjectPrefix) {
+				directScopeIds = append(directScopeIds, perm.GrantScopeId)
+			}
+		case len(perm.ResourceIds) > 0:
+			// It's an ID grant
+			directIds = append(directIds, perm.ResourceIds...)
+		}
+	}
+
+	log.Println("allDescendants", allDescendants, "childAllScopes", pretty.Sprint(childAllScopes), "direct ids", pretty.Sprint(directIds), "direct scope ids", pretty.Sprint(directScopeIds))
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -59,16 +106,33 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 
 	var args []any
 	var destinationIdClauses []string
-	if len(toTargetIds) > 0 {
-		destinationIdClauses = append(destinationIdClauses, "destination_id in @target_ids")
-		args = append(args, sql.Named("target_ids", toTargetIds))
-	}
-	if len(toTargetsInScopeIds) > 0 {
-		destinationIdClauses = append(destinationIdClauses, "destination_id in (select public_id from target where project_id in @target_scope_ids)")
-		args = append(args, sql.Named("target_scope_ids", toTargetsInScopeIds))
-	}
-	if len(destinationIdClauses) == 0 {
-		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no target ids or scope ids provided")
+
+	switch {
+	case allDescendants:
+		// This matches all targets
+		destinationIdClauses = append(destinationIdClauses, "destination_id in (select public_id from target)")
+	default:
+		// Add orgs with all permissions on children
+		if len(childAllScopes) > 0 {
+			destinationIdClauses = append(destinationIdClauses,
+				"destination_id in "+
+					"(select public_id from target where project_id in "+
+					"(select public_id from iam_scope where parent_id = any(@child_all_scopes)))",
+			)
+			args = append(args, sql.Named("child_all_scopes", "{"+strings.Join(childAllScopes, ",")+"}"))
+		}
+		// Add target ids
+		if len(directIds) > 0 {
+			destinationIdClauses = append(destinationIdClauses, "destination_id = any(@target_ids)")
+			args = append(args, sql.Named("target_ids", "{"+strings.Join(directIds, ",")+"}"))
+		}
+		if len(directScopeIds) > 0 {
+			destinationIdClauses = append(destinationIdClauses, "destination_id in (select public_id from target where project_id = any(@target_scope_ids))")
+			args = append(args, sql.Named("target_scope_ids", "{"+strings.Join(directScopeIds, ",")+"}"))
+		}
+		if len(destinationIdClauses) == 0 && len(childAllScopes) == 0 {
+			return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no target ids or scope ids provided")
+		}
 	}
 
 	whereClause := fmt.Sprintf("destination_id is not null and (%s)", strings.Join(destinationIdClauses, " or "))
@@ -98,7 +162,37 @@ func (r *Repository) listResolvableAliasesRefresh(ctx context.Context, updatedAf
 	case len(permissions) == 0:
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing permissions")
 	}
-	toTargetIds, toTargetsInScopeIds := targetAndScopeIdsForDestinations(permissions)
+
+	directPerms := make([]perms.Permission, 0, len(permissions))
+	var allDescendants bool
+	childAllScopes := make([]string, 0, len(permissions))
+
+	// First check for all descendants. If we find it, we only need to check for
+	// a global direct grant.
+	for _, perm := range permissions {
+		if perm.GrantScopeId == globals.GrantScopeDescendants && perm.All {
+			allDescendants = true
+		}
+	}
+
+	for _, perm := range permissions {
+		switch {
+		case allDescendants:
+			// If we have an all descendants grant the only other grants we need to
+			// check for are those IDs directly in global
+			if perm.GrantScopeId == scope.Global.String() {
+				directPerms = append(directPerms, perm)
+			}
+		case perm.GrantScopeId == globals.GrantScopeChildren && perm.All:
+			// If the grant scope is children and all, we store the scope ID
+			childAllScopes = append(childAllScopes, perm.RoleScopeId)
+		default:
+			// It's an ID grant of some kind
+			directPerms = append(directPerms, perm)
+		}
+	}
+
+	directIds, directScopeIds := targetAndScopeIdsForDestinations(directPerms)
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -116,15 +210,15 @@ func (r *Repository) listResolvableAliasesRefresh(ctx context.Context, updatedAf
 
 	var args []any
 	var destinationIdClauses []string
-	if len(toTargetIds) > 0 {
+	if len(directIds) > 0 {
 		destinationIdClauses = append(destinationIdClauses, "destination_id in @target_ids")
-		args = append(args, sql.Named("target_ids", toTargetIds))
+		args = append(args, sql.Named("target_ids", directIds))
 	}
-	if len(toTargetsInScopeIds) > 0 {
+	if len(directScopeIds) > 0 {
 		destinationIdClauses = append(destinationIdClauses, "destination_id in (select public_id from target where project_id in @target_scope_ids)")
-		args = append(args, sql.Named("target_scope_ids", toTargetsInScopeIds))
+		args = append(args, sql.Named("target_scope_ids", directScopeIds))
 	}
-	if len(destinationIdClauses) == 0 {
+	if len(destinationIdClauses) == 0 && len(childAllScopes) == 0 && !allDescendants {
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no target ids or scope ids provided")
 	}
 
@@ -162,19 +256,49 @@ func (r *Repository) listRemovedResolvableAliasIds(ctx context.Context, since ti
 		// to be provided.
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing permissions")
 	}
-	toTargetIds, toTargetsInScopeIds := targetAndScopeIdsForDestinations(permissions)
+
+	directPerms := make([]perms.Permission, 0, len(permissions))
+	var allDescendants bool
+	childAllScopes := make([]string, 0, len(permissions))
+
+	// First check for all descendants. If we find it, we only need to check for
+	// a global direct grant.
+	for _, perm := range permissions {
+		if perm.GrantScopeId == globals.GrantScopeDescendants && perm.All {
+			allDescendants = true
+		}
+	}
+
+	for _, perm := range permissions {
+		switch {
+		case allDescendants:
+			// If we have an all descendants grant the only other grants we need to
+			// check for are those IDs directly in global
+			if perm.GrantScopeId == scope.Global.String() {
+				directPerms = append(directPerms, perm)
+			}
+		case perm.GrantScopeId == globals.GrantScopeChildren && perm.All:
+			// If the grant scope is children and all, we store the scope ID
+			childAllScopes = append(childAllScopes, perm.RoleScopeId)
+		default:
+			// It's an ID grant of some kind
+			directPerms = append(directPerms, perm)
+		}
+	}
+
+	directIds, directScopeIds := targetAndScopeIdsForDestinations(directPerms)
 
 	var args []any
 	var destinationIdClauses []string
-	if len(toTargetIds) > 0 {
+	if len(directIds) > 0 {
 		destinationIdClauses = append(destinationIdClauses, "destination_id not in @target_ids")
-		args = append(args, sql.Named("target_ids", toTargetIds))
+		args = append(args, sql.Named("target_ids", directIds))
 	}
-	if len(toTargetsInScopeIds) > 0 {
+	if len(directScopeIds) > 0 {
 		destinationIdClauses = append(destinationIdClauses, "destination_id not in (select public_id from target where project_id in @target_scope_ids)")
-		args = append(args, sql.Named("target_scope_ids", toTargetsInScopeIds))
+		args = append(args, sql.Named("target_scope_ids", directScopeIds))
 	}
-	if len(destinationIdClauses) == 0 {
+	if len(destinationIdClauses) == 0 && len(childAllScopes) == 0 && !allDescendants {
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no target ids or scope ids provided")
 	}
 	whereClause := fmt.Sprintf("update_time > @updated_after_time and (destination_id is null or (%s))",

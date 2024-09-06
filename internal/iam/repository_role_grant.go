@@ -6,6 +6,8 @@ package iam
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -165,7 +167,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			deleteRoleGrants := make([]*RoleGrant, 0, len(grants))
 			for _, grant := range grants {
 				// Use a fake scope, just want to get out a canonical string
-				perm, err := perms.Parse(ctx, "o_abcd1234", grant, perms.WithSkipFinalValidation(true))
+				perm, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: "o_abcd1234", GrantScopeId: "o_abcd1234", Grant: grant}, perms.WithSkipFinalValidation(true))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
 				}
@@ -257,7 +259,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	deleteRoleGrants := make([]*RoleGrant, 0, len(grants))
 	for _, grant := range grants {
 		// Use a fake scope, just want to get out a canonical string
-		perm, err := perms.Parse(ctx, "o_abcd1234", grant, perms.WithSkipFinalValidation(true))
+		perm, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: "o_abcd1234", GrantScopeId: "o_abcd1234", Grant: grant}, perms.WithSkipFinalValidation(true))
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing grant string"))
 		}
@@ -410,11 +412,21 @@ func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleIds []string, 
 	return roleGrantScopes, nil
 }
 
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) (perms.GrantTuples, error) {
+type multiGrantTuple struct {
+	RoleId            string
+	RoleScopeId       string
+	RoleParentScopeId string
+	GrantScopeIds     string
+	Grants            string
+}
+
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
+
+	opts := getOpts(opt...)
 
 	const (
 		anonUser = `where public_id in (?)`
@@ -429,7 +441,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 		query = fmt.Sprintf(grantsForUserQuery, authUser)
 	}
 
-	var grants []perms.GrantTuple
+	var grants []multiGrantTuple
 	rows, err := r.reader.Query(ctx, query, []any{userId})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -443,5 +455,42 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return grants, nil
+
+	ret := make(perms.GrantTuples, 0, len(grants)*3)
+	for _, grant := range grants {
+		for _, grantScopeId := range strings.Split(grant.GrantScopeIds, "^") {
+			for _, canonicalGrant := range strings.Split(grant.Grants, "^") {
+				gt := perms.GrantTuple{
+					RoleId:            grant.RoleId,
+					RoleScopeId:       grant.RoleScopeId,
+					RoleParentScopeId: grant.RoleParentScopeId,
+					GrantScopeId:      grantScopeId,
+					Grant:             canonicalGrant,
+				}
+				if gt.GrantScopeId == globals.GrantScopeThis || gt.GrantScopeId == "" {
+					gt.GrantScopeId = grant.RoleScopeId
+				}
+				ret = append(ret, gt)
+			}
+		}
+	}
+
+	if opts.withTestCacheMultiGrantTuples != nil {
+		for i, grant := range grants {
+			grant.testStableSort()
+			grants[i] = grant
+		}
+		*opts.withTestCacheMultiGrantTuples = grants
+	}
+
+	return ret, nil
+}
+
+func (m *multiGrantTuple) testStableSort() {
+	grantScopeIds := strings.Split(m.GrantScopeIds, "^")
+	sort.Strings(grantScopeIds)
+	m.GrantScopeIds = strings.Join(grantScopeIds, "^")
+	gts := strings.Split(m.Grants, "^")
+	sort.Strings(gts)
+	m.Grants = strings.Join(gts, "^")
 }
