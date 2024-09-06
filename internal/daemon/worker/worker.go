@@ -97,7 +97,7 @@ type recorderManager interface {
 
 // reverseConnReceiverFactory provides a simple factory which a Worker can use to
 // create its reverseConnReceiver
-var reverseConnReceiverFactory func() reverseConnReceiver
+var reverseConnReceiverFactory func(*atomic.Int64) (reverseConnReceiver, error)
 
 var recordingStorageFactory func(
 	ctx context.Context,
@@ -189,7 +189,7 @@ type Worker struct {
 	// because they are casted to time.Duration.
 	successfulStatusGracePeriod         *atomic.Int64
 	statusCallTimeoutDuration           *atomic.Int64
-	getDownstreamWorkersTimeoutDuration *atomic.Pointer[time.Duration]
+	getDownstreamWorkersTimeoutDuration *atomic.Int64
 
 	// AuthRotationNextRotation is useful in tests to understand how long to
 	// sleep
@@ -232,18 +232,13 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		localStorageState:                   new(atomic.Value),
 		successfulStatusGracePeriod:         new(atomic.Int64),
 		statusCallTimeoutDuration:           new(atomic.Int64),
-		getDownstreamWorkersTimeoutDuration: new(atomic.Pointer[time.Duration]),
+		getDownstreamWorkersTimeoutDuration: new(atomic.Int64),
 		upstreamConnectionState:             new(atomic.Value),
 		downstreamWorkers:                   new(atomic.Pointer[downstreamersContainer]),
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)
 	w.localStorageState.Store(server.UnknownLocalStorageState)
-
-	if reverseConnReceiverFactory != nil {
-		w.downstreamReceiver = reverseConnReceiverFactory()
-	}
-
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
@@ -338,14 +333,20 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	}
 	switch conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration {
 	case 0:
-		to := server.DefaultLiveness
-		w.getDownstreamWorkersTimeoutDuration.Store(&to)
+		w.getDownstreamWorkersTimeoutDuration.Store(int64(server.DefaultLiveness))
 	default:
-		to := conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration
-		w.getDownstreamWorkersTimeoutDuration.Store(&to)
+		w.getDownstreamWorkersTimeoutDuration.Store(int64(conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration))
 	}
 	// FIXME: This is really ugly, but works.
 	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
+
+	if reverseConnReceiverFactory != nil {
+		var err error
+		w.downstreamReceiver, err = reverseConnReceiverFactory(w.getDownstreamWorkersTimeoutDuration)
+		if err != nil {
+			return nil, fmt.Errorf("%s: error creating reverse connection receiver: %w", op, err)
+		}
+	}
 
 	if eventListenerFactory != nil {
 		var err error
@@ -429,11 +430,9 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 	}
 	switch newConf.Worker.GetDownstreamWorkersTimeoutDuration {
 	case 0:
-		to := server.DefaultLiveness
-		w.getDownstreamWorkersTimeoutDuration.Store(&to)
+		w.getDownstreamWorkersTimeoutDuration.Store(int64(server.DefaultLiveness))
 	default:
-		to := newConf.Worker.GetDownstreamWorkersTimeoutDuration
-		w.getDownstreamWorkersTimeoutDuration.Store(&to)
+		w.getDownstreamWorkersTimeoutDuration.Store(int64(newConf.Worker.GetDownstreamWorkersTimeoutDuration))
 	}
 	// See comment about this in worker.go
 	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
