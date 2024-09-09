@@ -60,6 +60,7 @@ authentication and authorization with an external object store. There are two SB
   workers will be filtered by the SBC state depending on the action and permission required.
 * ui: Add multiple grant scope support for roles ([PR](https://github.com/hashicorp/boundary-ui/pull/2388))
 * ui: Add API tags support for workers and improve worker filtering for targets ([PR](https://github.com/hashicorp/boundary-ui/pull/2393))
+* Updated grpc to 1.61.1([PR](https://github.com/hashicorp/boundary/pull/4983))
 
 ## 0.16.2 (2024/06/10)
 
