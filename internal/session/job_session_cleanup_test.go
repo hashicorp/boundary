@@ -95,7 +95,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Create the job.
 	job, err := newSessionConnectionCleanupJob(ctx, rw, gracePeriod)
-	job.gracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
+	job.workerStatusGracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
 	require.NoError(err)
 
 	// sleep the status grace period.
