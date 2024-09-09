@@ -111,9 +111,9 @@ func WithBoundaryTokenReaderFunc(_ context.Context, fn cache.BoundaryTokenReader
 }
 
 // WithForceResetSchema provides an optional way to force resetting the cache
-func WithForceResetSchema(_ context.Context, resetSchema bool) Option {
+func WithForceResetSchema(_ context.Context, force bool) Option {
 	return func(o *options) error {
-		o.withForceResetSchema = resetSchema
+		o.withForceResetSchema = force
 		return nil
 	}
 }

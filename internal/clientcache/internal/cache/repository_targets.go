@@ -21,32 +21,42 @@ import (
 
 // TargetRetrievalFunc is a function that retrieves targets
 // from the provided boundary addr using the provided token.
-type TargetRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) (ret []*targets.Target, removedIds []string, refreshToken RefreshTokenValue, err error)
+type TargetRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *targets.TargetListResult, opt ...Option) (ret *targets.TargetListResult, refreshToken RefreshTokenValue, err error)
 
-func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
+func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *targets.TargetListResult, opt ...Option) (*targets.TargetListResult, RefreshTokenValue, error) {
 	const op = "cache.defaultTargetFunc"
 	conf, err := api.DefaultConfig()
 	if err != nil {
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
+	}
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	conf.Addr = addr
 	conf.Token = authTok
 	client, err := api.NewClient(conf)
 	if err != nil {
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	tarClient := targets.NewClient(client)
-	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithListToken(string(refreshTok)))
+	var l *targets.TargetListResult
+	switch inPage {
+	case nil:
+		l, err = tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithListToken(string(refreshTok)), targets.WithClientDirectedPagination(!opts.withUseNonPagedListing))
+	default:
+		l, err = tarClient.ListNextPage(ctx, inPage, targets.WithListToken(string(refreshTok)))
+	}
 	if err != nil {
 		if api.ErrInvalidListToken.Is(err) {
-			return nil, nil, "", err
+			return nil, "", err
 		}
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	if l.ResponseType == "" {
-		return nil, nil, "", ErrRefreshNotSupported
+		return nil, "", ErrRefreshNotSupported
 	}
-	return l.Items, l.RemovedIds, RefreshTokenValue(l.ListToken), nil
+	return l, RefreshTokenValue(l.ListToken), nil
 }
 
 // refreshTargets uses attempts to refresh the targets for the provided user
@@ -81,13 +91,13 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 
 	// Find and use a token for retrieving targets
 	var gotResponse bool
-	var resp []*targets.Target
-	var removedIds []string
+	var currentPage *targets.TargetListResult
 	var newRefreshToken RefreshTokenValue
+	var foundAuthToken string
 	var unsupportedCacheRequest bool
 	var retErr error
 	for at, t := range tokens {
-		resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
+		currentPage, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal, currentPage)
 		if api.ErrInvalidListToken.Is(err) {
 			event.WriteSysEvent(ctx, op, "old list token is no longer valid, starting new initial fetch", "user_id", u.Id)
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
@@ -95,7 +105,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 			}
 			// try again without the refresh token
 			oldRefreshToken = nil
-			resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "")
+			currentPage, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "", currentPage)
 		}
 		if err != nil {
 			if err == ErrRefreshNotSupported {
@@ -105,6 +115,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 				continue
 			}
 		}
+		foundAuthToken = t
 		gotResponse = true
 		break
 	}
@@ -118,44 +129,57 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	}
 
 	var numDeleted int
-	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
-		var err error
-		switch {
-		case oldRefreshToken == nil || unsupportedCacheRequest:
-			if numDeleted, err = w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
-				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
-				return err
+	var numUpserted int
+	var clearPerformed bool
+	for {
+		_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+			var err error
+			if (oldRefreshToken == nil || unsupportedCacheRequest) && !clearPerformed {
+				if numDeleted, err = w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
+					[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
+					return err
+				}
+				clearPerformed = true
 			}
-		case len(removedIds) > 0:
-			if numDeleted, err = w.Exec(ctx, "delete from target where id in @ids",
-				[]any{sql.Named("ids", removedIds)}); err != nil {
-				return err
+			switch {
+			case unsupportedCacheRequest:
+				if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
+					return err
+				}
+			case newRefreshToken != "":
+				numUpserted += len(currentPage.Items)
+				if err := upsertTargets(ctx, w, u, currentPage.Items); err != nil {
+					return err
+				}
+				if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+					return err
+				}
+			default:
+				// controller supports caching, but doesn't have any resources
 			}
+			if !unsupportedCacheRequest && len(currentPage.RemovedIds) > 0 {
+				if numDeleted, err = w.Exec(ctx, "delete from target where id in @ids",
+					[]any{sql.Named("ids", currentPage.RemovedIds)}); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if unsupportedCacheRequest || currentPage.ResponseType == "" || currentPage.ResponseType == "complete" {
+			break
 		}
-		switch {
-		case unsupportedCacheRequest:
-			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
-				return err
-			}
-		case newRefreshToken != "":
-			if err := upsertTargets(ctx, w, u, resp); err != nil {
-				return err
-			}
-			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
-				return err
-			}
-		default:
-			// controller supports caching, but doesn't have any resources
+		currentPage, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, foundAuthToken, newRefreshToken, currentPage)
+		if err != nil {
+			break
 		}
-		return nil
-	})
+	}
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
-	event.WriteSysEvent(ctx, op, "targets updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
+	event.WriteSysEvent(ctx, op, "targets updated", "deleted", numDeleted, "upserted", numUpserted, "user id", u.Id)
 	return nil
 }
 
@@ -185,12 +209,12 @@ func (r *Repository) checkCachingTargets(ctx context.Context, u *user, tokens ma
 
 	// Find and use a token for retrieving targets
 	var gotResponse bool
-	var resp []*targets.Target
+	var resp *targets.TargetListResult
 	var newRefreshToken RefreshTokenValue
 	var unsupportedCacheRequest bool
 	var retErr error
 	for at, t := range tokens {
-		resp, _, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "")
+		resp, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "", nil, WithUseNonPagedListing(true))
 		if err != nil {
 			if err == ErrRefreshNotSupported {
 				unsupportedCacheRequest = true
@@ -221,14 +245,15 @@ func (r *Repository) checkCachingTargets(ctx context.Context, u *user, tokens ma
 				return err
 			}
 		case newRefreshToken != "":
-			var err error
 			// Now that there is a refresh token, the data can be cached, so
-			// cache it and store the refresh token for future refreshes.
+			// cache it and store the refresh token for future refreshes. First
+			// remove any values, then add the new ones
+			var err error
 			if numDeleted, err = w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
-			if err := upsertTargets(ctx, w, u, resp); err != nil {
+			if err := upsertTargets(ctx, w, u, resp.Items); err != nil {
 				return err
 			}
 			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
@@ -249,7 +274,7 @@ func (r *Repository) checkCachingTargets(ctx context.Context, u *user, tokens ma
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
-	event.WriteSysEvent(ctx, op, "targets updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
+	event.WriteSysEvent(ctx, op, "targets updated", "deleted", numDeleted, "upserted", len(resp.Items), "user_id", u.Id)
 	return nil
 }
 
