@@ -54,8 +54,11 @@ func Open(ctx context.Context, opt ...Option) (*db.DB, error) {
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	conn.Debug(opts.withDebug)
-
+	defer func() {
+		// let's not capture the output of resetSchema and createTables, so
+		// we'll defer turning on debug
+		conn.Debug(opts.withDebug)
+	}()
 	switch {
 	case opts.withDbType == dbw.Sqlite && url == DefaultStoreUrl:
 		if err := createTables(ctx, conn); err != nil {

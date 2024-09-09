@@ -201,8 +201,8 @@ github.com/hashicorp/go-bexpr v0.1.13 h1:HNwp7vZrMpRq8VZXj8VF90LbZpRjQQpim1oJF0D
 github.com/hashicorp/go-bexpr v0.1.13/go.mod h1:gN7hRKB3s7yT+YvTdnhZVLTENejvhlkZ8UE4YVBS+Q8=
 github.com/hashicorp/go-cleanhttp v0.5.2 h1:035FKYIWjmULyFRBKPs8TBQoi0x6d9G4xc9neXJWAZQ=
 github.com/hashicorp/go-cleanhttp v0.5.2/go.mod h1:kO/YDlP8L1346E6Sodw+PrpBSV4/SoxCXGY6BqNFT48=
-github.com/hashicorp/go-dbw v0.1.4 h1:FipsEg7UbWiB8hBQylTYWJobG6jVr0LNoRdo9IClGs4=
-github.com/hashicorp/go-dbw v0.1.4/go.mod h1:/YHbfK7mgG9k09aB74Imw3fEOwno0eTtlFTTYGZ7SFk=
+github.com/hashicorp/go-dbw v0.1.5-0.20240909162114-6cee92b3da36 h1:rPD+2QPhCLq8mKMx2FnIaqR5PTNT+LzhjfacYWuvFzY=
+github.com/hashicorp/go-dbw v0.1.5-0.20240909162114-6cee92b3da36/go.mod h1:/YHbfK7mgG9k09aB74Imw3fEOwno0eTtlFTTYGZ7SFk=
 github.com/hashicorp/go-hclog v1.6.3 h1:Qr2kF+eVWjTiYmU7Y31tYlP1h0q/X3Nl3tPGdaB11/k=
 github.com/hashicorp/go-hclog v1.6.3/go.mod h1:W4Qnvbt70Wk/zYJryRzDRU/4r0kIg0PVHBcfoyhpF5M=
 github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20231219183231-6bac757bb482 h1:1DqTnLaNk658AEenlF4PNGYd9b1hXE/+0jSOBIGOAms=
