@@ -34,7 +34,7 @@ when
   end;
 
 
-insert into schema_version(version) values('v0.0.1');
+insert into schema_version(version) values('v0.0.2');
 
 -- user contains the boundary user information for the boundary user that owns
 -- the information in the cache.
