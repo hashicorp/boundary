@@ -163,6 +163,9 @@ create table if not exists target (
   primary key (fk_user_id, id)
 );
 
+-- index for implicit scope search
+create index target_scope_id_ix on target(scope_id);
+
 -- session contains cached boundary session resource for a specific user and
 -- with specific fields extracted to facilitate searching over those fields
 create table if not exists session (
@@ -190,6 +193,9 @@ create table if not exists session (
   primary key (fk_user_id, id)
 );
 
+-- implicit scope search
+create index session_scope_id_ix on session(scope_id);
+
 -- alias contains cached boundary alias resource for a specific user and
 -- with specific fields extracted to facilitate searching over those fields
 create table if not exists resolvable_alias (
@@ -210,6 +216,9 @@ create table if not exists resolvable_alias (
   item text,
   primary key (fk_user_id, id)
 );
+
+-- optimize query for destination_id
+create index destination_id_resolvable_alias_ix on resolvable_alias(destination_id);
 
 -- contains errors from the last attempt to sync data from boundary for a
 -- specific resource type
