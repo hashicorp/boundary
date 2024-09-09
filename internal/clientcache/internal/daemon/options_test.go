@@ -108,4 +108,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withHomeDir = "/tmp"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithForceResetSchema", func(t *testing.T) {
+		opts, err := getOpts(WithForceResetSchema(ctx, true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withForceResetSchema = true
+		assert.Equal(t, opts, testOpts)
+	})
 }

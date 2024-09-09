@@ -69,7 +69,7 @@ func Open(ctx context.Context, opt ...Option) (*db.DB, error) {
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		if !ok {
+		if !ok || opts.withForceResetSchema {
 			if err := resetSchema(ctx, conn); err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
