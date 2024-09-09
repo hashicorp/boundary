@@ -12,7 +12,10 @@ on:
 jobs:
   scan:
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
-    if: ${{ github.actor != 'dependabot[bot]' || github.actor != 'hc-github-team-secure-boundary' }}
+    if: |
+      ! github.event.pull_request.head.repo.fork &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'hc-github-team-secure-boundary'
     steps:
     - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
