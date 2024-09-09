@@ -91,11 +91,13 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, alts []
 	r, err := cache.NewRepository(ctx, s.CacheServer.store.Load(), &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
-	altFn := func(ctx context.Context, _, tok, _ string, _ cache.RefreshTokenValue) ([]*aliases.Alias, []string, cache.RefreshTokenValue, error) {
+	altFn := func(ctx context.Context, _ string, tok, _ string, _ cache.RefreshTokenValue, inPage *aliases.AliasListResult, opt ...cache.Option) (*aliases.AliasListResult, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
-			return nil, nil, "", nil
+			return nil, "", nil
 		}
-		return alts, nil, "addedaliases", nil
+		return &aliases.AliasListResult{
+			Items: alts,
+		}, "addedaliases", nil
 	}
 	tarFn := func(ctx context.Context, _ string, tok string, _ cache.RefreshTokenValue, inPage *targets.TargetListResult, opt ...cache.Option) (*targets.TargetListResult, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
@@ -105,11 +107,13 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, alts []
 			Items: tars,
 		}, "addedtargets", nil
 	}
-	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*sessions.Session, []string, cache.RefreshTokenValue, error) {
+	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue, inPage *sessions.SessionListResult, opt ...cache.Option) (*sessions.SessionListResult, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
-			return nil, nil, "", nil
+			return nil, "", nil
 		}
-		return sess, nil, "addedsessions", nil
+		return &sessions.SessionListResult{
+			Items: sess,
+		}, "addedsessions", nil
 	}
 	rs, err := cache.NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 	require.NoError(t, err)
@@ -136,11 +140,15 @@ func (s *TestServer) AddUnsupportedCachingData(t *testing.T, p *authtokens.AuthT
 			},
 		}, "", cache.ErrRefreshNotSupported
 	}
-	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*sessions.Session, []string, cache.RefreshTokenValue, error) {
+	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue, inPage *sessions.SessionListResult, opt ...cache.Option) (*sessions.SessionListResult, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
-			return nil, nil, "", nil
+			return &sessions.SessionListResult{}, "", nil
 		}
-		return []*sessions.Session{}, nil, "", cache.ErrRefreshNotSupported
+		return &sessions.SessionListResult{
+			Items: []*sessions.Session{
+				{Id: "s_unsupported"},
+			},
+		}, "", cache.ErrRefreshNotSupported
 	}
 	rs, err := cache.NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 	require.NoError(t, err)

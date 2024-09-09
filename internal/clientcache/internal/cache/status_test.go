@@ -203,7 +203,7 @@ func TestStatus(t *testing.T) {
 			session("3"),
 		}
 		err := r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{sess}, [][]string{nil})))
+			WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{sess}, [][]string{nil}))))
 		require.NoError(t, err)
 
 		als := []*aliases.Alias{
@@ -212,7 +212,7 @@ func TestStatus(t *testing.T) {
 			alias("3"),
 		}
 		err = r.refreshResolvableAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{als}, [][]string{nil})))
+			WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{als}, [][]string{nil}))))
 		require.NoError(t, err)
 
 		got, err := ss.Status(ctx)
@@ -308,7 +308,7 @@ func TestStatus_unsupported(t *testing.T) {
 	}))
 
 	err = r.refreshResolvableAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t))))
 	require.ErrorIs(t, err, ErrRefreshNotSupported)
 
 	err = r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
@@ -316,7 +316,7 @@ func TestStatus_unsupported(t *testing.T) {
 	require.ErrorIs(t, err, ErrRefreshNotSupported)
 
 	err = r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 	require.ErrorIs(t, err, ErrRefreshNotSupported)
 
 	got, err := ss.Status(ctx)

@@ -155,7 +155,7 @@ func fillTemplates() {
 			optionsMap[input.Package] = optionMap
 		}
 		// Override some defined options
-		if len(in.fieldOverrides) > 0 && optionsMap != nil {
+		if len(in.fieldOverrides) > 0 {
 			for _, override := range in.fieldOverrides {
 				inOpts := optionsMap[input.Package]
 				if inOpts != nil {
@@ -434,7 +434,7 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *{{ .Name }}ListR
 
 	// Ensure values are carried forward to the next call
 	nextPage.{{ .CollectionFunctionArg }} = currentPage.{{ .CollectionFunctionArg }}
-{{ if .RecursiveListing }} 
+{{ if .RecursiveListing }}
 	nextPage.recursive = currentPage.recursive
 {{ end }} 
 	nextPage.pageSize = currentPage.pageSize

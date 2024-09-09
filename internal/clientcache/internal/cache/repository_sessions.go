@@ -21,32 +21,42 @@ import (
 
 // SessionRetrievalFunc is a function that retrieves sessions
 // from the provided boundary addr using the provided token.
-type SessionRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) (ret []*sessions.Session, removedIds []string, refreshToken RefreshTokenValue, err error)
+type SessionRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *sessions.SessionListResult, opt ...Option) (ret *sessions.SessionListResult, refreshToken RefreshTokenValue, err error)
 
-func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
+func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *sessions.SessionListResult, opt ...Option) (ret *sessions.SessionListResult, refreshToken RefreshTokenValue, err error) {
 	const op = "cache.defaultSessionFunc"
 	conf, err := api.DefaultConfig()
 	if err != nil {
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
+	}
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	conf.Addr = addr
 	conf.Token = authTok
 	client, err := api.NewClient(conf)
 	if err != nil {
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	sClient := sessions.NewClient(client)
-	l, err := sClient.List(ctx, "global", sessions.WithIncludeTerminated(true), sessions.WithRecursive(true), sessions.WithListToken(string(refreshTok)))
+	var l *sessions.SessionListResult
+	switch inPage {
+	case nil:
+		l, err = sClient.List(ctx, "global", sessions.WithIncludeTerminated(true), sessions.WithRecursive(true), sessions.WithListToken(string(refreshTok)), sessions.WithClientDirectedPagination(!opts.withUseNonPagedListing))
+	default:
+		l, err = sClient.ListNextPage(ctx, inPage, sessions.WithListToken(string(refreshTok)))
+	}
 	if err != nil {
 		if api.ErrInvalidListToken.Is(err) {
-			return nil, nil, "", err
+			return nil, "", err
 		}
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	if l.ResponseType == "" {
-		return nil, nil, "", ErrRefreshNotSupported
+		return nil, "", ErrRefreshNotSupported
 	}
-	return l.Items, l.RemovedIds, RefreshTokenValue(l.ListToken), nil
+	return l, RefreshTokenValue(l.ListToken), nil
 }
 
 // refreshSessions uses attempts to refresh the sessions for the provided user
@@ -59,8 +69,6 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
 	case u.Id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
-	case u.Address == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "user boundary address is missing")
 	}
 	const resourceType = sessionResourceType
 
@@ -82,13 +90,13 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 
 	// Find and use a token for retrieving sessions
 	var gotResponse bool
-	var resp []*sessions.Session
+	var currentPage *sessions.SessionListResult
 	var newRefreshToken RefreshTokenValue
+	var foundAuthToken string
 	var unsupportedCacheRequest bool
-	var removedIds []string
 	var retErr error
 	for at, t := range tokens {
-		resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
+		currentPage, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal, currentPage)
 		if api.ErrInvalidListToken.Is(err) {
 			event.WriteSysEvent(ctx, op, "old list token is no longer valid, starting new initial fetch", "user_id", u.Id)
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
@@ -96,7 +104,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 			}
 			// try again without the refresh token
 			oldRefreshToken = nil
-			resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "")
+			currentPage, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "", currentPage)
 		}
 		if err != nil {
 			if err == ErrRefreshNotSupported {
@@ -106,6 +114,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 				continue
 			}
 		}
+		foundAuthToken = t
 		gotResponse = true
 		break
 	}
@@ -120,44 +129,56 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	}
 
 	var numDeleted int
-	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
-		var err error
-		switch {
-		case oldRefreshToken == nil:
-			if numDeleted, err = w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
-				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
-				return err
+	var numUpserted int
+	var clearPerformed bool
+	for {
+		_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+			var err error
+			if (oldRefreshToken == nil || unsupportedCacheRequest) && !clearPerformed {
+				if numDeleted, err = w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
+					[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
+					return err
+				}
 			}
-		case len(removedIds) > 0:
-			if numDeleted, err = w.Exec(ctx, "delete from session where id in @ids",
-				[]any{sql.Named("ids", removedIds)}); err != nil {
-				return err
+			switch {
+			case unsupportedCacheRequest:
+				if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
+					return err
+				}
+			case newRefreshToken != "":
+				numUpserted += len(currentPage.Items)
+				if err := upsertSessions(ctx, w, u, currentPage.Items); err != nil {
+					return err
+				}
+				if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+					return err
+				}
+			default:
+				// controller supports caching, but doesn't have any resources
 			}
+			if !unsupportedCacheRequest && len(currentPage.RemovedIds) > 0 {
+				if numDeleted, err = w.Exec(ctx, "delete from session where id in @ids",
+					[]any{sql.Named("ids", currentPage.RemovedIds)}); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if unsupportedCacheRequest || currentPage.ResponseType == "" || currentPage.ResponseType == "complete" {
+			break
 		}
-		switch {
-		case unsupportedCacheRequest:
-			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
-				return err
-			}
-		case newRefreshToken != "":
-			if err := upsertSessions(ctx, w, u, resp); err != nil {
-				return err
-			}
-			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
-				return err
-			}
-		default:
-			// controller supports caching, but doesn't have any resources
+		currentPage, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, foundAuthToken, newRefreshToken, currentPage)
+		if err != nil {
+			break
 		}
-		return nil
-	})
+	}
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
-	event.WriteSysEvent(ctx, op, "sessions updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
+	event.WriteSysEvent(ctx, op, "sessions updated", "deleted", numDeleted, "upserted", numUpserted, "user id", u.Id)
 	return nil
 }
 
@@ -186,12 +207,12 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 
 	// Find and use a token for retrieving sessions
 	var gotResponse bool
-	var resp []*sessions.Session
+	var resp *sessions.SessionListResult
 	var newRefreshToken RefreshTokenValue
 	var unsupportedCacheRequest bool
 	var retErr error
 	for at, t := range tokens {
-		resp, _, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "")
+		resp, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "", nil, WithUseNonPagedListing(true))
 		if err != nil {
 			if err == ErrRefreshNotSupported {
 				unsupportedCacheRequest = true
@@ -217,24 +238,29 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		switch {
 		case unsupportedCacheRequest:
+			// Since we know the controller doesn't support caching, we mark the
+			// user as unable to cache the data.
 			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
 				return err
 			}
 		case newRefreshToken != "":
+			// Now that there is a refresh token, the data can be cached, so
+			// cache it and store the refresh token for future refreshes. First
+			// remove any values, then add the new ones
 			var err error
 			if numDeleted, err = w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
-			if err := upsertSessions(ctx, w, u, resp); err != nil {
+			if err := upsertSessions(ctx, w, u, resp.Items); err != nil {
 				return err
 			}
 			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
 				return err
 			}
 		default:
-			// This is no longer flagged as not supported, but we dont have a
-			// refresh token so clear out any refresh token we have stored.
+			// We know the controller supports caching, but doesn't have a
+			// refresh token so clear out any refresh token we have for this resource.
 			if err := deleteRefreshToken(ctx, w, u, resourceType); err != nil {
 				return err
 			}
@@ -247,7 +273,7 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
-	event.WriteSysEvent(ctx, op, "sessions updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
+	event.WriteSysEvent(ctx, op, "sessions updated", "deleted", numDeleted, "upserted", len(resp.Items), "user_id", u.Id)
 	return nil
 }
 
