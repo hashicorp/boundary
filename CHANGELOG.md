@@ -81,6 +81,7 @@ object store. There are two SBC types, managed secret and environmental.
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2388))
 * ui: Add API tags support for workers and improve worker filtering for targets
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2393))
+* Updated grpc to 1.61.1([PR](https://github.com/hashicorp/boundary/pull/4983))
 
 ### Bug Fixes
 
