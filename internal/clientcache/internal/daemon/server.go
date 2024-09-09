@@ -229,7 +229,8 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	var store *db.DB
 	store, err = openStore(ctx,
 		WithUrl(ctx, s.conf.DatabaseUrl),
-		WithLogger(ctx, s.logger))
+		WithLogger(ctx, s.logger),
+	)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -527,7 +528,14 @@ func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 		dbOpts = append(dbOpts, cachedb.WithUrl(url))
 	}
 	if !util.IsNil(opts.withLogger) {
-		dbOpts = append(dbOpts, cachedb.WithGormFormatter(opts.withLogger))
+		opts.withLogger.Log(hclog.Debug, "Store GormFormatter", "LogLevel", opts.withLogger.GetLevel())
+		switch {
+		case opts.withLogger.IsDebug():
+			dbOpts = append(dbOpts, cachedb.WithGormFormatter(gormDebugLogger{Logger: opts.withLogger}))
+			dbOpts = append(dbOpts, cachedb.WithDebug(true))
+		default:
+			dbOpts = append(dbOpts, cachedb.WithGormFormatter(opts.withLogger))
+		}
 	}
 	store, err := cachedb.Open(ctx, dbOpts...)
 	if err != nil {
@@ -563,3 +571,17 @@ const (
 	dbFileName = "cache.db"
 	fkPragma   = "?_pragma=foreign_keys(1)"
 )
+
+type gormDebugLogger struct {
+	hclog.Logger
+}
+
+func (g gormDebugLogger) Printf(msg string, values ...any) {
+	b := new(strings.Builder)
+	fmt.Fprintf(b, msg, values...)
+	g.Debug(b.String())
+}
+
+func getGormLogger(log hclog.Logger) gormDebugLogger {
+	return gormDebugLogger{Logger: log}
+}
