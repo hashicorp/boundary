@@ -16,7 +16,7 @@ The following ports should be available:
 - Clients must have access to the Controller's `api` port (default 9200)
 - Clients must have access to the Worker's port (default 9202)
 - Workers must have access to the Controller's `cluster` port (default 9201)
-- Workers must have a route and port access to the hosts defined within the system in order to provide connectivity
+- Workers must have a route and port access to the hosts defined within the system to provide connectivity
 
 ## Architecture
 
@@ -30,6 +30,14 @@ As shown above, Boundary is broken up into its controller and worker server comp
 The workers must be able to establish a connection to the hosts with which they interact. In the architecture above, we place them in the public subnet so our remote client can establish a session between them and the target VM.
 
 Boundary requires an external [Postgres](https://www.postgresql.org/) and [KMS](https://aws.amazon.com/kms/). In the example above, we're using AWS managed services for these components. For Postgres, we're using [RDS](https://aws.amazon.com/rds/) and for KMS we're using Amazon's [Key Management Service](https://aws.amazon.com/kms/).
+
+### Database
+
+Boundary controllers must be able to reach the PostgreSQL database.
+If you use a [high availability](/boundary/docs/install-boundary/high-availability) (HA) configuration, then the controllers must have access to the PostgreSQL server infrastructure.
+
+For more information about configuring the Postgres database for HA, refer to the [Postgres high availability, load balancing, and replication documentation](https://www.postgresql.org/docs/current/high-availability.html).
+If you use a managed service, refer to your provider's PostgreSQL high availability documentation.
 
 ### API and console load balancer
 

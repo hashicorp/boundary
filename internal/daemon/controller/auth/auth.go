@@ -55,6 +55,12 @@ const (
 	AuthTokenTypeRecoveryKms
 )
 
+// CallbackAction represents the action type for
+// callback operations in a request's URL path.
+// This is currently only used during auth method
+// authentication.
+const CallbackAction = "callback"
+
 type key int
 
 var verifierKey key
@@ -944,4 +950,14 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 // GrantsHash returns a stable hash of all the grants in the verify results.
 func (r *VerifyResults) GrantsHash(ctx context.Context) ([]byte, error) {
 	return r.grants.GrantHash(ctx)
+}
+
+// GetRequestInfo extracts the request info stored in the context, if it exists.
+// This returns nil, false if the request info could not be found.
+func GetRequestInfo(ctx context.Context) (*authpb.RequestInfo, bool) {
+	v, ok := ctx.Value(verifierKey).(*verifier)
+	if !ok {
+		return nil, false
+	}
+	return v.requestInfo, true
 }

@@ -116,7 +116,7 @@ type Command struct {
 	FlagSkipCacheDaemon  bool
 	FlagSkipClientAgent  bool
 
-	FlagClientAgentPort uint
+	FlagClientAgentPort uint16
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -128,7 +128,7 @@ type Command struct {
 	FlagAuthMethodId      string
 	FlagHostCatalogId     string
 	FlagCredentialStoreId string
-	FlagVersion           int
+	FlagVersion           int64
 	FlagRecursive         bool
 	FlagFilter            string
 	FlagTags              map[string][]string
@@ -500,7 +500,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Hidden:  true,
 			})
 
-			f.UintVar(&UintVar{
+			f.Uint16Var(&Uint16Var{
 				Name:    "client-agent-port",
 				Target:  &c.FlagClientAgentPort,
 				Default: 9300,

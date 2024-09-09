@@ -33,6 +33,7 @@ type options struct {
 	withRecoveryTokenNotAllowed bool
 	withAnonymousUserNotAllowed bool
 	withResource                *perms.Resource
+	withActions                 []string
 }
 
 func getDefaultOptions() options {
@@ -97,5 +98,12 @@ func WithAnonymousUserNotAllowed(notAllowed bool) Option {
 func WithResource(resource *perms.Resource) Option {
 	return func(o *options) {
 		o.withResource = resource
+	}
+}
+
+// WithActions specifies a list of actions in the request
+func WithActions(actions []string) Option {
+	return func(o *options) {
+		o.withActions = actions
 	}
 }

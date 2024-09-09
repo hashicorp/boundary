@@ -163,7 +163,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 			in: func() *input {
 				ph := phs[1]
 				e := exp[1]
-				newIp := testGetIpAddress(t)
+				newIp := testGetIpv4Address(t)
 				newName := testGetDnsName(t)
 				ph.IpAddresses = append(ph.IpAddresses, newIp)
 				e.IpAddresses = append(e.IpAddresses, newIp)
@@ -221,6 +221,9 @@ func TestJob_UpsertHosts(t *testing.T) {
 					cmpopts.SortSlices(func(x, y *Host) bool {
 						return x.GetPublicId() < y.GetPublicId()
 					}),
+					cmpopts.SortSlices(func(x, y string) bool {
+						return x < y
+					}),
 				),
 			)
 
@@ -241,6 +244,9 @@ func TestJob_UpsertHosts(t *testing.T) {
 					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
 					cmpopts.SortSlices(func(x, y *Host) bool {
 						return x.GetPublicId() < y.GetPublicId()
+					}),
+					cmpopts.SortSlices(func(x, y string) bool {
+						return x < y
 					}),
 				),
 			)
@@ -274,6 +280,9 @@ func TestJob_UpsertHosts(t *testing.T) {
 						got,
 						cmpopts.IgnoreUnexported(Host{}, store.Host{}),
 						cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
+						cmpopts.SortSlices(func(x, y string) bool {
+							return x < y
+						}),
 					),
 				)
 				assert.Empty(

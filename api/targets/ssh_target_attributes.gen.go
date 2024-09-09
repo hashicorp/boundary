@@ -17,7 +17,7 @@ type SshTargetAttributes struct {
 	EnableSessionRecording bool   `json:"enable_session_recording,omitempty"`
 }
 
-func AttributesMapToSshTargetAttributes(in map[string]interface{}) (*SshTargetAttributes, error) {
+func AttributesMapToSshTargetAttributes(in map[string]any) (*SshTargetAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

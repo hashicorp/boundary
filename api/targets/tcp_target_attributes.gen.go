@@ -15,7 +15,7 @@ type TcpTargetAttributes struct {
 	DefaultClientPort uint32 `json:"default_client_port,omitempty"`
 }
 
-func AttributesMapToTcpTargetAttributes(in map[string]interface{}) (*TcpTargetAttributes, error) {
+func AttributesMapToTcpTargetAttributes(in map[string]any) (*TcpTargetAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

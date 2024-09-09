@@ -165,7 +165,8 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 		externalId, err := base62.Random(10)
 		require.NoError(err)
 
-		ipStr := testGetIpAddress(t)
+		ipv4Str := testGetIpv4Address(t)
+		ipv6Str := testGetIpv6Address(t)
 		dnsName := testGetDnsName(t)
 
 		rh := &plgpb.ListHostsResponseHost{
@@ -173,7 +174,7 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 			Name:        base62.MustRandom(10),
 			Description: base62.MustRandom(10),
 			SetIds:      setIds[0 : i+1],
-			IpAddresses: []string{ipStr},
+			IpAddresses: []string{ipv4Str, ipv6Str},
 			DnsNames:    []string{dnsName},
 		}
 		retRH = append(retRH, rh)
@@ -190,7 +191,7 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 				CatalogId:   catalog.PublicId,
 				PublicId:    publicId,
 				ExternalId:  externalId,
-				IpAddresses: []string{ipStr},
+				IpAddresses: []string{ipv4Str, ipv6Str},
 				DnsNames:    []string{dnsName},
 				Version:     1,
 			},
@@ -217,7 +218,7 @@ func testGetDnsName(t testing.TB) string {
 	return fmt.Sprintf("%s.example.com", dnsName)
 }
 
-func testGetIpAddress(t testing.TB) string {
+func testGetIpv4Address(t testing.TB) string {
 	ipBytes := make([]byte, 4)
 	for {
 		lr := io.LimitReader(rand.Reader, 4)
@@ -228,6 +229,21 @@ func testGetIpAddress(t testing.TB) string {
 		v4 := ip.To4()
 		if v4 != nil {
 			return v4.String()
+		}
+	}
+}
+
+func testGetIpv6Address(t testing.TB) string {
+	ipBytes := make([]byte, 16)
+	for {
+		lr := io.LimitReader(rand.Reader, 16)
+		n, err := lr.Read(ipBytes)
+		require.NoError(t, err)
+		require.Equal(t, n, 16)
+		ip := net.IP(ipBytes)
+		v6 := ip.To16()
+		if v6 != nil {
+			return v6.String()
 		}
 	}
 }

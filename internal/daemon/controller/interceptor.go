@@ -5,6 +5,7 @@ package controller
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -242,7 +243,7 @@ func sharedRequestInterceptorLogic(
 	switch {
 	case requestInfo.Ticket == "":
 		return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (missing ticket)")
-	case requestInfo.Ticket != ticket:
+	case subtle.ConstantTimeCompare([]byte(requestInfo.Ticket), []byte(ticket)) != 1:
 		return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (bad ticket)")
 	}
 

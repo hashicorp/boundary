@@ -414,6 +414,29 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 			ar.InitialAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
 		}
 	}
+
+	switch newConf.Worker.SuccessfulStatusGracePeriodDuration {
+	case 0:
+		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		w.successfulStatusGracePeriod.Store(int64(newConf.Worker.SuccessfulStatusGracePeriodDuration))
+	}
+	switch newConf.Worker.StatusCallTimeoutDuration {
+	case 0:
+		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
+	default:
+		w.statusCallTimeoutDuration.Store(int64(newConf.Worker.StatusCallTimeoutDuration))
+	}
+	switch newConf.Worker.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		to := server.DefaultLiveness
+		w.getDownstreamWorkersTimeoutDuration.Store(&to)
+	default:
+		to := newConf.Worker.GetDownstreamWorkersTimeoutDuration
+		w.getDownstreamWorkersTimeoutDuration.Store(&to)
+	}
+	// See comment about this in worker.go
+	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
 }
 
 func (w *Worker) Start() error {
@@ -711,7 +734,7 @@ func (w *Worker) Shutdown() error {
 			break
 		}
 
-		if w.lastSuccessfulStatusTime().Sub(waitStatusStart) > 0 {
+		if w.lastSuccessfulStatusTime().After(waitStatusStart) {
 			break
 		}
 

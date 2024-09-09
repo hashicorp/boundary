@@ -12,7 +12,10 @@ on:
 jobs:
   scan:
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
-    if: ${{ github.actor != 'dependabot[bot]' || github.actor != 'hc-github-team-secure-boundary' }}
+    if: |
+      ! github.event.pull_request.head.repo.fork &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'hc-github-team-secure-boundary'
     steps:
     - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
@@ -76,7 +79,7 @@ jobs:
         repository: "$PWD"
 
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@0e346f2c4a1b999b44f1ef93fe08bdb83dae63ab # codeql-bundle-v2.18.1
+      uses: github/codeql-action/upload-sarif@5c02493ebfd65b28fd3b082c65e5af2cd745d91f # codeql-bundle-v2.18.2
       with:
         sarif_file: results.sarif
 

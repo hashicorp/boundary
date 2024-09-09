@@ -51,4 +51,7 @@ message RequestInfo {
 
   // the client ip for the request
   string client_ip = 140;
+
+  // url actions from the request path
+  repeated string actions = 141;
 }

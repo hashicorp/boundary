@@ -30,7 +30,7 @@ type UpsertTokenRequest struct {
 // The passed in cli.Ui is used to print out any errors when looking up the
 // auth token from the keyring. This allows background operations calling this
 // method to pass in a silent UI to suppress any output.
-func addToken(ctx context.Context, apiClient *api.Client, port uint) (*api.Response, *api.Error, error) {
+func addToken(ctx context.Context, apiClient *api.Client, port uint16) (*api.Response, *api.Error, error) {
 	pa := UpsertTokenRequest{
 		BoundaryAddr: apiClient.Addr(),
 	}

@@ -526,21 +526,22 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).Authenticate"
+
 	if err := validateAuthenticateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
 	switch globals.ResourceInfoFromPrefix(req.GetAuthMethodId()).Subtype {
 	case password.Subtype:
-		if err := validateAuthenticatePasswordRequest(req); err != nil {
+		if err := validateAuthenticatePasswordRequest(ctx, req); err != nil {
 			return nil, err
 		}
 	case oidc.Subtype:
-		if err := validateAuthenticateOidcRequest(req); err != nil {
+		if err := validateAuthenticateOidcRequest(ctx, req); err != nil {
 			return nil, err
 		}
 	case ldap.Subtype:
-		if err := validateAuthenticateLdapRequest(req); err != nil {
+		if err := validateAuthenticateLdapRequest(ctx, req); err != nil {
 			return nil, err
 		}
 	}

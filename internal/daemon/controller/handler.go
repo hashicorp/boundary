@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -498,6 +499,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			requestInfo.EventId = info.EventId
 			requestInfo.TraceId = info.Id
 			requestInfo.ClientIp = info.ClientIp
+			requestInfo.Actions = getActions(info.Path)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 			event.WriteError(ctx, op, errors.New("unable to read event request info from context"))
@@ -649,7 +651,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			return
 		}
 
-		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":callback")
+		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":"+auth.CallbackAction)
 
 		// How we get the parameters changes based on the method. Right now only
 		// GET is supported with query args, but this can support POST with JSON
@@ -736,4 +738,20 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 
 		h.ServeHTTP(w, req)
 	})
+}
+
+// getActions takes in a URL Path and returns the actions from the URL
+func getActions(urlPath string) []string {
+	// Remove any query parameters
+	urlPath = strings.Split(urlPath, "?")[0]
+
+	lastPart := path.Base(urlPath)
+
+	_, rest, _ := strings.Cut(lastPart, ":")
+	if rest == "" {
+		return []string{}
+	}
+
+	// Split the rest on ":", returning all actions and sub-actions
+	return strings.Split(rest, ":")
 }

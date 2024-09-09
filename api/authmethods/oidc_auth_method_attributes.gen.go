@@ -29,7 +29,7 @@ type OidcAuthMethodAttributes struct {
 	Prompts                           []string `json:"prompts,omitempty"`
 }
 
-func AttributesMapToOidcAuthMethodAttributes(in map[string]interface{}) (*OidcAuthMethodAttributes, error) {
+func AttributesMapToOidcAuthMethodAttributes(in map[string]any) (*OidcAuthMethodAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

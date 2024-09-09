@@ -18,7 +18,7 @@ type VaultCredentialStoreAttributes struct {
 	WorkerFilter  string `json:"worker_filter,omitempty"`
 }
 
-func AttributesMapToVaultCredentialStoreAttributes(in map[string]interface{}) (*VaultCredentialStoreAttributes, error) {
+func AttributesMapToVaultCredentialStoreAttributes(in map[string]any) (*VaultCredentialStoreAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

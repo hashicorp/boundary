@@ -70,7 +70,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "valid-no-options",
+			name: "valid-ipv4-address",
 			in: &Host{
 				Host: &store.Host{
 					CatalogId: catalog.PublicId,
@@ -81,6 +81,36 @@ func TestRepository_CreateHost(t *testing.T) {
 				Host: &store.Host{
 					CatalogId: catalog.PublicId,
 					Address:   "127.0.0.1",
+				},
+			},
+		},
+		{
+			name: "valid-abbreviated-ipv6-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "2001:4860:4860::8888",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "2001:4860:4860::8888",
+				},
+			},
+		},
+		{
+			name: "valid-ipv6-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "2001:4860:4860:0:0:0:0:8888",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "2001:4860:4860:0:0:0:0:8888",
 				},
 			},
 		},
@@ -545,7 +575,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "change-address",
+			name: "change-ipv4-address",
 			orig: &Host{
 				Host: &store.Host{
 					Address: "127.0.0.1",
@@ -556,6 +586,38 @@ func TestRepository_UpdateHost(t *testing.T) {
 			want: &Host{
 				Host: &store.Host{
 					Address: "10.0.0.1",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-abbreviated-ipv6-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn: changeAddress("2001:4860:4860::8888"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "2001:4860:4860::8888",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-ipv6-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn: changeAddress("2001:4860:4860:0:0:0:0:8888"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "2001:4860:4860:0:0:0:0:8888",
 				},
 			},
 			wantCount: 1,

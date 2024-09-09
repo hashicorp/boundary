@@ -14,7 +14,7 @@ type JsonCredentialAttributes struct {
 	ObjectHmac string `json:"object_hmac,omitempty"`
 }
 
-func AttributesMapToJsonCredentialAttributes(in map[string]interface{}) (*JsonCredentialAttributes, error) {
+func AttributesMapToJsonCredentialAttributes(in map[string]any) (*JsonCredentialAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

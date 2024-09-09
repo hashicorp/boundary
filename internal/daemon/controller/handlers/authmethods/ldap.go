@@ -8,7 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"math"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/ldap"
@@ -296,6 +298,12 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 			if u.Scheme != "ldap" && u.Scheme != "ldaps" {
 				badUrlMsgs = append(badUrlMsgs, fmt.Sprintf("%s scheme in url %q is not either ldap or ldaps", u.Scheme, u.String()))
 			}
+			if u.Port() != "" {
+				port, err := strconv.Atoi(u.Port())
+				if err != nil || port > math.MaxUint16 {
+					badUrlMsgs = append(badUrlMsgs, fmt.Sprintf("port %s in url %s is not valid", u.Port(), u.String()))
+				}
+			}
 		}
 		if len(badUrlMsgs) > 0 {
 			badFields[urlsField] = strings.Join(badUrlMsgs, " / ")
@@ -340,8 +348,21 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 	}
 }
 
-func validateAuthenticateLdapRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticateLdapRequest(ctx context.Context, req *pbs.AuthenticateRequest) error {
+	const op = "authmethods.(Service).validateAuthenticateLdapRequest"
 	badFields := make(map[string]string)
+
+	requestInfo, ok := auth.GetRequestInfo(ctx)
+	if !ok {
+		return errors.New(ctx, errors.Internal, op, "no request info found")
+	}
+
+	for _, action := range requestInfo.Actions {
+		switch action {
+		case auth.CallbackAction:
+			badFields["request_path"] = "callback is not a valid action for this auth method."
+		}
+	}
 
 	attrs := req.GetLdapLoginAttributes()
 	switch {

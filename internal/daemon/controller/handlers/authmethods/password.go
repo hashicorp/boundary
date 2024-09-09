@@ -143,8 +143,21 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 	)
 }
 
-func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticatePasswordRequest(ctx context.Context, req *pbs.AuthenticateRequest) error {
+	const op = "authmethods.(Service).validateAuthenticatePasswordRequest"
 	badFields := make(map[string]string)
+
+	requestInfo, ok := auth.GetRequestInfo(ctx)
+	if !ok {
+		return errors.New(ctx, errors.Internal, op, "no request info found")
+	}
+
+	for _, action := range requestInfo.Actions {
+		switch action {
+		case auth.CallbackAction:
+			badFields["request_path"] = "callback is not a valid action for this auth method."
+		}
+	}
 
 	attrs := req.GetPasswordLoginAttributes()
 	switch {

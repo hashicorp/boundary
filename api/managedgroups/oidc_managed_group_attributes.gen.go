@@ -14,7 +14,7 @@ type OidcManagedGroupAttributes struct {
 	Filter string `json:"filter,omitempty"`
 }
 
-func AttributesMapToOidcManagedGroupAttributes(in map[string]interface{}) (*OidcManagedGroupAttributes, error) {
+func AttributesMapToOidcManagedGroupAttributes(in map[string]any) (*OidcManagedGroupAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

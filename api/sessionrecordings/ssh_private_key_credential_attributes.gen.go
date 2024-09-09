@@ -16,7 +16,7 @@ type SshPrivateKeyCredentialAttributes struct {
 	PrivateKeyPassphraseHmac string `json:"private_key_passphrase_hmac,omitempty"`
 }
 
-func AttributesMapToSshPrivateKeyCredentialAttributes(in map[string]interface{}) (*SshPrivateKeyCredentialAttributes, error) {
+func AttributesMapToSshPrivateKeyCredentialAttributes(in map[string]any) (*SshPrivateKeyCredentialAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}

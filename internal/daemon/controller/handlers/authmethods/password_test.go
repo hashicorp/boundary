@@ -546,6 +546,7 @@ func TestAuthenticate_Password(t *testing.T) {
 	cases := []struct {
 		name            string
 		request         *pbs.AuthenticateRequest
+		actions         []string
 		wantType        string
 		wantErr         error
 		wantErrContains string
@@ -654,6 +655,22 @@ func TestAuthenticate_Password(t *testing.T) {
 			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
 			wantErrContains: `Details: {{name: "attributes", desc: "This is a required field."}}`,
 		},
+		{
+			name:    "with-callback-action",
+			actions: []string{"callback"},
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				TokenType:    "token",
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: `Details: {{name: "request_path", desc: "callback is not a valid action for this auth method."}}`,
+		},
 	}
 
 	for _, tc := range cases {
@@ -662,7 +679,7 @@ func TestAuthenticate_Password(t *testing.T) {
 			s, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err)
 
-			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
+			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithActions(tc.actions)), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)

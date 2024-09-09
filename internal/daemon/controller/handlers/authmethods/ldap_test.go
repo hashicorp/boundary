@@ -821,6 +821,56 @@ func Test_UpdateLdap(t *testing.T) {
 			err:         handlers.ApiErrorWithCode(codes.NotFound),
 			errContains: "no changes were made to the existing AuthMethod",
 		},
+		{
+			name: "valid-port-number",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.urls"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls: []string{"ldaps://ldap2:8156"},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Version:     2,
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        ldap.Subtype.String(),
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls:  []string{"ldaps://ldap2:8156"},
+							State: "active-private",
+						},
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           ldapAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "invalid-port-number",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.urls"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls: []string{"ldaps://ldap2:9999999"},
+						},
+					},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "port 9999999 in url ldaps://ldap2:9999999 is not valid",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -969,6 +1019,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 		name            string
 		acctId          string
 		request         *pbs.AuthenticateRequest
+		actions         []string
 		wantType        string
 		wantGroups      []string
 		wantErr         error
@@ -1096,6 +1147,24 @@ func TestAuthenticate_Ldap(t *testing.T) {
 			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
 			wantErrContains: `Details: {{name: "attributes", desc: "This is a required field."}}`,
 		},
+		{
+			name:    "with-callback-action",
+			acctId:  testAcct.PublicId,
+			actions: []string{"callback"},
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "token",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantGroups:      []string{testManagedGrp.PublicId},
+			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: `Details: {{name: "request_path", desc: "callback is not a valid action for this auth method."}}`,
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1103,7 +1172,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err)
 
-			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
+			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithActions(tc.actions)), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)

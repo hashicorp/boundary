@@ -178,7 +178,14 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	}
 
 	authUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
-	if err != nil {
+	switch {
+	case errors.Match(errors.T(errors.AuthMethodInactive), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Cannot start authentication against an inactive OIDC auth method")
+	case errors.Match(errors.T(errors.RecordNotFound), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "Auth method %s was not found", req.GetAuthMethodId())
+	case errors.Match(errors.T(errors.InvalidParameter), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
+	case err != nil:
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error starting the oidc authentication flow"))
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
 	}
@@ -325,7 +332,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 	return s.convertToAuthenticateResponse(ctx, req, authResults, responseToken)
 }
 
-func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticateOidcRequest(_ context.Context, req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
 	switch req.GetCommand() {
