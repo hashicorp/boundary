@@ -5,14 +5,23 @@ package clientagentcmd
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/wrapper"
 )
 
-// TODO (ICU-13140): Remove this and re-enable error output for background
-// client agent token sending.
-const allowErrorOutput = false
+var allowErrorOutput = false
+
+const EnvBoundaryClientAgentCliErrorOutput = "BOUNDARY_CLIENT_AGENT_CLI_ERROR_OUTPUT"
+
+func init() {
+	errOutput := os.Getenv(EnvBoundaryClientAgentCliErrorOutput)
+	if strings.ToLower(errOutput) == "true" {
+		allowErrorOutput = true
+	}
+}
 
 func init() {
 	if err := wrapper.RegisterSuccessfulCommandCallback("client-agent", hook); err != nil {

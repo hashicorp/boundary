@@ -118,6 +118,7 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusRe
 	client.Logger = nil
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
+	client.RetryMax = 1
 
 	req, err := retryablehttp.NewRequestWithContext(ctx, "GET", clientAgentUrl(c.FlagClientAgentPort, "v1/status"), nil)
 	if err != nil {

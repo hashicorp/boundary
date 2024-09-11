@@ -241,7 +241,7 @@ func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 
 	initCommands(ui, serverCmdUi, runOpts)
 
-	hiddenCommands := []string{"version", "client-agent", "client-agent status", "client-agent pause", "client-agent resume", "client-agent sessions"}
+	hiddenCommands := []string{"version"}
 
 	cli := &cli.CLI{
 		Name:     "boundary",
