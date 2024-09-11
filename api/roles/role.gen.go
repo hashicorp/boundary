@@ -55,7 +55,7 @@ type RoleDeleteResult struct {
 }
 
 // GetItem will always be nil for RoleDeleteResult
-func (n RoleDeleteResult) GetItem() interface{} {
+func (n RoleDeleteResult) GetItem() any {
 	return nil
 }
 

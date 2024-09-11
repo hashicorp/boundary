@@ -52,7 +52,7 @@ type PolicyDeleteResult struct {
 }
 
 // GetItem will always be nil for PolicyDeleteResult
-func (n PolicyDeleteResult) GetItem() interface{} {
+func (n PolicyDeleteResult) GetItem() any {
 	return nil
 }
 

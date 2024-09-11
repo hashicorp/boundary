@@ -52,7 +52,7 @@ type GroupDeleteResult struct {
 }
 
 // GetItem will always be nil for GroupDeleteResult
-func (n GroupDeleteResult) GetItem() interface{} {
+func (n GroupDeleteResult) GetItem() any {
 	return nil
 }
 

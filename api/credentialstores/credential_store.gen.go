@@ -53,7 +53,7 @@ type CredentialStoreDeleteResult struct {
 }
 
 // GetItem will always be nil for CredentialStoreDeleteResult
-func (n CredentialStoreDeleteResult) GetItem() interface{} {
+func (n CredentialStoreDeleteResult) GetItem() any {
 	return nil
 }
 

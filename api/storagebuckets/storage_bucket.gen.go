@@ -61,7 +61,7 @@ type StorageBucketDeleteResult struct {
 }
 
 // GetItem will always be nil for StorageBucketDeleteResult
-func (n StorageBucketDeleteResult) GetItem() interface{} {
+func (n StorageBucketDeleteResult) GetItem() any {
 	return nil
 }
 

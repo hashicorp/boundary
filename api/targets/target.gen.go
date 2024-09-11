@@ -66,7 +66,7 @@ type TargetDeleteResult struct {
 }
 
 // GetItem will always be nil for TargetDeleteResult
-func (n TargetDeleteResult) GetItem() interface{} {
+func (n TargetDeleteResult) GetItem() any {
 	return nil
 }
 

@@ -16,7 +16,7 @@ type VaultCredentialLibraryAttributes struct {
 	HttpRequestBody string `json:"http_request_body,omitempty"`
 }
 
-func AttributesMapToVaultCredentialLibraryAttributes(in map[string]interface{}) (*VaultCredentialLibraryAttributes, error) {
+func AttributesMapToVaultCredentialLibraryAttributes(in map[string]any) (*VaultCredentialLibraryAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}
