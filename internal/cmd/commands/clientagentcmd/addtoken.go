@@ -48,10 +48,8 @@ func addToken(ctx context.Context, apiClient *api.Client, port uint) (*api.Respo
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
 
-	// TODO (ICU-13140): Until we release the client agent, do not retry attempts
-	// to connect to the client agent since it adds a noticeably long delay to
-	// the command.
-	client.RetryMax = 0
+	// Explicitly setting this to 1, since this runs after every command and we don't want any delays
+	client.RetryMax = 1
 
 	req, err := retryablehttp.NewRequestWithContext(ctx, "POST", clientAgentUrl(port, "v1/tokens"),
 		retryablehttp.ReaderFunc(func() (io.Reader, error) {
