@@ -150,6 +150,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 				if err := upsertTargets(ctx, w, u, currentPage.Items); err != nil {
 					return err
 				}
+				numUpserted += len(currentPage.Items)
 				if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
 					return err
 				}

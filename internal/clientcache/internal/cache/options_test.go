@@ -118,4 +118,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withTestRefreshWaitChs = waitCh
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithUseNonPagedListing", func(t *testing.T) {
+		opts, err := getOpts(WithUseNonPagedListing(true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.False(t, testOpts.withUseNonPagedListing)
+		testOpts.withUseNonPagedListing = true
+		assert.Equal(t, opts, testOpts)
+	})
 }
