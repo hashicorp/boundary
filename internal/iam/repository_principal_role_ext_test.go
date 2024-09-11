@@ -206,7 +206,7 @@ func assertSetResults(t *testing.T, got *iam.PrincipalSet, wantAddUsers, wantAdd
 	assert := assert.New(t)
 	var gotAddUsers []string
 	for _, r := range got.AddUserRoles {
-		gotAddUsers = append(gotAddUsers, r.(*iam.UserRole).PrincipalId)
+		gotAddUsers = append(gotAddUsers, r.PrincipalId)
 	}
 	// sort.Strings(wantAddUsers)
 	// sort.Strings(gotAddUsers)
@@ -214,7 +214,7 @@ func assertSetResults(t *testing.T, got *iam.PrincipalSet, wantAddUsers, wantAdd
 
 	var gotAddGrps []string
 	for _, r := range got.AddGroupRoles {
-		gotAddGrps = append(gotAddGrps, r.(*iam.GroupRole).PrincipalId)
+		gotAddGrps = append(gotAddGrps, r.PrincipalId)
 	}
 	// sort.Strings(wantAddGroups)
 	// sort.Strings(gotAddGrps)
@@ -222,7 +222,7 @@ func assertSetResults(t *testing.T, got *iam.PrincipalSet, wantAddUsers, wantAdd
 
 	var gotAddManagedGrps []string
 	for _, r := range got.AddManagedGroupRoles {
-		gotAddManagedGrps = append(gotAddManagedGrps, r.(*iam.ManagedGroupRole).PrincipalId)
+		gotAddManagedGrps = append(gotAddManagedGrps, r.PrincipalId)
 	}
 	// sort.Strings(wantAddGroups)
 	// sort.Strings(gotAddGrps)
@@ -230,7 +230,7 @@ func assertSetResults(t *testing.T, got *iam.PrincipalSet, wantAddUsers, wantAdd
 
 	var gotDeleteUsers []string
 	for _, r := range got.DeleteUserRoles {
-		gotDeleteUsers = append(gotDeleteUsers, r.(*iam.UserRole).PrincipalId)
+		gotDeleteUsers = append(gotDeleteUsers, r.PrincipalId)
 	}
 	sort.Strings(wantDeleteUsers)
 	sort.Strings(gotDeleteUsers)
@@ -238,7 +238,7 @@ func assertSetResults(t *testing.T, got *iam.PrincipalSet, wantAddUsers, wantAdd
 
 	var gotDeleteGroups []string
 	for _, r := range got.DeleteGroupRoles {
-		gotDeleteGroups = append(gotDeleteGroups, r.(*iam.GroupRole).PrincipalId)
+		gotDeleteGroups = append(gotDeleteGroups, r.PrincipalId)
 	}
 	sort.Strings(wantDeleteGroups)
 	sort.Strings(gotDeleteGroups)
@@ -246,7 +246,7 @@ func assertSetResults(t *testing.T, got *iam.PrincipalSet, wantAddUsers, wantAdd
 
 	var gotDeleteManagedGroups []string
 	for _, r := range got.DeleteManagedGroupRoles {
-		gotDeleteManagedGroups = append(gotDeleteManagedGroups, r.(*iam.ManagedGroupRole).PrincipalId)
+		gotDeleteManagedGroups = append(gotDeleteManagedGroups, r.PrincipalId)
 	}
 	sort.Strings(wantDeleteManagedGroups)
 	sort.Strings(gotDeleteManagedGroups)

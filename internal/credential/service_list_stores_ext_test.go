@@ -30,6 +30,7 @@ import (
 type fakeReader struct {
 	db.Reader
 }
+
 type fakeWriter struct {
 	db.Writer
 }

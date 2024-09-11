@@ -127,7 +127,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				cred.SessionId = newSession.PublicId
 			}
 
-			var staticCreds []any
+			var staticCreds []*StaticCredential
 			for _, cred := range newSession.StaticCredentials {
 				cred.SessionId = newSession.PublicId
 				staticCreds = append(staticCreds, cred)
