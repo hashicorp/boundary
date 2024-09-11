@@ -181,7 +181,7 @@ func TestWorkerNew(t *testing.T) {
 			}
 			if util.IsNil(tt.in.Eventer) {
 				require.NoError(t, event.InitSysEventer(hclog.Default(), &sync.Mutex{}, "worker_test", event.WithEventerConfig(&event.EventerConfig{})))
-				defer event.TestResetSystEventer(t)
+				t.Cleanup(func() { event.TestResetSystEventer(t) })
 				tt.in.Eventer = event.SysEventer()
 			}
 
@@ -332,7 +332,7 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 
 func Test_Worker_getSessionTls(t *testing.T) {
 	require.NoError(t, event.InitSysEventer(hclog.Default(), &sync.Mutex{}, "worker_test", event.WithEventerConfig(&event.EventerConfig{})))
-	defer event.TestResetSystEventer(t)
+	t.Cleanup(func() { event.TestResetSystEventer(t) })
 
 	conf := &Config{
 		Server: &base.Server{
