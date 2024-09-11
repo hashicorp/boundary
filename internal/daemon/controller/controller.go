@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/alias"
 	talias "github.com/hashicorp/boundary/internal/alias/target"
@@ -89,10 +88,10 @@ type downstreamWorkersTicker interface {
 }
 
 var (
-	downstreamReceiverFactory func() downstreamReceiver
+	downstreamReceiverFactory func(*atomic.Int64) (downstreamReceiver, error)
 
 	downstreamersFactory           func(context.Context, string, string) (common.Downstreamers, error)
-	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver, time.Duration) (downstreamWorkersTicker, error)
+	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver, *atomic.Int64) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
 	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer, kms *kms.Kms) (intglobals.ControllerExtension, error)
 )
@@ -124,7 +123,7 @@ type Controller struct {
 	// because they are casted to time.Duration.
 	workerStatusGracePeriod     *atomic.Int64
 	livenessTimeToStale         *atomic.Int64
-	getDownstreamWorkersTimeout *atomic.Pointer[time.Duration]
+	getDownstreamWorkersTimeout *atomic.Int64
 
 	apiGrpcServer         *grpc.Server
 	apiGrpcServerListener grpcServerListener
@@ -190,11 +189,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		downstreamConnManager:       cluster.NewDownstreamManager(),
 		workerStatusGracePeriod:     new(atomic.Int64),
 		livenessTimeToStale:         new(atomic.Int64),
-		getDownstreamWorkersTimeout: new(atomic.Pointer[time.Duration]),
-	}
-
-	if downstreamReceiverFactory != nil {
-		c.downstreamConns = downstreamReceiverFactory()
+		getDownstreamWorkersTimeout: new(atomic.Int64),
 	}
 
 	c.started.Store(false)
@@ -243,11 +238,17 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 
 	switch conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration {
 	case 0:
-		to := server.DefaultLiveness
-		c.getDownstreamWorkersTimeout.Store(&to)
+		c.getDownstreamWorkersTimeout.Store(int64(server.DefaultLiveness))
 	default:
-		to := conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration
-		c.getDownstreamWorkersTimeout.Store(&to)
+		c.getDownstreamWorkersTimeout.Store(int64(conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration))
+	}
+
+	if downstreamReceiverFactory != nil {
+		var err error
+		c.downstreamConns, err = downstreamReceiverFactory(c.getDownstreamWorkersTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to initialize downstream receiver: %w", op, err)
+		}
 	}
 
 	clusterListeners := make([]*base.ServerListener, 0)
@@ -591,7 +592,7 @@ func (c *Controller) Start() error {
 		// we'll use "root" to designate that this is the root of the graph (aka
 		// a controller)
 		boundVer := version.Get().VersionNumber()
-		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", boundVer, c.downstreamWorkers, c.downstreamConns, *c.getDownstreamWorkersTimeout.Load())
+		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", boundVer, c.downstreamWorkers, c.downstreamConns, c.getDownstreamWorkersTimeout)
 		if err != nil {
 			return fmt.Errorf("error creating downstream workers ticker: %w", err)
 		}
@@ -709,11 +710,9 @@ func (c *Controller) ReloadTimings(newConfig *config.Config) error {
 
 	switch newConfig.Controller.GetDownstreamWorkersTimeoutDuration {
 	case 0:
-		to := server.DefaultLiveness
-		c.getDownstreamWorkersTimeout.Store(&to)
+		c.getDownstreamWorkersTimeout.Store(int64(server.DefaultLiveness))
 	default:
-		to := newConfig.Controller.GetDownstreamWorkersTimeoutDuration
-		c.getDownstreamWorkersTimeout.Store(&to)
+		c.getDownstreamWorkersTimeout.Store(int64(newConfig.Controller.GetDownstreamWorkersTimeoutDuration))
 	}
 
 	return nil
