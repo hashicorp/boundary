@@ -27,9 +27,14 @@ Boundary can retrieve credentials from the credential stores and present them ba
 
 End users can experience three workflows when they connect to a target. In the first workflow, when an end user connects to a target, Boundary initiates the session, but the end user must know the credentials to authenticate into the session. This workflow is available for testing purposes, but it is not recommended because it places the burden on the users to securely store and manage credentials.
 
-The second workflow uses a feature called credential brokering, where credentials are retrieved from a credentials store and returned back to the end user. The end user then enters the credentials into the session when prompted by the target. This workflow is more secure than the first workflow since credentials are centrally managed through Boundary. For more information, see the [credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) concepts page.
+The second workflow uses a feature called credential brokering, where credentials are retrieved from a credentials store and returned back to the end user. The end user then enters the credentials into the session when prompted by the target. This workflow is more secure than the first workflow since credentials are centrally managed through Boundary. For more information, refer to the the [Credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) concepts page.
 
-The third workflow uses a featured called credential injection, where credentials are retrieved from a credential store and injected directly into the session on behalf of the end user. This workflow is the most secure because credentials are not exposed to the end user, reducing the chances of a leaked credential. This workflow is also more streamlined as the user goes through a passwordless experience.  For more information, see the [credential injection](/boundary/docs/concepts/credential-management#credential-injection) concepts page.
+The third workflow uses a featured called credential injection, where credentials are retrieved from a credential store and injected directly into the session on behalf of the end user. This workflow is the most secure because credentials are not exposed to the end user, reducing the chances of a leaked credential. This workflow is also more streamlined as the user goes through a passwordless experience. For more information, refer to the [Credential injection](/boundary/docs/concepts/credential-management#credential-injection) concepts page.
+
+The type of target you connect to also determines which credential workflows you can configure.
+An SSH target must have at least one injected application credential to establish the SSH connection.
+A TCP target cannot have any injected application credentials.
+For more information, refer to the [Target types](/boundary/docs/concepts/domain-model/targets#target-types) documentation.
 
 ## Next steps
 
