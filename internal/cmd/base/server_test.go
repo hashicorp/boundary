@@ -496,7 +496,7 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			expPublicAddress: ":9202",
 		},
 		{
-			name: "setting public address directly with ip",
+			name: "setting public address directly with ipv4",
 			inputConfig: &config.Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -511,7 +511,7 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			expPublicAddress: "127.0.0.1:9202",
 		},
 		{
-			name: "setting public address directly with ip:port",
+			name: "setting public address directly with ipv4:port",
 			inputConfig: &config.Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -524,6 +524,66 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			expErr:           false,
 			expErrStr:        "",
 			expPublicAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "setting public address directly with ipv6",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860:0:0:0:0:8888]",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860:0:0:0:0:8888]:9202",
+		},
+		{
+			name: "setting public address directly with ipv6:port",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860:0:0:0:0:8888]:8080",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+		},
+		{
+			name: "setting public address directly with abbreviated ipv6",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860::8888]",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860::8888]:9202",
+		},
+		{
+			name: "setting public address directly with abbreviated ipv6:port",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860::8888]:8080",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "setting public address to env var",
