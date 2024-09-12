@@ -9,11 +9,12 @@ import (
 )
 
 type options struct {
-	withSchemaVersion string
-	withDebug         bool
-	withUrl           string
-	withDbType        dbw.DbType
-	withGormFormatter hclog.Logger
+	withSchemaVersion    string
+	withDebug            bool
+	withUrl              string
+	withDbType           dbw.DbType
+	withGormFormatter    hclog.Logger
+	withForceResetSchema bool
 }
 
 // Option - how options are passed as args
@@ -64,6 +65,14 @@ func WithUrl(url string) Option {
 func WithDebug(debug bool) Option {
 	return func(o *options) error {
 		o.withDebug = debug
+		return nil
+	}
+}
+
+// WithForceResetSchema provides an optional way to force resetting the cache
+func WithForceResetSchema(debug bool) Option {
+	return func(o *options) error {
+		o.withForceResetSchema = debug
 		return nil
 	}
 }

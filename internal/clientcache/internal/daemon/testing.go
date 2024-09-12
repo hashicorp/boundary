@@ -97,11 +97,13 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, alts []
 		}
 		return alts, nil, "addedaliases", nil
 	}
-	tarFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*targets.Target, []string, cache.RefreshTokenValue, error) {
+	tarFn := func(ctx context.Context, _ string, tok string, _ cache.RefreshTokenValue, inPage *targets.TargetListResult, opt ...cache.Option) (*targets.TargetListResult, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
-			return nil, nil, "", nil
+			return nil, "", nil
 		}
-		return tars, nil, "addedtargets", nil
+		return &targets.TargetListResult{
+			Items: tars,
+		}, "addedtargets", nil
 	}
 	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*sessions.Session, []string, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
@@ -124,13 +126,15 @@ func (s *TestServer) AddUnsupportedCachingData(t *testing.T, p *authtokens.AuthT
 	r, err := cache.NewRepository(ctx, s.CacheServer.store.Load(), &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
-	tarFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*targets.Target, []string, cache.RefreshTokenValue, error) {
+	tarFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue, inPage *targets.TargetListResult, opt ...cache.Option) (*targets.TargetListResult, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
-			return nil, nil, "", nil
+			return &targets.TargetListResult{}, "", nil
 		}
-		return []*targets.Target{
-			{Id: "ttcp_unsupported", Name: "unsupported", Description: "not supported"},
-		}, nil, "", cache.ErrRefreshNotSupported
+		return &targets.TargetListResult{
+			Items: []*targets.Target{
+				{Id: "ttcp_unsupported", Name: "unsupported", Description: "not supported"},
+			},
+		}, "", cache.ErrRefreshNotSupported
 	}
 	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*sessions.Session, []string, cache.RefreshTokenValue, error) {
 		if tok != p.Token {

@@ -20,9 +20,10 @@ type options struct {
 	WithReadyToServeNotificationCh         chan struct{}
 	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
 
-	withUrl     string
-	withLogger  hclog.Logger
-	withHomeDir string
+	withUrl              string
+	withLogger           hclog.Logger
+	withHomeDir          string
+	withForceResetSchema bool
 }
 
 // Option - how options are passed as args
@@ -106,6 +107,15 @@ func WithLogger(_ context.Context, logger hclog.Logger) Option {
 func WithBoundaryTokenReaderFunc(_ context.Context, fn cache.BoundaryTokenReaderFn) Option {
 	return func(o *options) error {
 		o.withBoundaryTokenReaderFunc = fn
+		return nil
+	}
+}
+
+// WithForceResetSchema provides an optional way to force resetting the schema,
+// e.g. wiping the cache
+func WithForceResetSchema(_ context.Context, force bool) Option {
+	return func(o *options) error {
+		o.withForceResetSchema = force
 		return nil
 	}
 }
