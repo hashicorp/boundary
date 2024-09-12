@@ -62,7 +62,7 @@ func TestRepository_ImplicitScopes(t *testing.T) {
 		target("3"),
 	}
 	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil})))))
 
 	for _, t := range ts {
 		expectedScopes = append(expectedScopes, &scopes.Scope{

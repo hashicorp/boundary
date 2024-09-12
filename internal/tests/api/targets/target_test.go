@@ -336,6 +336,39 @@ func TestListWithListToken(t *testing.T) {
 	require.Empty(res.Items)
 }
 
+func TestListWithPageSize(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	require := require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	tarClient := targets.NewClient(client)
+	_, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("1"), targets.WithTcpTargetDefaultPort(2))
+	require.NoError(err)
+	_, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("2"), targets.WithTcpTargetDefaultPort(2))
+	require.NoError(err)
+
+	// Refresh tokens recursive listing over global scope
+	res, err := tarClient.List(tc.Context(), "global", targets.WithRecursive(true), targets.WithPageSize(2))
+	require.NoError(err)
+	require.Len(res.Items, 4, "expected the 2 targets created above and the 2 auto created for the test controller")
+	refTok := res.ListToken
+
+	res, err = tarClient.List(tc.Context(), "global", targets.WithRecursive(true), targets.WithListToken(refTok))
+	require.NoError(err)
+	require.Empty(res.Items)
+}
+
 func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 
