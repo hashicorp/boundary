@@ -181,7 +181,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 				pluginCalledSuccessfully = true
 			}
 
-			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
+			if len(plgResp.GetPersisted().GetSecrets().GetFields()) > 0 {
 				hcSecret, err := newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetSecrets())
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
@@ -453,7 +453,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			var updatedPersisted bool
 			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
 				if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
-					// Flag the secret to be deleted.
+					// Flag the secret to be deleted if it exists.
 					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
@@ -466,11 +466,13 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if secretsDeleted != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be deleted, got %d", secretsDeleted))
+					if secretsDeleted > 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 0 or 1 catalog secret to be deleted, got %d", secretsDeleted))
 					}
-					updatedPersisted = true
-					msgs = append(msgs, &sOplogMsg)
+					if secretsDeleted == 1 {
+						updatedPersisted = true
+						msgs = append(msgs, &sOplogMsg)
+					}
 				} else {
 					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {

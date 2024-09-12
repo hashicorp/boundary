@@ -260,6 +260,36 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}(),
 			wantPluginCalled: true,
 		},
+		{
+			name: "valid-empty-secrets",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo",
+					ProjectId:   prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte{},
+				},
+				Secrets: func() *structpb.Struct {
+					st, err := structpb.NewStruct(map[string]any{})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo",
+					ProjectId:   prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte{},
+				},
+			},
+			wantSecret: func() *structpb.Struct {
+				st, err := structpb.NewStruct(map[string]any{})
+				require.NoError(t, err)
+				return st
+			}(),
+			wantPluginCalled: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -358,8 +388,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 			cSecret := allocHostCatalogSecret()
 			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", []any{got.GetPublicId()})
-			if tt.wantSecret == nil {
-				assert.Nil(got.Secrets)
+			if tt.wantSecret == nil || len(tt.wantSecret.Fields) == 0 {
+				assert.Empty(got.Secrets.GetFields())
 				require.Error(err)
 				require.True(errors.IsNotFoundError(err))
 				return
@@ -1132,6 +1162,22 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]any{
 					"one": "two",
 				}),
+				checkNumUpdated(1),
+			},
+		},
+		{
+			name:        "update secrets, return empty secrets from plugin",
+			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]any{})},
+			version:     2,
+			fieldMask:   []string{"secrets"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkSecretsHmac(false),
+				checkUpdateCatalogRequestPersistedSecrets(map[string]any{
+					"one": "two",
+				}),
+				checkUpdateCatalogRequestSecrets(map[string]any{}),
+				checkSecretsDeleted(),
 				checkNumUpdated(1),
 			},
 		},
