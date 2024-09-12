@@ -116,6 +116,7 @@ If you do not specify a default port, Boundary uses port 22.
 A value of `-1` means the connections are unlimited.
 - `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
 You can specify an integer number of seconds or a duration string.
+If you do not specfiy a maximum duration, Boundary uses the default value of 8 hours (28800 seconds).
 - `-worker-filter=<string>` - This option is deprecated.
 Use the egress or ingress filters instead.
 

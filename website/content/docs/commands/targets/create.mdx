@@ -122,6 +122,7 @@ If you do not specify a default port, Boundary uses port 22.
 A value of `-1` means the connections are unlimited.
 - `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
 You can specify an integer number of seconds or a duration string.
+If you do not specfiy a maximum duration, Boundary uses the default value of 8 hours (28800 seconds).
 - `-with-alias-authorize-session-host-id=<string>` - The host ID that an alias uses to authorize sessions for the target.
 - `-with-alias-scope-id=<string>` - The scope ID that you want to create the alias in at target creation time.
 The default is `global`.
