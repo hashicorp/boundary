@@ -148,7 +148,8 @@ Complete the following steps to create a new target and new alias at the same ti
    Alternatively, you can configure host catalogs and host sets.
    - **Default Port**: (Optional) Enter an optional default port for the target to use for connections.
    - **Default Client Port**: (Optional) Enter an optional local proxy port on which to listen when a session is started on a client.
-   - **Maximum Duration**: (Optional) Enter an optional maximum duration for sessions on this target, in seconds.
+   - **Maximum Duration**: (Required) Enter a maximum duration for sessions on this target, in seconds.
+   If you do not enter a value, Boundary uses the default of 8 hours (28,800 seconds).
    - **Maximum Connection**: (Optional) Enter the maximum number of connections allowed per session on this target.
    For unlimited connections, enter `-1`.
    - **Workers**: (Optional) Select whether you want the worker to function as an ingress and/or egress worker.
