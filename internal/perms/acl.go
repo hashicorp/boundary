@@ -313,10 +313,10 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 
 			found = true
 
-		// Case 3: type=<resource.Typee>;actions=<action> when action is list or
+		// Case 3: type=<resource.Type>;actions=<action> when action is list or
 		// create (cannot be a wildcard). Must be a top level collection,
 		// otherwise must be one of the two formats specified in cases 4 or 5.
-		// Or, type=resource.Typee;output_fields=<fields> and no action. This is
+		// Or, type=resource.Type;output_fields=<fields> and no action. This is
 		// more of a semantic difference compared to 4 more than a security
 		// difference; this type is for clarity as it ties more closely to the
 		// concept of create and list as actions on a collection, operating on a
@@ -339,9 +339,9 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			found = true
 
 		// Case 4:
-		// id=*;type=<resource.Typee>;actions=<action> where type cannot be
+		// id=*;type=<resource.Type>;actions=<action> where type cannot be
 		// unknown but can be a wildcard to allow any resource at all; or
-		// id=*;type=<resource.Typee>;output_fields=<fields> with no action.
+		// id=*;type=<resource.Type>;output_fields=<fields> with no action.
 		case grant.Id == "*" &&
 			grant.Type != resource.Unknown &&
 			(grant.Type == r.Type ||
@@ -350,7 +350,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			found = true
 
 		// Case 5:
-		// id=<pin>;type=<resource.Typee>;actions=<action> where type can be a
+		// id=<pin>;type=<resource.Type>;actions=<action> where type can be a
 		// wildcard and this this is operating on a non-top-level type. Same for
 		// output fields only.
 		case grant.Id != "" &&
