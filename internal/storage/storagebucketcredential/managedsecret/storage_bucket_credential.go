@@ -60,6 +60,9 @@ func (h sbcHooks) NewStorageBucketCredential(
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to marshal secrets"))
 		}
+		if len(secrets) == 0 {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "empty secret")
+		}
 	}
 
 	sbc := &StorageBucketCredential{
