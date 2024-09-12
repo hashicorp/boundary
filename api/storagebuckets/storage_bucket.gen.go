@@ -485,7 +485,7 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *StorageBucketLis
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(currentPage.pageSize), 10)
 	}
 
-	req, err := c.client.NewRequest(ctx, "GET", "targets", nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "storage-buckets", nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
