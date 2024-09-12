@@ -25,6 +25,7 @@ type options struct {
 	withIgnoreSearchStaleness        bool
 	withMaxResultSetSize             int
 	withTestRefreshWaitChs           *testRefreshWaitChs
+	withUseNonPagedListing           bool
 }
 
 // Option - how options are passed as args
@@ -126,6 +127,15 @@ func WithMaxResultSetSize(with int) Option {
 func WithTestRefreshWaitChs(with *testRefreshWaitChs) Option {
 	return func(o *options) error {
 		o.withTestRefreshWaitChs = with
+		return nil
+	}
+}
+
+// WithUseNonPagedListing provides an option for ignoring the resource
+// staleness when performing a search.
+func WithUseNonPagedListing(b bool) Option {
+	return func(o *options) error {
+		o.withUseNonPagedListing = b
 		return nil
 	}
 }

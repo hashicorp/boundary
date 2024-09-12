@@ -54,6 +54,22 @@ func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][
 	}
 }
 
+func testTargetStaticResourceRetrievalFunc(inFunc func(ctx context.Context, s1, s2 string, refToken RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error)) TargetRetrievalFunc {
+	return func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *targets.TargetListResult, opt ...Option) (ret *targets.TargetListResult, refreshToken RefreshTokenValue, err error) {
+		retTargets, removed, refreshToken, err := inFunc(ctx, addr, authTok, refreshTok)
+		if err != nil {
+			return nil, "", err
+		}
+
+		ret = &targets.TargetListResult{
+			Items:        retTargets,
+			RemovedIds:   removed,
+			ResponseType: "complete",
+		}
+		return ret, refreshToken, nil
+	}
+}
+
 // testNoRefreshRetrievalFunc simulates a controller that doesn't support refresh
 // since it does not return any refresh token.
 func testNoRefreshRetrievalFunc[T any](t *testing.T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
@@ -426,7 +442,7 @@ func TestRefreshForSearch(t *testing.T) {
 		opts := []Option{
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
 				[][]*targets.Target{
 					retTargets[:3],
 					retTargets[3:],
@@ -435,7 +451,7 @@ func TestRefreshForSearch(t *testing.T) {
 					nil,
 					{retTargets[0].Id, retTargets[1].Id},
 				},
-			)),
+			))),
 		}
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
 
@@ -481,7 +497,7 @@ func TestRefreshForSearch(t *testing.T) {
 		opts := []Option{
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
 				[][]*targets.Target{
 					retTargets[:3],
 					retTargets[3:],
@@ -490,7 +506,7 @@ func TestRefreshForSearch(t *testing.T) {
 					nil,
 					{retTargets[0].Id, retTargets[1].Id},
 				},
-			)),
+			))),
 		}
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
 
@@ -538,8 +554,8 @@ func TestRefreshForSearch(t *testing.T) {
 		// Get the first set of resources, but no refresh tokens
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.ErrorContains(t, err, ErrRefreshNotSupported.Error())
 
 		got, err := r.ListTargets(ctx, at.Id)
@@ -554,14 +570,14 @@ func TestRefreshForSearch(t *testing.T) {
 		// any more.
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.Nil(t, err)
 
 		err = rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.Nil(t, err)
 
 		got, err = r.ListTargets(ctx, at.Id)
@@ -575,8 +591,9 @@ func TestRefreshForSearch(t *testing.T) {
 		// the resources starting to be cached.
 		err = rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, [][]*targets.Target{retTargets}, [][]string{{}}))),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, [][]*targets.Target{retTargets}, [][]string{{}})))
+		)
 		assert.Nil(t, err, err)
 
 		got, err = r.ListTargets(ctx, at.Id)
@@ -601,7 +618,7 @@ func TestRefreshForSearch(t *testing.T) {
 		}
 		opts := []Option{
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
 				[][]*sessions.Session{
 					retSess[:3],
@@ -653,7 +670,7 @@ func TestRefreshForSearch(t *testing.T) {
 		}
 		opts := []Option{
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
 				[][]*sessions.Session{
 					retSess[:3],
@@ -710,7 +727,7 @@ func TestRefreshForSearch(t *testing.T) {
 		}
 		opts := []Option{
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t,
 				[][]*aliases.Alias{
 					retAl[:3],
@@ -762,7 +779,7 @@ func TestRefreshForSearch(t *testing.T) {
 		}
 		opts := []Option{
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t,
 				[][]*aliases.Alias{
 					retAls[:3],
@@ -839,7 +856,7 @@ func TestRefreshNonBlocking(t *testing.T) {
 		opts := []Option{
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
 				[][]*targets.Target{
 					retTargets[:3],
 					retTargets[3:],
@@ -848,7 +865,7 @@ func TestRefreshNonBlocking(t *testing.T) {
 					nil,
 					{retTargets[0].Id, retTargets[1].Id},
 				},
-			)),
+			))),
 		}
 
 		refreshWaitChs := &testRefreshWaitChs{
@@ -899,7 +916,7 @@ func TestRefreshNonBlocking(t *testing.T) {
 		}
 		opts := []Option{
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
 				[][]*sessions.Session{
 					retSess[:3],
@@ -961,7 +978,7 @@ func TestRefreshNonBlocking(t *testing.T) {
 		}
 		opts := []Option{
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t,
 				[][]*aliases.Alias{
 					retAl[:3],
@@ -1041,7 +1058,7 @@ func TestRefresh(t *testing.T) {
 		opts := []Option{
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
 				[][]*targets.Target{
 					retTargets[:3],
 					retTargets[3:],
@@ -1050,7 +1067,7 @@ func TestRefresh(t *testing.T) {
 					nil,
 					{retTargets[0].Id, retTargets[1].Id},
 				},
-			)),
+			))),
 		}
 		assert.NoError(t, rs.Refresh(ctx, opts...))
 
@@ -1082,7 +1099,7 @@ func TestRefresh(t *testing.T) {
 		}
 		opts := []Option{
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
 				[][]*sessions.Session{
 					retSess[:3],
@@ -1123,7 +1140,7 @@ func TestRefresh(t *testing.T) {
 		}
 		opts := []Option{
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t,
 				[][]*aliases.Alias{
 					retAls[:3],
@@ -1160,15 +1177,15 @@ func TestRefresh(t *testing.T) {
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, nil, "", innerErr
-			}))
+			})))
 		assert.ErrorContains(t, err, innerErr.Error())
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))),
 			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
@@ -1202,7 +1219,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)))))
 
 		ps, err = r.listTokens(ctx, u)
 		require.NoError(t, err)
@@ -1246,7 +1263,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))))
 
 		got, err := r.ListTargets(ctx, at.Id)
 		require.NoError(t, err)
@@ -1258,7 +1275,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		got, err = r.ListTargets(ctx, at.Id)
@@ -1272,7 +1289,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))))
 	})
 
 	t.Run("sessions", func(t *testing.T) {
@@ -1286,7 +1303,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 
 		got, err := r.ListSessions(ctx, at.Id)
@@ -1298,7 +1315,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
@@ -1311,7 +1328,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 		got, err = r.ListSessions(ctx, at.Id)
 		require.NoError(t, err)
@@ -1332,7 +1349,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 
 		got, err := r.ListResolvableAliases(ctx, at.Id)
@@ -1344,7 +1361,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
@@ -1357,7 +1374,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 		got, err = r.ListResolvableAliases(ctx, at.Id)
 		require.NoError(t, err)
@@ -1378,7 +1395,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
@@ -1386,21 +1403,21 @@ func TestRecheckCachingSupport(t *testing.T) {
 		err = rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, nil, "", innerErr
-			}))
+			})))
 		assert.ErrorContains(t, err, innerErr.Error())
 
 		err = rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, nil, "", innerErr
-			}))
+			})))
 		assert.ErrorContains(t, err, innerErr.Error())
 	})
 
@@ -1415,7 +1432,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		err = rs.Refresh(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
@@ -1435,7 +1452,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		err = rs.RecheckCachingSupport(ctx,
 			WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+			WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 		assert.NoError(t, err)
 
 		ps, err = r.listTokens(ctx, u)

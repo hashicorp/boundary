@@ -141,7 +141,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := r.refreshTargets(ctx, tc.u, map[AuthToken]string{{Id: "id"}: "something"},
-				WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{tc.targets}, [][]string{nil})))
+				WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{tc.targets}, [][]string{nil}))))
 			if tc.errorContains == "" {
 				assert.NoError(t, err)
 				rw := db.New(s)
@@ -213,12 +213,12 @@ func TestRepository_RefreshTargets_InvalidListTokenError(t *testing.T) {
 	}
 
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(invalidAuthTokenFunc)))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(invalidAuthTokenFunc))))
 
 	// This time an invalid auth token should be returned, and refreshTargets should fall back
 	// to requesting without one.
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(invalidAuthTokenFunc)))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(invalidAuthTokenFunc))))
 
 	assert.Equal(t, 1, withRefreshToken)
 	assert.Equal(t, 2, withoutRefreshToken)
@@ -261,7 +261,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 	}
 
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil}))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil})))))
 
 	got, err := r.ListTargets(ctx, at.Id)
 	require.NoError(t, err)
@@ -270,7 +270,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 	// Refreshing again uses the refresh token and get additional sessions, appending
 	// them to the response
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil}))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil})))))
 	assert.NoError(t, err)
 
 	got, err = r.ListTargets(ctx, at.Id)
@@ -280,7 +280,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 	// Refreshing again wont return any more resources, but also none should be
 	// removed
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil}))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil})))))
 	assert.NoError(t, err)
 
 	got, err = r.ListTargets(ctx, at.Id)
@@ -289,7 +289,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 
 	// Refresh again with the refresh token being reported as invalid.
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testErroringForRefreshTokenRetrievalFunc(t, ts[0]))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testErroringForRefreshTokenRetrievalFunc(t, ts[0])))))
 	assert.NoError(t, err)
 
 	got, err = r.ListTargets(ctx, at.Id)
@@ -345,7 +345,7 @@ func TestRepository_ListTargets(t *testing.T) {
 		target("3"),
 	}
 	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil})))))
 
 	t.Run("wrong user gets no targets", func(t *testing.T) {
 		l, err := r.ListTargets(ctx, kt2.AuthTokenId)
@@ -389,7 +389,7 @@ func TestRepository_ListTargetsLimiting(t *testing.T) {
 		ts = append(ts, target("t"+strconv.Itoa(i)))
 	}
 	require.NoError(t, r.refreshTargets(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil})))))
 
 	searchService, err := NewSearchService(ctx, r)
 	require.NoError(t, err)
@@ -512,7 +512,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil})))))
 
 	t.Run("wrong token gets no targets", func(t *testing.T) {
 		l, err := r.QueryTargets(ctx, kt2.AuthTokenId, query)
@@ -556,7 +556,7 @@ func TestRepository_QueryTargetsLimiting(t *testing.T) {
 		ts = append(ts, target("t"+strconv.Itoa(i)))
 	}
 	require.NoError(t, r.refreshTargets(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
+		WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil})))))
 
 	searchService, err := NewSearchService(ctx, r)
 	require.NoError(t, err)
@@ -606,13 +606,13 @@ func TestDefaultTargetRetrievalFunc(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, tar2)
 
-	got, removed, refTok, err := defaultTargetFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "")
+	got, refTok, err := defaultTargetFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "", nil)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok)
-	assert.Empty(t, removed)
+	assert.Empty(t, got.RemovedIds)
 	found1 := false
 	found2 := false
-	for _, t := range got {
+	for _, t := range got.Items {
 		if t.Id == tar1.Item.Id {
 			found1 = true
 		}
@@ -623,10 +623,10 @@ func TestDefaultTargetRetrievalFunc(t *testing.T) {
 	assert.True(t, found1, "expected to find target %s in list", tar1.Item.Id)
 	assert.True(t, found2, "expected to find target %s in list", tar2.Item.Id)
 
-	got2, removed2, refTok2, err := defaultTargetFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, refTok)
+	got2, refTok2, err := defaultTargetFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, refTok, nil)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok2)
 	assert.NotEqual(t, refTok2, refTok)
-	assert.Empty(t, removed2)
-	assert.Empty(t, got2)
+	assert.Empty(t, got.RemovedIds)
+	assert.Empty(t, got2.Items)
 }

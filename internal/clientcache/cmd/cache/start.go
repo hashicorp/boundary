@@ -50,6 +50,7 @@ type StartCommand struct {
 	flagLogFormat               string
 	flagStoreDebug              bool
 	flagBackground              bool
+	flagForceResetSchema        bool
 }
 
 func (c *StartCommand) Synopsis() string {
@@ -133,6 +134,13 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Default: false,
 		Usage:   `Run the cache daemon in the background`,
 	})
+	f.BoolVar(&base.BoolVar{
+		Name:    "force-reset-schema",
+		Target:  &c.flagForceResetSchema,
+		Default: false,
+		Usage:   `Force resetting the cache schema and all contained data`,
+		Hidden:  true,
+	})
 
 	return set
 }
@@ -207,6 +215,7 @@ func (c *StartCommand) Run(args []string) int {
 		LogFileName:             logFileName,
 		DotDirectory:            dotDir,
 		RunningInBackground:     os.Getenv(backgroundEnvName) == backgroundEnvVal,
+		ForceResetSchema:        c.flagForceResetSchema,
 	}
 
 	srv, err := daemon.New(ctx, cfg)

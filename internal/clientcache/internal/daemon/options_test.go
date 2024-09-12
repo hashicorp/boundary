@@ -108,6 +108,14 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withHomeDir = "/tmp"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithForceResetSchema", func(t *testing.T) {
+		opts, err := getOpts(WithForceResetSchema(ctx, true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.False(t, testOpts.withForceResetSchema)
+		testOpts.withForceResetSchema = true
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithReadyToServeNotificationCh", func(t *testing.T) {
 		ch := make(chan struct{})
 		opts, err := getOpts(WithReadyToServeNotificationCh(ctx, ch))

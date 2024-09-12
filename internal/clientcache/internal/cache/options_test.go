@@ -49,8 +49,8 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithTargetRetrievalFunc", func(t *testing.T) {
-		var f TargetRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
-			return nil, nil, "", nil
+		var f TargetRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *targets.TargetListResult, opt ...Option) (*targets.TargetListResult, RefreshTokenValue, error) {
+			return nil, "", nil
 		}
 		opts, err := getOpts(WithTargetRetrievalFunc(f))
 		require.NoError(t, err)
@@ -116,6 +116,14 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Empty(t, testOpts.withTestRefreshWaitChs)
 		testOpts.withTestRefreshWaitChs = waitCh
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithUseNonPagedListing", func(t *testing.T) {
+		opts, err := getOpts(WithUseNonPagedListing(true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.False(t, testOpts.withUseNonPagedListing)
+		testOpts.withUseNonPagedListing = true
 		assert.Equal(t, opts, testOpts)
 	})
 }
