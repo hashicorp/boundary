@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
@@ -190,6 +191,24 @@ func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, grpNames []stri
 	mg.PublicId = id
 
 	require.NoError(rw.Create(ctx, mg, db.WithLookup(true)))
+	return mg
+}
+
+// TestManagedGroupMember adds given account IDs to a managed group
+func TestManagedGroupMember(t testing.TB, conn *db.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	mg := &ManagedGroupMemberAccount{
+		ManagedGroupMemberAccount: &store.ManagedGroupMemberAccount{
+			ManagedGroupId: managedGroupId,
+			MemberId:       memberId,
+		},
+	}
+
+	require.NoError(rw.Create(ctx, mg))
 	return mg
 }
 

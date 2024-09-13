@@ -129,15 +129,21 @@ const (
         from auth_account
        where iam_user_id in (select id from users)
     ),
-    user_managed_groups (id) as (
+    user_oidc_managed_groups (id) as (
       select managed_group_id
-        from auth_managed_group_member_account
+        from auth_oidc_managed_group_member_account
+       where member_id in (select id from user_accounts)
+    ),
+	user_ldap_managed_groups (id) as (
+      select managed_group_id
+        from auth_ldap_managed_group_member_account
        where member_id in (select id from user_accounts)
     ),
     managed_group_roles (role_id) as (
-      select role_id
+      select distinct role_id
         from iam_managed_group_role
-       where principal_id in (select id from user_managed_groups)
+       where principal_id in (select id from user_oidc_managed_groups)
+	      or principal_id in (select id from user_ldap_managed_groups)
     ),
     group_roles (role_id) as (
       select role_id
