@@ -377,7 +377,12 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Work
 	opts, apiOpts := getOpts(opt...)
 	opts.queryMap["scope_id"] = scopeId
 
-	req, err := c.client.NewRequest(ctx, "GET", "workers", nil, apiOpts...)
+	requestPath := "workers"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}

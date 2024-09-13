@@ -327,7 +327,12 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	opts, apiOpts := getOpts(opt...)
 	opts.queryMap["host_catalog_id"] = hostCatalogId
 
-	req, err := c.client.NewRequest(ctx, "GET", "hosts", nil, apiOpts...)
+	requestPath := "hosts"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -476,7 +481,12 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *HostListResult, 
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(currentPage.pageSize), 10)
 	}
 
-	req, err := c.client.NewRequest(ctx, "GET", "hosts", nil, apiOpts...)
+	requestPath := "hosts"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}

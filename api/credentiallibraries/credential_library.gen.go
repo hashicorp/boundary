@@ -327,7 +327,12 @@ func (c *Client) List(ctx context.Context, credentialStoreId string, opt ...Opti
 	opts, apiOpts := getOpts(opt...)
 	opts.queryMap["credential_store_id"] = credentialStoreId
 
-	req, err := c.client.NewRequest(ctx, "GET", "credential-libraries", nil, apiOpts...)
+	requestPath := "credential-libraries"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -476,7 +481,12 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *CredentialLibrar
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(currentPage.pageSize), 10)
 	}
 
-	req, err := c.client.NewRequest(ctx, "GET", "credential-libraries", nil, apiOpts...)
+	requestPath := "credential-libraries"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}

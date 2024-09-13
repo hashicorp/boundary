@@ -243,7 +243,12 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 	opts, apiOpts := getOpts(opt...)
 	opts.queryMap["{{ snakeCase .CollectionFunctionArg }}"] = {{ .CollectionFunctionArg }}
 
-	req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath }}", nil, apiOpts...)
+	requestPath := "{{ .CollectionPath }}"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -404,7 +409,12 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *{{ .Name }}ListR
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(currentPage.pageSize), 10)
 	}
 
-	req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath }}", nil, apiOpts...)
+	requestPath := "{{ .CollectionPath }}"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -943,6 +953,7 @@ type options struct {
 	withListToken string
 	withClientDirectedPagination bool
 	withPageSize uint32
+    withResourcePathOverride string
 	{{ if .RecursiveListing }} withRecursive bool {{ end }}
 }
 
@@ -1029,6 +1040,13 @@ func WithClientDirectedPagination(with bool) Option {
 func WithPageSize(with uint32) Option {
 	return func(o *options) {
 		o.withPageSize = with
+	}
+}
+
+// WithResourcePathOverride tells the API to use the provided resource path
+func WithResourcePathOverride(path string) Option {
+	return func(o *options) {
+		o.withResourcePathOverride = path
 	}
 }
 {{ if .RecursiveListing }}
