@@ -321,7 +321,12 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 	opts, apiOpts := getOpts(opt...)
 	opts.queryMap["auth_method_id"] = authMethodId
 
-	req, err := c.client.NewRequest(ctx, "GET", "accounts", nil, apiOpts...)
+	requestPath := "accounts"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -470,7 +475,12 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *AccountListResul
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(currentPage.pageSize), 10)
 	}
 
-	req, err := c.client.NewRequest(ctx, "GET", "accounts", nil, apiOpts...)
+	requestPath := "accounts"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}

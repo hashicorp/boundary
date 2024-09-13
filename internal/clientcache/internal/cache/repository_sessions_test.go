@@ -150,7 +150,7 @@ func TestRepository_refreshSessions(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := r.refreshSessions(ctx, tc.u, map[AuthToken]string{{Id: "id"}: "something"},
-				WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{tc.sess}, [][]string{nil})))
+				WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{tc.sess}, [][]string{nil}))))
 			if tc.errorContains == "" {
 				assert.NoError(t, err)
 				rw := db.New(s)
@@ -235,7 +235,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 	}
 
 	err = r.refreshSessions(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, ss, [][]string{nil, nil})))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, ss, [][]string{nil, nil}))))
 	assert.NoError(t, err)
 
 	got, err := r.ListSessions(ctx, at.Id)
@@ -245,7 +245,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 	// Refreshing again uses the refresh token and get additional sessions, appending
 	// them to the response
 	err = r.refreshSessions(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, ss, [][]string{nil, nil})))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, ss, [][]string{nil, nil}))))
 	assert.NoError(t, err)
 
 	got, err = r.ListSessions(ctx, at.Id)
@@ -255,7 +255,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 	// Refreshing again wont return any more resources, but also none should be
 	// removed
 	require.NoError(t, r.refreshSessions(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, ss, [][]string{nil, nil}))))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, ss, [][]string{nil, nil})))))
 	assert.NoError(t, err)
 
 	got, err = r.ListSessions(ctx, at.Id)
@@ -264,7 +264,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 
 	// Refresh again with the refresh token being reported as invalid.
 	require.NoError(t, r.refreshSessions(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testErroringForRefreshTokenRetrievalFunc(t, ss[0]))))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testErroringForRefreshTokenRetrievalFunc(t, ss[0])))))
 	assert.NoError(t, err)
 
 	got, err = r.ListSessions(ctx, at.Id)
@@ -351,7 +351,7 @@ func TestRepository_ListSessions(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil}))))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
 
 	t.Run("wrong user gets no sessions", func(t *testing.T) {
 		l, err := r.ListSessions(ctx, kt2.AuthTokenId)
@@ -395,7 +395,7 @@ func TestRepository_ListSessionsLimiting(t *testing.T) {
 		ts = append(ts, session("s"+strconv.Itoa(i)))
 	}
 	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ts}, [][]string{nil}))))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ts}, [][]string{nil})))))
 
 	searchService, err := NewSearchService(ctx, r)
 	require.NoError(t, err)
@@ -527,7 +527,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil}))))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
 
 	t.Run("wrong token gets no sessions", func(t *testing.T) {
 		l, err := r.QuerySessions(ctx, kt2.AuthTokenId, query)
@@ -571,7 +571,7 @@ func TestRepository_QuerySessionsLimiting(t *testing.T) {
 		ts = append(ts, session("t"+strconv.Itoa(i)))
 	}
 	require.NoError(t, r.refreshSessions(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ts}, [][]string{nil}))))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ts}, [][]string{nil})))))
 
 	searchService, err := NewSearchService(ctx, r)
 	require.NoError(t, err)
@@ -637,15 +637,15 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 		}
 	}
 
-	got, removed, refTok, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "")
+	got, refTok, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "", nil)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok)
-	assert.Empty(t, removed)
-	assert.Len(t, got, 1)
+	assert.Empty(t, got.RemovedIds)
+	assert.Len(t, got.Items, 1)
 
-	got2, removed2, refTok2, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, refTok)
+	got2, refTok2, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, refTok, nil)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok2)
-	assert.Empty(t, removed2)
-	assert.Empty(t, got2)
+	assert.Empty(t, got2.RemovedIds)
+	assert.Empty(t, got2.Items)
 }
