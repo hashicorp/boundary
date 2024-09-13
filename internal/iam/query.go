@@ -134,7 +134,7 @@ const (
         from auth_oidc_managed_group_member_account
        where member_id in (select id from user_accounts)
     ),
-	user_ldap_managed_groups (id) as (
+    user_ldap_managed_groups (id) as (
       select managed_group_id
         from auth_ldap_managed_group_member_account
        where member_id in (select id from user_accounts)
@@ -143,7 +143,7 @@ const (
       select distinct role_id
         from iam_managed_group_role
        where principal_id in (select id from user_oidc_managed_groups)
-	      or principal_id in (select id from user_ldap_managed_groups)
+          or principal_id in (select id from user_ldap_managed_groups)
     ),
     group_roles (role_id) as (
       select role_id
@@ -196,7 +196,7 @@ const (
      select
            roles.role_id as role_id,
            roles.role_scope_id as role_scope_id,
-		   roles.role_parent_scope_id as role_parent_scope_id,
+           roles.role_parent_scope_id as role_parent_scope_id,
            grant_scopes.grant_scope_ids as grant_scope_ids,
            grants.grants as grants
       from roles
