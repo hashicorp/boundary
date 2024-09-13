@@ -29,6 +29,7 @@ type options struct {
 	withListToken                string
 	withClientDirectedPagination bool
 	withPageSize                 uint32
+	withResourcePathOverride     string
 	withRecursive                bool
 }
 
@@ -112,6 +113,13 @@ func WithClientDirectedPagination(with bool) Option {
 func WithPageSize(with uint32) Option {
 	return func(o *options) {
 		o.withPageSize = with
+	}
+}
+
+// WithResourcePathOverride tells the API to use the provided resource path
+func WithResourcePathOverride(path string) Option {
+	return func(o *options) {
+		o.withResourcePathOverride = path
 	}
 }
 

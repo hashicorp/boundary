@@ -155,7 +155,7 @@ func fillTemplates() {
 			optionsMap[input.Package] = optionMap
 		}
 		// Override some defined options
-		if len(in.fieldOverrides) > 0 && optionsMap != nil {
+		if len(in.fieldOverrides) > 0 {
 			for _, override := range in.fieldOverrides {
 				inOpts := optionsMap[input.Package]
 				if inOpts != nil {
@@ -243,7 +243,12 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 	opts, apiOpts := getOpts(opt...)
 	opts.queryMap["{{ snakeCase .CollectionFunctionArg }}"] = {{ .CollectionFunctionArg }}
 
-	req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath }}", nil, apiOpts...)
+	requestPath := "{{ .CollectionPath }}"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -404,7 +409,12 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *{{ .Name }}ListR
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(currentPage.pageSize), 10)
 	}
 
-	req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath }}", nil, apiOpts...)
+	requestPath := "{{ .CollectionPath }}"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -434,7 +444,7 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *{{ .Name }}ListR
 
 	// Ensure values are carried forward to the next call
 	nextPage.{{ .CollectionFunctionArg }} = currentPage.{{ .CollectionFunctionArg }}
-{{ if .RecursiveListing }} 
+{{ if .RecursiveListing }}
 	nextPage.recursive = currentPage.recursive
 {{ end }} 
 	nextPage.pageSize = currentPage.pageSize
@@ -943,6 +953,7 @@ type options struct {
 	withListToken string
 	withClientDirectedPagination bool
 	withPageSize uint32
+    withResourcePathOverride string
 	{{ if .RecursiveListing }} withRecursive bool {{ end }}
 }
 
@@ -1029,6 +1040,13 @@ func WithClientDirectedPagination(with bool) Option {
 func WithPageSize(with uint32) Option {
 	return func(o *options) {
 		o.withPageSize = with
+	}
+}
+
+// WithResourcePathOverride tells the API to use the provided resource path
+func WithResourcePathOverride(path string) Option {
+	return func(o *options) {
+		o.withResourcePathOverride = path
 	}
 }
 {{ if .RecursiveListing }}

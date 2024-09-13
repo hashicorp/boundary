@@ -324,7 +324,12 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*User
 	opts, apiOpts := getOpts(opt...)
 	opts.queryMap["scope_id"] = scopeId
 
-	req, err := c.client.NewRequest(ctx, "GET", "users", nil, apiOpts...)
+	requestPath := "users"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -480,7 +485,12 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *UserListResult, 
 		opts.queryMap["page_size"] = strconv.FormatUint(uint64(currentPage.pageSize), 10)
 	}
 
-	req, err := c.client.NewRequest(ctx, "GET", "users", nil, apiOpts...)
+	requestPath := "users"
+	if opts.withResourcePathOverride != "" {
+		requestPath = opts.withResourcePathOverride
+	}
+
+	req, err := c.client.NewRequest(ctx, "GET", requestPath, nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating List request: %w", err)
 	}
