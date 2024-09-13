@@ -100,7 +100,7 @@ func TestRepository_ImplicitScopes(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil}))))
+		WithSessionRetrievalFunc(testSessionStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{ss}, [][]string{nil})))))
 
 	expectedScopes = append(expectedScopes, &scopes.Scope{
 		Id: ss[0].ScopeId,

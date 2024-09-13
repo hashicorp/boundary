@@ -139,7 +139,7 @@ func TestRepository_refreshAliases(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := r.refreshResolvableAliases(ctx, tc.u, map[AuthToken]string{{Id: "id"}: "something"},
-				WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{tc.al}, [][]string{nil})))
+				WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{tc.al}, [][]string{nil}))))
 			if tc.errorContains == "" {
 				assert.NoError(t, err)
 				rw := db.New(s)
@@ -218,7 +218,7 @@ func TestRepository_RefreshAliases_withRefreshTokens(t *testing.T) {
 	}
 
 	err = r.refreshResolvableAliases(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, ss, [][]string{nil, nil})))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, ss, [][]string{nil, nil}))))
 	assert.NoError(t, err)
 
 	got, err := r.ListResolvableAliases(ctx, at.Id)
@@ -228,7 +228,7 @@ func TestRepository_RefreshAliases_withRefreshTokens(t *testing.T) {
 	// Refreshing again uses the refresh token and get additional aliases, appending
 	// them to the response
 	err = r.refreshResolvableAliases(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, ss, [][]string{nil, nil})))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, ss, [][]string{nil, nil}))))
 	assert.NoError(t, err)
 
 	got, err = r.ListResolvableAliases(ctx, at.Id)
@@ -238,7 +238,7 @@ func TestRepository_RefreshAliases_withRefreshTokens(t *testing.T) {
 	// Refreshing again wont return any more resources, but also none should be
 	// removed
 	require.NoError(t, r.refreshResolvableAliases(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, ss, [][]string{nil, nil}))))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, ss, [][]string{nil, nil})))))
 	assert.NoError(t, err)
 
 	got, err = r.ListResolvableAliases(ctx, at.Id)
@@ -247,7 +247,7 @@ func TestRepository_RefreshAliases_withRefreshTokens(t *testing.T) {
 
 	// Refresh again with the refresh token being reported as invalid.
 	require.NoError(t, r.refreshResolvableAliases(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testErroringForRefreshTokenRetrievalFuncForId(t, ss[0]))))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testErroringForRefreshTokenRetrievalFuncForId(t, ss[0])))))
 	assert.NoError(t, err)
 
 	got, err = r.ListResolvableAliases(ctx, at.Id)
@@ -328,7 +328,7 @@ func TestRepository_ListAliases(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshResolvableAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ss}, [][]string{nil}))))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ss}, [][]string{nil})))))
 
 	t.Run("wrong user gets no aliases", func(t *testing.T) {
 		l, err := r.ListResolvableAliases(ctx, kt2.AuthTokenId)
@@ -372,7 +372,7 @@ func TestRepository_ListAliasesLimiting(t *testing.T) {
 		ts = append(ts, alias("s"+strconv.Itoa(i)))
 	}
 	require.NoError(t, r.refreshResolvableAliases(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ts}, [][]string{nil}))))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ts}, [][]string{nil})))))
 
 	searchService, err := NewSearchService(ctx, r)
 	require.NoError(t, err)
@@ -498,7 +498,7 @@ func TestRepository_QueryAliases(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshResolvableAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ss}, [][]string{nil}))))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ss}, [][]string{nil})))))
 
 	t.Run("wrong token gets no aliases", func(t *testing.T) {
 		l, err := r.QueryResolvableAliases(ctx, kt2.AuthTokenId, query)
@@ -542,7 +542,7 @@ func TestRepository_QueryResolvableAliasesLimiting(t *testing.T) {
 		ts = append(ts, alias("s"+strconv.Itoa(i)))
 	}
 	require.NoError(t, r.refreshResolvableAliases(ctx, u, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ts}, [][]string{nil}))))
+		WithAliasRetrievalFunc(testResolvableAliasStaticResourceRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{ts}, [][]string{nil})))))
 
 	searchService, err := NewSearchService(ctx, r)
 	require.NoError(t, err)
@@ -593,15 +593,15 @@ func TestDefaultAliasRetrievalFunc(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, tar1)
 
-	got, removed, refTok, err := defaultResolvableAliasFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, tc.Token().UserId, "")
+	got, refTok, err := defaultResolvableAliasFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, tc.Token().UserId, "", nil)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok)
-	assert.Empty(t, removed)
-	assert.Len(t, got, 1)
+	assert.Empty(t, got.RemovedIds)
+	assert.Len(t, got.Items, 1)
 
-	got2, removed2, refTok2, err := defaultResolvableAliasFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, tc.Token().UserId, refTok)
+	got2, refTok2, err := defaultResolvableAliasFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, tc.Token().UserId, refTok, nil)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok2)
-	assert.Empty(t, removed2)
-	assert.Empty(t, got2)
+	assert.Empty(t, got2.RemovedIds)
+	assert.Empty(t, got2.Items)
 }
