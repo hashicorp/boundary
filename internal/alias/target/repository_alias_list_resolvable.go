@@ -18,17 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-// listResolvableAliases lists aliases which have a destination id set to that
-// of a target for which there is permission in the provided slice of permissions.
-// Only WithLimit and WithStartPageAfterItem options are supported.
-func (r *Repository) listResolvableAliases(ctx context.Context, permissions []perms.Permission, opt ...Option) ([]*Alias, time.Time, error) {
-	const op = "target.(Repository).listResolvableAliases"
-	switch {
-	case len(permissions) == 0:
-		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing permissions")
-	}
-
-	var allDescendants bool
+func splitPermissions(permissions []perms.Permission) (directIds, directScopeIds, childAllScopes []string, allDescendants bool) {
 	// First check for all descendants. Since what we are querying for below is
 	// for targets (either IDs, or targets within specific scopes), and targets
 	// are not in global, if this matches we can actually ignore everything
@@ -39,9 +29,9 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 		}
 	}
 
-	directIds := make([]string, 0, len(permissions))
-	directScopeIds := make([]string, 0, len(permissions))
-	childAllScopes := make([]string, 0, len(permissions))
+	directIds = make([]string, 0, len(permissions))
+	directScopeIds = make([]string, 0, len(permissions))
+	childAllScopes = make([]string, 0, len(permissions))
 	for _, perm := range permissions {
 		switch {
 		case allDescendants:
@@ -69,6 +59,20 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 			directIds = append(directIds, perm.ResourceIds...)
 		}
 	}
+	return
+}
+
+// listResolvableAliases lists aliases which have a destination id set to that
+// of a target for which there is permission in the provided slice of permissions.
+// Only WithLimit and WithStartPageAfterItem options are supported.
+func (r *Repository) listResolvableAliases(ctx context.Context, permissions []perms.Permission, opt ...Option) ([]*Alias, time.Time, error) {
+	const op = "target.(Repository).listResolvableAliases"
+	switch {
+	case len(permissions) == 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing permissions")
+	}
+
+	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -143,47 +147,7 @@ func (r *Repository) listResolvableAliasesRefresh(ctx context.Context, updatedAf
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing permissions")
 	}
 
-	var allDescendants bool
-	// First check for all descendants. Since what we are querying for below is
-	// for targets (either IDs, or targets within specific scopes), and targets
-	// are not in global, if this matches we can actually ignore everything
-	// else.
-	for _, perm := range permissions {
-		if perm.GrantScopeId == globals.GrantScopeDescendants && perm.All {
-			allDescendants = true
-		}
-	}
-
-	directIds := make([]string, 0, len(permissions))
-	directScopeIds := make([]string, 0, len(permissions))
-	childAllScopes := make([]string, 0, len(permissions))
-	for _, perm := range permissions {
-		switch {
-		case allDescendants:
-			// See the above check; we don't need any other info
-		case perm.GrantScopeId == scope.Global.String() || strings.HasPrefix(perm.GrantScopeId, globals.OrgPrefix):
-			// There are no targets in global or orgs
-		case perm.RoleScopeId == scope.Global.String() && perm.GrantScopeId == globals.GrantScopeChildren:
-			// A role in global that includes children will include only orgs,
-			// which do not have targets, so ignore
-		case perm.GrantScopeId == globals.GrantScopeChildren && perm.All:
-			// Because of the above check this will match only grants from org
-			// roles. If the grant scope is children and all, we store the scope
-			// ID.
-			childAllScopes = append(childAllScopes, perm.RoleScopeId)
-		case perm.All:
-			// We ignore descendants and if this was a children grant scope and
-			// perm.All it would match the above case. So this is a grant
-			// directly on a scope. Since only projects contain targets, we can
-			// ignore any grant scope ID that doesn't match targets.
-			if strings.HasPrefix(perm.GrantScopeId, globals.ProjectPrefix) {
-				directScopeIds = append(directScopeIds, perm.GrantScopeId)
-			}
-		case len(perm.ResourceIds) > 0:
-			// It's an ID grant
-			directIds = append(directIds, perm.ResourceIds...)
-		}
-	}
+	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -265,47 +229,7 @@ func (r *Repository) listRemovedResolvableAliasIds(ctx context.Context, since ti
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing permissions")
 	}
 
-	var allDescendants bool
-	// First check for all descendants. Since what we are querying for below is
-	// for targets (either IDs, or targets within specific scopes), and targets
-	// are not in global, if this matches we can actually ignore everything
-	// else.
-	for _, perm := range permissions {
-		if perm.GrantScopeId == globals.GrantScopeDescendants && perm.All {
-			allDescendants = true
-		}
-	}
-
-	directIds := make([]string, 0, len(permissions))
-	directScopeIds := make([]string, 0, len(permissions))
-	childAllScopes := make([]string, 0, len(permissions))
-	for _, perm := range permissions {
-		switch {
-		case allDescendants:
-			// See the above check; we don't need any other info
-		case perm.GrantScopeId == scope.Global.String() || strings.HasPrefix(perm.GrantScopeId, globals.OrgPrefix):
-			// There are no targets in global or orgs
-		case perm.RoleScopeId == scope.Global.String() && perm.GrantScopeId == globals.GrantScopeChildren:
-			// A role in global that includes children will include only orgs,
-			// which do not have targets, so ignore
-		case perm.GrantScopeId == globals.GrantScopeChildren && perm.All:
-			// Because of the above check this will match only grants from org
-			// roles. If the grant scope is children and all, we store the scope
-			// ID.
-			childAllScopes = append(childAllScopes, perm.RoleScopeId)
-		case perm.All:
-			// We ignore descendants and if this was a children grant scope and
-			// perm.All it would match the above case. So this is a grant
-			// directly on a scope. Since only projects contain targets, we can
-			// ignore any grant scope ID that doesn't match targets.
-			if strings.HasPrefix(perm.GrantScopeId, globals.ProjectPrefix) {
-				directScopeIds = append(directScopeIds, perm.GrantScopeId)
-			}
-		case len(perm.ResourceIds) > 0:
-			// It's an ID grant
-			directIds = append(directIds, perm.ResourceIds...)
-		}
-	}
+	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
 
 	var args []any
 	var destinationIdClauses []string
