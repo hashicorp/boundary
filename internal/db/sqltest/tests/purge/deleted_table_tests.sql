@@ -21,6 +21,15 @@ begin;
     );
   $$ language sql;
 
+  -- tests that the deletion table has the bulk insert trigger
+  create function has_bulk_insert_trigger(deletion_table_name name) returns text
+  as $$
+    select * from collect_tap(
+      has_trigger(op_table(deletion_table_name), 'bulk_insert_deleted_ids'),
+      trigger_is(op_table(deletion_table_name), 'bulk_insert_deleted_ids', 'bulk_insert_deleted_ids')
+    );
+  $$ language sql;
+
   -- tests the public_id column
   create function has_public_id(deletion_table_name name) returns text
   as $$
@@ -72,15 +81,32 @@ begin;
     );
   $$ language sql;
 
+  -- like above, but using the bulk delete trigger
+  create function test_bulk_deletion_table(deletion_table_name name) returns text
+  as $$
+    select * from collect_tap(
+      has_correct_tables(deletion_table_name),
+      has_public_id(deletion_table_name),
+      has_delete_time(deletion_table_name),
+      has_delete_time_index(deletion_table_name),
+      has_bulk_insert_trigger(deletion_table_name)
+    );
+  $$ language sql;
+
   -- 11 tests for each deletion table
   select plan(a.table_count::integer)
     from (
       select 11 * count(*) as table_count
-        from get_deletion_tables()
+        from deletion_table
     ) as a;
 
-    select test_deletion_table(a)
-      from get_deletion_tables() a;
+    select test_deletion_table(a.tablename)
+      from deletion_table a
+     where a.tablename not in ('session_deleted');
+
+    select test_bulk_deletion_table(a.tablename)
+      from deletion_table a
+     where a.tablename in ('session_deleted');
 
   select * from finish();
 rollback;
