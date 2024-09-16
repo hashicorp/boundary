@@ -26,7 +26,7 @@ func TestPurgeTables(t *testing.T) {
 		t.Errorf("error getting db connection %s", err)
 	}
 
-	rows, err := db.Query("select get_deletion_tables()")
+	rows, err := db.Query("select tablename from deletion_table")
 	if err != nil {
 		t.Errorf("unable to query for deletion tables %s", err)
 	}
