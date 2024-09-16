@@ -5,7 +5,8 @@ package purge
 
 const (
 	getDeletionTablesQuery = `
-select get_deletion_tables();
+select tablename
+  from deletion_table;
 `
 	deleteQueryTemplate = `
 delete from %s where delete_time < now() - interval '30 days'
