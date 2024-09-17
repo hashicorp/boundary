@@ -22,11 +22,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type actionSet map[action.Type]bool
+type ActionSet map[action.Type]bool
 
 // Actions is a helper that goes through the map and returns both the actual
 // types of actions as a slice and the equivalent strings
-func (a actionSet) Actions() (typs []action.Type, strs []string) {
+func (a ActionSet) Actions() (typs []action.Type, strs []string) {
 	typs = make([]action.Type, 0, len(a))
 	strs = make([]string, 0, len(a))
 	for k, v := range a {
@@ -43,9 +43,11 @@ func (a actionSet) Actions() (typs []action.Type, strs []string) {
 // GrantTuple is simply a struct that can be reference from other code to return
 // a set of scopes and grants to parse
 type GrantTuple struct {
-	RoleId  string
-	ScopeId string
-	Grant   string
+	RoleId            string
+	RoleScopeId       string
+	RoleParentScopeId string
+	GrantScopeId      string
+	Grant             string
 }
 
 type GrantTuples []GrantTuple
@@ -56,7 +58,7 @@ func (g GrantTuples) GrantHash(ctx context.Context) ([]byte, error) {
 	// TODO: Should this return an error when the GrantTuples is empty?
 	var values []string
 	for _, grant := range g {
-		values = append(values, grant.Grant, grant.RoleId, grant.ScopeId)
+		values = append(values, grant.Grant, grant.RoleId, grant.GrantScopeId)
 	}
 	// Sort for deterministic output
 	slices.Sort(values)
@@ -106,14 +108,17 @@ type Scope struct {
 	// Id is the public id of the iam.Scope
 	Id string
 
-	// Type is the scope's type (org or project)
-	Type scope.Type
+	// ParentId is the parent scope ID
+	ParentId string
 }
 
 // Grant is a Go representation of a parsed grant
 type Grant struct {
-	// The scope, containing the ID and type
-	scope Scope
+	// The role scope ID
+	roleScopeId string
+
+	// The role's parent scope ID, if any
+	roleParentScopeId string
 
 	// The ID of the grant, if provided. Deprecated in favor of ids.
 	id string
@@ -121,11 +126,14 @@ type Grant struct {
 	// The IDs in the grant, if provided
 	ids []string
 
+	// The grant scope ID of the grant
+	grantScopeId string
+
 	// The type, if provided
 	typ resource.Type
 
 	// The set of actions being granted
-	actions actionSet
+	actions ActionSet
 
 	// The set of output fields granted
 	OutputFields *OutputFields
@@ -143,6 +151,11 @@ func (g Grant) Id() string {
 // Ids returns the IDs the grant refers to, if any
 func (g Grant) Ids() []string {
 	return g.ids
+}
+
+// GrantScopeId returns the grant scope ID the grant refers to, if any
+func (g Grant) GrantScopeId() string {
+	return g.grantScopeId
 }
 
 // Type returns the type the grant refers to, or Unknown
@@ -172,10 +185,12 @@ func (g Grant) hasActionOrSubaction(act action.Type) bool {
 
 func (g Grant) clone() *Grant {
 	ret := &Grant{
-		scope: g.scope,
-		id:    g.id,
-		ids:   g.ids,
-		typ:   g.typ,
+		roleScopeId:       g.roleScopeId,
+		roleParentScopeId: g.roleParentScopeId,
+		id:                g.id,
+		ids:               g.ids,
+		grantScopeId:      g.grantScopeId,
+		typ:               g.typ,
 	}
 	if g.ids != nil {
 		ret.ids = make([]string, len(g.ids))
@@ -435,47 +450,42 @@ func (g *Grant) unmarshalText(ctx context.Context, grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-func Parse(ctx context.Context, scopeId, grantString string, opt ...Option) (Grant, error) {
+func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) {
 	const op = "perms.Parse"
-	if len(grantString) == 0 {
+	if len(tuple.Grant) == 0 {
 		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, "missing grant string")
 	}
-	if scopeId == "" {
-		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if tuple.RoleScopeId == "" {
+		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, "missing role scope id")
 	}
-	grantString = strings.ToValidUTF8(grantString, string(unicode.ReplacementChar))
+	if tuple.GrantScopeId == "" {
+		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, "missing grant scope id")
+	}
+	tuple.Grant = strings.ToValidUTF8(tuple.Grant, string(unicode.ReplacementChar))
 
 	grant := Grant{
-		scope: Scope{Id: strings.ToValidUTF8(scopeId, string(unicode.ReplacementChar))},
-	}
-	switch {
-	case scopeId == scope.Global.String():
-		grant.scope.Type = scope.Global
-	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
-		grant.scope.Type = scope.Org
-	case strings.HasPrefix(scopeId, scope.Project.Prefix()):
-		grant.scope.Type = scope.Project
-	default:
-		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
+		roleScopeId:       strings.ToValidUTF8(tuple.RoleScopeId, string(unicode.ReplacementChar)),
+		roleParentScopeId: tuple.RoleParentScopeId,
+		grantScopeId:      tuple.GrantScopeId,
 	}
 
 	switch {
-	case grantString[0] == '{':
-		if err := grant.unmarshalJSON(ctx, []byte(grantString)); err != nil {
+	case tuple.Grant[0] == '{':
+		if err := grant.unmarshalJSON(ctx, []byte(tuple.Grant)); err != nil {
 			return Grant{}, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse JSON grant string"))
 		}
 
 	default:
-		if err := grant.unmarshalText(ctx, grantString); err != nil {
+		if err := grant.unmarshalText(ctx, tuple.Grant); err != nil {
 			return Grant{}, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse grant string"))
 		}
 	}
 
 	if grant.id != "" && len(grant.ids) > 0 {
-		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains both %q and %q fields", grantString, "id", "ids"))
+		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains both %q and %q fields", tuple.Grant, "id", "ids"))
 	}
 	if len(grant.ids) > 1 && slices.Contains(grant.ids, "*") {
-		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains both wildcard and non-wildcard values in %q field", grantString, "ids"))
+		return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains both wildcard and non-wildcard values in %q field", tuple.Grant, "ids"))
 	}
 
 	opts := getOpts(opt...)
@@ -498,7 +508,7 @@ func Parse(ctx context.Context, scopeId, grantString string, opt ...Option) (Gra
 					continue
 				}
 				if seenType != globals.ResourceInfoFromPrefix(id).Type {
-					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains ids of differently-typed resources", grantString))
+					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains ids of differently-typed resources", tuple.Grant))
 				}
 			}
 		}
@@ -646,19 +656,43 @@ func Parse(ctx context.Context, scopeId, grantString string, opt ...Option) (Gra
 				grantForValidation := grant.clone()
 				grantForValidation.id = grantIds[i]
 				acl := NewACL(*grantForValidation)
-				r := Resource{
-					ScopeId: scopeId,
-					Id:      grantIds[i],
-					Type:    grant.typ,
-				}
-				if !resource.TopLevelType(grant.typ) {
-					r.Pin = grantIds[i]
+				// For special scope names we aren't sure where the resource
+				// might be, so check possible scopes and see if any are valid
+				scopesToCheck := make([]string, 0, 2)
+				var parentScopeId string
+				switch {
+				case grant.grantScopeId == globals.GrantScopeDescendants:
+					scopesToCheck = append(scopesToCheck, "o_1234567890", "p_1234567890")
+				case grant.grantScopeId == globals.GrantScopeChildren:
+					if grant.roleScopeId == scope.Global.String() {
+						scopesToCheck = append(scopesToCheck, "o_1234567890")
+						parentScopeId = scope.Global.String()
+					} else {
+						scopesToCheck = append(scopesToCheck, "p_1234567890")
+						parentScopeId = grant.roleScopeId
+					}
+				default:
+					scopesToCheck = append(scopesToCheck, grant.grantScopeId)
 				}
 				var allowed bool
-				for k := range grant.actions {
-					results := acl.Allowed(r, k, globals.AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
-					if results.Authorized {
-						allowed = true
+				for _, scopeId := range scopesToCheck {
+					r := Resource{
+						ScopeId:       scopeId,
+						Id:            grantIds[i],
+						Type:          grant.typ,
+						ParentScopeId: parentScopeId,
+					}
+					if !resource.TopLevelType(grant.typ) {
+						r.Pin = grantIds[i]
+					}
+					for k := range grant.actions {
+						results := acl.Allowed(r, k, globals.AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
+						if results.Authorized {
+							allowed = true
+							break
+						}
+					}
+					if allowed {
 						break
 					}
 				}

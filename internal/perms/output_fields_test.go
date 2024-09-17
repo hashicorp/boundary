@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -149,14 +150,14 @@ func Test_ACLOutputFields(t *testing.T) {
 	tests := []input{
 		{
 			name:       "default",
-			resource:   Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource:   Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			action:     action.Read,
 			grants:     []string{"ids=u_bar;actions=read,update"},
 			authorized: true,
 		},
 		{
 			name:       "single value",
-			resource:   Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource:   Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants:     []string{"ids=u_bar;actions=read,update;output_fields=id"},
 			action:     action.Read,
 			fields:     []string{"id"},
@@ -164,7 +165,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "compound no overlap",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;actions=read,update;output_fields=id",
 				"ids=*;type=host-catalog;actions=read,update;output_fields=version",
@@ -175,7 +176,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "compound",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;actions=read,update;output_fields=id",
 				"ids=*;type=role;output_fields=version",
@@ -186,7 +187,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "wildcard with type",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;actions=read,update;output_fields=read",
 				"ids=*;type=role;output_fields=*",
@@ -197,7 +198,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "wildcard with wildcard type",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;actions=read,update;output_fields=read",
 				"ids=*;type=*;output_fields=*",
@@ -208,7 +209,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "subaction exact",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;actions=read:self,update;output_fields=version",
 			},
@@ -220,7 +221,7 @@ func Test_ACLOutputFields(t *testing.T) {
 			// If the action is a subaction, parent output fields will apply, in
 			// addition to subaction. This matches authorization.
 			name:     "subaction parent action",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;actions=read,update;output_fields=version",
 				"ids=u_bar;actions=read:self;output_fields=id",
@@ -235,7 +236,7 @@ func Test_ACLOutputFields(t *testing.T) {
 			// non-self actions. This is useful to allow more visibility to self
 			// actions and less in the general case.
 			name:     "subaction child action",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;actions=read:self,update;output_fields=version",
 				"ids=u_bar;actions=read;output_fields=id",
@@ -246,7 +247,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "initial grant unauthorized with star",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;output_fields=*",
 				"ids=u_bar;actions=delete;output_fields=id",
@@ -257,7 +258,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "unauthorized id only",
-			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
 				"ids=u_bar;output_fields=name",
 			},
@@ -266,7 +267,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "unauthorized type only",
-			resource: Resource{ScopeId: "o_myorg", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Type: resource.Role},
 			grants: []string{
 				"type=role;output_fields=name",
 			},
@@ -279,7 +280,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var grants []Grant
 			for _, g := range test.grants {
-				grant, err := Parse(ctx, "o_myorg", g)
+				grant, err := Parse(ctx, GrantTuple{RoleScopeId: "o_myorg", GrantScopeId: "o_myorg", Grant: g})
 				require.NoError(t, err)
 				grants = append(grants, grant)
 			}
