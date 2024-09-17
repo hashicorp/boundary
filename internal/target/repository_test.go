@@ -91,8 +91,8 @@ func TestNewRepository(t *testing.T) {
 				kms: testKms,
 				opts: []Option{
 					WithPermissions([]perms.Permission{
-						{ScopeId: "test1", Resource: resource.Target},
-						{ScopeId: "test2", Resource: resource.Target},
+						{GrantScopeId: "test1", Resource: resource.Target},
+						{GrantScopeId: "test2", Resource: resource.Target},
 					}),
 				},
 			},
@@ -102,8 +102,8 @@ func TestNewRepository(t *testing.T) {
 				kms:          testKms,
 				defaultLimit: db.DefaultLimit,
 				permissions: []perms.Permission{
-					{ScopeId: "test1", Resource: resource.Target},
-					{ScopeId: "test2", Resource: resource.Target},
+					{GrantScopeId: "test1", Resource: resource.Target},
+					{GrantScopeId: "test2", Resource: resource.Target},
 				},
 			},
 			wantErr: false,
@@ -116,8 +116,8 @@ func TestNewRepository(t *testing.T) {
 				kms: testKms,
 				opts: []Option{
 					WithPermissions([]perms.Permission{
-						{ScopeId: "test1", Resource: resource.Target},
-						{ScopeId: "test2", Resource: resource.Host},
+						{GrantScopeId: "test1", Resource: resource.Target},
+						{GrantScopeId: "test2", Resource: resource.Host},
 					}),
 				},
 			},

@@ -54,9 +54,9 @@ func TestRepository_ListSession(t *testing.T) {
 		UserId: composedOf.UserId,
 		Permissions: []perms.Permission{
 			{
-				ScopeId:  composedOf.ProjectId,
-				Resource: resource.Session,
-				Action:   action.List,
+				GrantScopeId: composedOf.ProjectId,
+				Resource:     resource.Session,
+				Action:       action.List,
 			},
 		},
 	}
@@ -109,9 +109,9 @@ func TestRepository_ListSession(t *testing.T) {
 			perms: &perms.UserPermissions{
 				Permissions: []perms.Permission{
 					{
-						ScopeId:  "o_thisIsNotValid",
-						Resource: resource.Session,
-						Action:   action.List,
+						GrantScopeId: "o_thisIsNotValid",
+						Resource:     resource.Session,
+						Action:       action.List,
 					},
 				},
 			},
@@ -126,9 +126,9 @@ func TestRepository_ListSession(t *testing.T) {
 			perms: &perms.UserPermissions{
 				Permissions: []perms.Permission{
 					{
-						ScopeId:  composedOf.ProjectId,
-						Resource: resource.Session,
-						Action:   action.Read,
+						GrantScopeId: composedOf.ProjectId,
+						Resource:     resource.Session,
+						Action:       action.Read,
 					},
 				},
 			},
@@ -200,10 +200,10 @@ func TestRepository_ListSession(t *testing.T) {
 			UserId: s.UserId,
 			Permissions: []perms.Permission{
 				{
-					ScopeId:  s.ProjectId,
-					Resource: resource.Session,
-					Action:   action.List,
-					OnlySelf: true,
+					GrantScopeId: s.ProjectId,
+					Resource:     resource.Session,
+					Action:       action.List,
+					OnlySelf:     true,
 				},
 			},
 		}
@@ -227,9 +227,9 @@ func TestRepository_ListSession(t *testing.T) {
 			UserId: composedOf.UserId,
 			Permissions: []perms.Permission{
 				{
-					ScopeId:  composedOf.ProjectId,
-					Resource: resource.Session,
-					Action:   action.List,
+					GrantScopeId: composedOf.ProjectId,
+					Resource:     resource.Session,
+					Action:       action.List,
 				},
 			},
 		}
@@ -336,9 +336,9 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 	for i := 0; i < numPerScope; i++ {
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 		p = append(p, perms.Permission{
-			ScopeId:  composedOf.ProjectId,
-			Resource: resource.Session,
-			Action:   action.List,
+			GrantScopeId: composedOf.ProjectId,
+			Resource:     resource.Session,
+			Action:       action.List,
 		})
 		s := TestSession(t, conn, wrapper, composedOf)
 		_ = TestState(t, conn, s.PublicId, StatusActive)
