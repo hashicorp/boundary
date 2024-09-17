@@ -26,6 +26,7 @@ func splitPermissions(permissions []perms.Permission) (directIds, directScopeIds
 	for _, perm := range permissions {
 		if perm.GrantScopeId == globals.GrantScopeDescendants && perm.All {
 			allDescendants = true
+			return
 		}
 	}
 
