@@ -273,6 +273,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		Id:      opts.withId,
 		Pin:     opts.withPin,
 		Type:    opts.withType,
+		// Parent Scope ID will be filled in via performAuthCheck
 	}
 	// Global scope has no parent ID; account for this
 	if opts.withId == scope.Global.String() && opts.withType == resource.Scope {
@@ -336,7 +337,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		grants = append(grants, event.Grant{
 			Grant:   g.Grant,
 			RoleId:  g.RoleId,
-			ScopeId: g.ScopeId,
+			ScopeId: g.GrantScopeId,
 		})
 	}
 	ea.UserInfo = &event.UserInfo{
@@ -636,6 +637,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			ParentScopeId: scp.GetParentId(),
 		}
 	}
+	v.res.ParentScopeId = scopeInfo.ParentScopeId
 
 	// At this point we don't need to look up grants since it's automatically allowed
 	if v.requestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms) {
@@ -658,7 +660,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	// Note: Below, we always skip validation so that we don't error on formats
 	// that we've since restricted, e.g. "ids=foo;actions=create,read". These
 	// will simply not have an effect.
-	for _, pair := range grantTuples {
+	for _, tuple := range grantTuples {
 		permsOpts := []perms.Option{
 			perms.WithUserId(*userData.User.Id),
 			perms.WithSkipFinalValidation(true),
@@ -668,11 +670,10 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		}
 		parsed, err := perms.Parse(
 			ctx,
-			pair.ScopeId,
-			pair.Grant,
+			tuple,
 			permsOpts...)
 		if err != nil {
-			retErr = errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
+			retErr = errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", tuple.Grant)))
 			return
 		}
 		parsedGrants = append(parsedGrants, parsed)
@@ -867,7 +868,7 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 		aSet := r.FetchActionSetForType(ctx,
 			resource.Unknown, // This is overridden by `WithResource` option.
 			action.NewActionSet(action.List),
-			WithResource(&perms.Resource{Type: resourceType, ScopeId: scpId}),
+			WithResource(&perms.Resource{Type: resourceType, ScopeId: scpId, ParentScopeId: scp.GetParentId()}),
 		)
 
 		// We only expect the action set to be nothing, or list. In case

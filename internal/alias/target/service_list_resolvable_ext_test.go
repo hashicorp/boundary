@@ -30,6 +30,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// NOTE: These tests rely on state from previous tests, so they should be run in
+// order -- running some subtests on their own will result in errors. It might
+// be nice for them to be refactored at some point to start with a known state
+// to avoid this. At the time I'm writing this, I'm not doing that because I'm
+// not sure if this was a purposeful design choice.
 func TestService_ListResolvableAliases(t *testing.T) {
 	fiveDaysAgo := time.Now()
 	// Set database read timeout to avoid duplicates in response
@@ -56,12 +61,12 @@ func TestService_ListResolvableAliases(t *testing.T) {
 	}
 	byIdPerms := []perms.Permission{
 		{
-			ScopeId:     proj.GetPublicId(),
-			Resource:    resource.Target,
-			Action:      action.ListResolvableAliases,
-			ResourceIds: []string{tar.GetPublicId(), "ttcp_unknownid"},
-			OnlySelf:    false,
-			All:         false,
+			GrantScopeId: proj.GetPublicId(),
+			Resource:     resource.Target,
+			Action:       action.ListResolvableAliases,
+			ResourceIds:  []string{tar.GetPublicId(), "ttcp_unknownid"},
+			OnlySelf:     false,
+			All:          false,
 		},
 	}
 	// Reverse since we read items in descending order (newest first)
@@ -76,15 +81,47 @@ func TestService_ListResolvableAliases(t *testing.T) {
 	}
 	byScopePerms := []perms.Permission{
 		{
-			ScopeId:  proj2.GetPublicId(),
-			Resource: resource.Target,
-			Action:   action.ListResolvableAliases,
-			OnlySelf: false,
-			All:      true,
+			GrantScopeId: proj2.GetPublicId(),
+			Resource:     resource.Target,
+			Action:       action.ListResolvableAliases,
+			OnlySelf:     false,
+			All:          true,
 		},
 	}
 	// Reverse since we read items in descending order (newest first)
 	slices.Reverse(byScopeResources)
+
+	org3, proj3 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	tar3 := tcp.TestTarget(ctx, t, conn, proj3.GetPublicId(), "target3")
+	var byChildrenResources []*target.Alias
+	for i := 0; i < 5; i++ {
+		r := target.TestAlias(t, rw, fmt.Sprintf("test%d.alias.by-children", i), target.WithDestinationId(tar3.GetPublicId()))
+		byChildrenResources = append(byChildrenResources, r)
+	}
+	byChildrenPerms := []perms.Permission{
+		{
+			RoleScopeId:       org3.GetPublicId(),
+			RoleParentScopeId: scope.Global.String(),
+			GrantScopeId:      globals.GrantScopeChildren,
+			Resource:          resource.Target,
+			Action:            action.ListResolvableAliases,
+			OnlySelf:          false,
+			All:               true,
+		},
+	}
+	// Reverse since we read items in descending order (newest first)
+	slices.Reverse(byChildrenResources)
+
+	byDescendantsPerms := []perms.Permission{
+		{
+			RoleScopeId:  scope.Global.String(),
+			GrantScopeId: globals.GrantScopeDescendants,
+			Resource:     resource.Target,
+			Action:       action.ListResolvableAliases,
+			OnlySelf:     false,
+			All:          true,
+		},
+	}
 
 	repo, repoErr := target.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, repoErr)
@@ -296,21 +333,41 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		})
 	})
 
+	// Build the descendants resources for the first tests
+	byDescendantsResources := append([]*target.Alias{}, byChildrenResources...)
+	byDescendantsResources = append(byDescendantsResources, byScopeResources...)
+	byDescendantsResources = append(byDescendantsResources, byIdResources...)
+
 	t.Run("simple pagination", func(t *testing.T) {
 		cases := []struct {
 			name          string
 			perms         []perms.Permission
 			resourceSlice []*target.Alias
+			lastPageSize  int
 		}{
 			{
 				name:          "by-id",
 				perms:         byIdPerms,
 				resourceSlice: byIdResources,
+				lastPageSize:  1,
 			},
 			{
 				name:          "by-scope",
 				perms:         byScopePerms,
 				resourceSlice: byScopeResources,
+				lastPageSize:  1,
+			},
+			{
+				name:          "by-children",
+				perms:         byChildrenPerms,
+				resourceSlice: byChildrenResources,
+				lastPageSize:  1,
+			},
+			{
+				name:          "by-descendants",
+				perms:         byDescendantsPerms,
+				resourceSlice: byDescendantsResources,
+				lastPageSize:  11,
 			},
 		}
 		for _, tc := range cases {
@@ -320,7 +377,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NotNil(t, resp.ListToken)
 				require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp.CompleteListing)
-				require.Equal(t, resp.EstimatedItemCount, 10)
+				require.Equal(t, 15, resp.EstimatedItemCount)
 				require.Empty(t, resp.DeletedIds)
 				require.Len(t, resp.Items, 1)
 				require.Empty(t, cmp.Diff(resp.Items[0], tc.resourceSlice[0], cmpIgnoreUnexportedOpts), "resources did not match", tc.resourceSlice, "resp", resp.Items)
@@ -329,7 +386,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp2.CompleteListing)
-				require.Equal(t, resp2.EstimatedItemCount, 10)
+				require.Equal(t, 15, resp2.EstimatedItemCount)
 				require.Empty(t, resp2.DeletedIds)
 				require.Len(t, resp2.Items, 1)
 				require.Empty(t, cmp.Diff(resp2.Items[0], tc.resourceSlice[1], cmpIgnoreUnexportedOpts))
@@ -338,7 +395,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp3.CompleteListing)
-				require.Equal(t, resp3.EstimatedItemCount, 10)
+				require.Equal(t, 15, resp3.EstimatedItemCount)
 				require.Empty(t, resp3.DeletedIds)
 				require.Len(t, resp3.Items, 1)
 				require.Empty(t, cmp.Diff(resp3.Items[0], tc.resourceSlice[2], cmpIgnoreUnexportedOpts))
@@ -347,18 +404,18 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp4.CompleteListing)
-				require.Equal(t, resp4.EstimatedItemCount, 10)
+				require.Equal(t, 15, resp4.EstimatedItemCount)
 				require.Empty(t, resp4.DeletedIds)
 				require.Len(t, resp4.Items, 1)
 				require.Empty(t, cmp.Diff(resp4.Items[0], tc.resourceSlice[3], cmpIgnoreUnexportedOpts))
 
-				resp5, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, resp4.ListToken, repo, tc.perms)
+				resp5, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), tc.lastPageSize, resp4.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
 				require.True(t, resp5.CompleteListing)
-				require.Equal(t, resp5.EstimatedItemCount, 10)
+				require.Equal(t, 15, resp5.EstimatedItemCount)
 				require.Empty(t, resp5.DeletedIds)
-				require.Len(t, resp5.Items, 1)
+				require.Len(t, resp5.Items, tc.lastPageSize)
 				require.Empty(t, cmp.Diff(resp5.Items[0], tc.resourceSlice[4], cmpIgnoreUnexportedOpts))
 
 				// Finished initial pagination phase, request refresh
@@ -367,7 +424,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, resp6.ListToken.GrantsHash, []byte("some hash"))
 				require.True(t, resp6.CompleteListing)
-				require.Equal(t, resp6.EstimatedItemCount, 10)
+				require.Equal(t, 15, resp6.EstimatedItemCount)
 				require.Empty(t, resp6.DeletedIds)
 				require.Empty(t, resp6.Items)
 
@@ -392,7 +449,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, resp7.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp7.CompleteListing)
-				require.Equal(t, resp7.EstimatedItemCount, 12)
+				require.Equal(t, 17, resp7.EstimatedItemCount)
 				require.Empty(t, resp7.DeletedIds)
 				require.Len(t, resp7.Items, 1)
 				require.Empty(t, cmp.Diff(resp7.Items[0], newR2, cmpIgnoreUnexportedOpts))
@@ -402,7 +459,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
 				require.True(t, resp8.CompleteListing)
-				require.Equal(t, resp8.EstimatedItemCount, 12)
+				require.Equal(t, 17, resp8.EstimatedItemCount)
 				require.Empty(t, resp8.DeletedIds)
 				require.Len(t, resp8.Items, 1)
 				require.Empty(t, cmp.Diff(resp8.Items[0], newR1, cmpIgnoreUnexportedOpts))
@@ -412,14 +469,14 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
 				require.True(t, resp9.CompleteListing)
-				require.Equal(t, resp9.EstimatedItemCount, 12)
+				require.Equal(t, 17, resp9.EstimatedItemCount)
 				require.Empty(t, resp9.DeletedIds)
 				require.Empty(t, resp9.Items)
 			})
 		}
 	})
 
-	t.Run("simple pagination with destination id changes", func(t *testing.T) {
+	t.Run("simple pagination with destination id changes - id", func(t *testing.T) {
 		firstUpdatedA := byScopeResources[0]
 		// this no longer has the destination id that has permissions
 		firstUpdatedA.DestinationId = tar.GetPublicId()
@@ -442,7 +499,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedItemCount, 10)
+		require.Equal(t, resp.EstimatedItemCount, 15)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], byScopeResources[0], cmpIgnoreUnexportedOpts))
@@ -452,7 +509,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
-		require.Equal(t, resp2.EstimatedItemCount, 10)
+		require.Equal(t, resp2.EstimatedItemCount, 15)
 		require.Empty(t, resp2.DeletedIds)
 		require.Len(t, resp2.Items, 3)
 		require.Empty(t, cmp.Diff(resp2.Items, byScopeResources[1:], cmpIgnoreUnexportedOpts))
@@ -479,12 +536,99 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
-		require.Equal(t, resp3.EstimatedItemCount, 10)
+		require.Equal(t, resp3.EstimatedItemCount, 15)
 		require.Contains(t, resp3.DeletedIds, secondA.GetPublicId())
 		require.Empty(t, resp3.Items)
 	})
 
-	t.Run("simple pagination with deletion", func(t *testing.T) {
+	t.Run("simple pagination with destination id changes - children", func(t *testing.T) {
+		firstUpdatedA := byChildrenResources[0]
+		// this no longer has the destination id that has permissions
+		firstUpdatedA.DestinationId = tar.GetPublicId()
+		firstUpdatedA, _, err := repo.UpdateAlias(ctx, firstUpdatedA, firstUpdatedA.GetVersion(), []string{"DestinationId"})
+		require.NoError(t, err)
+		byChildrenResources = byChildrenResources[1:]
+		t.Cleanup(func() {
+			firstUpdatedA.DestinationId = tar3.GetPublicId()
+			firstUpdatedA, _, err := repo.UpdateAlias(ctx, firstUpdatedA, firstUpdatedA.GetVersion(), []string{"DestinationId"})
+			require.NoError(t, err)
+			byChildrenResources = append([]*target.Alias{firstUpdatedA}, byChildrenResources...)
+		})
+
+		// Run analyze to update count estimate
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, byChildrenPerms)
+		require.NoError(t, err)
+		require.NotNil(t, resp.ListToken)
+		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
+		require.False(t, resp.CompleteListing)
+		require.Equal(t, resp.EstimatedItemCount, 15)
+		require.Empty(t, resp.DeletedIds)
+		require.Len(t, resp.Items, 1)
+		require.Empty(t, cmp.Diff(resp.Items[0], byChildrenResources[0], cmpIgnoreUnexportedOpts))
+
+		// request remaining results
+		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 3, resp.ListToken, repo, byChildrenPerms)
+		require.NoError(t, err)
+		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp2.CompleteListing)
+		require.Equal(t, resp2.EstimatedItemCount, 15)
+		require.Empty(t, resp2.DeletedIds)
+		require.Len(t, resp2.Items, 3)
+		require.Empty(t, cmp.Diff(resp2.Items, byChildrenResources[1:], cmpIgnoreUnexportedOpts))
+	})
+
+	// We have to re-build the expected set of resources as the original slices
+	// have been updated with updated values
+	byDescendantsResources = append([]*target.Alias{}, byChildrenResources...)
+	byDescendantsResources = append(byDescendantsResources, byScopeResources...)
+	byDescendantsResources = append(byDescendantsResources, byIdResources...)
+
+	t.Run("simple pagination with destination id changes - descendants", func(t *testing.T) {
+		firstUpdatedA := byDescendantsResources[0]
+		// this no longer has the destination id that has permissions
+		firstUpdatedA.DestinationId = tar.GetPublicId()
+		firstUpdatedA, _, err := repo.UpdateAlias(ctx, firstUpdatedA, firstUpdatedA.GetVersion(), []string{"DestinationId"})
+		require.NoError(t, err)
+		// Descendants will keep permissions for everything so we don't elide
+		// one here, but we need to increment the version number to match
+		byDescendantsResources[0] = firstUpdatedA
+		t.Cleanup(func() {
+			firstUpdatedA.DestinationId = tar3.GetPublicId()
+			firstUpdatedA, _, err = repo.UpdateAlias(ctx, firstUpdatedA, firstUpdatedA.GetVersion(), []string{"DestinationId"})
+			require.NoError(t, err)
+			byDescendantsResources[0] = firstUpdatedA
+		})
+
+		// Run analyze to update count estimate
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, byDescendantsPerms)
+		require.NoError(t, err)
+		require.NotNil(t, resp.ListToken)
+		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
+		require.False(t, resp.CompleteListing)
+		require.Equal(t, resp.EstimatedItemCount, 15)
+		require.Empty(t, resp.DeletedIds)
+		require.Len(t, resp.Items, 1)
+		require.Empty(t, cmp.Diff(resp.Items[0], byDescendantsResources[0], cmpIgnoreUnexportedOpts))
+
+		// request remaining results -- we should see all, because descendants
+		// is going to maintain permissions
+		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 14, resp.ListToken, repo, byDescendantsPerms)
+		require.NoError(t, err)
+		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp2.CompleteListing)
+		require.Equal(t, resp2.EstimatedItemCount, 15)
+		require.Empty(t, resp2.DeletedIds)
+		require.Len(t, resp2.Items, 14)
+		require.Empty(t, cmp.Diff(resp2.Items, byDescendantsResources[1:], cmpIgnoreUnexportedOpts))
+	})
+
+	t.Run("simple pagination with deletion - id", func(t *testing.T) {
 		deletedAliasId := byIdResources[0].GetPublicId()
 		_, err := repo.DeleteAlias(ctx, deletedAliasId)
 		require.NoError(t, err)
@@ -499,7 +643,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedItemCount, 9)
+		require.Equal(t, 14, resp.EstimatedItemCount)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], byIdResources[0], cmpIgnoreUnexportedOpts))
@@ -509,7 +653,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
-		require.Equal(t, resp2.EstimatedItemCount, 9)
+		require.Equal(t, 14, resp2.EstimatedItemCount)
 		require.Empty(t, resp2.DeletedIds)
 		require.Len(t, resp2.Items, 3)
 		require.Empty(t, cmp.Diff(resp2.Items, byIdResources[1:], cmpIgnoreUnexportedOpts))
@@ -528,7 +672,111 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
-		require.Equal(t, resp3.EstimatedItemCount, 8)
+		require.Equal(t, 13, resp3.EstimatedItemCount)
+		require.Contains(t, resp3.DeletedIds, deletedAliasId)
+		require.Empty(t, resp3.Items)
+	})
+
+	t.Run("simple pagination with deletion - children", func(t *testing.T) {
+		deletedAliasId := byChildrenResources[0].GetPublicId()
+		_, err := repo.DeleteAlias(ctx, deletedAliasId)
+		require.NoError(t, err)
+		byChildrenResources = byChildrenResources[1:]
+
+		// Run analyze to update count estimate
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, byChildrenPerms)
+		require.NoError(t, err)
+		require.NotNil(t, resp.ListToken)
+		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
+		require.False(t, resp.CompleteListing)
+		require.Equal(t, 12, resp.EstimatedItemCount)
+		require.Empty(t, resp.DeletedIds)
+		require.Len(t, resp.Items, 1)
+		require.Empty(t, cmp.Diff(resp.Items[0], byChildrenResources[0], cmpIgnoreUnexportedOpts))
+
+		// request remaining results
+		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 8, resp.ListToken, repo, byChildrenPerms)
+		require.NoError(t, err)
+		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp2.CompleteListing)
+		require.Equal(t, 12, resp2.EstimatedItemCount)
+		require.Empty(t, resp2.DeletedIds)
+		require.Len(t, resp2.Items, 3)
+		require.Empty(t, cmp.Diff(resp2.Items, byChildrenResources[1:], cmpIgnoreUnexportedOpts))
+
+		deletedAliasId = byChildrenResources[0].GetPublicId()
+		_, err = repo.DeleteAlias(ctx, deletedAliasId)
+		require.NoError(t, err)
+		byChildrenResources = byChildrenResources[1:]
+
+		// Run analyze to update count estimate
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// request a refresh, nothing should be returned except the deleted id
+		resp3, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, resp2.ListToken, repo, byChildrenPerms)
+		require.NoError(t, err)
+		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp3.CompleteListing)
+		require.Equal(t, 11, resp3.EstimatedItemCount)
+		require.Contains(t, resp3.DeletedIds, deletedAliasId)
+		require.Empty(t, resp3.Items)
+	})
+
+	// We have to re-build the expected set of resources as the original slices
+	// have been updated with updated values again
+	byDescendantsResources = append([]*target.Alias{}, byChildrenResources...)
+	byDescendantsResources = append(byDescendantsResources, byScopeResources...)
+	byDescendantsResources = append(byDescendantsResources, byIdResources...)
+
+	t.Run("simple pagination with deletion - descendants", func(t *testing.T) {
+		deletedAliasId := byDescendantsResources[0].GetPublicId()
+		_, err := repo.DeleteAlias(ctx, deletedAliasId)
+		require.NoError(t, err)
+		byDescendantsResources = byDescendantsResources[1:]
+
+		// Run analyze to update count estimate
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, byDescendantsPerms)
+		require.NoError(t, err)
+		require.NotNil(t, resp.ListToken)
+		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
+		require.False(t, resp.CompleteListing)
+		require.Equal(t, 10, resp.EstimatedItemCount)
+		require.Empty(t, resp.DeletedIds)
+		require.Len(t, resp.Items, 1)
+		require.Empty(t, cmp.Diff(resp.Items[0], byDescendantsResources[0], cmpIgnoreUnexportedOpts))
+
+		// request remaining results
+		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 13, resp.ListToken, repo, byDescendantsPerms)
+		require.NoError(t, err)
+		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp2.CompleteListing)
+		require.Equal(t, 10, resp2.EstimatedItemCount)
+		require.Empty(t, resp2.DeletedIds)
+		require.Len(t, resp2.Items, 9)
+		require.Empty(t, cmp.Diff(resp2.Items, byDescendantsResources[1:], cmpIgnoreUnexportedOpts))
+
+		deletedAliasId = byDescendantsResources[0].GetPublicId()
+		_, err = repo.DeleteAlias(ctx, deletedAliasId)
+		require.NoError(t, err)
+		byDescendantsResources = byDescendantsResources[1:]
+
+		// Run analyze to update count estimate
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// request a refresh, nothing should be returned except the deleted id
+		resp3, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, resp2.ListToken, repo, byDescendantsPerms)
+		require.NoError(t, err)
+		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
+		require.True(t, resp3.CompleteListing)
+		require.Equal(t, 9, resp3.EstimatedItemCount)
 		require.Contains(t, resp3.DeletedIds, deletedAliasId)
 		require.Empty(t, resp3.Items)
 	})

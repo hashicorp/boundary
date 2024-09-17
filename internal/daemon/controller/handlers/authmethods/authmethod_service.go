@@ -343,7 +343,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +388,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -438,7 +438,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -492,7 +492,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -1442,6 +1442,10 @@ func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.Aut
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
+	// Auth methods are only at global or org, so we can figure out the parent
+	if strings.HasPrefix(res.ScopeId, scope.Org.Prefix()) {
+		res.ParentScopeId = scope.Global.String()
+	}
 	tokenType := req.GetType()
 	if tokenType == "" {
 		// Fall back to deprecated field if type is not set
@@ -1588,7 +1592,7 @@ func newOutputOpts(ctx context.Context, item auth.AuthMethod, scopeInfoMap map[s
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, item.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope, item.GetPublicId())
 		if err != nil {
 			return nil, false, err
 		}

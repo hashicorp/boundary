@@ -259,7 +259,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Opti
 
 	if len(c.flagGrants) > 0 {
 		for _, grant := range c.flagGrants {
-			parsed, err := perms.Parse(c.Context, scope.Global.String(), grant)
+			parsed, err := perms.Parse(c.Context, perms.GrantTuple{RoleScopeId: scope.Global.String(), GrantScopeId: scope.Global.String(), Grant: grant})
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Grant %q could not be parsed successfully: %w", grant, err).Error())
 				return false

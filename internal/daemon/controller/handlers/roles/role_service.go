@@ -1123,7 +1123,7 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 	}
 	if outputFields.Has(globals.GrantsField) {
 		for _, g := range grants {
-			parsed, err := perms.Parse(ctx, in.GetScopeId(), g.GetRawGrant())
+			parsed, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: in.GetPublicId(), GrantScopeId: in.GetScopeId(), Grant: g.GetRawGrant()})
 			if err != nil {
 				// This should never happen as we validate on the way in, but let's
 				// return what we can since we are still returning the raw grant
@@ -1319,7 +1319,7 @@ func validateAddRoleGrantsRequest(ctx context.Context, req *pbs.AddRoleGrantsReq
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		grant, err := perms.Parse(ctx, "p_anything", v)
+		grant, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: req.GetId(), GrantScopeId: "p_anything", Grant: v})
 		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
@@ -1356,9 +1356,9 @@ func validateSetRoleGrantsRequest(ctx context.Context, req *pbs.SetRoleGrantsReq
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		grant, err := perms.Parse(ctx, "p_anything", v)
+		grant, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: req.GetId(), GrantScopeId: "p_anything", Grant: v})
 		if err != nil {
-			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
+			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q: %s.", v, err.Error())
 			break
 		}
 		_, actStrs := grant.Actions()
@@ -1396,7 +1396,7 @@ func validateRemoveRoleGrantsRequest(ctx context.Context, req *pbs.RemoveRoleGra
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		if _, err := perms.Parse(ctx, "p_anything", v); err != nil {
+		if _, err := perms.Parse(ctx, perms.GrantTuple{RoleScopeId: req.GetId(), GrantScopeId: "p_anything", Grant: v}); err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
 		}

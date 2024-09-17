@@ -506,7 +506,7 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 		}
 	}
 
-	permissions := acl.ListResolvablePermissions(resource.Target, targets.IdActions)
+	permissions := acl.ListResolvableAliasesPermissions(resource.Target, targets.IdActions)
 
 	if len(permissions) == 0 {
 		// if there are no permitted targets then there will be no aliases that
@@ -615,15 +615,14 @@ func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string) (per
 	// Note: Below, we always skip validation so that we don't error on formats
 	// that we've since restricted, e.g. "ids=foo;actions=create,read". These
 	// will simply not have an effect.
-	for _, pair := range grantTuples {
+	for _, tuple := range grantTuples {
 		permsOpts := []perms.Option{
 			perms.WithUserId(userId),
 			perms.WithSkipFinalValidation(true),
 		}
 		parsed, err := perms.Parse(
 			ctx,
-			pair.ScopeId,
-			pair.Grant,
+			tuple,
 			permsOpts...)
 		if err != nil {
 			return perms.ACL{}, nil, errors.Wrap(ctx, err, op)
