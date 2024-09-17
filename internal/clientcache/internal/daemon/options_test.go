@@ -26,10 +26,10 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithUrl", func(t *testing.T) {
-		opts, err := getOpts(WithUrl(ctx, "http://localhost:9200"))
+		opts, err := getOpts(WithUrl(ctx, "http://[::1]:9200"))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
-		testOpts.withUrl = "http://localhost:9200"
+		testOpts.withUrl = "http://[::1]:9200"
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithLogger", func(t *testing.T) {

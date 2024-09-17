@@ -54,10 +54,26 @@ func TestRepository_UpsertController(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "valid-controller",
+			name: "valid-ipv4-controller",
 			controller: &store.Controller{
-				PrivateId: "test-controller",
+				PrivateId: "test-ipv4-controller",
 				Address:   "127.0.0.1",
+			},
+			wantCount: 1,
+		},
+		{
+			name: "valid-ipv6-controller",
+			controller: &store.Controller{
+				PrivateId: "test-ipv6-controller",
+				Address:   "[2001:4860:4860:0:0:0:0:8888]",
+			},
+			wantCount: 1,
+		},
+		{
+			name: "valid-abbreviated-ipv6-controller",
+			controller: &store.Controller{
+				PrivateId: "test-abbreviated-ipv6-controller",
+				Address:   "[2001:4860:4860::8888]",
 			},
 			wantCount: 1,
 		},

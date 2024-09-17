@@ -724,7 +724,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 	// do not run these tests with t.Parallel()
 	ctx := context.Background()
 
-	tp := oidc.StartTestProvider(t)
+	tp := oidc.StartTestProvider(t, oidc.WithTestHost("::1"))
 	tpClientId := "alice-rp"
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
@@ -744,7 +744,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	port := testutil.TestFreePort(t)
-	testAuthMethodCallback, err := url.Parse(fmt.Sprintf("http://localhost:%d/callback", port))
+	testAuthMethodCallback, err := url.Parse(fmt.Sprintf("http://[::1]:%d/callback", port))
 	require.NoError(t, err)
 	testAuthMethod := TestAuthMethod(t,
 		conn, databaseWrapper,
@@ -793,7 +793,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 			authMethod: func() *AuthMethod {
 				cp := testAuthMethod.Clone()
 				port := testutil.TestFreePort(t)
-				cp.Issuer = fmt.Sprintf("http://localhost:%d", port)
+				cp.Issuer = fmt.Sprintf("http://[::1]:%d", port)
 				return cp
 			}(),
 			withAuthMethod:  true,
@@ -1327,7 +1327,7 @@ func Test_pingEndpoint(t *testing.T) {
 						}, nil
 					},
 				}
-				return client, http.MethodGet, "http://localhost/get"
+				return client, http.MethodGet, "http://[::1]/get"
 			},
 			wantStatus: 200,
 		},
@@ -1341,7 +1341,7 @@ func Test_pingEndpoint(t *testing.T) {
 						}, nil
 					},
 				}
-				return client, http.MethodGet, "http://localhost/get"
+				return client, http.MethodGet, "http://[::1]/get"
 			},
 			wantStatus: 500,
 		},
@@ -1353,7 +1353,7 @@ func Test_pingEndpoint(t *testing.T) {
 						return nil, fmt.Errorf("invalid request")
 					},
 				}
-				return client, http.MethodGet, "http://localhost/get"
+				return client, http.MethodGet, "http://[::1]/get"
 			},
 			wantErr: true,
 		},

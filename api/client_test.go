@@ -23,9 +23,15 @@ func TestConfigSetAddress(t *testing.T) {
 
 	tests := []test{
 		{
-			"bare",
+			"ipv4",
 			"http://127.0.0.1:9200",
 			"http://127.0.0.1:9200",
+			"",
+		},
+		{
+			"ipv6",
+			"http://[::1]:9200",
+			"http://[::1]:9200",
 			"",
 		},
 		{

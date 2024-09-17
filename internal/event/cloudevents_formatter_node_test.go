@@ -20,7 +20,7 @@ import (
 
 func Test_newCloudEventsFormatterFilter(t *testing.T) {
 	t.Parallel()
-	testSource, err := url.Parse("https://localhost:9200")
+	testSource, err := url.Parse("https://[::1]:9200")
 	require.NoError(t, err)
 	tests := []struct {
 		name            string
@@ -152,7 +152,7 @@ func Test_newCloudEventsFormatterFilter(t *testing.T) {
 func TestNode_Process(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	testUrl, err := url.Parse("https://localhost")
+	testUrl, err := url.Parse("https://[::1]")
 	require.NoError(t, err)
 	now := time.Now()
 
@@ -294,12 +294,12 @@ func TestNode_Process(t *testing.T) {
 			},
 			wantText: `{
   "id": "%s",
-  "source": "https://localhost",
+  "source": "https://[::1]",
   "specversion": "1.0",
   "type": "test",
   "data": "test-string",
   "datacontentype": "text/plain",
-  "dataschema": "https://localhost",
+  "dataschema": "https://[::1]",
   "time": %s
 }
 `,
