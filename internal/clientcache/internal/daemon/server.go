@@ -338,6 +338,9 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 			return ctx
 		},
 	}
+	if opts.WithReadyToServeNotificationCh != nil {
+		close(opts.WithReadyToServeNotificationCh)
+	}
 	if err = s.httpSrv.Serve(l); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 		event.WriteSysEvent(ctx, op, "error closing server", "err", err.Error())
 	}

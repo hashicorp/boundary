@@ -61,15 +61,19 @@ func TestSearch(t *testing.T) {
 		return nil, errors.New("test not found error")
 	}
 
+	readyNotificationCh := make(chan struct{})
 	srv := daemon.NewTestServer(t, cmd)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		srv.Serve(t, daemon.WithBoundaryTokenReaderFunc(ctx, boundaryTokenReaderFn))
+		srv.Serve(
+			t,
+			daemon.WithBoundaryTokenReaderFunc(ctx, boundaryTokenReaderFn),
+			daemon.WithReadyToServeNotificationCh(context.Background(), readyNotificationCh),
+		)
 	}()
-	// Give the store some time to get initialized
-	time.Sleep(100 * time.Millisecond)
+	<-readyNotificationCh
 	srv.AddKeyringToken(t, "address", "keyringtype", "tokenname", at.Id, boundaryTokenReaderFn)
 	srv.AddKeyringToken(t, "address", "keyringtype", "unsupported", unsupportedAt.Id, boundaryTokenReaderFn)
 
