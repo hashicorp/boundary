@@ -17,6 +17,7 @@ type options struct {
 	withRecheckSupportInterval             time.Duration
 	testWithIntervalRandomizationFactor    float64
 	testWithIntervalRandomizationFactorSet bool
+	WithReadyToServeNotificationCh         chan struct{}
 	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
 
 	withUrl    string
@@ -96,6 +97,17 @@ func WithLogger(_ context.Context, logger hclog.Logger) Option {
 func WithBoundaryTokenReaderFunc(_ context.Context, fn cache.BoundaryTokenReaderFn) Option {
 	return func(o *options) error {
 		o.withBoundaryTokenReaderFunc = fn
+		return nil
+	}
+}
+
+// WithReadyToServeNotificationCh provides an optional channel to notify when
+// the server is ready to serve; mainly used for test timing but exported for
+// availability. The channel will be closed just before the HTTP server is
+// started.
+func WithReadyToServeNotificationCh(_ context.Context, readyCh chan struct{}) Option {
+	return func(o *options) error {
+		o.WithReadyToServeNotificationCh = readyCh
 		return nil
 	}
 }
