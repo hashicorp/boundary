@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,8 @@ func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	testProjectName := `E2E/Project-With\Name`
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId, boundary.WithName(testProjectName))
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
@@ -45,7 +47,8 @@ func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	testTargetName := `E2E/Test-Target-With\Name`
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithName(testTargetName))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
@@ -112,4 +115,26 @@ func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 	hostIp := parts[len(parts)-1]
 	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
+
+	// Authorize session with target name and scope id
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "authorize-session",
+			"-name", testTargetName,
+			"-scope-id", projectId,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Authorize session with target name and scope name
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "authorize-session",
+			"-name", testTargetName,
+			"-scope-name", testProjectName,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
 }
