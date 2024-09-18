@@ -101,4 +101,14 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithReadyToServeNotificationCh", func(t *testing.T) {
+		ch := make(chan struct{})
+		opts, err := getOpts(WithReadyToServeNotificationCh(ctx, ch))
+		require.NoError(t, err)
+		assert.NotNil(t, opts.WithReadyToServeNotificationCh)
+		testOpts := getDefaultOptions()
+		assert.Nil(t, testOpts.WithReadyToServeNotificationCh)
+		testOpts.WithReadyToServeNotificationCh = ch
+		assert.Equal(t, opts, testOpts)
+	})
 }
