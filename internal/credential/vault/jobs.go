@@ -604,6 +604,9 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew credential"))
 	}
+	if renewedCred == nil {
+		return errors.New(ctx, errors.Unknown, op, "vault returned empty credential")
+	}
 
 	cred.expiration = time.Duration(renewedCred.LeaseDuration) * time.Second
 	query, values := cred.updateExpirationQuery()
