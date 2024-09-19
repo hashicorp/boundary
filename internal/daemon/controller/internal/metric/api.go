@@ -101,12 +101,12 @@ func apiPathsAndMethods() map[string][]string {
 func buildRegexFromPath(p string) *regexp.Regexp {
 	// We only care about how grpc-gateway will route to specific handlers.
 	// As long as there is at least 1 character that is part of a path segment
-	// (not a '/', '?', or ':' we have identified an id for the sake of routing.
-	const idRegexp = "[^\\/\\?\\:]+"
+	// (not a '?', or ':' we have identified an id for the sake of routing.
+	const idRegexp = "[^\\?\\:]+"
 
-	// Replace any tag in the form of {id} or {auth_method_id} with the above
+	// Replace any tag in the form of {id}, {id**}, or {auth_method_id} with the above
 	// regex so we can match paths to that when measuring requests.
-	pWithId := string(regexp.MustCompile("\\{[^\\}]*id\\}").ReplaceAll([]byte(p), []byte(idRegexp)))
+	pWithId := string(regexp.MustCompile("\\{[^\\}]*id(\\=\\*\\*)?\\}").ReplaceAll([]byte(p), []byte(idRegexp)))
 
 	// Escape everything except for our id regexp.
 	var seg []string
