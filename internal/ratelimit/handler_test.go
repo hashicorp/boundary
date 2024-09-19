@@ -67,7 +67,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusOK,
 			http.Header{
@@ -109,7 +109,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusOK,
 			http.Header{
@@ -151,7 +151,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusOK,
 			http.Header{
@@ -193,7 +193,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusOK,
 			http.Header{
@@ -235,7 +235,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusOK,
 			http.Header{
@@ -277,7 +277,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusOK,
 			http.Header{
@@ -319,7 +319,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusOK,
 			http.Header{
@@ -369,7 +369,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusTooManyRequests,
 			http.Header{
@@ -436,7 +436,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusServiceUnavailable,
 			http.Header{
@@ -477,7 +477,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusInternalServerError,
 			http.Header{},
@@ -516,7 +516,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusNotFound,
 			http.Header{},
@@ -555,7 +555,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusBadRequest,
 			http.Header{},
@@ -594,7 +594,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusMethodNotAllowed,
 			http.Header{},
@@ -633,7 +633,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusMethodNotAllowed,
 			http.Header{},
@@ -672,7 +672,7 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
-			"127.0.0.1",
+			"[::1]",
 			"authtoken",
 			http.StatusMethodNotAllowed,
 			http.Header{},
@@ -756,7 +756,7 @@ func TestHandlerErrors(t *testing.T) {
 				ctx, err = event.NewRequestInfoContext(ctx, &event.RequestInfo{
 					Id:       id,
 					EventId:  common.GeneratedTraceId(ctx),
-					ClientIp: "127.0.0.1",
+					ClientIp: "[::1]",
 				})
 				require.NoError(t, err)
 				return ctx

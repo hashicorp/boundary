@@ -86,7 +86,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		conf, err := config.DevController()
 		require.NoError(err)
 
-		pl, err := net.Listen("tcp", "localhost:0")
+		pl, err := net.Listen("tcp", "[::1]:0")
 		require.NoError(err)
 		c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 			Config:                          conf,
@@ -217,7 +217,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		conf1, err := config.DevController()
 		require.NoError(err)
 
-		pl1, err := net.Listen("tcp", "localhost:0")
+		pl1, err := net.Listen("tcp", "[::1]:0")
 		require.NoError(err)
 		c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 			Config:                          conf1,
@@ -230,7 +230,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		// ******************
 		// ** Controller 2 **
 		// ******************
-		pl2, err := net.Listen("tcp", "localhost:0")
+		pl2, err := net.Listen("tcp", "[::1]:0")
 		require.NoError(err)
 		c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
 			Logger:                          logger.Named("c2"),

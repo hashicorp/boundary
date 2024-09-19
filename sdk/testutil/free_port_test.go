@@ -19,7 +19,7 @@ func Test_TestFreePort(t *testing.T) {
 		p := TestFreePort(t)
 		assert.NotEmpty(p)
 
-		addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", p))
+		addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("[::1]:%d", p))
 		require.NoError(err)
 		l, err := net.ListenTCP("tcp", addr)
 		require.NoError(err)

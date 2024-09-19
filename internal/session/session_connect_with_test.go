@@ -29,7 +29,7 @@ func TestConnectWith_validate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "valid",
+			name: "valid-ipv4",
 			fields: fields{
 				SessionId:          id,
 				ClientTcpAddress:   "0.0.0.1",
@@ -37,6 +37,17 @@ func TestConnectWith_validate(t *testing.T) {
 				EndpointTcpAddress: "0.0.0.1",
 				EndpointTcpPort:    2222,
 				UserClientIp:       "127.0.0.1",
+			},
+		},
+		{
+			name: "valid-ipv6",
+			fields: fields{
+				SessionId:          id,
+				ClientTcpAddress:   "[::1]",
+				ClientTcpPort:      22,
+				EndpointTcpAddress: "[::1]",
+				EndpointTcpPort:    2222,
+				UserClientIp:       "[::2]",
 			},
 		},
 		{
