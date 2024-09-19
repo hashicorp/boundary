@@ -11,20 +11,34 @@ import (
 )
 
 // Job defines an interface for jobs that can be invoked by the scheduler.
+// Multiple goroutines may invoke methods on a Job simultaneously.
 type Job interface {
-	// Status reports the job’s current status.  The status is periodically persisted by
-	// the scheduler when a job is running, and will be used to verify a job is making progress.
+	// Status reports the job’s current status. It is called periodically
+	// while the Run method is running and immediately after the Run method
+	// completes.
+	//
+	// The scheduler uses the values in the returned JobStatus to verify
+	// that progress is being made by the job. The scheduler will interrupt
+	// the job if the values returned by Status do not change over a
+	// configurable amount of time.
+	//
+	// See scheduler.WithInterruptThreshold for more information.
 	Status() JobStatus
 
-	// Run performs the required work depending on the implementation.
+	// Run starts the specified job and waits for it to complete.
 	// The context is used to notify the job that it should exit early.
+	//
+	// If the returned error is not nil, the job will be scheduled to run again
+	// immediately and the returned error will be logged.
 	Run(ctx context.Context) error
 
-	// NextRunIn returns the duration until the next job run should be scheduled.  This
-	// method is invoked after a run has successfully completed and the next run time
-	// is being persisted by the scheduler.  If an error is returned, the error will be logged
-	// but the duration returned will still be used in scheduling.  If a zero duration is returned
+	// NextRunIn returns the duration the job scheduler should wait before
+	// running the job again. It is only called after the Run method has
+	// completed and returned a nil error. If a zero duration is returned
 	// the job will be scheduled to run again immediately.
+	//
+	// If an error is returned, the error will be logged but the returned
+	// duration will still be used in scheduling.
 	NextRunIn(context.Context) (time.Duration, error)
 
 	// Name is the unique name of the job.
@@ -34,12 +48,19 @@ type Job interface {
 	Description() string
 }
 
-// JobStatus defines the struct that must be returned by the Job.Status() method.
+// A JobStatus represents the status of a job.
+// Completed and Total are used to indicate job progress.
+// The Completed value cannot be greater than the Total value
+// and both values must be greater than or equal to zero.
+//
+// The scheduler uses the values in the JobStatus to verify that
+// progress is being made by the job. The scheduler will interrupt the job
+// if the values returned by Status do not change over a configurable
+// amount of time.
 type JobStatus struct {
-	// Completed and Total are used to indicate job progress,
-	// each job implementation will determine the definition of
-	// progress by calculating both Completed and Total.
-	Completed, Total int
+	// The job's work items
+	Completed int // number of items processed
+	Total     int // total number of items to be processed
 }
 
 func validateJob(ctx context.Context, j Job) error {
