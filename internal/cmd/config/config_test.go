@@ -1495,7 +1495,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			expErr:             false,
 		},
 		{
-			name: "One Upstream",
+			name: "ipv4 Upstream",
 			in: `
 			worker {
 				name = "test"
@@ -1503,6 +1503,28 @@ func TestWorkerUpstreams(t *testing.T) {
 			}
 			`,
 			expWorkerUpstreams: []string{"127.0.0.1"},
+			expErr:             false,
+		},
+		{
+			name: "ipv6 Upstream",
+			in: `
+			worker {
+				name = "test"
+				initial_upstreams = ["[2001:4860:4860:0:0:0:0:8888]"]
+			}
+			`,
+			expWorkerUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]"},
+			expErr:             false,
+		},
+		{
+			name: "abbreviated ipv6 Upstream",
+			in: `
+			worker {
+				name = "test"
+				initial_upstreams = ["[2001:4860:4860::8888]"]
+			}
+			`,
+			expWorkerUpstreams: []string{"[2001:4860:4860::8888]"},
 			expErr:             false,
 		},
 		{
@@ -2346,7 +2368,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: ":9201",
 		},
 		{
-			name: "setting public cluster address directly with ip",
+			name: "setting public cluster address directly with ipv4",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -2361,7 +2383,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:9201",
 		},
 		{
-			name: "setting public cluster address directly with ip:port",
+			name: "setting public cluster address directly with ipv4:port",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -2374,6 +2396,66 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expErr:                  false,
 			expErrStr:               "",
 			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "setting public cluster address directly with ipv6",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:9201",
+		},
+		{
+			name: "setting public cluster address directly with ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]:8080",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+		},
+		{
+			name: "setting public cluster address directly with abbreviated ipv6",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:9201",
+		},
+		{
+			name: "setting public cluster address directly with abbreviated ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]:8080",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "setting public cluster address to env var",
@@ -2530,7 +2612,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:8080",
 		},
 		{
-			name: "read address from listeners ip only",
+			name: "read address from listeners ipv4 only",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2544,7 +2626,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:9201",
 		},
 		{
-			name: "read address from listeners ip:port",
+			name: "read address from listeners ipv4:port",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2556,6 +2638,62 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expErr:                  false,
 			expErrStr:               "",
 			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "read address from listeners ipv6 only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860:0:0:0:0:8888]"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:9201",
+		},
+		{
+			name: "read address from listeners ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860:0:0:0:0:8888]:8080"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+		},
+		{
+			name: "read address from listeners abbreviated ipv6 only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860::8888]"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:9201",
+		},
+		{
+			name: "read address from listeners abbreviated ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860::8888]:8080"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "read address from listeners is ignored on different purpose",
@@ -2671,7 +2809,7 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expInitialUpstreams: nil,
 		},
 		{
-			name: "PublicClusterAddr",
+			name: "ipv4 PublicClusterAddr",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -2684,6 +2822,36 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expErr:              false,
 			expErrStr:           "",
 			expInitialUpstreams: []string{"192.168.0.4:9201"},
+		},
+		{
+			name: "ipv6 PublicClusterAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]:9201",
+				},
+				Worker: &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]:9201"},
+		},
+		{
+			name: "abbreviated ipv6 PublicClusterAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]:9201",
+				},
+				Worker: &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860::8888]:9201"},
 		},
 		{
 			name: "ListenerNoAddr",
@@ -2703,7 +2871,7 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expInitialUpstreams: []string{"127.0.0.1:9201"},
 		},
 		{
-			name: "ListenerAddr",
+			name: "ipv4 ListenerAddr",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2719,6 +2887,42 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expErr:              false,
 			expErrStr:           "",
 			expInitialUpstreams: []string{"192.168.0.5:9201"},
+		},
+		{
+			name: "ipv6 ListenerAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "[2001:4860:4860:0:0:0:0:8888]:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]:9201"},
+		},
+		{
+			name: "abbreviated ipv6 ListenerAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "[2001:4860:4860::8888]:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860::8888]:9201"},
 		},
 		{
 			name: "ListenerAddrDomain",

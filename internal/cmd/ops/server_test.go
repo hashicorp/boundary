@@ -133,12 +133,28 @@ func TestNewServerIntegration(t *testing.T) {
 		expErrMsg  string
 	}{
 		{
-			name: "one tcp ops listener",
+			name: "one tcp ops ipv4 listener",
 			listeners: []*listenerutil.ListenerConfig{
 				{
 					Type:       "tcp",
 					Purpose:    []string{"ops"},
 					Address:    "127.0.0.1:0",
+					TLSDisable: true,
+				},
+			},
+			assertions: func(t *testing.T, addrs []string) {
+				resp, err := http.Get("http://" + addrs[0])
+				resp.Body.Close()
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "one tcp ops ipv6 listener",
+			listeners: []*listenerutil.ListenerConfig{
+				{
+					Type:       "tcp",
+					Purpose:    []string{"ops"},
+					Address:    "[::1]:0",
 					TLSDisable: true,
 				},
 			},

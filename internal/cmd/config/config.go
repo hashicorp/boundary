@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -130,6 +131,12 @@ kms "aead" {
 	// as a script-src to support asciinema playback on the Admin UI. Users can still
 	// override this value via the configuration.
 	defaultCsp = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"
+)
+
+var (
+	// This regular expression is used to find all instances of square brackets within a string.
+	// This regular expression is used to remove the square brackets from an IPv6 address.
+	squareBrackets = regexp.MustCompile("\\[|\\]")
 )
 
 // Config is the configuration for the boundary controller
@@ -1278,7 +1285,12 @@ func (c *Config) SetupControllerPublicClusterAddress(flagValue string) error {
 			return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
 		}
 	}
+
+	// remove the square brackets from the ipv6 address because the method
+	// net.JoinHostPort() will add a second pair of square brackets.
+	host = squareBrackets.ReplaceAllString(host, "")
 	c.Controller.PublicClusterAddr = net.JoinHostPort(host, port)
+
 	return nil
 }
 
