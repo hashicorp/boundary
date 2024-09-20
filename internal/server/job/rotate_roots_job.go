@@ -78,7 +78,7 @@ func (r *rotateRootsJob) Status() scheduler.JobStatus {
 }
 
 // Run executes the job by calling the rotateRoots domain function
-func (r *rotateRootsJob) Run(ctx context.Context) error {
+func (r *rotateRootsJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "server.(rotateRootsJob).Run"
 
 	_, err := server.RotateRoots(ctx, r.workerAuthRepo, nodeenrollment.WithCertificateLifetime(r.certificateLifetime))

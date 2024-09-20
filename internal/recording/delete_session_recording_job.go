@@ -33,7 +33,7 @@ func (dsr *deleteSessionRecordingJob) Status() scheduler.JobStatus { return sche
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (dsr *deleteSessionRecordingJob) Run(_ context.Context) error { return nil }
+func (dsr *deleteSessionRecordingJob) Run(_ context.Context, _ time.Duration) error { return nil }
 
 // NextRunIn returns the duration until the next job run should be scheduled.
 // Delete Session Recording will run every hour unless we know there are more to delete,

@@ -260,7 +260,7 @@ func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) 
 	go func() {
 		defer rj.cancelCtx()
 		defer wg.Done()
-		runErr := j.Run(jobContext)
+		runErr := j.Run(jobContext, s.interruptThreshold)
 
 		// Get final status report to update run progress with
 		status := j.Status()

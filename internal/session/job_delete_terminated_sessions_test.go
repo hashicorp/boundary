@@ -101,7 +101,7 @@ func TestDeleteTermiantedSessionsJob(t *testing.T) {
 
 			job, err := newDeleteTerminatedJob(ctx, repo, tc.threshold)
 			require.NoError(t, err)
-			err = job.Run(ctx)
+			err = job.Run(ctx, 0)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, job.deletedInRun)
 		})

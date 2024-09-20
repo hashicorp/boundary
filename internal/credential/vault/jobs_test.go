@@ -312,7 +312,7 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 			r, err := newTokenRenewalJob(ctx, rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
-			err = r.Run(ctx)
+			err = r.Run(ctx, 0)
 			require.NoError(err)
 			assert.Equal(tt.wantLen, r.numTokens)
 
@@ -352,7 +352,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	cs, err := repo.CreateCredentialStore(ctx, in)
 	require.NoError(err)
 
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	// No tokens should have been renewed since token expiration is 24 hours by default
 	assert.Equal(0, r.numProcessed)
@@ -391,7 +391,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	require.NoError(err)
 
 	// Run token renewal again
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	// Current and maintaining token should have been processed
 	assert.Equal(2, r.numProcessed)
@@ -468,7 +468,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	// Token should have expired in vault, run should now expire in repo
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(1, r.numTokens)
 
@@ -790,7 +790,7 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 			r, err := newTokenRevocationJob(ctx, rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
-			err = r.Run(ctx)
+			err = r.Run(ctx, 0)
 			require.NoError(err)
 			assert.Equal(tt.wantLen, r.numTokens)
 
@@ -836,7 +836,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	require.NoError(err)
 
 	// No tokens should have been revoked since only the current token exists
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(0, r.numProcessed)
 
@@ -885,7 +885,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Running should revoke noCredsToken and the revokeToken even though it has active
 	// credentials it has been marked for revocation
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(2, r.numProcessed)
 
@@ -922,7 +922,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	assert.NoError(err)
 
 	// Running again should now revoke the credsToken
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(1, r.numProcessed)
 
@@ -934,7 +934,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{credsToken.TokenHmac}))
 	assert.Equal(string(RevokedToken), repoToken.Status)
 
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	// With only the current token remaining no tokens should be revoked
 	assert.Equal(0, r.numProcessed)
@@ -1129,7 +1129,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 			r, err := newCredentialRenewalJob(ctx, rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
-			err = r.Run(ctx)
+			err = r.Run(ctx, 0)
 			require.NoError(err)
 			assert.Equal(tt.wantLen, r.numCreds)
 
@@ -1196,7 +1196,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	credRenewal, err := newCredentialRenewalJob(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
-	err = credRenewal.Run(ctx)
+	err = credRenewal.Run(ctx, 0)
 	require.NoError(err)
 	// No credentials should have been renewed
 	assert.Equal(0, credRenewal.numCreds)
@@ -1213,7 +1213,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	// Sleep to move clock
 	time.Sleep(2 * time.Second)
 
-	err = credRenewal.Run(ctx)
+	err = credRenewal.Run(ctx, 0)
 	require.NoError(err)
 	// The active credential should have been renewed
 	assert.Equal(1, credRenewal.numCreds)
@@ -1319,7 +1319,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	require.NoError(rw.LookupById(ctx, lookupCred))
 	assert.Equal(string(ActiveCredential), lookupCred.Status)
 
-	err = credRenewal.Run(ctx)
+	err = credRenewal.Run(ctx, 0)
 	require.NoError(err)
 	// The active credential should have been processed
 	assert.Equal(1, credRenewal.numCreds)
@@ -1678,7 +1678,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 			r, err := newCredentialRevocationJob(ctx, rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
-			err = r.Run(ctx)
+			err = r.Run(ctx, 0)
 			require.NoError(err)
 			assert.Equal(tt.wantLen, r.numCreds)
 
@@ -1745,7 +1745,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	r, err := newCredentialRevocationJob(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	// No credentials should have been revoked
 	assert.Equal(0, r.numCreds)
@@ -1764,7 +1764,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	// Verify revokeCred is valid in testDb
 	assert.NoError(testDb.ValidateCredential(t, revokeSecret))
 
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	// The revoke credential should have been revoked
 	assert.Equal(1, r.numCreds)
@@ -1842,7 +1842,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 
 	secret, cred := testVaultCred(t, conn, v, cl, sess, repoToken, ActiveCredential, 5*time.Hour)
 
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	// No credentials should have been revoked as expiration is 5 hours from now
 	assert.Equal(0, r.numCreds)
@@ -1852,7 +1852,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(1, count)
 
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	// No credentials should have been revoked
 	assert.Equal(0, r.numCreds)
@@ -1879,7 +1879,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	assert.Empty(lookupCred.SessionId)
 	assert.Equal(string(RevokeCredential), lookupCred.Status)
 
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	// The revoke credential should have been revoked
 	assert.Equal(1, r.numCreds)
@@ -2028,7 +2028,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	require.NoError(err)
 
 	// No credential stores should have been cleaned up
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(0, r.numStores)
 
@@ -2057,7 +2057,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(string(RevokeToken), repoToken.Status)
 
 	// Both soft deleted credential stores should not be cleaned up yet
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(0, r.numStores)
 
@@ -2067,7 +2067,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, count)
 
 	// cs1 should be deleted
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(1, r.numStores)
 
@@ -2095,7 +2095,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, count)
 
 	// cs2 still has a second token not yet revoked/expired
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(0, r.numStores)
 
@@ -2112,7 +2112,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, count)
 
 	// With no un-expired or un-revoked tokens cs2 should now be deleted
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(1, r.numStores)
 
@@ -2289,7 +2289,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	_, sess2Cred := testVaultCred(t, conn, v, cl, sess2, repoToken, ActiveCredential, 5*time.Hour)
 
 	// No credentials should be cleaned up
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(0, r.numCreds)
 
@@ -2299,7 +2299,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, count)
 
 	// Credentials are still in the revoke state so none should be deleted yet
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(0, r.numCreds)
 
@@ -2324,7 +2324,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, count)
 
 	// Only the three credentials associated with the deleted session should be deleted
-	err = r.Run(ctx)
+	err = r.Run(ctx, 0)
 	require.NoError(err)
 	assert.Equal(3, r.numCreds)
 

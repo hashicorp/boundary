@@ -156,7 +156,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	err = sche.RegisterJob(context.Background(), r)
 	require.NoError(err)
 
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// No sets should have been synced.
 	assert.Equal(0, r.numProcessed)
@@ -175,7 +175,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	TestSetMembers(t, conn, setToRemoveHosts.GetPublicId(), []*Host{hostToRemove})
 
 	// Run sync again with the newly created set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 
 	hsa := &hostSetAgg{PublicId: setToRemoveHosts.GetPublicId()}
@@ -217,7 +217,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.Less(hsa.LastSyncTime.AsTime().UnixNano(), hsa.CreateTime.AsTime().UnixNano())
 
 	// Run sync again with the newly created set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(1, r.numSets)
@@ -243,7 +243,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	firstSyncTime := hsa.LastSyncTime
 
 	// Run sync again with the freshly synced set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	assert.Equal(0, r.numSets)
 	assert.Equal(0, r.numProcessed)
@@ -258,7 +258,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.True(hs.NeedSync)
 
 	// Run sync again with the set needing update
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(1, r.numSets)
@@ -273,7 +273,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 
 	// Run sync with a new second set
 	_ = TestSet(t, conn, kmsCache, sched, cat, plgm)
-	require.NoError(r.Run(context.Background()))
+	require.NoError(r.Run(context.Background(), 0))
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 
@@ -398,7 +398,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 			assert.Equal(1, count)
 
 			// Run job
-			err = r.Run(context.Background())
+			err = r.Run(context.Background(), 0)
 			require.NoError(err)
 
 			// Validate results
