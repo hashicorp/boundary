@@ -93,7 +93,7 @@ func (j *sessionConnectionCleanupJob) Status() scheduler.JobStatus {
 }
 
 // Run executes the job.
-func (j *sessionConnectionCleanupJob) Run(ctx context.Context) error {
+func (j *sessionConnectionCleanupJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "session.(sessionConnectionCleanupJob).Run"
 	j.totalClosed = 0
 

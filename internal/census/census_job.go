@@ -54,7 +54,7 @@ func (c *censusJob) Status() scheduler.JobStatus {
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (c *censusJob) Run(ctx context.Context) error {
+func (c *censusJob) Run(ctx context.Context, _ time.Duration) error {
 	err := RunFn(ctx, c)
 	return err
 }

@@ -26,11 +26,18 @@ type Job interface {
 	Status() JobStatus
 
 	// Run starts the specified job and waits for it to complete.
-	// The context is used to notify the job that it should exit early.
 	//
-	// If the returned error is not nil, the job will be scheduled to run again
-	// immediately and the returned error will be logged.
-	Run(ctx context.Context) error
+	// The context parameter is used to notify the job that it should exit.
+	//
+	// The statusThreshold parameter is the amount of time the job has to
+	// return a JobStatus with values different from the previous
+	// JobStatus. Each time a JobStatus with values different from the
+	// previous JobStatus is returned, the timer for the threshold
+	// restarts. If the threshold is reached, the context is canceled.
+	//
+	// If the returned error is not nil, the job will be scheduled to run
+	// again immediately and the returned error will be logged.
+	Run(ctx context.Context, statusThreshold time.Duration) error
 
 	// NextRunIn returns the duration the job scheduler should wait before
 	// running the job again. It is only called after the Run method has

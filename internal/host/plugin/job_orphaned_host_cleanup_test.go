@@ -118,7 +118,7 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	err = sche.RegisterJob(context.Background(), r)
 	require.NoError(err)
 
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// No sets should have been synced.
 	assert.Equal(0, r.numProcessed)
@@ -134,7 +134,7 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	TestHost(t, conn, cat.GetPublicId(), "host2")
 
 	// Run sync again with the newly created set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(1, r.numHosts)
@@ -148,14 +148,14 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	TestHost(t, conn, cat.GetPublicId(), "5")
 
 	// Run sync again with the freshly synced set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(5, r.numHosts)
 	assert.Equal(5, r.numProcessed)
 
 	// Run sync again with the freshly synced set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(0, r.numHosts)

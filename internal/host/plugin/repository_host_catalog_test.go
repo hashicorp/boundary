@@ -1547,7 +1547,7 @@ func (j *testSyncJob) Status() scheduler.JobStatus {
 	}
 }
 
-func (j *testSyncJob) Run(_ context.Context) error { return nil }
+func (j *testSyncJob) Run(_ context.Context, _ time.Duration) error { return nil }
 func (j *testSyncJob) NextRunIn(_ context.Context) (time.Duration, error) {
 	return setSyncJobRunInterval, nil
 }
