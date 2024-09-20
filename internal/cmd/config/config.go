@@ -133,11 +133,9 @@ kms "aead" {
 	defaultCsp = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"
 )
 
-var (
-	// This regular expression is used to find all instances of square brackets within a string.
-	// This regular expression is used to remove the square brackets from an IPv6 address.
-	squareBrackets = regexp.MustCompile("\\[|\\]")
-)
+// This regular expression is used to find all instances of square brackets within a string.
+// This regular expression is used to remove the square brackets from an IPv6 address.
+var squareBrackets = regexp.MustCompile("\\[|\\]")
 
 // Config is the configuration for the boundary controller
 type Config struct {

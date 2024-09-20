@@ -58,11 +58,9 @@ const (
 	WorkerAuthReqFile = "auth_request_token"
 )
 
-var (
-	// This regular expression is used to find all instances of square brackets within a string.
-	// This regular expression is used to remove the square brackets from an IPv6 address.
-	squareBrackets = regexp.MustCompile("\\[|\\]")
-)
+// This regular expression is used to find all instances of square brackets within a string.
+// This regular expression is used to remove the square brackets from an IPv6 address.
+var squareBrackets = regexp.MustCompile("\\[|\\]")
 
 func init() {
 	metric.InitializeBuildInfo(prometheus.DefaultRegisterer)
