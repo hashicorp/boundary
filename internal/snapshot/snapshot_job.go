@@ -41,7 +41,7 @@ func (c *snapshotJob) Status() scheduler.JobStatus {
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (c *snapshotJob) Run(ctx context.Context) error {
+func (c *snapshotJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "snapshot.(snapshotJob).Run"
 	err := runFn(ctx, c)
 	return err

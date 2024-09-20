@@ -46,7 +46,7 @@ func (d *deleteTerminatedJob) Status() scheduler.JobStatus {
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (d *deleteTerminatedJob) Run(ctx context.Context) error {
+func (d *deleteTerminatedJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "session.(deleteTerminatedJob).Run"
 	d.deletedInRun = 0
 	var err error

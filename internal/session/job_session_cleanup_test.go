@@ -110,7 +110,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	require.NoError(err)
 
 	// Run the job.
-	require.NoError(job.Run(ctx))
+	require.NoError(job.Run(ctx, 0))
 
 	// Assert connection state on both workers.
 	assertConnections := func(workerId string, closed bool) {

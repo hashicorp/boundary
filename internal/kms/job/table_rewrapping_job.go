@@ -41,7 +41,7 @@ func (r tableRewrappingJob) Status() scheduler.JobStatus {
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (r *tableRewrappingJob) Run(ctx context.Context) error {
+func (r *tableRewrappingJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "kmsjob.(tableRewrappingJob).Run"
 
 	if err := r.kmsRepo.MonitorTableRewrappingRuns(ctx, r.tableName); err != nil {
