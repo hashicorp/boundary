@@ -69,13 +69,14 @@ const (
 	// maxLineLength is the maximum width of any line.
 	maxLineLength int = 78
 
-	envToken           = "BOUNDARY_TOKEN"
-	EnvTokenName       = "BOUNDARY_TOKEN_NAME"
-	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
-	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
-	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
-	envSkipClientAgent = "BOUNDARY_SKIP_CLIENT_AGENT"
-	EnvClientAgentPort = "BOUNDARY_CLIENT_AGENT_LISTENING_PORT"
+	envToken                             = "BOUNDARY_TOKEN"
+	EnvTokenName                         = "BOUNDARY_TOKEN_NAME"
+	EnvKeyringType                       = "BOUNDARY_KEYRING_TYPE"
+	envRecoveryConfig                    = "BOUNDARY_RECOVERY_CONFIG"
+	envSkipCacheDaemon                   = "BOUNDARY_SKIP_CACHE_DAEMON"
+	envSkipClientAgent                   = "BOUNDARY_SKIP_CLIENT_AGENT"
+	EnvClientAgentPort                   = "BOUNDARY_CLIENT_AGENT_LISTENING_PORT"
+	EnvBoundaryClientAgentCliErrorOutput = "BOUNDARY_CLIENT_AGENT_CLI_ERROR_OUTPUT"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -107,14 +108,15 @@ type Command struct {
 	flagTLSServerName string
 	flagTLSInsecure   bool
 
-	flagFormat           string
-	FlagToken            string
-	FlagTokenName        string
-	FlagKeyringType      string
-	FlagRecoveryConfig   string
-	FlagOutputCurlString bool
-	FlagSkipCacheDaemon  bool
-	FlagSkipClientAgent  bool
+	flagFormat                    string
+	FlagToken                     string
+	FlagTokenName                 string
+	FlagKeyringType               string
+	FlagRecoveryConfig            string
+	FlagOutputCurlString          bool
+	FlagSkipCacheDaemon           bool
+	FlagSkipClientAgent           bool
+	FlagOutputClientAgentCliError bool
 
 	FlagClientAgentPort uint16
 
@@ -489,6 +491,14 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default: false,
 				EnvVar:  envSkipCacheDaemon,
 				Usage:   "Skips starting the caching daemon or sending the current used/retrieved token to the caching daemon.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "output-client-agent-cli-error",
+				Target:  &c.FlagOutputClientAgentCliError,
+				Default: false,
+				EnvVar:  EnvBoundaryClientAgentCliErrorOutput,
+				Usage:   "Enables outputting CLI errors encountered for client-agent callbacks.",
 			})
 
 			f.BoolVar(&BoolVar{
