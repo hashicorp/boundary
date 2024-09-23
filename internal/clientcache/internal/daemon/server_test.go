@@ -28,7 +28,9 @@ func Test_openStore(t *testing.T) {
 		require.NotNil(t, store)
 		assert.FileExists(t, tmpDir+"/test.db")
 		rw := db.New(store)
-		rw.Query(ctx, "select * from target", nil)
+		rows, err := rw.Query(ctx, "select * from target", nil)
+		require.NoError(t, err)
+		rows.Close()
 	})
 	t.Run("homedir", func(t *testing.T) {
 		tmpDir := t.TempDir()
