@@ -271,10 +271,6 @@ type Worker struct {
 	InitialUpstreams    []string `hcl:"-"`
 	InitialUpstreamsRaw any      `hcl:"initial_upstreams"`
 
-	// The ControllersRaw field is deprecated and users should use InitialUpstreamsRaw instead.
-	// TODO: remove this field when support is discontinued.
-	ControllersRaw any `hcl:"controllers"`
-
 	// We use a raw interface for parsing so that people can use JSON-like
 	// syntax that maps directly to the filter input or possibly more familiar
 	// key=value syntax, as well as accepting a string denoting an env or file
@@ -1056,17 +1052,6 @@ func Parse(d string) (*Config, error) {
 	return result, nil
 }
 
-// supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated. Errors when both fields are populated.
-func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, error) {
-	switch {
-	case initialUpstreamsRaw == nil && controllersRaw != nil:
-		return controllersRaw, nil
-	case initialUpstreamsRaw != nil && controllersRaw != nil:
-		return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated")
-	}
-	return initialUpstreamsRaw, nil
-}
-
 func parseApiRateLimits(node ast.Node) (ratelimit.Configs, error) {
 	list, ok := node.(*ast.ObjectList)
 	if !ok {
@@ -1103,19 +1088,15 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 	if c == nil || c.Worker == nil {
 		return nil, fmt.Errorf("config or worker field is nil")
 	}
-	if c.Worker.InitialUpstreamsRaw == nil && c.Worker.ControllersRaw == nil {
+	if c.Worker.InitialUpstreamsRaw == nil {
 		// return nil here so that other address sources can be provided outside of config
 		return nil, nil
 	}
-	rawUpstreams, err := supportControllersRawConfig(c.Worker.InitialUpstreamsRaw, c.Worker.ControllersRaw)
-	if err != nil {
-		return nil, err
-	}
 
-	switch t := rawUpstreams.(type) {
+	switch t := c.Worker.InitialUpstreamsRaw.(type) {
 	case []any:
 		var upstreams []string
-		err := mapstructure.WeakDecode(rawUpstreams, &upstreams)
+		err := mapstructure.WeakDecode(c.Worker.InitialUpstreamsRaw, &upstreams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode worker initial_upstreams block into config field: %w", err)
 		}
