@@ -19,8 +19,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
-// This is used as an internal error to indicate that a refresh is already in
-// progress, as a signal that the caller may want to handle it a different way.
+// ErrRefreshInProgress is used as an internal error to indicate that a refresh
+// is already in progress, as a signal that the caller may want to handle it a
+// different way.
 var ErrRefreshInProgress error = stderrors.New("cache refresh in progress")
 
 type RefreshService struct {
