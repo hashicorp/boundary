@@ -4,6 +4,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+* Remove deprecated `controllers` field from the worker config, which was deprecated for
+`initial_upstreams`([PR]())
+
 ## 0.17.2 (Unreleased)
 
 ### Changes

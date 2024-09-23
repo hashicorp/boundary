@@ -1609,40 +1609,6 @@ func TestWorkerUpstreams(t *testing.T) {
 			expErr:             true,
 			expErrIs:           parseutil.ErrNotAUrl,
 		},
-		{
-			name: "Worker using deprecated controllers field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
-			}`,
-			expWorkerUpstreams: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
-			expErr:             false,
-		},
-		{
-			name: "Different values in controllers and initial_upstreams field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
-				initial_upstreams = ["127.0.0.1"]
-			}`,
-			expWorkerUpstreams: nil,
-			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
-		},
-		{
-			name: "Identical values in controllers and initial_upstreams field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1"]
-				initial_upstreams = ["127.0.0.1"]
-			}`,
-			expWorkerUpstreams: nil,
-			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
-		},
 	}
 
 	for _, tt := range tests {

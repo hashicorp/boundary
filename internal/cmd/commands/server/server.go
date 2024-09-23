@@ -340,9 +340,6 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
 			return base.CommandUserError
 		}
-		if c.Config.Worker.ControllersRaw != nil {
-			c.UI.Warn("The \"controllers\" field for worker config is deprecated. Please use \"initial_upstreams\" instead.")
-		}
 
 		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
 			c.UI.Error(err.Error())
