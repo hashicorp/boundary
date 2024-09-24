@@ -228,7 +228,7 @@ func (s *Scheduler) schedule(ctx context.Context, wg *sync.WaitGroup) {
 		err := s.runJob(ctx, wg, r)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
-			if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
+			if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0, 0); inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfoMsg("error updating failed job run"))
 			}
 		}
@@ -273,10 +273,10 @@ func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) 
 			if inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfoMsg("error getting next run time", "name", j.Name()))
 			}
-			_, updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun, status.Completed, status.Total)
+			_, updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun, status.Completed, status.Total, status.Retries)
 		default:
 			event.WriteError(ctx, op, runErr, event.WithInfoMsg("job run failed", "run id", r.PrivateId, "name", j.Name()))
-			_, updateErr = repo.FailRun(ctx, r.PrivateId, status.Completed, status.Total)
+			_, updateErr = repo.FailRun(ctx, r.PrivateId, status.Completed, status.Total, status.Retries)
 		}
 
 		if updateErr != nil {
@@ -333,7 +333,7 @@ func (s *Scheduler) updateRunningJobProgress(ctx context.Context, j *runningJob)
 		return fmt.Errorf("error creating job repo %w", err)
 	}
 	status := j.status()
-	_, err = repo.UpdateProgress(ctx, j.runId, status.Completed, status.Total)
+	_, err = repo.UpdateProgress(ctx, j.runId, status.Completed, status.Total, status.Retries)
 	if errors.Match(errors.T(errors.InvalidJobRunState), err) {
 		// Job has been persisted with a final run status, cancel job context to trigger early exit.
 		j.cancelCtx()

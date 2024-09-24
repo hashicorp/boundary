@@ -317,7 +317,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	<-statusRequest
 
 	// Send progress to monitor loop to persist
-	jobStatus <- JobStatus{Total: 10, Completed: 0}
+	jobStatus <- JobStatus{Total: 10, Completed: 0, Retries: 1}
 
 	// Wait for scheduler to query for job status before verifying previous results
 	<-statusRequest
@@ -329,6 +329,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	assert.Equal(string(job.Running), run.Status)
 	assert.Equal(uint32(10), run.TotalCount)
 	assert.Equal(uint32(0), run.CompletedCount)
+	assert.Equal(uint32(1), run.RetriesCount)
 
 	// Send progress to monitor loop to persist
 	jobStatus <- JobStatus{Total: 20, Completed: 10}
