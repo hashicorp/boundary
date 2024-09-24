@@ -60,6 +60,9 @@ type Job interface {
 // The Completed value cannot be greater than the Total value
 // and both values must be greater than or equal to zero.
 //
+// Retries is used to indicate how many times the job has retried
+// accomplishing work. The value must be greater than or equal to zero.
+//
 // The scheduler uses the values in the JobStatus to verify that
 // progress is being made by the job. The scheduler will interrupt the job
 // if the values returned by Status do not change over a configurable
@@ -68,6 +71,9 @@ type JobStatus struct {
 	// The job's work items
 	Completed int // number of items processed
 	Total     int // total number of items to be processed
+
+	// The job's liveliness
+	Retries int // number of times the job has retried work
 }
 
 func validateJob(ctx context.Context, j Job) error {

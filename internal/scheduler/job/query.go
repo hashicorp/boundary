@@ -65,7 +65,8 @@ const updateProgressQuery = `
 	  job_run
 	set
 	  completed_count = ?,
-	  total_count = ?
+	  total_count = ?,
+	  retries_count = ?
 	where
 	  private_id = ?
 	  and status = 'running'
@@ -78,6 +79,7 @@ const completeRunQuery = `
 	set
 	  completed_count = ?,
 	  total_count     = ?,
+	  retries_count   = ?,
 	  status          = 'completed',
 	  end_time        = current_timestamp
 	where
@@ -92,6 +94,7 @@ const failRunQuery = `
 	set
 	  completed_count = ?,
 	  total_count     = ?,
+	  retries_count   = ?,
 	  status          = 'failed',
 	  end_time        = current_timestamp
 	where

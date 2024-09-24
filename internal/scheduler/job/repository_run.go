@@ -71,7 +71,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 // Once a run has been persisted with a final run status (completed, failed or interrupted),
 // any future UpdateProgress attempts will return an error with Code errors.InvalidJobRunState.
 // All options are ignored.
-func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed, total int, _ ...Option) (*Run, error) {
+func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed, total, retries int, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).UpdateProgress"
 	if runId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing run id")
@@ -81,7 +81,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 	run.PrivateId = runId
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, updateProgressQuery, []any{completed, total, runId})
+			rows, err := w.Query(ctx, updateProgressQuery, []any{completed, total, retries, runId})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -134,7 +134,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 // or interrupted), any future calls to CompleteRun will return an error with Code
 // errors.InvalidJobRunState.
 // All options are ignored.
-func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn time.Duration, completed, total int, _ ...Option) (*Run, error) {
+func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn time.Duration, completed, total, retries int, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).CompleteRun"
 	if runId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing run id")
@@ -148,7 +148,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 			// persisted by the scheduler's monitor jobs loop.
 			// Add an on update sql trigger to protect the job_run table, once progress
 			// values are used in the critical path.
-			rows, err := w.Query(ctx, completeRunQuery, []any{completed, total, runId})
+			rows, err := w.Query(ctx, completeRunQuery, []any{completed, total, retries, runId})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -220,7 +220,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 // or interrupted), any future calls to FailRun will return an error with Code
 // errors.InvalidJobRunState.
 // All options are ignored.
-func (r *Repository) FailRun(ctx context.Context, runId string, completed, total int, _ ...Option) (*Run, error) {
+func (r *Repository) FailRun(ctx context.Context, runId string, completed, total, retries int, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).FailRun"
 	if runId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing run id")
@@ -234,7 +234,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, completed, total
 			// persisted by the scheduler's monitor jobs loop.
 			// Add an on update sql trigger to protect the job_run table, once progress
 			// values are used in the critical path.
-			rows, err := w.Query(ctx, failRunQuery, []any{completed, total, runId})
+			rows, err := w.Query(ctx, failRunQuery, []any{completed, total, retries, runId})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
