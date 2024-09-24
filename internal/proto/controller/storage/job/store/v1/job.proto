@@ -67,6 +67,11 @@ message JobRun {
   // @inject_tag: `gorm:"default:0"`
   uint32 total_count = 9;
 
+  // retries_count is set during an update to indicate the number of times
+  // a job has retried work.
+  // @inject_tag: `gorm:"default:0"`
+  uint32 retries_count = 12;
+
   // status of the job run (running, completed, failed or interrupted).
   // @inject_tag: `gorm:"not_null"`
   string status = 10;

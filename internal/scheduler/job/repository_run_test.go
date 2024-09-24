@@ -216,7 +216,7 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	assert.Equal(run.JobPluginId, firstJob.PluginId)
 
 	// End first job with time between last and middle
-	_, err = repo.CompleteRun(ctx, run.PrivateId, -6*time.Hour, 0, 0)
+	_, err = repo.CompleteRun(ctx, run.PrivateId, -6*time.Hour, 0, 0, 0)
 	require.NoError(err)
 
 	runs, err = repo.RunJobs(ctx, server.PrivateId)
@@ -260,7 +260,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 	job := testJob(t, conn, "name", "description", wrapper)
 
 	type args struct {
-		completed, total int
+		completed, total, retries int
 	}
 
 	tests := []struct {
@@ -342,10 +342,12 @@ func TestRepository_UpdateProgress(t *testing.T) {
 				},
 			},
 			args: args{
-				total: 10,
+				total:   10,
+				retries: 1,
 			},
 			want: args{
-				total: 10,
+				total:   10,
+				retries: 1,
 			},
 		},
 		{
@@ -381,10 +383,12 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			args: args{
 				completed: 10,
 				total:     20,
+				retries:   1,
 			},
 			want: args{
 				completed: 10,
 				total:     20,
+				retries:   1,
 			},
 		},
 		{
@@ -422,7 +426,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.UpdateProgress(ctx, privateId, tt.args.completed, tt.args.total)
+			got, err := repo.UpdateProgress(ctx, privateId, tt.args.completed, tt.args.total, tt.args.retries)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -455,7 +459,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.UpdateProgress(ctx, "fake-run-id", 0, 0)
+		got, err := repo.UpdateProgress(ctx, "fake-run-id", 0, 0, 0)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
@@ -476,7 +480,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 	job := testJob(t, conn, "name", "description", wrapper)
 
 	type args struct {
-		completed, total int
+		completed, total, retries int
 	}
 	tests := []struct {
 		name        string
@@ -557,7 +561,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 					Status:       Running.string(),
 				},
 			},
-			args: args{completed: 10, total: 20},
+			args: args{completed: 10, total: 20, retries: 1},
 		},
 	}
 
@@ -577,7 +581,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.CompleteRun(ctx, privateId, tt.nextRunIn, tt.args.completed, tt.args.total)
+			got, err := repo.CompleteRun(ctx, privateId, tt.nextRunIn, tt.args.completed, tt.args.total, tt.args.retries)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -597,6 +601,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 			assert.Equal(Completed.string(), got.Status)
 			assert.Equal(tt.args.completed, int(got.CompletedCount))
 			assert.Equal(tt.args.total, int(got.TotalCount))
+			assert.Equal(tt.args.retries, int(got.RetriesCount))
 
 			updatedJob, err := repo.LookupJob(ctx, tt.orig.JobName)
 			assert.NoError(err)
@@ -621,7 +626,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.CompleteRun(ctx, "fake-run-id", time.Hour, 0, 0)
+		got, err := repo.CompleteRun(ctx, "fake-run-id", time.Hour, 0, 0, 0)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
@@ -642,7 +647,7 @@ func TestRepository_FailRun(t *testing.T) {
 	job := testJob(t, conn, "name", "description", wrapper)
 
 	type args struct {
-		completed, total int
+		completed, total, retries int
 	}
 	tests := []struct {
 		name        string
@@ -721,7 +726,7 @@ func TestRepository_FailRun(t *testing.T) {
 					Status:       Running.string(),
 				},
 			},
-			args: args{completed: 10, total: 20},
+			args: args{completed: 10, total: 20, retries: 5},
 		},
 	}
 
@@ -741,7 +746,7 @@ func TestRepository_FailRun(t *testing.T) {
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.FailRun(ctx, privateId, tt.args.completed, tt.args.total)
+			got, err := repo.FailRun(ctx, privateId, tt.args.completed, tt.args.total, tt.args.retries)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -761,6 +766,7 @@ func TestRepository_FailRun(t *testing.T) {
 			assert.Equal(Failed.string(), got.Status)
 			assert.Equal(tt.args.completed, int(got.CompletedCount))
 			assert.Equal(tt.args.total, int(got.TotalCount))
+			assert.Equal(tt.args.retries, int(got.RetriesCount))
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
@@ -774,7 +780,7 @@ func TestRepository_FailRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.FailRun(ctx, "fake-run-id", 0, 0)
+		got, err := repo.FailRun(ctx, "fake-run-id", 0, 0, 0)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
