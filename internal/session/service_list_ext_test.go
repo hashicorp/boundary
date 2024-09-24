@@ -47,9 +47,9 @@ func TestService_List(t *testing.T) {
 		UserId: composedOf.UserId,
 		Permissions: []perms.Permission{
 			{
-				ScopeId:  composedOf.ProjectId,
-				Resource: resource.Session,
-				Action:   action.List,
+				GrantScopeId: composedOf.ProjectId,
+				Resource:     resource.Session,
+				Action:       action.List,
 			},
 		},
 	}
