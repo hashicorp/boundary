@@ -996,10 +996,10 @@ func calculateAuthorizedCollectionActions(ctx context.Context, authResults auth.
 	var err error
 	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
-		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, vaultCollectionTypeMap, authResults.Scope.Id, id)
+		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, vaultCollectionTypeMap, authResults.Scope, id)
 
 	case static.Subtype:
-		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, staticCollectionTypeMap, authResults.Scope.Id, id)
+		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, staticCollectionTypeMap, authResults.Scope, id)
 	}
 	if err != nil {
 		return nil, err

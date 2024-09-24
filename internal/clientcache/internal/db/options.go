@@ -9,10 +9,12 @@ import (
 )
 
 type options struct {
-	withDebug         bool
-	withUrl           string
-	withDbType        dbw.DbType
-	withGormFormatter hclog.Logger
+	withSchemaVersion    string
+	withDebug            bool
+	withUrl              string
+	withDbType           dbw.DbType
+	withGormFormatter    hclog.Logger
+	withForceResetSchema bool
 }
 
 // Option - how options are passed as args
@@ -42,6 +44,15 @@ func WithGormFormatter(logger hclog.Logger) Option {
 	}
 }
 
+// withTestValidSchemaVersion provides optional valid schema version for testing
+// purposes. This is used to simulate a schema version that is valid/invalid.
+func withTestValidSchemaVersion(useVersion string) Option {
+	return func(o *options) error {
+		o.withSchemaVersion = useVersion
+		return nil
+	}
+}
+
 // WithUrls provides optional url
 func WithUrl(url string) Option {
 	return func(o *options) error {
@@ -54,6 +65,14 @@ func WithUrl(url string) Option {
 func WithDebug(debug bool) Option {
 	return func(o *options) error {
 		o.withDebug = debug
+		return nil
+	}
+}
+
+// WithForceResetSchema provides an optional way to force resetting the cache
+func WithForceResetSchema(debug bool) Option {
+	return func(o *options) error {
+		o.withForceResetSchema = debug
 		return nil
 	}
 }

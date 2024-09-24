@@ -22,7 +22,8 @@ func Test_GetOpts(t *testing.T) {
 		opts, err := getOpts()
 		require.NoError(t, err)
 		testOpts := options{
-			withDbType: dbw.Sqlite,
+			withDbType:           dbw.Sqlite,
+			withMaxResultSetSize: defaultLimitedResultSetSize,
 		}
 		assert.Equal(t, opts, testOpts)
 	})
@@ -48,8 +49,8 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithTargetRetrievalFunc", func(t *testing.T) {
-		var f TargetRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
-			return nil, nil, "", nil
+		var f TargetRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *targets.TargetListResult, opt ...Option) (*targets.TargetListResult, RefreshTokenValue, error) {
+			return nil, "", nil
 		}
 		opts, err := getOpts(WithTargetRetrievalFunc(f))
 		require.NoError(t, err)
@@ -61,8 +62,8 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithSessionRetrievalFunc", func(t *testing.T) {
-		var f SessionRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
-			return nil, nil, "", nil
+		var f SessionRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue, inPage *sessions.SessionListResult, opt ...Option) (*sessions.SessionListResult, RefreshTokenValue, error) {
+			return nil, "", nil
 		}
 		opts, err := getOpts(WithSessionRetrievalFunc(f))
 		require.NoError(t, err)
@@ -74,8 +75,8 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithAliasRetrievalFunc", func(t *testing.T) {
-		var f ResolvableAliasRetrievalFunc = func(ctx context.Context, addr, authTok, userId string, refreshTok RefreshTokenValue) ([]*aliases.Alias, []string, RefreshTokenValue, error) {
-			return nil, nil, "", nil
+		var f ResolvableAliasRetrievalFunc = func(ctx context.Context, addr, authTok, userId string, refreshTok RefreshTokenValue, inPage *aliases.AliasListResult, opt ...Option) (*aliases.AliasListResult, RefreshTokenValue, error) {
+			return nil, "", nil
 		}
 		opts, err := getOpts(WithAliasRetrievalFunc(f))
 		require.NoError(t, err)
@@ -91,6 +92,38 @@ func Test_GetOpts(t *testing.T) {
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.withIgnoreSearchStaleness = true
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withMaxResultSetSize", func(t *testing.T) {
+		opts, err := getOpts(WithMaxResultSetSize(defaultLimitedResultSetSize))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withMaxResultSetSize = defaultLimitedResultSetSize
+		assert.Equal(t, opts, testOpts)
+		opts, err = getOpts(WithMaxResultSetSize(0))
+		require.Nil(t, err)
+		assert.Equal(t, opts, testOpts)
+		_, err = getOpts(WithMaxResultSetSize(-2))
+		require.Error(t, err)
+	})
+	t.Run("withTestRefreshWaitChs", func(t *testing.T) {
+		waitCh := &testRefreshWaitChs{
+			firstSempahore:  make(chan struct{}),
+			secondSemaphore: make(chan struct{}),
+		}
+		opts, err := getOpts(WithTestRefreshWaitChs(waitCh))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.Empty(t, testOpts.withTestRefreshWaitChs)
+		testOpts.withTestRefreshWaitChs = waitCh
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithUseNonPagedListing", func(t *testing.T) {
+		opts, err := getOpts(WithUseNonPagedListing(true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.False(t, testOpts.withUseNonPagedListing)
+		testOpts.withUseNonPagedListing = true
 		assert.Equal(t, opts, testOpts)
 	})
 }

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -89,6 +90,8 @@ type Config struct {
 	// The maximum amount of time a refresh should block a search request from
 	// completing before it times out.
 	MaxSearchRefreshTimeout time.Duration
+	// Force resetting the schema, that is, drop all existing data
+	ForceResetSchema bool
 }
 
 func (sc *Config) validate(ctx context.Context) error {
@@ -228,7 +231,9 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	var store *db.DB
 	store, err = openStore(ctx,
 		WithUrl(ctx, s.conf.DatabaseUrl),
-		WithLogger(ctx, s.logger))
+		WithLogger(ctx, s.logger),
+		WithForceResetSchema(ctx, s.conf.ForceResetSchema),
+	)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -499,6 +504,10 @@ func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *
 	return nil
 }
 
+// openStore will open the underlying store for the db. If no options are
+// provided, it will default to an on disk store using the user's home dir +
+// ".boundary/cache.db". If a url is provided, it will use that as the store.
+// Supported options: WithUrl, WithLogger, WithHomeDir
 func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 	const op = "daemon.openStore"
 	opts, err := getOpts(opt...)
@@ -514,13 +523,69 @@ func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		dbOpts = append(dbOpts, cachedb.WithUrl(url))
+	default:
+		url, err := defaultDbUrl(ctx, opt...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		dbOpts = append(dbOpts, cachedb.WithUrl(url))
 	}
 	if !util.IsNil(opts.withLogger) {
-		dbOpts = append(dbOpts, cachedb.WithGormFormatter(opts.withLogger))
+		opts.withLogger.Log(hclog.Debug, "Store GormFormatter", "LogLevel", opts.withLogger.GetLevel())
+		switch {
+		case opts.withLogger.IsDebug():
+			dbOpts = append(dbOpts, cachedb.WithGormFormatter(gormDebugLogger{Logger: opts.withLogger}))
+			dbOpts = append(dbOpts, cachedb.WithDebug(true))
+		default:
+			dbOpts = append(dbOpts, cachedb.WithGormFormatter(opts.withLogger))
+		}
 	}
+	dbOpts = append(dbOpts, cachedb.WithForceResetSchema(opts.withForceResetSchema))
 	store, err := cachedb.Open(ctx, dbOpts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return store, nil
+}
+
+// defaultDbUrl returns the default db name including the path. It will ensure
+// the directory exists by creating it if it doesn't.
+func defaultDbUrl(ctx context.Context, opt ...Option) (string, error) {
+	const op = "daemon.DefaultDotDirectory"
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	if opts.withHomeDir == "" {
+		opts.withHomeDir, err = os.UserHomeDir()
+		if err != nil {
+			return "", errors.Wrap(ctx, err, op)
+		}
+	}
+	dotDir := filepath.Join(opts.withHomeDir, dotDirname)
+	if err := os.MkdirAll(dotDir, 0o700); err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	fileName := filepath.Join(dotDir, dbFileName)
+	return fmt.Sprintf("%s%s", fileName, fkPragma), nil
+}
+
+const (
+	dotDirname = ".boundary"
+	dbFileName = "cache.db"
+	fkPragma   = "?_pragma=foreign_keys(1)"
+)
+
+type gormDebugLogger struct {
+	hclog.Logger
+}
+
+func (g gormDebugLogger) Printf(msg string, values ...any) {
+	b := new(strings.Builder)
+	fmt.Fprintf(b, msg, values...)
+	g.Debug(b.String())
+}
+
+func getGormLogger(log hclog.Logger) gormDebugLogger {
+	return gormDebugLogger{Logger: log}
 }

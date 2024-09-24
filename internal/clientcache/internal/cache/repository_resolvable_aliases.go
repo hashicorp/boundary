@@ -22,35 +22,45 @@ import (
 
 // ResolvableAliasRetrievalFunc is a function that retrieves aliases
 // from the provided boundary addr using the provided token.
-type ResolvableAliasRetrievalFunc func(ctx context.Context, addr, authTok, userId string, refreshTok RefreshTokenValue) (ret []*aliases.Alias, removedIds []string, refreshToken RefreshTokenValue, err error)
+type ResolvableAliasRetrievalFunc func(ctx context.Context, addr, authTok, userId string, refreshTok RefreshTokenValue, inPage *aliases.AliasListResult, opt ...Option) (ret *aliases.AliasListResult, refreshToken RefreshTokenValue, err error)
 
-func defaultResolvableAliasFunc(ctx context.Context, addr, authTok, userId string, refreshTok RefreshTokenValue) ([]*aliases.Alias, []string, RefreshTokenValue, error) {
+func defaultResolvableAliasFunc(ctx context.Context, addr, authTok, userId string, refreshTok RefreshTokenValue, inPage *aliases.AliasListResult, opt ...Option) (*aliases.AliasListResult, RefreshTokenValue, error) {
 	const op = "cache.defaultResolvableAliasFunc"
 	conf, err := api.DefaultConfig()
 	if err != nil {
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
+	}
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	conf.Addr = addr
 	conf.Token = authTok
 	client, err := api.NewClient(conf)
 	if err != nil {
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	aClient := users.NewClient(client)
-	l, err := aClient.ListResolvableAliases(ctx, userId, users.WithListToken(string(refreshTok)))
+	var l *aliases.AliasListResult
+	switch inPage {
+	case nil:
+		l, err = aClient.ListResolvableAliases(ctx, userId, users.WithRecursive(true), users.WithListToken(string(refreshTok)), users.WithClientDirectedPagination(!opts.withUseNonPagedListing))
+	default:
+		l, err = aClient.ListResolvableAliasesNextPage(ctx, userId, inPage, users.WithListToken(string(refreshTok)))
+	}
 	if err != nil {
 		if api.ErrInvalidListToken.Is(err) {
-			return nil, nil, "", err
+			return nil, "", err
 		}
-		return nil, nil, "", errors.Wrap(ctx, err, op)
+		return nil, "", errors.Wrap(ctx, err, op)
 	}
 	if l.ResponseType == "" {
-		return nil, nil, "", ErrRefreshNotSupported
+		return nil, "", ErrRefreshNotSupported
 	}
-	return l.Items, l.RemovedIds, RefreshTokenValue(l.ListToken), nil
+	return l, RefreshTokenValue(l.ListToken), nil
 }
 
-// refreshResolvableAliases attempts to refresh the resolvabl aliases for the
+// refreshResolvableAliases attempts to refresh the resolvable aliases for the
 // provided user using the provided tokens. If available, it uses the refresh
 // tokens in storage to retrieve and apply only the delta.
 func (r *Repository) refreshResolvableAliases(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
@@ -83,13 +93,13 @@ func (r *Repository) refreshResolvableAliases(ctx context.Context, u *user, toke
 
 	// Find and use a token for retrieving aliases
 	var gotResponse bool
-	var resp []*aliases.Alias
+	var currentPage *aliases.AliasListResult
 	var newRefreshToken RefreshTokenValue
+	var foundAuthToken string
 	var unsupportedCacheRequest bool
-	var removedIds []string
 	var retErr error
 	for at, t := range tokens {
-		resp, removedIds, newRefreshToken, err = opts.withResolvableAliasRetrievalFunc(ctx, u.Address, t, u.Id, oldRefreshTokenVal)
+		currentPage, newRefreshToken, err = opts.withResolvableAliasRetrievalFunc(ctx, u.Address, t, u.Id, oldRefreshTokenVal, currentPage)
 		if api.ErrInvalidListToken.Is(err) {
 			event.WriteSysEvent(ctx, op, "old list token is no longer valid, starting new initial fetch", "user_id", u.Id)
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
@@ -97,7 +107,7 @@ func (r *Repository) refreshResolvableAliases(ctx context.Context, u *user, toke
 			}
 			// try again without the refresh token
 			oldRefreshToken = nil
-			resp, removedIds, newRefreshToken, err = opts.withResolvableAliasRetrievalFunc(ctx, u.Address, t, u.Id, "")
+			currentPage, newRefreshToken, err = opts.withResolvableAliasRetrievalFunc(ctx, u.Address, t, u.Id, "", currentPage)
 		}
 		if err != nil {
 			if err == ErrRefreshNotSupported {
@@ -107,6 +117,7 @@ func (r *Repository) refreshResolvableAliases(ctx context.Context, u *user, toke
 				continue
 			}
 		}
+		foundAuthToken = t
 		gotResponse = true
 		break
 	}
@@ -121,44 +132,57 @@ func (r *Repository) refreshResolvableAliases(ctx context.Context, u *user, toke
 	}
 
 	var numDeleted int
-	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
-		var err error
-		switch {
-		case oldRefreshToken == nil:
-			if numDeleted, err = w.Exec(ctx, "delete from resolvable_alias where fk_user_id = @fk_user_id",
-				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
-				return err
+	var numUpserted int
+	var clearPerformed bool
+	for {
+		_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+			var err error
+			if (oldRefreshToken == nil || unsupportedCacheRequest) && !clearPerformed {
+				if numDeleted, err = w.Exec(ctx, "delete from resolvable_alias where fk_user_id = @fk_user_id",
+					[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
+					return err
+				}
+				clearPerformed = true
 			}
-		case len(removedIds) > 0:
-			if numDeleted, err = w.Exec(ctx, "delete from resolvable_alias where id in @ids",
-				[]any{sql.Named("ids", removedIds)}); err != nil {
-				return err
+			switch {
+			case unsupportedCacheRequest:
+				if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
+					return err
+				}
+			case newRefreshToken != "":
+				numUpserted += len(currentPage.Items)
+				if err := upsertResolvableAliases(ctx, w, u, currentPage.Items); err != nil {
+					return err
+				}
+				if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+					return err
+				}
+			default:
+				// controller supports caching, but doesn't have any resources
 			}
+			if !unsupportedCacheRequest && len(currentPage.RemovedIds) > 0 {
+				if numDeleted, err = w.Exec(ctx, "delete from resolvable_alias where id in @ids",
+					[]any{sql.Named("ids", currentPage.RemovedIds)}); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if unsupportedCacheRequest || currentPage.ResponseType == "" || currentPage.ResponseType == "complete" {
+			break
 		}
-		switch {
-		case unsupportedCacheRequest:
-			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
-				return err
-			}
-		case newRefreshToken != "":
-			if err := upsertResolvableAliases(ctx, w, u, resp); err != nil {
-				return err
-			}
-			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
-				return err
-			}
-		default:
-			// controller supports caching, but doesn't have any resources
+		currentPage, newRefreshToken, err = opts.withResolvableAliasRetrievalFunc(ctx, u.Address, foundAuthToken, u.Id, newRefreshToken, currentPage)
+		if err != nil {
+			break
 		}
-		return nil
-	})
+	}
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
-	event.WriteSysEvent(ctx, op, "resolvable-aliases updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
+	event.WriteSysEvent(ctx, op, "resolvable-aliases updated", "deleted", numDeleted, "upserted", numUpserted, "user_id", u.Id)
 	return nil
 }
 
@@ -187,12 +211,12 @@ func (r *Repository) checkCachingResolvableAliases(ctx context.Context, u *user,
 
 	// Find and use a token for retrieving aliases
 	var gotResponse bool
-	var resp []*aliases.Alias
+	var resp *aliases.AliasListResult
 	var newRefreshToken RefreshTokenValue
 	var unsupportedCacheRequest bool
 	var retErr error
 	for at, t := range tokens {
-		resp, _, newRefreshToken, err = opts.withResolvableAliasRetrievalFunc(ctx, u.Address, t, u.Id, "")
+		resp, newRefreshToken, err = opts.withResolvableAliasRetrievalFunc(ctx, u.Address, t, u.Id, "", nil, WithUseNonPagedListing(true))
 		if err != nil {
 			if err == ErrRefreshNotSupported {
 				unsupportedCacheRequest = true
@@ -227,7 +251,7 @@ func (r *Repository) checkCachingResolvableAliases(ctx context.Context, u *user,
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
-			if err := upsertResolvableAliases(ctx, w, u, resp); err != nil {
+			if err := upsertResolvableAliases(ctx, w, u, resp.Items); err != nil {
 				return err
 			}
 			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
@@ -248,7 +272,7 @@ func (r *Repository) checkCachingResolvableAliases(ctx context.Context, u *user,
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
-	event.WriteSysEvent(ctx, op, "resolvable-aliases updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
+	event.WriteSysEvent(ctx, op, "resolvable-aliases updated", "deleted", numDeleted, "upserted", len(resp.Items), "user_id", u.Id)
 	return nil
 }
 
@@ -288,20 +312,20 @@ func upsertResolvableAliases(ctx context.Context, w db.Writer, u *user, in []*al
 	return nil
 }
 
-func (r *Repository) ListResolvableAliases(ctx context.Context, authTokenId string) ([]*aliases.Alias, error) {
+func (r *Repository) ListResolvableAliases(ctx context.Context, authTokenId string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).ListResolvableAliases"
 	switch {
 	case authTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	}
-	ret, err := r.searchResolvableAliases(ctx, "true", nil, withAuthTokenId(authTokenId))
+	ret, err := r.searchResolvableAliases(ctx, "true", nil, append(opt, withAuthTokenId(authTokenId))...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) QueryResolvableAliases(ctx context.Context, authTokenId, query string) ([]*aliases.Alias, error) {
+func (r *Repository) QueryResolvableAliases(ctx context.Context, authTokenId, query string, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).QueryResolvableAliases"
 	switch {
 	case authTokenId == "":
@@ -314,14 +338,14 @@ func (r *Repository) QueryResolvableAliases(ctx context.Context, authTokenId, qu
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
-	ret, err := r.searchResolvableAliases(ctx, w.Condition, w.Args, withAuthTokenId(authTokenId))
+	ret, err := r.searchResolvableAliases(ctx, w.Condition, w.Args, append(opt, withAuthTokenId(authTokenId))...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) searchResolvableAliases(ctx context.Context, condition string, searchArgs []any, opt ...Option) ([]*aliases.Alias, error) {
+func (r *Repository) searchResolvableAliases(ctx context.Context, condition string, searchArgs []any, opt ...Option) (*SearchResult, error) {
 	const op = "cache.(Repository).searchResolvableAliases"
 	switch {
 	case condition == "":
@@ -346,7 +370,7 @@ func (r *Repository) searchResolvableAliases(ctx context.Context, condition stri
 	}
 
 	var cachedResolvableAliases []*ResolvableAlias
-	if err := r.rw.SearchWhere(ctx, &cachedResolvableAliases, condition, searchArgs, db.WithLimit(-1)); err != nil {
+	if err := r.rw.SearchWhere(ctx, &cachedResolvableAliases, condition, searchArgs, db.WithLimit(opts.withMaxResultSetSize+1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
@@ -358,7 +382,15 @@ func (r *Repository) searchResolvableAliases(ctx context.Context, condition stri
 		}
 		retAliases = append(retAliases, &a)
 	}
-	return retAliases, nil
+
+	sr := &SearchResult{
+		ResolvableAliases: retAliases,
+	}
+	if opts.withMaxResultSetSize > 0 && len(sr.ResolvableAliases) > opts.withMaxResultSetSize {
+		sr.ResolvableAliases = sr.ResolvableAliases[:opts.withMaxResultSetSize]
+		sr.Incomplete = true
+	}
+	return sr, nil
 }
 
 type ResolvableAlias struct {

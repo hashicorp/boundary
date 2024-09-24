@@ -5,15 +5,67 @@ package daemon
 
 import (
 	"context"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_openStore(t *testing.T) {
+	ctx := context.Background()
+	t.Run("success", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		store, err := openStore(ctx, WithUrl(ctx, tmpDir+"/test.db"+fkPragma))
+		require.NoError(t, err)
+		require.NotNil(t, store)
+		assert.FileExists(t, tmpDir+"/test.db")
+		rw := db.New(store)
+		rows, err := rw.Query(ctx, "select * from target", nil)
+		require.NoError(t, err)
+		rows.Close()
+	})
+	t.Run("homedir", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		db, err := openStore(ctx, WithHomeDir(ctx, tmpDir))
+		require.NoError(t, err)
+		require.NotNil(t, db)
+		assert.FileExists(t, tmpDir+"/"+dotDirname+"/"+dbFileName)
+	})
+	t.Run("log-level-debug", func(t *testing.T) {
+		buf := new(strings.Builder)
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex:      testLock,
+			Name:       "test",
+			JSONFormat: true,
+			Output:     buf,
+			Level:      hclog.Debug,
+		})
+		tmpDir := t.TempDir()
+		store, err := openStore(ctx,
+			WithUrl(ctx, tmpDir+"/test.db"+fkPragma),
+			WithLogger(ctx, testLogger),
+		)
+		require.NoError(t, err)
+		require.NotNil(t, store)
+		assert.FileExists(t, tmpDir+"/test.db")
+		rw := db.New(store)
+
+		rows, err := rw.Query(ctx, "select * from target", nil)
+		require.NoError(t, err)
+		defer rows.Close()
+		assert.Contains(t, buf.String(), "select * from target")
+		t.Log(buf.String())
+	})
+}
 
 // Note: the name of this test must remain short because the temp dir created
 // includes the name of the test and there is a 108 character limit in allowed

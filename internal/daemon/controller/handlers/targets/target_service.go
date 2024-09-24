@@ -2006,7 +2006,7 @@ func validateListRequest(ctx context.Context, req *pbs.ListTargetsRequest) error
 }
 
 func newOutputOpts(ctx context.Context, item target.Target, authResults auth.VerifyResults, authzScopes map[string]*scopes.ScopeInfo) []handlers.Option {
-	pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
+	pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target, ParentScopeId: authzScopes[item.GetProjectId()].GetParentScopeId()}
 	outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
 
 	outputOpts := make([]handlers.Option, 0, 3)

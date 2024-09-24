@@ -342,7 +342,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope, hc.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -399,7 +399,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope, hc.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -462,7 +462,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope, hc.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -795,7 +795,7 @@ func newOutputOpts(
 			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, item.GetPublicId())
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope, item.GetPublicId())
 			if err != nil {
 				return nil, false, err
 			}

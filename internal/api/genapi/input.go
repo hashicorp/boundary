@@ -142,6 +142,10 @@ type structInfo struct {
 	// fields
 	fieldFilter []string
 
+	// nonPaginatedListing indicates a collection that does not support
+	// pagination
+	nonPaginatedListing bool
+
 	allowEmpty bool
 }
 
@@ -1426,5 +1430,6 @@ var inputStructs = []*structInfo{
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 		versionEnabled:      true,
+		nonPaginatedListing: true,
 	},
 }

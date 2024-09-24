@@ -2,6 +2,40 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
+
+-- schema_version is a one row table to keep the version
+create table if not exists schema_version (
+    version text not null,
+    create_time timestamp not null default current_timestamp,
+    update_time timestamp not null default current_timestamp
+);
+
+-- ensure that it's only ever one row
+create unique index schema_version_one_row
+ON schema_version((version is not null));
+
+create trigger immutable_columns_schema_version
+before update on schema_version
+for each row 
+  when 
+    new.create_time <> old.create_time 
+	begin
+	  select raise(abort, 'immutable column');
+	end;
+
+
+create trigger update_time_column_schema_version
+before update on schema_version
+for each row 
+when 
+  new.version <> old.version 
+  begin
+    update schema_version set update_time = datetime('now','localtime') where rowid == new.rowid;
+  end;
+
+
+insert into schema_version(version) values('v0.0.2');
+
 -- user contains the boundary user information for the boundary user that owns
 -- the information in the cache.
 create table if not exists user (
@@ -129,6 +163,9 @@ create table if not exists target (
   primary key (fk_user_id, id)
 );
 
+-- index for implicit scope search
+create index target_scope_id_ix on target(scope_id);
+
 -- session contains cached boundary session resource for a specific user and
 -- with specific fields extracted to facilitate searching over those fields
 create table if not exists session (
@@ -156,6 +193,9 @@ create table if not exists session (
   primary key (fk_user_id, id)
 );
 
+-- implicit scope search
+create index session_scope_id_ix on session(scope_id);
+
 -- alias contains cached boundary alias resource for a specific user and
 -- with specific fields extracted to facilitate searching over those fields
 create table if not exists resolvable_alias (
@@ -176,6 +216,9 @@ create table if not exists resolvable_alias (
   item text,
   primary key (fk_user_id, id)
 );
+
+-- optimize query for destination_id
+create index destination_id_resolvable_alias_ix on resolvable_alias(destination_id);
 
 -- contains errors from the last attempt to sync data from boundary for a
 -- specific resource type

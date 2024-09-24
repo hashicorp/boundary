@@ -37,4 +37,20 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withDebug = true
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("withTestValidSchemaVersion", func(t *testing.T) {
+		version := "v1"
+		opts, err := getOpts(withTestValidSchemaVersion(version))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withSchemaVersion = version
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithForceResetSchema", func(t *testing.T) {
+		opts, err := getOpts(WithForceResetSchema(true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.False(t, testOpts.withForceResetSchema)
+		testOpts.withForceResetSchema = true
+		assert.Equal(t, opts, testOpts)
+	})
 }

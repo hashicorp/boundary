@@ -575,9 +575,10 @@ func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 
 func newOutputOpts(ctx context.Context, item *session.Session, scopeIds map[string]*scopes.ScopeInfo, authResults auth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		Type:    resource.Session,
-		Id:      item.GetPublicId(),
-		ScopeId: item.GetProjectId(),
+		Type:          resource.Session,
+		Id:            item.GetPublicId(),
+		ScopeId:       item.GetProjectId(),
+		ParentScopeId: scopeIds[item.ProjectId].ParentScopeId,
 	}
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 	if len(authorizedActions) == 0 {

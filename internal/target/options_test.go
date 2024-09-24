@@ -168,9 +168,9 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithPermissions", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := GetOpts(WithPermissions([]perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}))
+		opts := GetOpts(WithPermissions([]perms.Permission{{GrantScopeId: "test1"}, {GrantScopeId: "test2"}}))
 		testOpts := getDefaultOptions()
-		testOpts.WithPermissions = []perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}
+		testOpts.WithPermissions = []perms.Permission{{GrantScopeId: "test1"}, {GrantScopeId: "test2"}}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCredentialLibraries", func(t *testing.T) {
