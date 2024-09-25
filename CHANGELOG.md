@@ -7,7 +7,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Remove deprecated `controllers` field from the worker config, which was deprecated in 0.9.0 for
 `initial_upstreams`([PR](https://github.com/hashicorp/boundary/pull/5125))
 
-## 0.17.2 (Unreleased)
+## 0.17.2 (2024/09/25)
 
 ### Changes
 
