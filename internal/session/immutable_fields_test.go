@@ -5,6 +5,7 @@ package session
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -97,15 +98,35 @@ func TestState_ImmutableFields(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
 	state := TestState(t, conn, session.PublicId, StatusActive)
 
-	var new State
-	err := rw.LookupWhere(context.Background(), &new, "session_id = ? and state = ?", []any{state.SessionId, state.Status})
-	require.NoError(t, err)
+	fetchSession := func(ctx context.Context, rw *db.Db, sessionId string, startTime *timestamp.Timestamp) (*State, error) {
+		const selectQuery = `
+select session_id,
+       state,
+	   lower(active_time_range) as start_time,
+	   upper(active_time_range) as end_time
+  from session_state
+ where session_id = ?
+   and lower(active_time_range) = ?;`
+		var states []*State
+		rows, err := rw.Query(ctx, selectQuery, []any{sessionId, startTime})
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			if err := rw.ScanRows(ctx, rows, &states); err != nil {
+				return nil, err
+			}
+		}
+		if len(states) != 1 {
+			return nil, fmt.Errorf("found %d states, expected 1", len(states))
+		}
+		return states[0], nil
+	}
 
 	tests := []struct {
 		name      string
@@ -115,7 +136,7 @@ func TestState_ImmutableFields(t *testing.T) {
 		{
 			name: "session_id",
 			update: func() *State {
-				s := new.Clone().(*State)
+				s := state.Clone().(*State)
 				s.SessionId = "s_thisIsNotAValidId"
 				return s
 			}(),
@@ -124,47 +145,28 @@ func TestState_ImmutableFields(t *testing.T) {
 		{
 			name: "status",
 			update: func() *State {
-				s := new.Clone().(*State)
+				s := state.Clone().(*State)
 				s.Status = "canceling"
 				return s
 			}(),
 			fieldMask: []string{"Status"},
 		},
-		{
-			name: "start time",
-			update: func() *State {
-				s := new.Clone().(*State)
-				s.StartTime = &ts
-				return s
-			}(),
-			fieldMask: []string{"StartTime"},
-		},
-		{
-			name: "previous_end_time",
-			update: func() *State {
-				s := new.Clone().(*State)
-				s.PreviousEndTime = &ts
-				return s
-			}(),
-			fieldMask: []string{"PreviousEndTime"},
-		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
 			assert, require := assert.New(t), require.New(t)
-			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "session_id = ? and start_time = ?", []any{new.SessionId, new.StartTime})
+			orig, err := fetchSession(ctx, rw, state.SessionId, state.StartTime)
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
-			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "session_id = ? and start_time = ?", []any{new.SessionId, new.StartTime})
+			after, err := fetchSession(ctx, rw, state.SessionId, state.StartTime)
 			require.NoError(err)
-			assert.Equal(orig.(*State), after)
+			assert.Equal(orig, after)
 		})
 	}
 }

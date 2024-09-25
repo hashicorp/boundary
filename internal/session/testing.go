@@ -46,13 +46,23 @@ func TestConnection(t testing.TB, conn *db.DB, sessionId, clientTcpAddr string, 
 
 // TestState creates a test state for the sessionId in the repository.
 func TestState(t testing.TB, conn *db.DB, sessionId string, state Status) *State {
+	const insertSessionState = `
+insert into session_state (session_id, state, active_time_range)
+     values               ($1,         $2,    tstzrange($3, null, '[]'))
+  returning lower(active_time_range) as start_time
+;`
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 	s, err := NewState(context.Background(), sessionId, state)
 	require.NoError(err)
-	err = rw.Create(context.Background(), s)
+	rows, err := rw.Query(context.Background(), insertSessionState, []any{s.SessionId, s.Status, s.StartTime})
 	require.NoError(err)
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&s.StartTime)
+		require.NoError(err)
+	}
 	return s
 }
 
@@ -142,7 +152,7 @@ func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c Comp
 		require.NoError(err)
 	}
 
-	ss, err := fetchStates(ctx, rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
+	ss, err := fetchStates(ctx, rw, s.PublicId, opts.withDbOpts...)
 	require.NoError(err)
 	s.States = ss
 

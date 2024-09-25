@@ -212,7 +212,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 			if err := read.LookupById(ctx, &session); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
 			}
-			states, err := fetchStates(ctx, read, sessionId, db.WithOrder("start_time desc"))
+			states, err := fetchStates(ctx, read, sessionId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -618,7 +618,7 @@ func (r *Repository) fetchActivatedSessionStatesTx(ctx context.Context, reader d
 	var txErr error
 
 	var returnedStates []*State
-	returnedStates, txErr = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+	returnedStates, txErr = fetchStates(ctx, reader, sessionId)
 	if txErr != nil {
 		return nil, errors.Wrap(ctx, txErr, op)
 	}
@@ -823,7 +823,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 			if rowsAffected != 0 && rowsAffected != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated session %s to state %s and %d rows inserted (should be 0 or 1)", sessionId, s.String(), rowsAffected))
 			}
-			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+			returnedStates, err = fetchStates(ctx, reader, sessionId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -854,7 +854,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 // non-active state, i.e. "canceling" or "terminated" It returns a *StateReport
 // object for each session that is not active, with its current status.
 func (r *Repository) CheckIfNotActive(ctx context.Context, reportedSessions []string) ([]*StateReport, error) {
-	const op = "session.(Repository).listSessionIdAndState"
+	const op = "session.(Repository).CheckIfNotActive"
 
 	notActive := make([]*StateReport, 0, len(reportedSessions))
 	if len(reportedSessions) <= 0 {
@@ -872,7 +872,7 @@ func (r *Repository) CheckIfNotActive(ctx context.Context, reportedSessions []st
 		db.ExpBackoff{},
 		func(reader db.Reader, _ db.Writer) error {
 			var states []*State
-			err := reader.SearchWhere(ctx, &states, "end_time is null and session_id in (?)", []any{reportedSessions})
+			err := reader.SearchWhere(ctx, &states, "upper(active_time_range) is null and session_id in (?)", []any{reportedSessions})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -926,8 +926,15 @@ func (r *Repository) deleteSessionsTerminatedBefore(ctx context.Context, thresho
 func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*State, error) {
 	const op = "session.fetchStates"
 	var states []*State
-	if err := r.SearchWhere(ctx, &states, "session_id = ?", []any{sessionId}, opt...); err != nil {
+	rows, err := r.Query(ctx, selectStates, []any{sessionId}, opt...)
+	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := r.ScanRows(ctx, rows, &states); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 	if len(states) == 0 {
 		return nil, nil

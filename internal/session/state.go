@@ -54,8 +54,6 @@ type State struct {
 	SessionId string `json:"session_id,omitempty" gorm:"primary_key"`
 	// status of the session
 	Status Status `json:"status,omitempty" gorm:"column:state"`
-	// PreviousEndTime from the RDBMS
-	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
 	// StartTime from the RDBMS
 	StartTime *timestamp.Timestamp `json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
 	// EndTime from the RDBMS
@@ -95,15 +93,6 @@ func (s *State) Clone() any {
 		SessionId: s.SessionId,
 		Status:    s.Status,
 	}
-	if s.PreviousEndTime != nil {
-		clone.PreviousEndTime = &timestamp.Timestamp{
-			Timestamp: &timestamppb.Timestamp{
-				Seconds: s.PreviousEndTime.Timestamp.Seconds,
-				Nanos:   s.PreviousEndTime.Timestamp.Nanos,
-			},
-		}
-	}
-
 	if s.StartTime != nil {
 		clone.StartTime = &timestamp.Timestamp{
 			Timestamp: &timestamppb.Timestamp{
@@ -162,9 +151,6 @@ func (s *State) validate(ctx context.Context) error {
 	}
 	if s.EndTime != nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "end time is not settable")
-	}
-	if s.PreviousEndTime != nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "previous end time is not settable")
 	}
 	return nil
 }
