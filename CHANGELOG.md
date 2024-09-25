@@ -4,12 +4,33 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
 * Remove deprecated `controllers` field from the worker config, which was deprecated in 0.9.0 for
 `initial_upstreams`([PR](https://github.com/hashicorp/boundary/pull/5125))
 
 ## 0.17.2 (2024/09/25)
 
-### Changes
+### New and Improved
+
+* Improve performance of grants query by reducing the number of rows that need
+  to be returned. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Add several indexes to database tables to improve performance of cascading
+  deletes/updates to session tables.
+  ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Reorder indexes on several join tables to improve performance of grants query.
+  ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Make client cache sqlite database persistent between restarts of the client
+  cache daemon. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Improve client cache performance by adding indexes, limiting results,
+  and insuring only one refresh is running at a time for a given user and
+  resource. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Add pagination support to client API and use pagination when caching
+  resources in client cache.
+  ([PR](https://github.com/hashicorp/boundary/pull/5101) and
+  ([PR](https://github.com/hashicorp/boundary/pull/5107)
+
+### Bug Fixes
 
 * The Go API properly uses the passed in value for `WithRecursive` and
   `WithSkipCurlOutput` instead of always setting to true regardless of the
