@@ -235,7 +235,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 	if len(split) == 2 {
 		parentAction = action.Map[split[0]]
 	}
-	// Now, go through and check the cases indicated above
+	// Now, go through and check whether grants match
 	for _, grant := range grants {
 		var outputFieldsOnly bool
 		switch {
@@ -262,8 +262,9 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			continue
 		}
 
-		// We step through all grants, to fetch the full list of output fields.
-		// However, we shortcut if we find *.
+		// We step through all grants in order to fetch the full list of output
+		// fields, even if we find a match. However, we shortcut if we find *
+		// for output fields, which is the default.
 		//
 		// If the action was not found above but we did find output fields in
 		// patterns that match, we do not authorize the request, but we do build
@@ -300,10 +301,11 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 				found = true
 			}
 
-		// Case 2:
-		// id=<resource.Id>;actions=<action> where ID cannot be a wildcard; or
-		// id=<resource.Id>;output_fields=<fields> where fields cannot be a
-		// wildcard.
+		// Case 2: id=<resource.Id>;actions=<action> where ID cannot be a
+		// wildcard. Type is optional but if present must match the resource.
+		// This will also allow matching an id with specific output fields
+		// (handled later). Cannot be a list or create action as those do not
+		// operate on specific IDs, only types.
 		case grant.Id == r.Id &&
 			grant.Id != "" &&
 			grant.Id != "*" &&
@@ -314,20 +316,19 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			found = true
 
 		// Case 3: type=<resource.Type>;actions=<action> when action is list or
-		// create (cannot be a wildcard). Must be a top level collection,
-		// otherwise must be one of the two formats specified in cases 4 or 5.
-		// Or, type=resource.Type;output_fields=<fields> and no action. This is
-		// more of a semantic difference compared to 4 more than a security
-		// difference; this type is for clarity as it ties more closely to the
-		// concept of create and list as actions on a collection, operating on a
-		// collection directly. The format in case 4 will still work for
-		// create/list on collections but that's more of a shortcut to allow
-		// things like id=*;type=*;actions=* for admin flows so that you don't
-		// need to separate out explicit collection actions into separate typed
-		// grants for each collection within a role. This does mean there are
-		// "two ways of doing things" but it's a reasonable UX tradeoff given
-		// that "all IDs" can reasonably be construed to include "and the one
-		// I'm making" and "all of them for listing".
+		// create (cannot be a wildcard). Must be a top level collection; if not
+		// it's handled in cases 4 or 5. This is more of a semantic difference
+		// compared to case 4 more than a security difference; this type is for
+		// clarity as it ties more closely to the concept of create and list as
+		// actions on a collection, operating on a collection directly. The
+		// format in case 4 will still work for create/list on collections but
+		// that's more of a shortcut to allow things like id=*;type=*;actions=*
+		// for admin flows so that you don't need to separate out explicit
+		// collection actions into separate typed grants for each collection
+		// within a role. This does mean there are "two ways of doing things"
+		// but it's a reasonable UX tradeoff given that "all IDs" can reasonably
+		// be construed to include "and the one I'm making" and "all of them for
+		// listing".
 		case grant.Id == "" &&
 			r.Id == "" &&
 			grant.Type == r.Type &&
@@ -351,8 +352,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 
 		// Case 5:
 		// id=<pin>;type=<resource.Type>;actions=<action> where type can be a
-		// wildcard and this this is operating on a non-top-level type. Same for
-		// output fields only.
+		// wildcard and this this is operating on a non-top-level type.
 		case grant.Id != "" &&
 			grant.Id == r.Pin &&
 			grant.Type != resource.Unknown &&
