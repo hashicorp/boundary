@@ -399,12 +399,13 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 		notInClause = fmt.Sprintf(notInClause, strings.Join(params, ","))
 	}
 
+	query := fmt.Sprintf(closeOrphanedConnections, notInClause)
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, fmt.Sprintf(orphanedConnectionsCte, notInClause), args)
+			rows, err := w.Query(ctx, query, args)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
