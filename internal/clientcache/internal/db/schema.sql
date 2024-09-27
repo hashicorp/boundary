@@ -34,7 +34,7 @@ when
   end;
 
 
-insert into schema_version(version) values('v0.0.2');
+insert into schema_version(version) values('v0.0.3');
 
 -- user contains the boundary user information for the boundary user that owns
 -- the information in the cache.
@@ -142,6 +142,9 @@ create table if not exists keyring_token (
 
 -- target contains cached boundary target resource for a specific user and with
 -- specific fields extracted to facilitate searching over those fields
+--
+-- any changes to this table must be reflected in the target_refresh_window
+-- table as well.
 create table if not exists target (
   -- the boundary user id of the user who has was able to read/list this target
   fk_user_id text not null
@@ -165,6 +168,37 @@ create table if not exists target (
 
 -- index for implicit scope search
 create index target_scope_id_ix on target(scope_id);
+
+-- target_refresh_window contains targets being refreshed with a new refresh
+-- token before the existing target refresh_token expires. This is used to
+-- prevent having no cached targets when the current refresh token expires.
+-- NOTE: this table is not used for searching and it's also not used for
+-- refreshing the targets using the current unexpired refresh token.  Targets
+-- will be copied from this table to the target table when a refresh is
+-- successfully completed and at that time the refresh token will be updated in
+-- the refresh_token table.
+-- 
+-- IMPORTANT: This table should be an exact copy of the target table. 
+create table if not exists target_refresh_window (
+  -- the boundary user id of the user who has was able to read/list this target
+  fk_user_id text not null
+    references user(id)
+    on delete cascade,
+  -- the boundary id of the target
+  id text not null
+    check (length(id) > 0),
+  -- the following fields are used for searching and are set to the values
+  -- from the boundary resource
+  name text,
+  description text,
+  type text,
+  address text,
+  scope_id text,
+  -- item is the json representation of this resource from the perspective of
+  -- the the requesting user.
+  item text,
+  primary key (fk_user_id, id)
+);
 
 -- session contains cached boundary session resource for a specific user and
 -- with specific fields extracted to facilitate searching over those fields

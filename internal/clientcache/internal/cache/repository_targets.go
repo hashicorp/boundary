@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
@@ -278,8 +279,126 @@ func (r *Repository) checkCachingTargets(ctx context.Context, u *user, tokens ma
 	return nil
 }
 
+// refreshTargetsDuringRefreshWindow refreshes the targets for the provided user
+// using the provided auth tokens. This function is intended to be used during
+// the refresh window for the user's current target refresh token. It will store
+// the targets in the target_refresh_window table and then swap the resources in
+// the target_refresh_window for the user's resources in the target table.
+//
+// the caller is responsible for ensuring that there's no inflight refresh into
+// the target_refresh_window. See cache.RefreshService.syncSemaphore for how to
+// ensure there's no inflight refresh into the target_refresh_window table
+//
+// if the existing refresh token is not within the refresh window, this function
+// will return without doing anything.
+//
+// if controller list target doesn't support refresh token, we will not refresh
+// and we will NOT return an error
+func (r *Repository) refreshTargetsDuringRefreshWindow(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
+	const (
+		op                   = "cache.(Repository).refreshTargetsIntoTmpTable"
+		emptyRefreshToken    = ""
+		deleteRemovedTargets = "delete from %s where id in @ids"
+	)
+	switch {
+	case util.IsNil(u):
+		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
+	case u.Id == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
+	}
+
+	existingRefreshToken, err := r.lookupRefreshToken(ctx, u, targetResourceType)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	// check if existing refresh token will expire within the next 10 days, if
+	// not then just return
+	if existingRefreshToken != nil && !existingRefreshToken.CreateTime.After(time.Now().AddDate(0, 0, -10)) {
+		return nil
+	}
+
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if opts.withTargetRetrievalFunc == nil {
+		opts.withTargetRetrievalFunc = defaultTargetFunc
+	}
+
+	var gotResponse bool
+	var currentPage *targets.TargetListResult
+	var newRefreshToken RefreshTokenValue
+	var foundAuthToken string
+	var retErr error
+	for at, t := range tokens {
+		// we want to start from the beginning of the list using an empty refresh token
+		currentPage, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, emptyRefreshToken, currentPage)
+		if err != nil {
+			if err == ErrRefreshNotSupported {
+				return nil // this particular controller doesn't support refresh tokens and it's not an error, so just return
+			} else {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
+				continue
+			}
+		}
+		foundAuthToken = t
+		gotResponse = true
+		break
+	}
+	// if we got an error, then we need to save it so it can be retrieved later
+	// via the status API by users
+	if retErr != nil {
+		if saveErr := r.saveError(r.serverCtx, u, targetResourceType, retErr); saveErr != nil {
+			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
+		}
+	}
+	if !gotResponse {
+		return retErr
+	}
+
+	tmpTblName, err := tempTableName(ctx, &Target{})
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	// okay we have the data, let's store it in a temporary table
+	var numDeleted int
+	var numUpserted int
+	for {
+		if _, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
+			switch {
+			case newRefreshToken != "":
+				if err := upsertTargets(ctx, w, u, currentPage.Items, WithTableName(tmpTblName)); err != nil {
+					return err
+				}
+				numUpserted += len(currentPage.Items)
+			default:
+				// controller supports caching, but doesn't have any resources
+			}
+			if len(currentPage.RemovedIds) > 0 {
+				if numDeleted, err = w.Exec(ctx, fmt.Sprintf(deleteRemovedTargets, tmpTblName),
+					[]any{sql.Named("ids", currentPage.RemovedIds)}); err != nil {
+					return err
+				}
+			}
+			return nil // we're done with this DoTx(...) containing a "page" of targets
+		}); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if currentPage.ResponseType == "" || currentPage.ResponseType == "complete" {
+			break
+		}
+		currentPage, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, foundAuthToken, newRefreshToken, currentPage)
+		if err != nil {
+			break
+		}
+	}
+	event.WriteSysEvent(ctx, op, "targets updated", "deleted", numDeleted, "upserted", numUpserted, "user_id", u.Id)
+	return nil
+}
+
 // upsertTargets upserts the provided targets to be stored for the provided user.
-func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Target) error {
+func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Target, opt ...Option) error {
 	const op = "cache.upsertTargets"
 	switch {
 	case util.IsNil(w):
@@ -288,6 +407,11 @@ func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Targ
 		return errors.New(ctx, errors.InvalidParameter, op, "writer isn't in a transaction")
 	case util.IsNil(u):
 		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
+	}
+
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
 	}
 
 	for _, t := range in {
@@ -308,6 +432,9 @@ func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Targ
 		onConflict := db.OnConflict{
 			Target: db.Columns{"fk_user_id", "id"},
 			Action: db.SetColumns([]string{"name", "description", "address", "scope_id", "type", "item"}),
+		}
+		if opts.withTableName != "" {
+			newTarget.setTableName(opts.withTableName)
 		}
 		if err := w.Create(ctx, newTarget, db.WithOnConflict(&onConflict)); err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -406,8 +533,17 @@ type Target struct {
 	Address     string `gorm:"default:null"`
 	ScopeId     string `gorm:"default:null"`
 	Item        string `gorm:"default:null"`
+
+	tableName string // unexported so it's ignored by gorm
 }
 
-func (*Target) TableName() string {
+func (t *Target) TableName() string {
+	if t.tableName != "" {
+		return t.tableName
+	}
 	return "target"
+}
+
+func (t *Target) setTableName(n string) {
+	t.tableName = n
 }

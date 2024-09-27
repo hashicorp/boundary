@@ -26,6 +26,7 @@ type options struct {
 	withMaxResultSetSize             int
 	withTestRefreshWaitChs           *testRefreshWaitChs
 	withUseNonPagedListing           bool
+	withTableName                    string
 }
 
 // Option - how options are passed as args
@@ -136,6 +137,15 @@ func WithTestRefreshWaitChs(with *testRefreshWaitChs) Option {
 func WithUseNonPagedListing(b bool) Option {
 	return func(o *options) error {
 		o.withUseNonPagedListing = b
+		return nil
+	}
+}
+
+// WithTableName provides an option for specifying the table name for the
+// resource being written.
+func WithTableName(name string) Option {
+	return func(o *options) error {
+		o.withTableName = name
 		return nil
 	}
 }
