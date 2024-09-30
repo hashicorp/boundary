@@ -181,8 +181,9 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		return true
 	})
 
+	clientCon := w.GrpcClientConn.Load()
 	// Send status information
-	client := pbs.NewServerCoordinationServiceClient(w.GrpcClientConn.Load())
+	client := pbs.NewServerCoordinationServiceClient(clientCon)
 	var tags []*pb.TagPair
 	// If we're not going to request a tag update, no reason to have these
 	// marshaled on every status call.
@@ -230,7 +231,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		UpdateTags:                            w.updateTags.Load(),
 	})
 	if err != nil {
-		event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error making status request to controller"))
+		event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error making status request to controller", "controller_address", clientCon.Target()))
 		// Check for last successful status. Ignore nil last status, this probably
 		// means that we've never connected to a controller, and as such probably
 		// don't have any sessions to worry about anyway.
