@@ -144,33 +144,32 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 				PublicId:                sv.PublicId,
 				UserId:                  sv.UserId,
 				HostId:                  sv.HostId,
-				TargetId:                sv.TargetId,
 				HostSetId:               sv.HostSetId,
+				TargetId:                sv.TargetId,
 				AuthTokenId:             sv.AuthTokenId,
 				ProjectId:               sv.ProjectId,
 				Certificate:             sv.Certificate,
-				CtCertificatePrivateKey: nil, // CtCertificatePrivateKey should not be returned in lists
-				CertificatePrivateKey:   nil, // CertificatePrivateKey should not be returned in lists
 				ExpirationTime:          sv.ExpirationTime,
-				CtTofuToken:             nil, // CtTofuToken should not be returned in lists
-				TofuToken:               nil, // TofuToken should not be returned in lists
 				TerminationReason:       sv.TerminationReason,
 				CreateTime:              sv.CreateTime,
 				UpdateTime:              sv.UpdateTime,
 				Version:                 sv.Version,
 				Endpoint:                sv.Endpoint,
 				ConnectionLimit:         sv.ConnectionLimit,
-				KeyId:                   "", // KeyId should not be returned in lists
+				CtCertificatePrivateKey: nil, // CtCertificatePrivateKey should not be returned in lists
+				CertificatePrivateKey:   nil, // CertificatePrivateKey should not be returned in lists
+				CtTofuToken:             nil, // CtTofuToken should not be returned in lists
+				TofuToken:               nil, // TofuToken should not be returned in lists
+				KeyId:                   "",  // KeyId should not be returned in lists
 			}
 		}
 
 		if _, ok := states[sv.EndTime]; !ok {
 			states[sv.EndTime] = &State{
-				SessionId:       sv.PublicId,
-				Status:          Status(sv.Status),
-				PreviousEndTime: sv.PreviousEndTime,
-				StartTime:       sv.StartTime,
-				EndTime:         sv.EndTime,
+				SessionId: sv.PublicId,
+				Status:    Status(sv.Status),
+				StartTime: sv.StartTime,
+				EndTime:   sv.EndTime,
 			}
 		}
 

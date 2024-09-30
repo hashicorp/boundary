@@ -90,7 +90,7 @@ active_session as (
 	where
 		ss.session_id in (select * from unexpired_session) and
 		ss.state = 'active' and
-		ss.end_time is null
+		upper(ss.active_time_range) is null
 )
 insert into session_connection (
   	session_id,
@@ -150,7 +150,7 @@ from
       where 
         ss.session_id = @public_id and
         ss.state = 'canceling' and 
-        ss.end_time is null
+        upper(ss.active_time_range) is null
     )
     update session us
       set version = version +1,
@@ -226,7 +226,7 @@ with canceling_session(session_id) as
 		session_state ss
 	where
 		ss.state = 'canceling' and
-		ss.end_time is null
+		upper(ss.active_time_range) is null
 )
 update session us
 	set termination_reason =
@@ -371,7 +371,7 @@ where
 and
 	session_state.state = 'terminated'
 and
-	session_state.start_time < wt_sub_seconds_from_now(@threshold_seconds)
+	lower(session_state.active_time_range) < wt_sub_seconds_from_now(@threshold_seconds)
 ;
 `
 	sessionCredentialRewrapQuery = `
@@ -451,6 +451,16 @@ order by update_time desc, public_id desc;
 `
 	estimateCountSessions = `
     select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
+`
+
+	selectStates = `
+  select session_id,
+         state,
+         lower(active_time_range) as start_time,
+         upper(active_time_range) as end_time
+    from session_state
+   where session_id = ?
+order by active_time_range desc;
 `
 )
 

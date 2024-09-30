@@ -575,34 +575,27 @@ func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 }
 
 type sessionListView struct {
-	// Session fields
-	PublicId                string               `json:"public_id,omitempty" gorm:"primary_key"`
-	UserId                  string               `json:"user_id,omitempty" gorm:"default:null"`
-	HostId                  string               `json:"host_id,omitempty" gorm:"default:null"`
-	TargetId                string               `json:"target_id,omitempty" gorm:"default:null"`
-	HostSetId               string               `json:"host_set_id,omitempty" gorm:"default:null"`
-	AuthTokenId             string               `json:"auth_token_id,omitempty" gorm:"default:null"`
-	ProjectId               string               `json:"project_id,omitempty" gorm:"default:null"`
-	Certificate             []byte               `json:"certificate,omitempty" gorm:"default:null"`
-	CtCertificatePrivateKey []byte               `json:"ct_certificate_private_key,omitempty" gorm:"column:certificate_private_key;default:null" wrapping:"ct,certificate_private_key"`
-	CertificatePrivateKey   []byte               `json:"certificate_private_key,omitempty" gorm:"-"  wrapping:"pt,certificate_private_key"`
-	ExpirationTime          *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
-	CtTofuToken             []byte               `json:"ct_tofu_token,omitempty" gorm:"column:tofu_token;default:null" wrapping:"ct,tofu_token"`
-	TofuToken               []byte               `json:"tofu_token,omitempty" gorm:"-" wrapping:"pt,tofu_token"`
-	TerminationReason       string               `json:"termination_reason,omitempty" gorm:"default:null"`
-	CreateTime              *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
-	UpdateTime              *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	Version                 uint32               `json:"version,omitempty" gorm:"default:null"`
-	Endpoint                string               `json:"-" gorm:"default:null"`
-	ConnectionLimit         int32                `json:"connection_limit,omitempty" gorm:"default:null"`
-	KeyId                   string               `json:"key_id,omitempty" gorm:"default:null"`
-	ProtocolWorkerId        string               `json:"protocol_worker_id,omitempty" gorm:"default:null"`
+	// Session fields, we omit some fields that are not included when listing sessions.
+	PublicId          string               `gorm:"primary_key"`
+	UserId            string               `gorm:"default:null"`
+	HostId            string               `gorm:"default:null"`
+	HostSetId         string               `gorm:"default:null"`
+	TargetId          string               `gorm:"default:null"`
+	AuthTokenId       string               `gorm:"default:null"`
+	ProjectId         string               `gorm:"default:null"`
+	Certificate       []byte               `gorm:"default:null"`
+	ExpirationTime    *timestamp.Timestamp `gorm:"default:null"`
+	TerminationReason string               `gorm:"default:null"`
+	CreateTime        *timestamp.Timestamp `gorm:"default:current_timestamp"`
+	UpdateTime        *timestamp.Timestamp `gorm:"default:current_timestamp"`
+	Version           uint32               `gorm:"default:null"`
+	Endpoint          string               `gorm:"default:null"`
+	ConnectionLimit   int32                `gorm:"default:null"`
 
 	// State fields
-	Status          string               `json:"state,omitempty" gorm:"column:state"`
-	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
-	StartTime       *timestamp.Timestamp `json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
-	EndTime         *timestamp.Timestamp `json:"end_time,omitempty" gorm:"default:current_timestamp"`
+	Status    string               `gorm:"column:state"`
+	StartTime *timestamp.Timestamp `gorm:"column:start_time"`
+	EndTime   *timestamp.Timestamp `gorm:"column:end_time"`
 }
 
 // TableName returns the tablename to override the default gorm table name
