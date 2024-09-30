@@ -37,6 +37,7 @@ const (
 	EnabledPluginLoopback
 	EnabledPluginAws
 	EnabledPluginHostAzure
+	EnabledPluginGoogle
 	EnabledPluginMinio
 )
 
@@ -51,6 +52,8 @@ func (e EnabledPlugin) String() string {
 		return "AWS"
 	case EnabledPluginHostAzure:
 		return "Azure"
+	case EnabledPluginGoogle:
+		return "Google"
 	case EnabledPluginMinio:
 		return "MinIO"
 	default:
