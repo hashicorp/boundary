@@ -852,14 +852,13 @@ func (e *Eventer) StandardWriter(ctx context.Context, typ Type) (io.Writer, erro
 	if err := typ.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	newEventer := *e
 	ctx, err := NewEventerContext(ctx, e)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return &logAdapter{
 		ctxWithEventer: ctx,
-		e:              &newEventer,
+		e:              e,
 		emitEventType:  typ,
 	}, nil
 }
