@@ -9,8 +9,6 @@ Using aliases, which were introduced in 0.16.0, users can connect to targets wit
 know the specifics of the Boundary client and lets users employ their own tools, such as a terminal 
 with SSH, a browser with HTTP, or an RDP client to connect to a Windows host. It makes Boundary *transparent* to the user.
 
-### New and Improved
-
 * Add support for dynamic host catalog plugins running in Boundary workers:
   Boundary plugins that handle dynamic host catalog operations (such as the
   [AWS](https://github.com/hashicorp/boundary-plugin-aws/tree/main/plugin/service/host)
