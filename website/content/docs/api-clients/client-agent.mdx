@@ -1,0 +1,59 @@
+---
+layout: docs
+page_title: Client Agent
+description: |-
+  Learn how the Boundary Client Agent intercepts DNS requests as the primary resolver on the client, allowing Boundary to proxy connections transparently.
+---
+
+# Boundary Client Agent
+
+@include 'alerts/enterprise-only.mdx'
+
+@include 'alerts/beta.mdx'
+
+The Boundary Client Agent is Boundary's DNS daemon.
+When the Boundary Client Agent is running alongside an authenticated Boundary client, the agent establishes itself as the primary resolver on the client and intercepts DNS requests.
+If you enter a hostname that matches a Boundary alias that the client is authorized to establish a session to, Boundary automatically generates the session and transparently proxies the connection on your behalf.
+
+If the Boundary Client Agent cannot find an alias, or if there are any issues with authentication, network connectivity, or latency, the Client Agent defers DNS resolution to the previously configured DNS resolvers.
+
+The following log is an example of a new transparent session being established:
+
+```
+2024-06-03T10:44:56.337-0700 [INFO]  2783321106: found matching Boundary target: query name=ssh.boundary.dev. qtype=A target id=ttcp_dMcUB0wRKp port=22 client port=0 user id=501
+2024-06-03T10:44:56.341-0700 [INFO]  2783321106: starting proxy for: target name=ssh.boundary.dev. primary listener addr=100.92.133.79:443 session expiration=2024-06-04T01:44:56Z time until=8h0m0.048895s connections left=-1
+```
+
+The following log is an exampe of a user connecting to a session that is already established:
+
+```
+2024-06-03T10:44:56.341-0700 [INFO]  1781785147: existing session found: query=ssh.boundary.dev.
+```
+
+You can view information about the Boundary Client Agent using the command `boundary client-agent status`.
+
+## Security
+
+When you successfully authorize a session on a Boundary controller, the response includes a list of any brokered credentials, which include the decoded secrets.
+When the Boundary Client Agent receives a DNS request, Boundary creates a new session.
+An OS user can only connect to an authorized session managed by the Boundary Client Agent daemon if they are the same OS user that added the Boundary auth token used for authorizing the session.
+
+The Boundary Client Agent stores the credentials and some other informaiton related to the session in memory.
+The in-memory store removes the session information:
+
+- when the session ends
+- if the auth token stored in the Boundary expires
+- if the current OS user authenticates with a different Boundary user
+- if the current OS user authenticates to a new Boundary controller
+- if the Boundary Client Agent is terminated
+
+API requests are authenticated in the same way as session poxy access.
+The API returns a [403 status code](/boundary/docs/api-clients/api#status-codes) if the requester did not set the token in the Boundary Client Agent that was used to create the sessions managed by the agent for that OS user.
+
+Credential brokering is supported for transparent sessions.
+A notification appears when you establish a session against a target that is configured with credential brokering.
+You can retrieve credentials later using the following command:
+
+```
+$ boundary client-agent sessions
+```
