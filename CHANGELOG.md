@@ -3,6 +3,11 @@
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.18.0 (2024/10/01)
+### New and Improved
+* Transparent Sessions (enterprise): Transparent sessions provides a convenient way to connect to targets in Boundary. 
+Using aliases, which were introduced in 0.16.0, users can connect to targets without needing to 
+know the specifics of the Boundary client and lets users employ their own tools, such as a terminal 
+with SSH, a browser with HTTP, or an RDP client to connect to a Windows host. It makes Boundary *transparent* to the user.
 
 ### New and Improved
 
