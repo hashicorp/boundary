@@ -4,6 +4,30 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* Add support for dynamic host catalog plugins running in Boundary workers:
+  Boundary plugins that handle dynamic host catalog operations (such as the
+  [AWS](https://github.com/hashicorp/boundary-plugin-aws/tree/main/plugin/service/host)
+  and [Azure](https://github.com/hashicorp/boundary-plugin-azure) plugins) can
+  now run on workers. ([PR](https://github.com/hashicorp/boundary/pull/5137))
+
+* Dynamic host catalogs worker filter support (Enterprise and HCP Boundary
+  only): Operators can now set a worker filter when creating a dynamic host
+  catalog. When set, all of the plugin requests will be sent to the matching
+  worker for processing. ([PR](https://github.com/hashicorp/boundary/pull/5137))
+
+* AWS dynamic host catalogs `AssumeRole` authentication support: Operators can
+  now set-up AWS dynamic host catalogs using Amazon's `AssumeRole`
+  authentication paradigm by providing a valid Role ARN when creating the host
+  catalog. ([PR](https://github.com/hashicorp/boundary/pull/5137) and
+  [PR](https://github.com/hashicorp/boundary-plugin-aws/pull/49))
+
+### Bug Fixes
+
+* Prevented a data-race in Boundary's event logging system.
+  ([PR](https://github.com/hashicorp/boundary/pull/5139))
+
 ### Deprecations/Changes
 
 * Remove deprecated `controllers` field from the worker config, which was deprecated in 0.9.0 for
