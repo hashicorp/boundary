@@ -22,6 +22,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   catalog. ([PR](https://github.com/hashicorp/boundary/pull/5137) and
   [PR](https://github.com/hashicorp/boundary-plugin-aws/pull/49))
 
+* Improved MinIO storage plugin compatibility with other services by dropping
+  the checksum headers in `PutObject`.
+  ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/23))
+
 ### Bug Fixes
 
 * Prevented a data-race in Boundary's event logging system.
