@@ -4,7 +4,7 @@
 begin;
 
   -- Replaces the view created in 69/02_session_worker_protocol.up.sql
-  -- Replaced in 91/06_session_state_tstzrange.up.sql
+  -- Replaced in 92/02_session_state_tstzrange.up.sql
   drop view session_list;
   create view session_list as
       select s.public_id,

@@ -69,7 +69,7 @@ begin;
     'for the user that corresponds to the provided auth_token_id.';
 
   -- Replaces function from 60/03_wh_sessions.up.sql
-  -- Replaced in 91/06_session_state_tstzrange.up.sql
+  -- Replaced in 92/02_session_state_tstzrange.up.sql
   create function wh_insert_session() returns trigger
   as $$
   declare

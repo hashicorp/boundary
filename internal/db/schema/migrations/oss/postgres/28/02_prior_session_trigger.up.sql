@@ -77,7 +77,7 @@ begin
 end; $$;
 
 -- Replaces trigger from 0/50_session.up.sql
--- Replaced in 91/06_session_state_tstzrange.up.sql
+-- Replaced in 92/02_session_state_tstzrange.up.sql
 -- Update insert session state transition trigger
 drop trigger insert_session_state on session_state;
 drop function insert_session_state();

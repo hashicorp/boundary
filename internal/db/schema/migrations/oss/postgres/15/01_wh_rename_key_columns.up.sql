@@ -397,7 +397,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  -- Replaced in 91/06_session_state_tstzrange.up.sql
+  -- Replaced in 92/02_session_state_tstzrange.up.sql
   create trigger wh_insert_session_state after insert on session_state
     for each row execute function wh_insert_session_state();
 
