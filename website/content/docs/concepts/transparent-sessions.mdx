@@ -12,177 +12,69 @@ description: |-
 @include 'alerts/beta.mdx'
 
 Transparent sessions shift Boundary from an active connection model to a passive connection model.
-Instead of interacting with the Boundary CLI or Desktop client and having to remember specific IDs or ephemeral ports to connect to targets, Boundary operates in the background.
-If a user is authenticated and authorized, Boundary intercepts DNS calls and routes traffic through a session automatically.
-Transparent sessions are enabled by aliases and a DNS client named Boundary Client Agent.
+Boundary operates in the background instead of requiring you to remember specific resource IDs or ephemeral ports to connect to targets.
+As long as Boundary authenticates a user and the user is authorized to access the target, Boundary intercepts the DNS call and routes traffic through a session automatically.
 
-The Boundary Desktop functions like an "Okta tile", facilitating quick target discovery and session establishment using your preferred client.
-If you configure aliases for your targets, install the Boundary Client Agent, and ensure you're authenticated to the cluster, connections are transparent to the user.
+Transparent sessions require [aliases](/docs/concepts/aliases) and a DNS client named [Boundary Client Agent](/docs/api-clients/client-agent).
+
+The Boundary Desktop client facilitates quick target discovery and session establishment using your preferred client.
+If you configure aliases for your targets, install the Boundary Client Agent, and ensure you are authenticated to the cluster, connections are transparent to the user.
 Boundary provides OS notifications to make it clear when you connect to a target using a transparent session.
 
 ## Configure transparent sessions
 
-To configure transparent sessions, you should ensure that the Boundary CLI and Boundary Desktop are not installed in the environment in which you want to run the transparent sessions beta.
+To configure transparent sessions for the public beta, you should ensure that the Boundary CLI and Boundary Desktop are not installed in the environment in which you want to run the transparent sessions beta.
 If the Boundary CLI or Boundary Desktop are installed in the environment, you should uninstall them.
 
-Windows and MacOs are supported for the transparent sessions public beta.
-You can download the appropriate installer for your operating system from the Releases page.
+Boundary supports Windows and MacOs for the transparent sessions public beta.
+
+### Requirements
+
+Before you configure transparent sessions, you must:
+
+- Ensure that the Boundary CLI and Boundary Desktop are not installed in the environment in which you want to run the transparent sessions beta.
+- Download the appropriate installer for your Windows or MacOS environment from the [downloads](/boundary/install) page.
 
 ### Install clients
 
-The following installation steps apply to both HCP Boundary and Boundary Enterprise editions:
+Complete the following steps to install the Boundary Client Agent, CLI, and Desktop client:
 
-1. Download the appropriate Boundary installer for your environment.
 1. Install Boundary using the installer.
-Make sure to install the options **Boundary Client Agent**, **CLI**, and **Desktop**.
-1. In the CLI, type the following command and confirm that the version is 0.16.0:
+Make sure to select the options **Boundary Client Agent**, **CLI**, and **Desktop**.
+1. Open the CLI and type the following command to confirm that the version is 0.16.0:
    ```
-   boundary version
+   $ boundary version
    ```
 1. In the CLI, type the following command and confirm that the default DNS address is in the 100.x.y.z. rnage:
    - **MacOS**:
-   ```
-   scutil --dns
-   ```
+     ```
+     $ scutil --dns
+     ```
    - **Windows**:
-   ```
-   Get-DnsClientServerAddress
-   ```
+     ```
+     $ Get-DnsClientServerAddress
+     ```
 
-<!--
+### Configure targets
 
-Once you have configured transparent sessions for your environment, you can configure Boundary to use transparent sessions:
-
-- To configure HCP Boundary for transparent sessions
-- To configure Boundary Enterprise for transparent sessions
-
-### Configure HCP Boundary
-
-Complete the following steps to configure HCP Boundary for the transparent sessions beta test:
-
-1. Authenticate to Boundary using the CLI or Desktop client.
-1. Create a target.
-If you do not have a public target for initial testing, you can use sdf.org to test SSH connectivity.
-Your target host name will be **tty.sdf.org**, and the default port is **22**.
-1. Create an alias for your target.
-The alias is the FQDN you use when you connect to your target transparently.
-If you use sdf.org as a public target, you can set the alias for your target as **tty.sdf.org** using the following command:
-   ```
-   boundary aliases create target -value tty.sdf.org -name "Public SSH Server" -destination-id <my-targets-id>
-   ```
-   You can also add an alias via the Admin UI by navigating to your cluster URL and signing in as an administrator.
-1. Ensure that you have authorization to establish a session to the target.
-Open the client of your choice and connect to your target using the alias.
-Boundary should route your session using the Boundary Client Agent.
-You can validate that Boundary routed the session by looking at the **Sessions** page in the Desktop client or by typing `boundary sessions list -recursive` in the CLI.
-
-  When you have validated that transparent sessions work, you can create and establish transparent sessions to other services.
-   Make a list of the services you use, add these resources to Boundary as targets, and create workers as needed.
-
-The Client Agent periodically requests an updated list of aliases from the controller, so the alias may not work immediately after creation.
-It should not take longer than 2 minutes for aliases to be updated in the Client Agent after creation.
-
-### Configure Boundary Enterprise
-
-Complete the following steps to configure Boundary Enterprise for the transparent sessions beta test:
-
-1. Use the following command to start Boundary in dev mode:
-
-   `boundary dev -worker-dns-server udp://8.8.8.8.53`
-
-   Dev mode creates a temporary instance of Boundary.
-   The temporary instance includes a Postgres database and a Boundary controller and worker.
-   If you want to create a permanent instance of Boundary to test transparent sessions, refer to the instructions to Install Boundary.
-1. Authenticate to Boundary using the CLI or Desktop client.
-1. (Optional) You can create your own target and alias to create a transparent session, or proceed to the next step if you want to use one of the sample targets above.
-
-   If you do not have a public target for testing, **sdf.org** is a good site for testing SSH connectivity.
-  Sign up on the web site, and follow the emailed instructions to create an account.
-  Your target host name is **tty.sdf.org** and the default port is **22**.
-
-  ```
-  boundary targets create tcp -scope-id <project_id> -name sdf.org -default-port 22
-  ```
-
-  Use the following command to set an alias **ssh.boundary.dev** for the target.
-  The alias is the FQDN you use to connect to the target transparently.
-
-  ```
-  boundary aliases create target -value ssh.boundary.dev -name "Public SSH Server" -destination-id <my-targets-id>
-  ```
-
-  If you don't want to remember the auto-generated password for your sdf.org user, you can add it as a static credential and configure credential brokering for the target, and it'll be available to you when you connect:
-
-  ```
-  boundary credential-stores create static -scope-id <project_id> # Create a static credential store
-  export SDF_PW=<password-from-sdf.org-email>
-  boundary credentials create username-password -credential-store-id <credential-store-id> -username=<sdf.org-username> -password=env://SDF_PW
-  boundary targets add-credential-sources -id <target_id> -brokered-credential-source <credential_id>
-  ```
-
-  1. Ensure that you are authorized to establish a session to the target.
-  Open the client of your choice and connect to your target using the alias, for example:
-
-  ```
-  ssh myuser@ssh.boundary.dev
-  myuser@ssh.boundary.dev's password:
-  ```
-  Boundary routes your session using the Client Agent.
-
-  If you use brokered credentials, you get a notification from the Boundary Desktop Client that lets you find them.
-  You can also retrieve brokered credentials using the `client-agent sessions` CLI command in a separate terminal, for example:
-
-  ```
-  boundary client-agent sessions
-
-  Session information:
-  Alias:                      ssh.boundary.dev
-  Session authorization:
-    Session ID:               s_kJi5rCIW2A
-    Created time:             2024-06-06 21:21:19.172958 +0000 UTC
-    Credentials:
-      Credential Source ID:   credup_HoiqJ9bs16
-      Credential Source Name: SSH credentials
-      Credential Store ID:    csst_XOWtAMOHyU
-      Credential Store Type:  static
-      Credential Type:        username_password
-      Secret:
-                  password:   <password>
-                  username:   <username>
-  ```
-
-  You can validate that Boundary routed the session by looking at the **Sessions** page in the Desktop client or by typing `boundary sessions list -recursive` in the CLI.
-
-  When you have validate that transparent sessions work, you can create and establish transparent sessions to other services.
-  Make a list of the services you use, add these resources to Boundary as targets, and create workers as needed.
-
-  -->
-
-## Test transparent sessions
-
-The following section details how to test the transparent sessions public beta feature.
+The following section details how to configure targets and test the transparent sessions public beta feature.
 
 If you use a cluster that was created earlier than release 0.16.0, you must add the grant `list-resolvable-aliases` so that the client agent can populate the local alias cache.
 As an example, you could add `type=user;actions=list-resolvable-aliases;ids=*`.
 
+If you use Boundary Enterprise, you can run Boundary in [dev mode](/docs/getting-started/dev-mode/dev-mode) to test transparent sessions.
+Dev mode creates a temporary instance of Boundary that includes a Postgres database and a Boundary controller and worker.
+It also automatically creates sample targets that are enabled for transparent sessions.
 
+<details><summary><strong>Click here for more information about using dev mode</strong></summary>
 
-1. Authenticate to Boundary using the CLI or Desktop client.
-1. [Create a new target with an alias](/docs/concepts/aliases#create-an-alias-during-target-creation) or [create an alias for an existing target](/docs/concepts/aliases#create-an-alias-for-an-existing-target).
-Ensure that you have authorization to establish a session to the target.
-1. Open the client of your choice and [connect to your target using the alias](/docs/concepts/aliases#connect-to-a-target-using-an-alias).
+Run the following command to start Boundary in dev mode:
 
-   Boundary should route your session using the Boundary Client Agent.
-   You can validate that Boundary routed the session by looking at the **Sessions** page in the Desktop client or by typing `boundary sessions list -recursive` in the CLI.
+```
+$ boundary dev -worker-dns-server udp://8.8.8.8:53
+```
 
-When you have validated that transparent sessions work, you can create and establish transparent sessions to other services.
-Make a list of the services you use, add these resources to Boundary as targets, and create workers as needed.
-
-### Using dev mode to test transparent sessions
-
-If you use Boundary Enterprise, you can use [dev mode](/docs/getting-started/dev-mode/dev-mode) to test transparent sessions.
-Dev mode automatically creates the following sample targets that are enabled for transparent sessions.
-You can use these sample targets to test connecting to targets transparently.
+You can use the follwoing sample targets to test transparent sessions:
 
 Local Postgres target:
 - **Description**: A local Postgres target.
@@ -195,7 +87,7 @@ You can connect to it using the flag `-dbname boundary`.
   ```
 
 Local SSH target:
-- **Description**: A localhost target that you can use SSH and an alias to connect to.
+- **Description**: A localhost target that you can connect to using SSH and an alias.
 Make sure you have a local SSH server running to connect to this target, or modify the target definition to point to an SSH server of your choice.
 - **Alias value**: `ssh.boundary.dev`
 - **Usage**: Use the following command to connect to this target using the CLI or client of your choice:
@@ -218,34 +110,50 @@ Validate that Boundary created the session using the following command:
   $ boundary sessions list -recursive
   ```
 
-  Cancel the session using the Boundary CLI, Desktop, or Admin UI and observe the behavior.
+</details>
+
+Complete the following steps to configure targets and test transparent sessions:
+
+1. Authenticate to Boundary using the CLI or Desktop client.
+1. [Create a new target with an alias](/docs/concepts/aliases#create-an-alias-during-target-creation) or [create an alias for an existing target](/docs/concepts/aliases#create-an-alias-for-an-existing-target).
+Ensure that you have authorization to establish a session to the target.
+1. Open the client of your choice and [connect to your target using the alias](/docs/concepts/aliases#connect-to-a-target-using-an-alias).
+
+   Boundary routes your session using the Boundary Client Agent.
+   You can validate that Boundary routed the session by looking at the **Sessions** page in the Desktop client or by typing `boundary sessions list -recursive` in the CLI.
+
+When you have validated that transparent sessions work, you can create and establish transparent sessions to other services.
+Make a list of the services you use, add these resources to Boundary as targets, and create workers as needed.
 
 ## Known issues
 
-Refer to the following table for known issues that may affect the private beta:
+Refer to the following table for known issues that may affect the public beta:
 
 | Issue | Description |
 | ----- | ----------- |
 | Brokered credentials are not cleaned up | After you end a transparent session, the credentials that you used to establish the session persist in Boundary. You can use the credentials to connect to the target even after the session ends. |
 | SSH session is still active after exiting | When you use the terminal to create a transparent SSH session into a target session, and then end the session, it may remain active in Boundary. |
 | Connection is reset when trying to reconnect | If you use an SSH transparent session and then cancel the connection, you may have trouble reconnecting until Boundary cleans up the session. |
-| SSH connection fails with man-in-the-middle warning | On Ubuntu systems, the initial transparent session may be successful, but any following connections trigger a warning that you may be experiencing a man-in-the-middle attack. |
-| Boundary Client Agent authentication does not persist across restarts | When you reboot, you are required to re-authenticate to the client agent before you can use transparent sessions. |
+| SSH connection fails with man-in-the-middle warning | On Ubuntu systems, the initial transparent session may be successful, but any subsequent connections prompt a warning that you may be experiencing a man-in-the-middle attack. |
+| Boundary Client Agent authentication does not persist across restarts | When you reboot, you are required to re-authenticate to the Client Agent before you can use transparent sessions. |
 
 ## Conflicting software
 
-Some software is known to cause conflicts with the Boundary Client Agent. Here follows an incomplete list of potential conflicts and any available workarounds for issues.
+Some software is known to cause conflicts with the Boundary Client Agent.
+The following sections are an incomplete list of potential conflicts and any available workarounds for issues.
 
 ### Docker Desktop (MacOS)
 
-Docker Desktop sometimes creates a local DNS listener that makes it impossible for the client agent to run.
-If you run Docker Desktop 4.26 or later, you must clear the `Use kernel networking for UDP` option. Otherwise, the client agent refuses to start.
+Docker Desktop sometimes creates a local DNS listener that prevents the Client Agent from running.
+If you run Docker Desktop 4.26 or later, you must clear the `Use kernel networking for UDP` option.
+Otherwise, the Client Agent refuses to start.
 
 ### Palo Alto Networking Global Protect VPN
 
 If you are unable to establish a transparent session while using the Palo Alto Networking Global Protect VPN, you may need to explicitly specify a network interface and the upstream DNS server(s) to use.
 
-By default, the client agent reads the DNS server configuration of the primary network interface and uses that information to resolve domains that are not configured as aliases in Boundary. If the VPN configuration includes custom DNS servers, this information may not be available to the client agent, so you must explicitly specify the DNS server(s) to use.
+By default, the Client Agent reads the primary network interface's DNS server configuration and uses that information to resolve domains that are not configured as aliases in Boundary.
+If the VPN configuration includes custom DNS servers, this information may not be available to the Client Agent, so you must explicitly specify the DNS server(s) to use.
 
 To configure the DNS server(s) to use, use the `override_upstream_dns_servers` configuration option:
 
@@ -259,11 +167,11 @@ override_upstream_dns_servers = [
 ]
 ```
 
-Refer to the following sections to troubleshoot issues with MacOS or Windows.
-
 ### MacOS
 
-By default, the client agent creates IPs on the primary network interface to serve its DNS server. When you run the client agent alongside the PAN-GP VPN, the primary network interface will likely be set to a `tun` type interface, which the client agent cannot use for its IP addresses. You may see errors such as the following in the `boundary-client-agent.log` file or the `boundary client-agent status` command response:
+By default, the Client Agent creates IPs on the primary network interface to serve its DNS server.
+When you run the Client Agent alongside the PAN-GP VPN, the primary network interface will likely be set to a `tun` type interface, which the Client Agent cannot use for its IP addresses.
+You may see errors such as the following in the `boundary-client-agent.log` file or the `boundary client-agent status` command response:
 
 ```
 [ERROR] macos.addIP: error adding ipv4 address: ifconfig: ioctl (SIOCAIFADDR): Destination address required
@@ -275,20 +183,18 @@ To work around the default `tun` interface, you must provide an explicit network
 interface_to_use=en0
 ```
 
-Configuring the `interface_to_use` option allows the client agent to create the IPs it needs to serve the DNS server and proxy traffic.
-This allows the client agent to create the IPs it needs to serve the DNS server and proxy traffic.
-
-Restart the client agent for it to pick up the new option.
+The `interface_to_use` option allows the Client Agent to create the IPs it needs to serve the DNS server and proxy traffic.
+You must restart the Client Agent for it to update its configuration with the new setting.
 
 ### Windows
 
-On Windows, the client agent may be able to create the IPs that it needs on the primary network interface, but it fails to establish any transparent sessions. You may see the following message:
+On Windows, the Client Agent may be able to create the IPs that it needs on the primary network interface, but it fails to establish any transparent sessions. You may see the following message:
 
 ```
 [INFO] default route change detected, restarting
 ```
 
-You must explicitly specify a network interface to use other than the primary one. You can list available network interfaces using the Powershell command `Get-NetAdapter`, or the older `route print` command. You must find the index of the interface you would normally use to connect to the internet. For example, in this snippet, the interface index is `11`:
+You must explicitly specify a network interface to use other than the primary one. You can list available network interfaces using the Powershell command `Get-NetAdapter`, or the older `route print` command. You must find the index of the interface you would normally use to connect to the internet. In this example, the interface index is `11`:
 
 ```
 PS C:\> Get-NetAdapter
@@ -298,7 +204,7 @@ Ethernet                  Parallels VirtIO Ethernet Adapter            11 Up    
 Ethernet 2                PANGP Virtual Ethernet Adapter Secure        24 Up           02-50-41-00-00-01         2 Gbps
 ```
 
-Alternatively, using `route print`:
+Alternatively, if you use `route print`, refer to the following example:
 
 ```
 PS C:\> route print
@@ -310,18 +216,20 @@ Interface List
 ===========================================================================
 ````
 
-Your config should look like this:
+Your configuration should look like this:
 
 ```hcl
 interface_to_use=11
 ```
 
-Restart the client agent for it to pick up the new option.
+You must restart the Client Agent for it to update its configuration with the new setting.
 
 ### Cloudflare WARP client
 
-The Cloudflare WARP client uses a local DNS server to direct traffic and has built-in checks to prevent it from being run alongside other software that uses the same mechanism.
-This includes the Boundary client agent. If you try to use both together, it may sometimes work, or you may see an error like this one:
+The Cloudflare WARP client uses a local DNS server to direct traffic.
+It has built-in checks to prevent it from being run alongside other software that uses the same mechanism.
+This includes the Boundary Client Agent.
+If you try to use the Client Agent with the Cloudflare WARP client, it may work, or you may see an error like this one:
 
 ```
 Status: Unable to Connect
@@ -331,7 +239,8 @@ Error description: The WARP Agent must be the only process responsible for DNS r
 Learn more: https://cfl.re/CF_DNS_PROXY_FAILURE
 ```
 
-You can still install both the Cloudflare WARP client and the Boundary client agent on the same machine. As long as you don't run both at the same time, they should work as expected.
+You can still install both the Cloudflare WARP client and the Boundary Client Agent on the same machine.
+As long as you don't run both at the same time, they should work as expected.
 
 ## Frequently asked questions
 
@@ -399,3 +308,10 @@ _override_upstream_dns_servers:_ List of DNS servers that should be used for rec
 ```hcl
 override_upstream_dns_servers = ["8.8.8.8", "8.8.4.4"]
 ```
+
+## More information
+
+Refer to the following topics for more information:
+
+- [Aliases](/boundary/docs/concepts/aliases)
+- [Boundary Client Agent](/boundary/docs/api-clients/client-agent)
