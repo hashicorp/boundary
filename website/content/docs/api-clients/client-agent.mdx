@@ -12,7 +12,7 @@ description: |-
 @include 'alerts/beta.mdx'
 
 The Boundary Client Agent is Boundary's DNS daemon.
-When the Boundary Client Agent is running alongside an authenticated Boundary client, the agent establishes itself as the primary resolver on the client and intercepts DNS requests.
+When the Boundary Client Agent runs alongside an authenticated Boundary client, the agent establishes itself as the primary resolver on the client and intercepts DNS requests.
 If you enter a hostname that matches a Boundary alias that the client is authorized to establish a session to, Boundary automatically generates the session and transparently proxies the connection on your behalf.
 
 If the Boundary Client Agent cannot find an alias, or if there are any issues with authentication, network connectivity, or latency, the Client Agent defers DNS resolution to the previously configured DNS resolvers.
@@ -31,6 +31,89 @@ The following log is an exampe of a user connecting to a session that is already
 ```
 
 You can view information about the Boundary Client Agent using the command `boundary client-agent status`.
+
+## Configuration
+
+The configuraton file is located in the following directories:
+
+MacOS
+
+  ```shell-session
+
+   /Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl
+
+   ```
+
+Windows
+
+  ```shell-session
+
+   C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl
+
+   ```
+
+The configuration file contains the following fields:
+
+- `interface_to_use` - Specifies the interface to use instead of the default.
+
+   Example:
+   ```hcl
+   interface_to_use=en1
+   ```
+- `v4_prefix` - Specifies an alternate prefix to use for generating IPs. Currently must be between /8 and /16
+
+   Example:
+   ```hcl
+   v4_prefix=1.1.1.1/8
+   ```
+- `recurse_only` - Recurses the DNS request only, does not proxy sessions.
+
+   Example:
+   ```hcl
+   recurse_only=false
+   ```
+
+- `log_to_stdout` - Logs to STDOUT in addition to the boundary-client-agent.log file.
+
+   Example:
+   ```hcl
+   log_to_stdout=false
+   ```
+
+- `log_file` - Specifies where to write the Boundary Client Agent log file to.
+
+   Example:
+   ```hcl
+   log_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent.log"
+   ```
+
+- `state_file` - Specifies where to write the Boundary Client Agent state file to. This is an ephemeral file which is removed on successful shutdown.
+
+   Example:
+   ```hcl
+   state_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent-state.json"
+   ```
+
+- `log_level` - Specifies the verbosity of the Client Agent logs.
+
+   Example:
+   ```hcl
+   log_level=DEBUG
+   ```
+
+- `dns_request_timeout` - Specifies the amount of time the client will wait for a response to a DNS request.
+
+   Example:
+   ```hcl
+   dns_request_timeout=300s
+   ```
+
+- `override_upstream_dns_servers` - Lists the DNS servers that should be used for recursing non-Boundary requests, overriding those configured on the system.
+
+   Example:
+   ```hcl
+   override_upstream_dns_servers = ["8.8.8.8", "8.8.4.4"]
+   ```
 
 ## Security
 
@@ -52,7 +135,7 @@ The API returns a [403 status code](/boundary/docs/api-clients/api#status-codes)
 
 Credential brokering is supported for transparent sessions.
 A notification appears when you establish a session against a target that is configured with credential brokering.
-You can retrieve credentials later using the following command:
+You can retrieve the credentials later using the following command:
 
 ```
 $ boundary client-agent sessions
@@ -163,69 +246,7 @@ Learn more: https://cfl.re/CF_DNS_PROXY_FAILURE
 You can still install both the Cloudflare WARP client and the Boundary Client Agent on the same machine.
 As long as you don't run both at the same time, they should work as expected.
 
-## Frequently asked questions
+## More information
 
-**Where is the configuration file for the Boundary Client Agent?**
-
-MacOS
-
-  ```shell-session
-
-   /Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl
-
-   ```
-
-Windows
-
-  ```shell-session
-
-   C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl
-
-   ```
-
-Fields include:
-
-_interface_to_use:_ Used to specify interface instead of the default
-```hcl
-interface_to_use=en1
-```
-
-_v4_prefix:_ Specify an alternate prefix to use for generating IPs. Currently must be between /8 and /16
-```hcl
-v4_prefix=1.1.1.1/8
-```
-
-_recurse_only:_ Only recurse the DNS request, do not proxy sessions
-```hcl
-recurse_only=false
-```
-
-_log_to_stdout:_ log to STDOUT in addition to the boundary-client-agent.log file
-```hcl
-log_to_stdout=false
-```
-
-_log_file:_ Specify where to write the Boundary Client Agent logfile to
-```hcl
-log_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent.log"
-```
-
-_state_file:_ Specify where to write the Boundary Client Agent state file to. This is an ephemeral file which is removed on successful shutdown.
-```hcl
-state_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent-state.json"
-```
-
-_log_level:_ Specify the Verbosity of the Client Agent logs
-```hcl
-log_level=DEBUG
-```
-
-_dns_request_timeout:_ Duration the client will wait for a response to a DNS request
-```hcl
-dns_request_timeout=300s
-```
-
-_override_upstream_dns_servers:_ List of DNS servers that should be used for recursing non-Boundary request, overriding those configured on the system.
-```hcl
-override_upstream_dns_servers = ["8.8.8.8", "8.8.4.4"]
-```
+- [Aliases](/docs/concepts/aliases)
+- [Transparent sessions](/docs/concepts/transparent-sessions)

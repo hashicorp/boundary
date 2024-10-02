@@ -136,6 +136,8 @@ Refer to the following table for known issues that may affect the public beta:
 | Connection is reset when trying to reconnect | If you use an SSH transparent session and then cancel the connection, you may have trouble reconnecting until Boundary cleans up the session. |
 | SSH connection fails with man-in-the-middle warning | On Ubuntu systems, the initial transparent session may be successful, but any subsequent connections prompt a warning that you may be experiencing a man-in-the-middle attack. |
 | Boundary Client Agent authentication does not persist across restarts | When you reboot, you are required to re-authenticate to the Client Agent before you can use transparent sessions. |
+| Windows shortcuts are mandatory | The Windows installer always installs Desktop and Start menu shortcuts. This is a known issue. Shortcuts will be optional in a future version of the installer. |
+| Windows x86 installer prompts for restart | When you install Boundary, the x86 Windows installer occasionally prompts you to restart your computer, however it is not necessary. |
 
 ## More information
 
