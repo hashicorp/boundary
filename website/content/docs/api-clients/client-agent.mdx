@@ -13,8 +13,8 @@ description: |-
 
 The Boundary Client Agent is Boundary's DNS daemon.
 When the Boundary Client Agent runs alongside an authenticated Boundary client, the agent establishes itself as the primary resolver on the client and intercepts DNS requests.
-If you enter a hostname that matches a Boundary alias that the client is authorized to establish a session to, Boundary automatically generates the session and transparently proxies the connection on your behalf.
 
+If you enter a hostname that matches a Boundary alias that the client is authorized to establish a session to, Boundary automatically generates the session and transparently proxies the connection on your behalf.
 If the Boundary Client Agent cannot find an alias, or if there are any issues with authentication, network connectivity, or latency, the Client Agent defers DNS resolution to the previously configured DNS resolvers.
 
 The following log is an example of a new transparent session being established:
@@ -29,8 +29,6 @@ The following log is an example of a user connecting to a session that is alread
 ```
 2024-06-03T10:44:56.341-0700 [INFO]  1781785147: existing session found: query=ssh.boundary.dev.
 ```
-
-You can view information about the Boundary Client Agent using the command `boundary client-agent status`.
 
 ## Security
 
@@ -132,7 +130,7 @@ The configuration file contains the following fields:
    recurse_only=false
    ```
 
-- `log_to_stdout` - Logs to STDOUT in addition to the boundary-client-agent.log file.
+- `log_to_stdout` - Logs to STDOUT in addition to the `boundary-client-agent.log` file.
 
    Example:
    ```hcl
@@ -214,7 +212,7 @@ You can specify where to write the Boundary Client Agent log file by using the f
 log_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent.log"
 ```
 
-You can also configure the Client Agent to log to STDOUT in addition to the boundary-client-agent.log file by using the following configuration setting:
+You can also configure the Client Agent to log to STDOUT in addition to the `boundary-client-agent.log` file by using the following configuration setting:
 
 ```hcl
 log_to_stdout=true
@@ -241,7 +239,7 @@ Complete the following steps for your operating system to change the log verbosi
 1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
 By default, it is located in the following directory:
 
-   /Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
 
 1. Adjust the log level.
 1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
@@ -256,7 +254,7 @@ By default, it is located in the following directory:
 1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
 By default, it is located in the following directory:
 
-   C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
 1. Adjust the log level.
 1. Save the file and restart the Client Agent with the following command:
 
@@ -270,11 +268,11 @@ By default, it is located in the following directory:
 
 ## Troubleshoot DNS errors
 
-Refer to the following sections to troubleshoot common issues.
+Refer to the following sections to troubleshoot DNS issues.
 
 ### DNS does not resolve
 
-Refer to the following steps for your operating system:
+Refer to the following steps for your operating system to file a bug report if the DNS does not resolve:
 
 <Tabs>
 <Tab heading="MacOS" group="macos">
@@ -285,12 +283,12 @@ Refer to the following steps for your operating system:
    $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
    ```
 
-1. View the boundary-client-agent.log file.
+1. View the `boundary-client-agent.log` file.
 By default, it is located in the following directory:
 
-   /Library/Application Support/HashiCorp/Boundary/boundary-client-agent.log
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.log`
 
-   File a bug report, and attach the boundary-client-agent.log file.
+   File a bug report, and attach the `boundary-client-agent.log` file.
 
 </Tab>
 <Tab heading="Windows" group="windows">
@@ -301,10 +299,10 @@ By default, it is located in the following directory:
    net stop BoundaryClientAgent
    ```
 
-1. View the boundary-client-agent.log file.
+1. View the `boundary-client-agent.log` file.
 By default, it is located in the following directory:
 
-   C:\Windows\Logs\boundary-client-agent.log
+   `C:\Windows\Logs\boundary-client-agent.log`
 
    File a bug report and attach the boundary-client-agent.log file.
 
@@ -316,7 +314,7 @@ By default, it is located in the following directory:
    This error occurs when another application on the local machine occupies the ports that the Boundary Client Agent uses.
    The Client Agent requires access to port 53 for IPv4 and IPv6, both UDP and TCP.
 
-   Refer to the following steps for your operating system to diagnose the issue:
+   Refer to the following steps for your operating system to diagnose the error:
 
 <Tabs>
 <Tab heading="MacOS" group="macos">
