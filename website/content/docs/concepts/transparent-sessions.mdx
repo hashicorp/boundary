@@ -74,7 +74,7 @@ Run the following command to start Boundary in dev mode:
 $ boundary dev -worker-dns-server udp://8.8.8.8:53
 ```
 
-You can use the follwoing sample targets to test transparent sessions:
+You can use the following sample targets to test transparent sessions:
 
 Local Postgres target:
 - **Description**: A local Postgres target.
@@ -121,6 +121,13 @@ Ensure that you have authorization to establish a session to the target.
 
    Boundary routes your session using the Boundary Client Agent.
    You can validate that Boundary routed the session by looking at the **Sessions** page in the Desktop client or by typing `boundary sessions list -recursive` in the CLI.
+
+   <Note>
+
+   The Client Agent periodically requests an updated list of aliases from the controller, so the alias may not work immediately after you create it.
+   It should not take longer than 2 minutes for the alias to be updated in the Client Agent.
+
+   </Note>
 
 When you have validated that transparent sessions work, you can create and establish transparent sessions to other services.
 Make a list of the services you use, add these resources to Boundary as targets, and create workers as needed.

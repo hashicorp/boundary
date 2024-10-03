@@ -32,9 +32,68 @@ The following log is an example of a user connecting to a session that is alread
 
 You can view information about the Boundary Client Agent using the command `boundary client-agent status`.
 
+## Security
+
+When you successfully authorize a session on a Boundary controller, the response includes a list of any brokered credentials, which include the decoded secrets.
+When the Boundary Client Agent receives a DNS request, Boundary creates a new session.
+An OS user can only connect to an authorized session managed by the Boundary Client Agent daemon if they are the same OS user that added the Boundary auth token used for authorizing the session.
+
+<Note>
+
+Currently, you cannot authenticate to multiple Boundary controllers at once.
+If you authenticate to a different Boundary controller, any existing sessions are terminated and a new transparent session would be established with the new controller.
+
+</Note>
+
+The Boundary Client Agent stores the credentials and some other information related to the session in memory.
+The in-memory store removes the session information:
+
+- when the session ends.
+- if the auth token stored in the Boundary expires.
+- if the current OS user authenticates with a different Boundary user.
+- if the current OS user authenticates to a new Boundary controller.
+- if the Boundary Client Agent is terminated.
+
+API requests are authenticated in the same way as session poxy access.
+The API returns a [403 status code](/boundary/docs/api-clients/api#status-codes) if the requester did not set the token in the Boundary Client Agent that was used to create the sessions managed by the agent for that OS user.
+
+Credential brokering is supported for transparent sessions.
+A notification appears when you establish a session against a target that is configured with credential brokering.
+You can retrieve the credentials later using the following command:
+
+```
+$ boundary client-agent sessions
+```
+
+### Grants
+
+The default grants that Boundary creates for anonymous and authenticated users are sufficient to get started with the Client Agent for the public beta.
+However, in a production scenario, you may want to provide the least amount of privileges necessary for users.
+For a Boundary user to be able to use the Client Agent to establish a transparent session, they must:
+
+- be able to authenticate using an auth method.
+- have read permissions for their auth token.
+- have permission to establish a session to a target or multiple targets.
+
+You can use the following grant strings to grant those permissions:
+
+```shell-session
+type=auth-method;ids=*;actions=authorize
+type=target;ids=*;actions=authorize-session
+type=auth-token;ids=*;actions=read:self
+```
+
+HashiCorp highly recommends that you also grant users the permission to list resolvable aliases, as the Client Agent periodically fetches a list of aliases to match incoming DNS requests against.
+Without that permission, every DNS request on the system is sent to the Boundary controller, which can easily overwhelm it.
+You can use the following grant string to grant the permission to list resolvable aliases:
+
+```shell-session
+type=user;ids=*;actions=list-resolvable-aliases
+```
+
 ## Configuration
 
-The configuraton file is located in the following directories:
+The Boundary Client Agent configuraton file is located in the following directories:
 
 MacOS
 
@@ -114,32 +173,174 @@ The configuration file contains the following fields:
    ```hcl
    override_upstream_dns_servers = ["8.8.8.8", "8.8.4.4"]
    ```
+## Pause the Client Agent
 
-## Security
+You can temporarily disable the Boundary Client Agent by pausing it with the following command:
 
-When you successfully authorize a session on a Boundary controller, the response includes a list of any brokered credentials, which include the decoded secrets.
-When the Boundary Client Agent receives a DNS request, Boundary creates a new session.
-An OS user can only connect to an authorized session managed by the Boundary Client Agent daemon if they are the same OS user that added the Boundary auth token used for authorizing the session.
-
-The Boundary Client Agent stores the credentials and some other informaiton related to the session in memory.
-The in-memory store removes the session information:
-
-- when the session ends
-- if the auth token stored in the Boundary expires
-- if the current OS user authenticates with a different Boundary user
-- if the current OS user authenticates to a new Boundary controller
-- if the Boundary Client Agent is terminated
-
-API requests are authenticated in the same way as session poxy access.
-The API returns a [403 status code](/boundary/docs/api-clients/api#status-codes) if the requester did not set the token in the Boundary Client Agent that was used to create the sessions managed by the agent for that OS user.
-
-Credential brokering is supported for transparent sessions.
-A notification appears when you establish a session against a target that is configured with credential brokering.
-You can retrieve the credentials later using the following command:
-
+```shell-session
+$ boundary client-agent pause
 ```
+
+When the Client Agent is paused, it does not intercept any DNS requests, and you are unable to use transparent sessions.
+
+To resume the Client Agent, use the following command:
+
+```shell-session
+$ boundary client-agent resume
+```
+
+## Monitor status and sessions
+
+You can check the status of the Client Agent to ensure it is running.
+Authenticate to Boundary, and use the following command to check the Client Agent's status:
+
+```shell-session
+$ boundary client-agent status
+```
+
+You can retrieve information about the sessions that the Client Agent is managing.
+Use the following command to list any sessions currently being managed by the Client Agent, as well as any brokered credentials for those sessions:
+
+```shell-session
 $ boundary client-agent sessions
 ```
+
+## Log files
+
+The Client Agent creates a log file by default.
+You can specify where to write the Boundary Client Agent log file by using the following configuration setting:
+
+```hcl
+log_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent.log"
+```
+
+You can also configure the Client Agent to log to STDOUT in addition to the boundary-client-agent.log file by using the following configuration setting:
+
+```hcl
+log_to_stdout=true
+```
+
+The Client Agent also creates an emphemeral state file that is removed on successful shutdown.
+You can specify where to write the state file to by using the following configuration setting:
+
+```hcl
+state_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent-state.json"
+```
+
+### Change the verbosity of logs
+
+You can increase the log verbosity.
+The default is `INFO`.
+You can change the setting to `DEBUG` for greater verbosity.
+
+Complete the following steps for your operating system to change the log verbosity:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   /Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl
+
+1. Adjust the log level.
+1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
+
+   ```shell-session
+   sudo pkill -1 boundary-client-agent
+   ```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl
+1. Adjust the log level.
+1. Save the file and restart the Client Agent with the following command:
+
+   ```shell-session
+   net stop BoundaryClientAgent
+   net start BoundaryClientAgent
+   ```
+
+</Tab>
+</Tabs>
+
+## Troubleshoot DNS errors
+
+Refer to the following sections to troubleshoot common issues.
+
+### DNS does not resolve
+
+Refer to the following steps for your operating system:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+1. Run the following command as a privileged user to stop the DNS client:
+
+   ```shell-session
+   $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
+   ```
+
+1. View the boundary-client-agent.log file.
+By default, it is located in the following directory:
+
+   /Library/Application Support/HashiCorp/Boundary/boundary-client-agent.log
+
+   File a bug report, and attach the boundary-client-agent.log file.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+1. Run the following command as a privileged user to stop the DNS client:
+
+   ```shell-session
+   net stop BoundaryClientAgent
+   ```
+
+1. View the boundary-client-agent.log file.
+By default, it is located in the following directory:
+
+   C:\Windows\Logs\boundary-client-agent.log
+
+   File a bug report and attach the boundary-client-agent.log file.
+
+</Tab>
+</Tabs>
+
+### Log file errors read "failed to listen for DNS on either IPv4 or IPv6"
+
+   This error occurs when another application on the local machine occupies the ports that the Boundary Client Agent uses.
+   The Client Agent requires access to port 53 for IPv4 and IPv6, both UDP and TCP.
+
+   Refer to the following steps for your operating system to diagnose the issue:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+Run the `lsof` program as a privileged user to find which applications are occupying a port using the following command:
+
+   ```
+   $ sudo lsof -nP | grep ":53"
+   ```
+
+   If anything is occupying port 53, you may need to terminate the application to allow the Client Agent to start.
+
+   Applications that use the Apple Virtualization Framework are known to sometimes occupy this port under the name `_mdnsresponder`.
+   If you have any virtualization software, you may need to turn it off before you use the Client Agent.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+As a privileged user, open the Resource Monitor and inspect the **Network** > **Listening Ports** section to find any applications that use port 53.
+
+If anything is occupying port 53, you may need to terminate the application to allow the Client Agent to start.
+
+</Tab>
+</Tabs>
 
 ## Conflicting software
 
@@ -245,6 +446,11 @@ Learn more: https://cfl.re/CF_DNS_PROXY_FAILURE
 
 You can still install both the Cloudflare WARP client and the Boundary Client Agent on the same machine.
 As long as you don't run both at the same time, they should work as expected.
+
+## Uninstall the Client Agent on Mac
+
+If you used the Mac installer, you can run `/Library/Application Support/HashiCorp/Boundary Uninstaller.app` to uninstall Boundary.
+The uninstaller removes any installed components, including the Desktop client, CLI, and the Boundary Client Agent.
 
 ## More information
 
