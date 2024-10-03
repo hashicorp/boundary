@@ -11,12 +11,17 @@ description: |-
 
 The [MinIO plugin](https://github.com/hashicorp/boundary-plugin-minio/) lets you configure S3-compliant storage providers for session recording.
 
+<a name="providers"></a>
 HashiCorp has tested and confirmed that you can configure the following S3-compliant storage products for session recording using the MinIO plugin:
 
-- [Hitachi Content Platform](#hitachi-content-platform-configuration)
+- [Hitachi Content Platform](https://trycontent.hitachivantara.com)
+- [Backblaze B2](https://www.backblaze.com/cloud-storage)
 
 You can also configure other providers' S3-compliant storage products for session recording storage.
 We will update the list of providers as we test them.
+
+The process for [configuring the Hitachi Content Platform](#hitachi-content-platform-configuration) is included below as an example.
+Configuring other S3-compliant storage products for use with session recording should be a similar process.
 
 ## Requirements
 
@@ -73,7 +78,7 @@ When you determine storage requirements for the external bucket, you should cons
 
 HashiCorp has tested and confirmed that you can configure the Hitachi Content Platform for external session recording storage using the MinIO plugin.
 It is included as an example in this topic.
-You should be able to configure other S3-compliant storage providers to work for session recording storage as well, but we have not tested other providers.
+You should be able to configure other S3-compliant storage providers to work for session recording storage as well, but we have only tested a [limited number of providers](#providers).
 
 You must have an account with Hitachi Content Platform to create storage buckets.
 You can sign up for an account at the following URL:
