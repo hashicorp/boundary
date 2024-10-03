@@ -12,7 +12,7 @@ resource "aws_instance" "vault_instance" {
   tags = merge(
     var.common_tags,
     {
-      Name = "${local.name_suffix}-vault-${var.vault_node_prefix}-${each.key}"
+      Name = "${local.name_suffix}-vault-${var.vault_node_prefix}-${each.key}-${split(":", data.aws_caller_identity.current.user_id)[1]}"
       Type = local.vault_cluster_tag
     },
   )

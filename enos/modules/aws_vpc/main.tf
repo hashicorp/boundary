@@ -55,6 +55,8 @@ locals {
   )
 }
 
+data "aws_caller_identity" "current" {}
+
 data "aws_availability_zones" "available" {
   state = "available"
 
@@ -137,7 +139,7 @@ resource "aws_vpc" "vpc" {
   tags = merge(
     local.common_tags,
     {
-      "Name" = var.name
+      "Name" = "${var.name}-${split(":", data.aws_caller_identity.current.user_id)[1]}"
     },
   )
 }

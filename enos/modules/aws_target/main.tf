@@ -28,6 +28,8 @@ variable "ingress_cidr" {
 
 data "enos_environment" "current" {}
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_security_group" "boundary_target" {
   name_prefix = "boundary-target-sg"
   description = "SSH and boundary Traffic"
@@ -70,7 +72,7 @@ resource "aws_instance" "target" {
   key_name               = var.aws_ssh_keypair_name
 
   tags = merge(var.additional_tags, {
-    "Name" : "boundary-target-${count.index}",
+    "Name" : "boundary-target-${count.index}-${split(":", data.aws_caller_identity.current.user_id)[1]}",
     "Type" : "target",
     "Project" : "Enos",
     "Project Name" : "qti-enos-boundary",
