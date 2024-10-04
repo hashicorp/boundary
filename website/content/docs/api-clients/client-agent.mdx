@@ -111,6 +111,13 @@ Windows
 
 The configuration file contains the following fields:
 
+- `alias_refresh_interval` - Specifies how often to refresh the alias cache. The default value is 1 minute.
+
+   Example:
+   ```hcl
+   alias_refresh_interval=60s
+   ```
+
 - `interface_to_use` - Specifies the interface to use instead of the default.
 
    Example:
