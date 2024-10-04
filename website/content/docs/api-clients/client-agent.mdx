@@ -52,7 +52,7 @@ The in-memory store removes the session information:
 - if the current OS user authenticates to a new Boundary controller.
 - if the Boundary Client Agent is terminated.
 
-API requests are authenticated in the same way as session poxy access.
+API requests are authenticated in the same way as session proxy access.
 The API returns a [403 status code](/boundary/docs/api-clients/api#status-codes) if the requester did not set the token in the Boundary Client Agent that was used to create the sessions managed by the agent for that OS user.
 
 Credential brokering is supported for transparent sessions.
