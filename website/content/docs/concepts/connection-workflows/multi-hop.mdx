@@ -2,50 +2,34 @@
 layout: docs
 page_title: Multi-hop sessions
 description: |-
-  Learn how multi-hop sessions enable you to chain together two or more Boundary workers across multiple networks.
+  Learn how multi-hop enables Boundary to chain together two or more workers across multiple networks. Multi-hop is available exclusively for Enterprise users.
 ---
 
 # Multi-hop sessions
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-Most organizations want to provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies requiring
+Organizations must provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies that require
 inbound traffic to route through multiple network enclaves to reach the target system.
 Multi-hop sessions allow you to chain together two or more workers
 across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
 
-In multi-hop scenarios, there are typically three types of workers:
-1. **Ingress worker** - An ingress worker is a worker that is accessible by the client. The client initiates the connection to the ingress worker.
-1. **Intermediary worker** - An optional intermediary worker sits between ingress and egress workers as part of a multi-hop chain. There can be multiple intermediary workers as part of a multi-hop chain.
-1. **Egress worker** - An egress worker is a worker that can access the target. The egress worker initiates reverse proxy connections to intermediary or ingress workers.
+Multi-hop sessions let you connect to private endpoints without opening inbound access to isolated or private networks.
+By allowing outbound access from an egress worker in the private network to an upstream worker on a specific port, a Boundary client can access the target using a secure tunnel that is initiated by an ingress worker in the chain.
+Because multi-hop workers reside in the private network, you do not have to expose network resources publicly.
 
-<Tip>
-“Ingress,” “intermediary,” and “egress” are general ways to describe how the respective worker interfaces with resources, and a worker can act as more than one of those
-at a time. For example in the diagram below, the intermediary worker is also an egress worker since it can access a target.
-</Tip>
-
-![Multi-hop session example showing ingress, intermediary, and egress workers](/img/concepts-multihop.png)
-
-After the persistent connection chain is established between the workers, when you attempt to connect to a target host, you are automatically proxied from:
-1. Boundary client to ingress worker
-1. Ingress worker to intermediary worker, where applicable
-1. Ingress worker to egress worker
-1. Egress worker to desired target
-
-## Multi-hop worker capabilities
+## Introduction
 
 Multi-hop capabilities, including multi-hop sessions and Vault private access,
 is when a session or Vault credential request goes through more than one worker.
-To enable this, two or more workers must be connected to each other in some
+To accomplish this, you must connect two or more workers to each other in some
 configuration. There are no limits on the number of workers allowed in a
 multi-hop session configuration.
 
-It helps to think of “upstream” and “downstream” nodes in the context of
-multi-hop. If you view controllers as the “top” node of a multi-hop chain, any
-worker connected to a node is "downstream" of that node; the node that any
-particular worker connects to (whether another worker or a controller) is the
-"upstream" of that node. For example, in the diagram below, Worker 2’s upstream
-is Worker 1, and its downstream is Worker 3.
+In the diagram below, Worker 1 is considered an upstream worker to Worker 2.
+Worker 3 is a downstream worker to Worker 2.
+As such, Worker 2 is an intermediate worker in the multi-hop chain.
+If there was a target behind Worker 3, and end users connected to Worker 1, then Worker 1 would be the ingress worker and worker 3 would be the egress worker.
 
 ![multi-hop workers](/img/multi-hop-workers.png)
 
@@ -53,34 +37,59 @@ You can deploy multi-hop workers in scenarios where inbound network traffic is
 not allowed. A worker in a private network can send outbound communication to
 its upstream worker, and create a reverse proxy to establish a session.
 
-You can configure target worker filters with multi-hop workers to allow for
-fine-grained control on which workers handle ingress and egress for session
-traffic to a target. Ingress worker filters determine which workers you
-connect with to initiate a session, and egress worker filters determine which
-workers are used to access targets.
+## Concepts
 
-## Multi-hop worker requirements
+Multi-hop sessions introduces five concepts for how workers function.
+You can categorize them from the point of view of a client and a worker.
 
-When you configure multi-hop sessions, there is an "ingress" worker, an "egress"
-worker, and any number of intermediary workers. Ingress, egress, and
-intermediary workers have the following requirements.
+From a worker perspective, the following concepts apply:
 
-### Ingress worker requirements
+- Upstream worker: A worker that is closer in hop count to a controller.
+Upstream workers receive join requests from downstream workers.
+- Downstream worker: A worker that is closer in hop count to a target.
+Downstream workers initiate connections to upstream workers.
 
-To proxy target connections, ingress workers require outbound access to the
-Boundary control plane and inbound access from clients.
+From a client perspective, the following concepts apply:
 
-### Intermediary worker requirements
+- Ingress worker: A worker that Boundary clients connect to.
+It is the first worker in the multi-hop chain.
+- Intermediate worker: A worker with upstream and downstream workers in the chain.
+These workers provide the fabric for multi-hop from ingress worker to egress worker.
+- Egress worker: The last worker in the multi-hop chain.
+Boundary client connections egress the proxy chain at this worker to reach the target.
 
-Intermediary workers require outbound access to an upstream worker. The upstream
-worker may be an ingress worker or another intermediary worker. Intermediary
-workers also require inbound access from a downstream worker. The downstream
-worker may be an egress worker or another intermediary worker.
+Note that ingress, intermediary, and egress are general ways to describe how the respective worker interfaces with resources.
+A worker can act as more than one of these at a time.
 
-### Egress worker requirements
+## Requirements
 
-To proxy target connections, egress workers require outbound access to an
-upstream worker and outbound access to the destination host or service.
+To configure multi-hop sessions, you must deploy [Boundary self-managed workers](/hcp/docs/boundary/self-managed-workers) into various networks.
+When you deploy workers for multi-hop sessions, you must configure [worker tags](/boundary/docs/concepts/filtering/worker-tags#workers) that establish ingress and egress workers.
+
+From a networking perspective, multi-hop workers have the following requirements:
+
+1. Downstream worker: Requires outbound access to the proxy listener on the upstream worker (default 9202).
+1. Upstream worker: Requires inbound access on the proxy listener port from the downstream worker IP or network.
+
+An intermediary worker can function as an upstream and downstream worker simultaneously.
+Intermediary workers require outbound access to the proxy listener on the next upstream in the chain.
+They also require inbound access on the proxy listener port from the downstream worker IP or network that connects to the intermediary worker.
+
+Intermediary workers are optional.
+A multi-hop chain can consist of only two workers, an ingress worker and an egress worker.
+If you want to use more than two workers to reach a target, you must configure network requirements for intermediary workers.
+
+The downstream worker that is closest to the target is an egress worker.
+The egress worker requires outbound access to the target IP and port.
+
+The upstream worker that is closest to the client is an ingress worker.
+The ingress worker requires outbound access to each controller cluster listener port (default 9201) as well as inbound access from Boundary clients on the proxy listener port (default 9202).
+
+### Target worker filters
+
+You must configure [target worker filters](/boundary/docs/concepts/filtering/worker-tags#target-workers) for workers to allow for fine-grained control over which workers handle ingress and egress for session traffic to a target.
+Ingress worker filters determine which workers are used to intiate a session.
+Egress worker filters determine which workers are used to access targets at the end of the multi-hop chain.
 
 ## Complete worker configuration
 
