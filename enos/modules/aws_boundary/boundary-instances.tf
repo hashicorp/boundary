@@ -1,6 +1,8 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_instance" "controller" {
   count         = var.controller_count
   ami           = var.ubuntu_ami_id
@@ -24,7 +26,7 @@ resource "aws_instance" "controller" {
 
   tags = merge(local.common_tags,
     {
-      Name = "${local.name_prefix}-boundary-controller-${count.index}"
+      Name = "${local.name_prefix}-boundary-controller-${count.index}-${split(":", data.aws_caller_identity.current.user_id)[1]}"
       Type = local.boundary_cluster_tag,
     },
   )
@@ -50,7 +52,7 @@ resource "aws_instance" "worker" {
 
   tags = merge(local.common_tags,
     {
-      Name = "${local.name_prefix}-boundary-worker-${count.index}",
+      Name = "${local.name_prefix}-boundary-worker-${count.index}-${split(":", data.aws_caller_identity.current.user_id)[1]}",
       Type = local.boundary_cluster_tag,
     },
   )
