@@ -130,12 +130,6 @@ The configuration file contains the following fields:
    ```hcl
    v4_prefix=1.1.1.1/8
    ```
-- `recurse_only` - Recurses the DNS request only, does not proxy sessions.
-
-   Example:
-   ```hcl
-   recurse_only=false
-   ```
 
 - `log_to_stdout` - Logs to STDOUT in addition to the `boundary-client-agent.log` file.
 
@@ -178,6 +172,7 @@ The configuration file contains the following fields:
    ```hcl
    override_upstream_dns_servers = ["8.8.8.8", "8.8.4.4"]
    ```
+
 ## Pause the Client Agent
 
 You can temporarily disable the Boundary Client Agent by pausing it with the following command:
