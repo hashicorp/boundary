@@ -82,7 +82,7 @@ description will be read.
   EIP. This value can be a direct address string, can refer to a file on disk (file://)
   from which an address will be read; an env var (env://) from which the
   address will be read; or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template). 
-  Note: The address should not include the protocol prefixes like `http://` or `https://`.
+  Note that the address should not include the protocol prefixes like `http://` or `https://`.
 
 - `auth_token_time_to_live` - Maximum time to live (TTL) for all auth tokens globally (pertains
   to all tokens from all auth methods). Valid time units are anything specified by Golang's
