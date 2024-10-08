@@ -77,7 +77,7 @@ description will be read.
   optionally port) at which the controller can be reached _by workers_. This will
   be used by workers after initial connection to controllers via the worker's
   `initial_upstreams` block. This defaults to the address of the listener marked for
-  `cluster` purpose. This is used if a load balancer is used in front of multiple Boundary controllers. This is also especially useful for cloud environments that do not
+  `cluster` purpose. It is used if there is a load balancer in front of multiple Boundary controllers. This is also especially useful for cloud environments that do not
   bind a publicly accessible IP to a NIC on the host directly, such as an Amazon
   EIP. This value can be a direct address string, can refer to a file on disk (file://)
   from which an address will be read; an env var (env://) from which the
