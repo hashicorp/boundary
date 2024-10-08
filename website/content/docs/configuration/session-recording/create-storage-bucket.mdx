@@ -110,7 +110,7 @@ The required fields for creating a storage bucket depend on whether you configur
       -bucket-name mybucket1 \
       -plugin-name aws \
       -scope-id o_1234567890 \
-      -worker-filter ‘“dev” in “/tags/type”’ \
+      -worker-filter ‘“aws-worker” in “/tags/type”’ \
       -secret ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ \
       -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’
    ```
@@ -175,7 +175,9 @@ The required fields for creating a storage bucket depend on whether you configur
 
 The HCL code for creating a storage bucket is different depending on whether you configured the AWS S3 bucket with static or dynamic credentials. This page provides example configurations for a generic Terraform deployment.
 
-Refer to the (Boundary Terraform provider documentation)[https://registry.terraform.io/providers/hashicorp/boundary/latest/docs] to learn about the requirements for the following example attributes.
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Support for Amazon S3 storage providers leverages the [Boundary AWS plugin](https://github.com/hashicorp/boundary-plugin-aws).
 
 <Tabs>
 <Tab heading="Static credentials">
@@ -203,7 +205,7 @@ resource "boundary_storage_bucket" "aws_static_credentials_example" {
     "access_key_id"     = "aws_access_key_id_value",
     "secret_access_key" = "aws_secret_access_key_value"
   })
-  worker_filter = "\"dev\" in \"/tags/type\""
+  worker_filter = "\"aws-worker\" in \"/tags/type\""
 }
 
 output "storage_bucket_id" {
@@ -231,7 +233,7 @@ resource "boundary_storage_bucket" "aws_dynamic_credentials_example" {
     "role_arn"                    = "arn:aws:iam::123456789012:role/S3Access"
     "disable_credential_rotation" = true
   })
-  worker_filter = "\"dev\" in \"/tags/type\""
+  worker_filter = "\"s3-worker\" in \"/tags/type\""
 }
 
 output "storage_bucket_id" {
@@ -290,7 +292,7 @@ Complete the following steps to create a storage bucket in Boundary.
       -plugin-name minio \
       -scope-id o_1234567890 \
       -bucket-prefix="foo/bar/zoo" \
-      -worker-filter '"minio" in "/tags/type"' \
+      -worker-filter '"minio-worker" in "/tags/type"' \
       -attr endpoint_url="https://my-minio-instance.dev:9000" \
       -attr region="REGION" \
       -attr disable_credential_rotation=true \
@@ -315,10 +317,45 @@ Complete the following steps to create a storage bucket in Boundary.
       This option must be set to `true` if you use dynamic credentials.
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
+
+This page provides example configurations for a generic Terraform deployment.
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Support for MinIO storage providers leverages the [Boundary MinIO plugin](https://github.com/hashicorp/boundary-plugin-minio).
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_storage_bucket" "minio_credentials_example" {
+  name            = "My MinIO storage bucket"
+  description     = "My first storage bucket"
+  scope_id        = "o_1234567890"
+  plugin_name     = "minio"
+  bucket_name     = "mybucket1"
+
+  attributes_json = jsonencode({
+    "endpoint_url" = "minio_access_key_id_value",
+    "disable_credential_rotation" = true
+  })
+
+  secrets_json = jsonencode({
+    "access_key_id"     = "minio_access_key_id_value",
+    "secret_access_key" = "minio_secret_access_key_value"
+  })
+  worker_filter = "\"minio-worker\" in \"/tags/type\""
+}
+
+output "storage_bucket_id" {
+  value = boundary_storage_bucket.minio_credentials_example.id
+}
+```
+
+</Tab>
 </Tabs>
 
 </Tab>
-
 <Tab heading="S3-compliant">
 
 Complete the following steps to create a storage bucket in Boundary using an S3-compliant storage provider. Hitachi Content Platform is used as an example below.
@@ -366,7 +403,7 @@ Complete the following steps to create a storage bucket in Boundary using an S3-
       -plugin-name minio \
       -scope-id o_1234567890 \
       -bucket-prefix="foo/bar/zoo" \
-      -worker-filter '"dev" in "/tags/type"' \
+      -worker-filter '"storage-worker" in "/tags/type"' \
       -attr endpoint_url="https://my-hitachi-instance.dev:9000" \
       -attr region="REGION" \
       -attr disable_credential_rotation=true \
@@ -390,6 +427,42 @@ Complete the following steps to create a storage bucket in Boundary using an S3-
       - `disable_credential_rotation`: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new storage service account. If this attribute is set to `false`, or not provided, the plugin will rotate the incoming credentials to create a new storage service account, then delete the incoming credentials.
 
       Note that credential rotation is not supported for Hitachi Content Platform, and it may not function for other S3-compatible providers.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+This page provides example configurations for a generic Terraform deployment.
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+Support for S3-compliant storage providers leverages the [Boundary MinIO plugin](https://github.com/hashicorp/boundary-plugin-minio).
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_storage_bucket" "storage_credentials_example" {
+  name            = "My storage bucket"
+  description     = "My first storage bucket"
+  scope_id        = "o_1234567890"
+  plugin_name     = "minio"
+  bucket_name     = "mybucket1"
+
+  attributes_json = jsonencode({
+    "endpoint_url" = "minio_access_key_id_value",
+    "disable_credential_rotation" = true
+  })
+
+  secrets_json = jsonencode({
+    "access_key_id"     = "storage_access_key_id_value",
+    "secret_access_key" = "storage_secret_access_key_value"
+  })
+  worker_filter = "\"storage-worker\" in \"/tags/type\""
+}
+
+output "storage_bucket_id" {
+  value = boundary_storage_bucket.storage_credentials_example.id
+}
+```
 
 </Tab>
 </Tabs>
