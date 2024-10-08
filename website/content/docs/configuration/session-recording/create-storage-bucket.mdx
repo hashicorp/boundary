@@ -61,7 +61,7 @@ Complete the following steps to create a storage bucket in Boundary.
 
    - **Access key ID**: (Required) The access key ID that AWS generates for the IAM user to use with the storage bucket.
    - **Secret access key**: (Required) The secret access key that AWS generates for the IAM user to use with this storage bucket.
-   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Worker filter**: (Required) A filter expression that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket. Refer to [filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets) to learn about worker tags and filters.
    - **Disable credential rotation**: (Optional) Prevents the AWS plugin from automatically rotating credentials.
 
       Although credentials are stored encrypted in Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked.
@@ -79,7 +79,7 @@ Complete the following steps to create a storage bucket in Boundary.
    For more information, refer to the AWS documentation for [Logging IAM and AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html).
    - **Role tags**: An object with key-value pair attributes that is passed when you assume an IAM role.
    For more information, refer to the AWS documentation for [Passing session tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html).
-   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Worker filter**: (Required) A filter expression that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket. Refer to [filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets) to learn about worker tags and filters.
    - **Disable credential rotation**: (Required) Prevents the AWS plugin from automatically rotating credentials.
    This option is required if you use dynamic credentials.
 
@@ -121,7 +121,7 @@ The required fields for creating a storage bucket depend on whether you configur
    - `bucket-name`: (Required) The name of the AWS bucket you want to associate with the Boundary storage bucket.
    - `plugin-name`: (Required) The name of the Boundary storage plugin.
    - `scope_id`: (Required) A storage bucket can belong to the Global scope or an Org scope.
-   - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - `worker-filter`: (Required) A filter expression that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket. Refer to [filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets) to learn about worker tags and filters.
    - `secret`: (Required) The AWS credentials to use.
       - `access_key_id`: (Required) The AWS access key to use.
       - `secret_access_key_id`: (Required) The AWS secret access key to use.
@@ -155,7 +155,7 @@ The required fields for creating a storage bucket depend on whether you configur
    - `bucket-name`: (Required) The name of the AWS bucket you want to associate with the Boundary storage bucket.
    - `plugin-name`: (Required) The name of the Boundary storage plugin.
    - `scope_id`: (Required) A storage bucket can belong to the Global scope or an Org scope.
-   - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - `worker-filter`: (Required) A filter expression that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket. Refer to [filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets) to learn about worker tags and filters.
    - `attributes` or `-attr`: Attributes of the Amazon S3 storage bucket.
       - `role_arn`: (Required) The ARN (Amazon Resource Name) role that is    attached to the EC2 instance that the self-managed worker runs on.
       - `role_external_id`: (Optional) A required value if you delegate third   party access to your AWS resources.
@@ -173,7 +173,9 @@ The required fields for creating a storage bucket depend on whether you configur
 </Tab>
 <Tab heading="Terraform" group="terraform">
 
-The HCL code for creating a storage bucket is different depending on whether you configured the AWS S3 bucket with static or dynamic credentials.
+The HCL code for creating a storage bucket is different depending on whether you configured the AWS S3 bucket with static or dynamic credentials. This page provides example configurations for a generic Terraform deployment.
+
+Refer to the (Boundary Terraform provider documentation)[https://registry.terraform.io/providers/hashicorp/boundary/latest/docs] to learn about the requirements for the following example attributes.
 
 <Tabs>
 <Tab heading="Static credentials">
@@ -271,7 +273,7 @@ Complete the following steps to create a storage bucket in Boundary.
    - **Region**: (Optional) The region to configure the storage bucket for.
    - **Access key ID** (Required): The MinIO service account's access key to use with this storage bucket.
    - **Secret access key** (Required): The MinIO service account's secret key to use with this storage bucket.
-   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Worker filter**: (Required) A filter expression that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket. Refer to [filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets) to learn about worker tags and filters.
    - **Disable credential rotation**: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new MinIO service account. If this attribute is set to false, or not provided, the plugin will rotate the incoming credentials, using them to create a new MinIO service account, then delete the incoming credentials.
 
 1. Click **Save**.
@@ -301,7 +303,7 @@ Complete the following steps to create a storage bucket in Boundary.
    - `bucket-name`: (Required) Name of the MinIO bucket you want to associate with the Boundary storage bucket.
    - `plugin-name`: (Required) The name of the Boundary storage plugin.
    - `scope_id`: (Required) A storage bucket can belong to the Global scope or an Org scope.
-   - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - `worker-filter`: (Required) A filter expression that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket. Refer to [filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets) to learn about worker tags and filters.
    - `secret`: (Required) The MinIO credentials to use.
       - `access_key_id` (Required): The MinIO service account's access key to use    with this storage bucket.
       - `secret_access_key` (Required): The MinIO service account's secret key to use with this storage bucket.
@@ -345,7 +347,7 @@ Complete the following steps to create a storage bucket in Boundary using an S3-
    - **Region**: (Optional) The region to configure the storage bucket for.
    - **Access key ID** (Required): The storage provider's service account's access key to use with this storage bucket.
    - **Secret access key** (Required): The storage provider's service account's secret key to use with this storage bucket.
-   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Worker filter**: (Required) A filter expression that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket. Refer to [filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets) to learn about worker tags and filters.
    - **Disable credential rotation**: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new storage service account. If this attribute is set to false, or not provided, the plugin will rotate the incoming credentials, using them to create a new storage service account, then delete the incoming credentials.
 
      Note that credential rotation is not supported for Hitachi Content Platform, and it may not function for other S3-compatible providers.
@@ -378,7 +380,7 @@ Complete the following steps to create a storage bucket in Boundary using an S3-
    - `plugin-name`: (Required) The name of the Boundary storage plugin.
    Use the `minio` plugin for S3-compatible storage.
    - `scope_id`: (Required) A storage bucket can belong to the Global scope or an Org scope.
-   - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - `worker-filter`: (Required) A filter expression that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket. Refer to [filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets) to learn about worker tags and filters.
    - `secret`: (Required) The storage provider's credentials to use.
       - `access_key_id` (Required): The storage provider's service account's access key to use with this storage bucket.
       - `secret_access_key` (Required): The storage provider's service account's secret key to use with this storage bucket.
