@@ -26,10 +26,25 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the checksum headers in `PutObject`.
   ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/23))
 
+* ui: Add UI support for searching and pagination of aliases.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2498))
+
+* ui: Add UI support for filtering and pagination of session recordings.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2502))
+
+* ui: Improve multi-scope grants select/deselect process.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2435))
+
 ### Bug Fixes
 
 * Prevented a data-race in Boundary's event logging system.
   ([PR](https://github.com/hashicorp/boundary/pull/5139))
+
+* Update Storage Bucket type icon in Target view.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2503))
+
+* Allow user to retry with authentication is pending with OIDC.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2512))
 
 ### Deprecations/Changes
 
