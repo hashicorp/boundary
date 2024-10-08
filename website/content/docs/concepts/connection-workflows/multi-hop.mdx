@@ -68,7 +68,9 @@ intermediary workers have the following requirements.
 ### Ingress worker requirements
 
 To proxy target connections, ingress workers require outbound access to the
-Boundary control plane and inbound access from clients.
+Boundary control plane and inbound access from clients. 
+
+HCP Boundary clusters automatically deploy HCP-managed workers which can be used as ingress workers. Using HCP-managed workers as ingress workers is helpful when organizations have strict networks security policies that prohibit any inbound access. In this scenario, intermediary or egress workers within the private network can establish a reverse proxy connection to the HCP-managed ingress worker.  
 
 ### Intermediary worker requirements
 
