@@ -14,7 +14,7 @@ inbound traffic to route through multiple network enclaves to reach the target s
 Multi-hop sessions allow you to chain together two or more workers
 across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
 
-## Remove the requirement for inbound network rules
+## Inbound network rules
 
 With a multi-hop deployment, all connections are initiated outbound from the most downstream worker in the chain. When the connection is established between the workers, the proxied connections go over the established connection.
 These persistent TCP connections result in the requirement for only outbound connectivity.
