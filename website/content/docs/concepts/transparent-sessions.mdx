@@ -45,15 +45,10 @@ Make sure to select the options **Boundary Client Agent**, **CLI**, and **Deskto
    ```
    $ boundary version
    ```
-1. In the CLI, type the following command and confirm that the default DNS address is in the 100.x.y.z. rnage:
-   - **MacOS**:
-     ```
-     $ scutil --dns
-     ```
-   - **Windows**:
-     ```
-     $ Get-DnsClientServerAddress
-     ```
+1. In the CLI, run the status command to confirm that the Boundary Client Agent has started:
+
+   ```shell-session
+   $ boundary client-agent status
 
 ### Configure targets
 
