@@ -55,7 +55,7 @@ Make sure to select the options **Boundary Client Agent**, **CLI**, and **Deskto
 The following section details how to configure targets and test the transparent sessions public beta feature.
 
 If you use a cluster that was created earlier than release 0.16.0, you must add the grant `list-resolvable-aliases` so that the client agent can populate the local alias cache.
-As an example, you could add `type=user;actions=list-resolvable-aliases;ids=*`.
+As an example, you could add the grant `type=user;actions=list-resolvable-aliases;ids=*`.
 
 If you use Boundary Enterprise, you can run Boundary in [dev mode](/docs/getting-started/dev-mode/dev-mode) to test transparent sessions.
 Dev mode creates a temporary instance of Boundary that includes a Postgres database and a Boundary controller and worker.
