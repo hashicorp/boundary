@@ -17,19 +17,6 @@ When the Boundary Client Agent runs alongside an authenticated Boundary client, 
 If you enter a hostname that matches a Boundary alias that the client is authorized to establish a session to, Boundary automatically generates the session and transparently proxies the connection on your behalf.
 If the Boundary Client Agent cannot find an alias, or if there are any issues with authentication, network connectivity, or latency, the Client Agent defers DNS resolution to the previously configured DNS resolvers.
 
-The following log is an example of a new transparent session being established:
-
-```
-2024-06-03T10:44:56.337-0700 [INFO]  2783321106: found matching Boundary target: query name=ssh.boundary.dev. qtype=A target id=ttcp_dMcUB0wRKp port=22 client port=0 user id=501
-2024-06-03T10:44:56.341-0700 [INFO]  2783321106: starting proxy for: target name=ssh.boundary.dev. primary listener addr=100.92.133.79:443 session expiration=2024-06-04T01:44:56Z time until=8h0m0.048895s connections left=-1
-```
-
-The following log is an example of a user connecting to a session that is already established:
-
-```
-2024-06-03T10:44:56.341-0700 [INFO]  1781785147: existing session found: query=ssh.boundary.dev.
-```
-
 ## Security
 
 When you successfully authorize a session on a Boundary controller, the response includes a list of any brokered credentials, which include the decoded secrets.
@@ -54,7 +41,6 @@ The in-memory store removes the session information:
 - if the Boundary Client Agent is terminated.
 
 API requests are authenticated in the same way as session proxy access.
-The API returns a [403 status code](/boundary/docs/api-clients/api#status-codes) if the requester did not set the token in the Boundary Client Agent that was used to create the sessions managed by the agent for that OS user.
 
 Credential brokering is supported for transparent sessions.
 A notification appears when you establish a session against a target that is configured with credential brokering.
@@ -119,24 +105,18 @@ The configuration file contains the following fields:
    alias_refresh_interval=60s
    ```
 
+- `dns_request_timeout` - Specifies for how long the Client Agent DNS request handling, including any recursion, is allowed to run before it is canceled.
+
+   Example:
+   ```hcl
+   dns_request_timeout=300s
+   ```
+
 - `interface_to_use` - Specifies the interface to use instead of the default.
 
    Example:
    ```hcl
    interface_to_use=en1
-   ```
-- `v4_prefix` - Specifies an alternate prefix to use for generating IPs. Currently must be between /8 and /16
-
-   Example:
-   ```hcl
-   v4_prefix=1.1.1.1/8
-   ```
-
-- `log_to_stdout` - Logs to STDOUT in addition to the `boundary-client-agent.log` file.
-
-   Example:
-   ```hcl
-   log_to_stdout=false
    ```
 
 - `log_file` - Specifies where to write the Boundary Client Agent log file to.
@@ -146,13 +126,6 @@ The configuration file contains the following fields:
    log_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent.log"
    ```
 
-- `state_file` - Specifies where to write the Boundary Client Agent state file to. This is an ephemeral file which is removed on successful shutdown.
-
-   Example:
-   ```hcl
-   state_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent-state.json"
-   ```
-
 - `log_level` - Specifies the verbosity of the Client Agent logs.
 
    Example:
@@ -160,11 +133,11 @@ The configuration file contains the following fields:
    log_level=DEBUG
    ```
 
-- `dns_request_timeout` - Specifies for how long the client agent DNS request handling, including any recursion, is allowed to run before it is canceled.
+- `log_to_stdout` - Logs to STDOUT in addition to the `boundary-client-agent.log` file.
 
    Example:
    ```hcl
-   dns_request_timeout=300s
+   log_to_stdout=false
    ```
 
 - `override_upstream_dns_servers` - Lists the DNS servers that should be used for recursing non-Boundary requests, overriding those configured on the system.
@@ -172,6 +145,20 @@ The configuration file contains the following fields:
    Example:
    ```hcl
    override_upstream_dns_servers = ["8.8.8.8", "8.8.4.4"]
+   ```
+
+- `state_file` - Specifies where to write the Boundary Client Agent state file to. This is an ephemeral file which is removed on successful shutdown.
+
+   Example:
+   ```hcl
+   state_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent-state.json"
+   ```
+
+- `v4_prefix` - Specifies an alternate prefix to use for generating IPs. Currently must be between /8 and /16
+
+   Example:
+   ```hcl
+   v4_prefix=1.1.1.1/8
    ```
 
 ## Pause the Client Agent
@@ -206,27 +193,187 @@ Use the following command to list any sessions currently being managed by the Cl
 $ boundary client-agent sessions
 ```
 
+## Specify a prefix for IP addresses
+
+You can specify an alternate prefix for the Client Agent to use when it generates IP addresses.
+The value must be between `/8` and `/16`.
+
+Complete the following steps to specify a prefix for IP addresses:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
+
+1. Change the `v4_prefix` setting to the new prefix you want to use when you generate IP addresses.
+1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
+
+   ```shell-session
+   sudo pkill -1 boundary-client-agent
+   ```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
+1. Change the `v4_prefix` setting to the new prefix you want to use when you generate IP addresses.
+1. Save the file and restart the Client Agent with the following command:
+
+   ```shell-session
+   net stop BoundaryClientAgent
+   net start BoundaryClientAgent
+   ```
+
+</Tab>
+</Tabs>
+
+## Specify a DNS request timeout
+
+You can specify for how long the Client Agent DNS request handling, including any recursion, is allowed to run before it is canceled.
+
+Complete the following steps to specify a DNS request timeout period:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
+
+1. Change the `dns_request_timeout` setting to specify the number of seconds you want to allow request handling to run for before it is canceled.
+1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
+
+   ```shell-session
+   sudo pkill -1 boundary-client-agent
+   ```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
+1. Change the `dns_request_timeout` setting to specify the number of seconds you want to allow request handling to run for before it is canceled.
+1. Save the file and restart the Client Agent with the following command:
+
+   ```shell-session
+   net stop BoundaryClientAgent
+   net start BoundaryClientAgent
+   ```
+
+</Tab>
+</Tabs>
+
+## Specify the DNS servers to use
+
+You can specify which DNS servers the Client Agent should use for recursing non-Boundary requests.
+The DNS servers you specify in the configuration file override any DNS servers that are configured on the system.
+
+Complete the following steps to specify the DNS servers to use:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
+
+1. Change the `override_upstream_dns_servers` setting to include the DNS servers you want to use for recursing non-Boundary requests.
+1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
+
+   ```shell-session
+   sudo pkill -1 boundary-client-agent
+   ```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
+1. Change the `override_upstream_dns_servers` setting to include the DNS servers you want to use for recursing non-Boundary requests.
+1. Save the file and restart the Client Agent with the following command:
+
+   ```shell-session
+   net stop BoundaryClientAgent
+   net start BoundaryClientAgent
+   ```
+
+</Tab>
+</Tabs>
+
 ## Log files
 
 The Client Agent creates a log file by default.
-You can specify where to write the Boundary Client Agent log file by using the following configuration setting:
 
-```hcl
-log_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent.log"
+The following log is an example of a new transparent session being established:
+
+```
+2024-06-03T10:44:56.337-0700 [INFO]  2783321106: found matching Boundary target: query name=ssh.boundary.dev. qtype=A target id=ttcp_dMcUB0wRKp port=22 client port=0 user id=501
+2024-06-03T10:44:56.341-0700 [INFO]  2783321106: starting proxy for: target name=ssh.boundary.dev. primary listener addr=100.92.133.79:443 session expiration=2024-06-04T01:44:56Z time until=8h0m0.048895s connections left=-1
 ```
 
-You can also configure the Client Agent to log to STDOUT in addition to the `boundary-client-agent.log` file by using the following configuration setting:
+The following log is an example of a user connecting to a session that is already established:
 
-```hcl
-log_to_stdout=true
+```
+2024-06-03T10:44:56.341-0700 [INFO]  1781785147: existing session found: query=ssh.boundary.dev.
 ```
 
-The Client Agent also creates an emphemeral state file that is removed on successful shutdown.
-You can specify where to write the state file to by using the following configuration setting:
+### Change the location of logs
 
-```hcl
-state_file="/Library/Application\ /Support/HashiCorp/Boundary/boundary-client-agent-state.json"
-```
+You can specify where to write the Boundary Client Agent log file.
+By default for MacOS, the log file is located in:
+
+`Library/Application Support/HashiCorp/Boundary/boundary-client-agent.log`
+
+For Windows, the log file is located in:
+
+`C:\Windows\Logs\boundary-client-agent.log`
+
+Complete the following steps to change the location in which the log file is stored:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
+
+1. Change the `log_file` setting to the new directory where you want to store the log file.
+1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
+
+   ```shell-session
+   sudo pkill -1 boundary-client-agent
+   ```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
+1. Change the `log_file` setting to the new directory where you want to store the log file.
+1. Save the file and restart the Client Agent with the following command:
+
+   ```shell-session
+   net stop BoundaryClientAgent
+   net start BoundaryClientAgent
+   ```
+
+</Tab>
+</Tabs>
 
 ### Change the verbosity of logs
 
@@ -244,7 +391,7 @@ By default, it is located in the following directory:
 
    `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
 
-1. Adjust the log level.
+1. Change the `log_level` setting to the new verbosity setting.
 1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
 
    ```shell-session
@@ -258,7 +405,7 @@ By default, it is located in the following directory:
 By default, it is located in the following directory:
 
    `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
-1. Adjust the log level.
+1. Change the `log_level` setting to the new verbosity setting.
 1. Save the file and restart the Client Agent with the following command:
 
    ```shell-session
@@ -373,9 +520,14 @@ override_upstream_dns_servers = [
 ]
 ```
 
-### MacOS
+### Primary network interfaces
 
 By default, the Client Agent creates IPs on the primary network interface to serve its DNS server.
+Refer to the tabs below for possible conflicts for each supported operating system.
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
 When you run the Client Agent alongside the PAN-GP VPN, the primary network interface will likely be set to a `tun` type interface, which the Client Agent cannot use for its IP addresses.
 You may see errors such as the following in the `boundary-client-agent.log` file or the `boundary client-agent status` command response:
 
@@ -392,7 +544,8 @@ interface_to_use=en0
 The `interface_to_use` option allows the Client Agent to create the IPs it needs to serve the DNS server and proxy traffic.
 You must restart the Client Agent for it to update its configuration with the new setting.
 
-### Windows
+</Tab>
+<Tab heading="Windows" group="windows">
 
 On Windows, the Client Agent may be able to create the IPs that it needs on the primary network interface, but it fails to establish any transparent sessions. You may see the following message:
 
@@ -429,6 +582,9 @@ interface_to_use=11
 ```
 
 You must restart the Client Agent for it to update its configuration with the new setting.
+
+</Tab>
+</Tabs>
 
 ### Cloudflare WARP client
 

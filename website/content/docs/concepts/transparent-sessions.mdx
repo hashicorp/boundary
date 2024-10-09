@@ -21,21 +21,16 @@ The Boundary Desktop client facilitates quick target discovery and session estab
 If you configure aliases for your targets, install the Boundary Client Agent, and ensure you are authenticated to the cluster, connections are transparent to the user.
 Boundary provides OS notifications to make it clear when you connect to a target using a transparent session.
 
-## Configure transparent sessions
-
-To configure transparent sessions for the public beta, you should ensure that the Boundary CLI and Boundary Desktop are not already installed in the environment in which you want to run the transparent sessions beta.
-If the Boundary CLI or Boundary Desktop are installed in the environment, you should uninstall them.
-
 Boundary supports Windows and MacOs for the transparent sessions public beta.
 
-### Requirements
+## Requirements
 
 Before you configure transparent sessions, you must:
 
 - Ensure that the Boundary CLI and Boundary Desktop are not installed in the environment in which you want to run the transparent sessions beta.
 - Download the appropriate installer for your Windows or MacOS environment from the [downloads](/boundary/install) page.
 
-### Install clients
+## Install clients
 
 Complete the following steps to install the Boundary Client Agent, CLI, and Desktop client:
 
@@ -50,62 +45,12 @@ Make sure to select the options **Boundary Client Agent**, **CLI**, and **Deskto
    ```shell-session
    $ boundary client-agent status
 
-### Configure targets
+## Configure targets
 
 The following section details how to configure targets and test the transparent sessions public beta feature.
 
 If you use a cluster that was created earlier than release 0.16.0, you must add the grant `list-resolvable-aliases` so that the client agent can populate the local alias cache.
 As an example, you could add the grant `type=user;actions=list-resolvable-aliases;ids=*`.
-
-If you use Boundary Enterprise, you can run Boundary in [dev mode](/docs/getting-started/dev-mode/dev-mode) to test transparent sessions.
-Dev mode creates a temporary instance of Boundary that includes a Postgres database and a Boundary controller and worker.
-It also automatically creates sample targets that are enabled for transparent sessions.
-
-<details><summary><strong>Click here for more information about using dev mode</strong></summary>
-
-Run the following command to start Boundary in dev mode:
-
-```
-$ boundary dev -worker-dns-server udp://8.8.8.8:53
-```
-
-You can use the following sample targets to test transparent sessions:
-
-Local Postgres target:
-- **Description**: A local Postgres target.
-You can connect to it using the flag `-dbname boundary`.
-- **Alias value**: `postgres.boundary.dev`
-- **Usage**: Use the following command to connect to this target using the CLI or client of your choice:
-
-  ```shell-session
-  $ psql postgresql://postgres:postgres@postgres.boundary.dev/boundary`
-  ```
-
-Local SSH target:
-- **Description**: A localhost target that you can connect to using SSH and an alias.
-Make sure you have a local SSH server running to connect to this target, or modify the target definition to point to an SSH server of your choice.
-- **Alias value**: `ssh.boundary.dev`
-- **Usage**: Use the following command to connect to this target using the CLI or client of your choice:
-
-  ```shell-session
-  $ ssh <my_username>@ssh.boundary.dev
-  ```
-
-  If you configured the SSH target for credential injection, Boundary should not prompt you for credentials.
-
-Web target:
-- **Description**: A web target using an address in Boundary.
-Only HTTPS is supported, as this target uses port 442.
-Alias values for web targets should match the target's URL.
-- **Alias value**: `www.hashicorp.com`
-- **Usage**: Enter `https://www.hashicorp.com` in the browser.
-Validate that Boundary created the session using the following command:
-
-  ```shell-session
-  $ boundary sessions list -recursive
-  ```
-
-</details>
 
 Complete the following steps to configure targets and test transparent sessions:
 
@@ -133,8 +78,6 @@ Refer to the following table for known issues that may affect the public beta:
 
 | Issue | Description |
 | ----- | ----------- |
-| Brokered credentials are not cleaned up | After you end a transparent session, the credentials that you used to establish the session persist in Boundary. You can use the credentials to connect to the target even after the session ends. |
-| SSH session is still active after exiting | When you use the terminal to create a transparent SSH session into a target session, and then end the session, it may remain active in Boundary. |
 | Connection is reset when trying to reconnect | If you use an SSH transparent session and then cancel the connection, you may have trouble reconnecting until Boundary cleans up the session. |
 | SSH connection fails with man-in-the-middle warning | On Ubuntu systems, the initial transparent session may be successful, but any subsequent connections prompt a warning that you may be experiencing a man-in-the-middle attack. |
 | Boundary Client Agent authentication does not persist across restarts | When you reboot, you are required to re-authenticate to the Client Agent before you can use transparent sessions. |
