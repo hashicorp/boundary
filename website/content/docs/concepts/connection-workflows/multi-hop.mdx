@@ -14,6 +14,16 @@ inbound traffic to route through multiple network enclaves to reach the target s
 Multi-hop sessions allow you to chain together two or more workers
 across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
 
+## Inbound network rules
+
+With a multi-hop deployment, all connections are initiated outbound from the most downstream worker in the chain. After Boundary establishes the initial connection between the workers, it uses the established connection for any subsequent connections.
+These persistent TCP connections result in the requirement for only outbound connectivity.
+
+If you have one or more firewalls sitting between the ingress and egress workers, you do not need to create additional inbound networking rules to facilitate a Boundary multi-hop deployment. This not only helps to
+simplify your infrastructure configuration, but also ensures that your security posture is not weakened or compromised.
+
+## Multi-hop worker types
+
 In multi-hop scenarios, there are typically three types of workers:
 1. **Ingress worker** - An ingress worker is a worker that is accessible by the client. The client initiates the connection to the ingress worker.
 1. **Intermediary worker** - An optional intermediary worker sits between ingress and egress workers as part of a multi-hop chain. There can be multiple intermediary workers as part of a multi-hop chain.
