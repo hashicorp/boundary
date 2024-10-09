@@ -50,6 +50,7 @@ The in-memory store removes the session information:
 - if the auth token stored in the Boundary expires.
 - if the current OS user authenticates with a different Boundary user.
 - if the current OS user authenticates to a new Boundary controller.
+- if the Boundary Client Agent is paused.
 - if the Boundary Client Agent is terminated.
 
 API requests are authenticated in the same way as session proxy access.
