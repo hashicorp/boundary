@@ -78,23 +78,20 @@ type=user;ids=*;actions=list-resolvable-aliases
 
 ## Configuration
 
-The default configuration included with the Boundary Client Agent upon installation will be suitable for most users. If you want to make changes to the configuration, the configuration file is located in the following directories:
+The default configuration included with the Boundary Client Agent upon installation will be suitable for most users. If you want to make changes to the configuration, the configuration file is located in the following directory:
 
-MacOS
+<Tabs>
+<Tab heading="MacOS" group="macos">
 
-  ```shell-session
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
 
-   /Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl
+</Tab>
+<Tab heading="Windows" group="windows">
 
-   ```
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
 
-Windows
-
-  ```shell-session
-
-   C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl
-
-   ```
+</Tab>
+</Tabs>
 
 The configuration file contains the following fields:
 
@@ -315,30 +312,25 @@ By default, it is located in the following directory:
 ## Log files
 
 The Client Agent creates a log file by default.
-
-The following log is an example of a new transparent session being established:
-
-```
-2024-06-03T10:44:56.337-0700 [INFO]  2783321106: found matching Boundary target: query name=ssh.boundary.dev. qtype=A target id=ttcp_dMcUB0wRKp port=22 client port=0 user id=501
-2024-06-03T10:44:56.341-0700 [INFO]  2783321106: starting proxy for: target name=ssh.boundary.dev. primary listener addr=100.92.133.79:443 session expiration=2024-06-04T01:44:56Z time until=8h0m0.048895s connections left=-1
-```
-
-The following log is an example of a user connecting to a session that is already established:
-
-```
-2024-06-03T10:44:56.341-0700 [INFO]  1781785147: existing session found: query=ssh.boundary.dev.
-```
+You can change the location of the log or adjust the verbosity level.
 
 ### Change the location of logs
 
 You can specify where to write the Boundary Client Agent log file.
-By default for MacOS, the log file is located in:
+By default, the log file is located in:
 
-`Library/Application Support/HashiCorp/Boundary/boundary-client-agent.log`
+<Tabs>
+<Tab heading="MacOS" group="macos">
 
-For Windows, the log file is located in:
+   `Library/Application Support/HashiCorp/Boundary/boundary-client-agent.log`
 
-`C:\Windows\Logs\boundary-client-agent.log`
+</Tab>
+<Tab heading="Windows" group="windows">
+
+   `C:\Windows\Logs\boundary-client-agent.log`
+
+</Tab>
+</Tabs>
 
 Complete the following steps to change the location in which the log file is stored:
 
