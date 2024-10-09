@@ -21,6 +21,7 @@ import (
 	// host catalog secrets. See getHostCatalogSecrets and
 	// removeSecretsCredsLastRotatedTime functions.
 	"github.com/hashicorp/boundary/internal/db"
+	ierrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -487,20 +488,22 @@ func TestCommunityAwsDhc(t *testing.T) {
 			// Static rotated credentials no worker permutations.
 			{
 				// PLUGINHOST_TESTS_RUN=1 go test -v -run TestCommunityAwsDhc/update/staticRotatedNoWorkerFilterToStaticNoWorkerFilter
-				name:           "staticRotatedNoWorkerFilterToStaticNoWorkerFilter",
-				currentAttrs:   staticRotatedAwsAttrs,
-				currentSecrets: &staticAwsSecrets,
-				newAttrs:       &updAttrs{value: staticAwsAttrs},
-				newSecrets:     &updSecrets{value: &staticAwsSecrets},
+				name:                "staticRotatedNoWorkerFilterToStaticNoWorkerFilter",
+				currentAttrs:        staticRotatedAwsAttrs,
+				currentSecrets:      &staticAwsSecrets,
+				newAttrs:            &updAttrs{value: staticAwsAttrs},
+				newSecrets:          &updSecrets{value: &staticAwsSecrets},
+				preventCredDeletion: true,
 			},
 			{
 				// PLUGINHOST_TESTS_RUN=1 PLUGINHOST_TESTS_NO_SKIP=1 go test -v -run TestCommunityAwsDhc/update/staticRotatedNoWorkerFilterToAssumeRoleNoWorkerFilter
-				name:           "staticRotatedNoWorkerFilterToAssumeRoleNoWorkerFilter",
-				currentAttrs:   staticRotatedAwsAttrs,
-				currentSecrets: &staticAwsSecrets,
-				newAttrs:       &updAttrs{value: assumeRoleAwsAttrs},
-				newSecrets:     &updSecrets{remove: true},
-				skip:           true,
+				name:                "staticRotatedNoWorkerFilterToAssumeRoleNoWorkerFilter",
+				currentAttrs:        staticRotatedAwsAttrs,
+				currentSecrets:      &staticAwsSecrets,
+				newAttrs:            &updAttrs{value: assumeRoleAwsAttrs},
+				newSecrets:          &updSecrets{remove: true},
+				preventCredDeletion: true,
+				skip:                true,
 			},
 
 			// AssumeRole credentials no worker filter permutations.
@@ -1683,7 +1686,7 @@ func pollForSetSyncJobFinish(t *testing.T, hscl *hostsets.Client, hsId string, h
 	}
 
 	pollFn := func() (*hostsets.HostSet, error) {
-		timeout := 5 * time.Second
+		timeout := 10 * time.Second
 		ctxwt, cancel := context.WithTimeout(context.Background(), timeout)
 		t.Cleanup(cancel)
 
@@ -1719,12 +1722,19 @@ func getHostCatalogSecrets(t *testing.T, rw *db.Db, k *kms.Kms, hc *hostcatalogs
 	require.NotEmpty(t, hc.Id, "getHostCatalogSecrets: host catalog id not available")
 	require.NotEmpty(t, hc.ScopeId, "getHostCatalogSecrets: host catalog %q scope id not available", hc.Id)
 
-	var secrets *structpb.Struct
+	secrets, err := structpb.NewStruct(make(map[string]any))
+	require.NoError(t, err, "getHostCatalogSecrets: failed to create secrets proto struct")
 	_, _ = rw.DoTx(ctx, 0, db.ConstBackoff{}, func(txr db.Reader, txw db.Writer) error {
 		hcs := &plugin.HostCatalogSecret{
 			HostCatalogSecret: &store.HostCatalogSecret{
 				CatalogId: hc.Id,
 			},
+		}
+		err := txr.LookupById(ctx, hcs)
+		if ierrors.IsNotFoundError(err) {
+			// We didn't get any secrets for the given host catalog. This is
+			// valid and can happen if we're using AssumeRole.
+			return nil
 		}
 		require.NoError(t, txr.LookupById(ctx, hcs), "getHostCatalogSecrets: failed to lookup secrets for host catalog %q", hc.Id)
 		require.NotEmpty(t, hcs.HostCatalogSecret.CtSecret, "getHostCatalogSecrets: secrets for host catalog %q lookup successful but no data found in response", hc.Id)
@@ -1735,7 +1745,6 @@ func getHostCatalogSecrets(t *testing.T, rw *db.Db, k *kms.Kms, hc *hostcatalogs
 		require.NoError(t, structwrapping.UnwrapStruct(ctx, w, hcs.HostCatalogSecret, nil), "getHostCatalogSecrets: failed to unwrap secrets")
 		hcs.CtSecret = nil
 
-		secrets = new(structpb.Struct)
 		require.NoError(t, proto.Unmarshal(hcs.GetSecret(), secrets), "getHostCatalogSecrets: failed to unmarshal secrets into proto struct")
 		delete(secrets.GetFields(), "creds_last_rotated_time") // We don't want this to be passed into subsequent host catalog calls.
 
@@ -1755,6 +1764,11 @@ func removeSecretsCredsLastRotatedTime(t *testing.T, rw *db.Db, k *kms.Kms, hc *
 	ctx := context.Background()
 
 	secrets := getHostCatalogSecrets(t, rw, k, hc)
+	if secrets == nil || len(secrets.AsMap()) == 0 {
+		// We didn't get any secrets. This is valid and can happen if we're
+		// using AssumeRole.
+		return
+	}
 	delete(secrets.GetFields(), "creds_last_rotated_time")
 
 	require.NotEmpty(t, hc.Id, "removeSecretsCredsLastRotatedTime: no host catalog id available")
