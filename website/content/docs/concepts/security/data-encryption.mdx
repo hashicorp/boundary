@@ -20,7 +20,7 @@ methods](/boundary/docs/configuration/worker/worker-configuration) for storage o
 keys. It is optional for workers; if not specified the authentication keys
 will not be encrypted on disk. This can not used by workers registered using an external KMS.
 
-## The `root` KMS key and per-scope KEK/DEKs <sup>Community Edition only</sup>
+## The `root` KMS key and per-scope KEK/DEKs
 
 Following best practices of using different encryption keys for different
 purposes, Boundary has a number of encryption keys generated within each scope.
@@ -113,14 +113,14 @@ The `bsr` KMS key is required for [session recording](/boundary/docs/configurati
 If you do not add a `bsr` key to your controller configuration, you will receive an error when you attempt to enable session recording.
 The key is used for encrypting data and checking the integrity of recordings.
 
-## The `previous-root` KMS key <sup>Community Edition only</sup>
+## The `previous-root` KMS key
 
 The `previous-root` KMS key is used when migrating to a new `root` key. Adding
 the `previous-root` KMS key to your configuration informs the Controller to use
 it for decrypting the existing information in the database, allowing you to
 rotate and rewrap the KEKs to complete the migration to the new root key.
 
-## The `worker-auth` KMS key <sup>Community Edition only</sup>
+## The `worker-auth` KMS key
 
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
 to authenticate a Worker to the Controller. Specifics of this mechanism can be
@@ -128,7 +128,7 @@ found on the [Connections/TLS page](/boundary/docs/concepts/security/connections
 a worker is registered with [worker-led or controller-led
 methods](/boundary/docs/configuration/worker/worker-configuration) this is unnecessary.
 
-## The `recovery` KMS key <sup>Community Edition only</sup>
+## The `recovery` KMS key
 
 The `recovery` KMS key is used for rescue/recovery operations that can be used
 by a client to authenticate almost any operation within Boundary. Its mechanism
@@ -164,7 +164,7 @@ with the options to skip creating default resources, Terraform can be used to
 create the specific resources needed instead, with the `recovery` KMS used to
 authenticate setting up the initial auth method(s).
 
-## The `config` KMS key <sup>Community Edition only</sup>
+## The `config` KMS key
 
 This key can be used to encrypt values within Boundary's configuration file. By
 sharing this block between Boundary and an operator, the operator can put
