@@ -158,7 +158,67 @@ The configuration file contains the following fields:
    v4_prefix=1.1.1.1/8
    ```
 
-## Pause the Client Agent
+### Making configuration changes
+
+Complete the following steps to change the configuration of the Client Agent:
+
+<Tabs>
+<Tab heading="MacOS" group="macos">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
+
+1. Make the changes you want to the configuration.
+1. Save the file and restart the Client Agent with the following commands:
+
+   ```shell-session
+   sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
+   sudo launchctl start com.hashicorp.boundary.boundary-client-agent
+   ```
+
+Some configuration values can be changed without restarting the Client Agent.
+These values include:
+
+- `dns_request_timeout`
+- `log_file`
+- `log_level`
+- `state_file`
+- `override_upstream_dns_servers`
+- `v4_prefix`
+
+To reload the configuration, update the configuration file as described above and use the following command:
+
+```shell-session
+sudo pkill -1 boundary-client-agent
+```
+
+This sends a SIGHUP signal to the Client Agent, which causes it to reload the configuration file.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
+By default, it is located in the following directory:
+
+   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
+1. Make the changes you want to the configuration.
+1. Save the file and restart the Client Agent with the following commands:
+
+   ```shell-session
+   net stop BoundaryClientAgent
+   net start BoundaryClientAgent
+   ```
+
+</Tab>
+</Tabs>
+
+Note that restarting the Client Agent will close any existing sessions.
+
+## Controlling the Client Agent
+
+### Pause the Client Agent
 
 You can temporarily disable the Boundary Client Agent by pausing it with the following command:
 
@@ -174,7 +234,7 @@ To resume the Client Agent, use the following command:
 $ boundary client-agent resume
 ```
 
-## Monitor status and sessions
+### Monitor status and sessions
 
 You can check the status of the Client Agent to ensure it is running.
 Authenticate to Boundary, and use the following command to check the Client Agent's status:
@@ -189,224 +249,6 @@ Use the following command to list any sessions currently being managed by the Cl
 ```shell-session
 $ boundary client-agent sessions
 ```
-
-## Specify a prefix for IP addresses
-
-You can specify an alternate prefix for the Client Agent to use when it generates IP addresses.
-The value must be between `/8` and `/16`.
-
-Complete the following steps to specify a prefix for IP addresses:
-
-<Tabs>
-<Tab heading="MacOS" group="macos">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
-
-1. Change the `v4_prefix` setting to the new prefix you want to use when you generate IP addresses.
-1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
-
-   ```shell-session
-   sudo pkill -1 boundary-client-agent
-   ```
-
-</Tab>
-<Tab heading="Windows" group="windows">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
-1. Change the `v4_prefix` setting to the new prefix you want to use when you generate IP addresses.
-1. Save the file and restart the Client Agent with the following command:
-
-   ```shell-session
-   net stop BoundaryClientAgent
-   net start BoundaryClientAgent
-   ```
-
-</Tab>
-</Tabs>
-
-## Specify a DNS request timeout
-
-You can specify for how long the Client Agent DNS request handling, including any recursion, is allowed to run before it is canceled.
-
-Complete the following steps to specify a DNS request timeout period:
-
-<Tabs>
-<Tab heading="MacOS" group="macos">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
-
-1. Change the `dns_request_timeout` setting to specify the number of seconds you want to allow request handling to run for before it is canceled.
-1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
-
-   ```shell-session
-   sudo pkill -1 boundary-client-agent
-   ```
-
-</Tab>
-<Tab heading="Windows" group="windows">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
-1. Change the `dns_request_timeout` setting to specify the number of seconds you want to allow request handling to run for before it is canceled.
-1. Save the file and restart the Client Agent with the following command:
-
-   ```shell-session
-   net stop BoundaryClientAgent
-   net start BoundaryClientAgent
-   ```
-
-</Tab>
-</Tabs>
-
-## Specify the DNS servers to use
-
-You can specify which DNS servers the Client Agent should use for recursing non-Boundary requests.
-The DNS servers you specify in the configuration file override any DNS servers that are configured on the system.
-
-Complete the following steps to specify the DNS servers to use:
-
-<Tabs>
-<Tab heading="MacOS" group="macos">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
-
-1. Change the `override_upstream_dns_servers` setting to include the DNS servers you want to use for recursing non-Boundary requests.
-1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
-
-   ```shell-session
-   sudo pkill -1 boundary-client-agent
-   ```
-
-</Tab>
-<Tab heading="Windows" group="windows">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
-1. Change the `override_upstream_dns_servers` setting to include the DNS servers you want to use for recursing non-Boundary requests.
-1. Save the file and restart the Client Agent with the following command:
-
-   ```shell-session
-   net stop BoundaryClientAgent
-   net start BoundaryClientAgent
-   ```
-
-</Tab>
-</Tabs>
-
-## Log files
-
-The Client Agent creates a log file by default.
-You can change the location of the log or adjust the verbosity level.
-
-### Change the location of logs
-
-You can specify where to write the Boundary Client Agent log file.
-By default, the log file is located in:
-
-<Tabs>
-<Tab heading="MacOS" group="macos">
-
-   `Library/Application Support/HashiCorp/Boundary/boundary-client-agent.log`
-
-</Tab>
-<Tab heading="Windows" group="windows">
-
-   `C:\Windows\Logs\boundary-client-agent.log`
-
-</Tab>
-</Tabs>
-
-Complete the following steps to change the location in which the log file is stored:
-
-<Tabs>
-<Tab heading="MacOS" group="macos">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
-
-1. Change the `log_file` setting to the new directory where you want to store the log file.
-1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
-
-   ```shell-session
-   sudo pkill -1 boundary-client-agent
-   ```
-
-</Tab>
-<Tab heading="Windows" group="windows">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
-1. Change the `log_file` setting to the new directory where you want to store the log file.
-1. Save the file and restart the Client Agent with the following command:
-
-   ```shell-session
-   net stop BoundaryClientAgent
-   net start BoundaryClientAgent
-   ```
-
-</Tab>
-</Tabs>
-
-### Change the verbosity of logs
-
-You can increase the log verbosity.
-The default is `INFO`.
-You can change the setting to `DEBUG` for greater verbosity.
-
-Complete the following steps for your operating system to change the log verbosity:
-
-<Tabs>
-<Tab heading="MacOS" group="macos">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
-
-1. Change the `log_level` setting to the new verbosity setting.
-1. Save the file and reload the configuration by sending a SIGHUP signal to the process running the Client Agent with the following command:
-
-   ```shell-session
-   sudo pkill -1 boundary-client-agent
-   ```
-
-</Tab>
-<Tab heading="Windows" group="windows">
-
-1. As a privileged user, open the Boundary Client Agent configuration file in the editor of your choice.
-By default, it is located in the following directory:
-
-   `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
-1. Change the `log_level` setting to the new verbosity setting.
-1. Save the file and restart the Client Agent with the following command:
-
-   ```shell-session
-   net stop BoundaryClientAgent
-   net start BoundaryClientAgent
-   ```
-
-</Tab>
-</Tabs>
 
 ## Troubleshoot DNS errors
 
