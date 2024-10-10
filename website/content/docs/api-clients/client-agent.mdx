@@ -62,7 +62,7 @@ For a Boundary user to be able to use the Client Agent to establish a transparen
 
 You can use the following grant strings to grant those permissions:
 
-```shell-session
+```
 type=auth-method;ids=*;actions=authorize
 type=target;ids=*;actions=authorize-session
 type=auth-token;ids=*;actions=read:self
@@ -72,7 +72,7 @@ HashiCorp highly recommends that you also grant users the permission to list res
 Without that permission, every DNS request on the system is sent to the Boundary controller, which can easily overwhelm it.
 You can use the following grant string to grant the permission to list resolvable aliases:
 
-```shell-session
+```
 type=user;ids=*;actions=list-resolvable-aliases
 ```
 
@@ -174,8 +174,8 @@ By default, it is located in the following directory:
 1. Save the file and restart the Client Agent with the following commands:
 
    ```shell-session
-   sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
-   sudo launchctl start com.hashicorp.boundary.boundary-client-agent
+   $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
+   $ sudo launchctl start com.hashicorp.boundary.boundary-client-agent
    ```
 
 You can change some configuration values without restarting the Client Agent.
@@ -192,7 +192,7 @@ To update the other values, you must reload the configuration.
 To reload the configuration, update the configuration file, and then use the following command:
 
 ```shell-session
-sudo pkill -1 boundary-client-agent
+$ sudo pkill -1 boundary-client-agent
 ```
 
 This command sends a SIGHUP signal to the Client Agent, which causes it to reload the configuration file.
