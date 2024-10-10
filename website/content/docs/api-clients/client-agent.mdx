@@ -283,7 +283,7 @@ The following is a guide for troubleshooting the behavior of the Client Agent. I
 ### Check the status of the Client Agent
 
 If you are experiencing unexpected behavior, the first thing to do is to check on the status of the Client Agent.
-We can do this via the Boundary CLI or the Desktop Client. To see the cliet agent status through the Boundary CLI, use the following command:
+We can do this via the Boundary CLI or the Desktop Client. To see the Client Agent status through the Boundary CLI, use the following command:
 
 ```shell-session
 $ boundary client-agent status
@@ -306,13 +306,14 @@ The Client Agent can be paused by the user, and it will also pause itself if it 
 
 The status also allows you to see whether your current user is authenticated.
 If the response looks something like the above, including showing an auth token ID and expiration, your current user is authenticated.
-If not, you may need to first authenticate to the Client Agent using `boundary authenticate`.
+If not, you may need to first authenticate to the Client Agent using the CLI or Desktop Client.
 
-The status will also sometimes contain a list of errors that have been encountered by the client-agent.
+The status will also sometimes contain a list of errors (ordered by most recent first) that have been encountered by the Client Agent.
 These errors can help you understand why the Client Agent may not be behaving as expected.
 Please see the section below on commonly seen errors to help diagnose specific errors.
+Note that this list of errors will not be cleared until the next reboot, so it may not necessarily be a sign of something being wrong.
 
-If attempting to see the status results in a complete error, the Client Agent may not be running.
+If the status command returns an error, the Client Agent may not be running.
 You can attempt to start the Client Agent using the following commands:
 
 <Tabs>
@@ -361,9 +362,9 @@ The log file should be located in `C:\Windows\Logs\boundary-client-agent.log`.
 </Tabs>
 
 Once you have found the log file, you can look through it to see if you can understand why the Client Agent is not working as expected.
-The list below provides some common errors and explanation for why they may be happening.
+The list below provides some common errors and explanations for why they may be happening.
 
-It may be necessary to increase the logging verbosity of the client-agent.
+It may be necessary to increase the logging verbosity of the Client Agent.
 This can be accomplished by setting the `log_level` option in the configuration file to `DEBUG`.
 See the section on updating the configuration for more information.
 
@@ -389,7 +390,7 @@ Address: 76.76.21.21
 The important part here is the `Server` field, which contains an IP in the CGNAT range (from `100.64.0.0` to `100.127.255.255`).
 This is a good indication that the Client Agent DNS server is being used as expected.
 
-Next we can try to make a DNS request to an alias that we expect to be working. Assuming we have an alias with a value of `mytarget.boundary.dev`:
+Next, we can try to make a DNS request to an alias that we expect to be working. Assuming we have an alias with a value of `mytarget.boundary.dev`:
 
 ```shell-session
 $ nslookup mytarget.boundary.dev
@@ -487,7 +488,7 @@ Once you have identified which other software is using the port, you can stop it
 This usually implies that there is a problem reaching the internet or the Boundary controller used.
 The error is related to the periodic updating of aliases used by the Client Agent to know whether a DNS request matches an alias or not.
 
-It is recommended to pause the client-agent and examine the status and logs for further indication of errors:
+It is recommended to pause the Client Agent and examine the status and logs for further indication of errors:
 
 ```shell-session
 $ boundary client-agent pause
