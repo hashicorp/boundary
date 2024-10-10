@@ -38,7 +38,27 @@ You can configure Boundary to allow a select few users to manage those targets, 
 
 An alias is a globally unique, DNS-like string that is associated with a destination resource. The alias `value` parameter does not have to be delimited by a suffix, and can be just a hostname.
 
-Examples of valid aliases include `webserver` and `webserver.boundary`.
+Examples of valid aliases include `database.boundary` and `webserver.boundary`.
+
+### Single word aliases and Transparent Sessions
+
+Single-word aliases (such as `webserver` as opposed to `webserver.boundary`) are not recommended, as they do not work intuitively on Windows.
+Windows DNS resolution does not support resolving unqualified single word DNS hostnames.
+Making the hostname fully qualified will work, but is unintuitive to most users. For example:
+
+```
+ssh mytarget.
+```
+
+Will work, while
+
+```
+ssh mytarget
+```
+
+will not. For this reason, if any Windows users are expected to use an alias, it is recommended that it contains a dot (`.`) anywhere in the value.
+
+See the [Transparent Sessions](/boundary/docs/concepts/transparent-sessions) topic for more information.
 
 ## Scopes
 
