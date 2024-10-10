@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -213,6 +214,39 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	newOpts = append(newOpts, WithActiveWorkers(opts.withActiveWorkers))
 	newOpts = append(newOpts, WithWorkerPool(opts.withWorkerPool))
 	return ListWorkers(ctx, r.reader, scopeIds, newOpts...)
+}
+
+// VerifyKnownWorkers verifies that the provided workerIds exist in the database. Only the ids that match an entry
+// in the database will be returned.
+//
+// No options are currently supported.
+func (r *Repository) VerifyKnownWorkers(ctx context.Context, workerIds []string, _ ...Option) ([]string, error) {
+	const op = "server.(Repository).VerifyKnownWorkers"
+
+	if len(workerIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing worker ids")
+	}
+
+	ids := strutil.RemoveDuplicates(workerIds, false)
+	rows, err := r.reader.Query(ctx, verifyKnownWorkerQuery, []any{ids})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query worker ids"))
+	}
+	defer rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	var knownIds []string
+	for rows.Next() {
+		var workerId string
+		if err := rows.Scan(&workerId); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan row"))
+		}
+		knownIds = append(knownIds, workerId)
+	}
+
+	return knownIds, nil
 }
 
 // ListWorkers will return a listing of Workers and honor the WithLimit option.

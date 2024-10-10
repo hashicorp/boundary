@@ -109,4 +109,10 @@ const (
 		where worker.scope_id = ?
 			and auth_token.key_id = ?
 	`
+
+	verifyKnownWorkerQuery = `
+		select public_id 
+		  from server_worker 
+		 where public_id in (?)
+	`
 )

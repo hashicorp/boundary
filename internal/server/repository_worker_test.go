@@ -1611,3 +1611,92 @@ func TestRepository_UpdateWorker(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifyKnownWorkers(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	require, assert := require.New(t), assert.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	serversRepo, err := server.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	worker1 := server.TestKmsWorker(t, conn, wrapper).GetPublicId()
+	worker2 := server.TestPkiWorker(t, conn, wrapper).GetPublicId()
+	worker3 := server.TestKmsWorker(t, conn, wrapper).GetPublicId()
+	worker4 := server.TestPkiWorker(t, conn, wrapper).GetPublicId()
+
+	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1))
+	require.NoError(err)
+	require.Len(result, 4)
+
+	tests := []struct {
+		name       string
+		workers    []string
+		wantIds    []string
+		wantErr    bool
+		wantErrMsg string
+		wantErrIs  errors.Code
+	}{
+		{
+			name:       "none",
+			workers:    []string{},
+			wantErr:    true,
+			wantErrMsg: "missing worker ids",
+			wantErrIs:  errors.InvalidParameter,
+		},
+		{
+			name:    "one",
+			workers: []string{worker1},
+			wantIds: []string{worker1},
+		},
+		{
+			name:    "two",
+			workers: []string{worker2, worker3},
+			wantIds: []string{worker2, worker3},
+		},
+		{
+			name:    "all",
+			workers: []string{worker1, worker2, worker3, worker4},
+			wantIds: []string{worker1, worker2, worker3, worker4},
+		},
+		{
+			name:    "duplicates",
+			workers: []string{worker1, worker1, worker1, worker1, worker4, worker4},
+			wantIds: []string{worker1, worker4},
+		},
+		{
+			name:    "unknown id",
+			workers: []string{"fakeid"},
+			wantIds: []string{},
+		},
+		{
+			name:    "mixed with unknown id",
+			workers: []string{worker3, "fakeid", worker1, "another", worker2, "andanother"},
+			wantIds: []string{worker3, worker1, worker2},
+		},
+		{
+			name:    "mixed with unknown id duplicates",
+			workers: []string{worker1, "fakeid", worker1, "fakeid", worker1, "fakeid", "another"},
+			wantIds: []string{worker1},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotKnown, err := serversRepo.VerifyKnownWorkers(ctx, tt.workers)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Contains(err.Error(), tt.wantErrMsg)
+				assert.True(errors.Match(errors.T(tt.wantErrIs), err))
+				return
+			}
+
+			assert.NoError(err)
+			assert.ElementsMatch(tt.wantIds, gotKnown)
+		})
+	}
+}
