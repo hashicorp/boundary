@@ -15,7 +15,7 @@ Transparent sessions shift Boundary from an active connection model to a passive
 Boundary operates in the background instead of requiring you to remember specific resource IDs or ephemeral ports to connect to targets.
 As long as Boundary authenticates a user and the user is authorized to access the target, Boundary intercepts the DNS call and routes traffic through a session automatically.
 
-Transparent sessions require [aliases](/docs/concepts/aliases) and the [Boundary Client Agent](/docs/api-clients/client-agent).
+Transparent sessions require [aliases](/boundary/docs/concepts/aliases) and the [Boundary Client Agent](/boundary/docs/api-clients/client-agent).
 
 The Boundary Desktop client facilitates quick target discovery and session establishment using your preferred client.
 If you configure aliases for your targets, install the Boundary Client Agent, and ensure you are authenticated to the cluster, connections are transparent to the user.
@@ -56,9 +56,9 @@ As an example, you could add the grant `type=user;actions=list-resolvable-aliase
 Complete the following steps to configure targets and test transparent sessions:
 
 1. Authenticate to Boundary using the CLI or Desktop client.
-1. [Create a new target with an alias](/docs/concepts/aliases#create-an-alias-during-target-creation) or [create an alias for an existing target](/docs/concepts/aliases#create-an-alias-for-an-existing-target).
+1. [Create a new target with an alias](/boundary/docs/concepts/aliases#create-an-alias-during-target-creation) or [create an alias for an existing target](/boundary/docs/concepts/aliases#create-an-alias-for-an-existing-target).
 Ensure that you have authorization to establish a session to the target.
-1. Open the client of your choice and [connect to your target using the alias](/docs/concepts/aliases#connect-to-a-target-using-an-alias).
+1. Open the client of your choice and [connect to your target using the alias](/boundary/docs/concepts/aliases#connect-to-a-target-using-an-alias).
 
    Boundary routes your session using the Boundary Client Agent.
    You can validate that Boundary routed the session by looking at the **Sessions** page in the Desktop client, by typing `boundary sessions list -recursive` in the CLI, or by looking at sessions managed by the Client Agent using `boundary client-agent sessions`.
@@ -67,7 +67,7 @@ Ensure that you have authorization to establish a session to the target.
 
    The Client Agent periodically requests an updated list of aliases from the controller, so the alias may not work immediately after you create it.
    It should not take longer than 2 minutes for the alias to be updated in the Client Agent. If you are seeing connection issues after 2 minutes,
-   follow the troubleshooting steps outlined in [the Client Agent troubleshooting guide](/docs/api-clients/client-agent#troubleshooting).
+   follow the troubleshooting steps outlined in [the Client Agent troubleshooting guide](/boundary/docs/api-clients/client-agent#troubleshooting).
 
    </Note>
 
