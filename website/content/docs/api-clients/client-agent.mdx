@@ -255,6 +255,8 @@ Use the following command to list any sessions currently being managed by the Cl
 $ boundary client-agent sessions
 ```
 
+Note that this will not include sessions that are not managed by the Client Agent. Use `boundary sessions list -recursive` to see all sessions.
+
 ### Disabling the Client Agent
 
 If you want to disable the Boundary Client Agent, you can stop it with the following commands:
