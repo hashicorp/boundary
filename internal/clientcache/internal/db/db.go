@@ -146,7 +146,7 @@ type schema struct {
 
 const (
 	schemaTableName      = "schema_version"
-	schemaCurrentVersion = "v0.0.2"
+	schemaCurrentVersion = "v0.0.4"
 )
 
 // TableName returns the table name

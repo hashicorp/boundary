@@ -137,6 +137,9 @@ func getDbwOptions(ctx context.Context, rw *Db, i any, opType OpType, opt ...Opt
 	if opts.withRowsAffected != nil {
 		dbwOpts = append(dbwOpts, dbw.WithReturnRowsAffected(opts.withRowsAffected))
 	}
+	if opts.withTable != "" {
+		dbwOpts = append(dbwOpts, dbw.WithTable(opts.withTable))
+	}
 	return dbwOpts, nil
 }
 
@@ -181,6 +184,8 @@ type Options struct {
 
 	withOnConflict   *OnConflict
 	withRowsAffected *int64
+
+	withTable string
 }
 
 type oplogOpts struct {
@@ -202,6 +207,13 @@ func getDefaultOptions() Options {
 		WithVersion:                 nil,
 		withMaxIdleConnections:      nil,
 		withConnMaxIdleTimeDuration: nil,
+	}
+}
+
+// WithTable provides an optional table name for the operation.
+func WithTable(name string) Option {
+	return func(o *Options) {
+		o.withTable = name
 	}
 }
 
