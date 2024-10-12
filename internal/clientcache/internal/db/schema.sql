@@ -34,7 +34,7 @@ when
   end;
 
 
-insert into schema_version(version) values('v0.0.3');
+insert into schema_version(version) values('v0.0.4');
 
 -- user contains the boundary user information for the boundary user that owns
 -- the information in the cache.
@@ -44,8 +44,16 @@ create table if not exists user (
     check (length(id) > 0),
   -- The address of the boundary instance that this user id comes from
   address text not null
-    check (length(address) > 0)
+    check (length(address) > 0),
+    -- deleted indicate if the user has been soft-deleted when the all
+    -- auth_tokens associated with the user are deleted.
+  deleted_at timestamp not null default 'infinity'
 );
+
+-- user_active is a view that contains only the active users in the cache. This
+-- view is used to prevent the cache from syncing data for users that have been
+-- soft-deleted.
+create view user_active as select * from user where deleted_at = 'infinity';
 
 -- Contains the known resource types contained in the boundary client cache
 create table if not exists resource_type_enm(
@@ -111,19 +119,46 @@ create table if not exists auth_token (
 );
 
 -- *delete_orphaned_users triggers delete a user when it no longer has any
--- auth tokens associated with them
+-- auth tokens associated with them and they no longer have any refresh tokens
+-- that are less than 20 days old. This is to prevent the cache from syncing
+-- data for users that are no longer active.
 create trigger token_update_delete_orphaned_users after update on auth_token
 begin
-delete from user
+-- delete users that no longer have any auth tokens associated with them
+-- and they have no refresh tokens that are newer (less) than 20 days old.
+delete from user 
 where
-    id not in (select user_id from auth_token);
+    id not in (select user_id from auth_token) and
+    id not in (select user_id from refresh_token where DATETIME('now', '-20 days') < datetime(create_time) ); 
+
+-- soft delete users that no longer have any auth tokens associated with them
+-- and they haven't been previously soft deleted 
+-- and they no longer have any refresh tokens that are newer (greater) than 20 days old. 
+update user set deleted_at = (strftime('%Y-%m-%d %H:%M:%f','now')) 
+where
+    id not in (select user_id from auth_token) and
+    deleted_at = 'infinity' and
+    id not in (select user_id from refresh_token where DATETIME('now', '-20 days') > datetime(create_time));
+
 end;
 
 create trigger token_delete_delete_orphaned_users after delete on auth_token
 begin
-delete from user
+-- delete users that no longer have any auth tokens associated with them
+-- and they have no refresh tokens that are newer (less) than 20 days old.
+delete from user 
 where
-    id not in (select user_id from auth_token);
+    id not in (select user_id from auth_token) and
+    id not in (select user_id from refresh_token where DATETIME('now', '-20 days') < datetime(create_time) ); 
+
+-- soft delete users that no longer have any auth tokens associated with them
+-- and they haven't been previously soft deleted 
+-- and they no longer have any refresh tokens that are newer (greater) than 20 days old. 
+update user set deleted_at = (strftime('%Y-%m-%d %H:%M:%f','now')) 
+where
+    id not in (select user_id from auth_token) and
+    deleted_at = 'infinity' and 
+    id not in (select user_id from refresh_token where DATETIME('now', '-20 days') > datetime(create_time));
 end;
 
 create table if not exists keyring_token (
