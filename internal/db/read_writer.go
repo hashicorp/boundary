@@ -471,14 +471,15 @@ func (rw *Db) IsTx(_ context.Context) bool {
 }
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
-// must be unique. WithDebug is the only valid option, all other options are ignored.
+// must be unique. WithTable and WithDebug are the only valid options, all other
+// options are ignored.
 func (rw *Db) LookupById(ctx context.Context, resourceWithIder any, opt ...Option) error {
 	const op = "db.LookupById"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	opts := GetOpts(opt...)
-	if err := dbw.New(rw.underlying.wrapped.Load()).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug)); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug), dbw.WithTable(opts.withTable)); err != nil {
 		var errOpts []errors.Option
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			// Not found is a common workflow in the application layer during lookup, suppress
@@ -491,20 +492,21 @@ func (rw *Db) LookupById(ctx context.Context, resourceWithIder any, opt ...Optio
 }
 
 // LookupByPublicId will lookup resource by its public_id, which must be unique.
-// WithDebug is supported.
+// WithTable and WithDebug are supported.
 func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
 	return rw.LookupById(ctx, resource, opt...)
 }
 
 // LookupWhere will lookup the first resource using a where clause with
-// parameters (it only returns the first one). WithDebug is supported.
+// parameters (it only returns the first one). WithTable and WithDebug are
+// supported.
 func (rw *Db) LookupWhere(ctx context.Context, resource any, where string, args []any, opt ...Option) error {
 	const op = "db.LookupWhere"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	opts := GetOpts(opt...)
-	if err := dbw.New(rw.underlying.wrapped.Load()).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug)); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug), dbw.WithTable(opts.withTable)); err != nil {
 		var errOpts []errors.Option
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			// Not found is a common workflow in the application layer during lookup, suppress
