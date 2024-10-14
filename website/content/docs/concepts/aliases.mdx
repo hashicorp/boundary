@@ -42,23 +42,25 @@ Examples of valid aliases include `database.boundary` and `webserver.boundary`.
 
 ### Single word aliases and Transparent Sessions
 
-Single-word aliases (such as `webserver` as opposed to `webserver.boundary`) are not recommended, as they do not work intuitively on Windows.
+HashiCorp recommends that you do not use single-word aliases such as `webserver` as opposed to `webserver.boundary`, because single-word aliases do not work intuitively on Windows.
 Windows DNS resolution does not support resolving unqualified single word DNS hostnames.
-Making the hostname fully qualified will work, but is unintuitive to most users. For example:
+You can make the hostname fully qualified, but is not intuitive to most users.
+
+For example the following hostname works:
 
 ```
 ssh mytarget.
 ```
 
-Will work, while
+But this hostname does not work:
 
 ```
 ssh mytarget
 ```
 
-will not. For this reason, if any Windows users are expected to use an alias, it is recommended that it contains a dot (`.`) anywhere in the value.
+For this reason, if you expect any Windows users to use an alias, it contains a dot (`.`) anywhere in the value.
 
-See the [Transparent Sessions](/boundary/docs/concepts/transparent-sessions) topic for more information.
+See the [transparent sessions](/boundary/docs/concepts/transparent-sessions) documentation for more information.
 
 ## Scopes
 
