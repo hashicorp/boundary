@@ -258,24 +258,6 @@ To resume the Client Agent, use the following command:
 $ boundary client-agent resume
 ```
 
-### Monitor status and sessions
-
-You can check the status of the Client Agent to ensure it is running.
-Use the following command to check the Client Agent's status:
-
-```shell-session
-$ boundary client-agent status
-```
-
-You can retrieve information about the sessions that the Client Agent is managing.
-Use the following command to list any sessions currently being managed by the Client Agent, as well as any brokered credentials for those sessions:
-
-```shell-session
-$ boundary client-agent sessions
-```
-
-Note that this command does not list sessions that are not managed by the Client Agent. Use `boundary sessions list -recursive` to see all sessions.
-
 ### Disable the Client Agent
 
 If you want to disable the Boundary Client Agent, you can stop it with the following commands:
