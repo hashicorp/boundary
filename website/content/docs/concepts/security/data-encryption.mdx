@@ -35,6 +35,8 @@ and the various DEKs (Data Encryption Keys) are created when a scope is created.
 The DEKs are encrypted with the scope's `root` KEK, and this is in turn
 encrypted with the KMS key marked for the `root` purpose.
 
+You can configure `root` KMS keys for self-managed, Enterprise or Community edition deployments.
+
 The current scoped DEKs and their purposes are detailed below:
 
 - `audit`: This is used to encrypt secret values in the event log. For more
@@ -120,6 +122,8 @@ the `previous-root` KMS key to your configuration informs the Controller to use
 it for decrypting the existing information in the database, allowing you to
 rotate and rewrap the KEKs to complete the migration to the new root key.
 
+You can configure `previous-root` KMS keys for self-managed, Enterprise or Community edition deployments.
+
 ## The `worker-auth` KMS key
 
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
@@ -140,17 +144,23 @@ cannot be replayed by an adversary, and also to ensure that each operation must
 be individually authenticated by a client so that revoking access to the KMS has
 an immediate result.
 
-~> **Note:** It is not required for this `kms` configuration block to exist in the
+You can configure `recovery` KMS keys for self-managed, Enterprise or Community edition deployments.
+
+<Note>
+
+It is not required for this `kms` configuration block to exist in the
 Controller's configuration file. It's best practice to leave it out except when
 actually needed, and to use change control capabilities to ensure that the
 configuration file modification is authorized. After it's no longer needed, the
 block should be removed.
 
+</Note>
+
 On the client side, a user can use the `-recovery-config` flag with any
 operation on the CLI to specify a configuration file containing a suitable `kms`
 block. This functionality is also accessible via the Go SDK.
 
-~> **Note:** Requests authorized via this mechanism will show a user of `u_recovery`. This
+Requests authorized via this mechanism will show a user of `u_recovery`. This
 mechanism _cannot_ be used to authorize a session, as there is no uniquely
 identifying user information available.
 
@@ -174,3 +184,5 @@ safely pass the file to a change control system. Only another operator or system
 with access to that KMS can decrypt the values. Boundary will check for a
 `config` KMS block on startup, and if it exists, will use it to decrypt any
 encrypted values found at startup time.
+
+You can configure `config` KMS keys for self-managed, Enterprise or Community edition deployments.
