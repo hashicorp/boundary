@@ -222,22 +222,7 @@ Note that when you restart the Client Agent, it closes any existing sessions.
 Refer to the following sections for more information about managing the Client Agent.
 You can monitor the Client Agent's status and retrieve information about any transparent sessions.
 If you want to temporarily defer DNS resolution to any previously configured DNS resolvers, you can pause the Client Agent.
-
-### Pause the Client Agent
-
-You can temporarily disable the Boundary Client Agent by pausing it with the following command:
-
-```shell-session
-$ boundary client-agent pause
-```
-
-When the Client Agent is paused, it does not intercept any DNS requests, and you are unable to use transparent sessions.
-
-To resume the Client Agent, use the following command:
-
-```shell-session
-$ boundary client-agent resume
-```
+You can also disable the Client Agent, if you no longer want to use it for DNS resolution.
 
 ### Monitor status and sessions
 
@@ -255,7 +240,23 @@ Use the following command to list any sessions currently being managed by the Cl
 $ boundary client-agent sessions
 ```
 
-Note that this will not include sessions that are not managed by the Client Agent. Use `boundary sessions list -recursive` to see all sessions.
+Note that this command does not list sessions that are not managed by the Client Agent. Use `boundary sessions list -recursive` to see all sessions.
+
+### Pause the Client Agent
+
+You can temporarily disable the Boundary Client Agent by pausing it with the following command:
+
+```shell-session
+$ boundary client-agent pause
+```
+
+When the Client Agent is paused, it does not intercept any DNS requests, and you are unable to use transparent sessions.
+
+To resume the Client Agent, use the following command:
+
+```shell-session
+$ boundary client-agent resume
+```
 
 ### Disable the Client Agent
 
@@ -493,7 +494,7 @@ Once you have identified which other software is using the port, you can stop it
 This usually implies that there is a problem reaching the internet or the Boundary controller.
 The error is related to the periodic updating of aliases used by the Client Agent to know whether a DNS request matches an alias or not.
 
-HashiCorp recommends that you pause the Client Agent and examine the status and logs for furtherverrors:
+HashiCorp recommends that you pause the Client Agent and examine the status and logs for further errors:
 
 ```shell-session
 $ boundary client-agent pause
