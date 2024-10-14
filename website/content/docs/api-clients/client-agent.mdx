@@ -158,7 +158,7 @@ The configuration file contains the following fields:
    v4_prefix=1.1.1.1/8
    ```
 
-### Making configuration changes
+### Change the configuration
 
 Complete the following steps to change the configuration of the Client Agent:
 
@@ -170,7 +170,7 @@ By default, it is located in the following directory:
 
    `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
 
-1. Make the changes you want to the configuration.
+1. Change the configuration settings.
 1. Save the file and restart the Client Agent with the following commands:
 
    ```shell-session
@@ -178,7 +178,7 @@ By default, it is located in the following directory:
    sudo launchctl start com.hashicorp.boundary.boundary-client-agent
    ```
 
-Some configuration values can be changed without restarting the Client Agent.
+You can change some configuration values without restarting the Client Agent.
 These values include:
 
 - `dns_request_timeout`
@@ -188,13 +188,14 @@ These values include:
 - `override_upstream_dns_servers`
 - `v4_prefix`
 
-To reload the configuration, update the configuration file as described above and use the following command:
+To update the other values, you must reload the configuration.
+To reload the configuration, update the configuration file, and then use the following command:
 
 ```shell-session
 sudo pkill -1 boundary-client-agent
 ```
 
-This sends a SIGHUP signal to the Client Agent, which causes it to reload the configuration file.
+This command sends a SIGHUP signal to the Client Agent, which causes it to reload the configuration file.
 
 </Tab>
 <Tab heading="Windows" group="windows">
@@ -203,7 +204,7 @@ This sends a SIGHUP signal to the Client Agent, which causes it to reload the co
 By default, it is located in the following directory:
 
    `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
-1. Make the changes you want to the configuration.
+1. Change the configuration settings.
 1. Save the file and restart the Client Agent with the following commands:
 
    ```shell-session
@@ -214,9 +215,13 @@ By default, it is located in the following directory:
 </Tab>
 </Tabs>
 
-Note that restarting the Client Agent will close any existing sessions.
+Note that when you restart the Client Agent, it closes any existing sessions.
 
-## Controlling the Client Agent
+## Manage the Client Agent
+
+Refer to the following sections for more information about managing the Client Agent.
+You can monitor the Client Agent's status and retrieve information about any transparent sessions.
+If you want to temporarily defer DNS resolution to any previously configured DNS resolvers, you can pause the Client Agent.
 
 ### Pause the Client Agent
 
