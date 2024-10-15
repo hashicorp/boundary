@@ -196,6 +196,15 @@
         "path": "concepts/aliases"
       },
       {
+        "title": "Transparent sessions",
+        "badge": {
+          "text": "HCP/ENT BETA",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "concepts/transparent-sessions"
+      },
+      {
         "title": "Auditing",
         "path": "concepts/auditing"
       },
@@ -1644,6 +1653,15 @@
         ]
       },
       {
+        "title": "Client Agent",
+        "badge": {
+          "text": "HCP/ENT BETA",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "api-clients/client-agent"
+      },
+      {
         "title": "Go SDK",
         "path": "api-clients/go-sdk"
       },
@@ -1764,6 +1782,10 @@
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.18.0",
+        "path": "release-notes/v0_18_0"
       },
       {
         "title": "v0.17.0",

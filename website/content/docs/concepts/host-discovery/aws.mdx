@@ -9,7 +9,7 @@ Boundary uses dynamic host catalogs to automatically discover AWS EC2 instances 
 
 ## Create a host catalog to connect with AWS
 Boundary uses plugins to integrate with a variety of providers. To use
-a dynamic host catalog to integrate with AWS, you create a host catalog of the `plugin` type 
+a dynamic host catalog to integrate with AWS, you create a host catalog of the `plugin` type
 and set the `plugin-name` value to `aws`. You must also provide the specific
 fields needed for Boundary to authenticate with AWS.
 
@@ -57,6 +57,10 @@ The fields following the `attr` and `secret` flags are specific to AWS and are r
 - `disable_credential_rotation`: When set to `true`, Boundary will not rotate the credentials with AWS automatically.
 - `region`: The region to configure the host catalog for. All host sets in this
   catalog will be configured for this region.
+- `role_arn`: The AWS role ARN used for `AssumeRole` authentication. If you provide a `role_arn` value, you must also set `disable_credential_rotation` to `true`.
+- `role_external_id`: The external ID that you configured for the `AssumeRole` provider.
+- `role_session_name`: The session name that you configured for the `AssumeRole` provider.
+- `role_tags`: The key-value pair tags that you configured for the `AssumeRole` provider.
 - `access_key_id`: The access key ID for the IAM user to use with this host
   catalog.
 - `secret_access_key`: The secret access key for the IAM user to use with this
