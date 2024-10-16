@@ -45,8 +45,9 @@ create table if not exists user (
   -- The address of the boundary instance that this user id comes from
   address text not null
     check (length(address) > 0),
-    -- deleted indicate if the user has been soft-deleted when the all
-    -- auth_tokens associated with the user are deleted.
+  -- deleted_at indicates when the user was soft-deleted because all  
+  -- auth_tokens associated with the user were deleted. It is set to 'infinity'  
+  -- for users that have not been soft-deleted.  
   deleted_at timestamp not null default 'infinity'
 );
 

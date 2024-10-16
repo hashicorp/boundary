@@ -873,7 +873,7 @@ func (d infinityDate) Value() (driver.Value, error) {
 }
 
 // testUser is used by testLookupUser to lookup a user from the database and
-// supports returing the user's DeletedAt time (soft delete).
+// supports returning the user's DeletedAt time (soft delete).
 type testUser struct {
 	Id        string
 	Address   string

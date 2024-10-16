@@ -501,7 +501,7 @@ func deleteUser(ctx context.Context, w db.Writer, u *user) (int, error) {
 	case err != nil:
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	case rowsAffected > 0:
-		// if we deleted the user, so we're done.
+		// if we deleted the user, we're done.
 		return rowsAffected, nil
 	}
 
