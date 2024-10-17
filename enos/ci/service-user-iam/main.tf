@@ -119,6 +119,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "ec2:RevokeSecurityGroupIngress",
       "ec2:RunInstances",
       "ec2:TerminateInstances",
+      "ec2:UnassignIpv6Addresses",
       "elasticloadbalancing:AddTags",
       "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
       "elasticloadbalancing:AttachLoadBalancerToSubnets",
