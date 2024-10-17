@@ -189,7 +189,7 @@ func TestLookupRefreshToken(t *testing.T) {
 	})
 
 	t.Run("unknown user", func(t *testing.T) {
-		got, err := r.lookupRefreshToken(ctx, &user{Id: "unkonwnUser", Address: "addr"}, targetResourceType)
+		got, err := r.lookupRefreshToken(ctx, &user{Id: "unknownUser", Address: "addr"}, targetResourceType)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
 	})
@@ -209,10 +209,11 @@ func TestLookupRefreshToken(t *testing.T) {
 		require.NoError(t, r.rw.Create(ctx, known))
 
 		before := time.Now().Truncate(time.Millisecond).UTC()
-		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		_, err := r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
 			return nil
 		})
+		require.NoError(t, err)
 
 		got, err := r.lookupRefreshToken(ctx, known, targetResourceType)
 		assert.NoError(t, err)

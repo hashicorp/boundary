@@ -255,4 +255,15 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withRowsAffected = &rowsAffected
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithTable", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of ""
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+
+		opts = GetOpts(WithTable("foo"))
+		testOpts.withTable = "foo"
+		assert.Equal(opts, testOpts)
+	})
 }

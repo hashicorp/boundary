@@ -104,7 +104,7 @@ func testResolvableAliasStaticResourceRetrievalFunc(inFunc func(ctx context.Cont
 
 // testNoRefreshRetrievalFunc simulates a controller that doesn't support refresh
 // since it does not return any refresh token.
-func testNoRefreshRetrievalFunc[T any](t *testing.T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+func testNoRefreshRetrievalFunc[T any](_ *testing.T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	return func(_ context.Context, _, _ string, _ RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 		return nil, nil, "", ErrRefreshNotSupported
 	}
@@ -113,7 +113,7 @@ func testNoRefreshRetrievalFunc[T any](t *testing.T) func(context.Context, strin
 // testErroringForRefreshTokenRetrievalFunc returns a refresh token error when
 // the refresh token is not empty.  This is useful for testing behavior when
 // the refresh token has expired or is otherwise invalid.
-func testErroringForRefreshTokenRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+func testErroringForRefreshTokenRetrievalFunc[T any](_ *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	return func(ctx context.Context, s1, s2 string, refToken RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 		if refToken != "" {
 			return nil, nil, "", api.ErrInvalidListToken
@@ -158,7 +158,7 @@ func testStaticResourceRetrievalFuncForId[T any](t *testing.T, ret [][]T, remove
 // since it does not return any refresh token. This is for retrieval
 // functions that require an id be provided for listing purposes like when
 // listing resolvable aliases.
-func testNoRefreshRetrievalFuncForId[T any](t *testing.T) func(context.Context, string, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+func testNoRefreshRetrievalFuncForId[T any](_ *testing.T) func(context.Context, string, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	return func(_ context.Context, _, _, _ string, _ RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 		return nil, nil, "", ErrRefreshNotSupported
 	}
@@ -169,7 +169,7 @@ func testNoRefreshRetrievalFuncForId[T any](t *testing.T) func(context.Context, 
 // the refresh token has expired or is otherwise invalid. This is for retrieval
 // functions that require an id be provided for listing purposes like when
 // listing resolvable aliases.
-func testErroringForRefreshTokenRetrievalFuncForId[T any](t *testing.T, ret []T) func(context.Context, string, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+func testErroringForRefreshTokenRetrievalFuncForId[T any](_ *testing.T, ret []T) func(context.Context, string, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	return func(ctx context.Context, s1, s2, s3 string, refToken RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 		if refToken != "" {
 			return nil, nil, "", api.ErrInvalidListToken
