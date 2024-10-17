@@ -1064,7 +1064,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if retErr != nil {
 			// Delete created session in case of errors.
 			// Use new context for deletion in case error is because of context cancellation.
-			deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			deleteCtx, cancel := context.WithTimeoutCause(context.Background(), 5*time.Second, stderrors.New("session deletion timeout exceeded"))
 			defer cancel()
 			_, err := sessionRepo.DeleteSession(deleteCtx, sess.PublicId)
 			retErr = stderrors.Join(retErr, err)
@@ -1095,7 +1095,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			if retErr != nil {
 				// Revoke issued credentials in case of errors.
 				// Use new context for deletion in case error is because of context cancellation.
-				deleteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+				deleteCtx, cancel := context.WithTimeoutCause(
+					context.Background(),
+					time.Minute,
+					fmt.Errorf("%s: credential revocation timeout exceeded", op),
+				)
 				defer cancel()
 				err := credRepo.Revoke(deleteCtx, sess.PublicId)
 				retErr = stderrors.Join(retErr, err)
