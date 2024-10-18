@@ -503,7 +503,11 @@ func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 	// bit of formalization in terms of how we handle timeouts. For now, this
 	// just ensures consistency with the same status call in that it times out
 	// within an adequate period of time.
-	closeConnCtx, closeConnCancel := context.WithTimeout(ctx, time.Duration(CloseCallTimeout.Load()))
+	closeConnCtx, closeConnCancel := context.WithTimeoutCause(
+		ctx,
+		time.Duration(CloseCallTimeout.Load()),
+		fmt.Errorf("%s: close call timeout exceeded", op),
+	)
 	defer closeConnCancel()
 	response, err := closeConnection(closeConnCtx, sessClient, makeCloseConnectionRequest(closeInfo))
 	if err != nil {
