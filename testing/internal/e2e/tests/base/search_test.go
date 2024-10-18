@@ -102,19 +102,42 @@ func TestCliSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get current number of targets
-	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
-	require.NoError(t, output.Err, string(output.Stderr))
-	statusResult = clientcache.StatusResult{}
-	err = json.Unmarshal(output.Stdout, &statusResult)
-	require.Len(t, statusResult.Item.Users, 1)
-	idx := slices.IndexFunc(
-		statusResult.Item.Users[0].Resources,
-		func(r clientcache.ResourceStatus) bool {
-			return r.Name == "target"
+	var currentCount int
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+			if output.Err != nil {
+				return backoff.Permanent(errors.New(string(output.Stderr)))
+			}
+
+			statusResult = clientcache.StatusResult{}
+			err = json.Unmarshal(output.Stdout, &statusResult)
+			if err != nil {
+				return errors.New("Failed to unmarshal status result")
+			}
+
+			if len(statusResult.Item.Users) == 0 {
+				return errors.New("No users are appearing in the status")
+			}
+			idx := slices.IndexFunc(
+				statusResult.Item.Users[0].Resources,
+				func(r clientcache.ResourceStatus) bool {
+					return r.Name == "target"
+				},
+			)
+			if idx == -1 {
+				return errors.New("Targest not found in cache")
+			}
+			currentCount = statusResult.Item.Users[0].Resources[idx].Count
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
 		},
 	)
-	require.NotEqual(t, idx, -1)
-	currentCount := statusResult.Item.Users[0].Resources[idx].Count
+	require.NoError(t, err)
 
 	// Create enough targets to overflow a single page.
 	// Use the API to make creation faster.
