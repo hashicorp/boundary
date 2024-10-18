@@ -4,6 +4,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+* Introduces soft-delete for users within the client cache.
+  ([PR](https://github.com/hashicorp/boundary/pull/5173)).
+
 ## 0.18.0 (2024/10/01)
 ### New and Improved
 
