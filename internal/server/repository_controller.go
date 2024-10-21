@@ -46,7 +46,7 @@ func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Re
 }
 
 func (r *Repository) UpsertController(ctx context.Context, controller *store.Controller) (int, error) {
-	const op = "server.UpsertController"
+	const op = "server.(Repository).UpsertController"
 
 	if controller == nil {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "controller is nil")
