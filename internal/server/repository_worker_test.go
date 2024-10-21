@@ -567,6 +567,63 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	})
 }
 
+func TestVerifyKnownWorkers(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+	repo, err := server.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	workerIds := make([]string, 0, 10)
+	// Seed the repo with workers
+	for i := 0; i < 10; i++ {
+		w := server.TestPkiWorker(t, conn, wrapper)
+		workerIds = append(workerIds, w.GetPublicId())
+	}
+
+	tests := []struct {
+		name    string
+		testIds []string
+		wantCnt int
+	}{
+		{
+			name:    "empty-list",
+			testIds: []string{},
+			wantCnt: 0,
+		},
+		{
+			name:    "full-list",
+			testIds: workerIds,
+			wantCnt: 10,
+		},
+		{
+			name:    "bogus-list",
+			testIds: []string{"w_bogus1", "w_bogus2"},
+			wantCnt: 0,
+		},
+		{
+			name:    "partial-bogus-list",
+			testIds: []string{"w_bogus1", "w_bogus2", workerIds[0], workerIds[1]},
+			wantCnt: 2,
+		},
+		{
+			name:    "partial-list",
+			testIds: workerIds[:5],
+			wantCnt: 5,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ids, err := repo.VerifyKnownWorkers(ctx, tt.testIds)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantCnt, len(ids))
+		})
+	}
+}
+
 func TestTagUpdatingListing(t *testing.T) {
 	ctx := context.Background()
 	require := require.New(t)
