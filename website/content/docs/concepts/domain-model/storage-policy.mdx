@@ -12,6 +12,7 @@ description: |-
 A resource known as a storage policy is used to codify how long [session recordings][] must be kept and when they should be deleted.
 A storage policy's name is optional, but it must be unique if you define one.
 Storage policies can only be assigned to the global [scope][] or an org scope.
+You must [attach][] storage policies to a scope (global or a specific org) to take effect.
 
 A storage policy exists in either the global scope or an org scope.
 Storage policies that are created in the global scope can be associated with any org scope.
@@ -55,5 +56,6 @@ The following services are relevant to this resource:
 - [Scope Service](/boundary/api-docs/scope-service)
 - [Policy Service](/boundary/api-docs/policy-service)
 
+[attach]: /boundary/docs/configuration/session-recording/configure-storage-policy#attach-storage-policies-to-a-scope
 [session recordings]: /boundary/docs/concepts/domain-model/session-recordings
 [scope]: /boundary/docs/concepts/domain-model/scopes
