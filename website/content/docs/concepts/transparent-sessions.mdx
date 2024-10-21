@@ -28,7 +28,7 @@ Boundary supports Windows and MacOS for the transparent sessions public beta.
 Before you configure transparent sessions, you must:
 
 - Ensure that the Boundary CLI and Boundary Desktop are not installed in the environment in which you want to run the transparent sessions beta.
-- Download the appropriate installer for your Windows or MacOS environment from the [downloads](/boundary/install) page.
+- Download the appropriate Boundary installer for your Windows or MacOS environment from the [releases](https://releases.hashicorp.com/boundary-installer) page.
 
 ## Install clients
 
@@ -88,6 +88,7 @@ Refer to the following table for known issues that may affect the public beta:
 | Boundary Client Agent resumes on reboot | If the Client Agent is paused and the machine is rebooted, the Client Agent will be resumed after the reboot. |
 | Single-word aliases do not work on Windows | If you create an alias consisting of a single word without a dot (`.`), the alias will not work on Windows. |
 | Windows installer does not support partial installations | The Windows installer fails to start the Client Agent if the Desktop client is not installed at the same time. |
+| Alias connection failures inside containers/VMs | Using transparent sessions rely on network access to the local network of the computer the Client Agent is running on. Network enclaves such as those created by Docker containers and VMs cannot reach this network. |
 
 ## More information
 

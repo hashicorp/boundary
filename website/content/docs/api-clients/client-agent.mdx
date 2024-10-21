@@ -170,32 +170,35 @@ By default, it is located in the following directory:
 
    `/Library/Application Support/HashiCorp/Boundary/boundary-client-agent.hcl`
 
-1. Change the configuration settings.
-1. Save the file and restart the Client Agent with the following commands:
+1. Change the configuration settings, and save the file.
+
+   You must restart the Client Agent to update some configuration settings.
+   However, when you restart the Client Agent, it closes any existing sessions.
+   Other configuration settings can be updated by only reloading the configuration file, which does not affect any existing sessions.
+
+1. Either restart the Client Agent or reload the configuration file.
+
+   You can update any configuration value by restarting the Client Agent with the following commands, however it will close any existing sessions:
 
    ```shell-session
    $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
    $ sudo launchctl start com.hashicorp.boundary.boundary-client-agent
    ```
 
-You can change some configuration values without restarting the Client Agent.
-These values include:
+   Alternatively, you can update the following configuration values by reloading the configuration file, which will not disrupt any existing sessions:
 
-- `dns_request_timeout`
-- `log_file`
-- `log_level`
-- `state_file`
-- `override_upstream_dns_servers`
-- `v4_prefix`
+   - `dns_request_timeout`
+   - `log_file`
+   - `log_level`
+   - `state_file`
+   - `override_upstream_dns_servers`
+   - `v4_prefix`
 
-To update the other values, you must reload the configuration.
-To reload the configuration, update the configuration file, and then use the following command:
+   Run the following command to reload the configuration file:
 
-```shell-session
-$ sudo pkill -1 boundary-client-agent
-```
-
-This command sends a SIGHUP signal to the Client Agent, which causes it to reload the configuration file.
+   ```shell-session
+   $ sudo pkill -1 boundary-client-agent
+   ```
 
 </Tab>
 <Tab heading="Windows" group="windows">
@@ -204,18 +207,19 @@ This command sends a SIGHUP signal to the Client Agent, which causes it to reloa
 By default, it is located in the following directory:
 
    `C:\Program Files\Hashicorp Boundary\boundary-client-agent.hcl`
-1. Change the configuration settings.
-1. Save the file and restart the Client Agent with the following commands:
+
+1. Change the configuration settings, and save the file.
+1. Run the following commands to restart the Client Agent.
 
    ```shell-session
    net stop BoundaryClientAgent
    net start BoundaryClientAgent
    ```
 
+   Note that when you restart the Client Agent, it closes any existing sessions.
+
 </Tab>
 </Tabs>
-
-Note that when you restart the Client Agent, it closes any existing sessions.
 
 ## Manage the Client Agent
 
@@ -532,7 +536,7 @@ override_upstream_dns_servers = [
 ]
 ```
 
-### Primary network interfaces
+#### Primary network interfaces
 
 By default, the Client Agent creates IPs on the primary network interface to serve its DNS server.
 Refer to the tabs below for possible conflicts for each supported operating system.
