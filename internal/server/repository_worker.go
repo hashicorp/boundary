@@ -303,7 +303,7 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 // the only ones used. All others are ignored.
 // Workers are intentionally not oplogged.
 func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
-	const op = "server.UpsertWorkerStatus"
+	const op = "server.(Repository).UpsertWorkerStatus"
 
 	opts := GetOpts(opt...)
 	switch {
@@ -485,10 +485,10 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 // via the old registration method or pki-kms) name updates will be disallowed.
 func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version uint32, fieldMaskPaths []string, opt ...Option) (*Worker, int, error) {
 	const (
+		op        = "server.(Repository).UpdateWorker"
 		nameField = "name"
 		descField = "description"
 	)
-	const op = "server.(Repository).UpdateWorker"
 	switch {
 	case worker == nil:
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
@@ -597,7 +597,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 // WithCreateControllerLedActivationToken. The latter two are mutually
 // exclusive.
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
-	const op = "server.CreateWorker"
+	const op = "server.(Repository).CreateWorker"
 
 	opts := GetOpts(opt...)
 

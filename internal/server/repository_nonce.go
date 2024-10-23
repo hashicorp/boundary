@@ -30,7 +30,7 @@ const (
 
 // AddNonce adds a nonce
 func (r *Repository) AddNonce(ctx context.Context, nonce, purpose string, opt ...Option) error {
-	const op = "server.AddNonce"
+	const op = "server.(Repository).AddNonce"
 	if nonce == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "empty nonce")
 	}
