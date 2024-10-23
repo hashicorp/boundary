@@ -122,7 +122,11 @@ func (s *TestSession) ExpectConnectionStateOnController(
 	require := require.New(t)
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithTimeout(ctx, expectConnectionStateOnControllerTimeout)
+	ctx, cancel := context.WithTimeoutCause(
+		ctx,
+		expectConnectionStateOnControllerTimeout,
+		errors.New("connection state on controller timeout exceeded"),
+	)
 	defer cancel()
 
 	// This is just for initialization of the actual state set.
@@ -188,7 +192,11 @@ func (s *TestSession) ExpectConnectionStateOnWorker(
 	require := require.New(t)
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithTimeout(ctx, expectConnectionStateOnWorkerTimeout)
+	ctx, cancel := context.WithTimeoutCause(
+		ctx,
+		expectConnectionStateOnWorkerTimeout,
+		errors.New("connection state on worker timeout exceeded"),
+	)
 	defer cancel()
 
 	// This is just for initialization of the actual state set.
