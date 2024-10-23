@@ -909,20 +909,6 @@ func (r *Repository) CheckIfNotActive(ctx context.Context, reportedSessions []st
 	return notActive, nil
 }
 
-func (r *Repository) deleteSessionsTerminatedBefore(ctx context.Context, threshold time.Duration) (int, error) {
-	const op = "session.(Repository).deleteTerminated"
-
-	args := []any{
-		sql.Named("threshold_seconds", threshold.Seconds()),
-	}
-
-	c, err := r.writer.Exec(ctx, deleteTerminated, args)
-	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("error deleting terminated sessions"))
-	}
-	return c, nil
-}
-
 func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*State, error) {
 	const op = "session.fetchStates"
 	var states []*State
