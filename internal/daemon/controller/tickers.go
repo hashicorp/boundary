@@ -12,9 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
-	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // In the future we could make this configurable
@@ -198,12 +196,12 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching server repository for cluster connection maintenance"))
 						break
 					}
-					knownWorker, err := serverRepo.ListWorkers(cancelCtx, []string{scope.Global.String()}, server.WithWorkerPool(connectionState.WorkerIds()), server.WithLiveness(-1))
+					knownWorkers, err := serverRepo.VerifyKnownWorkers(cancelCtx, connectionState.WorkerIds())
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get known workers from repo"))
 						break
 					}
-					connectionState.DisconnectMissingWorkers(server.WorkerList(knownWorker).PublicIds())
+					connectionState.DisconnectMissingWorkers(knownWorkers)
 				}
 
 				if len(connectionState.UnmappedKeyIds()) > 0 {

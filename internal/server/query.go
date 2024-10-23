@@ -73,6 +73,12 @@ const (
 		where worker_key_identifier = @worker_key_identifier
 	`
 
+	verifyKnownWorkersQuery = `
+		select public_id 
+		  from server_worker 
+		 where public_id in (?);
+	`
+
 	getWorkerAuthsByWorkerIdQuery = `
 		select * 
 		  from worker_auth_authorized 

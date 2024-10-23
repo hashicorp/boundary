@@ -431,6 +431,40 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	return ret, nil
 }
 
+// VerifyKnownWorkers checks that the passed worker IDs are found in the repository and returns
+// the public IDs of the workers that are found.
+func (r *Repository) VerifyKnownWorkers(ctx context.Context, ids []string) ([]string, error) {
+	const op = "server.(Repository).VerifyKnownWorkers"
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	rows, err := r.reader.Query(ctx, verifyKnownWorkersQuery, []any{ids})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+
+	type rowsResult struct {
+		PublicId string
+	}
+	var ret []string
+	for rows.Next() {
+		var result rowsResult
+		err = r.reader.ScanRows(ctx, rows, &result)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		ret = append(ret, result.PublicId)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return ret, nil
+}
+
 // setWorkerTags removes all existing tags from the same source and worker id
 // and creates new ones based on the ones provided.  This function should be
 // called from inside a db transaction.
