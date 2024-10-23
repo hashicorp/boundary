@@ -65,52 +65,6 @@ func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Opt
 	return rowsDeleted, nil
 }
 
-// LookupWorkerByName returns the worker with the provided name. In the event
-// that no worker is found that matches then nil, nil will be returned.
-func (r *Repository) LookupWorkerByName(ctx context.Context, name string) (*Worker, error) {
-	const op = "server.(Repository).LookupWorkerByName"
-	switch {
-	case name == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "name is empty")
-	}
-	w, err := lookupWorkerByName(ctx, r.reader, name)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if w == nil {
-		return nil, nil
-	}
-	w.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, w.GetPublicId())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return w, nil
-}
-
-func lookupWorkerByName(ctx context.Context, reader db.Reader, name string) (*Worker, error) {
-	const op = "server.lookupWorkerByName"
-	switch {
-	case isNil(reader):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
-	case name == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "name is empty")
-	}
-
-	wAgg := &workerAggregate{}
-	err := reader.LookupWhere(ctx, &wAgg, "name = ?", []any{name})
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	w, err := wAgg.toWorker(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return w, nil
-}
-
 func (r *Repository) LookupWorkerIdByKeyId(ctx context.Context, keyId string) (string, error) {
 	const op = "server.(Repository).LookupWorkerIdByKeyId"
 	switch {
