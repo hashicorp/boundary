@@ -5,10 +5,8 @@ begin;
 
   create table session_delete_terminated_job (
     batch_size int not null
-      constraint batch_size_must_be_greater_than_or_equal_to_10
-        check(batch_size >= 10)
-      constraint batch_size_must_be_less_than_or_equal_to_10000
-        check(batch_size <= 10000),
+      constraint batch_size_must_be_greater_than_0
+        check(batch_size > 0),
     create_time wt_timestamp,
     update_time wt_timestamp
   );

@@ -161,11 +161,11 @@ func TestRepository_setDeleteJobBatchSize(t *testing.T) {
 	}{
 		{-1, true},
 		{0, true},
-		{1, true},
-		{9, true},
+		{1, false},
+		{9, false},
 		{10, false},
 		{10000, false},
-		{10001, true},
+		{10001, false},
 	}
 
 	for _, tc := range cases {
