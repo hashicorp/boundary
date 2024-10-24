@@ -218,59 +218,6 @@ func (c *Config) clone() *Config {
 	}
 }
 
-// setSize sets the batch size to newSize and calls Store if newSize is
-// different from the current size. If newSize is less than Min, the batch
-// size will be set to Min. If newSize is greater than Max, the batch size
-// will be set to Max. If Store returns an error, it will be returned by
-// setSize.
-func (c *Config) setSize(ctx context.Context, newSize int) error {
-	currentSize := c.Size
-	if newSize == currentSize {
-		return nil
-	}
-	switch {
-	case newSize < c.min():
-		newSize = c.min()
-	case newSize > c.max():
-		newSize = c.max()
-	}
-	if newSize != currentSize {
-		c.Size = newSize
-		return c.store()(ctx, newSize)
-	}
-	return nil
-}
-
-// jitter returns a random number between 0 and 10% of the current batch
-// size.
-func (c *Config) jitter() int {
-	return rand.N(c.size() / 10)
-}
-
-func (c *Config) exponentialDecrease(ctx context.Context, attempt int) error {
-	if attempt < 1 {
-		attempt = 1
-	}
-	newSize := (c.size() / (1 << uint(attempt))) - c.jitter()
-	return c.setSize(ctx, newSize)
-}
-
-func (c *Config) linearDecrease(ctx context.Context, attempt int) error {
-	if attempt < 1 {
-		attempt = 1
-	}
-	newSize := c.size() - (c.size() / 10 * attempt) - c.jitter()
-	return c.setSize(ctx, newSize)
-}
-
-func (c *Config) linearIncrease(ctx context.Context, attempt int) error {
-	if attempt < 1 {
-		attempt = 1
-	}
-	newSize := c.size() + (c.size() / 10 * attempt) + c.jitter()
-	return c.setSize(ctx, newSize)
-}
-
 // Batch is a batch job processor for SQL jobs that update or delete
 // multiple rows in the database using a single SQL UPDATE or DELETE
 // statement.
@@ -321,13 +268,7 @@ func (b *Batch) Run(ctx context.Context) error {
 	b.reset()
 
 	for {
-		queryCtx, cancel := context.WithTimeout(ctx, b.c.statusThreshold())
-		defer cancel()
-
-		start := time.Now()
-		rowCount, err := b.c.Exec(queryCtx, b.c.size())
-		runDuration := time.Since(start)
-
+		count, runDuration, err := b.run(ctx)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				if err := b.timedOut(ctx); err != nil {
@@ -338,24 +279,34 @@ func (b *Batch) Run(ctx context.Context) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		b.successful(rowCount)
+		b.successful(count)
 
 		// batch is not complete
-		if rowCount == b.c.size() {
-			if err := b.adjustBatchSize(ctx, runDuration); err != nil {
+		if count == b.c.size() {
+			if err := b.adjustSize(ctx, runDuration); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			continue
 		}
+
+		// batch is complete
 		return nil
 	}
 }
 
+func (b *Batch) run(ctx context.Context) (int, time.Duration, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, b.c.statusThreshold())
+	defer cancel()
+	start := time.Now()
+	n, err := b.c.Exec(queryCtx, b.c.size())
+	return n, time.Since(start), err
+}
+
 func (b *Batch) reset() {
 	b.mu.Lock()
-	defer b.mu.Unlock()
 	b.retries = 0
 	b.totalCompleted = 0
+	b.mu.Unlock()
 	b.fastExecutions = 0
 	b.slowExecutions = 0
 }
@@ -373,7 +324,7 @@ func (b *Batch) successful(rowCount int) {
 	b.mu.Unlock()
 }
 
-func (b *Batch) adjustBatchSize(ctx context.Context, runDuration time.Duration) error {
+func (b *Batch) adjustSize(ctx context.Context, runDuration time.Duration) error {
 	lower, upper := b.c.targetRange()
 
 	switch {
@@ -392,5 +343,58 @@ func (b *Batch) adjustBatchSize(ctx context.Context, runDuration time.Duration) 
 	// within target range so reset the counters
 	b.fastExecutions = 0
 	b.slowExecutions = 0
+	return nil
+}
+
+func (c *Config) exponentialDecrease(ctx context.Context, attempt int) error {
+	if attempt < 1 {
+		attempt = 1
+	}
+	newSize := (c.size() / (1 << uint(attempt))) - c.jitter()
+	return c.setSize(ctx, newSize)
+}
+
+func (c *Config) linearIncrease(ctx context.Context, attempt int) error {
+	if attempt < 1 {
+		attempt = 1
+	}
+	newSize := c.size() + (c.size() / 10 * attempt) + c.jitter()
+	return c.setSize(ctx, newSize)
+}
+
+func (c *Config) linearDecrease(ctx context.Context, attempt int) error {
+	if attempt < 1 {
+		attempt = 1
+	}
+	newSize := c.size() - (c.size() / 10 * attempt) - c.jitter()
+	return c.setSize(ctx, newSize)
+}
+
+// jitter returns a random number between 0 and 10% of the current batch
+// size.
+func (c *Config) jitter() int {
+	return rand.N(c.size() / 10)
+}
+
+// setSize sets the batch size to newSize and calls Store if newSize is
+// different from the current size. If newSize is less than Min, the batch
+// size will be set to Min. If newSize is greater than Max, the batch size
+// will be set to Max. If Store returns an error, it will be returned by
+// setSize.
+func (c *Config) setSize(ctx context.Context, newSize int) error {
+	currentSize := c.Size
+	if newSize == currentSize {
+		return nil
+	}
+	switch {
+	case newSize < c.min():
+		newSize = c.min()
+	case newSize > c.max():
+		newSize = c.max()
+	}
+	if newSize != currentSize {
+		c.Size = newSize
+		return c.store()(ctx, newSize)
+	}
 	return nil
 }

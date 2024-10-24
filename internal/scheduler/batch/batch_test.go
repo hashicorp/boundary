@@ -561,6 +561,6 @@ func TestBatch_batchCompleted(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(b)
 
-	err = b.adjustBatchSize(ctx, 10)
+	err = b.adjustSize(ctx, 10)
 	require.NoError(err)
 }
