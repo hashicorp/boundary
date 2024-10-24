@@ -40,7 +40,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	job1Ch := make(chan error)
 	job1Ready := make(chan struct{})
 	testDone := make(chan struct{})
-	fn1 := func(_ context.Context) error {
+	fn1 := func(_ context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -54,7 +54,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 
 	job2Ch := make(chan error)
 	job2Ready := make(chan struct{})
-	fn2 := func(_ context.Context) error {
+	fn2 := func(_ context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -274,7 +274,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 
 	jobReady := make(chan struct{})
 	done := make(chan struct{})
-	fn := func(ctx context.Context) error {
+	fn := func(ctx context.Context, _ time.Duration) error {
 		select {
 		case <-done:
 			return nil
@@ -317,7 +317,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	<-statusRequest
 
 	// Send progress to monitor loop to persist
-	jobStatus <- JobStatus{Total: 10, Completed: 0}
+	jobStatus <- JobStatus{Total: 10, Completed: 0, Retries: 1}
 
 	// Wait for scheduler to query for job status before verifying previous results
 	<-statusRequest
@@ -329,6 +329,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	assert.Equal(string(job.Running), run.Status)
 	assert.Equal(uint32(10), run.TotalCount)
 	assert.Equal(uint32(0), run.CompletedCount)
+	assert.Equal(uint32(1), run.RetriesCount)
 
 	// Send progress to monitor loop to persist
 	jobStatus <- JobStatus{Total: 20, Completed: 10}
@@ -384,7 +385,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	jobReady := make(chan struct{})
 	jobDone := make(chan struct{})
 	testDone := make(chan struct{})
-	fn := func(ctx context.Context) error {
+	fn := func(ctx context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -450,7 +451,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	jobReady := make(chan struct{})
 	jobErr := make(chan error)
 	testDone := make(chan struct{})
-	fn := func(_ context.Context) error {
+	fn := func(_ context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -542,7 +543,7 @@ func TestSchedulerRunNow(t *testing.T) {
 	jobCh := make(chan struct{})
 	jobReady := make(chan struct{})
 	testDone := make(chan struct{})
-	fn := func(_ context.Context) error {
+	fn := func(_ context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil

@@ -342,17 +342,6 @@ update session_connection
    %s
 returning public_id;
 `
-	deleteTerminated = `
-delete from session
-using session_state
-where
-	session.public_id = session_state.session_id
-and
-	session_state.state = 'terminated'
-and
-	lower(session_state.active_time_range) < wt_sub_seconds_from_now(@threshold_seconds)
-;
-`
 	sessionCredentialRewrapQuery = `
 select distinct
   cred.session_id,
@@ -454,6 +443,42 @@ values
 
 	sessionCredentialDynamicBatchInsertReturning = `
   returning session_id, library_id, credential_id, credential_purpose;
+`
+)
+
+// queries for the delete terminated sessions job
+const (
+	getDeleteJobParams = `
+with total (to_delete) as (
+  select count(session_id)
+    from session_state
+   where session_state.state                    = 'terminated'
+     and lower(session_state.active_time_range) < wt_sub_seconds_from_now(@threshold_seconds)
+),
+params (batch_size) as (
+  select batch_size
+    from session_delete_terminated_job
+)
+select total.to_delete                             as total_to_delete,
+       params.batch_size                           as batch_size,
+       wt_sub_seconds_from_now(@threshold_seconds) as window_start_time
+  from total, params;
+`
+	setDeleteJobBatchSize = `
+update session_delete_terminated_job
+   set batch_size = @batch_size;
+`
+	deleteTerminatedInBatch = `
+with batch (session_id) as (
+  select session_id
+    from session_state
+   where state                                  = 'terminated'
+     and lower(session_state.active_time_range) < @terminated_before
+   limit @batch_size
+)
+delete
+  from session
+ where public_id in (select session_id from batch);
 `
 )
 

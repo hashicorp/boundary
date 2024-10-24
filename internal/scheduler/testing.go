@@ -55,10 +55,10 @@ func TestScheduler(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	return s
 }
 
-func testJobFn() (func(ctx context.Context) error, chan struct{}, chan struct{}) {
+func testJobFn() (func(ctx context.Context, _ time.Duration) error, chan struct{}, chan struct{}) {
 	jobReady := make(chan struct{})
 	jobDone := make(chan struct{})
-	fn := func(ctx context.Context) error {
+	fn := func(ctx context.Context, _ time.Duration) error {
 		jobReady <- struct{}{}
 
 		// Block until context is canceled
@@ -73,7 +73,7 @@ func testJobFn() (func(ctx context.Context) error, chan struct{}, chan struct{})
 type testJob struct {
 	nextRunIn         time.Duration
 	name, description string
-	fn                func(context.Context) error
+	fn                func(context.Context, time.Duration) error
 	statusFn          func() JobStatus
 }
 
@@ -84,8 +84,8 @@ func (j testJob) Status() JobStatus {
 	return j.statusFn()
 }
 
-func (j testJob) Run(ctx context.Context) error {
-	return j.fn(ctx)
+func (j testJob) Run(ctx context.Context, statusThreshold time.Duration) error {
+	return j.fn(ctx, statusThreshold)
 }
 
 func (j testJob) NextRunIn(_ context.Context) (time.Duration, error) {

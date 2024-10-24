@@ -105,7 +105,7 @@ func TestRotateRootsJob(t *testing.T) {
 			assert.Equal(time.Hour, nextRun)
 
 			// Run job and ensure rotation was performed
-			err = got.Run(ctx)
+			err = got.Run(ctx, 0)
 			require.NoError(err)
 			require.Equal(1, got.totalRotates)
 			rootIds, err = workerAuthRepo.List(ctx, (*types.RootCertificate)(nil))
@@ -127,6 +127,6 @@ func TestRotateRootsJobFailure(t *testing.T) {
 	got, err := newRotateRootsJob(ctx, &db.Db{}, &db.Db{}, kmsCache)
 	require.NoError(err)
 
-	err = got.Run(ctx)
+	err = got.Run(ctx, 0)
 	require.Error(err)
 }

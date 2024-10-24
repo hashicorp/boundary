@@ -44,7 +44,7 @@ func TestJobWorkflow(t *testing.T) {
 	assert.NotEmpty(run.PrivateId)
 	assert.Equal(job.Name, run.JobName)
 
-	run, err = repo.UpdateProgress(ctx, run.PrivateId, 100, 110)
+	run, err = repo.UpdateProgress(ctx, run.PrivateId, 100, 110, 0)
 	require.NoError(err)
 	assert.Equal(uint32(100), run.CompletedCount)
 	assert.Equal(uint32(110), run.TotalCount)
@@ -54,7 +54,7 @@ func TestJobWorkflow(t *testing.T) {
 	require.NoError(err)
 	assert.Nil(newRuns)
 
-	run, err = repo.CompleteRun(ctx, run.PrivateId, time.Hour, 0, 0)
+	run, err = repo.CompleteRun(ctx, run.PrivateId, time.Hour, 0, 0, 0)
 	require.NoError(err)
 	assert.Equal(Completed.string(), run.Status)
 
@@ -85,7 +85,7 @@ func TestJobWorkflow(t *testing.T) {
 	require.NoError(err)
 	assert.Nil(newRuns)
 
-	newRun, err = repo.FailRun(ctx, newRun.PrivateId, 0, 0)
+	newRun, err = repo.FailRun(ctx, newRun.PrivateId, 0, 0, 0)
 	require.NoError(err)
 	assert.Equal(Failed.string(), newRun.Status)
 

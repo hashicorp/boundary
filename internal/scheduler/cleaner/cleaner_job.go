@@ -29,7 +29,7 @@ func (c *cleanerJob) Status() scheduler.JobStatus {
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (c *cleanerJob) Run(ctx context.Context) error {
+func (c *cleanerJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "cleaner.(cleanerJob).Run"
 
 	if _, err := c.w.Exec(ctx, "delete from job_run where status='completed'", nil); err != nil {

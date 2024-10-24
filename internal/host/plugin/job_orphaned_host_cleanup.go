@@ -66,7 +66,7 @@ func (r *OrphanedHostCleanupJob) Status() scheduler.JobStatus {
 // deletes those hosts.  Can not be run in parallel, if
 // Run is invoked while already running an error with code JobAlreadyRunning
 // will be returned.
-func (r *OrphanedHostCleanupJob) Run(ctx context.Context) error {
+func (r *OrphanedHostCleanupJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "plugin.(OrphanedHostCleanupJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")

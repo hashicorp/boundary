@@ -54,7 +54,7 @@ func TestPurgeTables(t *testing.T) {
 			query: query,
 		}
 
-		err = sJob.Run(ctx)
+		err = sJob.Run(ctx, 0)
 		require.NoError(t, err)
 
 		var count int

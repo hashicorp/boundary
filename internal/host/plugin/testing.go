@@ -209,7 +209,7 @@ func TestRunSetSync(t testing.TB, conn *db.DB, kmsCache *kms.Kms, plgm map[strin
 
 	j, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
 	require.NoError(t, err)
-	require.NoError(t, j.Run(ctx))
+	require.NoError(t, j.Run(ctx, 0))
 }
 
 func testGetDnsName(t testing.TB) string {
