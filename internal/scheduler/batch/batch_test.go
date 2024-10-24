@@ -362,7 +362,9 @@ func (tr *testRunner) Exec(ctx context.Context, batchSize int) (int, error) {
 	}
 	run := tr.runs[tr.call]
 	rec := run.recorder(tr.conf)
-	rec.Exec(ctx, batchSize)
+	if _, err := rec.Exec(ctx, batchSize); err != nil {
+		return 0, err
+	}
 	tr.call++
 	return run.ret(ctx, batchSize, tr.conf)
 }
@@ -559,5 +561,6 @@ func TestBatch_batchCompleted(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(b)
 
-	b.adjustBatchSize(ctx, 10)
+	err = b.adjustBatchSize(ctx, 10)
+	require.NoError(err)
 }

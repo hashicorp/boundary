@@ -301,13 +301,13 @@ func New(ctx context.Context, c *Config) (*Batch, error) {
 }
 
 // Status reports the job’s current status.
-func (d *Batch) Status() scheduler.JobStatus {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+func (b *Batch) Status() scheduler.JobStatus {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	return scheduler.JobStatus{
-		Completed: d.totalCompleted,
-		Total:     d.c.TotalToComplete,
-		Retries:   d.retries,
+		Completed: b.totalCompleted,
+		Total:     b.c.TotalToComplete,
+		Retries:   b.retries,
 	}
 }
 
