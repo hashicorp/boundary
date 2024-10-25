@@ -45,5 +45,5 @@
 //	nextJobRun = time.Now().Add(time.Hour)
 //
 //	repo, _ = job.NewRepository(db, db, wrapper)
-//	run, _ = repo.CompleteRun(ctx, run.PrivateId, job.Completed, nextJobRun)
+//	_ = repo.CompleteRun(ctx, run.PrivateId nextJobRun)
 package job

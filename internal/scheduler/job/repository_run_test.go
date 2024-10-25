@@ -216,7 +216,7 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	assert.Equal(run.JobPluginId, firstJob.PluginId)
 
 	// End first job with time between last and middle
-	_, err = repo.CompleteRun(ctx, run.PrivateId, -6*time.Hour, 0, 0, 0)
+	err = repo.CompleteRun(ctx, run.PrivateId, -6*time.Hour)
 	require.NoError(err)
 
 	runs, err = repo.RunJobs(ctx, server.PrivateId)
@@ -305,20 +305,6 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			wantErr:     true,
 			wantErrCode: errors.InvalidJobRunState,
 			wantErrMsg:  "job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run was in a final run state: failed: integrity violation: error #115",
-		},
-		{
-			name: "status-already-completed",
-			orig: &Run{
-				JobRun: &store.JobRun{
-					JobName:      job.Name,
-					JobPluginId:  job.PluginId,
-					ControllerId: server.PrivateId,
-					Status:       Completed.string(),
-				},
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidJobRunState,
-			wantErrMsg:  "job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run was in a final run state: completed: integrity violation: error #115",
 		},
 		{
 			name: "valid-no-changes",
@@ -479,14 +465,10 @@ func TestRepository_CompleteRun(t *testing.T) {
 	server := testController(t, conn, wrapper)
 	job := testJob(t, conn, "name", "description", wrapper)
 
-	type args struct {
-		completed, total, retries int
-	}
 	tests := []struct {
 		name        string
 		orig        *Run
 		nextRunIn   time.Duration
-		args        args
 		wantErr     bool
 		wantErrCode errors.Code
 		wantErrMsg  string
@@ -526,20 +508,6 @@ func TestRepository_CompleteRun(t *testing.T) {
 			wantErrMsg:  "job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run was in a final run state: failed: integrity violation: error #115",
 		},
 		{
-			name: "status-already-completed",
-			orig: &Run{
-				JobRun: &store.JobRun{
-					JobName:      job.Name,
-					JobPluginId:  job.PluginId,
-					ControllerId: server.PrivateId,
-					Status:       Completed.string(),
-				},
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidJobRunState,
-			wantErrMsg:  "job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run was in a final run state: completed: integrity violation: error #115",
-		},
-		{
 			name: "valid",
 			orig: &Run{
 				JobRun: &store.JobRun{
@@ -561,7 +529,6 @@ func TestRepository_CompleteRun(t *testing.T) {
 					Status:       Running.string(),
 				},
 			},
-			args: args{completed: 10, total: 20, retries: 1},
 		},
 	}
 
@@ -579,9 +546,13 @@ func TestRepository_CompleteRun(t *testing.T) {
 				require.NoError(err)
 				assert.Empty(tt.orig.EndTime)
 				privateId = tt.orig.PrivateId
+
+				r, err := repo.LookupRun(ctx, privateId)
+				require.NoError(err)
+				require.NotNil(r)
 			}
 
-			got, err := repo.CompleteRun(ctx, privateId, tt.nextRunIn, tt.args.completed, tt.args.total, tt.args.retries)
+			err = repo.CompleteRun(ctx, privateId, tt.nextRunIn)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -596,27 +567,21 @@ func TestRepository_CompleteRun(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			require.NotNil(got)
-			assert.NotEmpty(got.EndTime)
-			assert.Equal(Completed.string(), got.Status)
-			assert.Equal(tt.args.completed, int(got.CompletedCount))
-			assert.Equal(tt.args.total, int(got.TotalCount))
-			assert.Equal(tt.args.retries, int(got.RetriesCount))
 
 			updatedJob, err := repo.LookupJob(ctx, tt.orig.JobName)
 			assert.NoError(err)
 			require.NotNil(updatedJob)
 
-			// The previous run is ended before the next run is scheduled, therefore the previous
-			// run end time incremented by the nextRunIn duration, should be less than or equal to the
-			// NextScheduledRun time that is persisted in the repo.
-			nextRunAt := updatedJob.NextScheduledRun.AsTime()
-			previousRunEnd := got.EndTime.AsTime()
-			assert.Equal(nextRunAt.Round(time.Minute), previousRunEnd.Add(tt.nextRunIn).Round(time.Minute))
+			// The next run is expected to be ~ now + whatever duration was
+			// passed into CompleteRun.
+			expectedNextRunIn := time.Now().Add(tt.nextRunIn).Round(time.Minute).UTC()
+			actualNextRunIn := updatedJob.NextScheduledRun.AsTime().Round(time.Minute).UTC()
+			require.EqualValues(expectedNextRunIn, actualNextRunIn)
 
-			// Delete job run so it does not clash with future runs
-			_, err = repo.deleteRun(ctx, privateId)
-			assert.NoError(err)
+			// If we can't find the run, it means it was complete.
+			r, err := repo.LookupRun(ctx, privateId)
+			require.NoError(err)
+			require.Nil(r)
 		})
 	}
 
@@ -626,9 +591,8 @@ func TestRepository_CompleteRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.CompleteRun(ctx, "fake-run-id", time.Hour, 0, 0, 0)
+		err = repo.CompleteRun(ctx, "fake-run-id", time.Hour)
 		require.Error(err)
-		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
 		assert.Equal("job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100: dbw.LookupById: record not found", err.Error())
 	})
@@ -690,20 +654,6 @@ func TestRepository_FailRun(t *testing.T) {
 			wantErr:     true,
 			wantErrCode: errors.InvalidJobRunState,
 			wantErrMsg:  "job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run was in a final run state: failed: integrity violation: error #115",
-		},
-		{
-			name: "status-already-completed",
-			orig: &Run{
-				JobRun: &store.JobRun{
-					JobName:      job.Name,
-					JobPluginId:  job.PluginId,
-					ControllerId: server.PrivateId,
-					Status:       Completed.string(),
-				},
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidJobRunState,
-			wantErrMsg:  "job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run was in a final run state: completed: integrity violation: error #115",
 		},
 		{
 			name: "valid",

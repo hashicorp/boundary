@@ -54,9 +54,8 @@ func TestJobWorkflow(t *testing.T) {
 	require.NoError(err)
 	assert.Nil(newRuns)
 
-	run, err = repo.CompleteRun(ctx, run.PrivateId, time.Hour, 0, 0, 0)
+	err = repo.CompleteRun(ctx, run.PrivateId, time.Hour)
 	require.NoError(err)
-	assert.Equal(Completed.string(), run.Status)
 
 	job, err = repo.LookupJob(ctx, job.Name)
 	require.NoError(err)

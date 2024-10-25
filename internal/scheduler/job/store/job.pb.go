@@ -138,7 +138,7 @@ type JobRun struct {
 	// a job has retried work.
 	// @inject_tag: `gorm:"default:0"`
 	RetriesCount uint32 `protobuf:"varint,12,opt,name=retries_count,json=retriesCount,proto3" json:"retries_count,omitempty" gorm:"default:0"`
-	// status of the job run (running, completed, failed or interrupted).
+	// status of the job run (running, failed or interrupted).
 	// @inject_tag: `gorm:"not_null"`
 	Status string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty" gorm:"not_null"`
 	// The controller_id of the controller running the job and must be set.

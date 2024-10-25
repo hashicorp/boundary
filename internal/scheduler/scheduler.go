@@ -262,8 +262,6 @@ func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) 
 		defer wg.Done()
 		runErr := j.Run(jobContext, s.interruptThreshold)
 
-		// Get final status report to update run progress with
-		status := j.Status()
 		var updateErr error
 		switch {
 		case ctx.Err() != nil:
@@ -273,9 +271,11 @@ func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) 
 			if inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfoMsg("error getting next run time", "name", j.Name()))
 			}
-			_, updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun, status.Completed, status.Total, status.Retries)
+			updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun)
 		default:
 			event.WriteError(ctx, op, runErr, event.WithInfoMsg("job run failed", "run id", r.PrivateId, "name", j.Name()))
+
+			status := j.Status() // Get final status report to update run progress with
 			_, updateErr = repo.FailRun(ctx, r.PrivateId, status.Completed, status.Total, status.Retries)
 		}
 

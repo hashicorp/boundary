@@ -45,7 +45,6 @@ import (
 	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/recording"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/server"
 	serversjob "github.com/hashicorp/boundary/internal/server/job"
@@ -635,9 +634,6 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
-		return err
-	}
-	if err := cleaner.RegisterJob(c.baseContext, c.scheduler, rw); err != nil {
 		return err
 	}
 	if err := snapshot.RegisterJob(c.baseContext, c.scheduler, rw, rw); err != nil {

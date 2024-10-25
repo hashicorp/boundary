@@ -489,7 +489,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
-	run := waitForRunStatus(t, repo, runId, string(job.Failed))
+	run := waitForRunStatus(t, repo, runId, job.Failed)
 	assert.Equal(uint32(10), run.TotalCount)
 	assert.Equal(uint32(10), run.CompletedCount)
 
@@ -502,17 +502,9 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	runId = runJob.(*runningJob).runId
 
 	// Complete job without error so CompleteRun is called
+	completeFn := waitForRunComplete(t, sched, repo, runId, tj.name)
 	jobErr <- nil
-
-	// Report status
-	jobStatus <- JobStatus{Total: 20, Completed: 20}
-
-	repo, err = job.NewRepository(ctx, rw, rw, kmsCache)
-	require.NoError(err)
-
-	run = waitForRunStatus(t, repo, runId, string(job.Completed))
-	assert.Equal(uint32(20), run.TotalCount)
-	assert.Equal(uint32(20), run.CompletedCount)
+	completeFn()
 
 	baseCnl()
 	close(testDone)
@@ -570,12 +562,13 @@ func TestSchedulerRunNow(t *testing.T) {
 	require.True(ok)
 	runId := runJob.(*runningJob).runId
 
-	// Complete job
-	jobCh <- struct{}{}
-
 	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
-	waitForRunStatus(t, repo, runId, string(job.Completed))
+
+	// Complete job
+	completeFn := waitForRunComplete(t, sched, repo, runId, tj.name)
+	jobCh <- struct{}{}
+	completeFn()
 
 	// Update job to run immediately once scheduling loop is called
 	err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 0)
@@ -600,9 +593,9 @@ func TestSchedulerRunNow(t *testing.T) {
 	runId = runJob.(*runningJob).runId
 
 	// Complete job
+	completeFn = waitForRunComplete(t, sched, repo, runId, tj.name)
 	jobCh <- struct{}{}
-
-	waitForRunStatus(t, repo, runId, string(job.Completed))
+	completeFn()
 
 	// Update job to run again with RunNow option
 	err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 0, WithRunNow(true))
@@ -620,7 +613,34 @@ func TestSchedulerRunNow(t *testing.T) {
 	close(jobCh)
 }
 
-func waitForRunStatus(t *testing.T, repo *job.Repository, runId, status string) *job.Run {
+func waitForRunComplete(t *testing.T, sched *Scheduler, repo *job.Repository, runId, jobName string) func() {
+	r, err := repo.LookupRun(context.Background(), runId)
+	require.NoError(t, err)
+	require.EqualValues(t, job.Running, r.Status)
+
+	return func() {
+		timeout := time.NewTimer(5 * time.Second)
+		for {
+			select {
+			case <-timeout.C:
+				t.Fatal(fmt.Errorf("timed out waiting for job run %q to be completed", runId))
+			case <-time.After(100 * time.Millisecond):
+			}
+
+			// A run is complete when we don't find it in the scheduler's
+			// running jobs list and also not in the job_run table.
+			_, ok := sched.runningJobs.Load(jobName)
+			if !ok {
+				r, err = repo.LookupRun(context.Background(), runId)
+				require.Nil(t, r)
+				require.Nil(t, err)
+				break
+			}
+		}
+	}
+}
+
+func waitForRunStatus(t *testing.T, repo *job.Repository, runId string, status job.Status) *job.Run {
 	t.Helper()
 	var run *job.Run
 
@@ -636,7 +656,7 @@ func waitForRunStatus(t *testing.T, repo *job.Repository, runId, status string) 
 		var err error
 		run, err = repo.LookupRun(context.Background(), runId)
 		require.NoError(t, err)
-		if run.Status == status {
+		if run.Status == string(status) {
 			break
 		}
 	}

@@ -74,14 +74,7 @@ const updateProgressQuery = `
 `
 
 const completeRunQuery = `
-	update
-	  job_run
-	set
-	  completed_count = ?,
-	  total_count     = ?,
-	  retries_count   = ?,
-	  status          = 'completed',
-	  end_time        = current_timestamp
+	delete from job_run
 	where
 	  private_id = ?
 	  and status = 'running'
