@@ -1368,7 +1368,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
-			repoWorker, err := serverRepo.LookupWorkerByName(ctx, worker1.Name)
+			repoWorker, err := server.TestLookupWorkerByName(ctx, t, worker1.Name, serverRepo)
 			require.NoError(err)
 			assert.Equal(tc.wantState, repoWorker.OperationalState)
 		})
@@ -1537,7 +1537,7 @@ func TestWorkerLocalStorageStateStatus(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
-			repoWorker, err := serverRepo.LookupWorkerByName(ctx, worker1.Name)
+			repoWorker, err := server.TestLookupWorkerByName(ctx, t, worker1.Name, serverRepo)
 			require.NoError(err)
 			assert.Equal(tc.wantState, repoWorker.LocalStorageState)
 		})

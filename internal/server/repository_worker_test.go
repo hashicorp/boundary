@@ -110,39 +110,6 @@ func TestDeleteWorker(t *testing.T) {
 	}
 }
 
-func TestLookupWorkerByName(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := server.NewRepository(ctx, rw, rw, kms)
-	require.NoError(t, err)
-
-	w := server.TestKmsWorker(t, conn, wrapper)
-	t.Run("success", func(t *testing.T) {
-		got, err := repo.LookupWorkerByName(ctx, w.GetName())
-		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(w.Worker, got.Worker, protocmp.Transform()))
-	})
-	t.Run("not found", func(t *testing.T) {
-		got, err := repo.LookupWorkerByName(ctx, "unknown_name")
-		require.NoError(t, err)
-		assert.Nil(t, got)
-	})
-	t.Run("db error", func(t *testing.T) {
-		conn, mock := db.TestSetupWithMock(t)
-		rw := db.New(conn)
-		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(ctx, errors.Internal, "test", "lookup-error"))
-		r, err := server.NewRepository(ctx, rw, rw, kms)
-		require.NoError(t, err)
-		got, err := r.LookupWorkerByName(ctx, w.GetName())
-		assert.NoError(t, mock.ExpectationsWereMet())
-		assert.Truef(t, errors.Match(errors.T(errors.Op("server.(Repository).LookupWorkerByName")), err), "got error %v", err)
-		assert.Nil(t, got)
-	})
-}
-
 func TestLookupWorkerIdByKeyId(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")

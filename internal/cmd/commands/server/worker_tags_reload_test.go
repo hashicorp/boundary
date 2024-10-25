@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/testing/controller"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
@@ -101,7 +102,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		t.Helper()
 		serversRepo, err := testController.Controller().ServersRepoFn()
 		require.NoError(err)
-		w, err := serversRepo.LookupWorkerByName(testController.Context(), name)
+		w, err := server.TestLookupWorkerByName(testController.Context(), t, name, serversRepo)
 		require.NoError(err)
 		require.NotNil(w)
 		v, ok := w.CanonicalTags()[key]

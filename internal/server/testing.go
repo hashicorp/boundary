@@ -212,3 +212,15 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.NoError(t, err)
 	return wrk
 }
+
+// TestLookupWorkerByName looks up a worker by name
+func TestLookupWorkerByName(ctx context.Context, t *testing.T, name string, serversRepo *Repository) (*Worker, error) {
+	workers, err := serversRepo.ListWorkers(ctx, []string{"global"})
+	require.NoError(t, err)
+	for _, w := range workers {
+		if w.GetName() == name {
+			return w, nil
+		}
+	}
+	return nil, nil
+}
