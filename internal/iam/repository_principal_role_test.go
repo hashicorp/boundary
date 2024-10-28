@@ -137,6 +137,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			for _, roleId := range []string{orgRole.PublicId, projRole.PublicId} {
 				origRole, _, _, _, err := repo.LookupRole(context.Background(), roleId)
 				require.NoError(err)
+
 				if tt.args.wantUserIds {
 					userIds = createUsersFn(orgs)
 					u := TestUser(t, repo, staticOrg.PublicId)
