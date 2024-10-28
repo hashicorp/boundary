@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -26,11 +27,13 @@ type vaultClient interface {
 	renewLease(context.Context, string, time.Duration) (*vault.Secret, error)
 	revokeLease(context.Context, string) error
 	lookupToken(context.Context) (*vault.Secret, error)
+	lookupWrappedToken(context.Context, string) (*wrappingLookupResponse, error)
 	swapToken(context.Context, TokenSecret) (old TokenSecret)
 	get(context.Context, string) (*vault.Secret, error)
 	post(context.Context, string, []byte) (*vault.Secret, error)
 	capabilities(context.Context, []string) (pathCapabilities, error)
 	headers(ctx context.Context) (http.Header, error)
+	unwrap(context.Context, string) (*vault.Secret, error)
 }
 
 var vaultClientFactoryFn = vaultClientFactory
@@ -210,6 +213,78 @@ func (c *client) lookupToken(ctx context.Context) (*vault.Secret, error) {
 	return t, nil
 }
 
+type wrappingLookupRequest struct {
+	Token string `json:"token"`
+}
+
+// https://developer.hashicorp.com/vault/api-docs/system/wrapping-lookup#sample-response
+type wrappingLookupResponse struct {
+	CreationPath string
+	CreationTime time.Time
+	CreationTTL  int
+}
+
+func (wlr *wrappingLookupResponse) decodeData(data map[string]interface{}) error {
+	const CreationPathKey = "creation_path"
+	if path, ok := data[CreationPathKey].(string); ok {
+		wlr.CreationPath = path
+	} else {
+		return fmt.Errorf("vault wrapping lookup response missing data key: %q", CreationPathKey)
+	}
+
+	const CreationTimeKey = "creation_time"
+	if ctime, ok := data[CreationTimeKey].(string); ok {
+		var err error = nil
+		if wlr.CreationTime, err = time.Parse(time.RFC3339, ctime); err != nil {
+			return fmt.Errorf("vault wrapping lookup response unable to parse data key: %q", CreationTimeKey)
+		}
+	} else {
+		return fmt.Errorf("vault wrapping lookup response missing data key: %q", CreationTimeKey)
+	}
+
+	const CreationTTLKey = "creation_ttl"
+	if ttl, ok := data[CreationTTLKey].(json.Number); ok {
+		ttl64, err := ttl.Int64()
+		if err != nil {
+			return fmt.Errorf("vault wrapping lookup response unable to parse data key: %q", CreationTTLKey)
+		}
+		wlr.CreationTTL = int(ttl64)
+	} else {
+		return fmt.Errorf("vault wrapping lookup response missing data key: %q", CreationTTLKey)
+	}
+
+	return nil
+}
+
+// lookupWrappedToken calls the /sys/wrapping/lookup Vault endpoint and returns
+// the token info. This endpoint is useful as it is unauthenticated and can always
+// be accessed with the token itself as authentication. See
+// https://developer.hashicorp.com/vault/docs/concepts/response-wrapping#response-wrapping-token-operations
+func (c *client) lookupWrappedToken(ctx context.Context, wrappedToken string) (*wrappingLookupResponse, error) {
+	const op = "vault.(client).lookupWrappedToken"
+	const wrappingLookupPath = "sys/wrapping/lookup"
+
+	payload := wrappingLookupRequest{
+		Token: wrappedToken,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	res, err := c.post(ctx, wrappingLookupPath, body)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	wlr := &wrappingLookupResponse{}
+	if err := wlr.decodeData(res.Data); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return wlr, nil
+}
+
 // swapToken replaces the token in the Vault client with t and returns the
 // token that was replaced.
 func (c *client) swapToken(ctx context.Context, new TokenSecret) (old TokenSecret) {
@@ -275,4 +350,9 @@ func (c *client) capabilities(ctx context.Context, paths []string) (pathCapabili
 // headers returns the underlying Vault Client http headers
 func (c *client) headers(_ context.Context) (http.Header, error) {
 	return c.cl.Headers(), nil
+}
+
+// unwrap accepts a vault token and unwraps it, returning the underlying vault secret
+func (c *client) unwrap(ctx context.Context, token string) (*vault.Secret, error) {
+	return c.cl.Logical().UnwrapWithContext(ctx, token)
 }
