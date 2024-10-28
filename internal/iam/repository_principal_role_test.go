@@ -137,24 +137,15 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			for _, roleId := range []string{orgRole.PublicId, projRole.PublicId} {
 				origRole, _, _, _, err := repo.LookupRole(context.Background(), roleId)
 				require.NoError(err)
-
 				if tt.args.wantUserIds {
 					userIds = createUsersFn(orgs)
 					u := TestUser(t, repo, staticOrg.PublicId)
-					if roleId == orgRole.PublicId {
-						userIds = append(userIds, u.PublicId)
-					} else {
-						userIds = append(userIds, u.PublicId)
-					}
+					userIds = append(userIds, u.PublicId)
 				}
 				if tt.args.wantGroupIds {
 					groupIds = createGrpsFn(orgs, projects)
 					g := TestGroup(t, conn, staticProj.PublicId)
-					if roleId == projRole.PublicId {
-						groupIds = append(groupIds, g.PublicId)
-					} else {
-						groupIds = append(groupIds, g.PublicId)
-					}
+					groupIds = append(groupIds, g.PublicId)
 				}
 				if len(tt.args.specificUserIds) > 0 {
 					userIds = tt.args.specificUserIds
