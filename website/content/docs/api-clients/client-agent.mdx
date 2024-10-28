@@ -127,7 +127,7 @@ The configuration file contains the following fields:
 
    Example:
    ```hcl
-   log_level=DEBUG
+   log_level="DEBUG"
    ```
 
 - `log_to_stdout` - Logs to STDOUT in addition to the `boundary-client-agent.log` file.
@@ -377,7 +377,7 @@ Once you have found the log file, you can look through it to see if you can unde
 The list below provides some common errors and explanations.
 
 It may be necessary to increase the logging verbosity of the Client Agent.
-You can increase the verbosity by setting the `log_level` option in the configuration file to `DEBUG`.
+You can increase the verbosity by setting the `log_level` option in the configuration file to `"DEBUG"`.
 See the section on changing the configuration for more information.
 
 ### Establish the behavior of the local DNS configuration
