@@ -172,20 +172,17 @@ By default, it is located in the following directory:
 
 1. Change the configuration settings, and save the file.
 
+   <Note>
+
    You must restart the Client Agent to update some configuration settings.
    However, when you restart the Client Agent, it closes any existing sessions.
    Other configuration settings can be updated by only reloading the configuration file, which does not affect any existing sessions.
 
-1. Either restart the Client Agent or reload the configuration file.
+   </Note>
 
-   You can update any configuration value by restarting the Client Agent with the following commands, however it will close any existing sessions:
+1. Either reload the configuration file or restart the Client Agent.
 
-   ```shell-session
-   $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
-   $ sudo launchctl start com.hashicorp.boundary.boundary-client-agent
-   ```
-
-   Alternatively, you can update the following configuration values by reloading the configuration file, which will not disrupt any existing sessions:
+   The following configuration values can be changed by reloading the configuration file, which will not disrupt any existing sessions:
 
    - `dns_request_timeout`
    - `log_file`
@@ -198,6 +195,13 @@ By default, it is located in the following directory:
 
    ```shell-session
    $ sudo pkill -1 boundary-client-agent
+   ```
+
+   If you want to update another configuration value, you can restart the Client Agent using the following commands, however it will close any existing sessions:
+
+   ```shell-session
+   $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
+   $ sudo launchctl start com.hashicorp.boundary.boundary-client-agent
    ```
 
 </Tab>
