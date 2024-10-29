@@ -127,7 +127,7 @@ The configuration file contains the following fields:
 
    Example:
    ```hcl
-   log_level=DEBUG
+   log_level="DEBUG"
    ```
 
 - `log_to_stdout` - Logs to STDOUT in addition to the `boundary-client-agent.log` file.
@@ -172,20 +172,17 @@ By default, it is located in the following directory:
 
 1. Change the configuration settings, and save the file.
 
+   <Note>
+
    You must restart the Client Agent to update some configuration settings.
    However, when you restart the Client Agent, it closes any existing sessions.
    Other configuration settings can be updated by only reloading the configuration file, which does not affect any existing sessions.
 
-1. Either restart the Client Agent or reload the configuration file.
+   </Note>
 
-   You can update any configuration value by restarting the Client Agent with the following commands, however it will close any existing sessions:
+1. Either reload the configuration file or restart the Client Agent.
 
-   ```shell-session
-   $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
-   $ sudo launchctl start com.hashicorp.boundary.boundary-client-agent
-   ```
-
-   Alternatively, you can update the following configuration values by reloading the configuration file, which will not disrupt any existing sessions:
+   You can change the following configuration values by reloading the configuration file, which will not disrupt any existing sessions:
 
    - `dns_request_timeout`
    - `log_file`
@@ -198,6 +195,13 @@ By default, it is located in the following directory:
 
    ```shell-session
    $ sudo pkill -1 boundary-client-agent
+   ```
+
+   If you want to update another configuration value, you can restart the Client Agent using the following commands, however it will close any existing sessions:
+
+   ```shell-session
+   $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
+   $ sudo launchctl start com.hashicorp.boundary.boundary-client-agent
    ```
 
 </Tab>
@@ -373,7 +377,7 @@ Once you have found the log file, you can look through it to see if you can unde
 The list below provides some common errors and explanations.
 
 It may be necessary to increase the logging verbosity of the Client Agent.
-You can increase the verbosity by setting the `log_level` option in the configuration file to `DEBUG`.
+You can increase the verbosity by setting the `log_level` option in the configuration file to `"DEBUG"`.
 See the section on changing the configuration for more information.
 
 ### Establish the behavior of the local DNS configuration
