@@ -534,11 +534,23 @@ To configure the DNS server(s) to use, use the `override_upstream_dns_servers` c
 # The DNS servers must be specified as an IP, or an IP:Port.
 # If no port is provided, port 53 is assumed.
 # The order of the entries specifies the priority.
+# We recommended providing both the VPN DNS servers
+# and the default DNS servers, so that DNS requests can
+# be resolved even when the VPN is not active.
 override_upstream_dns_servers = [
-   "8.8.8.8",
-   "8.8.4.4:53",
+   "10.0.0.1", # Example primary VPN DNS server
+   "10.0.0.2", # Example secondary VPN DNS server
+   "8.8.8.8",  # Fallback default DNS server
+   "8.8.4.4:53", # Fallback default DNS server with a custom port
 ]
 ```
+
+<Note>
+
+The `override_upstream_dns_servers` is used for all non-Boundary DNS requests.
+If you only provide the VPN DNS servers, the Client Agent will not be able to resolve any DNS requests when the VPN is not active.
+
+</Note>
 
 #### Primary network interfaces
 
