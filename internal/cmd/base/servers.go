@@ -10,11 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -57,10 +55,6 @@ const (
 	// File name to use for storing workerAuth requests
 	WorkerAuthReqFile = "auth_request_token"
 )
-
-// This regular expression is used to find all instances of square brackets within a string.
-// This regular expression is used to remove the square brackets from an IPv6 address.
-var squareBrackets = regexp.MustCompile("\\[|\\]")
 
 func init() {
 	metric.InitializeBuildInfo(prometheus.DefaultRegisterer)
@@ -841,20 +835,14 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		}
 	}
 
-	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
+	host, port, err := util.SplitHostPort(conf.Worker.PublicAddr)
 	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9202"
-			host = conf.Worker.PublicAddr
-		} else {
-			return fmt.Errorf("Error splitting public adddress host/port: %w", err)
-		}
+		return fmt.Errorf("Error splitting public adddress host/port: %w", err)
 	}
-
-	// remove the square brackets from the ipv6 address because the method
-	// net.JoinHostPort() will add a second pair of square brackets.
-	host = squareBrackets.ReplaceAllString(host, "")
-	conf.Worker.PublicAddr = net.JoinHostPort(host, port)
+	if port == "" {
+		port = "9202"
+	}
+	conf.Worker.PublicAddr = util.JoinHostPort(host, port)
 
 	return nil
 }

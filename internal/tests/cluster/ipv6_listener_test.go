@@ -5,8 +5,8 @@ package cluster
 
 import (
 	"context"
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
@@ -19,23 +19,14 @@ import (
 )
 
 func TestIPv6Listener(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
 
-	conf, err := config.DevController()
+	conf, err := config.DevController(config.WithIPv6Enabled(true))
 	require.NoError(err)
-
-	for _, l := range conf.Listeners {
-		switch l.Purpose[0] {
-		case "api":
-			l.Address = "[::1]:9200"
-
-		case "cluster":
-			l.Address = "[::1]:9201"
-		}
-	}
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config: conf,
@@ -43,34 +34,58 @@ func TestIPv6Listener(t *testing.T) {
 	})
 	defer c1.Shutdown()
 
-	helper.ExpectWorkers(t, c1)
+	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
+		Config: conf,
+		Logger: c1.Config().Logger.ResetNamed("c2"),
+	})
+	defer c2.Shutdown()
 
-	wconf, err := config.DevWorker()
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2)
+	}()
+	wg.Wait()
+
+	wconf, err := config.DevWorker(config.WithIPv6Enabled(true))
 	require.NoError(err)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		Config:           wconf,
 		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
+		InitialUpstreams: append(c1.ClusterAddrs(), c2.ClusterAddrs()...),
 		Logger:           logger.Named("w1"),
 	})
 	defer w1.Shutdown()
 
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1, w1)
-
-	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
-		Logger: c1.Config().Logger.ResetNamed("c2"),
-	})
-	defer c2.Shutdown()
-
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c2, w1)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1, w1)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2, w1)
+	}()
+	wg.Wait()
 
 	require.NoError(w1.Worker().Shutdown())
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1)
-	helper.ExpectWorkers(t, c2)
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2)
+	}()
+	wg.Wait()
 
 	client, err := api.NewClient(nil)
 	require.NoError(err)

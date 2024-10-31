@@ -3,6 +3,8 @@
 
 package helper
 
+import "github.com/hashicorp/boundary/api/targets"
+
 // getOpts iterates the inbound Options and returns a struct and any errors
 func getOpts(opt ...Option) (*Options, error) {
 	opts := getDefaultOptions()
@@ -22,6 +24,7 @@ func getOpts(opt ...Option) (*Options, error) {
 // are parsed in various other packages.
 type Options struct {
 	WithSkipSessionTeardown bool
+	WithWorkerInfo          []*targets.WorkerInfo
 }
 
 // Option is a function that takes in an options struct and sets values or
@@ -40,6 +43,16 @@ func getDefaultOptions() *Options {
 func WithSkipSessionTeardown(with bool) Option {
 	return func(o *Options) error {
 		o.WithSkipSessionTeardown = with
+		return nil
+	}
+}
+
+// WithWorkerInfo can be used to override the default worker address localhost:9202
+// for SessionAuthroizationData. This is useful when testing session connection with
+// dev workers that are not utilizing default addresses.
+func WithWorkerInfo(workerInfo []*targets.WorkerInfo) Option {
+	return func(o *Options) error {
+		o.WithWorkerInfo = workerInfo
 		return nil
 	}
 }

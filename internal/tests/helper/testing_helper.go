@@ -11,6 +11,7 @@ import (
 	"net"
 	"reflect"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,11 +77,18 @@ func NewTestSession(
 	sessAuth, err := sar.GetSessionAuthorization()
 	require.NoError(err)
 
+	sessAuthData, err := sessAuth.GetSessionAuthorizationData()
+	if len(opts.WithWorkerInfo) != 0 {
+		sessAuthData.WorkerInfo = opts.WithWorkerInfo
+	}
+	require.NoError(err)
+
 	proxy, err := apiproxy.New(
 		ctx,
 		sessAuth.AuthorizationToken,
 		apiproxy.WithWorkerHost(sessAuth.SessionId),
 		apiproxy.WithSkipSessionTeardown(opts.WithSkipSessionTeardown),
+		apiproxy.WithSessionAuthorizationData(sessAuthData),
 	)
 	require.NoError(err)
 
@@ -431,23 +439,36 @@ func NewTestTcpServer(t *testing.T) *TestTcpServer {
 	return ts
 }
 
+// ExpectWorkers is a blocking call, where the method validates that the expected workers
+// can be found in the controllers status update. If the provided list of workers is empty,
+// this method will sleep for 10 seconds and then validate that the controller worker status
+// is empty.
 func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worker.TestWorker) {
-	updateTimes := c.Controller().WorkerStatusUpdateTimes()
-	workerMap := map[string]*worker.TestWorker{}
-	for _, w := range workers {
-		workerMap[w.Name()] = w
+	// validate the controller has no reported workers
+	if len(workers) == 0 {
+		c.Controller().WorkerStatusUpdateTimes().Clear()
+		time.Sleep(10 * time.Second)
+		assert.Eventually(t, func() bool {
+			empty := true
+			c.Controller().WorkerStatusUpdateTimes().Range(func(k, v any) bool {
+				empty = false
+				return false
+			})
+			return empty
+		}, 30*time.Second, 2*time.Second)
+		return
 	}
-	updateTimes.Range(func(k, v any) bool {
-		require.NotNil(t, k)
-		require.NotNil(t, v)
-		if workerMap[k.(string)] == nil {
-			// We don't remove from updateTimes currently so if we're not
-			// expecting it we'll see an out-of-date entry
-			return true
-		}
-		assert.WithinDuration(t, time.Now(), v.(time.Time), 30*time.Second)
-		delete(workerMap, k.(string))
-		return true
-	})
-	assert.Empty(t, workerMap)
+
+	// validate the controller has expected workers
+	wg := new(sync.WaitGroup)
+	for _, w := range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			require.NoError(t, c.WaitForNextWorkerStatusUpdate(w.Name()))
+			_, ok := c.Controller().WorkerStatusUpdateTimes().Load(w.Name())
+			assert.True(t, ok)
+		}()
+	}
+	wg.Wait()
 }

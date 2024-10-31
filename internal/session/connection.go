@@ -5,6 +5,7 @@ package session
 
 import (
 	"context"
+	"net"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -184,6 +185,15 @@ func (c *Connection) validateNewConnection(ctx context.Context) error {
 	}
 	if c.UserClientIp == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing user client ip")
+	}
+	if ip := net.ParseIP(c.ClientTcpAddress); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given client tcp address is not an ip address")
+	}
+	if ip := net.ParseIP(c.EndpointTcpAddress); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given endpoint tcp address is not an ip address")
+	}
+	if ip := net.ParseIP(c.UserClientIp); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given user client ip is not an ip address")
 	}
 	return nil
 }

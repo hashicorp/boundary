@@ -383,7 +383,7 @@ func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 		targets.WithName("test-address"), targets.WithAddress("[::1]"), targets.WithTcpTargetDefaultPort(22))
 	require.NoError(t, err)
 	require.NotNil(t, targetResp)
-	require.Equal(t, "[::1]", targetResp.GetItem().Address)
+	require.Equal(t, "::1", targetResp.GetItem().Address)
 
 	// Setup host catalog, host set, & host resources
 	hc, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
@@ -477,7 +477,7 @@ func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("[::1]"))
 	require.NoError(t, err)
 	require.NotNil(t, updateResp)
-	require.Equal(t, "[::1]", updateResp.GetItem().Address)
+	require.Equal(t, "::1", updateResp.GetItem().Address)
 	require.Empty(t, updateResp.GetItem().HostSourceIds)
 }
 
@@ -491,24 +491,29 @@ func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
 	tClient := targets.NewClient(client)
 
 	tests := []struct {
-		name    string
-		address string
+		name            string
+		address         string
+		expectedAddress string
 	}{
 		{
-			name:    "target-ipv4-address",
-			address: "127.0.0.1",
+			name:            "target-ipv4-address",
+			address:         "127.0.0.1",
+			expectedAddress: "127.0.0.1",
 		},
 		{
-			name:    "target-ipv6-address",
-			address: "[2001:4860:4860:0:0:0:0:8888]",
+			name:            "target-ipv6-address",
+			address:         "[2001:4860:4860:0:0:0:0:8888]",
+			expectedAddress: "2001:4860:4860:0:0:0:0:8888",
 		},
 		{
-			name:    "target-abbreviated-ipv6-address",
-			address: "[2001:4860:4860::8888]",
+			name:            "target-abbreviated-ipv6-address",
+			address:         "[2001:4860:4860::8888]",
+			expectedAddress: "2001:4860:4860::8888",
 		},
 		{
-			name:    "target-dns-address",
-			address: "null",
+			name:            "target-dns-address",
+			address:         "www.google.com",
+			expectedAddress: "www.google.com",
 		},
 	}
 	for _, tt := range tests {
@@ -518,14 +523,14 @@ func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
 				targets.WithName(tt.name), targets.WithAddress(tt.address), targets.WithTcpTargetDefaultPort(22))
 			require.NoError(err)
 			require.NotNil(createResp)
-			assert.Equal(tt.address, createResp.GetItem().Address)
+			assert.Equal(tt.expectedAddress, createResp.GetItem().Address)
 
 			targetId := createResp.GetItem().Id
 			version := createResp.GetItem().Version
 			readResp, err := tClient.Read(tc.Context(), targetId)
 			require.NoError(err)
 			require.NotNil(readResp)
-			assert.Equal(tt.address, readResp.GetItem().Address)
+			assert.Equal(tt.expectedAddress, readResp.GetItem().Address)
 
 			updateResp, err := tClient.Update(tc.Context(), targetId, version, targets.DefaultAddress())
 			require.NoError(err)

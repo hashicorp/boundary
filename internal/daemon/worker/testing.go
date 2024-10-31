@@ -236,6 +236,9 @@ type TestWorkerOpts struct {
 	// Enable observation events
 	EnableObservationEvents bool
 
+	// Enable IPv6
+	EnableIPv6 bool
+
 	// Enable error events
 	EnableErrorEvents bool
 }
@@ -272,6 +275,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		configOpts = append(configOpts, config.WithAuditEventsEnabled(opts.EnableAuditEvents))
 		configOpts = append(configOpts, config.WithSysEventsEnabled(opts.EnableSysEvents))
 		configOpts = append(configOpts, config.WithObservationsEnabled(opts.EnableObservationEvents))
+		configOpts = append(configOpts, config.WithIPv6Enabled(opts.EnableIPv6))
 		configOpts = append(configOpts, config.TestWithErrorEventsEnabled(t, opts.EnableErrorEvents))
 		opts.Config, err = config.DevWorker(configOpts...)
 		if err != nil {
@@ -561,7 +565,7 @@ func NewTestMultihopWorkers(t testing.TB,
 // NewAuthorizedPkiTestWorker creates a new test worker with the provided upstreams
 // and creates it in the provided repo as an authorized worker. It returns
 // The TestWorker and it's boundary id.
-func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name string, upstreams []string) (*TestWorker, string) {
+func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name string, upstreams []string, opt ...config.Option) (*TestWorker, string) {
 	t.Helper()
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,

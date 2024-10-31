@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net"
 	"net/netip"
 	"os"
 	"strconv"
@@ -22,6 +21,7 @@ import (
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -476,14 +476,10 @@ func (c *Command) Run(args []string) (retCode int) {
 
 		proxyAddr := clientProxy.ListenerAddress(context.Background())
 		var clientProxyHost, clientProxyPort string
-		clientProxyHost, clientProxyPort, err = net.SplitHostPort(proxyAddr)
+		clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
 		if err != nil {
-			if strings.Contains(err.Error(), "missing port") {
-				clientProxyHost = proxyAddr
-			} else {
-				c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
-				return base.CommandCliError
-			}
+			c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
+			return base.CommandCliError
 		}
 		c.sessInfo.Address = clientProxyHost
 
@@ -605,15 +601,11 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	addr := clientProxy.ListenerAddress(context.Background())
 	var host, port string
 	var err error
-	host, port, err = net.SplitHostPort(addr)
+	host, port, err = util.SplitHostPort(addr)
 	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			host = addr
-		} else {
-			c.PrintCliError(fmt.Errorf("Error splitting listener addr: %w", err))
-			c.execCmdReturnValue.Store(int32(3))
-			return
-		}
+		c.PrintCliError(fmt.Errorf("Error splitting listener addr: %w", err))
+		c.execCmdReturnValue.Store(int32(3))
+		return
 	}
 
 	var args []string

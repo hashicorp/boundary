@@ -32,16 +32,23 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		Level: hclog.Trace,
 	})
 
-	conf, err := config.DevController()
+	pl, err := net.Listen("tcp", "[::1]:")
 	require.NoError(err)
 
-	pl, err := net.Listen("tcp", "localhost:0")
+	conf, err := config.DevController(config.WithIPv6Enabled(true))
 	require.NoError(err)
+
+	// update cluster listener to utilize proxy listener address
+	for _, l := range conf.Listeners {
+		if l.Purpose[0] == "cluster" {
+			l.Address = pl.Addr().String()
+		}
+	}
+
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                          conf,
 		InitialResourcesSuffix:          "1234567890",
 		Logger:                          logger.Named("c1"),
-		PublicClusterAddr:               pl.Addr().String(),
 		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
 	t.Cleanup(c1.Shutdown)
@@ -66,13 +73,10 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		InitialUpstreams:                    []string{proxy.ListenerAddr()},
 		Logger:                              logger.Named("w1"),
 		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
+		EnableIPv6:                          true,
 	})
 	t.Cleanup(w1.Shutdown)
 
-	err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-	require.NoError(err)
-	err = c1.WaitForNextWorkerStatusUpdate(w1.Name())
-	require.NoError(err)
 	helper.ExpectWorkers(t, c1, w1)
 
 	// Use an independent context for test things that take a context so
@@ -99,7 +103,12 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Authorize and connect
-	sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890")
+	workerInfo := []*targets.WorkerInfo{
+		{
+			Address: w1.ProxyAddrs()[0],
+		},
+	}
+	sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890", helper.WithWorkerInfo(workerInfo))
 	sConn := sess.Connect(ctx, t)
 
 	// Run initial send/receive test, make sure things are working

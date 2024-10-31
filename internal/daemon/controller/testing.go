@@ -503,6 +503,8 @@ type TestControllerOpts struct {
 	WorkerAuthDebuggingEnabled *atomic.Bool
 
 	DisableRateLimiting bool
+
+	EnableIPv6 bool
 }
 
 func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
@@ -587,7 +589,8 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts.Config = cfg
 
 	case opts.Config == nil:
-		opts.Config, err = config.DevController()
+		cfgOpts := append([]config.Option{}, config.WithIPv6Enabled(true))
+		opts.Config, err = config.DevController(cfgOpts...)
 		if err != nil {
 			t.Fatal(err)
 		}

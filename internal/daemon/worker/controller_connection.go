@@ -14,7 +14,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
@@ -50,14 +49,14 @@ func (w *Worker) StartControllerConnections() error {
 		case strings.HasPrefix(addr, "/"):
 			initialAddrs = append(initialAddrs, addr)
 		default:
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr) {
-				host, port, err = net.SplitHostPort(net.JoinHostPort(addr, "9201"))
-			}
+			host, port, err := util.SplitHostPort(addr)
 			if err != nil {
 				return fmt.Errorf("error parsing upstream address: %w", err)
 			}
-			initialAddrs = append(initialAddrs, net.JoinHostPort(host, port))
+			if port == "" {
+				port = "9201"
+			}
+			initialAddrs = append(initialAddrs, util.JoinHostPort(host, port))
 		}
 	}
 

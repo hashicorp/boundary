@@ -209,6 +209,30 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 	require.NoError(t, c.WaitForNextWorkerStatusUpdate(childKmsWorker.Name()))
 }
 
+func TestWorkerIPv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	w := NewTestWorker(t, &TestWorkerOpts{
+		EnableIPv6: true,
+	})
+	require.NotNil(w)
+	validateIPv6 := func(addr, name string) {
+		host, _, err := net.SplitHostPort(addr)
+		require.NoError(err)
+		require.NotEmpty(host, "missing host")
+		ip := net.ParseIP(host)
+		assert.NotNil(ip, "failed to parse %s", name)
+		assert.NotNil(ip.To16(), "%s is not IPv6 %s", name, addr)
+	}
+	for _, addr := range w.addrs {
+		validateIPv6(addr, "worker addr")
+	}
+	for _, addr := range w.ProxyAddrs() {
+		validateIPv6(addr, "proxy addr")
+	}
+	require.NotNil(w.Worker().proxyListener)
+	validateIPv6(w.Worker().proxyListener.ProxyListener.Addr().String(), "proxy listener addr")
+}
+
 func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)

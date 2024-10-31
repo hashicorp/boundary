@@ -15,7 +15,6 @@ import (
 	"net"
 	"os"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -105,6 +104,84 @@ listener "tcp" {
 }
 `
 
+	devIpv6ControllerExtraConfig = `
+controller {
+	name = "dev-controller"
+	description = "A default controller created in dev mode"
+}
+
+kms "aead" {
+	purpose = "root"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_root"
+}
+
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_worker-auth"
+}
+
+kms "aead" {
+	purpose = "bsr"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_bsr"
+}
+
+kms "aead" {
+	purpose = "recovery"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_recovery"
+}
+
+listener "tcp" {
+	address = "[::1]"
+	purpose = "api"
+	tls_disable = true
+	cors_enabled = true
+	cors_allowed_origins = ["*"]
+}
+
+listener "tcp" {
+	address = "[::1]"
+	purpose = "cluster"
+}
+
+listener "tcp" {
+	address = "[::1]"
+	purpose = "ops"
+	tls_disable = true
+}
+`
+
+	devIpv6WorkerExtraConfig = `
+listener "tcp" {
+	address = "[::1]"
+	purpose = "proxy"
+}
+
+worker {
+	name = "w_1234567890"
+	description = "A default worker created in dev mode"
+	public_addr = "[::1]"
+	initial_upstreams = ["[::1]"]
+	tags {
+		type = ["dev", "local"]
+	}
+}
+
+kms "aead" {
+    purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "worker-auth-storage"
+}
+`
+
 	devWorkerExtraConfig = `
 listener "tcp" {
 	purpose = "proxy"
@@ -132,10 +209,6 @@ kms "aead" {
 	// override this value via the configuration.
 	defaultCsp = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"
 )
-
-// This regular expression is used to find all instances of square brackets within a string.
-// This regular expression is used to remove the square brackets from an IPv6 address.
-var squareBrackets = regexp.MustCompile("\\[|\\]")
 
 // Config is the configuration for the boundary controller
 type Config struct {
@@ -378,14 +451,17 @@ type License struct {
 // WithAuditEventsEnabled, TestWithErrorEventsEnabled
 func DevWorker(opt ...Option) (*Config, error) {
 	workerAuthStorageKey := DevKeyGeneration()
-	hclStr := fmt.Sprintf(devConfig+devWorkerExtraConfig, workerAuthStorageKey)
-	parsed, err := Parse(hclStr)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing dev config: %w", err)
-	}
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing options: %w", err)
+	}
+	hclStr := fmt.Sprintf(devConfig+devWorkerExtraConfig, workerAuthStorageKey)
+	if opts.withIPv6Enabled {
+		hclStr = fmt.Sprintf(devConfig+devIpv6WorkerExtraConfig, workerAuthStorageKey)
+	}
+	parsed, err := Parse(hclStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
 	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
 	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
@@ -414,12 +490,20 @@ func DevKeyGeneration() string {
 // DevController is a Config that is used for dev mode of Boundary
 // controllers
 func DevController(opt ...Option) (*Config, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing options: %w", err)
+	}
+
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
 	bsrKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
 
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey)
+	if opts.withIPv6Enabled {
+		hclStr = fmt.Sprintf(devConfig+devIpv6ControllerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey)
+	}
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -429,10 +513,6 @@ func DevController(opt ...Option) (*Config, error) {
 	parsed.DevWorkerAuthKey = workerAuthKey
 	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
-	opts, err := getOpts(opt...)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing options: %w", err)
-	}
 	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
 	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
 	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled
@@ -440,13 +520,22 @@ func DevController(opt ...Option) (*Config, error) {
 	return parsed, nil
 }
 
-func DevCombined() (*Config, error) {
+func DevCombined(opt ...Option) (*Config, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing options: %w", err)
+	}
+
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
 	workerAuthStorageKey := DevKeyGeneration()
 	bsrKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
+
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey, workerAuthStorageKey)
+	if opts.withIPv6Enabled {
+		hclStr = fmt.Sprintf(devConfig+devIpv6ControllerExtraConfig+devIpv6WorkerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey, workerAuthStorageKey)
+	}
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -1255,20 +1344,14 @@ func (c *Config) SetupControllerPublicClusterAddress(flagValue string) error {
 		}
 	}
 
-	host, port, err := net.SplitHostPort(c.Controller.PublicClusterAddr)
+	host, port, err := util.SplitHostPort(c.Controller.PublicClusterAddr)
 	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9201"
-			host = c.Controller.PublicClusterAddr
-		} else {
-			return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
-		}
+		return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
 	}
-
-	// remove the square brackets from the ipv6 address because the method
-	// net.JoinHostPort() will add a second pair of square brackets.
-	host = squareBrackets.ReplaceAllString(host, "")
-	c.Controller.PublicClusterAddr = net.JoinHostPort(host, port)
+	if port == "" {
+		port = "9201"
+	}
+	c.Controller.PublicClusterAddr = util.JoinHostPort(host, port)
 
 	return nil
 }
@@ -1322,11 +1405,7 @@ func (c *Config) SetupWorkerInitialUpstreams() error {
 			break
 		}
 		// Best effort see if it's a domain name and if not assume it must match
-		host, _, err := net.SplitHostPort(c.Worker.InitialUpstreams[0])
-		if err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr) {
-			err = nil
-			host = c.Worker.InitialUpstreams[0]
-		}
+		host, _, err := util.SplitHostPort(c.Worker.InitialUpstreams[0])
 		if err == nil {
 			ip := net.ParseIP(host)
 			if ip == nil {

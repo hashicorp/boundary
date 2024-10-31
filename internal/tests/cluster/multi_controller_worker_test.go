@@ -5,6 +5,7 @@ package cluster
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -38,33 +39,64 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	})
 	defer c2.Shutdown()
 
-	helper.ExpectWorkers(t, c1)
-	helper.ExpectWorkers(t, c2)
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2)
+	}()
+	wg.Wait()
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
+		InitialUpstreams: append(c1.ClusterAddrs(), c2.ClusterAddrs()...),
 		Logger:           logger.Named("w1"),
 	})
 	defer w1.Shutdown()
 
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1, w1)
-	helper.ExpectWorkers(t, c2, w1)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1, w1)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2, w1)
+	}()
+	wg.Wait()
 
 	w2 := w1.AddClusterWorkerMember(t, &worker.TestWorkerOpts{
 		Logger: logger.Named("w2"),
 	})
 	defer w2.Shutdown()
 
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1, w1, w2)
-	helper.ExpectWorkers(t, c2, w1, w2)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1, w1, w2)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2, w1, w2)
+	}()
+	wg.Wait()
 
 	require.NoError(w1.Worker().Shutdown())
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1, w2)
-	helper.ExpectWorkers(t, c2, w2)
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1, w2)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2, w2)
+	}()
+	wg.Wait()
 
 	w1 = worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		WorkerAuthKms:    c1.Config().WorkerAuthKms,
@@ -73,22 +105,41 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	})
 	defer w1.Shutdown()
 
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1, w1, w2)
-	helper.ExpectWorkers(t, c2, w1, w2)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1, w1, w2)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2, w1, w2)
+	}()
+	wg.Wait()
 
 	require.NoError(c2.Controller().Shutdown())
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1, w1, w2)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1, w1, w2)
+	}()
+	wg.Wait()
 
 	c2 = c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
 		Logger: c1.Config().Logger.ResetNamed("c2"),
 	})
 	defer c2.Shutdown()
 
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1, w1, w2)
-	helper.ExpectWorkers(t, c2, w1, w2)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c1, w1, w2)
+	}()
+	go func() {
+		defer wg.Done()
+		helper.ExpectWorkers(t, c2, w1, w2)
+	}()
+	wg.Wait()
 }
 
 func TestWorkerAppendInitialUpstreams(t *testing.T) {
