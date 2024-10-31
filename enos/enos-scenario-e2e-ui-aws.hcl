@@ -46,7 +46,7 @@ scenario "e2e_ui_aws" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
     }
   }
 
@@ -114,6 +114,7 @@ scenario "e2e_ui_aws" {
     ]
 
     variables {
+      deploy            = true
       ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
       instance_type     = var.vault_instance_type
       instance_count    = 1

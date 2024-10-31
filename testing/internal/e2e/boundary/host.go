@@ -203,19 +203,30 @@ func AddHostToHostSetCli(t testing.TB, ctx context.Context, hostSetId string, ho
 
 // CreateAwsHostCatalogCli uses the cli to create a new AWS dynamic host catalog.
 // Returns the id of the new host catalog.
-func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, accessKeyId, secretAccessKey, region string) (string, error) {
+func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, accessKeyId, secretAccessKey, region string, dualStack bool) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
+	opts := []e2e.Option{
 		e2e.WithArgs(
 			"host-catalogs", "create", "plugin",
 			"-scope-id", projectId,
 			"-plugin-name", "aws",
 			"-attr", "disable_credential_rotation=true",
 			"-attr", fmt.Sprintf("region=%s", region),
+		),
+	}
+	if dualStack {
+		opts = append(opts,
+			e2e.WithArgs(
+				"-attr", fmt.Sprintf("dual_stack=%t", dualStack),
+			),
+		)
+	}
+	opts = append(opts,
+		e2e.WithArgs(
 			"-secret", "access_key_id=env://E2E_AWS_ACCESS_KEY_ID",
 			"-secret", "secret_access_key=env://E2E_AWS_SECRET_ACCESS_KEY",
 			"-name", fmt.Sprintf("e2e Host Catalog %s", name),
@@ -225,6 +236,7 @@ func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, acces
 		e2e.WithEnv("E2E_AWS_ACCESS_KEY_ID", accessKeyId),
 		e2e.WithEnv("E2E_AWS_SECRET_ACCESS_KEY", secretAccessKey),
 	)
+	output := e2e.RunCommand(ctx, "boundary", opts...)
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
 	}
@@ -242,22 +254,41 @@ func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, acces
 
 // CreatePluginHostSetCli uses the cli to create a new host set from a dynamic host catalog.
 // Returns the id of the new host set.
-func CreatePluginHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string, filter string) (string, error) {
+func CreatePluginHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string, filter string, ipVersion string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"host-sets", "create", "plugin",
-			"-host-catalog-id", hostCatalogId,
-			"-attr", "filters="+filter,
-			"-name", fmt.Sprintf("e2e Host Set %s", name),
-			"-description", "e2e",
-			"-format", "json",
-		),
-	)
+	var output *e2e.CommandResult
+	switch ipVersion {
+	case "4":
+		output = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"host-sets", "create", "plugin",
+				"-host-catalog-id", hostCatalogId,
+				"-attr", "filters="+filter,
+				"-name", fmt.Sprintf("e2e Host Set %s", name),
+				"-description", "e2e",
+				"-format", "json",
+			),
+		)
+	case "6", "dual":
+		output = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"host-sets", "create", "plugin",
+				"-host-catalog-id", hostCatalogId,
+				"-preferred-endpoint", "cidr:::/0",
+				"-attr", "filters="+filter,
+				"-name", fmt.Sprintf("e2e Host Set %s", name),
+				"-description", "e2e",
+				"-format", "json",
+			),
+		)
+	default:
+		return "", fmt.Errorf("unknown ip version: %q", ipVersion)
+	}
+
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
 	}

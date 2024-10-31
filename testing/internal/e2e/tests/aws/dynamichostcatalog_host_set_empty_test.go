@@ -38,11 +38,11 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
+	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion, c.IpVersion != "4")
 	require.NoError(t, err)
 
 	// Set up a host set
-	hostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, "tag:empty_test=true")
+	hostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, "tag:empty_test=true", c.IpVersion)
 	require.NoError(t, err)
 
 	// Check that there are no hosts in the host set

@@ -43,7 +43,7 @@ func TestCliCreateGcpDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a host set
-	hostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, "labels.empty_test=true")
+	hostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, "labels.empty_test=true", "4")
 	require.NoError(t, err)
 
 	// Check that there are no hosts in the host set

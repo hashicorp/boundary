@@ -71,6 +71,12 @@ variable "environment" {
   type        = string
 }
 
+variable "deploy" {
+  description = "Flag to toggle whether or not all the resources defined in this module should be deployed."
+  type        = bool
+  default     = false
+}
+
 variable "instance_count" {
   description = "Number of EC2 instances in each subnet"
   type        = number
@@ -101,7 +107,13 @@ variable "project_name" {
 }
 
 variable "sg_additional_ips" {
-  description = "A list of additional IPs to allow by Vault security groups (use with caution)"
+  description = "A list of additional IPv4 IPs to allow by Vault security groups (use with caution)"
+  type        = list(string)
+  default     = []
+}
+
+variable "sg_additional_ipv6_ips" {
+  description = "A list of additional IPv6 IPs to allow by Vault security groups (use with caution)"
   type        = list(string)
   default     = []
 }
@@ -252,4 +264,15 @@ variable "enable_file_audit_device" {
   description = "If true the file audit device will be enabled at the path /var/log/vault/vault_audit.log"
   type        = bool
   default     = true
+}
+
+variable "ip_version" {
+  type        = string
+  description = "Optional variable that configures the vault instance to run on a ipv4, ipv6, or dualstack network"
+  default     = "4"
+
+  validation {
+    condition     = contains(["4", "6", "dual"], var.ip_version)
+    error_message = "Valid values for ip_version are (4, 6, dual)."
+  }
 }
