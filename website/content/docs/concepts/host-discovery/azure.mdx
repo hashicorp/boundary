@@ -1,8 +1,8 @@
 ---
 layout: docs
 page_title: Azure dynamic host catalogs
-description: |-
-  An overview of Azure host discovery in Boundary
+description: >-
+  Use dynamic host catalogs to automatically discover Azure resources and add them as hosts in Boundary. Create a host catalog and host set for Azure resources.
 ---
 # Azure dynamic host catalogs
 Boundary uses dynamic host catalogs to automatically discover Azure resources available through Azure Resource Manager (ARM) and add them as hosts.
@@ -10,7 +10,7 @@ Boundary uses dynamic host catalogs to automatically discover Azure resources av
 ## Create a host catalog to connect with Azure
 Boundary uses plugins to integrate with a variety of providers.   To use a
 dynamic host catalog to integrate with Azure, you create a host catalog of the
-`plugin` type and set the `plugin-name` value to `azure`.  You must also provide the 
+`plugin` type and set the `plugin-name` value to `azure`.  You must also provide the
 specific fields needed for Boundary to authenticate with Azure.
 
 <Tabs>
