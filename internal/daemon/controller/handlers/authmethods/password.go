@@ -7,9 +7,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -114,7 +116,6 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 	if err != nil {
 		return nil, err
 	}
-
 	acct, err := pwRepo.Authenticate(ctx, scopeId, authMethodId, loginName, pw)
 	if err != nil {
 		return nil, err
@@ -123,11 +124,17 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unauthenticated, "Unable to authenticate.")
 	}
 
+	am, err := pwRepo.LookupAuthMethod(ctx, authMethodId)
+	if err != nil {
+		return nil, err
+	}
+
 	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId())
 	if err != nil {
 		return nil, err
 	}
-	tok, err := atRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+	tok, err := atRepo.CreateAuthToken(ctx, u, acct.GetPublicId(), authtoken.WithTokenTimeToLiveDuration(time.Duration(am.AuthTokenTtl)*time.Second))
 	if err != nil {
 		return nil, err
 	}
