@@ -28,7 +28,7 @@ type options struct {
 	password               string
 	withPassword           bool
 	withOrderByCreateTime  bool
-	withTokenTTL           int
+	withTokenTTL           uint32
 	ascending              bool
 	withStartPageAfterItem pagination.Item
 }
@@ -41,7 +41,7 @@ func getDefaultOptions() options {
 
 // WithTokenTTL provides optional TTL configuration for tokens returned from
 // this auth_method
-func WithTokenTTL(ttlSeconds int) Option {
+func WithTokenTTL(ttlSeconds uint32) Option {
 	return func(o *options) {
 		if ttlSeconds > 0 {
 			o.withTokenTTL = ttlSeconds

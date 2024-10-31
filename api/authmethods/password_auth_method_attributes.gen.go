@@ -13,6 +13,7 @@ import (
 type PasswordAuthMethodAttributes struct {
 	MinLoginNameLength uint32 `json:"min_login_name_length,omitempty"`
 	MinPasswordLength  uint32 `json:"min_password_length,omitempty"`
+	AuthTokenTtl       uint32 `json:"auth_token_ttl,omitempty"`
 }
 
 func AttributesMapToPasswordAuthMethodAttributes(in map[string]any) (*PasswordAuthMethodAttributes, error) {

@@ -225,5 +225,9 @@ func toStoragePwAuthMethod(ctx context.Context, scopeId string, item *pb.AuthMet
 	if pwAttrs.GetMinPasswordLength() != 0 {
 		u.MinPasswordLength = pwAttrs.GetMinPasswordLength()
 	}
+
+	if pwAttrs.GetAuthTokenTtl() != 0 {
+		u.AuthTokenTtl = pwAttrs.GetAuthTokenTtl()
+	}
 	return u, nil
 }
