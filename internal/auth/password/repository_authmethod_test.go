@@ -521,7 +521,18 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			skipVersionCheck: true,
 		},
 		{
-			name: "not fround",
+			name: "change auth token ttl",
+			args: args{
+				updates: &store.AuthMethod{
+					AuthTokenTtl: 300,
+				},
+				fieldMaskPaths: []string{"AuthTokenTtl"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "not found",
 			args: args{
 				updates: &store.AuthMethod{
 					PublicId: func() string {
@@ -578,7 +589,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 
 			// create the initial auth method
 			o, _ := iam.TestScopes(t, iamRepo)
-			am, err := NewAuthMethod(ctx, o.GetPublicId(), WithName("default"), WithDescription("default"))
+			am, err := NewAuthMethod(ctx, o.GetPublicId(), WithName("default"), WithDescription("default"), WithTokenTTL(320))
 			require.NoError(err)
 			origAM, err := repo.CreateAuthMethod(ctx, am)
 			require.NoError(err)

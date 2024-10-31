@@ -1,8 +1,8 @@
 begin;
 
 alter table auth_password_method
-  add column token_ttl_seconds int not null default 0
-    constraint token_ttl_seconds_cannot_be_negative
-      check (token_time_to_live_seconds >= 0);
+  add column auth_token_ttl int not null default 0
+    constraint auth_token_ttl_cannot_be_negative
+      check (auth_token_ttl >= 0);
 
 commit;

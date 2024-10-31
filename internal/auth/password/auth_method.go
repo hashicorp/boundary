@@ -44,6 +44,7 @@ func NewAuthMethod(ctx context.Context, scopeId string, opt ...Option) (*AuthMet
 			Description:        opts.withDescription,
 			MinLoginNameLength: 3,
 			MinPasswordLength:  8,
+			AuthTokenTtl:       int32(opts.withTokenTTL),
 		},
 	}
 	return a, nil
