@@ -126,4 +126,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withUseNonPagedListing = true
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithTable", func(t *testing.T) {
+		opts, err := getOpts(WithTable("test"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.Empty(t, testOpts.withTable)
+		testOpts.withTable = "test"
+		assert.Equal(t, opts, testOpts)
+	})
 }
