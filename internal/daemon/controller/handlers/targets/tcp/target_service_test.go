@@ -4409,57 +4409,104 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	assert.Equal(t, 1, num)
 	v.RevokeToken(t, tok1)
 
-	workerExists := func(tar target.Target) (version uint32) {
+	workerExists := func(tar target.Target) target.Target {
 		server.TestKmsWorker(t, conn, wrapper)
-		return tar.GetVersion()
+		return tar
 	}
 
-	hostSetNoHostExists := func(tar target.Target) (version uint32) {
+	hostSetNoHostExists := func(tar target.Target) target.Target {
 		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
-
-		tr, err := s.AddTargetHostSources(ctx, &pbs.AddTargetHostSourcesRequest{
+		_, err := s.AddTargetHostSources(ctx, &pbs.AddTargetHostSourcesRequest{
 			Id:            tar.GetPublicId(),
 			Version:       tar.GetVersion(),
 			HostSourceIds: []string{hs.GetPublicId()},
 		})
 		require.NoError(t, err)
-		return tr.GetItem().GetVersion()
+		repo, err := repoFn()
+		require.NoError(t, err)
+		tar, err = repo.LookupTarget(ctx, tar.GetPublicId())
+		require.NoError(t, err)
+		return tar
 	}
 
-	hostExists := func(tar target.Target) (version uint32) {
-		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
-		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
-		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
-		_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-		apiTar, err := s.AddTargetHostSources(ctx, &pbs.AddTargetHostSourcesRequest{
-			Id:            tar.GetPublicId(),
-			Version:       tar.GetVersion(),
-			HostSourceIds: []string{hs.GetPublicId()},
-		})
-		require.NoError(t, err)
-		repo, err := staticHostRepoFn()
-		require.NoError(t, err)
-		_, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
-		require.NoError(t, err)
-		return apiTar.GetItem().GetVersion()
-	}
-
-	hostWithoutPort := func(tar target.Target) (version uint32) {
+	hostExists := func(tar target.Target) target.Target {
 		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 		_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-		apiTar, err := s.AddTargetHostSources(ctx, &pbs.AddTargetHostSourcesRequest{
+		_, err := s.AddTargetHostSources(ctx, &pbs.AddTargetHostSourcesRequest{
 			Id:            tar.GetPublicId(),
 			Version:       tar.GetVersion(),
 			HostSourceIds: []string{hs.GetPublicId()},
 		})
 		require.NoError(t, err)
-		return apiTar.GetItem().GetVersion()
+		hostRepo, err := staticHostRepoFn()
+		require.NoError(t, err)
+		_, _, err = hostRepo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
+		require.NoError(t, err)
+		repo, err := repoFn()
+		require.NoError(t, err)
+		tar, err = repo.LookupTarget(ctx, tar.GetPublicId())
+		require.NoError(t, err)
+		return tar
 	}
 
-	libraryExists := func(tar target.Target) (version uint32) {
+	hostWithoutPort := func(tar target.Target) target.Target {
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		_, err := s.AddTargetHostSources(ctx, &pbs.AddTargetHostSourcesRequest{
+			Id:            tar.GetPublicId(),
+			Version:       tar.GetVersion(),
+			HostSourceIds: []string{hs.GetPublicId()},
+		})
+		require.NoError(t, err)
+		repo, err := repoFn()
+		require.NoError(t, err)
+		tar, err = repo.LookupTarget(ctx, tar.GetPublicId())
+		require.NoError(t, err)
+		return tar
+	}
+
+	ipv4HostWithHostPort := func(tar target.Target) target.Target {
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		h := static.TestHost(t, conn, hc.GetPublicId(), static.WithAddress("8.8.8.8:22"))
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		_, err := s.SetTargetHostSources(ctx, &pbs.SetTargetHostSourcesRequest{
+			Id:            tar.GetPublicId(),
+			Version:       tar.GetVersion(),
+			HostSourceIds: []string{hs.GetPublicId()},
+		})
+		require.NoError(t, err)
+		repo, err := repoFn()
+		require.NoError(t, err)
+		tar, err = repo.LookupTarget(ctx, tar.GetPublicId())
+		require.NoError(t, err)
+		return tar
+	}
+
+	ipv6HostWithHostPort := func(tar target.Target) target.Target {
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		h := static.TestHost(t, conn, hc.GetPublicId(), static.WithAddress("[2001:4860:4860:0:0:0:0:8888]:22"))
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		_, err := s.SetTargetHostSources(ctx, &pbs.SetTargetHostSourcesRequest{
+			Id:            tar.GetPublicId(),
+			Version:       tar.GetVersion(),
+			HostSourceIds: []string{hs.GetPublicId()},
+		})
+		require.NoError(t, err)
+		repo, err := repoFn()
+		require.NoError(t, err)
+		tar, err = repo.LookupTarget(ctx, tar.GetPublicId())
+		require.NoError(t, err)
+		return tar
+	}
+
+	libraryExists := func(tar target.Target) target.Target {
 		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
@@ -4474,17 +4521,21 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		}})
 		require.NoError(t, err)
 
-		tr, err := s.AddTargetCredentialSources(ctx,
+		_, err = s.AddTargetCredentialSources(ctx,
 			&pbs.AddTargetCredentialSourcesRequest{
 				Id:                          tar.GetPublicId(),
 				BrokeredCredentialSourceIds: []string{clsResp.GetItem().GetId()},
 				Version:                     tar.GetVersion(),
 			})
 		require.NoError(t, err)
-		return tr.GetItem().GetVersion()
+		repo, err := repoFn()
+		require.NoError(t, err)
+		tar, err = repo.LookupTarget(ctx, tar.GetPublicId())
+		require.NoError(t, err)
+		return tar
 	}
 
-	misConfiguredlibraryExists := func(tar target.Target) (version uint32) {
+	misConfiguredlibraryExists := func(tar target.Target) target.Target {
 		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
@@ -4499,17 +4550,21 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		}})
 		require.NoError(t, err)
 
-		tr, err := s.AddTargetCredentialSources(ctx,
+		_, err = s.AddTargetCredentialSources(ctx,
 			&pbs.AddTargetCredentialSourcesRequest{
 				Id:                          tar.GetPublicId(),
 				BrokeredCredentialSourceIds: []string{clsResp.GetItem().GetId()},
 				Version:                     tar.GetVersion(),
 			})
 		require.NoError(t, err)
-		return tr.GetItem().GetVersion()
+		repo, err := repoFn()
+		require.NoError(t, err)
+		tar, err = repo.LookupTarget(ctx, tar.GetPublicId())
+		require.NoError(t, err)
+		return tar
 	}
 
-	expiredTokenLibrary := func(tar target.Target) (version uint32) {
+	expiredTokenLibrary := func(tar target.Target) target.Target {
 		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
@@ -4524,14 +4579,18 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		}})
 		require.NoError(t, err)
 
-		tr, err := s.AddTargetCredentialSources(ctx,
+		_, err = s.AddTargetCredentialSources(ctx,
 			&pbs.AddTargetCredentialSourcesRequest{
 				Id:                          tar.GetPublicId(),
 				BrokeredCredentialSourceIds: []string{clsResp.GetItem().GetId()},
 				Version:                     tar.GetVersion(),
 			})
 		require.NoError(t, err)
-		return tr.GetItem().GetVersion()
+		repo, err := repoFn()
+		require.NoError(t, err)
+		tar, err = repo.LookupTarget(ctx, tar.GetPublicId())
+		require.NoError(t, err)
+		return tar
 	}
 
 	// Generate correlation Id and add it to the context
@@ -4543,7 +4602,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	cases := []struct {
 		name            string
 		ctx             context.Context
-		setup           []func(target.Target) uint32
+		setup           []func(target.Target) target.Target
 		useTargetId     bool
 		wantErr         bool
 		wantErrContains string
@@ -4552,70 +4611,100 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			// This one must be run first since it relies on the DB not having any worker details
 			name:            "no worker",
 			ctx:             ctxWithCor,
-			setup:           []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
+			setup:           []func(tcpTarget target.Target) target.Target{hostExists, libraryExists},
 			useTargetId:     true,
 			wantErrContains: "No workers are available to handle this session",
 		},
 		{
 			name:        "success",
 			ctx:         ctxWithCor,
-			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			setup:       []func(tcpTarget target.Target) target.Target{workerExists, hostExists, libraryExists},
 			useTargetId: true,
 		},
 		{
 			name:            "no target",
 			ctx:             ctxWithCor,
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			setup:           []func(tcpTarget target.Target) target.Target{workerExists, hostExists, libraryExists},
 			useTargetId:     false,
 			wantErrContains: "Resource not found",
 		},
 		{
 			name:        "no host port",
 			ctx:         ctxWithCor,
-			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
+			setup:       []func(tcpTarget target.Target) target.Target{workerExists, hostWithoutPort, libraryExists},
 			useTargetId: true,
 		},
 		{
-			name: "host port",
+			name: "ipv4 target address host port",
 			ctx:  ctxWithCor,
-			setup: []func(tcpTarget target.Target) uint32{
-				workerExists, func(tcpTarget target.Target) uint32 {
-					tcpTarget.SetAddress("127.0.0.1:22")
+			setup: []func(tcpTarget target.Target) target.Target{
+				workerExists, func(tcpTarget target.Target) target.Target {
 					repo, err := repoFn()
 					require.NoError(t, err)
-					tcpTarget, _, err = repo.UpdateTarget(ctx, tcpTarget, tcpTarget.GetVersion(), []string{"address"})
+					n, err := repo.DeleteTarget(ctx, tcpTarget.GetPublicId())
 					require.NoError(t, err)
-					return tcpTarget.GetVersion()
+					assert.Equal(t, 1, n)
+					return tcp.TestTarget(ctx, t, conn, tcpTarget.GetProjectId(), tcpTarget.GetName(), target.WithAddress("127.0.0.1:22"), target.WithDefaultPort(22))
 				},
 			},
-			wantErrContains: "Address specified for use unexpectedly contains a port",
+			wantErrContains: "error when parsing the chosen endpoint host address: unknown: error #0: address contains a port",
+			useTargetId:     true,
+		},
+		{
+			name: "ipv6 target address host port",
+			ctx:  ctxWithCor,
+			setup: []func(tcpTarget target.Target) target.Target{
+				workerExists, func(tcpTarget target.Target) target.Target {
+					repo, err := repoFn()
+					require.NoError(t, err)
+					n, err := repo.DeleteTarget(ctx, tcpTarget.GetPublicId())
+					require.NoError(t, err)
+					assert.Equal(t, 1, n)
+					return tcp.TestTarget(ctx, t, conn, tcpTarget.GetProjectId(), tcpTarget.GetName(), target.WithAddress("[2001:4860:4860:0:0:0:0:8888]:22"), target.WithDefaultPort(22))
+				},
+			},
+			wantErrContains: "error when parsing the chosen endpoint host address: unknown: error #0: address contains a port",
+			useTargetId:     true,
+		},
+		{
+			name:            "ipv4 static host port",
+			ctx:             ctxWithCor,
+			setup:           []func(tcpTarget target.Target) target.Target{ipv4HostWithHostPort},
+			wantErrContains: "error when parsing the chosen endpoint host address: unknown: error #0: address contains a port",
+			useTargetId:     true,
+		},
+		{
+			name:            "ipv6 static host port",
+			ctx:             ctxWithCor,
+			setup:           []func(tcpTarget target.Target) target.Target{ipv6HostWithHostPort},
+			wantErrContains: "error when parsing the chosen endpoint host address: unknown: error #0: address contains a port",
 			useTargetId:     true,
 		},
 		{
 			name:            "no hosts",
 			ctx:             ctxWithCor,
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
+			setup:           []func(tcpTarget target.Target) target.Target{workerExists, hostSetNoHostExists, libraryExists},
 			useTargetId:     true,
 			wantErrContains: "No host sources or address found for given target",
 		},
 		{
 			name:            "bad library configuration",
 			ctx:             ctxWithCor,
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
+			setup:           []func(tcpTarget target.Target) target.Target{workerExists, hostExists, misConfiguredlibraryExists},
 			useTargetId:     true,
 			wantErrContains: "external system issue: error #3014: Error making API request",
 		},
 		{
 			name:            "expired token library",
 			ctx:             ctxWithCor,
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
+			setup:           []func(tcpTarget target.Target) target.Target{workerExists, hostExists, expiredTokenLibrary},
 			useTargetId:     true,
 			wantErrContains: "vault.newClient: invalid configuration",
 		},
 		{
 			name:            "no correaltion id",
 			ctx:             ctx,
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			setup:           []func(tcpTarget target.Target) target.Target{workerExists, hostExists, libraryExists},
 			useTargetId:     true,
 			wantErrContains: "authorize session: missing correlation id",
 		},
@@ -4626,8 +4715,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("test-%d", i), target.WithDefaultPort(22))
 
 			for _, fn := range tc.setup {
-				ver := fn(tar)
-				tar.SetVersion(ver)
+				tar = fn(tar)
 			}
 
 			id := tar.GetPublicId()

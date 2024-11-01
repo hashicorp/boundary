@@ -131,30 +131,30 @@ func TestHost_New(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require, assert := require.New(t), assert.New(t)
 			got, err := NewHost(ctx, tt.args.catalogId, tt.args.opts...)
 			if tt.wantCreateErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Nil(got)
-			} else {
-				assert.NoError(err)
-				if assert.NotNil(got) {
-					assert.Emptyf(got.PublicId, "PublicId set")
-					assert.Equal(tt.want, got)
-
-					id, err := newHostId(ctx)
-					assert.NoError(err)
-
-					tt.want.PublicId = id
-					got.PublicId = id
-
-					w := db.New(conn)
-					err2 := w.Create(ctx, got)
-					if tt.wantWriteErr {
-						assert.Error(err2)
-					}
-				}
+				return
 			}
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Emptyf(got.PublicId, "PublicId set")
+			assert.Equal(tt.want, got)
+
+			id, err := newHostId(ctx)
+			require.NoError(err)
+			tt.want.PublicId = id
+			got.PublicId = id
+
+			w := db.New(conn)
+			dbWriteErr := w.Create(ctx, got)
+			if tt.wantWriteErr {
+				require.Error(dbWriteErr)
+				return
+			}
+			require.NoError(dbWriteErr)
 		})
 	}
 }

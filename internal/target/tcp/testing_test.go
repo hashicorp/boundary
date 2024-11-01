@@ -19,39 +19,116 @@ import (
 )
 
 func Test_TestTcpTarget(t *testing.T) {
-	require := require.New(t)
+	t.Parallel()
+
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	_, proj := iam.TestScopes(t, iamRepo)
-
 	ctx := context.Background()
 	repo, err := target.NewRepository(ctx, rw, rw, testKms)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
-	hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 2)
-	var sets []string
-	for _, s := range hsets {
-		sets = append(sets, s.PublicId)
+	t.Run("with-host-source", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		_, proj := iam.TestScopes(t, iamRepo)
+		cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
+		hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 2)
+		var sets []string
+		for _, s := range hsets {
+			sets = append(sets, s.PublicId)
+		}
+		name := tcp.TestTargetName(t, proj.PublicId)
+		tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, name, target.WithHostSources(sets))
+		require.NotNil(t)
+		assert.NotEmpty(tar.GetPublicId())
+		assert.Equal(name, tar.GetName())
+		assert.Empty(tar.GetAddress())
+
+		foundTarget, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+		require.NoError(err)
+
+		foundSources := foundTarget.GetHostSources()
+		foundIds := make([]string, 0, len(foundSources))
+		for _, s := range foundSources {
+			foundIds = append(foundIds, s.Id())
+		}
+		assert.ElementsMatch(sets, foundIds)
+	})
+
+	tests := []struct {
+		name        string
+		opt         []target.Option
+		wantAddress string
+	}{
+		{
+			name: "dns-name",
+			opt: []target.Option{
+				target.WithAddress("www.google.com"),
+			},
+			wantAddress: "www.google.com",
+		},
+		{
+			name: "ipv4-address",
+			opt: []target.Option{
+				target.WithAddress("8.8.8.8"),
+			},
+			wantAddress: "8.8.8.8",
+		},
+		{
+			name: "ipv4-address-with-port",
+			opt: []target.Option{
+				target.WithAddress("8.8.8.8:80"),
+			},
+			wantAddress: "8.8.8.8:80",
+		},
+		{
+			name: "ipv6-address",
+			opt: []target.Option{
+				target.WithAddress("2001:4860:4860:0:0:0:0:8888"),
+			},
+			wantAddress: "2001:4860:4860:0:0:0:0:8888",
+		},
+		{
+			name: "ipv6-address-with-port",
+			opt: []target.Option{
+				target.WithAddress("[2001:4860:4860:0:0:0:0:8888]:80"),
+			},
+			wantAddress: "[2001:4860:4860:0:0:0:0:8888]:80",
+		},
+		{
+			name: "abbreviated-ipv6-address",
+			opt: []target.Option{
+				target.WithAddress("2001:4860:4860::8888"),
+			},
+			wantAddress: "2001:4860:4860::8888",
+		},
+		{
+			name: "abbreviated-ipv6-address-with-port",
+			opt: []target.Option{
+				target.WithAddress("[2001:4860:4860::8888]:80"),
+			},
+			wantAddress: "[2001:4860:4860::8888]:80",
+		},
 	}
-	name := tcp.TestTargetName(t, proj.PublicId)
-	tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, name, target.WithHostSources(sets))
-	require.NotNil(t)
-	require.NotEmpty(tar.GetPublicId())
-	require.Equal(name, tar.GetName())
-
-	foundTarget, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
-	foundSources := foundTarget.GetHostSources()
-
-	require.NoError(err)
-	foundIds := make([]string, 0, len(foundSources))
-	for _, s := range foundSources {
-		foundIds = append(foundIds, s.Id())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, proj := iam.TestScopes(t, iamRepo)
+			name := tcp.TestTargetName(t, proj.PublicId)
+			tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, name, tt.opt...)
+			require.NotNil(t)
+			assert.NotEmpty(tar.GetPublicId())
+			assert.Equal(name, tar.GetName())
+			if tt.wantAddress != "" {
+				assert.Equal(tt.wantAddress, tar.GetAddress())
+				assert.Empty(tar.GetHostSources())
+			} else {
+				assert.Empty(tar.GetAddress())
+			}
+		})
 	}
-	require.ElementsMatch(sets, foundIds)
 }
 
 func Test_TestCredentialLibrary(t *testing.T) {

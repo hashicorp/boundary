@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/jimlambrt/gldap"
@@ -242,13 +243,9 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 			if purpose != "api" {
 				continue
 			}
-			host, _, err = net.SplitHostPort(ln.Config.Address)
+			host, _, err = util.SplitHostPort(ln.Config.Address)
 			if err != nil {
-				if strings.Contains(err.Error(), "missing port") {
-					host = ln.Config.Address
-				} else {
-					return fmt.Errorf("error splitting host/port: %w", err)
-				}
+				return fmt.Errorf("error splitting host/port: %w", err)
 			}
 		}
 		if host == "" {
@@ -259,6 +256,16 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 	tb := &oidcLogger{}
 
 	port = testdirectory.FreePort(tb)
+
+	// The util.SplitHostPort() method removes the square brackets that enclose the
+	// host address when the address type is ipv6. The square brackets must be
+	// added back, otherwise the gldap server will fail to start due to a parsing
+	// error.
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.To16() != nil {
+			host = fmt.Sprintf("[%s]", host)
+		}
+	}
 	b.DevLdapSetup.testDirectory = testdirectory.Start(tb,
 		testdirectory.WithNoTLS(tb),
 		testdirectory.WithHost(tb, host),
@@ -455,15 +462,12 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 			if purpose != "api" {
 				continue
 			}
-			b.DevOidcSetup.hostAddr, b.DevOidcSetup.callbackPort, err = net.SplitHostPort(ln.Config.Address)
+			b.DevOidcSetup.hostAddr, b.DevOidcSetup.callbackPort, err = util.SplitHostPort(ln.Config.Address)
 			if err != nil {
-				if strings.Contains(err.Error(), "missing port") {
-					b.DevOidcSetup.hostAddr = ln.Config.Address
-					// Use the default API port in the callback
-					b.DevOidcSetup.callbackPort = "9200"
-				} else {
-					return fmt.Errorf("error splitting host/port: %w", err)
-				}
+				return fmt.Errorf("error splitting host/port: %w", err)
+			}
+			if b.DevOidcSetup.callbackPort == "" {
+				b.DevOidcSetup.callbackPort = "9200"
 			}
 		}
 		if b.DevOidcSetup.hostAddr == "" {

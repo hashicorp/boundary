@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net"
 	"os"
 	"runtime"
 	"strings"
@@ -27,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
@@ -592,13 +592,10 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	host, port, err := net.SplitHostPort(c.flagHostAddress)
+	host, port, err := util.SplitHostPort(c.flagHostAddress)
 	if err != nil {
-		if !strings.Contains(err.Error(), "missing port") {
-			c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
-			return base.CommandUserError
-		}
-		host = c.flagHostAddress
+		c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
+		return base.CommandUserError
 	}
 	if port != "" {
 		c.UI.Error(`Port must not be specified as part of the dev host address`)

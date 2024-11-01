@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -355,14 +356,10 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 		for _, upstream := range c.Config.Worker.InitialUpstreams {
-			host, _, err := net.SplitHostPort(upstream)
+			host, _, err := util.SplitHostPort(upstream)
 			if err != nil {
-				if strings.Contains(err.Error(), globals.MissingPortErrStr) {
-					host = upstream
-				} else {
-					c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
-					return base.CommandUserError
-				}
+				c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
+				return base.CommandUserError
 			}
 			ip := net.ParseIP(host)
 			if ip != nil {
@@ -413,14 +410,10 @@ func (c *Command) Run(args []string) int {
 				if purpose != "cluster" {
 					continue
 				}
-				host, _, err := net.SplitHostPort(ln.Address)
+				host, _, err := util.SplitHostPort(ln.Address)
 				if err != nil {
-					if strings.Contains(err.Error(), globals.MissingPortErrStr) {
-						host = ln.Address
-					} else {
-						c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
-						return base.CommandUserError
-					}
+					c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
+					return base.CommandUserError
 				}
 				ip := net.ParseIP(host)
 				if ip != nil {

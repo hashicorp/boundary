@@ -31,16 +31,23 @@ func TestWorkerBytesUpDown(t *testing.T) {
 		Level: hclog.Trace,
 	})
 
-	conf, err := config.DevController()
+	conf, err := config.DevController(config.WithIPv6Enabled(true))
 	require.NoError(err)
 
-	pl, err := net.Listen("tcp", "localhost:0")
+	pl, err := net.Listen("tcp", "[::1]:")
 	require.NoError(err)
+
+	// update cluster listener to utilize proxy listener address
+	for _, l := range conf.Listeners {
+		if l.Purpose[0] == "cluster" {
+			l.Address = pl.Addr().String()
+		}
+	}
+
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                          conf,
 		InitialResourcesSuffix:          "1234567890",
 		Logger:                          logger.Named("c1"),
-		PublicClusterAddr:               pl.Addr().String(),
 		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
 
@@ -62,10 +69,9 @@ func TestWorkerBytesUpDown(t *testing.T) {
 		InitialUpstreams:                    []string{proxy.ListenerAddr()},
 		Logger:                              logger.Named("w1"),
 		SuccessfulStatusGracePeriodDuration: helper.DefaultSuccessfulStatusGracePeriod,
+		EnableIPv6:                          true,
 	})
 
-	require.NoError(w1.Worker().WaitForNextSuccessfulStatusUpdate())
-	require.NoError(c1.WaitForNextWorkerStatusUpdate(w1.Name()))
 	helper.ExpectWorkers(t, c1, w1)
 
 	// Use an independent context for test things that take a context so
@@ -90,7 +96,12 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Authorize a session, connect and send/recv some traffic
-	sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890")
+	workerInfo := []*targets.WorkerInfo{
+		{
+			Address: w1.ProxyAddrs()[0],
+		},
+	}
+	sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890", helper.WithWorkerInfo(workerInfo))
 	conn := sess.Connect(ctx, t)
 	conn.TestSendRecvAll(t)
 

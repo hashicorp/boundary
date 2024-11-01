@@ -32,8 +32,9 @@ type Host struct {
 // Name and description are the only valid options. All other options are
 // ignored.
 func NewHost(ctx context.Context, catalogId string, opt ...Option) (*Host, error) {
+	const op = "static.NewHost"
 	if catalogId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, "static.NewHost", "no catalog id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
 	}
 
 	opts := getOpts(opt...)

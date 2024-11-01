@@ -42,6 +42,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
@@ -967,17 +968,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			"No host was discovered after checking target address and host sources.")
 	}
 
-	// Ensure we don't have a port from the address, which would be unexpected
-	_, _, err = net.SplitHostPort(h)
-	switch {
-	case err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr):
-		// This is what we expect
-	case err != nil:
+	// Ensure we don't have a port from the address
+	_, err = util.ParseAddress(ctx, h)
+	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoint host address"))
-	case err == nil:
-		return nil, handlers.ApiErrorWithCodeAndMessage(
-			codes.FailedPrecondition,
-			"Address specified for use unexpectedly contains a port.")
 	}
 
 	// Generate the endpoint URL

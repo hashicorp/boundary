@@ -35,6 +35,7 @@ type options struct {
 	withSysEventsEnabled       bool
 	withAuditEventsEnabled     bool
 	withObservationsEnabled    bool
+	withIPv6Enabled            bool
 	testWithErrorEventsEnabled bool
 }
 
@@ -58,6 +59,12 @@ func getDefaultOptions() (options, error) {
 		return opts, err
 	}
 	opts.withObservationsEnabled = obs
+
+	ipv6, err := parseutil.ParseBool(os.Getenv("BOUNDARY_ENABLE_TEST_IPV6"))
+	if err != nil {
+		return opts, err
+	}
+	opts.withIPv6Enabled = ipv6
 
 	errEvents, err := parseutil.ParseBool(os.Getenv("BOUNDARY_ENABLE_TEST_ERROR_EVENTS"))
 	if err != nil {
@@ -88,6 +95,14 @@ func WithAuditEventsEnabled(enable bool) Option {
 func WithObservationsEnabled(enable bool) Option {
 	return func(o *options) error {
 		o.withObservationsEnabled = enable
+		return nil
+	}
+}
+
+// WithIPv6Enabled provides an option for enabling network ipv6 addresses
+func WithIPv6Enabled(enable bool) Option {
+	return func(o *options) error {
+		o.withIPv6Enabled = enable
 		return nil
 	}
 }
