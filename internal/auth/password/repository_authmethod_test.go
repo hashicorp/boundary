@@ -128,6 +128,23 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			wantErrMsg: "password.(Repository).CreateAuthMethod: password.(Argon2Configuration).validate: missing embedded config: password violation: error #202",
 		},
 		{
+			name: "valid-with-token-ttl",
+			in: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					ScopeId:      org.PublicId,
+					Name:         "test-token-ttl",
+					AuthTokenTtl: 300,
+				},
+			},
+			want: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					ScopeId:      org.PublicId,
+					Name:         "test-token-ttl",
+					AuthTokenTtl: 300,
+				},
+			},
+		},
+		{
 			name: "invalid-with-config-unknown-config-type",
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
@@ -157,7 +174,6 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
-			require.NotNil(got)
 			assertPublicId(t, globals.PasswordAuthMethodPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
