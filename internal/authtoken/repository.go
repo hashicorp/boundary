@@ -104,7 +104,11 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 
 	// We truncate the expiration time to the nearest second to make testing in different platforms with
 	// different time resolutions easier.
-	expiration := timestamppb.New(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
+	ttl := r.timeToLiveDuration
+	if opts.withTokenTimeToLiveDuration > 0 {
+		ttl = opts.withTokenTimeToLiveDuration
+	}
+	expiration := timestamppb.New(time.Now().Add(ttl).Truncate(time.Second))
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
 	var newAuthToken *AuthToken
