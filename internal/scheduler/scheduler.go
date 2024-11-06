@@ -32,7 +32,6 @@ type Scheduler struct {
 	runningJobs    *sync.Map
 	started        ua.Bool
 
-	runJobsLimit       int
 	runJobsInterval    time.Duration
 	monitorInterval    time.Duration
 	interruptThreshold time.Duration
@@ -45,7 +44,7 @@ type Scheduler struct {
 //
 // • jobRepoFn must be provided and is a function that returns the job repository
 //
-// WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
+// WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
 // the only valid options.
 func New(ctx context.Context, serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
@@ -62,7 +61,6 @@ func New(ctx context.Context, serverId string, jobRepoFn jobRepoFactory, opt ...
 		jobRepoFn:          jobRepoFn,
 		registeredJobs:     new(sync.Map),
 		runningJobs:        new(sync.Map),
-		runJobsLimit:       opts.withRunJobsLimit,
 		runJobsInterval:    opts.withRunJobInterval,
 		monitorInterval:    opts.withMonitorInterval,
 		interruptThreshold: opts.withInterruptThreshold,
@@ -190,7 +188,7 @@ func (s *Scheduler) start(ctx context.Context) {
 	event.WriteSysEvent(ctx, op, "scheduling loop running",
 		"server id", s.serverId,
 		"run interval", s.runJobsInterval.String(),
-		"run limit", s.runJobsLimit)
+	)
 	timer := time.NewTimer(0)
 	var wg sync.WaitGroup
 	for {
@@ -218,7 +216,7 @@ func (s *Scheduler) schedule(ctx context.Context, wg *sync.WaitGroup) {
 		return
 	}
 
-	runs, err := repo.RunJobs(ctx, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
+	runs, err := repo.RunJobs(ctx, s.serverId)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting jobs to run from repo"))
 		return

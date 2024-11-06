@@ -5,7 +5,6 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -120,73 +119,6 @@ func TestRepository_RunJobs(t *testing.T) {
 	}
 }
 
-func TestRepository_RunJobs_Limits(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	iam.TestRepo(t, conn, wrapper)
-
-	numJobs := 20
-	server := testController(t, conn, wrapper)
-
-	tests := []struct {
-		name    string
-		opts    []Option
-		wantLen int
-	}{
-		{
-			name:    "with-more-than-available",
-			opts:    []Option{WithRunJobsLimit(numJobs * 2)},
-			wantLen: numJobs,
-		},
-		{
-			name:    "with-no-option",
-			wantLen: defaultRunJobsLimit,
-		},
-		{
-			name:    "with-limit",
-			opts:    []Option{WithRunJobsLimit(3)},
-			wantLen: 3,
-		},
-		{
-			name:    "with-zero-limit",
-			opts:    []Option{WithRunJobsLimit(0)},
-			wantLen: defaultRunJobsLimit,
-		},
-		{
-			name:    "unlimited",
-			opts:    []Option{WithRunJobsLimit(-1)},
-			wantLen: numJobs,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
-			assert.NoError(err)
-			require.NotNil(repo)
-
-			for i := 0; i < numJobs; i++ {
-				testJob(t, conn, fmt.Sprintf("%v-%d", tt.name, i), "description", wrapper)
-			}
-
-			got, err := repo.RunJobs(ctx, server.PrivateId, tt.opts...)
-			require.NoError(err)
-			assert.Len(got, tt.wantLen)
-
-			// Clean up jobs for next run
-			rows, err := rw.Query(ctx, "delete from job", nil)
-			require.NoError(err)
-			_ = rows.Close()
-		})
-	}
-}
-
 func TestRepository_RunJobsOrder(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -210,41 +142,18 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 
 	runs, err := repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
-	require.Len(runs, 1)
-	run := runs[0]
-	assert.Equal(run.JobName, firstJob.Name)
-	assert.Equal(run.JobPluginId, firstJob.PluginId)
+	require.Len(runs, 3)
 
-	// End first job with time between last and middle
-	err = repo.CompleteRun(ctx, run.PrivateId, -6*time.Hour)
-	require.NoError(err)
+	// We should see the job runs ordered by scheduled time.
+	// firstJob > middleJob > lastJob
+	assert.Equal(firstJob.Name, runs[0].JobName)
+	assert.Equal(firstJob.PluginId, runs[0].JobPluginId)
 
-	runs, err = repo.RunJobs(ctx, server.PrivateId)
-	require.NoError(err)
-	require.Len(runs, 1)
-	run = runs[0]
-	assert.Equal(run.JobName, middleJob.Name)
-	assert.Equal(run.JobPluginId, middleJob.PluginId)
+	assert.Equal(middleJob.Name, runs[1].JobName)
+	assert.Equal(middleJob.PluginId, runs[1].JobPluginId)
 
-	// firstJob should be up again, as it is scheduled before lastJob
-	runs, err = repo.RunJobs(ctx, server.PrivateId)
-	require.NoError(err)
-	require.Len(runs, 1)
-	run = runs[0]
-	assert.Equal(run.JobName, firstJob.Name)
-	assert.Equal(run.JobPluginId, firstJob.PluginId)
-
-	runs, err = repo.RunJobs(ctx, server.PrivateId)
-	require.NoError(err)
-	require.Len(runs, 1)
-	run = runs[0]
-	assert.Equal(run.JobName, lastJob.Name)
-	assert.Equal(run.JobPluginId, lastJob.PluginId)
-
-	// All jobs are running no work should be returned
-	runs, err = repo.RunJobs(ctx, server.PrivateId)
-	require.NoError(err)
-	require.Len(runs, 0)
+	assert.Equal(lastJob.Name, runs[2].JobName)
+	assert.Equal(lastJob.PluginId, runs[2].JobPluginId)
 }
 
 func TestRepository_UpdateProgress(t *testing.T) {
@@ -862,7 +771,6 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			runs: []args{
 				{
 					ControllerId: server1.PrivateId,
-					opts:         []Option{WithRunJobsLimit(3)},
 					expectedJobs: []*Job{job1, job2, job3},
 				},
 			},
@@ -877,7 +785,6 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			runs: []args{
 				{
 					ControllerId: server2.PrivateId,
-					opts:         []Option{WithRunJobsLimit(3)},
 					expectedJobs: []*Job{job1, job2, job3},
 				},
 			},
@@ -923,124 +830,6 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "multiple-servers-interrupt-all",
-			runs: []args{
-				{
-					ControllerId: server1.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{job1},
-				},
-				{
-					ControllerId: server2.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{job2},
-				},
-				{
-					ControllerId: server3.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{job3},
-				},
-			},
-			interrupts: []args{
-				{
-					expectedJobs: []*Job{job1, job2, job3},
-				},
-			},
-		},
-		{
-			name: "multiple-servers-with-server-id",
-			runs: []args{
-				{
-					ControllerId: server1.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{job1},
-				},
-				{
-					ControllerId: server2.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{job2},
-				},
-				{
-					ControllerId: server3.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{job3},
-				},
-			},
-			interrupts: []args{
-				{
-					opts:         []Option{WithControllerId(server1.PrivateId)},
-					expectedJobs: []*Job{job1},
-				},
-				{
-					opts:         []Option{WithControllerId(server2.PrivateId)},
-					expectedJobs: []*Job{job2},
-				},
-				{
-					opts:         []Option{WithControllerId(server3.PrivateId)},
-					expectedJobs: []*Job{job3},
-				},
-			},
-		},
-		{
-			name: "multiple-servers-distributed-runs",
-			runs: []args{
-				{
-					ControllerId: server1.PrivateId,
-					opts:         []Option{WithRunJobsLimit(2)},
-					expectedJobs: []*Job{job1, job2},
-				},
-				{
-					ControllerId: server2.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{job3},
-				},
-				{
-					ControllerId: server3.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{},
-				},
-			},
-			interrupts: []args{
-				{
-					opts:         []Option{WithControllerId(server1.PrivateId)},
-					expectedJobs: []*Job{job1, job2},
-				},
-				{
-					opts:         []Option{WithControllerId(server2.PrivateId)},
-					expectedJobs: []*Job{job3},
-				},
-				{
-					opts:         []Option{WithControllerId(server3.PrivateId)},
-					expectedJobs: []*Job{},
-				},
-			},
-		},
-		{
-			name: "multiple-servers-distributed-runs-interrupt-all",
-			runs: []args{
-				{
-					ControllerId: server1.PrivateId,
-					opts:         []Option{WithRunJobsLimit(2)},
-					expectedJobs: []*Job{job1, job2},
-				},
-				{
-					ControllerId: server2.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{job3},
-				},
-				{
-					ControllerId: server3.PrivateId,
-					opts:         []Option{WithRunJobsLimit(1)},
-					expectedJobs: []*Job{},
-				},
-			},
-			interrupts: []args{
-				{
-					expectedJobs: []*Job{job1, job2, job3},
-				},
-			},
-		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -1049,7 +838,7 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			require.NoError(err)
 
 			for _, r := range tt.runs {
-				runs, err := repo.RunJobs(ctx, r.ControllerId, r.opts...)
+				runs, err := repo.RunJobs(ctx, r.ControllerId)
 				require.NoError(err)
 				assert.Len(runs, len(r.expectedJobs))
 				sort.Slice(runs, func(i, j int) bool { return runs[i].JobName < runs[j].JobName })

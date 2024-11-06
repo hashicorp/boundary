@@ -17,29 +17,17 @@ import (
 // If there are not jobs to run, an empty slice will be returned with a nil error.
 //
 // • serverId is required and is the private_id of the server that will run the jobs.
-//
-// The only valid option is WithRunJobsLimit, if not provided RunJobs will run only 1 job.
-func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option) ([]*Run, error) {
+// No options are supported.
+func (r *Repository) RunJobs(ctx context.Context, serverId string, _ ...Option) ([]*Run, error) {
 	const op = "job.(Repository).RunJobs"
 	if serverId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing server id")
 	}
 
-	opts := getOpts(opt...)
-	var limit string
-	switch {
-	case opts.withRunJobsLimit == 0:
-		// zero signals the defaults should be used.
-		limit = fmt.Sprintf("limit %d", defaultRunJobsLimit)
-	case opts.withRunJobsLimit > 0:
-		limit = fmt.Sprintf("limit %d", opts.withRunJobsLimit)
-	}
-
-	query := fmt.Sprintf(runJobsQuery, limit)
 	var runs []*Run
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, query, []any{serverId})
+			rows, err := w.Query(ctx, runJobsQuery, []any{serverId})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

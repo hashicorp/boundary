@@ -86,6 +86,7 @@ begin;
     create trigger immutable_columns before update on job_run
       for each row execute procedure immutable_columns('private_id', 'job_plugin_id', 'job_name', 'create_time');
 
+    -- dropped in 93/02_drop_job_jobs_to_run.up.sql
     create view job_jobs_to_run as
       with
       running_jobs (job_plugin_id, job_name) as (

@@ -396,8 +396,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(ctx, dbase, dbase, c.kms)
 	}
-	// TODO: Allow setting run jobs limit from config
-	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
+
+	schedulerOpts := []scheduler.Option{}
 	if c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration > 0 {
 		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration))
 	}

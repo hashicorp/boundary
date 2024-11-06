@@ -7,13 +7,13 @@ const runJobsQuery = `
 	insert into job_run (
 	  job_plugin_id, job_name, controller_id
 	)
-	select 
-	  job_plugin_id, job_name, ?
-	from job_jobs_to_run 
+	select
+	  j.plugin_id, j."name", ?
+	from job j
+	where next_scheduled_run <= current_timestamp
 	order by next_scheduled_run asc
-	%s
-	on conflict 
-	  (job_plugin_id, job_name) 
+	on conflict
+	  (job_plugin_id, job_name)
 	    where status = 'running'
 	do nothing
 	returning *;

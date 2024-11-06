@@ -35,7 +35,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	})
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
 	require.NoError(err)
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second))
 
 	job1Ch := make(chan error)
 	job1Ready := make(chan struct{})
@@ -118,7 +118,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerCancelCtx", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second))
 
 	fn, jobReady, jobDone := testJobFn()
 	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
@@ -168,7 +168,7 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerInterruptedCancelCtx", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	fn, job1Ready, job1Done := testJobFn()
 	tj1 := testJob{name: "name1", description: "desc", fn: fn, nextRunIn: time.Hour}
@@ -270,7 +270,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerJobProgress", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	jobReady := make(chan struct{})
 	done := make(chan struct{})
@@ -380,7 +380,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerMonitorLoop", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	jobReady := make(chan struct{})
 	jobDone := make(chan struct{})
@@ -446,7 +446,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerFinalStatusUpdate", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second))
 
 	jobReady := make(chan struct{})
 	jobErr := make(chan error)
@@ -530,7 +530,7 @@ func TestSchedulerRunNow(t *testing.T) {
 	require.NoError(err)
 
 	// Create test scheduler that only runs jobs every hour
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Hour))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Hour))
 
 	jobCh := make(chan struct{})
 	jobReady := make(chan struct{})
