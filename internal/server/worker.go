@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"strings"
 
 	"github.com/fatih/structs"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -115,8 +114,8 @@ type Worker struct {
 	*store.Worker
 
 	activeConnectionCount uint32 `gorm:"-"`
-	apiTags               []*Tag `gorm:"-"`
-	configTags            []*Tag `gorm:"-"`
+	apiTags               Tags
+	configTags            Tags
 
 	// inputTags is not specified to be api or config tags and is not intended
 	// to be read by clients.  Since config tags and api tags are applied in
@@ -260,13 +259,13 @@ type workerAggregate struct {
 	Version               uint32
 	Type                  string
 	ReleaseVersion        string
-	ApiTags               string
+	ApiTags               Tags
 	ActiveConnectionCount uint32
 	OperationalState      string
 	LocalStorageState     string
 	// Config Fields
 	LastStatusTime   *timestamp.Timestamp
-	WorkerConfigTags string
+	WorkerConfigTags Tags
 }
 
 func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
@@ -289,46 +288,11 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 		RemoteStorageStates:   map[string]*plugin.StorageBucketCredentialState{},
+		apiTags:               a.ApiTags,
+		configTags:            a.WorkerConfigTags,
 	}
-	tags, err := tagsFromAggregatedTagString(ctx, a.ApiTags)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
-	}
-	worker.apiTags = tags
-
-	tags, err = tagsFromAggregatedTagString(ctx, a.WorkerConfigTags)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
-	}
-	worker.configTags = tags
 
 	return worker, nil
-}
-
-// tagsForAggregatedTagString parses a deliminated string in the format returned
-// by the database for the server_worker_aggregate view and returns []*Tag.
-// The string is in the format of key1Yvalue1Zkey2Yvalue2Zkey3Yvalue3. Y and Z
-// ares chosen for deliminators since tag keys and values are restricted from
-// having capitalized letters in them.
-func tagsFromAggregatedTagString(ctx context.Context, s string) ([]*Tag, error) {
-	if s == "" {
-		return nil, nil
-	}
-	const op = "server.tagsFromAggregatedTagString"
-	const aggregateDelimiter = "Z"
-	const pairDelimiter = "Y"
-	var tags []*Tag
-	for _, kv := range strings.Split(s, aggregateDelimiter) {
-		res := strings.SplitN(kv, pairDelimiter, 3)
-		if len(res) != 2 {
-			return nil, errors.New(ctx, errors.Internal, op, "invalid aggregated tag pairs")
-		}
-		tags = append(tags, &Tag{
-			Key:   res[0],
-			Value: res[1],
-		})
-	}
-	return tags, nil
 }
 
 func (a *workerAggregate) GetPublicId() string {
