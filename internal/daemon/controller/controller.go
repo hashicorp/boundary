@@ -320,6 +320,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
+		case enabledPlugin == base.EnabledPluginGCP && !c.conf.SkipPlugins:
+			fallthrough
 		case enabledPlugin == base.EnabledPluginAws && !c.conf.SkipPlugins:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_plugins.CreateHostPlugin(
