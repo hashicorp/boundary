@@ -436,7 +436,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 // called from inside a db transaction.
 // Workers/worker tags are intentionally not oplogged.
 func setWorkerConfigTags(ctx context.Context, w db.Writer, id string, tags []*Tag) error {
-	const op = "server.setWorkerApiTags"
+	const op = "server.setWorkerConfigTags"
 	switch {
 	case id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "worker id is empty")

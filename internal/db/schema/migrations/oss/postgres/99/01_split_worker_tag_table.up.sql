@@ -47,6 +47,7 @@ comment on table server_worker_api_tag is
 drop view server_worker_aggregate;
 -- Replaces view created in 86/01_server_worker_local_storage_state.up.sql to use the disparate worker tag tables
 -- View also switches to using json_agg to build the tags for consumption
+-- TODO this view will be completely dropped in future PRs on this LLB in favor of sql in query.go
 create view server_worker_aggregate as
   with connection_count (worker_id, count) as (
     select worker_id,
