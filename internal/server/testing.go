@@ -131,13 +131,12 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.Equal(t, "kms", wrk.Type)
 
 	if len(opts.withWorkerTags) > 0 {
-		var tags []*store.WorkerTag
+		var tags []*store.ConfigTag
 		for _, t := range opts.withWorkerTags {
-			tags = append(tags, &store.WorkerTag{
+			tags = append(tags, &store.ConfigTag{
 				WorkerId: wrk.GetPublicId(),
 				Key:      t.Key,
 				Value:    t.Value,
-				Source:   "configuration",
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
@@ -170,13 +169,12 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.NotNil(t, wrk)
 
 	if len(opts.withWorkerTags) > 0 {
-		var tags []*store.WorkerTag
+		var tags []*store.ConfigTag
 		for _, t := range opts.withWorkerTags {
-			tags = append(tags, &store.WorkerTag{
+			tags = append(tags, &store.ConfigTag{
 				WorkerId: wrk.GetPublicId(),
 				Key:      t.Key,
 				Value:    t.Value,
-				Source:   "configuration",
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))

@@ -358,10 +358,10 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 
 			// If we've been told to update tags, we need to clean out old
 			// ones and add new ones. Within the current transaction, simply
-			// delete all tags for the given worker, then add the new ones
+			// delete all config tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				if err := setWorkerTags(ctx, w, workerClone.GetPublicId(), ConfigurationTagSource, workerClone.inputTags); err != nil {
+				if err := setWorkerConfigTags(ctx, w, workerClone.GetPublicId(), workerClone.inputTags); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error setting worker tags"))
 				}
 			}
@@ -385,21 +385,19 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	return ret, nil
 }
 
-// setWorkerTags removes all existing tags from the same source and worker id
+// setWorkerConfigTags removes all existing config tags from the same source and worker id
 // and creates new ones based on the ones provided.  This function should be
 // called from inside a db transaction.
 // Workers/worker tags are intentionally not oplogged.
-func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, tags []*Tag) error {
-	const op = "server.setWorkerTags"
+func setWorkerConfigTags(ctx context.Context, w db.Writer, id string, tags []*Tag) error {
+	const op = "server.setWorkerConfigTags"
 	switch {
-	case !ts.isValid():
-		return errors.New(ctx, errors.InvalidParameter, op, "invalid tag source provided")
 	case id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "worker id is empty")
 	case isNil(w):
 		return errors.New(ctx, errors.InvalidParameter, op, "db.Writer is nil")
 	}
-	_, err := w.Exec(ctx, deleteTagsByWorkerIdSql, []any{ts.String(), id})
+	_, err := w.Exec(ctx, deleteConfigTagsByWorkerIdSql, []any{id})
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("couldn't delete existing tags for worker %q", id)))
 	}
@@ -409,16 +407,56 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	// Otherwise, go through and stage each tuple for insertion
 	// below.
 	if len(tags) > 0 {
-		uTags := make([]*store.WorkerTag, 0, len(tags))
+		uTags := make([]*store.ConfigTag, 0, len(tags))
 		for _, v := range tags {
 			if v == nil {
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("found nil tag value for worker %s", id))
 			}
-			uTags = append(uTags, &store.WorkerTag{
+			uTags = append(uTags, &store.ConfigTag{
 				WorkerId: id,
 				Key:      v.Key,
 				Value:    v.Value,
-				Source:   ts.String(),
+			})
+		}
+		if err = w.CreateItems(ctx, uTags); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating tags for worker %q", id)))
+		}
+	}
+
+	return nil
+}
+
+// setWorkerApiTags removes all existing API tags from the same source and worker id
+// and creates new ones based on the ones provided.  This function should be
+// called from inside a db transaction.
+// Workers/worker tags are intentionally not oplogged.
+func setWorkerApiTags(ctx context.Context, w db.Writer, id string, tags []*Tag) error {
+	const op = "server.setWorkerApiTags"
+	switch {
+	case id == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "worker id is empty")
+	case isNil(w):
+		return errors.New(ctx, errors.InvalidParameter, op, "db.Writer is nil")
+	}
+	_, err := w.Exec(ctx, deleteApiTagsByWorkerIdSql, []any{id})
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("couldn't delete existing tags for worker %q", id)))
+	}
+
+	// If tags were cleared out entirely, then we'll have nothing
+	// to do here, e.g., it will result in deletion of all tags.
+	// Otherwise, go through and stage each tuple for insertion
+	// below.
+	if len(tags) > 0 {
+		uTags := make([]*store.ApiTag, 0, len(tags))
+		for _, v := range tags {
+			if v == nil {
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("found nil tag value for worker %s", id))
+			}
+			uTags = append(uTags, &store.ApiTag{
+				WorkerId: id,
+				Key:      v.Key,
+				Value:    v.Value,
 			})
 		}
 		if err = w.CreateItems(ctx, uTags); err != nil {
@@ -700,7 +738,7 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		if rowsUpdated != 1 {
 			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated worker version and %d rows updated", rowsUpdated))
 		}
-		err = setWorkerTags(ctx, w, workerId, ApiTagSource, newTags)
+		err = setWorkerApiTags(ctx, w, workerId, newTags)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -742,7 +780,7 @@ func (r *Repository) SetWorkerTags(ctx context.Context, workerId string, workerV
 		if rowsUpdated != 1 {
 			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated worker version and %d rows updated", rowsUpdated))
 		}
-		err = setWorkerTags(ctx, w, workerId, ApiTagSource, tags)
+		err = setWorkerApiTags(ctx, w, workerId, tags)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -776,16 +814,15 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 	}
 
 	rowsDeleted := 0
-	deleteTags := make([]*store.WorkerTag, 0, len(tags))
+	deleteTags := make([]*store.ApiTag, 0, len(tags))
 	for _, t := range tags {
 		if t == nil {
 			return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "found nil tag value in input")
 		}
-		deleteTags = append(deleteTags, &store.WorkerTag{
+		deleteTags = append(deleteTags, &store.ApiTag{
 			WorkerId: workerId,
 			Key:      t.Key,
 			Value:    t.Value,
-			Source:   ApiTagSource.String(),
 		})
 	}
 
