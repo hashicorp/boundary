@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	stderrors "errors"
 	"fmt"
 	"strings"
@@ -117,20 +118,22 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 	case id == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "id is empty")
 	}
-	wAgg := &workerAggregate{}
-	wAgg.PublicId = id
-	err := reader.LookupById(ctx, wAgg)
+
+	lookupQuery := fmt.Sprintf("%s where w.public_id = @worker_id", listWorkersQuery)
+
+	rows, err := reader.Query(ctx, lookupQuery, []any{sql.Named("worker_id", id)})
 	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var worker Worker
+		if err := reader.ScanRows(context.Background(), rows, &worker); err != nil {
+			return nil, err
 		}
-		return nil, errors.Wrap(ctx, err, op)
+		return &worker, nil
 	}
-	w, err := wAgg.toWorker(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return w, nil
+	return nil, nil
 }
 
 // ListWorkers will return a listing of Workers and honor the WithLimit option.
@@ -155,6 +158,8 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	default:
 		newOpts = append(newOpts, WithLimit(r.defaultLimit))
 	}
+
+	// Note: these options below will be removed in a future PR for this llb
 	// handle the WithLiveness default
 	switch {
 	case opts.withLiveness != 0:
@@ -187,6 +192,7 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 	}
 
 	opts := GetOpts(opt...)
+	// Note: this option will be removed in a future PR for this llb
 	liveness := opts.withLiveness
 	if liveness == 0 {
 		liveness = DefaultLiveness
@@ -198,27 +204,30 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 		where = append(where, fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds())))
 	}
 	if len(scopeIds) > 0 {
-		where = append(where, "scope_id in (?)")
-		whereArgs = append(whereArgs, scopeIds)
+		where = append(where, "w.scope_id in (@scope_id)")
+		whereArgs = append(whereArgs, sql.Named("scope_id", strings.Join(scopeIds, ",")))
 	}
 
+	// Note: this option will be removed in a future PR for this llb
 	switch opts.withWorkerType {
 	case "":
 	case KmsWorkerType, PkiWorkerType:
-		where = append(where, "type = ?")
-		whereArgs = append(whereArgs, opts.withWorkerType.String())
+		where = append(where, "w.type = @type")
+		whereArgs = append(whereArgs, sql.Named("type", opts.withWorkerType.String()))
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown worker type %v", opts.withWorkerType))
 	}
 
+	// Note: this option will be removed in a future PR for this llb
 	if opts.withActiveWorkers {
-		where = append(where, "operational_state = ?")
-		whereArgs = append(whereArgs, ActiveOperationalState.String())
+		where = append(where, "w.operational_state = @operational_state")
+		whereArgs = append(whereArgs, sql.Named("operational_state", ActiveOperationalState))
 	}
 
+	// Note: this option will be removed in a future PR for this llb
 	if len(opts.withWorkerPool) > 0 {
-		where = append(where, "public_id in (?)")
-		whereArgs = append(whereArgs, opts.withWorkerPool)
+		whereString := fmt.Sprintf("w.public_id in ('%s')", strings.Join(opts.withWorkerPool, "','"))
+		where = append(where, whereString)
 	}
 
 	limit := db.DefaultLimit
@@ -227,25 +236,25 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 		limit = opts.withLimit
 	}
 
-	var wAggs []*workerAggregate
-	if err := reader.SearchWhere(
-		ctx,
-		&wAggs,
-		strings.Join(where, " and "),
-		whereArgs,
-		db.WithLimit(limit),
-	); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
+	query := fmt.Sprintf("%s where %s", listWorkersQuery, strings.Join(where, " and "))
+	if limit > 0 {
+		query = fmt.Sprintf("%s limit %d", query, limit)
 	}
 
-	workers := make([]*Worker, 0, len(wAggs))
-	for _, a := range wAggs {
-		w, err := a.toWorker(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error converting workerAggregate to Worker"))
-		}
-		workers = append(workers, w)
+	var workers []*Worker
+	rows, err := reader.Query(ctx, query, whereArgs)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var worker Worker
+		if err := reader.ScanRows(context.Background(), rows, &worker); err != nil {
+			return nil, err
+		}
+		workers = append(workers, &worker)
+	}
+
 	return workers, nil
 }
 
@@ -366,15 +375,10 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				}
 			}
 
-			wAgg := &workerAggregate{PublicId: workerClone.GetPublicId()}
-			if err := reader.LookupById(ctx, wAgg); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("error looking up worker aggregate"))
-			}
-			ret, err = wAgg.toWorker(ctx)
+			ret, err = lookupWorker(ctx, reader, workerClone.GetPublicId())
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("error converting worker aggregate to worker"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error looking up worker"))
 			}
-
 			return nil
 		},
 	)
@@ -554,12 +558,9 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 
-			wAgg = &workerAggregate{PublicId: worker.GetPublicId()}
-			if err := reader.LookupById(ctx, wAgg); err != nil {
+			ret, err = lookupWorker(ctx, reader, worker.GetPublicId())
+			if err != nil {
 				return errors.Wrap(ctx, err, op)
-			}
-			if ret, err = wAgg.toWorker(ctx); err != nil {
-				return err
 			}
 			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId())
 			if err != nil {
@@ -726,7 +727,7 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no worker found with public id %s", workerId))
 	}
 
-	newTags := append(worker.apiTags, tags...)
+	newTags := append(worker.ApiTags, tags...)
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		worker := worker.clone()
 		worker.PublicId = workerId

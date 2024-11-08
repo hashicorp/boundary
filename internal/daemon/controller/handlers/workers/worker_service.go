@@ -899,7 +899,7 @@ func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers
 		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
 	}
 	if outputFields.Has(globals.ActiveConnectionCountField) {
-		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount()}
+		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.GetActiveConnectionCount()}
 	}
 	if outputFields.Has(globals.ControllerGeneratedActivationToken) && in.ControllerGeneratedActivationToken != "" {
 		out.ControllerGeneratedActivationToken = &wrapperspb.StringValue{Value: in.ControllerGeneratedActivationToken}

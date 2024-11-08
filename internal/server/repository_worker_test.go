@@ -196,7 +196,7 @@ func TestLookupWorker(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, w.GetPublicId())
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
-		assert.Equal(t, uint32(3), got.ActiveConnectionCount())
+		assert.Equal(t, uint32(3), got.GetActiveConnectionCount())
 		assert.Equal(t, map[string][]string{
 			"key": {"val"},
 		}, got.CanonicalTags())
@@ -210,7 +210,7 @@ func TestLookupWorker(t *testing.T) {
 	t.Run("db error", func(t *testing.T) {
 		conn, mock := db.TestSetupWithMock(t)
 		rw := db.New(conn)
-		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		mock.ExpectQuery(`with connection_count`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
 		r, err := server.NewRepository(ctx, rw, rw, kms)
 		require.NoError(t, err)
 		got, err := r.LookupWorker(ctx, w.GetPublicId())
@@ -749,7 +749,17 @@ func TestListWorkers_WithWorkerPool(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1), server.WithWorkerPool(tt.workerPool))
 			require.NoError(err)
-			assert.ElementsMatch(t, tt.want, got)
+			assert.Equal(t, len(tt.want), len(got))
+			found := 0
+			for _, w := range tt.want {
+				for _, g := range got {
+					if w.PublicId == g.PublicId {
+						assert.Equal(t, w.Worker, g.Worker)
+						found++
+					}
+				}
+			}
+			assert.Equal(t, len(tt.want), found)
 		})
 	}
 }
