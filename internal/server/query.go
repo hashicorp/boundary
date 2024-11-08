@@ -16,13 +16,17 @@ const (
 
 	deleteWhereCreateTimeSql = `create_time < ?`
 
-	deleteTagsByWorkerIdSql = `
+	deleteApiTagsByWorkerIdSql = `
 	delete 
-	from server_worker_tag 
-	where 
-		source = ?
-	and
-		worker_id = ?`
+	  from server_worker_api_tag
+	 where worker_id = ?
+	`
+
+	deleteConfigTagsByWorkerIdSql = `
+	delete 
+	  from server_worker_config_tag
+	 where worker_id = ?
+	`
 
 	deleteWorkerAuthQuery = `
 		delete from worker_auth_authorized
