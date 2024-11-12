@@ -112,10 +112,10 @@ func AttachWorkerIdToState(ctx context.Context, workerId string) (*structpb.Stru
 // authorizing and establishing a session.  It is owned by a scope.
 type Worker struct {
 	*store.Worker
+	ApiTags    Tags `json:"api_tags" gorm:"->"`
+	ConfigTags Tags `json:"config_tags" gorm:"->"`
 
 	activeConnectionCount uint32 `gorm:"-"`
-	apiTags               Tags
-	configTags            Tags
 
 	// inputTags is not specified to be api or config tags and is not intended
 	// to be read by clients.  Since config tags and api tags are applied in
@@ -149,7 +149,7 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 		inputTags: opts.withWorkerTags,
 	}
 	if opts.withTestUseInputTagsAsApiTags {
-		worker.apiTags = worker.inputTags
+		worker.ApiTags = worker.inputTags
 	}
 	return worker
 }
@@ -167,16 +167,16 @@ func (w *Worker) clone() *Worker {
 	cWorker := &Worker{
 		Worker: cw.(*store.Worker),
 	}
-	if w.apiTags != nil {
-		cWorker.apiTags = make([]*Tag, 0, len(w.apiTags))
-		for _, t := range w.apiTags {
-			cWorker.apiTags = append(cWorker.apiTags, &Tag{Key: t.Key, Value: t.Value})
+	if w.ApiTags != nil {
+		cWorker.ApiTags = make([]*Tag, 0, len(w.ApiTags))
+		for _, t := range w.ApiTags {
+			cWorker.ApiTags = append(cWorker.ApiTags, &Tag{Key: t.Key, Value: t.Value})
 		}
 	}
-	if w.configTags != nil {
-		cWorker.configTags = make([]*Tag, 0, len(w.configTags))
-		for _, t := range w.configTags {
-			cWorker.configTags = append(cWorker.configTags, &Tag{Key: t.Key, Value: t.Value})
+	if w.ConfigTags != nil {
+		cWorker.ConfigTags = make([]*Tag, 0, len(w.ConfigTags))
+		for _, t := range w.ConfigTags {
+			cWorker.ConfigTags = append(cWorker.ConfigTags, &Tag{Key: t.Key, Value: t.Value})
 		}
 	}
 	if w.inputTags != nil {
@@ -199,10 +199,10 @@ func (w *Worker) ActiveConnectionCount() uint32 {
 // function is guaranteed to return a non-nil map.
 func (w *Worker) CanonicalTags(opt ...Option) map[string][]string {
 	dedupedTags := make(map[Tag]struct{})
-	for _, t := range w.apiTags {
+	for _, t := range w.ApiTags {
 		dedupedTags[*t] = struct{}{}
 	}
-	for _, t := range w.configTags {
+	for _, t := range w.ConfigTags {
 		dedupedTags[*t] = struct{}{}
 	}
 	tags := make(map[string][]string)
@@ -216,7 +216,7 @@ func (w *Worker) CanonicalTags(opt ...Option) map[string][]string {
 // the worker daemon's configuration file.
 func (w *Worker) GetConfigTags() map[string][]string {
 	tags := make(map[string][]string)
-	for _, t := range w.configTags {
+	for _, t := range w.ConfigTags {
 		tags[t.Key] = append(tags[t.Key], t.Value)
 	}
 	return tags
@@ -225,7 +225,7 @@ func (w *Worker) GetConfigTags() map[string][]string {
 // GetApiTags returns the api tags which have been set for this worker.
 func (w *Worker) GetApiTags() map[string][]string {
 	tags := make(map[string][]string)
-	for _, t := range w.apiTags {
+	for _, t := range w.ApiTags {
 		tags[t.Key] = append(tags[t.Key], t.Value)
 	}
 	return tags
@@ -288,8 +288,8 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 		RemoteStorageStates:   map[string]*plugin.StorageBucketCredentialState{},
-		apiTags:               a.ApiTags,
-		configTags:            a.WorkerConfigTags,
+		ApiTags:               a.ApiTags,
+		ConfigTags:            a.WorkerConfigTags,
 	}
 
 	return worker, nil
