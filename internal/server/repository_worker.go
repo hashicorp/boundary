@@ -760,7 +760,7 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no worker found with public id %s", workerId))
 	}
 
-	newTags := append(worker.apiTags, tags...)
+	newTags := append(worker.ApiTags, tags...)
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		worker := worker.clone()
 		worker.PublicId = workerId

@@ -24,12 +24,12 @@ import (
 
 func TestWorkerCanonicalTags(t *testing.T) {
 	w := NewWorker(scope.Global.String())
-	w.apiTags = []*Tag{
+	w.ApiTags = []*Tag{
 		{Key: "key", Value: "apis unique"},
 		{Key: "key", Value: "shared"},
 		{Key: "key2", Value: "apis key2 unique"},
 	}
-	w.configTags = []*Tag{
+	w.ConfigTags = []*Tag{
 		{Key: "key", Value: "configs unique"},
 		{Key: "key", Value: "shared"},
 		{Key: "key3", Value: "configs key3 unique"},
@@ -120,8 +120,8 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
 		assert.NotNil(t, got.GetReleaseVersion())
-		assert.Empty(t, got.apiTags)
-		assert.Equal(t, got.configTags, Tags{{Key: "key", Value: "val"}})
+		assert.Empty(t, got.ApiTags)
+		assert.Equal(t, got.ConfigTags, Tags{{Key: "key", Value: "val"}})
 	})
 
 	t.Run("Worker with many config tag", func(t *testing.T) {
@@ -151,8 +151,8 @@ func TestWorkerAggregate(t *testing.T) {
 
 		got := getAggWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
-		assert.Empty(t, got.apiTags)
-		assert.ElementsMatch(t, got.configTags, []*Tag{
+		assert.Empty(t, got.ApiTags)
+		assert.ElementsMatch(t, got.ConfigTags, []*Tag{
 			{Key: "key", Value: "val"},
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
@@ -180,7 +180,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
 		assert.Empty(t, got.GetConfigTags())
-		assert.Equal(t, got.apiTags, Tags{{Key: "key", Value: "val"}})
+		assert.Equal(t, got.ApiTags, Tags{{Key: "key", Value: "val"}})
 	})
 
 	// Worker with mix of tag sources
@@ -211,11 +211,11 @@ func TestWorkerAggregate(t *testing.T) {
 
 		got := getAggWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
-		assert.ElementsMatch(t, got.apiTags, []*Tag{
+		assert.ElementsMatch(t, got.ApiTags, []*Tag{
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
 		})
-		assert.ElementsMatch(t, got.configTags, []*Tag{
+		assert.ElementsMatch(t, got.ConfigTags, []*Tag{
 			{Key: "key", Value: "val"},
 		})
 	})
