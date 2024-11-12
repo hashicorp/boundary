@@ -8,6 +8,7 @@ description: |-
 # `events` stanza
 
 You can log system information in a well-defined, structured format that give you visibility into emitted events.
+You configure emitted events and sinks in the configuration file for any [controller](/boundary/docs/configuration/controller) or [worker](/boundary/docs/configuration/worker) server.
 The `events` stanza configures Boundary events-specific parameters.
 
 You can specify what types of events Boundary should emit:
@@ -76,3 +77,7 @@ events {
 Refer to [Configure event logging](/boundary/docs/configuration/events/configure-events) to configure a controller or worker server to emit events.
 
 Refer to [Telemetry data](/boundary/docs/configuration/events/telemetry-data) for a list of the events and data you can track by enabling telemetry events.
+
+## Tutorial
+
+Refer to the [Event filtering and sink configuration](/boundary/tutorials/self-managed-deployment/event-logging) tutorial to learn how to define an event sink and configure logging.
