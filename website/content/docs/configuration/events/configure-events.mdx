@@ -7,26 +7,21 @@ description: |-
 
 # Configure events
 
-You can log system information in a well-defined, structured format that give you visibility into emitted events.
+The [`events`](/docs/configuration/events) stanza lets you log system information in a well-defined, structured format that gives you visibility into emitted events.
 
-Event sinks provide a location for Boundary to write events to.
-You can configure sinks to allow or deny specific event types using filter syntax.
-There are two types of event sinks:
+You configure emitted events and sinks in the configuration file for any controller or worker server.
+Complete the following steps to configure events:
 
-- `stderr` - Sends events to a stderr.
-- `file` - Sends events to a file.
-
-You can repeat the `sink` stanza more than once to send events to multiple sinks, but each file sink must have a unique path and file name.
-
-When you configure a sink, you can specify what types of events Boundary should emit:
-
-- `audit_enabled` - Specifies if Boundary emits audit events.
-- `observations_enabled` - Specifies if Boundary emits observation events.
-- `sysevents_enabled` - Specifies if Boundary should emit system events.
-- `telemetry_enabled` - Specifies if Boundary should emit telemetry events.
+1. Open the configuration file for the controller or worker server that you want to emit events.
+1. Edit the `events` stanza in the configuration file.
+Set the following to `true` to emit that type of event, and then configure any sinks:
+   - `audit_enabled` - Specifies if Boundary emits audit events.
+   - `observations_enabled` - Specifies if Boundary emits observation events.
+   - `sysevents_enabled` - Specifies if Boundary should emit system events.
+   - `telemetry_enabled` - Specifies if Boundary should emit telemetry events.
 To receive telemetry events, you must also set `observations_enabled` to `true`.
+1. Save the file.
 
-You configure event sinks in the configuration file for a controller or worker server.
 The following example includes the contents of the `events` stanza in the `compose/controller.hcl` configuration file:
 
 <CodeBlockConfig hideClipboard>
@@ -67,3 +62,9 @@ events {
 ```
 
 </CodeBlockConfig>
+
+## More information
+
+Refer to the `events` stanza [Overview](/docs/configuration/events) for more information about monitoring events for a controller or worker.
+
+Refer to [Telemetry data](/docs/configuration/events/telemetry-data) for a list of the events and data you can track by enabling telemetry events.
