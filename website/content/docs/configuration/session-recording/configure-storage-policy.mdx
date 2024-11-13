@@ -1,8 +1,8 @@
 ---
 layout: docs
 page_title: Configure storage bucket policies
-description: |-
-  How to configure storage bucket lifecycle policies for session recording in Boundary
+description: >-
+  Configure storage bucket policies to manage the lifecycles of session recordings. Specify retention and deletion policies to codify compliance periods.
 ---
 
 # Configure storage bucket policies
@@ -50,7 +50,7 @@ Complete the following steps to create a storage policy in Boundary for session 
 1. Complete the following fields to create the Boundary storage policy:
    - **Name**: (Optional) The name field is optional, but if you enter a name it must be unique.
    - **Description**: (Optional) An optional description of the Boundary storage policy for identification purposes.
-   - **Retention Policy**: (Required) Specifies how long a recording must be stored, in days. 
+   - **Retention Policy**: (Required) Specifies how long a recording must be stored, in days.
    Policy values include:
      - `Forever`: If enabled, the **Deletion Policy** field is disabled.
      - `Custom`: Specify a custom retention policy in days.
@@ -186,7 +186,7 @@ In this example, recordings stored within the global scope must be retained for 
 
 <Warning>
 
-  Boundary does not support an undo action. Storage policies are meant to enforce compliance to a specific law or regulation. Updating the storage policy of a session recording can have immediate and possibly unexpected results such as the immediate deletion of session recordings. 
+  Boundary does not support an undo action. Storage policies are meant to enforce compliance to a specific law or regulation. Updating the storage policy of a session recording can have immediate and possibly unexpected results such as the immediate deletion of session recordings.
 
 </Warning>
 
@@ -216,7 +216,7 @@ The following example applies the policy created above to an org named `prod-dat
 
    ```shell-session
    $ boundary policies list
-   Policy information: 
+   Policy information:
      ID:                    pst_WZ3SQSSYJY
        Version:             1
        Type:                storage
@@ -382,12 +382,12 @@ Check that the storage policy was successfully attached to the `prod-databases` 
      Storage Policy ID:   pst_WZ3SQSSYJY
      Updated Time:        Thu, 25 Jan 2024 22:00:27 MST
      Version:             7
-   
+
      Scope (parent):
        ID:                global
        Name:              global
        Type:              global
-   
+
      Authorized Actions:
        detach-storage-policy
        no-op
@@ -503,7 +503,7 @@ New session recordings under the `prod-databases` scope should now show a `retai
 
 1. Create a new session recording on a target within the `prod-databases` org.
 1. Log in to Boundary.
-1. Click **Session Recordings** in the navigation panel. 
+1. Click **Session Recordings** in the navigation panel.
 1. Click **View** for a new recording that was made after the storage policy was attached to the `prod-databases` scope.
 1. Under **Session details**, verify that the *Retain until* and *Delete after* dates match the durations defined in the `soc2-policy`.
 
@@ -564,7 +564,7 @@ New session recordings under the `prod-databases` scope should now show a `retai
      Storage Bucket ID:    sb_DC8SPb9uc2
      Type:                 ssh
      Updated Time:         Mon, 29 Jan 2024 23:25:53 MST
-   
+
      ...
      ... More Output ...
      ...
@@ -581,18 +581,18 @@ New session recordings under the `prod-databases` scope should now show a `retai
 1. The following API call is an example of reading the details of a session recording with the `soc2-policy` storage policy applied to the `prod-databases` scope.
 
    List the available session recordings. This example recursively lists all recordings    within the global scope.
-   
+
    ```shell-session
    $ curl --header "Content-Type: application/json" \
        --header "Authorization: Bearer $(boundary config get-token)" \
        --request GET \
        $BOUNDARY_ADDR/v1/session-recordings?recursive=true&scope_id=global | jq
    ```
-   
+
    **Example output:**
-   
+
    <CodeBlockConfig hideClipboard highlight="4,57-58">
-   
+
    ```plaintext
    {
      "items": [
