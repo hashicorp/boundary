@@ -154,6 +154,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/oss',
+    destination: '/boundary/docs/community',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/service-discovery',
     destination: '/boundary/docs/concepts/host-discovery',
     permanent: true,
