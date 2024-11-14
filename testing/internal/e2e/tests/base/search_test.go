@@ -126,7 +126,7 @@ func TestCliSearch(t *testing.T) {
 				},
 			)
 			if idx == -1 {
-				return errors.New("Targest not found in cache")
+				return errors.New("Targets not found in cache")
 			}
 			currentCount = statusResult.Item.Users[0].Resources[idx].Count
 
