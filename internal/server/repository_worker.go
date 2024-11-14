@@ -256,25 +256,25 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 // The WithPublicId, WithKeyId, and WithUpdateTags options are
 // the only ones used. All others are ignored.
 // Workers are intentionally not oplogged.
-func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
+func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (string, error) {
 	const op = "server.(Repository).UpsertWorkerStatus"
 
 	opts := GetOpts(opt...)
 	switch {
 	case worker == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
 	case worker.GetAddress() == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported address is empty")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "worker reported address is empty")
 	case worker.ScopeId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
 	case worker.PublicId != "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
 	case worker.GetName() == "" && opts.withKeyId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
 	case worker.OperationalState == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker operational state is empty")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "worker operational state is empty")
 	case worker.LocalStorageState == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker local storage state is empty")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "worker local storage state is empty")
 	}
 
 	var workerId string
@@ -285,7 +285,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	case opts.withKeyId != "":
 		workerId, err = r.LookupWorkerIdByKeyId(ctx, opts.withKeyId)
 		if err != nil || workerId == "" {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
+			return "", errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
 		}
 	default:
 		// generating the worker id based off of the scope and name ensures
@@ -295,11 +295,10 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		// workers and kms workers.
 		workerId, err = NewWorkerIdFromScopeAndName(ctx, worker.GetScopeId(), worker.GetName())
 		if err != nil || workerId == "" {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker id"))
+			return "", errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker id"))
 		}
 	}
 
-	var ret *Worker
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -366,23 +365,14 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				}
 			}
 
-			wAgg := &workerAggregate{PublicId: workerClone.GetPublicId()}
-			if err := reader.LookupById(ctx, wAgg); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("error looking up worker aggregate"))
-			}
-			ret, err = wAgg.toWorker(ctx)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("error converting worker aggregate to worker"))
-			}
-
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return ret, nil
+	return workerId, nil
 }
 
 // VerifyKnownWorkers checks that the passed worker IDs are found in the repository and returns

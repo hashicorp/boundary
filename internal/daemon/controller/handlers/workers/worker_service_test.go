@@ -148,7 +148,7 @@ func TestGet(t *testing.T) {
 		server.WithDescription("test pki worker description"),
 		server.WithTestPkiWorkerAuthorizedKeyId(&pkiWorkerKeyId))
 	// Add config tags to the created worker
-	pkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
+	pkiWorker, err = server.UpsertAndReturnWorker(context.Background(), t,
 		server.NewWorker(pkiWorker.GetScopeId(),
 			server.WithAddress("test pki worker address"),
 			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
@@ -156,9 +156,11 @@ func TestGet(t *testing.T) {
 				Key:   "config",
 				Value: "test",
 			})),
+		repo,
 		server.WithUpdateTags(true),
 		server.WithPublicId(pkiWorker.GetPublicId()),
-		server.WithKeyId(pkiWorkerKeyId))
+		server.WithKeyId(pkiWorkerKeyId),
+	)
 	require.NoError(t, err)
 
 	wantPkiWorker := &pb.Worker{
@@ -201,7 +203,7 @@ func TestGet(t *testing.T) {
 	)
 
 	// Add config tags to the created worker
-	managedPkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
+	managedPkiWorker, err = server.UpsertAndReturnWorker(context.Background(), t,
 		server.NewWorker(managedPkiWorker.GetScopeId(),
 			server.WithAddress("test managed pki worker address"),
 			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
@@ -209,6 +211,7 @@ func TestGet(t *testing.T) {
 				Key:   server.ManagedWorkerTag,
 				Value: "true",
 			})),
+		repo,
 		server.WithUpdateTags(true),
 		server.WithPublicId(managedPkiWorker.GetPublicId()),
 		server.WithKeyId(managedPkiWorkerKeyId))

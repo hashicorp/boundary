@@ -159,15 +159,15 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	if wStat.GetKeyId() != "" {
 		opts = append(opts, server.WithKeyId(wStat.GetKeyId()))
 	}
-	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
+	workerId, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
 
 	// update storage states
-	if sbcStates := wStat.GetStorageBucketCredentialStates(); sbcStates != nil && wrk.GetPublicId() != "" {
-		updateWorkerStorageBucketCredentialStatesFn(ctx, serverRepo, wrk.GetPublicId(), sbcStates)
+	if sbcStates := wStat.GetStorageBucketCredentialStates(); sbcStates != nil && workerId != "" {
+		updateWorkerStorageBucketCredentialStatesFn(ctx, serverRepo, workerId, sbcStates)
 	}
 
 	controllers, err := serverRepo.ListControllers(ctx, server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
@@ -222,7 +222,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams:         responseControllers,
-		WorkerId:                    wrk.GetPublicId(),
+		WorkerId:                    workerId,
 		AuthorizedWorkers:           authorizedWorkerList,
 		AuthorizedDownstreamWorkers: authorizedDownstreams,
 	}
@@ -288,11 +288,11 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
 	}
 
-	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, wrk.GetPublicId(), stateReport)
+	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, workerId, stateReport)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal,
 			"Error comparing state of sessions for worker with public id %q: %v",
-			wrk.GetPublicId(), err)
+			workerId, err)
 	}
 	for _, na := range notActive {
 		var connChanges []*pbs.Connection

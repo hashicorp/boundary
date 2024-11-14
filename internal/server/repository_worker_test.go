@@ -235,7 +235,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			server.WithAddress("address"), server.WithName("config_name1"),
 			server.WithDescription("kms_description1"),
 		)
-		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
+		worker, err := server.UpsertAndReturnWorker(ctx, t, wStatus1, repo)
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -250,7 +250,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		// update again and see updated last status time
 		wStatus2 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("new_address"), server.WithName("config_name1"), server.WithReleaseVersion("test-version"))
-		worker, err = repo.UpsertWorkerStatus(ctx, wStatus2)
+		worker, err = server.UpsertAndReturnWorker(ctx, t, wStatus2, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		assert.Equal(t, "config_name1", worker.Name)
@@ -269,7 +269,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		wStatus3 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("new_address"), server.WithName("config_name1"),
 			server.WithOperationalState("shutdown"), server.WithReleaseVersion("Boundary v0.11.0"))
-		worker, err = repo.UpsertWorkerStatus(ctx, wStatus3)
+		worker, err = server.UpsertAndReturnWorker(ctx, t, wStatus3, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		// Version does not change for status updates
@@ -282,7 +282,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			server.WithAddress("new_address"), server.WithName("config_name1"),
 			server.WithOperationalState("shutdown"), server.WithReleaseVersion("Boundary v0.11.0"),
 			server.WithLocalStorageState("available"))
-		worker, err = repo.UpsertWorkerStatus(ctx, wStatus4)
+		worker, err = server.UpsertAndReturnWorker(ctx, t, wStatus4, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		// Version does not change for status updates
@@ -303,7 +303,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("pki_address"), server.WithDescription("pki_description2"),
 			server.WithReleaseVersion("test-version"))
-		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyId(pkiWorkerKeyId), server.WithReleaseVersion("test-version"))
+		worker, err := server.UpsertAndReturnWorker(ctx, t, wStatus1, repo, server.WithKeyId(pkiWorkerKeyId), server.WithReleaseVersion("test-version"))
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -615,8 +615,7 @@ func TestTagUpdatingListing(t *testing.T) {
 				Value: "value2",
 			}))
 
-	worker1, err = repo.UpsertWorkerStatus(ctx, wStatus,
-		server.WithUpdateTags(true))
+	worker1, err = server.UpsertAndReturnWorker(ctx, t, wStatus, repo, server.WithUpdateTags(true))
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value1", "value2"}, worker1.CanonicalTags()["tag1"])
@@ -634,13 +633,13 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag22",
 				Value: "value22",
 			}))
-	worker1, err = repo.UpsertWorkerStatus(ctx, wStatus)
+	worker1, err = server.UpsertAndReturnWorker(ctx, t, wStatus, repo)
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value1", "value2"}, worker1.CanonicalTags()["tag1"])
 
 	// Update tags and test again
-	worker1, err = repo.UpsertWorkerStatus(ctx, wStatus, server.WithUpdateTags(true))
+	worker1, err = server.UpsertAndReturnWorker(ctx, t, wStatus, repo, server.WithUpdateTags(true))
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value21", "value22"}, worker1.CanonicalTags()["tag22"])
@@ -839,13 +838,14 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 		{
 			name: "upsert-worker1-to-shutdown",
 			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
+				return server.UpsertAndReturnWorker(ctx, t,
 					server.NewWorker(scope.Global.String(),
 						server.WithName(worker1.GetName()),
 						server.WithAddress(worker1.GetAddress()),
 						server.WithOperationalState(server.ShutdownOperationalState.String()),
 						server.WithReleaseVersion("Boundary v.0.11"),
-						server.WithPublicId(worker1.GetPublicId())))
+						server.WithPublicId(worker1.GetPublicId())),
+					serversRepo)
 			},
 			wantCnt:   2,
 			wantState: server.ShutdownOperationalState.String(),
@@ -853,13 +853,15 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 		{
 			name: "upsert-worker2-to-shutdown",
 			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
+				workerId, err := serversRepo.UpsertWorkerStatus(ctx,
 					server.NewWorker(scope.Global.String(),
 						server.WithName(worker2.GetName()),
 						server.WithAddress(worker2.GetAddress()),
 						server.WithOperationalState(server.ShutdownOperationalState.String()),
 						server.WithReleaseVersion("Boundary v.0.11"),
 						server.WithPublicId(worker2.GetPublicId())))
+				require.NoError(err)
+				return serversRepo.LookupWorker(ctx, workerId)
 			},
 			wantCnt:   1,
 			wantState: server.ShutdownOperationalState.String(),
@@ -867,13 +869,15 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 		{
 			name: "upsert-worker3-to-shutdown",
 			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
+				workerId, err := serversRepo.UpsertWorkerStatus(ctx,
 					server.NewWorker(scope.Global.String(),
 						server.WithName(worker3.GetName()),
 						server.WithAddress(worker3.GetAddress()),
 						server.WithOperationalState(server.ShutdownOperationalState.String()),
 						server.WithReleaseVersion("Boundary v.0.11"),
 						server.WithPublicId(worker3.GetPublicId())))
+				require.NoError(err)
+				return serversRepo.LookupWorker(ctx, workerId)
 			},
 			wantCnt:   0,
 			wantState: server.ShutdownOperationalState.String(),
@@ -882,11 +886,13 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 			// Pre 0.11 workers will default to Active
 			name: "upsert-no-release-version-no-state",
 			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
+				workerId, err := serversRepo.UpsertWorkerStatus(ctx,
 					server.NewWorker(scope.Global.String(),
 						server.WithName(worker3.GetName()),
 						server.WithAddress(worker3.GetAddress())),
 					server.WithPublicId(worker3.GetPublicId()))
+				require.NoError(err)
+				return serversRepo.LookupWorker(ctx, workerId)
 			},
 			wantCnt:   1,
 			wantState: server.ActiveOperationalState.String(),
@@ -894,12 +900,14 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 		{ // Upsert with active status and no version and expect to get a hit- test backwards compatibility
 			name: "upsert-no-release-version-active-state",
 			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
+				return server.UpsertAndReturnWorker(ctx, t,
 					server.NewWorker(scope.Global.String(),
 						server.WithName(worker3.GetName()),
 						server.WithAddress(worker3.GetAddress()),
 						server.WithOperationalState(server.ActiveOperationalState.String())),
-					server.WithPublicId(worker3.GetPublicId()))
+					serversRepo,
+					server.WithPublicId(worker3.GetPublicId()),
+				)
 			},
 			wantCnt:   1,
 			wantState: server.ActiveOperationalState.String(),
@@ -907,11 +915,12 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 		{ // Upsert with unknown status and do not expect to get a hit- test worker create before status
 			name: "upsert-unknown-status",
 			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
+				return server.UpsertAndReturnWorker(ctx, t,
 					server.NewWorker(scope.Global.String(),
 						server.WithName(worker3.GetName()),
 						server.WithAddress(worker3.GetAddress()),
 						server.WithOperationalState(server.UnknownOperationalState.String())),
+					serversRepo,
 					server.WithPublicId(worker3.GetPublicId()))
 			},
 			wantCnt:   0,
