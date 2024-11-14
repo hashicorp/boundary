@@ -111,7 +111,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				msgs = append(msgs, &mgOplogMsg)
 			}
 
-			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
+			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader), WithLimit(-1))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current managed group memberships before deletion"))
 			}
@@ -181,7 +181,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				}
 			}
 
-			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
+			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader), WithLimit(-1))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current managed group memberships after set"))
 			}
