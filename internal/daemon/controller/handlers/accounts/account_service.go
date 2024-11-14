@@ -606,7 +606,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 			}
 			return nil, nil, err
 		}
-		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId())
+		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId(), oidc.WithLimit(-1))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -629,7 +629,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 			}
 			return nil, nil, err
 		}
-		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId())
+		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId(), ldap.WithLimit(ctx, -1))
 		if err != nil {
 			return nil, nil, err
 		}
