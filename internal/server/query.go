@@ -119,4 +119,15 @@ const (
 		where worker.scope_id = ?
 			and auth_token.key_id = ?
 	`
+
+	listHcpbManagedWorkersQuery = `
+        select w.public_id,
+               w.address
+          from server_worker            as w
+     left join server_worker_config_tag as t
+            on w.public_id = t.worker_id
+         where last_status_time > now() - interval '%d seconds'
+           and t.key   = 'boundary.cloud.hashicorp.com:managed'
+           and t.value = 'true';
+`
 )

@@ -350,8 +350,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	return ret, nil
 }
 
-// ListHcpbWorkers looks up workers that are HCP Boundary-managed, currently by
-// seeing if they are KMS and have a known tag
+// ListHcpbWorkers looks up workers that are HCP Boundary-managed.
 func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.ListHcpbWorkersRequest) (*pbs.ListHcpbWorkersResponse, error) {
 	const op = "workers.(workerServiceServer).ListHcpbWorkers"
 
@@ -359,18 +358,16 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error getting servers repo: %v", err)
 	}
-	workers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()},
-		// We use the livenessTimeToStale here instead of WorkerStatusGracePeriod
-		// since WorkerStatusGracePeriod is more for deciding which workers
-		// should be used for session proxying, but here we care about providing
-		// the BYOW workers with a list of which upstreams to connect to as their
-		// upstreams.
-		server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
+
+	// We use the livenessTimeToStale here instead of WorkerStatusGracePeriod
+	// since WorkerStatusGracePeriod is more for deciding which workers should
+	// be used for session proxying, but here we care about providing the BYOW
+	// workers with a list of which upstreams to connect to as their upstreams.
+	managed, err := serversRepo.ListHcpbManagedWorkers(ctx, time.Duration(ws.livenessTimeToStale.Load()))
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error looking up workers: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error looking up hcpb managed workers: %v", err)
 	}
 
-	managed, _ := server.SeparateManagedWorkers(workers)
 	resp := &pbs.ListHcpbWorkersResponse{}
 	if len(managed) == 0 {
 		return resp, nil
@@ -379,8 +376,8 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	resp.Workers = make([]*pbs.WorkerInfo, 0, len(managed))
 	for _, worker := range managed {
 		resp.Workers = append(resp.Workers, &pbs.WorkerInfo{
-			Id:      worker.GetPublicId(),
-			Address: worker.GetAddress(),
+			Id:      worker.PublicId,
+			Address: worker.Address,
 		})
 	}
 
