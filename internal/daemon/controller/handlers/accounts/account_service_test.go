@@ -134,13 +134,15 @@ func TestGet(t *testing.T) {
 		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+		// Use a small limit to test that membership lookup is explicitly unlimited
+		return oidc.NewRepository(ctx, rw, rw, kmsCache, oidc.WithLimit(1))
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+		// Use a small limit to test that membership lookup is explicitly unlimited
+		return ldap.NewRepository(ctx, rw, rw, kmsCache, ldap.WithLimit(ctx, 1))
 	}
 
 	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
@@ -175,9 +177,10 @@ func TestGet(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
-	// Create a managed group that will always match, so we can test that it is
+	// Create some managed groups that will always match, so we can test that it is
 	// returned in results
 	mg := oidc.TestManagedGroup(t, conn, oidcAm, `"/token/sub" matches ".*"`)
+	mg2 := oidc.TestManagedGroup(t, conn, oidcAm, `"/token/sub" matches ".*"`)
 	oidcWireAccount := pb.Account{
 		Id:           oidcA.GetPublicId(),
 		AuthMethodId: oidcA.GetAuthMethodId(),
@@ -193,7 +196,7 @@ func TestGet(t *testing.T) {
 			},
 		},
 		AuthorizedActions: oidcAuthorizedActions,
-		ManagedGroupIds:   []string{mg.GetPublicId()},
+		ManagedGroupIds:   []string{mg.GetPublicId(), mg2.GetPublicId()},
 	}
 
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
@@ -204,6 +207,7 @@ func TestGet(t *testing.T) {
 		ldap.WithDn(ctx, "test-dn"),
 	)
 	ldapMg := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
+	ldapMg2 := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
 	ldapWireAccount := pb.Account{
 		Id:           ldapAcct.GetPublicId(),
 		AuthMethodId: ldapAm.GetPublicId(),
@@ -222,7 +226,7 @@ func TestGet(t *testing.T) {
 		},
 		Type:              ldap.Subtype.String(),
 		AuthorizedActions: ldapAuthorizedActions,
-		ManagedGroupIds:   []string{ldapMg.GetPublicId()},
+		ManagedGroupIds:   []string{ldapMg.GetPublicId(), ldapMg2.GetPublicId()},
 	}
 
 	cases := []struct {
@@ -289,12 +293,14 @@ func TestGet(t *testing.T) {
 
 			if globals.ResourceInfoFromPrefix(tc.req.Id).Subtype == oidc.Subtype {
 				// Set up managed groups before getting. First get the current
-				// managed group to make sure we have the right version.
+				// managed groups to make sure we have the right version.
 				oidcRepo, err := oidcRepoFn()
 				require.NoError(err)
 				currMg, err := oidcRepo.LookupManagedGroup(ctx, mg.GetPublicId())
 				require.NoError(err)
-				_, _, err = oidcRepo.SetManagedGroupMemberships(ctx, oidcAm, oidcA, []*oidc.ManagedGroup{currMg})
+				currMg2, err := oidcRepo.LookupManagedGroup(ctx, mg2.GetPublicId())
+				require.NoError(err)
+				_, _, err = oidcRepo.SetManagedGroupMemberships(ctx, oidcAm, oidcA, []*oidc.ManagedGroup{currMg, currMg2})
 				require.NoError(err)
 			}
 

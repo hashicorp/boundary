@@ -118,13 +118,15 @@ func TestGet(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+		// Use a small limit to test that membership lookup is explicitly unlimited
+		return oidc.NewRepository(ctx, rw, rw, kmsCache, oidc.WithLimit(1))
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+		// Use a small limit to test that membership lookup is explicitly unlimited
+		return ldap.NewRepository(ctx, rw, rw, kmsCache, ldap.WithLimit(ctx, 1))
 	}
 
 	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
@@ -142,6 +144,7 @@ func TestGet(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
+	oidcB := oidc.TestAccount(t, conn, oidcAm, "test-subject-2")
 	omg := oidc.TestManagedGroup(t, conn, oidcAm, oidc.TestFakeManagedGroupFilter)
 
 	// Set up managed group before getting. First get the current
@@ -152,6 +155,10 @@ func TestGet(t *testing.T) {
 	currMg, err := oidcRepo.LookupManagedGroup(ctx, omg.GetPublicId())
 	require.NoError(t, err)
 	_, _, err = oidcRepo.SetManagedGroupMemberships(ctx, oidcAm, oidcA, []*oidc.ManagedGroup{currMg})
+	require.NoError(t, err)
+	currMg, err = oidcRepo.LookupManagedGroup(ctx, omg.GetPublicId())
+	require.NoError(t, err)
+	_, _, err = oidcRepo.SetManagedGroupMemberships(ctx, oidcAm, oidcB, []*oidc.ManagedGroup{currMg})
 	require.NoError(t, err)
 	// Fetch the group once more to get the updated time
 	currMg, err = oidcRepo.LookupManagedGroup(ctx, omg.GetPublicId())
@@ -171,11 +178,12 @@ func TestGet(t *testing.T) {
 			},
 		},
 		AuthorizedActions: oidcAuthorizedActions,
-		MemberIds:         []string{oidcA.GetPublicId()},
+		MemberIds:         []string{oidcA.GetPublicId(), oidcB.GetPublicId()},
 	}
 
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
 	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-login-name", ldap.WithMemberOfGroups(ctx, "admin"))
+	ldapAcct2 := ldap.TestAccount(t, conn, ldapAm, "test-login-name-2", ldap.WithMemberOfGroups(ctx, "admin"))
 	ldapMg := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
 	ldapWireManagedGroup := pb.ManagedGroup{
 		Id:           ldapMg.GetPublicId(),
@@ -191,7 +199,7 @@ func TestGet(t *testing.T) {
 			},
 		},
 		AuthorizedActions: ldapAuthorizedActions,
-		MemberIds:         []string{ldapAcct.GetPublicId()},
+		MemberIds:         []string{ldapAcct.GetPublicId(), ldapAcct2.GetPublicId()},
 	}
 
 	cases := []struct {
