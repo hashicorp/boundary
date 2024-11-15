@@ -1644,3 +1644,162 @@ func TestRepository_UpdateWorker(t *testing.T) {
 		})
 	}
 }
+
+func TestListHcpbManagedWorkers(t *testing.T) {
+	t.Parallel()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	repo, err := server.NewRepository(ctx, rw, rw, kms.TestKms(t, conn, wrapper))
+	require.NoError(t, err)
+
+	hcpbTag := &server.Tag{Key: server.ManagedWorkerTag, Value: "true"}
+
+	t.Run("invalidLiveness", func(t *testing.T) {
+		worker := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker.GetName()),
+				server.WithAddress(worker.GetAddress()),
+			),
+			server.WithPublicId(worker.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		workers, err := repo.ListHcpbManagedWorkers(ctx, -10)
+		require.NoError(t, err)
+		require.Len(t, workers, 1)
+		require.Equal(t, workers[0].PublicId, worker.GetPublicId())
+		require.Equal(t, workers[0].Address, worker.GetAddress())
+	})
+
+	t.Run("outsideLivenessThreshold", func(t *testing.T) {
+		worker := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker.GetName()),
+				server.WithAddress(worker.GetAddress()),
+			),
+			server.WithPublicId(worker.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		<-time.After(2 * time.Second)
+		workers, err := repo.ListHcpbManagedWorkers(ctx, time.Second)
+		require.NoError(t, err)
+		require.Len(t, workers, 0)
+	})
+
+	t.Run("inLivenessThreshold", func(t *testing.T) {
+		worker := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker.GetName()),
+				server.WithAddress(worker.GetAddress()),
+			),
+			server.WithPublicId(worker.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		workers, err := repo.ListHcpbManagedWorkers(ctx, time.Minute)
+		require.NoError(t, err)
+		require.Len(t, workers, 1)
+		require.Equal(t, workers[0].PublicId, worker.GetPublicId())
+		require.Equal(t, workers[0].Address, worker.GetAddress())
+	})
+
+	t.Run("multipleWorkers", func(t *testing.T) {
+		// Not HCPb managed but in liveness interval.
+		worker1 := server.TestKmsWorker(t, conn, wrapper)
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker1.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		// HCPb managed not in liveness interval.
+		worker2 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker2.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		// HCPb managed in liveness interval.
+		worker3 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker3.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		// HCPb managed in liveness interval.
+		worker4 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker4.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		<-time.After(2 * time.Second)
+
+		// Update all the workers that are meant to be within the liveness
+		// interval (worker1, worker3, worker4).
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker1.GetName()),
+				server.WithAddress(worker1.GetAddress()),
+			),
+			server.WithPublicId(worker1.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		_, err = repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker3.GetName()),
+				server.WithAddress(worker3.GetAddress()),
+			),
+			server.WithPublicId(worker3.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		_, err = repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker4.GetName()),
+				server.WithAddress(worker4.GetAddress()),
+			),
+			server.WithPublicId(worker4.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		// List should return worker3 and worker4.
+		workers, err := repo.ListHcpbManagedWorkers(ctx, time.Second)
+		require.NoError(t, err)
+
+		exp := []server.WorkerAddress{
+			{PublicId: worker3.GetPublicId(), Address: worker3.GetAddress()},
+			{PublicId: worker4.GetPublicId(), Address: worker4.GetAddress()},
+		}
+		require.ElementsMatch(t, exp, workers)
+	})
+}

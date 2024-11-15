@@ -8,6 +8,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -24,6 +25,11 @@ import (
 )
 
 var ErrCannotUpdateKmsWorkerViaApi = stderrors.New("cannot update a kms worker's basic information via api")
+
+type WorkerAddress struct {
+	PublicId string
+	Address  string
+}
 
 // DeleteWorker will delete a worker from the repository.
 func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Option) (int, error) {
@@ -131,6 +137,38 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return w, nil
+}
+
+// ListHcpbManagedWorkers lists all HCPb managed workers' ids and addresses.
+func (r *Repository) ListHcpbManagedWorkers(ctx context.Context, liveness time.Duration) ([]WorkerAddress, error) {
+	const op = "server.(Repository).ListHcpbManagedWorkers"
+
+	if liveness <= 0 {
+		liveness = DefaultLiveness
+	}
+	liveness = liveness.Truncate(time.Second)
+
+	query := fmt.Sprintf(listHcpbManagedWorkersQuery, uint32(liveness.Seconds()))
+	rows, err := r.reader.Query(ctx, query, []any{})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+
+	var ret []WorkerAddress
+	for rows.Next() {
+		var result WorkerAddress
+		err = r.reader.ScanRows(ctx, rows, &result)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		ret = append(ret, result)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return ret, nil
 }
 
 // ListWorkers will return a listing of Workers and honor the WithLimit option.
