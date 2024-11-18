@@ -31,7 +31,7 @@ variable "ubuntu_ami_id" {
 variable "worker_instance_type" {
   description = "The EC2 Instance type to be used for the worker's node"
   type        = string
-  default     = "t2.micro"
+  default     = "t2.small"
 }
 
 variable "ssh_aws_keypair" {
