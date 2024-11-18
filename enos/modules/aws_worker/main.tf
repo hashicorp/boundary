@@ -10,6 +10,7 @@ terraform {
 }
 
 data "enos_environment" "current" {}
+data "aws_caller_identity" "current" {}
 
 locals {
   selected_az = data.aws_availability_zones.available.names[random_integer.az.result]
@@ -144,7 +145,7 @@ resource "aws_instance" "worker" {
   tags = merge(
     local.common_tags,
     {
-      Name = "${var.name_prefix}-boundary-worker",
+      Name = "${var.name_prefix}-boundary-worker-${split(":", data.aws_caller_identity.current.user_id)[1]}",
     },
   )
 }
