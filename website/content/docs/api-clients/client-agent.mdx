@@ -510,6 +510,13 @@ $ boundary client-agent pause
 
 Follow the troubleshooting steps to understand why the Client Agent is not able to reach the controller.
 
+#### WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!
+
+This issue typically arises when a user resumes the client-agent after a pause and attempts to connect to a target. 
+The error message is a result of the client-agent detecting a change in the remote host's identity due to change in remote worker IP address.
+
+HashiCorp advises removing the existing server host key from the `~/.ssh/known_hosts` file.
+
 ## Conflicting software
 
 Some software is known to cause conflicts with the Boundary Client Agent.
@@ -618,7 +625,7 @@ You must restart the Client Agent for it to update its configuration with the ne
 </Tab>
 </Tabs>
 
-### Cloudflare WARP client
+### Cloudflare WARP client 
 
 The Cloudflare WARP client uses a local DNS server to direct traffic.
 It has built-in checks to prevent it from being run alongside other software that uses the same mechanism.
