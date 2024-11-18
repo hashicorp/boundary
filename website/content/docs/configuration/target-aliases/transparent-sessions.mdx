@@ -63,30 +63,30 @@ When you have validated that transparent sessions work, you can create and estab
 
 To establish transparent sessions to other services:
 
-1. Make a list of the services you use
-1. Create workers as needed for network partitions
-1. Add the services to Boundary as targets
-1. [Create aliases for the targets](/boundary/docs/configuration/target-aliases/create-target-alias)
-1. Connect to the target using your client of choice
+1. Make a list of the services you use.
+1. Create workers as needed for network partitions.
+1. Add the services to Boundary as targets.
+1. [Create aliases for the targets](/boundary/docs/configuration/target-aliases/create-target-alias).
+1. Connect to the target using your client of choice.
 
 ## Connect using transparent sessions
 
-Without transparent sessions, clients must use the [Boundary connect helpers](/boundary/docs/concepts/connection-workflows) to establish a session:
+Without transparent sessions, you must use the [Boundary connect helpers](/boundary/docs/concepts/connection-workflows) to establish a session:
 
 ```shell-session
 $ boundary connect ssh -target-name sql-database -target-scope-name -staging
 ```
 
-Or use the Boundary Desktop Client app to start a session, and connect on a local port supplied by Boundary:
+Alternatively, you can use the Boundary Desktop Client to start a session, and connect on a local port supplied by Boundary:
 
 ```shell-session
 $ ssh 127.0.0.1 -p 55374
 ```
 
-With transparent sessions, the target alias is used as the address to esablish a session. If the [client agent is running](#install-the-boundary-clients), you can use the alias to start a session:
+With transparent sessions, you use the target alias as the address to establish a session. If the [client agent is running](#install-the-boundary-clients), you can use the alias to start a session:
 
 ```shell-session
 $ ssh my.alias.name
 ```
 
-Boundary will then start the session as usual, and broker or inject any credentials you have configured.
+Boundary starts the session as usual, and brokers or injects any credentials you have configured.
