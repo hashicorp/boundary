@@ -7,9 +7,9 @@ description: >-
 
 # Overview
 
-Target aliases simplify the connection workflow end users by allowing targets to be referenced by a globally unique DNS-like string.
+Target aliases simplify the connection workflow for end users by allowing them to reference targets using a globally unique DNS-like string.
 
-Without aliases, connecting to an end target requires referencing the target ID, or a combination of target name and scope:
+Without aliases, connecting to an end target requires you to reference the target ID, or a combination of target name and scope:
 
 ```shell-session
 $ boundary connect ssh -target-id ttcp_1234567890
@@ -32,4 +32,4 @@ To set up a target alias:
 1. [Create a target alias](/boundary/docs/configuration/target-aliases/create-target-alias)
 1. [Connect to a target using an alias](/boundary/docs/configuration/target-aliases/connect-target-alias)
 
-After setting up a target alias, you can optionally [Configure transparent sessions for end users](/boundary/docs/configuration/target-aliases/transparent-sessions). <sup>HCP/ENT</sup>
+After you set up a target alias, you can optionally [Configure transparent sessions for end users](/boundary/docs/configuration/target-aliases/transparent-sessions). <sup>HCP/ENT</sup>
