@@ -25,7 +25,7 @@ variable "worker_count" {
 variable "worker_instance_type" {
   description = "EC2 Instance type"
   type        = string
-  default     = "t2.micro"
+  default     = "t2.small"
 }
 
 variable "worker_type_tags" {
@@ -72,7 +72,7 @@ variable "controller_count" {
 variable "controller_instance_type" {
   description = "EC2 Instance type"
   type        = string
-  default     = "t2.micro"
+  default     = "t2.small"
 }
 
 variable "controller_ebs_iops" {
