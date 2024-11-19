@@ -108,8 +108,8 @@
         ]
       },
       {
-        "title": "Install Boundary",
-        "path": "install-boundary/install"
+        "title": "Deploy Boundary",
+        "path": "install-boundary/deploy"
       },
       {
         "title": "Configure controllers",
@@ -122,6 +122,10 @@
       {
         "title": "Initialize Boundary",
         "path": "install-boundary/initialize"
+      },
+      {
+        "title": "Install Boundary clients",
+        "path": "install-boundary/install-clients"
       },
       {
         "title": "Systemd install",
