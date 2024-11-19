@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -300,18 +301,25 @@ type recorder struct {
 	execBatchSize  int
 	storeBatchSize int
 	status         scheduler.JobStatus
+	mu             sync.Mutex
 }
 
 func (r *recorder) setup(c *Config) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	c.Store = r.Store
 }
 
 func (r *recorder) Store(ctx context.Context, batchSize int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.storeBatchSize = batchSize
 	return nil
 }
 
 func (r *recorder) Exec(ctx context.Context, batchSize int) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.execBatchSize = batchSize
 	return 0, nil
 }
@@ -320,6 +328,7 @@ type testRun struct {
 	ret func(context.Context, int, *Config) (int, error)
 	chk func(*testing.T, *recorder)
 	rec *recorder
+	mu  sync.Mutex
 }
 
 func (tr *testRun) validate(t *testing.T) {
@@ -329,6 +338,8 @@ func (tr *testRun) validate(t *testing.T) {
 }
 
 func (tr *testRun) recorder(cf *Config) *recorder {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
 	if tr.rec == nil {
 		tr.rec = &recorder{}
 		tr.rec.setup(cf)
