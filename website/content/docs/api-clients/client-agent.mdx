@@ -512,10 +512,10 @@ Follow the troubleshooting steps to understand why the Client Agent is not able 
 
 #### WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!
 
-This issue typically arises when a user resumes the client-agent after a pause and attempts to connect to a target. 
-The error message is a result of the client-agent detecting a change in the remote host's identity due to change in remote worker IP address.
+This issue arises when using SSH to connect to an SSH target through an alias after the first successful connection to that alias. The issue is due to the way Boundary workers generate a new host key on every new SSH connection. The warning can safely be ignored using the `StrictHostKeyChecking=no` command line option:
 
-HashiCorp advises removing the existing server host key from the `~/.ssh/known_hosts` file.
+```shell-session
+$ ssh -o StrictHostKeyChecking=no targetalias.boundary.dev
 
 ## Conflicting software
 
