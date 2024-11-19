@@ -4,8 +4,27 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
 * Introduces soft-delete for users within the client cache.
   ([PR](https://github.com/hashicorp/boundary/pull/5173)).
+
+## 0.18.1 (2024/11/21)
+### New and Improved
+
+* Delete terminated sessions in batches to avoid long running jobs.
+  ([PR](https://github.com/hashicorp/boundary/pull/5201))
+
+### Bug fixes
+
+* Fix an issue where users would lose access to managed groups if
+  there are more than 10,000 managed groups in the auth method used.
+  ([PR](https://github.com/hashicorp/boundary/pull/5242))
+* Fix an issue where only the first 10,000 members of a managed group
+  are returned when getting the managed group, and a similar issue where
+  only the first 10,000 managed groups an account is part of is included
+  when getting the account.
+  ([PR](https://github.com/hashicorp/boundary/pull/5245))
 
 ## 0.18.0 (2024/10/01)
 ### New and Improved
