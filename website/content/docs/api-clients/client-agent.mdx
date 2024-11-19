@@ -516,6 +516,9 @@ This issue arises when using SSH to connect to an SSH target through an alias af
 
 ```shell-session
 $ ssh -o StrictHostKeyChecking=no targetalias.boundary.dev
+```
+
+You can also remove the existing server host key from the `~/.ssh/known_hosts` file to avoid the error.
 
 ## Conflicting software
 
