@@ -19,7 +19,7 @@ FROM docker.mirror.hashicorp.services/alpine:3.20 as dev
 RUN set -eux && \
     addgroup boundary && \
     adduser -s /bin/sh -S -G boundary boundary && \
-    apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
+    apk add --no-cache ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
 
 ADD bin/boundary /bin/boundary
 
@@ -76,7 +76,8 @@ RUN set -eux && \
     unzip -d /bin boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip && \
     rm boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip boundary_${PRODUCT_VERSION}_SHA256SUMS boundary_${PRODUCT_VERSION}_SHA256SUMS.sig && \
     cp /bin/LICENSE.txt /usr/share/doc/boundary/LICENSE.txt && \
-    mkdir /boundary
+    mkdir /boundary && \
+    apk del wget
 
 COPY .release/docker/config.hcl /boundary/config.hcl
 
@@ -120,7 +121,7 @@ ENV VERSION=$PRODUCT_VERSION
 # Create a non-root user to run the software.
 RUN addgroup ${NAME} && adduser -s /bin/sh -S -G ${NAME} ${NAME}
 
-RUN apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
+RUN apk add --no-cache ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
 
 COPY .release/docker/config.hcl /boundary/config.hcl
 
