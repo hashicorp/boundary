@@ -3,6 +3,11 @@
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.18.1 (2024/11/21)
+### New and Improved
+
+* Delete terminated sessions in batches to avoid long running jobs.
+  ([PR](https://github.com/hashicorp/boundary/pull/5201))
+
 ### Bug fixes
 
 * Fix an issue where users would lose access to managed groups if
