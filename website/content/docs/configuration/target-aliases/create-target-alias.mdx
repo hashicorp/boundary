@@ -212,7 +212,7 @@ If you [created an alias](#create-an-alias-for-an-existing-target) without assoc
 
 Target aliases point directly to the target they are associated with. You can assign targets a host set or a direct target address.
 
-[Host sets](/boundary/docs/concepts/domain-model/host-sets) are sets of functionally equivalent hosts, and are commonly used for deployments at scale. A target assigned a host set will select a host from the host set at random when Boundary establishes a connection.
+[Host sets](/boundary/docs/concepts/domain-model/host-sets) are sets of functionally equivalent hosts, and are commonly used for deployments at scale.  When Boundary authorizes a session, a target assigned a host set will select a host from the host set at random to use for all connections for the session.
 
 You assign [direct target addresses](/boundary/docs/concepts/domain-model/targets#address) directly to the target. They refer to a specific network resource, like an IP address. Boundary only connects to the direct target address when it establishes a connection to the associated target.
 
