@@ -1,0 +1,35 @@
+---
+layout: docs
+page_title: Overview
+description: >-
+  Learn how to configure aliases and transparent sessions to enhance end-user workflows and simplify target access.
+---
+
+# Overview
+
+Target aliases simplify the connection workflow for end users by allowing them to reference targets using a globally unique DNS-like string.
+
+Without aliases, connecting to an end target requires you to reference the target ID, or a combination of target name and scope:
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_1234567890
+```
+
+```shell-session
+$ boundary connect ssh -target-name sql-database -target-scope-name -staging
+```
+
+With target aliases, a single globally referenced value is assigned to a target, simplifying connection workflows and enabling transparent sessions for Enterprise and HCP end users.
+
+```shell-session
+$ boundary connect ssh sql-database-staging
+```
+
+## Configure target aliases
+
+To set up a target alias:
+
+1. [Create a target alias](/boundary/docs/configuration/target-aliases/create-target-alias)
+1. [Connect to a target using an alias](/boundary/docs/configuration/target-aliases/connect-target-alias)
+
+After you set up a target alias, you can optionally [Configure transparent sessions for end users](/boundary/docs/configuration/target-aliases/transparent-sessions). <sup>HCP/ENT</sup>
