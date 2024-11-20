@@ -277,6 +277,14 @@ If you want to disable the Boundary Client Agent, you can stop it with the follo
 $ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
 ```
 
+<Note>
+
+Stopping the Boundary client agent using `launchctl stop` only halts it temporarily, as the `StartInterval` setting causes it to restart automatically after 60 seconds.
+
+**To disable it permanently**, you must unload the service using `launchctl unload`. Unloading not only stops the agent but also removes its configuration from `launchd`. To restart the agent after unloading, you must reload it using `launchctl load`, as the `start` command will not work in this case.
+
+</Note>
+
 </Tab>
 <Tab heading="Windows" group="windows">
 
