@@ -512,7 +512,7 @@ Follow the troubleshooting steps to understand why the Client Agent is not able 
 
 #### WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!
 
-This issue arises when using SSH to connect to an SSH target through an alias after the first successful connection to that alias. The issue is due to the way Boundary workers generate a new host key on every new SSH connection. The warning can safely be ignored using the `StrictHostKeyChecking=no` command line option:
+This error arises when you use an alias to connect to an SSH target after the first successful connection using that alias. The issue occurs because Boundary workers generate a new host key on every new SSH connection. You can safely ignore the warning using the `StrictHostKeyChecking=no` command line option:
 
 ```shell-session
 $ ssh -o StrictHostKeyChecking=no targetalias.boundary.dev
