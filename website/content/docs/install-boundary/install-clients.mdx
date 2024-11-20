@@ -21,13 +21,17 @@ correct clients:
 
 @include 'alerts/enterprise-only.mdx'
 
-@include 'alerts/beta.mdx'
+<Note>
+
+  The Boundary installer includes the Boundary Client Agent, which is a beta feature. For production environments, consider downloading the Boundary binary and Boundary Desktop Client directly from the [Install Boundary](/boundary/install) page.
+
+</Note>
 
 The Boundary installer bundles together the following components:
 
 - Boundary binary (CLI)
 - Boundary Desktop Client app
-- Boundary Client Agent <sup>HCP/ENT</sup>
+- Boundary Client Agent <sup>HCP/ENT</sup> <sup>BETA</sup>
 
 Download the appropriate Boundary installer for your Windows, MacOS, or Linux environment from the [Install Boundary](/boundary/install#installer) page or the [releases](https://releases.hashicorp.com/boundary-installer) page. You can also download the components individually, but compatibility is not guaranteed. Refer to the [Supported versions policy](/boundary/docs/enterprise/supported-versions#control-plane-and-client-cli-compatibility) to learn more.
 
