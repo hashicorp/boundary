@@ -11,68 +11,17 @@ description: |-
 
 @include 'alerts/beta.mdx'
 
-Transparent sessions shift Boundary from an active connection model to a passive connection model.
-Boundary operates in the background instead of requiring you to remember specific resource IDs or ephemeral ports to connect to targets.
+Transparent sessions shift Boundary from an active connection model to a passive connection model. Boundary operates in the background instead of requiring you to remember specific resource IDs or ephemeral ports to connect to targets.
+
 As long as Boundary authenticates a user and the user is authorized to access the target, Boundary intercepts the DNS call and routes traffic through a session automatically.
 
 Transparent sessions require [aliases](/boundary/docs/concepts/aliases) and the [Boundary Client Agent](/boundary/docs/api-clients/client-agent).
 
-The Boundary Desktop client facilitates quick target discovery and session establishment using your preferred client.
-If you configure aliases for your targets, install the Boundary Client Agent, and ensure you are authenticated to the cluster, connections are transparent to the user.
-Boundary provides OS notifications to make it clear when you connect to a target using a transparent session.
+The Boundary Desktop client facilitates quick target discovery and session establishment using your preferred client. If you configure aliases for your targets, install the Boundary Client Agent, and ensure you are authenticated to the cluster, connections are transparent to the user. Boundary provides OS notifications to make it clear when you connect to a target using a transparent session.
 
 Boundary supports Windows and MacOS for the transparent sessions public beta.
 
-## Requirements
-
-Before you configure transparent sessions, you must:
-
-- Ensure that the Boundary CLI and Boundary Desktop are not installed in the environment in which you want to run the transparent sessions beta.
-- Download the appropriate Boundary installer for your Windows or MacOS environment from the [releases](https://releases.hashicorp.com/boundary-installer) page.
-
-## Install clients
-
-Complete the following steps to install the Boundary Client Agent, CLI, and Desktop client:
-
-1. Install Boundary using the installer.
-Make sure to select the options **Boundary Client Agent**, **CLI**, and **Desktop**.
-1. Open the CLI and type the following command to confirm that the version is 0.18.0:
-   ```shell-session
-   $ boundary version
-   ```
-1. In the CLI, run the status command to confirm that the Boundary Client Agent has started:
-
-   ```shell-session
-   $ boundary client-agent status
-   ```
-
-## Configure targets
-
-The following section details how to configure targets and test the transparent sessions public beta feature.
-
-If you use a cluster that was created earlier than release 0.16.0, you must add the grant `list-resolvable-aliases` so that the client agent can populate the local alias cache.
-As an example, you could add the grant `type=user;actions=list-resolvable-aliases;ids=*`.
-
-Complete the following steps to configure targets and test transparent sessions:
-
-1. Authenticate to Boundary using the CLI or Desktop client.
-1. [Create a new target with an alias](/boundary/docs/concepts/aliases#create-an-alias-during-target-creation) or [create an alias for an existing target](/boundary/docs/concepts/aliases#create-an-alias-for-an-existing-target).
-Ensure that you have authorization to establish a session to the target.
-1. Open the client of your choice and [connect to your target using the alias](/boundary/docs/concepts/aliases#connect-to-a-target-using-an-alias).
-
-   Boundary routes your session using the Boundary Client Agent.
-   You can validate that Boundary routed the session by looking at the **Sessions** page in the Desktop client, by typing `boundary sessions list -recursive` in the CLI, or by looking at sessions managed by the Client Agent using `boundary client-agent sessions`.
-
-   <Note>
-
-   The Client Agent periodically requests an updated list of aliases from the controller, so the alias may not work immediately after you create it.
-   It should not take longer than 2 minutes for the alias to be updated in the Client Agent. If you still see connection issues after 2 minutes,
-   follow the troubleshooting steps in [the Client Agent troubleshooting guide](/boundary/docs/api-clients/client-agent#troubleshooting).
-
-   </Note>
-
-When you have validated that transparent sessions work, you can create and establish transparent sessions to other services.
-Make a list of the services you use, add these resources to Boundary as targets, and create workers as needed for network partitions.
+Refer to the [Configure transparent sessions](/boundary/docs/configuration/target-aliases/transparent-sessions) page to get started.
 
 ## Known issues
 
@@ -96,3 +45,4 @@ Refer to the following topics for more information:
 
 - [Aliases](/boundary/docs/concepts/aliases)
 - [Boundary Client Agent](/boundary/docs/api-clients/client-agent)
+- [Configure transparent sessions](/boundary/docs/configuration/target-aliases/transparent-sessions)

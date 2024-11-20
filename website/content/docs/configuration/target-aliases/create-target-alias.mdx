@@ -1,0 +1,545 @@
+---
+layout: docs
+page_title: Create target aliases
+description: >-
+  Learn how to create a target alias for an existing target, or assign one during target creation.
+---
+
+# Create target aliases
+
+You can create aliases and associate them with targets using the following methods:
+
+- [Create an alias for an existing target](#create-an-alias-for-an-existing-target)
+- [Create an alias during target creation](#create-an-alias-during-target-creation)
+- [Associate an existing alias with a target](#associate-an-existing-alias-with-a-target)
+- [Create multiple target aliases: An example](#create-multiple-aliases-for-a-single-target)
+
+## Create an alias for an existing target
+
+You can create a new alias and associate it with an existing target at the same time.
+
+When you create the target alias, you can choose from the following methods:
+
+- Create the alias without adding a target
+- Create the alias for one or more targets
+- Create the alias with an optional host ID
+
+Complete the following steps to create a new alias and associate it with a target:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select **Aliases** in the navigation pane.
+1. Click **New Alias**.
+1. Complete the following fields:
+   - **Name**: (Optional) Enter an optional name for the alias to use for identification purposes.
+   - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
+   - **Type**: Select **Target**.
+   At this time, targets are the only Boundary resources that supports aliasing.
+   - **Alias Value**: Enter the string that you want to use as the alias to represent the target.
+   An alias's value can be a hostname or a DNS-like string.
+   - **Target ID**: (Optional) Specify any targets you want to associate with the alias.
+   - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create an alias:
+
+   ```shell-session
+   $ boundary aliases create target \
+       -description 'This is an example alias for target tcp_1234567890' \
+       -destination-id tcp_1234567890 \
+       -name Example Boundary alias \
+       -scope-id global \
+       -value example.alias.boundary \
+       -authorize-session-host-id hst_1234567890
+   ```
+
+   You can use any of the following [attributes](/boundary/docs/concepts/domain-model/aliases) when you create an alias:
+
+   - `-description=<string>` - Specifies the optional description you want to use for identification purposes.
+   - `-destination-id=<string>` - Specifies the ID of the target that the alias references.
+   - `-name=<string>` - Specifies the optional name you want to use to describe the alias for identification purposes.
+   - `-scope-id=<string>` - Scope in which to create the alias. The default is `global`.
+   You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+   At this time, aliases are only supported for the global scope.
+   - `-value=<string>` - Specifies the string that you want to use as the alias to represent the target.
+   The alias `value` can be a hostname or a DNS-like string.
+   - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
+
+</Tab>
+</Tabs>
+
+## Create an alias during target creation
+
+You can create a new target and new alias at the same time and associate the two.
+
+Complete the following steps to create a new target and new alias at the same time:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select **Targets** in the navigation pane.
+1. Click **New Target**.
+1. Complete the following fields:
+   - **Name**: Enter the target name for identification purposes.
+   - **Description**: (Optional) Enter an optional description for identification purposes.
+   - **Type**: Select the target type.
+   You can create SSH or TCP targets.
+   - **Target Address**: (Optional) Enter a valid IP address or DNS name.
+   Alternatively, you can configure host catalogs and host sets.
+   - **Default Port**: (Optional) Enter an optional default port for the target to use for connections.
+   - **Default Client Port**: (Optional) Enter an optional local proxy port on which to listen when a session is started on a client.
+   - **Maximum Duration**: (Optional) Enter an optional maximum duration for sessions on this target, in seconds.
+   - **Maximum Connection**: (Optional) Enter the maximum number of connections allowed per session on this target.
+   For unlimited connections, enter `-1`.
+   - **Workers**: (Optional) Select whether you want the worker to function as an ingress and/or egress worker.
+   - **Aliases**: (Optional) Enter the value fpr any aliases you want to associate with this target, and then click **Add**.
+   An alias's value can be a hostname or a DNS-like string.
+   You can associate multiple aliases with a target.
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create a target:
+
+   ```shell-session
+   $ boundary targets create ssh \
+       -description 'This is an example ssh target' \
+       -name Example Boundary SSH target \
+       -scope-id global \
+       -with-alias-authorize-session-host-id hst_1234567890 \
+       -with-alias-scope-id global \
+       -with-alias-value example.alias.boundary
+   ```
+
+   You can use any of the following [attributes](/boundary/docs/concepts/domain-model/targets) when you create a target:
+
+    - `description` - (optional)
+     An optional description that you can use for identification purposes.
+   - `name` - (required)
+     The `name` must be unique within the target's project.
+   - `scope-id` - (required)
+     The scope in which to create the target.
+     The default is `global`.
+     You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+   - `-address=<string>` - An optional valid network address for the target to connect to.
+     You cannot use an address alongside host sources.
+   - `-default-client-port=<string>` - The default client port on the target.
+   - `-default-port=<string>` - The default port on the target.
+     If you do not specify a default port, Boundary uses port 22.
+   - `-egress-worker-filter=<string>` - A Boolean expression that filters which egress workers can process sessions for the target.
+   - `-enable-session-recording=<string>` - A Boolean expression you can use to enable session recording for the target.
+   - `-ingress-worker-filter=<string>` - A Boolean expression that filters which ingress workers can process sessions for the target.
+   - `-session-connection-limit=<string>` - The maximum number of connections allowed for a session.
+A value of `-1` means the connections are unlimited.
+   - `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
+     You can specify an integer number of seconds or a duration string.
+   - `-storage-bucket-id=<string>` - The public ID of the storage bucket to associate with the target.
+   - `-with-alias-authorize-session-host-id=<string>` - The host ID that an alias uses to authorize sessions for the target.
+   - `-with-aliasscope-id=<string>` - The scope ID that you want to create the target and alias in.
+     The default is `global`.
+     At this time, aliases are only supported for the global scope.
+   - `-with-alias-value=<string>` - The value of the alias that you want to use to represent the target.
+     Use this parameter to create the alias and target, and associate them with each other, at the same time.
+
+     Note that you can create SSH or TCP [target types](/boundary/docs/concepts/domain-model/targets#target-types).
+     The example command in this section creates an SSH target.
+
+</Tab>
+</Tabs>
+
+## Associate an existing alias with a target
+
+If you [created an alias](#create-an-alias-for-an-existing-target) without associating it with a target, you can update it with an existing target at a later time. Complete the following steps to add an alias to a target:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select **Targets** in the navigation pane.
+1. Select the target you want to add an alias to.
+1. Under the **Aliases** heading in the right sidebar, click **Add an alias**.
+1. Complete the following fields:
+   - **Name**: (Optional) Enter an optional name for the alias to use for identification purposes.
+   - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
+   - **Type**: Select **Target**.
+   At this time, targets are the only Boundary resources that supports aliasing.
+   - **Alias Value**: Enter the alias value you want to use in commands to represent the target.
+   An alias's value can be a hostname or a DNS-like string.
+   - **Target ID**: This field contains the ID of the target you selected to add an alias to.
+   It is read only.
+   - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create an alias:
+
+   ```shell-session
+   $ boundary aliases update target \
+       -destination-id tcp_1234567890 \
+       -id alt_1234567890 \
+       -authorize-session-host-id hst_1234567890
+   ```
+
+   You can use any of the following [attributes](/boundary/docs/concepts/domain-model/aliases) when you update an alias:
+
+   - `-description=<string>` - Specifies the optional description you want to use for identification purposes.
+   - `-destination-id=<string>` - Specifies the ID of the target that the alias references.
+   - `id=<string>` - Specifies the ID of the alias you want to update.
+   - `-name=<string>` - Specifies the optional name you want to use to describe the alias for identification purposes.
+   - `-scope-id=<string>` - Scope in which to create the alias. The default is `global`.
+   You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+   At this time, aliases are only supported for the global scope.
+   - `-value=<string>` - Specifies the string that you want to use as the alias to represent the target.
+   The alias `value` must comply with DNS naming rules.
+   - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
+
+</Tab>
+</Tabs>
+
+## Create multiple aliases for a single target
+
+Target aliases point directly to the target they are associated with. You can assign targets a host set or a direct target address.
+
+[Host sets](/boundary/docs/concepts/domain-model/host-sets) are sets of functionally equivalent hosts, and are commonly used for deployments at scale.  When Boundary authorizes a session, a target assigned a host set will select a host from the host set at random to use for all connections for the session.
+
+You assign [direct target addresses](/boundary/docs/concepts/domain-model/targets#address) directly to the target. They refer to a specific network resource, like an IP address. Boundary only connects to the direct target address when it establishes a connection to the associated target.
+
+When you create a target alias, you can also assign it to a specific host. Assigning an alias to a specific host is useful if you want to avoid creating multiple targets for specific hosts using direct target addresses. 
+
+For example, you could create two aliases for the same target that has been assigned a host set. One alias could refer to the target itself, and would allow Boundary to randomly select a host to connect to for a session. Another alias could point to the same target, but you could assign a host ID that Boundary should use for a session.
+
+### Example
+
+You may want to create aliases that point to the same target, but that specify which host Boundary should use when it establishes a session.
+
+In this example, you set up three aliases for the same target:
+
+1. A target alias without a host specified
+1. A target alias with a host ID specified
+1. A target alias with a different host ID specified
+
+<Note>
+
+  This example uses SSH target types, which are only available in HCP Boundary and Boundary Enterprise. This process also works for any other target type, including the TCP target type available in Boundary Community Edition.
+
+</Note>
+
+For this example, assume that the following scopes exist:
+
+- Org: `engineering`, ID `o_2drCWvp3Oc`
+- Project: `app-servers`, ID `p_3ECODJDbXV`
+
+And the following host set and hosts exist:
+
+- Host set: `linux-dev-servers`, ID `hsst_56oiL0WaKu`
+- Host: `dev-040`, ID `hst_7wGXkF8e0Q`
+- Host: `dev-041`, ID `hst_zlRwMMPKwp`
+
+Because the `linux-dev-servers` hosts are functionally equivalent, you can create a single target for the  host set, and create an alias for the target.
+
+We recommend creating DNS-like aliases to ensure consistent naming conventions. In this example, an alias pattern might be:
+
+`hostname.host-set.project.org`
+
+For the `linux-dev-servers` target, create the alias `linux-dev.app-servers.eng`.
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+Create the `linux-dev-servers` target.
+
+1. Log in to Boundary.
+1. Select the 'engineering' org and the `app-servers` project.
+1. Select **Targets** in the navigation pane.
+1. Click **New Target**.
+1. Complete the following fields:
+   - **Name**: `linux-dev-servers`
+   - **Description**: `linux-dev.app-servers.eng target`
+   - **Type**: SSH
+   - **Default Port**: `22`
+   - **Aliases**: `linux-dev.app-servers.eng`
+1. Click **Save**.
+
+Then add the `linux-dev-servers` host set to the new `linux-dev-servers` target.
+
+1. Click on the **Host Sources** tab.
+1. Click **Add Host Sources**.
+1. Select the `linux-dev-servers` host set.
+1. Click **Add Host Sources**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Create the `linux-dev-servers` target.
+
+1. Log in to Boundary.
+1. Use the following command to create the `linux-dev-servers` target with alias `linux-dev.app-servers.eng`:
+
+   ```shell-session
+   $ boundary targets create ssh \
+       -description 'linux-dev.app-servers.eng target' \
+       -name linux-dev-servers \
+       -scope-id p_3ECODJDbXV \
+       -default-port 22 \
+       -with-alias-scope-id global \
+       -with-alias-value linux-dev.app-servers.eng
+   ```
+
+   Example output:
+   
+   <CodeBlockConfig hideClipboard>
+   
+   ```shell-session
+   $ boundary targets create ssh \
+       -description 'linux-dev.app-servers.eng target' \
+       -name linux-dev-servers \
+       -scope-id p_pj6UUPVJT3 \
+       -default-port 22 \
+       -with-alias-scope-id global \
+       -with-alias-value linux-dev.app-servers.eng
+    
+    Target information:
+      Created Time:               Thu, 14 Nov 2024 13:39:36 MST
+      Description:                linux-dev.app-servers.eng target
+      ID:                         tssh_lhH5pa425G
+      Name:                       linux-dev-servers
+      Session Connection Limit:   -1
+      Session Max Seconds:        28800
+      Type:                       ssh
+      Updated Time:               Thu, 14 Nov 2024 13:39:36 MST
+      Version:                    1
+    
+      Scope:
+        ID:                       p_3ECODJDbXV
+        Name:                     app-servers
+        Parent Scope ID:          o_2drCWvp3Oc
+        Type:                     project
+    
+      Authorized Actions:
+        remove-host-sources
+        remove-credential-sources
+        authorize-session
+        delete
+        set-credential-sources
+        no-op
+        read
+        update
+        add-host-sources
+        set-host-sources
+        add-credential-sources
+    
+      Aliases:
+        ID:                       alt_CkC6wGKLWW
+        Value:                    linux-dev.app-servers.eng
+    
+      Attributes:
+        Default Port:             22
+        Enable Session Recording: false
+   ```
+   
+   </CodeBlockConfig>
+
+Then add the `linux-dev-servers` host set (ID `hsst_56oiL0WaKu`) to the new `linux-dev-servers` target (ID `tssh_lhH5pa425G`).
+
+```shell-session
+$ boundary targets add-host-sources -id tssh_lhH5pa425G -host-sourchsst_56oiL0WaKu
+```
+
+</Tab>
+</Tabs>
+
+Next, create two more aliases for the target.
+
+Create the `dev-040.linux-dev.app-servers.eng` alias for the host `dev-040`:
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary. Navigate to the `global` scope.
+1. Select **Aliases** in the navigation pane.
+1. Click **New Alias**.
+1. Complete the following fields:
+   - **Name**: `dev-040`
+   - **Description**: `Target alias for dev-040.linux-dev.app-servers.eng`
+   - **Type**: `Target`
+   - **Alias Value**: `dev-040.linux-dev.app-servers.eng`
+   - **Target ID**: `tssh_lhH5pa425G`
+   - **Host ID**: `hst_7wGXkF8e0Q`
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create an alias for host `dev-040:
+
+  ```shell-session
+  $ boundary aliases create target \
+      -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
+      -destination-id tssh_lhH5pa425G \
+      -name dev-040 \
+      -scope-id global \
+      -value dev-040.linux-dev.app-servers.eng \
+      -authorize-session-host-id hst_7wGXkF8e0Q
+  ```
+
+  Example output:
+  
+  <CodeBlockConfig hideClipboard>
+  
+  ```shell-session
+  $ boundary aliases create target \
+        -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
+        -destination-id tssh_lhH5pa425G \
+        -name dev-040 \
+        -scope-id global \
+        -value dev-040.linux-dev.app-servers.eng \
+        -authorize-session-host-id hst_7wGXkF8e0Q
+  
+  Alias information:
+    Created Time:        Thu, 14 Nov 2024 13:55:41 MST
+    Description:         Target alias for dev-040.linux-dev.app-servers.eng
+    Destination ID:      tssh_lhH5pa425G
+    ID:                  alt_QeCGTcvlq2
+    Name:                dev-040
+    Type:                target
+    Updated Time:        Thu, 14 Nov 2024 13:55:41 MST
+    Value:               dev-040.linux-dev.app-servers.eng
+    Version:             1
+  
+    Scope:
+      ID:                global
+      Name:              global
+      Type:              global
+  
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+  
+    Attributes:
+      authorize_session_arguments:
+      {
+      "host_id": "hst_7wGXkF8e0Q"
+      }
+  ```
+  
+  </CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+Then create the `dev-041.linux-dev.app-servers.eng` alias for the host `dev-041`.
+
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary. Navigate to the `global` scope.
+1. Select **Aliases** in the navigation pane.
+1. Click **New Alias**.
+1. Complete the following fields:
+   - **Name**: `dev-041`
+   - **Description**: `Target alias for dev-041.linux-dev.app-servers.eng`
+   - **Type**: `Target`
+   - **Alias Value**: `dev-041.linux-dev.app-servers.eng`
+   - **Target ID**: `tssh_lhH5pa425G`
+   - **Host ID**: `hst_7wGXkF8e0Q`
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create an alias for host `dev-041`:
+
+  ```shell-session
+  $ boundary aliases create target \
+      -description 'Target alias for dev-041.linux-dev.app-servers.eng' \
+      -destination-id tssh_lhH5pa425G \
+      -name dev-041 \
+      -scope-id global \
+      -value dev-041.linux-dev.app-servers.eng \
+      -authorize-session-host-id hst_zlRwMMPKwp
+  ```
+
+  Example output:
+  
+  <CodeBlockConfig hideClipboard>
+  
+  ```shell-session
+  $ boundary aliases create target \
+          -description 'Target alias for dev-041.linux-dev.app-servers.eng' \
+          -destination-id tssh_lhH5pa425G \
+          -name dev-041 \
+          -scope-id global \
+          -value dev-041.linux-dev.app-servers.eng \
+          -authorize-session-host-id hst_zlRwMMPKwp
+    
+    Alias information:
+      Created Time:        Thu, 14 Nov 2024 14:00:13 MST
+      Description:         Target alias for dev-040.linux-dev.app-servers.eng
+      Destination ID:      tssh_lhH5pa425G
+      ID:                  alt_X5MRXRSi7t
+      Name:                dev-041
+      Type:                target
+      Updated Time:        Thu, 14 Nov 2024 14:00:13 MST
+      Value:               dev-041.linux-dev.app-servers.eng
+      Version:             1
+    
+      Scope:
+        ID:                global
+        Name:              global
+        Type:              global
+    
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+    
+      Attributes:
+        authorize_session_arguments:
+        {
+        "host_id": "hst_zlRwMMPKwp"
+        }                                                                                                             
+  ```
+  
+  </CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+You can now use the aliases to connect to the targets in different contexts.
+
+The Boundary Desktop Client lists the `linux-dev-servers` target and its aliases under the **Aliases** column.
+
+When you click **Connect**, a list of the hosts available for the connection appears in the **Quick Connect** box.
+
+To establish a connection to any `linux-dev` host using the CLI, use the `linux-dev.app-servers.eng` alias:
+
+```shell-session
+$ boundary connect ssh linux-dev.app-servers.eng
+```
+
+This command randomly selects a host from the `linux-dev-servers` host set attached to the `linux-dev-servers` target.
+
+To establish a connection to a specific host, connect to its target alias instead:
+
+```shell-session
+$ boundary connect ssh dev-041.linux-dev.app-servers.eng
+```
+
+This alias still points to the `linux-dev-servers` target, but will only create a session with the `dev-041` host.
