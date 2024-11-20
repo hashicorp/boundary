@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/boundary/mains/aws
 go 1.23.1
 
 require (
-	github.com/hashicorp/boundary-plugin-gcp v0.0.0-20241028150212-beaa93d3d813
+	github.com/hashicorp/boundary-plugin-gcp v0.0.0-20241120152221-baa2c7a2e742
 	github.com/hashicorp/boundary/sdk v0.0.47
 )
 
