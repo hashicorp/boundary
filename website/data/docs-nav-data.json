@@ -584,6 +584,32 @@
         ]
       },
       {
+        "title": "Aliases and transparent sessions",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/target-aliases"
+          },
+          {
+            "title": "Create a target alias",
+            "path": "configuration/target-aliases/create-target-alias"
+          },
+          {
+            "title": "Connect using a target alias",
+            "path": "configuration/target-aliases/connect-target-alias"
+          },          
+          {
+            "title": "Connect using transparent sessions",
+            "badge": {
+              "text": "HCP/ENT BETA",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "configuration/target-aliases/transparent-sessions"
+          }
+        ]
+      },
+      {
         "title": "Events",
         "routes": [
           {
