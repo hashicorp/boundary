@@ -351,11 +351,11 @@ Create the `linux-dev-servers` target.
    
    </CodeBlockConfig>
 
-   Then add the `linux-dev-servers` host set (ID `hsst_56oiL0WaKu`) to the new `linux-dev-servers` target (ID `tssh_lhH5pa425G`).
+Then add the `linux-dev-servers` host set (ID `hsst_56oiL0WaKu`) to the new `linux-dev-servers` target (ID `tssh_lhH5pa425G`).
 
-   ```shell-session
-   $ boundary targets add-host-sources -id tssh_lhH5pa425G -host-source hsst_56oiL0WaKu
-   ```
+```shell-session
+$ boundary targets add-host-sources -id tssh_lhH5pa425G -host-sourchsst_56oiL0WaKu
+```
 
 </Tab>
 </Tabs>
@@ -364,163 +364,163 @@ Next, create two more aliases for the target.
 
 Create the `dev-040.linux-dev.app-servers.eng` alias for the host `dev-040`:
 
-   <Tabs>
-   <Tab heading="UI" group="ui">
-   
-   1. Log in to Boundary. Navigate to the `global` scope
-   1. Select **Aliases** in the navigation pane.
-   1. Click **New Alias**.
-   1. Complete the following fields:
-      - **Name**: `dev-040`
-      - **Description**: `Target alias for dev-040.linux-dev.app-servers.eng`
-      - **Type**: `Target`
-      - **Alias Value**: `dev-040.linux-dev.app-servers.eng`
-      - **Target ID**: `tssh_lhH5pa425G`
-      - **Host ID**: `hst_7wGXkF8e0Q`
-   1. Click **Save**.
-   
-   </Tab>
-   <Tab heading="CLI" group="cli">
-   
-   1. Log in to Boundary.
-   1. Use the following command to create an alias for host `dev-040:
-   
-      ```shell-session
-      $ boundary aliases create target \
-          -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
-          -destination-id tssh_lhH5pa425G \
-          -name dev-040 \
-          -scope-id global \
-          -value dev-040.linux-dev.app-servers.eng \
-          -authorize-session-host-id hst_7wGXkF8e0Q
-      ```
+<Tabs>
+<Tab heading="UI" group="ui">
 
-      Example output:
-      
-      <CodeBlockConfig hideClipboard>
-      
-      ```shell-session
-      $ boundary aliases create target \
-             -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
-             -destination-id tssh_lhH5pa425G \
-             -name dev-040 \
-             -scope-id global \
-             -value dev-040.linux-dev.app-servers.eng \
-             -authorize-session-host-id hst_7wGXkF8e0Q
-       
-       Alias information:
-         Created Time:        Thu, 14 Nov 2024 13:55:41 MST
-         Description:         Target alias for dev-040.linux-dev.app-servers.eng
-         Destination ID:      tssh_lhH5pa425G
-         ID:                  alt_QeCGTcvlq2
-         Name:                dev-040
-         Type:                target
-         Updated Time:        Thu, 14 Nov 2024 13:55:41 MST
-         Value:               dev-040.linux-dev.app-servers.eng
-         Version:             1
-       
-         Scope:
-           ID:                global
-           Name:              global
-           Type:              global
-       
-         Authorized Actions:
-           no-op
-           read
-           update
-           delete
-       
-         Attributes:
-           authorize_session_arguments:
-           {
-           "host_id": "hst_7wGXkF8e0Q"
-           }
-      ```
-      
-      </CodeBlockConfig>
-   
-   </Tab>
-   </Tabs>
+1. Log in to Boundary. Navigate to the `global` scope.
+1. Select **Aliases** in the navigation pane.
+1. Click **New Alias**.
+1. Complete the following fields:
+   - **Name**: `dev-040`
+   - **Description**: `Target alias for dev-040.linux-dev.app-servers.eng`
+   - **Type**: `Target`
+   - **Alias Value**: `dev-040.linux-dev.app-servers.eng`
+   - **Target ID**: `tssh_lhH5pa425G`
+   - **Host ID**: `hst_7wGXkF8e0Q`
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create an alias for host `dev-040:
+
+  ```shell-session
+  $ boundary aliases create target \
+      -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
+      -destination-id tssh_lhH5pa425G \
+      -name dev-040 \
+      -scope-id global \
+      -value dev-040.linux-dev.app-servers.eng \
+      -authorize-session-host-id hst_7wGXkF8e0Q
+  ```
+
+  Example output:
+  
+  <CodeBlockConfig hideClipboard>
+  
+  ```shell-session
+  $ boundary aliases create target \
+        -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
+        -destination-id tssh_lhH5pa425G \
+        -name dev-040 \
+        -scope-id global \
+        -value dev-040.linux-dev.app-servers.eng \
+        -authorize-session-host-id hst_7wGXkF8e0Q
+  
+  Alias information:
+    Created Time:        Thu, 14 Nov 2024 13:55:41 MST
+    Description:         Target alias for dev-040.linux-dev.app-servers.eng
+    Destination ID:      tssh_lhH5pa425G
+    ID:                  alt_QeCGTcvlq2
+    Name:                dev-040
+    Type:                target
+    Updated Time:        Thu, 14 Nov 2024 13:55:41 MST
+    Value:               dev-040.linux-dev.app-servers.eng
+    Version:             1
+  
+    Scope:
+      ID:                global
+      Name:              global
+      Type:              global
+  
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+  
+    Attributes:
+      authorize_session_arguments:
+      {
+      "host_id": "hst_7wGXkF8e0Q"
+      }
+  ```
+  
+  </CodeBlockConfig>
+
+</Tab>
+</Tabs>
 
 Then create the `dev-041.linux-dev.app-servers.eng` alias for the host `dev-041`.
 
-   <Tabs>
-   <Tab heading="UI" group="ui">
-   
-   1. Log in to Boundary. Navigate to the `global` scope
-   1. Select **Aliases** in the navigation pane.
-   1. Click **New Alias**.
-   1. Complete the following fields:
-      - **Name**: `dev-041`
-      - **Description**: `Target alias for dev-041.linux-dev.app-servers.eng`
-      - **Type**: `Target`
-      - **Alias Value**: `dev-041.linux-dev.app-servers.eng`
-      - **Target ID**: `tssh_lhH5pa425G`
-      - **Host ID**: `hst_7wGXkF8e0Q`
-   1. Click **Save**.
-   
-   </Tab>
-   <Tab heading="CLI" group="cli">
-   
-   1. Log in to Boundary.
-   1. Use the following command to create an alias for host `dev-041`:
-   
-      ```shell-session
-      $ boundary aliases create target \
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary. Navigate to the `global` scope.
+1. Select **Aliases** in the navigation pane.
+1. Click **New Alias**.
+1. Complete the following fields:
+   - **Name**: `dev-041`
+   - **Description**: `Target alias for dev-041.linux-dev.app-servers.eng`
+   - **Type**: `Target`
+   - **Alias Value**: `dev-041.linux-dev.app-servers.eng`
+   - **Target ID**: `tssh_lhH5pa425G`
+   - **Host ID**: `hst_7wGXkF8e0Q`
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log in to Boundary.
+1. Use the following command to create an alias for host `dev-041`:
+
+  ```shell-session
+  $ boundary aliases create target \
+      -description 'Target alias for dev-041.linux-dev.app-servers.eng' \
+      -destination-id tssh_lhH5pa425G \
+      -name dev-041 \
+      -scope-id global \
+      -value dev-041.linux-dev.app-servers.eng \
+      -authorize-session-host-id hst_zlRwMMPKwp
+  ```
+
+  Example output:
+  
+  <CodeBlockConfig hideClipboard>
+  
+  ```shell-session
+  $ boundary aliases create target \
           -description 'Target alias for dev-041.linux-dev.app-servers.eng' \
           -destination-id tssh_lhH5pa425G \
           -name dev-041 \
           -scope-id global \
           -value dev-041.linux-dev.app-servers.eng \
           -authorize-session-host-id hst_zlRwMMPKwp
-      ```
+    
+    Alias information:
+      Created Time:        Thu, 14 Nov 2024 14:00:13 MST
+      Description:         Target alias for dev-040.linux-dev.app-servers.eng
+      Destination ID:      tssh_lhH5pa425G
+      ID:                  alt_X5MRXRSi7t
+      Name:                dev-041
+      Type:                target
+      Updated Time:        Thu, 14 Nov 2024 14:00:13 MST
+      Value:               dev-041.linux-dev.app-servers.eng
+      Version:             1
+    
+      Scope:
+        ID:                global
+        Name:              global
+        Type:              global
+    
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+    
+      Attributes:
+        authorize_session_arguments:
+        {
+        "host_id": "hst_zlRwMMPKwp"
+        }                                                                                                             
+  ```
+  
+  </CodeBlockConfig>
 
-      Example output:
-      
-      <CodeBlockConfig hideClipboard>
-      
-      ```shell-session
-      $ boundary aliases create target \
-             -description 'Target alias for dev-041.linux-dev.app-servers.eng' \
-             -destination-id tssh_lhH5pa425G \
-             -name dev-041 \
-             -scope-id global \
-             -value dev-041.linux-dev.app-servers.eng \
-             -authorize-session-host-id hst_zlRwMMPKwp
-       
-       Alias information:
-         Created Time:        Thu, 14 Nov 2024 14:00:13 MST
-         Description:         Target alias for dev-040.linux-dev.app-servers.eng
-         Destination ID:      tssh_lhH5pa425G
-         ID:                  alt_X5MRXRSi7t
-         Name:                dev-041
-         Type:                target
-         Updated Time:        Thu, 14 Nov 2024 14:00:13 MST
-         Value:               dev-041.linux-dev.app-servers.eng
-         Version:             1
-       
-         Scope:
-           ID:                global
-           Name:              global
-           Type:              global
-       
-         Authorized Actions:
-           no-op
-           read
-           update
-           delete
-       
-         Attributes:
-           authorize_session_arguments:
-           {
-           "host_id": "hst_zlRwMMPKwp"
-           }                                                                                                             
-      ```
-      
-      </CodeBlockConfig>
-   
-   </Tab>
-   </Tabs>
+</Tab>
+</Tabs>
 
 You can now use the aliases to connect to the targets in different contexts.
 
