@@ -210,19 +210,19 @@ If you [created an alias](#create-an-alias-for-an-existing-target) without assoc
 
 ## Create multiple aliases for a single target
 
-Target aliases point directly to the target they are associated with. Targets can be assigned a host set or a direct target address.
+Target aliases point directly to the target they are associated with. You can assign targets a host set or a direct target address.
 
 [Host sets](/boundary/docs/concepts/domain-model/host-sets) are sets of functionally equivalent hosts, and are commonly used for deployments at scale. A target assigned a host set will select a host from the host set at random when Boundary establishes a connection.
 
-[Direct target addresses](/boundary/docs/concepts/domain-model/targets#address) are assigned directly to the target, and refer directly to a network resource, like an IP address. Boundary will only connect to this address when establishing a connection.
+You assign [direct target addresses](/boundary/docs/concepts/domain-model/targets#address) directly to the target. They refer to a specific network resource, like an IP address. Boundary only connects to the direct target address when it establishes a connection to the associated target.
 
-When you create a target alias, it can also be assigned a specific host. This is useful if you want to avoid creating multiple targets for specific hosts using direct target addresses. 
+When you create a target alias, you can also assign it to a specific host. Assigning an alias to a specific host is useful if you want to avoid creating multiple targets for specific hosts using direct target addresses. 
 
-For example, two aliases could be created for the same target that has been assigned a host set. One alias could refer to the target itself, and would randomly select a host to connect to for a session. Another alias could point to the same target, but also be assigned a host ID that Boundary should use for a session.
+For example, you could create two aliases for the same target that has been assigned a host set. One alias could refer to the target itself, and would allow Boundary to randomly select a host to connect to for a session. Another alias could point to the same target, but you could assign a host ID that Boundary should use for a session.
 
 ### Example
 
-You may wish to create aliases that point to the same target, but that specify which host should be used when establishing a session.
+You may want to create aliases that point to the same target, but that specify which host Boundary should use when it establishes a session.
 
 In this example, you set up three aliases for the same target:
 
@@ -354,9 +354,9 @@ Create the `linux-dev-servers` target.
 </Tab>
 </Tabs>
 
-Next, create two additional aliases for the target:
+Next, create two additional aliases for the target.
 
-1. `eng.app-servers.linux-dev.dev-040` for the host `dev-040`
+Create `eng.app-servers.linux-dev.dev-040` for the host `dev-040`:
 
    <Tabs>
    <Tab heading="UI" group="ui">
@@ -436,7 +436,7 @@ Next, create two additional aliases for the target:
    </Tab>
    </Tabs>
 
-1. `eng.app-servers.linux-dev.dev-041` for the host `dev-041`
+Then create `eng.app-servers.linux-dev.dev-041` for the host `dev-041`.
 
    <Tabs>
    <Tab heading="UI" group="ui">
@@ -518,7 +518,7 @@ Next, create two additional aliases for the target:
 
 You can now use the aliases to connect to the targets in different contexts.
 
-The Boundary Desktop Client app will list the `linux-dev-servers` target and its aliases under the **Aliases** column.
+The Boundary Desktop Client lists the `linux-dev-servers` target and its aliases under the **Aliases** column.
 
 When you click **Connect**, a list of the hosts available for the connection appears in the **Quick Connect** box.
 
@@ -528,7 +528,7 @@ To establish a connection to any `linux-dev` host using the CLI, use the `eng.ap
 $ boundary connect ssh eng.app-servers.linux-dev 
 ```
 
-This will randomly select a host from the `linux-dev-servers` host set attached to the `linux-dev-servers` target.
+This command randomly selects a host from the `linux-dev-servers` host set attached to the `linux-dev-servers` target.
 
 To establish a connection to a specific host, connect to its target alias instead:
 
