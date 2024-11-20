@@ -249,6 +249,12 @@ And the following host set and hosts exist:
 
 Because the `linux-dev-servers` hosts are functionally equivalent, you can create a single target for the  host set, and create an alias for the target.
 
+We recommend creating DNS-like aliases to ensure consistent naming conventions. In this example, an alias pattern might be:
+
+`hostname.host-set.project.org`
+
+For the `linux-dev-servers` target, create the alias `linux-dev.app-servers.eng`.
+
 <Tabs>
 <Tab heading="UI" group="ui">
 
@@ -260,10 +266,10 @@ Create the `linux-dev-servers` target.
 1. Click **New Target**.
 1. Complete the following fields:
    - **Name**: `linux-dev-servers`
-   - **Description**: `engineering.app-servers linux-dev`
+   - **Description**: `linux-dev.app-servers.eng target`
    - **Type**: SSH
    - **Default Port**: `22`
-   - **Aliases**: `eng.app-servers.linux-dev`
+   - **Aliases**: `linux-dev.app-servers.eng`
 1. Click **Save**.
 
 Then add the `linux-dev-servers` host set to the new `linux-dev-servers` target.
@@ -279,16 +285,16 @@ Then add the `linux-dev-servers` host set to the new `linux-dev-servers` target.
 Create the `linux-dev-servers` target.
 
 1. Log in to Boundary.
-1. Use the following command to create the `linux-dev-servers` target with alias `eng.app-servers.linux-dev`:
+1. Use the following command to create the `linux-dev-servers` target with alias `linux-dev.app-servers.eng`:
 
    ```shell-session
    $ boundary targets create ssh \
-       -description 'engineering.app-servers linux-dev' \
+       -description 'linux-dev.app-servers.eng target' \
        -name linux-dev-servers \
        -scope-id p_3ECODJDbXV \
        -default-port 22 \
        -with-alias-scope-id global \
-       -with-alias-value eng.app-servers.linux-dev
+       -with-alias-value linux-dev.app-servers.eng
    ```
 
    Example output:
@@ -297,16 +303,16 @@ Create the `linux-dev-servers` target.
    
    ```shell-session
    $ boundary targets create ssh \
-       -description 'engineering.app-servers linux-dev' \
+       -description 'linux-dev.app-servers.eng target' \
        -name linux-dev-servers \
        -scope-id p_pj6UUPVJT3 \
        -default-port 22 \
        -with-alias-scope-id global \
-       -with-alias-value eng.app-servers.linux-dev
+       -with-alias-value linux-dev.app-servers.eng
     
     Target information:
       Created Time:               Thu, 14 Nov 2024 13:39:36 MST
-      Description:                engineering.app-servers linux-dev
+      Description:                linux-dev.app-servers.eng target
       ID:                         tssh_lhH5pa425G
       Name:                       linux-dev-servers
       Session Connection Limit:   -1
@@ -336,7 +342,7 @@ Create the `linux-dev-servers` target.
     
       Aliases:
         ID:                       alt_CkC6wGKLWW
-        Value:                    eng.app-servers.linux-dev
+        Value:                    linux-dev.app-servers.eng
     
       Attributes:
         Default Port:             22
@@ -354,9 +360,9 @@ Create the `linux-dev-servers` target.
 </Tab>
 </Tabs>
 
-Next, create two additional aliases for the target.
+Next, create two more aliases for the target.
 
-Create `eng.app-servers.linux-dev.dev-040` for the host `dev-040`:
+Create the `dev-040.linux-dev.app-servers.eng` alias for the host `dev-040`:
 
    <Tabs>
    <Tab heading="UI" group="ui">
@@ -366,9 +372,9 @@ Create `eng.app-servers.linux-dev.dev-040` for the host `dev-040`:
    1. Click **New Alias**.
    1. Complete the following fields:
       - **Name**: `dev-040`
-      - **Description**: `Target alias for engineering.app-servers linux-dev dev-040`
+      - **Description**: `Target alias for dev-040.linux-dev.app-servers.eng`
       - **Type**: `Target`
-      - **Alias Value**: `eng.app-servers.linux-dev.dev-040`
+      - **Alias Value**: `dev-040.linux-dev.app-servers.eng`
       - **Target ID**: `tssh_lhH5pa425G`
       - **Host ID**: `hst_7wGXkF8e0Q`
    1. Click **Save**.
@@ -381,11 +387,11 @@ Create `eng.app-servers.linux-dev.dev-040` for the host `dev-040`:
    
       ```shell-session
       $ boundary aliases create target \
-          -description 'Target alias for engineering.app-servers linux-dev dev-040' \
+          -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
           -destination-id tssh_lhH5pa425G \
           -name dev-040 \
           -scope-id global \
-          -value eng.app-servers.linux-dev.dev-040 \
+          -value dev-040.linux-dev.app-servers.eng \
           -authorize-session-host-id hst_7wGXkF8e0Q
       ```
 
@@ -395,22 +401,22 @@ Create `eng.app-servers.linux-dev.dev-040` for the host `dev-040`:
       
       ```shell-session
       $ boundary aliases create target \
-             -description 'Target alias for engineering.app-servers linux-dev   dev-040' \
+             -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
              -destination-id tssh_lhH5pa425G \
              -name dev-040 \
              -scope-id global \
-             -value eng.app-servers.linux-dev.dev-040 \
+             -value dev-040.linux-dev.app-servers.eng \
              -authorize-session-host-id hst_7wGXkF8e0Q
        
        Alias information:
          Created Time:        Thu, 14 Nov 2024 13:55:41 MST
-         Description:         Target alias for engineering.app-servers linux-dev dev-040
+         Description:         Target alias for dev-040.linux-dev.app-servers.eng
          Destination ID:      tssh_lhH5pa425G
          ID:                  alt_QeCGTcvlq2
          Name:                dev-040
          Type:                target
          Updated Time:        Thu, 14 Nov 2024 13:55:41 MST
-         Value:               eng.app-servers.linux-dev.dev-040
+         Value:               dev-040.linux-dev.app-servers.eng
          Version:             1
        
          Scope:
@@ -436,7 +442,7 @@ Create `eng.app-servers.linux-dev.dev-040` for the host `dev-040`:
    </Tab>
    </Tabs>
 
-Then create `eng.app-servers.linux-dev.dev-041` for the host `dev-041`.
+Then create the `dev-041.linux-dev.app-servers.eng` alias for the host `dev-041`.
 
    <Tabs>
    <Tab heading="UI" group="ui">
@@ -446,9 +452,9 @@ Then create `eng.app-servers.linux-dev.dev-041` for the host `dev-041`.
    1. Click **New Alias**.
    1. Complete the following fields:
       - **Name**: `dev-041`
-      - **Description**: `Target alias for engineering.app-servers linux-dev dev-040`
+      - **Description**: `Target alias for dev-041.linux-dev.app-servers.eng`
       - **Type**: `Target`
-      - **Alias Value**: `eng.app-servers.linux-dev.dev-041`
+      - **Alias Value**: `dev-041.linux-dev.app-servers.eng`
       - **Target ID**: `tssh_lhH5pa425G`
       - **Host ID**: `hst_7wGXkF8e0Q`
    1. Click **Save**.
@@ -461,11 +467,11 @@ Then create `eng.app-servers.linux-dev.dev-041` for the host `dev-041`.
    
       ```shell-session
       $ boundary aliases create target \
-          -description 'Target alias for engineering.app-servers linux-dev dev-041' \
+          -description 'Target alias for dev-041.linux-dev.app-servers.eng' \
           -destination-id tssh_lhH5pa425G \
           -name dev-041 \
           -scope-id global \
-          -value eng.app-servers.linux-dev.dev-041 \
+          -value dev-041.linux-dev.app-servers.eng \
           -authorize-session-host-id hst_zlRwMMPKwp
       ```
 
@@ -475,22 +481,22 @@ Then create `eng.app-servers.linux-dev.dev-041` for the host `dev-041`.
       
       ```shell-session
       $ boundary aliases create target \
-             -description 'Target alias for engineering.app-servers linux-dev   dev-041' \
+             -description 'Target alias for dev-041.linux-dev.app-servers.eng' \
              -destination-id tssh_lhH5pa425G \
              -name dev-041 \
              -scope-id global \
-             -value eng.app-servers.linux-dev.dev-041 \
+             -value dev-041.linux-dev.app-servers.eng \
              -authorize-session-host-id hst_zlRwMMPKwp
        
        Alias information:
          Created Time:        Thu, 14 Nov 2024 14:00:13 MST
-         Description:         Target alias for engineering.app-servers linux-dev dev-040
+         Description:         Target alias for dev-040.linux-dev.app-servers.eng
          Destination ID:      tssh_lhH5pa425G
          ID:                  alt_X5MRXRSi7t
          Name:                dev-041
          Type:                target
          Updated Time:        Thu, 14 Nov 2024 14:00:13 MST
-         Value:               eng.app-servers.linux-dev.dev-041
+         Value:               dev-041.linux-dev.app-servers.eng
          Version:             1
        
          Scope:
@@ -522,10 +528,10 @@ The Boundary Desktop Client lists the `linux-dev-servers` target and its aliases
 
 When you click **Connect**, a list of the hosts available for the connection appears in the **Quick Connect** box.
 
-To establish a connection to any `linux-dev` host using the CLI, use the `eng.app-servers.linux-dev` alias:
+To establish a connection to any `linux-dev` host using the CLI, use the `linux-dev.app-servers.eng` alias:
 
 ```shell-session
-$ boundary connect ssh eng.app-servers.linux-dev 
+$ boundary connect ssh linux-dev.app-servers.eng
 ```
 
 This command randomly selects a host from the `linux-dev-servers` host set attached to the `linux-dev-servers` target.
@@ -533,7 +539,7 @@ This command randomly selects a host from the `linux-dev-servers` host set attac
 To establish a connection to a specific host, connect to its target alias instead:
 
 ```shell-session
-$ boundary connect ssh eng.app-servers.linux-dev.dev-041
+$ boundary connect ssh dev-041.linux-dev.app-servers.eng
 ```
 
 This alias still points to the `linux-dev-servers` target, but will only create a session with the `dev-041` host.
