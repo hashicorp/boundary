@@ -1,17 +1,24 @@
 ---
 layout: docs
-page_title: Install Boundary
+page_title: Deploy Boundary
 description: >-
- Install a self-managed version of Boundary Enterprise or Community Edition on Ubuntu/Debian, CentOS/RHEL, or Amazon Linux using the binary file.
+ Deploy a self-managed version of Boundary Enterprise or Community Edition on Ubuntu/Debian, CentOS/RHEL, or Amazon Linux by installing the binary file.
 ---
 
-# Install Boundary
+# Deploy Boundary
+
+To deploy a self-managed Boundary environment you should:
+
+1. Deploy and configure Boundary controllers and workers
+2. Install end-user clients
 
 This guide outlines the required steps to manually install and configure a
 single HashiCorp Boundary cluster as defined in the [Recommended
 architecture](/boundary/docs/install-boundary/recommended-architecture) topic.
 It assumes you install Boundary on virtual machines (VMs) or bare-metal servers
 running a Debian or Red Hat-based Linux distribution.
+
+To learn about installing end-user clients, refer to the [Install Boundary clients](/boundary/docs/install-boundary/install-clients) page.
 
 This document includes general guidance as well as specific recommendations for
 popular cloud infrastructure platforms. These recommendations have also been
@@ -27,10 +34,14 @@ In addition to installing the Boundary binary, the official package also
 provides a systemd service unit, and a local `boundary` user account under which
 the service runs.
 
+<Note>
+
 You must complete the following steps for each Boundary controller and worker
 node that you want to deploy. The binary operates as either a worker or
-controller, depending on the subsequent configuration that you generate for the
+controller, depending on the configuration that you generate for the
 Boundary binary.
+
+</Note>
 
 The steps vary by Linux distribution.
 
@@ -39,6 +50,7 @@ binary:
 
 <Tabs>
 <Tab heading="Enterprise">
+
 <Tabs>
 <Tab heading="Ubuntu/Debian">
 
@@ -190,3 +202,12 @@ binary:
 </Tabs>
 </Tab>
 </Tabs>
+
+You should install the binary on the controller and worker instances you configure to run in your Boundary environments. 
+
+Next, you should:
+
+- [Configure Boundary controllers](/boundary/docs/install-boundary/configure-controllers)
+- [Configure Boundary workers](/boundary/docs/install-boundary/configure-workers)
+- [Initialize Boundary](/boundary/docs/install-boundary/initialize)
+- [Install the Boundary Clients](/boundary/docs/install-boundary/install-clients)
