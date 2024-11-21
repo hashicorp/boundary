@@ -33,11 +33,11 @@ func TestCliSearch(t *testing.T) {
 
 	ctx := context.Background()
 
-	// If daemon is already running, stop it so that we can start it with a
+	// If cache is already running, stop it so that we can start it with a
 	// shorter refresh interval
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
 	if output.Err == nil {
-		t.Log("Stopping daemon...")
+		t.Log("Stopping cache...")
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 		require.NoError(t, output.Err, string(output.Stderr))
 	}
@@ -54,8 +54,8 @@ func TestCliSearch(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	// Wait for daemon to be up and running
-	t.Log("Waiting for daemon to start...")
+	// Wait for cache to be up and running
+	t.Log("Waiting for cache to start...")
 	var statusResult clientcache.StatusResult
 	err = backoff.RetryNotify(
 		func() error {
@@ -80,7 +80,7 @@ func TestCliSearch(t *testing.T) {
 	require.Equal(t, statusResult.StatusCode, 200)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
 
-	// Confirm daemon version matches CLI version
+	// Confirm cache version matches CLI version
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("version", "-format", "json"))
 	require.NoError(t, output.Err, string(output.Stderr))
 	var versionResult version.Info
@@ -117,6 +117,9 @@ func TestCliSearch(t *testing.T) {
 			}
 
 			if len(statusResult.Item.Users) == 0 {
+				output = e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(output.Stdout))
 				return errors.New("No users are appearing in the status")
 			}
 			idx := slices.IndexFunc(
@@ -126,6 +129,9 @@ func TestCliSearch(t *testing.T) {
 				},
 			)
 			if idx == -1 {
+				output = e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(output.Stdout))
 				return errors.New("Targets not found in cache")
 			}
 			currentCount = statusResult.Item.Users[0].Resources[idx].Count
@@ -189,6 +195,9 @@ func TestCliSearch(t *testing.T) {
 			}
 
 			if len(statusResult.Item.Users) == 0 {
+				output = e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(output.Stdout))
 				return errors.New("No users are appearing in the status")
 			}
 
@@ -199,6 +208,9 @@ func TestCliSearch(t *testing.T) {
 				},
 			)
 			if idx == -1 {
+				output = e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(output.Stdout))
 				return errors.New("No targets are appearing in the status")
 			}
 
@@ -223,7 +235,7 @@ func TestCliSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Search for targets that contain the target prefix.
-	// This requests data from the client cache daemon.
+	// This requests data from the client cache.
 	t.Log("Searching targets...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
