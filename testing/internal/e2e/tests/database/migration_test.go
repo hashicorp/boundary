@@ -181,16 +181,17 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 
 	t.Log("Waiting for Boundary to finish loading...")
 	err = pool.Retry(func() error {
-		response, err := http.Get(b.UriLocalhost)
+		response, err := http.Get(fmt.Sprintf("%s/health", b.UriLocalhost))
 		if err != nil {
-			t.Logf("Could not access Boundary URL: %s. Retrying...", err.Error())
+			t.Logf("Could not access health endpoint: %s. Retrying...", err.Error())
 			return err
 		}
 
 		if response.StatusCode != http.StatusOK {
-			return fmt.Errorf("Could not connect to %s. Status Code: %d", b.UriLocalhost, response.StatusCode)
+			return fmt.Errorf("Health check returned an error. Status Code: %d", response.StatusCode)
 		}
 
+		response.Body.Close()
 		return nil
 	})
 	require.NoError(t, err)

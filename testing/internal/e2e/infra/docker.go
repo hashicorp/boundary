@@ -172,7 +172,7 @@ func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Netw
 		Mounts:       []string{path.Dir(boundaryConfigFilePath) + ":/boundary/"},
 		Name:         "boundary",
 		Networks:     []*dockertest.Network{network},
-		ExposedPorts: []string{"9200", "9201", "9202", "9203"},
+		ExposedPorts: []string{"9200/tcp", "9201/tcp", "9202/tcp", "9203/tcp"},
 		PortBindings: map[docker.Port][]docker.PortBinding{
 			"9200/tcp": {{HostIP: "localhost", HostPort: "9200/tcp"}},
 			"9201/tcp": {{HostIP: "localhost", HostPort: "9201/tcp"}},
@@ -212,7 +212,7 @@ func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 		},
 		Name:         "vault",
 		Networks:     []*dockertest.Network{network},
-		ExposedPorts: []string{"8200"},
+		ExposedPorts: []string{"8200/tcp"},
 		PortBindings: map[docker.Port][]docker.PortBinding{
 			"8200/tcp": {{HostIP: "localhost", HostPort: "8210/tcp"}},
 		},
