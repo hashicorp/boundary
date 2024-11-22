@@ -91,7 +91,7 @@ events {
     ]
 
     file {
-      path      = "/logs"
+      path      = "/boundary/logs"
       file_name = "audit.log"
     }
 
