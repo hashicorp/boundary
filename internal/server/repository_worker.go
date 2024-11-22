@@ -10,11 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
@@ -24,7 +28,15 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var ErrCannotUpdateKmsWorkerViaApi = stderrors.New("cannot update a kms worker's basic information via api")
+var (
+	ErrCannotUpdateKmsWorkerViaApi = stderrors.New("cannot update a kms worker's basic information via api")
+
+	FilterWorkersFn = filterWorkers
+)
+
+// StorageBucketFilterCredIdFn is a function that gets and returns a storage
+// bucket's worker filter and credential id.
+type StorageBucketFilterCredIdFn func(ctx context.Context, ce globals.ControllerExtension, sbId string) (filter string, credId string, err error)
 
 type WorkerAddress struct {
 	PublicId string
@@ -915,4 +927,114 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	return rowsDeleted, nil
+}
+
+// SelectSessionWorkers attempts to select suitable workers for a given session.
+// Additionally, it returns the data for the the protocol-aware worker that can
+// handle recording operations, if enabled.
+func (r *Repository) SelectSessionWorkers(ctx context.Context,
+	workerStatusGracePeriod time.Duration,
+	t target.Target,
+	host string,
+	ce globals.ControllerExtension,
+	sbFn StorageBucketFilterCredIdFn,
+	ds downstream.Downstreamers,
+) ([]WorkerAddress, string, error) {
+	const op = "server.(Repository).SelectSessionWorkers"
+
+	if workerStatusGracePeriod <= 0 {
+		workerStatusGracePeriod = DefaultLiveness
+	}
+	workerStatusGracePeriod = workerStatusGracePeriod.Truncate(time.Second)
+
+	query := fmt.Sprintf(listSelectSessionWorkers, uint32(workerStatusGracePeriod.Seconds()))
+	var livingWorkers []*Worker
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			rows, err := r.reader.Query(ctx, query, []any{})
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				// Note: The Worker objects scanned here do not contain all data
+				// a Worker object can hold, only a subset. Check the query to
+				// learn exactly what fields are present.
+				var worker Worker
+				if err := r.reader.ScanRows(ctx, rows, &worker); err != nil {
+					return err
+				}
+				livingWorkers = append(livingWorkers, &worker)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
+	}
+	if len(livingWorkers) == 0 {
+		return nil, "", errors.New(ctx, errors.WorkerNotFoundForRequest, op, "No workers are available to handle this session.")
+	}
+
+	wl, protoWorker, err := FilterWorkersFn(ctx, r, t, livingWorkers, host, ce, sbFn, ds)
+	if err != nil {
+		return nil, "", errors.Wrap(ctx, err, op)
+	}
+
+	was := make([]WorkerAddress, 0, len(wl))
+	for _, w := range wl {
+		was = append(was, WorkerAddress{PublicId: w.GetPublicId(), Address: w.GetAddress()})
+	}
+
+	if protoWorker != nil {
+		return was, protoWorker.GetPublicId(), nil
+	}
+	return was, "", nil
+}
+
+// If set, use the worker_filter or egress_worker_filter to filter the selected workers
+// and ensure we have workers available to service this request. The second return
+// argument is always nil.
+func filterWorkers(
+	ctx context.Context,
+	_ *Repository,
+	t target.Target,
+	selectedWorkers WorkerList,
+	_ string,
+	_ globals.ControllerExtension,
+	_ StorageBucketFilterCredIdFn,
+	_ downstream.Downstreamers,
+	_ ...target.Option,
+) (WorkerList, *Worker, error) {
+	const op = "server.filterWorkers"
+
+	if len(selectedWorkers) > 0 {
+		var eval *bexpr.Evaluator
+		var err error
+		switch {
+		case len(t.GetEgressWorkerFilter()) > 0:
+			eval, err = bexpr.CreateEvaluator(t.GetEgressWorkerFilter())
+		case len(t.GetWorkerFilter()) > 0:
+			eval, err = bexpr.CreateEvaluator(t.GetWorkerFilter())
+		default: // No filter
+			return selectedWorkers, nil, nil
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+
+		selectedWorkers, err = selectedWorkers.Filtered(eval)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if len(selectedWorkers) == 0 {
+		return nil, nil, errors.New(ctx, errors.WorkerNotFoundForRequest, op, "No workers are available to handle this session, or all have been filtered.")
+	}
+
+	return selectedWorkers, nil, nil
 }

@@ -130,4 +130,21 @@ const (
            and t.key   = 'boundary.cloud.hashicorp.com:managed'
            and t.value = 'true';
 `
+
+	listSelectSessionWorkers = `
+        select w.public_id,
+               w.name,
+               w.address,
+               w.release_version,
+               w.local_storage_state,
+               wt.tags as api_tags,
+               ct.tags as config_tags
+          from server_worker w
+     left join (select worker_id, json_agg(json_build_object('key', key, 'value', value)) as tags from server_worker_api_tag group by worker_id) wt
+            on w.public_id = wt.worker_id
+     left join (select worker_id, json_agg(json_build_object('key', key, 'value', value)) as tags from server_worker_config_tag group by worker_id) ct
+            on w.public_id = ct.worker_id
+         where last_status_time > now() - interval '%d seconds'
+           and operational_state = 'active';
+`
 )

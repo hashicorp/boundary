@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -36,7 +37,7 @@ type workerServiceServer struct {
 	workerAuthRepoFn    common.WorkerAuthRepoStorageFactory
 	sessionRepoFn       session.RepositoryFactory
 	connectionRepoFn    common.ConnectionRepoFactory
-	downstreams         common.Downstreamers
+	downstreams         downstream.Downstreamers
 	updateTimes         *sync.Map
 	kms                 *kms.Kms
 	livenessTimeToStale *atomic.Int64
@@ -66,7 +67,7 @@ var (
 )
 
 // singleHopConnectionRoute returns a route consisting of the singlehop worker (the root worker id)
-func singleHopConnectionRoute(_ context.Context, w *server.Worker, _ *session.Session, _ *server.Repository, _ common.Downstreamers) ([]string, error) {
+func singleHopConnectionRoute(_ context.Context, w *server.Worker, _ *session.Session, _ *server.Repository, _ downstream.Downstreamers) ([]string, error) {
 	return []string{w.GetPublicId()}, nil
 }
 
@@ -75,7 +76,7 @@ func NewWorkerServiceServer(
 	workerAuthRepoFn common.WorkerAuthRepoStorageFactory,
 	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
-	downstreams common.Downstreamers,
+	downstreams downstream.Downstreamers,
 	updateTimes *sync.Map,
 	kms *kms.Kms,
 	livenessTimeToStale *atomic.Int64,

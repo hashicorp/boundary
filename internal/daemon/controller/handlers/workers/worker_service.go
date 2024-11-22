@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -85,7 +86,7 @@ func init() {
 	action.RegisterResource(resource.Worker, IdActions, CollectionActions)
 }
 
-func emptyDownstreamWorkers(context.Context, string, common.Downstreamers) []string {
+func emptyDownstreamWorkers(context.Context, string, downstream.Downstreamers) []string {
 	return nil
 }
 
@@ -96,14 +97,14 @@ type Service struct {
 	repoFn       common.ServersRepoFactory
 	workerAuthFn common.WorkerAuthRepoStorageFactory
 	iamRepoFn    common.IamRepoFactory
-	downstreams  common.Downstreamers
+	downstreams  downstream.Downstreamers
 }
 
 var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
 func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory,
-	workerAuthFn common.WorkerAuthRepoStorageFactory, ds common.Downstreamers,
+	workerAuthFn common.WorkerAuthRepoStorageFactory, ds downstream.Downstreamers,
 ) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {
