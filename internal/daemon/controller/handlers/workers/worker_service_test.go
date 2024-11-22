@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
-	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -98,7 +98,7 @@ func TestGet(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Downstreamers) []string {
 		return connectedDownstreams
 	}
 
@@ -333,7 +333,7 @@ func TestList(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Downstreamers) []string {
 		return connectedDownstreams
 	}
 
@@ -592,7 +592,7 @@ func TestUpdate(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Downstreamers) []string {
 		return connectedDownstreams
 	}
 

@@ -22,6 +22,9 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/targettest"
+	tgstore "github.com/hashicorp/boundary/internal/target/targettest/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
@@ -1801,5 +1804,232 @@ func TestListHcpbManagedWorkers(t *testing.T) {
 			{PublicId: worker4.GetPublicId(), Address: worker4.GetAddress()},
 		}
 		require.ElementsMatch(t, exp, workers)
+	})
+}
+
+func TestFilterWorkers_EgressFilter(t *testing.T) {
+	ctx := context.Background()
+	// This prevents us from running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	var workers []*server.Worker
+	for i := 0; i < 5; i++ {
+		switch {
+		case i%2 == 0:
+			workers = append(workers, server.TestKmsWorker(t, conn, wrapper,
+				server.WithName(fmt.Sprintf("test_worker_%d", i)),
+				server.WithWorkerTags(&server.Tag{
+					Key:   fmt.Sprintf("key%d", i),
+					Value: fmt.Sprintf("value%d", i),
+				})))
+		default:
+			workers = append(workers, server.TestPkiWorker(t, conn, wrapper,
+				server.WithName(fmt.Sprintf("test_worker_%d", i)),
+				server.WithWorkerTags(&server.Tag{
+					Key:   "key",
+					Value: "configvalue",
+				})))
+		}
+	}
+
+	cases := []struct {
+		name        string
+		in          []*server.Worker
+		out         []*server.Worker
+		filter      string
+		errContains string
+	}{
+		{
+			name:        "no-workers",
+			in:          []*server.Worker{},
+			out:         []*server.Worker{},
+			filter:      "",
+			errContains: "No workers are available to handle this session, or all have been filtered",
+		},
+		{
+			name: "no-filter",
+			in:   workers,
+			out:  workers,
+		},
+		{
+			name:        "filter-no-matches",
+			in:          workers,
+			out:         workers,
+			filter:      `"/name" matches "test_worker_[13]" and "configvalue2" in "/tags/key"`,
+			errContains: "No workers are available to handle this session, or all have been filtered",
+		},
+		{
+			name:   "filter-one-match",
+			in:     workers,
+			out:    []*server.Worker{workers[1]},
+			filter: `"/name" matches "test_worker_[12]" and "configvalue" in "/tags/key"`,
+		},
+		{
+			name:   "filter-two-matches",
+			in:     workers,
+			out:    []*server.Worker{workers[1], workers[3]},
+			filter: `"configvalue" in "/tags/key"`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			target := &targettest.Target{
+				Target: &tgstore.Target{},
+			}
+			if len(tc.filter) > 0 {
+				target.EgressWorkerFilter = tc.filter
+			}
+
+			out, protocolWorker, err := server.FilterWorkersFn(
+				ctx, nil, target, tc.in, "", nil, nil, nil,
+			)
+			if tc.errContains != "" {
+				require.ErrorContains(err, tc.errContains)
+				assert.Nil(out)
+				return
+			}
+
+			require.NoError(err)
+			require.Len(out, len(tc.out))
+			for i, exp := range tc.out {
+				assert.Equal(exp.Name, out[i].Name)
+			}
+			require.Nil(protocolWorker)
+		})
+	}
+}
+
+func TestSelectSessionWorkers(t *testing.T) {
+	// This prevents us from running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	_, proj := iam.TestScopes(t, iamRepo)
+	require.NotNil(t, proj)
+
+	repo, err := server.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	t.Run("noAvailableWorkers", func(t *testing.T) {
+		tg, err := target.New(ctx, targettest.Subtype, proj.GetPublicId(), target.WithWorkerFilter(`"doesnt_exist" in "/tags/type"`))
+		require.NoError(t, err)
+		require.NotNil(t, tg)
+
+		was, protoWorkerId, err := repo.SelectSessionWorkers(ctx, server.DefaultLiveness, tg, "", nil, nil, nil)
+		require.Nil(t, was)
+		require.Empty(t, protoWorkerId)
+		require.ErrorContains(t, err, "No workers are available to handle this session.")
+	})
+
+	t.Run("invalidWorkerStatusGracePeriod", func(t *testing.T) {
+		w1 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "worker1"}))
+		require.NotNil(t, w1)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w1.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		w2 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "worker2"}))
+		require.NotNil(t, w2)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w2.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		tg, err := target.New(ctx, targettest.Subtype, proj.GetPublicId(), target.WithWorkerFilter(`"worker1" in "/tags/type"`))
+		require.NoError(t, err)
+		require.NotNil(t, tg)
+
+		was, protoWorkerId, err := repo.SelectSessionWorkers(ctx, -10, tg, "", nil, nil, nil)
+		require.NoError(t, err)
+		require.Empty(t, protoWorkerId)
+		require.Len(t, was, 1)
+		require.Equal(t, w1.GetPublicId(), was[0].PublicId)
+		require.Equal(t, w1.GetAddress(), was[0].Address)
+	})
+
+	t.Run("validWorkerStatusGracePeriod", func(t *testing.T) {
+		w1 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
+		require.NotNil(t, w1)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w1.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		w2 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
+		require.NotNil(t, w2)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w2.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		<-time.After(2 * time.Second)
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(w1.GetName()),
+				server.WithAddress(w1.GetAddress()),
+			),
+			server.WithPublicId(w1.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		tg, err := target.New(ctx, targettest.Subtype, proj.GetPublicId(), target.WithWorkerFilter(`"prod" in "/tags/type"`))
+		require.NoError(t, err)
+		require.NotNil(t, tg)
+
+		was, protoWorkerId, err := repo.SelectSessionWorkers(ctx, time.Second, tg, "", nil, nil, nil)
+		require.NoError(t, err)
+		require.Empty(t, protoWorkerId)
+		require.Len(t, was, 1)
+		require.Equal(t, w1.GetPublicId(), was[0].PublicId)
+		require.Equal(t, w1.GetAddress(), was[0].Address)
+	})
+
+	t.Run("multipleWorkers", func(t *testing.T) {
+		w1 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
+		require.NotNil(t, w1)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w1.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		w2 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
+		require.NotNil(t, w2)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w2.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		tg, err := target.New(ctx, targettest.Subtype, proj.GetPublicId(), target.WithWorkerFilter(`"prod" in "/tags/type"`))
+		require.NoError(t, err)
+		require.NotNil(t, tg)
+
+		was, protoWorkerId, err := repo.SelectSessionWorkers(ctx, server.DefaultLiveness, tg, "", nil, nil, nil)
+		require.NoError(t, err)
+		require.Empty(t, protoWorkerId)
+		require.Len(t, was, 2)
+
+		exp := []server.WorkerAddress{
+			{PublicId: w1.GetPublicId(), Address: w1.GetAddress()},
+			{PublicId: w2.GetPublicId(), Address: w2.GetAddress()},
+		}
+		require.ElementsMatch(t, exp, was)
 	})
 }

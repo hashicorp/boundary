@@ -231,3 +231,15 @@ func UpsertAndReturnWorker(ctx context.Context, t *testing.T, w *Worker, servers
 	require.NotEmpty(t, workerId)
 	return serversRepo.LookupWorker(ctx, workerId)
 }
+
+// TestUseCommunityFilterWorkersFn is used to ensure that CE tests run from the
+// ENT repo use the CE worker filtering logic. WARNING: Do NOT run tests in
+// parallel when using this.
+func TestUseCommunityFilterWorkersFn(t *testing.T) {
+	oldFn := FilterWorkersFn
+	FilterWorkersFn = filterWorkers
+
+	t.Cleanup(func() {
+		FilterWorkersFn = oldFn
+	})
+}
