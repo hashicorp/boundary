@@ -75,9 +75,10 @@ Many organizations have strict network policies and prohibit all inbound traffic
 
 ### Configuring HCP-managed workers for ingress 
 
-In order to configure end user traffic to ingress through HCP-managed workers, you just need to configure the self-manage worker (enterprise version). On your self-manage worker that you are using for egress to HCP-manage worker, set the coniguration file with the following parameters:
+In order to configure end user traffic to ingress through HCP-managed workers, you will need to configure the self-manage worker (enterprise version). On your self-manage worker that you are using for egress to HCP-manage worker, set the coniguration file with the following parameters:
 - `hcp_boundary_cluster_id` - The HCP Boundary cluster ID and can be found in the HCP Boundary cluster's URL.
 - Omit the `public_addr` parameter. A public address is not needed since the self-managed worker will initiate the connection to HCP-managed workers.
+- Omit the `initial_upstreams` parameter. This is not needed because the `hcp_boundary_cluster_id` parameter is sufficent to indicate the HCP-managed workers as the upstream.  
 - Include a [worker tag](/boundary/docs/concepts/filtering/worker-tags#target-worker-filtering) in the `worker` stanza which will be used to select multi-hop routes for each target. 
 
 ### Example self-managed worker configuration:
@@ -99,19 +100,19 @@ worker {
 ```
 ### Allow-list for outbound to HCP-managed workers
 
-Some organizations require explicit destination addresses set in their network firewall rules for any outbound traffic. In this scenario, the fully qualified domain name of the HCP-managed workers can be used:
+Some organizations require explicit destination addresses set in their network firewall rules for any outbound traffic. In this scenario, you should use the fully qualified domain name (FQDN) of the HCP-managed workers:
 
 ```
 <cluster_uuid>.proxy.boundary.hashicorp.cloud
 ```
 
-where the `cluster_uuid` is the HCP Boundary cluster ID and can be found in the HCP Boundary cluster's URL.
+where the `cluster_uuid` is the HCP Boundary cluster ID. You can find your HCP Boundary cluster ID in the HCP Boundary cluster's URL.
 
 <INSERT CLUSTER URL IMAGE???>
 
 ### Route end user traffic to targets through HCP-managed workers
 
-To route traffic through the HCP-managed workers, set the egress filters of each target to match the tag set in the self-manage worker's configuration file. There is no need to set additional ingress filters on the targets.
+To route traffic through the HCP-managed workers, you should set the egress filters of each target to match the tag set in the self-manage worker's configuration file. There is no need to set additional ingress filters on the targets.
 
 <INSERT IMAGE OF FILTERS FROM ADMIN UI???>
 
