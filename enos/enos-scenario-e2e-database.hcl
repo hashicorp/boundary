@@ -26,7 +26,7 @@ scenario "e2e_database" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      boundary_license_path = local.license_path
     }
   }
 
@@ -120,7 +120,7 @@ scenario "e2e_database" {
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/database"
       debug_no_run             = var.e2e_debug_no_run
-      boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : ""
+      boundary_license         = var.boundary_edition != "oss" ? step.read_license.boundary_license : ""
       local_boundary_dir       = local.local_boundary_dir
       target_user              = "ubuntu"
       aws_ssh_private_key_path = local.aws_ssh_private_key_path

@@ -4,9 +4,8 @@
 disable_mlock = true
 
 controller {
-  name = "boundary-controller-${id}"
-  description = "Enos Boundary controller ${id}"
-
+  name          = "boundary-controller-${id}"
+  description   = "Enos Boundary controller ${id}"
   max_page_size = ${max_page_size}
 
   database {
@@ -44,22 +43,34 @@ listener "tcp" {
   purpose = "cluster"
 }
 
-kms "awskms" {
-  purpose    = "root"
-  region     = "${region}"
-  kms_key_id = "${kms_key_id}"
+kms "transit" {
+  purpose            = "worker-auth"
+  address            = "http://${vault_address}:8200"
+  token              = "${vault_transit_token}"
+  disable_renewal    = "false"
+  key_name           = "boundary-worker-auth"
+  mount_path         = "transit/"
+  tls_skip_verify    = "true"
 }
 
-kms "awskms" {
-  purpose    = "worker-auth"
-  region     = "${region}"
-  kms_key_id = "${kms_key_id}"
+kms "transit" {
+  purpose            = "root"
+  address            = "http://${vault_address}:8200"
+  token              = "${vault_transit_token}"
+  disable_renewal    = "false"
+  key_name           = "boundary-root"
+  mount_path         = "transit/"
+  tls_skip_verify    = "true"
 }
 
-kms "awskms" {
-  purpose    = "bsr"
-  region     = "${region}"
-  kms_key_id = "${kms_key_id}"
+kms "transit" {
+  purpose            = "recovery"
+  address            = "http://${vault_address}:8200"
+  token              = "${vault_transit_token}"
+  disable_renewal    = "false"
+  key_name           = "boundary-recovery"
+  mount_path         = "transit/"
+  tls_skip_verify    = "true"
 }
 
 events {

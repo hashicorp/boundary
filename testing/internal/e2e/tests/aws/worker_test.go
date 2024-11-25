@@ -74,7 +74,7 @@ func TestCliWorker(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "update", "tcp",
 			"-id", targetId,
-			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
+			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagIsolated),
 			"-format", "json",
 		),
 	)

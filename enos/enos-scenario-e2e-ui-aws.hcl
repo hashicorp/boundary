@@ -46,7 +46,7 @@ scenario "e2e_ui_aws" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      boundary_license_path = local.license_path
     }
   }
 
@@ -90,7 +90,7 @@ scenario "e2e_ui_aws" {
     variables {
       boundary_binary_name     = var.boundary_binary_name
       boundary_install_dir     = local.boundary_install_dir
-      boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : null
+      boundary_license         = var.boundary_edition != "oss" ? step.read_license.boundary_license : null
       common_tags              = local.tags
       controller_instance_type = var.controller_instance_type
       controller_count         = var.controller_count

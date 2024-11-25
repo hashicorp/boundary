@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: BUSL-1.1
 
 listener "tcp" {
-  purpose = "proxy"
+  purpose     = "proxy"
   tls_disable = true
-  address = "${listener_address}:9202"
+  address     = "${listener_address}:9202"
 }
 
 worker {
   # Name attr must be unique across workers
-  name = "worker-${id}"
+  name = "demo-worker-${id}"
   description = "Enos Boundary worker ${id}"
 
   # Workers must be able to reach controllers on :9201
@@ -18,18 +18,22 @@ worker {
   public_addr = "${public_address}"
 
   tags {
+    type   = ${type}
     region = ["${region}"]
-    type = ${type}
   }
 
   recording_storage_path = "${recording_storage_path}"
 }
 
 # must be same key as used on controller config
-kms "awskms" {
-  purpose    = "worker-auth"
-  region     = "${region}"
-  kms_key_id = "${kms_key_id}"
+kms "transit" {
+  purpose            = "worker-auth"
+  address            = "http://${vault_address}:8200"
+  token              = "${vault_transit_token}"
+  disable_renewal    = "false"
+  key_name           = "boundary-worker-auth"
+  mount_path         = "transit/"
+  tls_skip_verify    = "true"
 }
 
 events {

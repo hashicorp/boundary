@@ -68,7 +68,7 @@ scenario "e2e_docker_base" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      boundary_license_path = local.license_path
     }
   }
 
@@ -84,7 +84,7 @@ scenario "e2e_docker_base" {
       network_name     = [local.network_cluster]
       database_network = local.network_cluster
       postgres_address = step.create_boundary_database.address
-      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
+      boundary_license = var.boundary_edition != "oss" ? step.read_license.boundary_license : ""
     }
   }
 

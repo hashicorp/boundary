@@ -85,7 +85,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      boundary_license_path = local.license_path
     }
   }
 
@@ -102,7 +102,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
       network_name     = [local.network_cluster, local.network_database]
       database_network = local.network_database
       postgres_address = step.create_boundary_database.address
-      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
+      boundary_license = var.boundary_edition != "oss" ? step.read_license.boundary_license : ""
       config_file      = "boundary-config.hcl"
     }
   }
@@ -157,7 +157,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
     ]
     variables {
       image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
-      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
+      boundary_license = var.boundary_edition != "oss" ? step.read_license.boundary_license : ""
       config_file      = "worker-config-controller-led.hcl"
       container_name   = "worker"
       initial_upstream = step.create_boundary.upstream_address

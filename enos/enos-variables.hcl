@@ -175,6 +175,12 @@ variable "boundary_license_path" {
   default     = null
 }
 
+variable "vault_license_path" {
+  description = "Vault license path"
+  type        = string
+  default     = null
+}
+
 variable "go_test_timeout" {
   description = "Timeout for go test used in e2e tests"
   type        = string
