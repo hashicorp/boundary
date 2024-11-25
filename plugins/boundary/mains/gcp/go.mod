@@ -1,4 +1,4 @@
-module github.com/hashicorp/boundary/plugins/boundary/mains/aws
+module github.com/hashicorp/boundary/plugins/boundary/mains/gcp
 
 go 1.23.1
 
