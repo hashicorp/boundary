@@ -62,6 +62,8 @@ worker {
   useful for cloud environments that do not bind a publicly accessible IP to a
   NIC on the host directly, such as an Amazon EIP.
 
+  This parameter is omitted in multi-hop configuration if this worker connects to an upstream HCP Boundary worker.
+
   This value can reference any of the following:
   - a direct address string
   - a file on disk (file://) from which an address will be read
