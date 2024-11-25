@@ -66,7 +66,7 @@ var (
 )
 
 // singleHopConnectionRoute returns a route consisting of the singlehop worker (the root worker id)
-func singleHopConnectionRoute(_ context.Context, w *server.Worker, _ *session.Session, _ *session.AuthzSummary, _ *server.Repository, _ common.Downstreamers) ([]string, error) {
+func singleHopConnectionRoute(_ context.Context, w *server.Worker, _ *session.Session, _ *server.Repository, _ common.Downstreamers) ([]string, error) {
 	return []string{w.GetPublicId()}, nil
 }
 
@@ -436,7 +436,7 @@ func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session
 		// we can select a worker for egress that wouldn't potentially grant access
 		// to a private ip address in the network of the boundary deployment in the
 		// case of hcp.
-		if _, err := connectionRouteFn(ctx, w, sessionInfo, authzSummary, serversRepo, ws.downstreams); err != nil {
+		if _, err := connectionRouteFn(ctx, w, sessionInfo, serversRepo, ws.downstreams); err != nil {
 			return status.Errorf(codes.Internal, "error calculating route to endpoint: %v", err)
 		}
 		return nil
@@ -468,7 +468,7 @@ func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session
 	// we can select a worker for egress that wouldn't potentially grant access
 	// to a private ip address in the network of the boundary deployment in the
 	// case of hcp.
-	if _, err = connectionRouteFn(ctx, w, sessionInfo, authzSummary, serversRepo, ws.downstreams); err != nil {
+	if _, err = connectionRouteFn(ctx, w, sessionInfo, serversRepo, ws.downstreams); err != nil {
 		return status.Errorf(codes.Internal, "error calculating route to endpoint: %v", err)
 	}
 
@@ -635,7 +635,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Errorf(codes.Internal, "Invalid session info in lookup session response")
 	}
 
-	route, err := connectionRouteFn(ctx, w, sessInfo, authzSummary, serversRepo, ws.downstreams)
+	route, err := connectionRouteFn(ctx, w, sessInfo, serversRepo, ws.downstreams)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting route to egress worker: %v", err)
 	}
