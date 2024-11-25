@@ -69,6 +69,52 @@ traffic to a target. Ingress worker filters determine which workers you
 connect with to initiate a session, and egress worker filters determine which
 workers are used to access targets.
 
+## Use HCP-managed workers as ingress workers
+
+Many organizations have strict network policies and prohibit all inbound traffic into their network. In these scenario, HCP-managed workers can be used as the ingress worker. In order to establish a connection into the network, an self-managed worker configured as an egress worker will initiate an outbound connection with the HCP-managed worker resulting in a persistent connection. As a result, when end users connect to a target, the end user's connection would hop from the Boundary client to the HCP-manage worker (ingress worker) to the self-managed worker (egress worker) to the target (or intermediary worker if needed). 
+
+### Configuring HCP-managed workers for ingress 
+
+In order to configure end user traffic to ingress through HCP-managed workers, you just need to configure the self-manage worker (enterprise version). On your self-manage worker that you are using for egress to HCP-manage worker, set the coniguration file with the following parameters:
+- `hcp_boundary_cluster_id` - The HCP Boundary cluster ID and can be found in the HCP Boundary cluster's URL.
+- Omit the `public_addr` parameter. A public address is not needed since the self-managed worker will initiate the connection to HCP-managed workers.
+- Include a tag in the `worker` stanza which will be used to select multi-hop routes for each target. 
+
+### Example self-managed worker configuration:
+```
+hcp_boundary_cluster_id = "7acdefe2c-1234-4ff1-b710-123456789876"
+
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+        
+worker {
+  auth_storage_path = "/home/ubuntu/boundary/worker1"
+  tags {
+    tag = ["multihop"]
+  }
+  recording_storage_path = "/tmp/worker1"
+}
+```
+### Allow-list for outbound to HCP-managed workers
+
+Some organizations require explicit destination addresses set in their network firewall rules for any outbound traffic. In this scenario, the fully qualified domain name of the HCP-managed workers can be used:
+
+```
+<cluster_uuid>.proxy.boundary.hashicorp.cloud
+```
+
+where the `cluster_uuid` is the HCP Boundary cluster ID and can be found in the HCP Boundary cluster's URL.
+
+<INSERT CLUSTER URL IMAGE???>
+
+### Route end user traffic through HCP-managed workers to targets
+
+To route traffic through the HCP-managed workers, set the egress filters of each target to match the tag set in the self-manage worker's configuration file. There is no need to set additional ingress filters on the targets.
+
+<INSERT IMAGE OF FILTERS FROM ADMIN UI???>
+
 ## Multi-hop worker requirements
 
 When you configure multi-hop sessions, there is an "ingress" worker, an "egress"
