@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,7 +41,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
@@ -129,7 +129,10 @@ const (
 )
 
 type Worker struct {
-	conf   *Config
+	conf *Config
+	// confLock is used to protect the conf field.
+	confLock sync.Mutex
+
 	logger hclog.Logger
 
 	baseContext context.Context
@@ -151,10 +154,12 @@ type Worker struct {
 
 	recorderManager recorderManager
 
-	everAuthenticated *ua.Uint32
-	lastStatusSuccess *atomic.Value
-	workerStartTime   time.Time
-	operationalState  *atomic.Value
+	everAuthenticated      *ua.Uint32
+	lastStatusSuccess      *atomic.Value
+	lastJobInfoSuccess     *atomic.Value
+	lastRoutingInfoSuccess *atomic.Value
+	workerStartTime        time.Time
+	operationalState       *atomic.Value
 	// localStorageState is the current state of the local storage.
 	// The local storage state is updated based on the local storage events.
 	localStorageState *atomic.Value
@@ -196,6 +201,9 @@ type Worker struct {
 	// because they are casted to time.Duration.
 	successfulStatusGracePeriod         *atomic.Int64
 	statusCallTimeoutDuration           *atomic.Int64
+	jobInfoCallTimeoutDuration          *atomic.Int64
+	routingInfoCallTimeoutDuration      *atomic.Int64
+	statisticsCallTimeoutDuration       *atomic.Int64
 	getDownstreamWorkersTimeoutDuration *atomic.Int64
 
 	// AuthRotationNextRotation is useful in tests to understand how long to
@@ -206,8 +214,6 @@ type Worker struct {
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
 	TestOverrideAuthRotationPeriod time.Duration
-
-	statusLock sync.Mutex
 
 	downstreamConnManager *cluster.DownstreamManager
 
@@ -230,6 +236,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		started:                ua.NewBool(false),
 		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
 		lastStatusSuccess:      new(atomic.Value),
+		lastJobInfoSuccess:     new(atomic.Value),
+		lastRoutingInfoSuccess: new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
 		// controllerUpstreamMsgConn:   new(atomic.Value),
 		tags:                                new(atomic.Value),
@@ -241,6 +249,9 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		localStorageState:                   new(atomic.Value),
 		successfulStatusGracePeriod:         new(atomic.Int64),
 		statusCallTimeoutDuration:           new(atomic.Int64),
+		jobInfoCallTimeoutDuration:          new(atomic.Int64),
+		routingInfoCallTimeoutDuration:      new(atomic.Int64),
+		statisticsCallTimeoutDuration:       new(atomic.Int64),
 		getDownstreamWorkersTimeoutDuration: new(atomic.Int64),
 		upstreamConnectionState:             new(atomic.Value),
 		downstreamWorkers:                   new(atomic.Pointer[downstreamersContainer]),
@@ -249,6 +260,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	w.operationalState.Store(server.UnknownOperationalState)
 	w.localStorageState.Store(server.UnknownLocalStorageState)
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
+	w.lastJobInfoSuccess.Store((*LastJobInfo)(nil))
+	w.lastRoutingInfoSuccess.Store((*LastRoutingInfo)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.addressReceivers = []addressReceiver{&grpcResolverReceiver{controllerResolver}}
@@ -373,8 +386,15 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	switch conf.RawConfig.Worker.StatusCallTimeoutDuration {
 	case 0:
 		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
+		w.jobInfoCallTimeoutDuration.Store(int64(common.DefaultJobInfoTimeout))
+		w.routingInfoCallTimeoutDuration.Store(int64(common.DefaultRoutingInfoTimeout))
+		w.statisticsCallTimeoutDuration.Store(int64(common.DefaultStatisticsTimeout))
 	default:
 		w.statusCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+		// Use the configured status timeout for the other status-like calls too
+		w.jobInfoCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+		w.routingInfoCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+		w.statisticsCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
 	}
 	switch conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration {
 	case 0:
@@ -442,25 +462,6 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 
 	w.parseAndStoreTags(newConf.Worker.Tags)
 
-	if !strutil.EquivalentSlices(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
-		w.statusLock.Lock()
-		defer w.statusLock.Unlock()
-
-		upstreamsMessage := fmt.Sprintf(
-			"Initial Upstreams has changed; old upstreams were: %s, new upstreams are: %s",
-			w.conf.RawConfig.Worker.InitialUpstreams,
-			newConf.Worker.InitialUpstreams,
-		)
-		event.WriteSysEvent(ctx, op, upstreamsMessage)
-		w.conf.RawConfig.Worker.InitialUpstreams = newConf.Worker.InitialUpstreams
-
-		for _, ar := range w.addressReceivers {
-			ar.SetAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
-			// set InitialAddresses in case the worker has not successfully dialed yet
-			ar.InitialAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
-		}
-	}
-
 	switch newConf.Worker.SuccessfulStatusGracePeriodDuration {
 	case 0:
 		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
@@ -481,6 +482,24 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 	}
 	// See comment about this in worker.go
 	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
+
+	w.confLock.Lock()
+	defer w.confLock.Unlock()
+	if !slices.Equal(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
+		upstreamsMessage := fmt.Sprintf(
+			"Initial Upstreams has changed; old upstreams were: %s, new upstreams are: %s",
+			w.conf.RawConfig.Worker.InitialUpstreams,
+			newConf.Worker.InitialUpstreams,
+		)
+		event.WriteSysEvent(ctx, op, upstreamsMessage)
+		w.conf.RawConfig.Worker.InitialUpstreams = newConf.Worker.InitialUpstreams
+
+		for _, ar := range w.addressReceivers {
+			ar.SetAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
+			// set InitialAddresses in case the worker has not successfully dialed yet
+			ar.InitialAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
+		}
+	}
 }
 
 func (w *Worker) Start() error {
@@ -611,9 +630,6 @@ func (w *Worker) Start() error {
 			return fmt.Errorf("error marshaling worker auth fetch credentials request: %w", err)
 		}
 		w.WorkerAuthRegistrationRequest = base58.FastBase58Encoding(reqBytes)
-		if err != nil {
-			return fmt.Errorf("error encoding worker auth registration request: %w", err)
-		}
 		currentKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 		if err != nil {
 			return fmt.Errorf("error deriving worker auth key id: %w", err)
@@ -655,10 +671,10 @@ func (w *Worker) Start() error {
 	// Rather than deal with some of the potential error conditions for Add on
 	// the waitgroup vs. Done (in case a function exits immediately), we will
 	// always start rotation and simply exit early if we're using KMS
-	w.tickerWg.Add(2)
+	w.tickerWg.Add(4)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers, w.recorderManager)
+		w.startStatusTicking(w.baseContext)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
@@ -764,7 +780,7 @@ func (w *Worker) Shutdown() error {
 	}
 
 	// Shut down all connections.
-	w.cleanupConnections(w.baseContext, true, w.sessionManager)
+	w.cleanupConnections(w.baseContext, true)
 
 	// Wait for next status request to succeed. Don't wait too long; time it out
 	// at our default liveness value, which is also our default status grace

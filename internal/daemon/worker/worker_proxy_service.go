@@ -32,14 +32,19 @@ func NewWorkerProxyServiceServer(
 
 func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	resp, err := pbs.NewServerCoordinationServiceClient(ws.cc).Status(ctx, req)
-
-	if resp != nil {
-		// We don't currently support distributing new addreses to workers
-		// multiple hops away so ensure they're stripped out
-		resp.CalculatedUpstreams = nil
-	}
-
 	return resp, err
+}
+
+func (ws *workerProxyServiceServer) JobInfo(ctx context.Context, req *pbs.JobInfoRequest) (*pbs.JobInfoResponse, error) {
+	return pbs.NewServerCoordinationServiceClient(ws.cc).JobInfo(ctx, req)
+}
+
+func (ws *workerProxyServiceServer) RoutingInfo(ctx context.Context, req *pbs.RoutingInfoRequest) (*pbs.RoutingInfoResponse, error) {
+	return pbs.NewServerCoordinationServiceClient(ws.cc).RoutingInfo(ctx, req)
+}
+
+func (ws *workerProxyServiceServer) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	return pbs.NewServerCoordinationServiceClient(ws.cc).Statistics(ctx, req)
 }
 
 func (ws *workerProxyServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.ListHcpbWorkersRequest) (*pbs.ListHcpbWorkersResponse, error) {

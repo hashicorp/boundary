@@ -371,7 +371,7 @@ func Test_Worker_getSessionTls(t *testing.T) {
 	conf.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
 	w, err := New(context.Background(), conf)
 	require.NoError(t, err)
-	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: &services.StatusResponse{}, StatusTime: time.Now(), LastCalculatedUpstreams: nil})
+	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: &services.StatusResponse{}, StatusTime: time.Now()})
 	w.baseContext = context.Background()
 
 	t.Run("success", func(t *testing.T) {

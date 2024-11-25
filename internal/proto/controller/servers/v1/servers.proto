@@ -11,12 +11,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/serve
 
 // TagPair matches a key to a value.
 message TagPair {
+  option deprecated = true;
+
   string key = 1; // @gotags: `class:"public"`
   string value = 2; // @gotags: `class:"public"`
 }
 
-// ServerWorkerStatus is the new message used in place of Server to relay status request info.
+// ServerWorkerStatus is a legacy message used by the old expensive Status RPC.
+// It can be removed after 0.20.0.
 message ServerWorkerStatus {
+  option deprecated = true;
+
   // Id of the worker.
   string public_id = 10; // @gotags: `class:"public" eventstream:"observation"`
 

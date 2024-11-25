@@ -6,33 +6,60 @@ syntax = "proto3";
 package controller.servers.services.v1;
 
 import "controller/servers/v1/servers.proto";
+import "plugin/v1/storage_plugin_service.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
 
 service ServerCoordinationService {
-  // Status gets worker status requests which include the ongoing jobs the worker is handling and
-  // returns the status response which includes the changes the controller would like to make to
-  // jobs as well as provide a list of the controllers in the system.
-  rpc Status(StatusRequest) returns (StatusResponse) {}
+  // Status is used by the worker to signal to the controller that it is still alive.
+  // If the worker fails to successfully report its status to the controller for a
+  // period of time, it will try again later.
+  // TODO: Can be removed after 0.20.0 (johan/damian)
+  rpc Status(StatusRequest) returns (StatusResponse) {
+    option deprecated = true;
+  }
 
   // Returns the addresses of HCP Boundary workers, if any
   rpc ListHcpbWorkers(ListHcpbWorkersRequest) returns (ListHcpbWorkersResponse) {}
+
+  // SessionInfo is used by the worker to inform the controller of all the sessions
+  // it is managing. The controller may inform the worker if any sessions need to be changed.
+  // If the worker repeatedly fails to successfully report its session info to the controller,
+  // it will tear down any running sessions.
+  rpc SessionInfo(SessionInfoRequest) returns (SessionInfoResponse) {}
+
+  // RoutingInfo is used by the worker to inform the controller of information
+  // required by the controller to make session routing decisions and any startup information.
+  // The controller may inform the worker of any downstream workers that should be disconnected.
+  // If the worker fails to successfully report its route info to the controller,
+  // it will try again later.
+  rpc RoutingInfo(RoutingInfoRequest) returns (RoutingInfoResponse) {}
+
+  // Statistics is used by the worker to report non-essential statistics about its
+  // sessions and connections. If the worker fails to successfully report its
+  // statistics to the controller, it will try again later.
+  rpc Statistics(StatisticsRequest) returns (StatisticsResponse) {}
 }
 
+// Can be removed after 0.20.0
 enum CONNECTIONSTATUS {
+  option deprecated = true;
   CONNECTIONSTATUS_UNSPECIFIED = 0;
   CONNECTIONSTATUS_AUTHORIZED = 1;
   CONNECTIONSTATUS_CONNECTED = 2;
   CONNECTIONSTATUS_CLOSED = 3;
 }
 
+// Can be removed after 0.20.0
 message Connection {
+  option deprecated = true;
   string connection_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   CONNECTIONSTATUS status = 2;
   int64 bytes_up = 3; // @gotags: `class:"public"`
   int64 bytes_down = 4; // @gotags: `class:"public"`
 }
 
+// SESSIONSTATUS defines the different statuses a session can have.
 enum SESSIONSTATUS {
   SESSIONSTATUS_UNSPECIFIED = 0;
   SESSIONSTATUS_PENDING = 1;
@@ -41,64 +68,79 @@ enum SESSIONSTATUS {
   SESSIONSTATUS_TERMINATED = 4;
 }
 
+// Can be removed after 0.20.0
 message SessionJobInfo {
-  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  option deprecated = true;
+  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"` s
   SESSIONSTATUS status = 2;
   repeated Connection connections = 3;
   SessionProcessingError processing_error = 4; // @gotags: `class:"public"`
 }
 
+// Can be removed after 0.20.0
 enum SessionProcessingError {
+  option deprecated = true;
   SESSION_PROCESSING_ERROR_UNSPECIFIED = 0;
   SESSION_PROCESSING_ERROR_UNRECOGNIZED = 1;
 }
 
+// Can be removed after 0.20.0
 message MonitorSessionJobInfo {
+  option deprecated = true;
   string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   SESSIONSTATUS status = 2; // @gotags: `class:"public"`
   SessionProcessingError processing_error = 3; // @gotags: `class:"public"`
 }
 
+// Can be removed after 0.20.0
 enum JOBTYPE {
+  option deprecated = true;
   JOBTYPE_UNSPECIFIED = 0;
+  // A session where the worker is the ingress worker.
   JOBTYPE_SESSION = 1;
+  // A session where the worker is doing the recording of the session.
   JOBTYPE_MONITOR_SESSION = 2;
 }
 
+// Can be removed after 0.20.0
 message Job {
+  option deprecated = true;
   JOBTYPE type = 1;
   oneof job_info {
-    // This value is specified when type is JOBTYPE_SESSION.
     SessionJobInfo session_info = 2;
     MonitorSessionJobInfo monitor_session_info = 3;
   }
 }
 
+// Can be removed after 0.20.0
 message JobStatus {
+  option deprecated = true;
   Job job = 1;
 }
 
-// UpstreamServer returns the controller address in the StatusResponse but may be used in the future to return
-// worker address.
+// Can be removed after 0.20.0
 message UpstreamServer {
+  option deprecated = true;
   enum TYPE {
     TYPE_UNSPECIFIED = 0;
     TYPE_CONTROLLER = 1;
     TYPE_WORKER = 2;
   }
 
-  // type specifies between controller or worker.
+  // The type of the server.
   TYPE type = 10;
 
-  // Address of the daemon
+  // Address of the daemon.
   string address = 20; // @gotags: `class:"public"`
 }
 
+// Can be removed after 0.20.0.
 message StatusRequest {
-  reserved 10;
-  reserved "worker";
+  option deprecated = true;
+  reserved 10, 50;
+  reserved "worker", "connected_worker_key_identifiers";
 
-  // Jobs which this worker wants to report the status.
+  // Jobs which this worker wants to report the status of.
   repeated JobStatus jobs = 20;
 
   // Whether to update tags from the Server block on this RPC. We only need to
@@ -113,12 +155,6 @@ message StatusRequest {
   // get access to the key and spoof the connection, you're already compromised.
   servers.v1.ServerWorkerStatus worker_status = 40;
 
-  // The worker key identifiers presented by all downstreams connected to this
-  // worker.
-  // Deprecated. Should be removed in 0.15.0 at which time
-  // connected_unmapped_worker_key_identifiers should be used exclusively.
-  repeated string connected_worker_key_identifiers = 50 [deprecated = true];
-
   // The worker key identifiers for downstream workers for which there
   // is not a known worker id mapping for them yet.
   repeated string connected_unmapped_worker_key_identifiers = 51;
@@ -130,22 +166,21 @@ message StatusRequest {
   repeated string connected_worker_public_ids = 55;
 }
 
+// Can be removed after 0.20.0.
 enum CHANGETYPE {
+  option deprecated = true;
   CHANGETYPE_UNSPECIFIED = 0;
   // Indicates to the worker to update its knowledge of the state, which may
   // cause action to be taken.
   CHANGETYPE_UPDATE_STATE = 1;
 }
 
+// Can be removed after 0.20.0.
 message JobChangeRequest {
+  option deprecated = true;
+
   Job job = 1;
   CHANGETYPE request_type = 2;
-}
-
-message AuthorizedWorkerList {
-  option deprecated = true;
-  // the key id of authorized workers
-  repeated string worker_key_identifiers = 1 [deprecated = true];
 }
 
 message AuthorizedDownstreamWorkerList {
@@ -157,9 +192,11 @@ message AuthorizedDownstreamWorkerList {
   repeated string worker_public_ids = 2;
 }
 
+// Can be removed after 0.20.0.
 message StatusResponse {
-  reserved 10;
-  reserved "controllers";
+  option deprecated = true;
+  reserved 10, 50;
+  reserved "controllers", "authorized_workers";
 
   // List of jobs and the expected state changes.  For example, this will
   // include jobs witch change type of canceled for jobs which are active on a
@@ -174,12 +211,6 @@ message StatusResponse {
   // The ID of the worker which made the request. The worker can send this value in subsequent requests so the
   // controller does not need to do a database lookup for the id using the name field.
   string worker_id = 40; // @gotags: `class:"public" eventstream:"observation"`
-
-  // Of the worker key identifiers provided in the request, these are the ones
-  // which are authorized to remain connected.
-  // This is deprecated.  Use authorized_downstream_workers instead. This
-  // should be removed in version 0.15.0.
-  AuthorizedWorkerList authorized_workers = 50 [deprecated = true];
 
   // Of the downstream workers in the request, these are the ones
   // which are authorized to remain connected.
@@ -202,3 +233,108 @@ message ListHcpbWorkersRequest {}
 message ListHcpbWorkersResponse {
   repeated WorkerInfo workers = 1;
 }
+
+enum SessionType {
+  SESSION_TYPE_UNSPECIFIED = 0;
+  // A session where the worker is the ingress worker.
+  SESSION_TYPE_INGRESSED = 1;
+  // A session where the worker is doing the recording of the session.
+  SESSION_TYPE_RECORDED = 2;
+}
+
+message Session {
+  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  SESSIONSTATUS session_status = 2; // @gotags: `class:"public" eventstream:"observation"`
+  SessionType session_type = 3; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+message SessionInfoRequest {
+  // The ID of the worker making the request.
+  string worker_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The sessions which this worker wants to report the status of.
+  // Includes both ingressed sessions and recorded sessions.
+  repeated Session sessions = 2;
+}
+
+message SessionInfoResponse {
+  // List of sessions that are no longer active and
+  // whose status should be updated.
+  repeated Session non_active_sessions = 1;
+}
+
+enum LocalStorageState {
+  LOCAL_STORAGE_STATE_UNSPECIFIED = 0;
+  // The worker local storage state is at an acceptable state
+  LOCAL_STORAGE_STATE_AVAILABLE = 1;
+  // The worker is below the minimum threshold for local storage
+  LOCAL_STORAGE_STATE_LOW_STORAGE = 2;
+  // The worker local storage state is below the critical minimum threshold for local storage
+  LOCAL_STORAGE_STATE_CRITICALLY_LOW_STORAGE = 3;
+  // The worker is out of local disk space
+  LOCAL_STORAGE_STATE_OUT_OF_STORAGE = 4;
+  // The worker does not have a local storage path configured
+  LOCAL_STORAGE_STATE_NOT_CONFIGURED = 5;
+  // The default local storage state of a worker. Used when the local storage state of a worker is not yet known
+  LOCAL_STORAGE_STATE_UNKNOWN = 6;
+}
+
+message RoutingInfoRequest {
+  // The ID of the worker making the request.
+  string worker_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Tags read from the workers configuration. Only set if the tags require updating.
+  map<string, string> tags = 2; // @gotags: `class:"public" eventstream:"observation"
+
+  // Whether the tags should be updated or not.
+  bool update_tags = 3; // @gotags: `class:"public" eventstream:"observation"
+
+  // The worker key identifiers for downstream workers for which there
+  // is not a known worker id mapping for them yet.
+  repeated string connected_unmapped_worker_key_identifiers = 4; // @gotags: `class:"public" eventstream:"observation"
+
+  // The worker public ids of all downstreams connected to this worker if known.
+  // While there may be workers with key ids in the connected_worker_key_identifiers
+  // list and their public ids in this list, once the requesting worker is aware
+  // of the association, it should only populate this field.
+  repeated string connected_worker_public_ids = 5; // @gotags: `class:"public" eventstream:"observation"
+
+  // The local_storage_state indicates the state of the local disk space of the worker.
+  LocalStorageState local_storage_state = 6; // @gotags: `class:"public" eventstream:"observation"
+
+  // StorageBucketCredentialStates is a map where the key is a storage bucket id
+  // and the value contains the current state of the storage bucket.
+  map<string, plugin.v1.StorageBucketCredentialState> storage_bucket_credential_states = 7; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+message RoutingInfoResponse {
+  // Returns the calculated upstream addresses for the worker.
+  repeated string calculated_upstream_addresses = 1;
+
+  // Of the downstream workers in the request, these are the ones
+  // which are authorized to remain connected.
+  AuthorizedDownstreamWorkerList authorized_downstream_workers = 2;
+}
+
+// ConnectionStatistics contains statistics about a connection.
+message ConnectionStatistics {
+  string connection_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  int64 bytes_up = 2; // @gotags: `class:"public"`
+  int64 bytes_down = 3; // @gotags: `class:"public"`
+}
+
+// SessionStatistics contains statistics about a session and its connections.
+message SessionStatistics {
+  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  repeated ConnectionStatistics connections = 2;
+}
+
+message StatisticsRequest {
+  // The ID of the worker making the request.
+  string worker_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The statistics of the sessions managed by this worker
+  repeated SessionStatistics sessions = 2;
+}
+
+message StatisticsResponse {}

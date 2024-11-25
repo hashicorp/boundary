@@ -84,8 +84,8 @@ func (r *ConnectionRepository) list(ctx context.Context, resources any, where st
 	return nil
 }
 
-func (r *ConnectionRepository) updateBytesUpBytesDown(ctx context.Context, conns ...*Connection) error {
-	const op = "session.(ConnectionRepository).updateBytesUpBytesDown"
+func (r *ConnectionRepository) UpdateBytesUpBytesDown(ctx context.Context, conns ...*Connection) error {
+	const op = "session.(ConnectionRepository).UpdateBytesUpBytesDown"
 	if len(conns) == 0 {
 		return nil
 	}

@@ -148,7 +148,6 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -228,7 +227,6 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 				JobsRequests: []*pbs.JobChangeRequest{
 					{
@@ -336,7 +334,6 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 				JobsRequests: []*pbs.JobChangeRequest{
 					{
@@ -414,7 +411,6 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -468,7 +464,6 @@ func TestStatus(t *testing.T) {
 						pbs.SessionJobInfo{},
 						pbs.MonitorSessionJobInfo{},
 						pbs.Connection{},
-						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -628,7 +623,6 @@ func TestStatusSessionClosed(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -662,7 +656,6 @@ func TestStatusSessionClosed(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
-						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -797,7 +790,6 @@ func TestStatusDeadConnection(t *testing.T) {
 			},
 		},
 		WorkerId:                    worker1.PublicId,
-		AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 		AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 	}
 
@@ -816,7 +808,6 @@ func TestStatusDeadConnection(t *testing.T) {
 				pbs.Job_SessionInfo{},
 				pbs.SessionJobInfo{},
 				pbs.Connection{},
-				pbs.AuthorizedWorkerList{},
 				pbs.AuthorizedDownstreamWorkerList{},
 			),
 			cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -952,7 +943,6 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -992,7 +982,6 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -1023,7 +1012,6 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
-						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -1094,7 +1082,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers: []string{},
 			},
 			want: &pbs.StatusResponse{
 				CalculatedUpstreams: []*pbs.UpstreamServer{
@@ -1104,7 +1091,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -1126,7 +1112,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -1139,7 +1124,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId, "unknown"},
 			},
 			want: &pbs.StatusResponse{
 				CalculatedUpstreams: []*pbs.UpstreamServer{
@@ -1148,10 +1132,7 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 						Address: "127.0.0.1",
 					},
 				},
-				WorkerId: worker1.PublicId,
-				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
-					WorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
-				},
+				WorkerId:                    worker1.PublicId,
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -1164,7 +1145,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers:         []string{w1KeyId, w2KeyId, "unknown"},
 				ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "unknown"},
 				ConnectedWorkerPublicIds:              []string{w1.GetPublicId(), "unknown"},
 			},
@@ -1176,9 +1156,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId: worker1.PublicId,
-				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
-					WorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
-				},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{
 					UnmappedWorkerKeyIdentifiers: []string{w2KeyId},
 					WorkerPublicIds:              []string{w1.GetPublicId()},
@@ -1194,7 +1171,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers:         []string{w1KeyId, w2KeyId, "unknown"},
 				ConnectedUnmappedWorkerKeyIdentifiers: []string{"unknown"},
 				ConnectedWorkerPublicIds:              []string{w1.GetPublicId(), w2.GetPublicId(), "unknown"},
 			},
@@ -1206,9 +1182,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId: worker1.PublicId,
-				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
-					WorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
-				},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{
 					WorkerPublicIds: []string{w1.GetPublicId(), w2.GetPublicId()},
 				},
@@ -1227,10 +1200,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 				assert.Equal(tc.wantErrMsg, err.Error())
 				return
 			}
-			gotAuthorizedWorkers := got.GetAuthorizedWorkers()
-			sort.Strings(gotAuthorizedWorkers.GetWorkerKeyIdentifiers())
-			wantAuthorizedWorkers := tc.want.GetAuthorizedWorkers()
-			sort.Strings(wantAuthorizedWorkers.GetWorkerKeyIdentifiers())
 			sort.Strings(got.GetAuthorizedDownstreamWorkers().GetWorkerPublicIds())
 			sort.Strings(tc.want.GetAuthorizedDownstreamWorkers().GetWorkerPublicIds())
 			sort.Strings(got.GetAuthorizedDownstreamWorkers().GetUnmappedWorkerKeyIdentifiers())
@@ -1248,7 +1217,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
-						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),

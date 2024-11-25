@@ -132,8 +132,15 @@ type Worker struct {
 	RemoteStorageStates map[string]*plugin.StorageBucketCredentialState `gorm:"-"`
 }
 
-// NewWorker returns a new Worker. Valid options are WithName, WithDescription
-// WithAddress, and WithWorkerTags. All other options are ignored.  This does
+// NewWorker returns a new Worker. Valid options are:
+// - WithName
+// - WithDescription
+// - WithAddress
+// - WithWorkerTags
+// - WithReleaseVersion
+// - WithOperationalState
+// - WithLocalStorageState
+// All other options are ignored.  This does
 // not set any of the worker reported values.
 func NewWorker(scopeId string, opt ...Option) *Worker {
 	opts := GetOpts(opt...)

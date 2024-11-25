@@ -309,18 +309,12 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	switch {
 	case worker == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
-	case worker.GetAddress() == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported address is empty")
 	case worker.ScopeId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
 	case worker.PublicId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
-	case worker.GetName() == "" && opts.withKeyId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
-	case worker.OperationalState == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker operational state is empty")
-	case worker.LocalStorageState == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker local storage state is empty")
+	case opts.withKeyId == "" && opts.withPublicId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker key id and public id are both empty; one is required")
 	}
 
 	var workerId string
@@ -332,16 +326,6 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		workerId, err = r.LookupWorkerIdByKeyId(ctx, opts.withKeyId)
 		if err != nil || workerId == "" {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
-		}
-	default:
-		// generating the worker id based off of the scope and name ensures
-		// that if 2 kms workers are making requests with the same name they
-		// are treated as the same worker.  Allowing this only for kms workers
-		// also ensures that we maintain the unique name constraint between pki
-		// workers and kms workers.
-		workerId, err = NewWorkerIdFromScopeAndName(ctx, worker.GetScopeId(), worker.GetName())
-		if err != nil || workerId == "" {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker id"))
 		}
 	}
 
@@ -376,29 +360,6 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 					break
 				default:
 					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("multiple records found when updating worker with id %q", workerClone.GetPublicId()))
-				}
-
-			case workerClone.GetName() != "":
-				workerClone.Type = KmsWorkerType.String()
-				workerCreateConflict := &db.OnConflict{
-					Target: db.Columns{"public_id"},
-					Action: append(db.SetColumns([]string{"address", "release_version", "operational_state", "local_storage_state"}),
-						db.SetColumnValues(map[string]any{"last_status_time": "now()"})...),
-				}
-				var withRowsAffected int64
-				err := w.Create(ctx, workerClone, db.WithOnConflict(workerCreateConflict), db.WithReturnRowsAffected(&withRowsAffected),
-					// The intent of this WithWhere option is to operate with the OnConflict such that the action
-					// taken by the OnConflict only applies if the conflict is on a row that is returned by this where
-					// statement, otherwise it should error out.
-					db.WithWhere("server_worker.type = 'kms'"))
-				if err == nil && workerClone.Description != worker.Description {
-					_, err = w.Update(ctx, workerClone, []string{"description"}, nil)
-				}
-				switch {
-				case err != nil:
-					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
-				case withRowsAffected == 0:
-					return errors.New(ctx, errors.NotUnique, op, "error updating worker")
 				}
 			}
 

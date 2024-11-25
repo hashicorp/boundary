@@ -43,11 +43,6 @@ func WorkerStatusReport(ctx context.Context, repo *Repository, connRepo *Connect
 		}
 	}
 
-	err := connRepo.updateBytesUpBytesDown(ctx, reportedConnections...)
-	if err != nil {
-		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("failed to update bytes up and down for worker reported connections: %v", err))
-	}
-
 	notActive, err := repo.CheckIfNotActive(ctx, reportedSessions)
 	if err != nil {
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error checking session state for worker %s: %v", workerId, err))

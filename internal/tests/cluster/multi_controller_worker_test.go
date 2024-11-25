@@ -127,7 +127,7 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 		case <-cancelCtx.Done():
 			require.FailNow("No worker found after 10 seconds")
 		}
-		successSent := w1.Worker().LastStatusSuccess()
+		successSent := w1.Worker().LastRoutingInfoSuccess()
 		if successSent != nil {
 			break
 		}
@@ -135,12 +135,12 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 	helper.ExpectWorkers(t, c1, w1)
 
 	// Upstreams should be equivalent to the controller cluster addr after status updates
-	assert.Equal(c1.ClusterAddrs(), w1.Worker().LastStatusSuccess().LastCalculatedUpstreams)
+	assert.Equal(c1.ClusterAddrs(), w1.Worker().LastRoutingInfoSuccess().LastCalculatedUpstreams)
 
 	// Bring down the controller
 	c1.Shutdown()
 	time.Sleep(3 * time.Second) // Wait a little longer than the grace period
 
 	// Upstreams should now match initial upstreams
-	assert.True(strutil.EquivalentSlices(initialUpstreams, w1.Worker().LastStatusSuccess().LastCalculatedUpstreams))
+	assert.True(strutil.EquivalentSlices(initialUpstreams, w1.Worker().LastRoutingInfoSuccess().LastCalculatedUpstreams))
 }

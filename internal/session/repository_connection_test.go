@@ -544,7 +544,7 @@ func TestUpdateBytesUpDown(t *testing.T) {
 	}
 
 	// Update bytes up and down.
-	require.NoError(t, connRepo.updateBytesUpBytesDown(ctx, conns...))
+	require.NoError(t, connRepo.UpdateBytesUpBytesDown(ctx, conns...))
 
 	// Assert that the bytes up and down values have been persisted.
 	for i := 0; i < len(conns); i++ {
@@ -587,7 +587,7 @@ func TestUpdateBytesUpDown(t *testing.T) {
 		conns2[i].BytesUp = rand.Int63()
 		conns2[i].BytesDown = rand.Int63()
 	}
-	require.NoError(t, connRepo.updateBytesUpBytesDown(ctx, conns2...))
+	require.NoError(t, connRepo.UpdateBytesUpBytesDown(ctx, conns2...))
 
 	// BytesUp and BytesDown values should be set to the old ones.
 	for i := 0; i < len(conns); i++ {

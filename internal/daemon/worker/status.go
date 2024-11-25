@@ -8,22 +8,34 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/event"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/server"
-	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/connectivity"
 )
 
-var firstStatusCheckPostHooks []func(context.Context, *Worker) error
+var firstStatusCheckPostHooks []func(context.Context, *Worker) error = []func(context.Context, *Worker) error{
+	// Start session route info and statistics ticking after first status success
+	func(ctx context.Context, w *Worker) error {
+		w.tickerWg.Add(2)
+		go func() {
+			defer w.tickerWg.Done()
+			w.startRoutingInfoTicking(w.baseContext)
+		}()
+		go func() {
+			defer w.tickerWg.Done()
+			w.startStatisticsTicking(w.baseContext)
+		}()
+		return nil
+	},
+}
 
 var downstreamWorkersFactory func(ctx context.Context, workerId string, ver string) (downstreamers, error)
 
@@ -31,25 +43,23 @@ var checkHCPBUpstreams func(w *Worker) bool
 
 type LastStatusInformation struct {
 	*pbs.StatusResponse
-	StatusTime              time.Time
-	LastCalculatedUpstreams []string
+	StatusTime time.Time
 }
 
-func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager, addrReceivers *[]addressReceiver, recorderManager recorderManager) {
+// getRandomInterval returns a duration in a random interval between -0.5 and 0.5 seconds (exclusive).
+func getRandomInterval(r *rand.Rand) time.Duration {
+	// 0 to 0.5 adjustment to the base
+	f := r.Float64() / 2
+	// Half a chance to be faster, not slower
+	if r.Float32() > 0.5 {
+		f = -1 * f
+	}
+	return time.Duration(f * float64(time.Second))
+}
+
+func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startStatusTicking"
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// This function exists to desynchronize calls to controllers from
-	// workers, so we aren't always getting status updates at the exact same
-	// intervals, to ease the load on the DB.
-	getRandomInterval := func() time.Duration {
-		// 0 to 0.5 adjustment to the base
-		f := r.Float64() / 2
-		// Half a chance to be faster, not slower
-		if r.Float32() > 0.5 {
-			f = -1 * f
-		}
-		return common.StatusInterval + time.Duration(f*float64(time.Second))
-	}
 
 	timer := time.NewTimer(0)
 	for {
@@ -67,8 +77,10 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 				continue
 			}
 
-			w.sendWorkerStatus(cancelCtx, sessionManager, addrReceivers, recorderManager)
-			timer.Reset(getRandomInterval())
+			w.sendWorkerStatus(cancelCtx)
+			// Add a bit of jitter to the wait, so we aren't always getting,
+			// status updates at the exact same intervals, to ease the load on the DB.
+			timer.Reset(common.StatusInterval + getRandomInterval(r))
 		}
 	}
 }
@@ -115,120 +127,30 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	return nil
 }
 
-func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager, addressReceivers *[]addressReceiver, recorderManager recorderManager) {
+func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	const op = "worker.(Worker).sendWorkerStatus"
-	w.statusLock.Lock()
-	defer w.statusLock.Unlock()
-
-	// Collect the different session ids that are being monitored by this worker
-	var monitoredSessionIds []string
-
-	if recorderManager != nil {
-		recSessIds, err := recorderManager.SessionsManaged(cancelCtx)
-		if err != nil {
-			event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error getting session ids from recorderManager"))
-		} else {
-			monitoredSessionIds = append(monitoredSessionIds, recSessIds...)
-		}
-	}
-
-	// First send info as-is. We'll perform cleanup duties after we
-	// get cancel/job change info back.
-	var activeJobs []*pbs.JobStatus
-
-	for _, sid := range monitoredSessionIds {
-		activeJobs = append(activeJobs, &pbs.JobStatus{
-			Job: &pbs.Job{
-				Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
-				JobInfo: &pbs.Job_MonitorSessionInfo{
-					MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
-						SessionId: sid,
-						Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
-					},
-				},
-			},
-		})
-	}
-
-	// Range over known sessions and collect info
-	sessionManager.ForEachLocalSession(func(s session.Session) bool {
-		var jobInfo pbs.SessionJobInfo
-		status := s.GetStatus()
-		sessionId := s.GetId()
-		localConnections := s.GetLocalConnections()
-		connections := make([]*pbs.Connection, 0, len(localConnections))
-		for k, v := range localConnections {
-			connections = append(connections, &pbs.Connection{
-				ConnectionId: k,
-				Status:       v.Status,
-				BytesUp:      v.BytesUp(),
-				BytesDown:    v.BytesDown(),
-			})
-		}
-		jobInfo.SessionId = sessionId
-		activeJobs = append(activeJobs, &pbs.JobStatus{
-			Job: &pbs.Job{
-				Type: pbs.JOBTYPE_JOBTYPE_SESSION,
-				JobInfo: &pbs.Job_SessionInfo{
-					SessionInfo: &pbs.SessionJobInfo{
-						SessionId:   sessionId,
-						Status:      status,
-						Connections: connections,
-					},
-				},
-			},
-		})
-		return true
-	})
-
-	clientCon := w.GrpcClientConn.Load()
-	// Send status information
-	client := pbs.NewServerCoordinationServiceClient(clientCon)
-	var tags []*pb.TagPair
-	// If we're not going to request a tag update, no reason to have these
-	// marshaled on every status call.
-	if w.updateTags.Load() {
-		tags = w.tags.Load().([]*pb.TagPair)
-	}
-	statusCtx, statusCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
-	defer statusCancel()
+	w.confLock.Lock()
+	defer w.confLock.Unlock()
 
 	keyId := w.WorkerAuthCurrentKeyId.Load()
 	switch {
 	case w.conf.RawConfig.Worker.Name == "" && keyId == "":
 		event.WriteError(cancelCtx, op, errors.New("worker name and keyId are both empty; at least one is needed to identify a worker"),
 			event.WithInfoMsg("error making status request to controller"))
+		return
 	}
 
-	var storageBucketCredentialStates map[string]*plugin.StorageBucketCredentialState
-	if w.RecordingStorage != nil {
-		storageBucketCredentialStates = w.RecordingStorage.GetStorageBucketCredentialStates()
-		// If the local storage state is unknown, and we have recording storage set, get the state from the recording storage
-		// and set it on the worker. This is done once to ensure that the worker has the correct state for the first status
-		// call.
-		if w.localStorageState.Load() == server.UnknownLocalStorageState {
-			w.localStorageState.Store(w.RecordingStorage.GetLocalStorageState(cancelCtx))
-		}
-	}
+	// Send status information
 	versionInfo := version.Get()
-	connectionState := w.downstreamConnManager.Connected()
+	// Send status information
+	clientCon := w.GrpcClientConn.Load()
+	client := pbs.NewServerCoordinationServiceClient(clientCon)
+	statusCtx, statusCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
+	defer statusCancel()
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
-		Jobs: activeJobs,
-		WorkerStatus: &pb.ServerWorkerStatus{
-			Name:                          w.conf.RawConfig.Worker.Name,
-			Description:                   w.conf.RawConfig.Worker.Description,
-			Address:                       w.conf.RawConfig.Worker.PublicAddr,
-			Tags:                          tags,
-			KeyId:                         keyId,
-			ReleaseVersion:                versionInfo.FullVersionNumber(false),
-			OperationalState:              w.operationalState.Load().(server.OperationalState).String(),
-			LocalStorageState:             w.localStorageState.Load().(server.LocalStorageState).String(),
-			StorageBucketCredentialStates: storageBucketCredentialStates,
-		},
-		ConnectedWorkerKeyIdentifiers:         connectionState.AllKeyIds(),
-		ConnectedUnmappedWorkerKeyIdentifiers: connectionState.UnmappedKeyIds(),
-		ConnectedWorkerPublicIds:              connectionState.WorkerIds(),
-		UpdateTags:                            w.updateTags.Load(),
+		KeyId:          keyId,
+		WorkerId:       w.LastStatusSuccess().WorkerId,
+		ReleaseVersion: versionInfo.FullVersionNumber(false),
 	})
 	if err != nil {
 		event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error making status request to controller", "controller_address", clientCon.Target()))
@@ -248,7 +170,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 
 			// Cancel connections if grace period has expired. These Connections will be closed in the
 			// database on the next successful status report, or via the Controller’s dead Worker cleanup connections job.
-			sessionManager.ForEachLocalSession(func(s session.Session) bool {
+			w.sessionManager.ForEachLocalSession(func(s session.Session) bool {
 				for _, connId := range s.CancelAllLocalConnections() {
 					event.WriteSysEvent(cancelCtx, op, "terminated connection due to status grace period expiration", "session_id", s.GetId(), "connection_id", connId)
 				}
@@ -258,9 +180,9 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			// In the case that the control plane has gone down and come up with different IPs,
 			// append initial upstreams/ cluster addr to the resolver to try
 			if w.GrpcClientConn.Load().GetState() == connectivity.TransientFailure {
-				lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
-				if lastStatus != nil && lastStatus.LastCalculatedUpstreams != nil {
-					addrs := lastStatus.LastCalculatedUpstreams
+				lastRouteInfo := w.lastRoutingInfoSuccess.Load().(*LastRoutingInfo)
+				if lastRouteInfo != nil && lastRouteInfo.LastCalculatedUpstreams != nil {
+					addrs := lastRouteInfo.LastCalculatedUpstreams
 
 					if len(w.conf.RawConfig.Worker.InitialUpstreams) > 0 {
 						addrs = append(addrs, w.conf.RawConfig.Worker.InitialUpstreams...)
@@ -275,14 +197,14 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 					}
 
 					addrs = strutil.RemoveDuplicates(addrs, false)
-					if strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
+					if slices.Equal(lastRouteInfo.LastCalculatedUpstreams, addrs) {
 						// Nothing to update
 						return
 					}
 
-					w.updateAddresses(cancelCtx, addrs, addressReceivers)
-					lastStatus.LastCalculatedUpstreams = addrs
-					w.lastStatusSuccess.Store(lastStatus)
+					w.updateAddresses(cancelCtx, addrs)
+					lastRouteInfo.LastCalculatedUpstreams = addrs
+					w.lastRoutingInfoSuccess.Store(lastRouteInfo)
 				}
 			}
 
@@ -292,84 +214,11 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 
 		// Standard cleanup: Run through current jobs. Cancel connections
 		// for any canceling session or any session that is expired.
-		w.cleanupConnections(cancelCtx, false, sessionManager)
+		w.cleanupConnections(cancelCtx, false)
 		return
 	}
 
-	w.updateTags.Store(false)
-
-	if authorized := result.GetAuthorizedDownstreamWorkers(); authorized != nil {
-		connectionState.DisconnectMissingWorkers(authorized.GetWorkerPublicIds())
-		connectionState.DisconnectMissingUnmappedKeyIds(authorized.GetUnmappedWorkerKeyIdentifiers())
-	} else if authorized := result.GetAuthorizedWorkers(); authorized != nil {
-		connectionState.DisconnectAllMissingKeyIds(authorized.GetWorkerKeyIdentifiers())
-	}
-	var addrs []string
-	// This may be empty if we are in a multiple hop scenario
-	if len(result.CalculatedUpstreams) > 0 {
-		addrs = make([]string, 0, len(result.CalculatedUpstreams))
-		for _, v := range result.CalculatedUpstreams {
-			addrs = append(addrs, v.Address)
-		}
-	} else if checkHCPBUpstreams != nil && checkHCPBUpstreams(w) {
-		// This is a worker that is one hop away from managed workers, so attempt to get that list
-		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
-		defer hcpbWorkersCancel()
-		workersResp, err := client.ListHcpbWorkers(hcpbWorkersCtx, &pbs.ListHcpbWorkersRequest{})
-		if err != nil {
-			event.WriteError(hcpbWorkersCtx, op, err, event.WithInfoMsg("error fetching managed worker information"))
-		} else {
-			addrs = make([]string, 0, len(workersResp.Workers))
-			for _, v := range workersResp.Workers {
-				addrs = append(addrs, v.Address)
-			}
-		}
-	}
-
-	w.updateAddresses(cancelCtx, addrs, addressReceivers)
-
-	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: addrs})
-
-	var nonActiveMonitoredSessionIds []string
-
-	for _, request := range result.GetJobsRequests() {
-		switch request.GetRequestType() {
-		case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
-			switch request.GetJob().GetType() {
-			case pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION:
-				si := request.GetJob().GetMonitorSessionInfo()
-				if si != nil && si.Status != pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE {
-					nonActiveMonitoredSessionIds = append(nonActiveMonitoredSessionIds, si.GetSessionId())
-				}
-			case pbs.JOBTYPE_JOBTYPE_SESSION:
-				sessInfo := request.GetJob().GetSessionInfo()
-				sessionId := sessInfo.GetSessionId()
-				si := sessionManager.Get(sessionId)
-				if si == nil {
-					event.WriteError(cancelCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
-					continue
-				}
-				si.ApplyLocalStatus(sessInfo.GetStatus())
-
-				// Update connection state if there are any connections in
-				// the request.
-				for _, conn := range sessInfo.GetConnections() {
-					if err := si.ApplyLocalConnectionStatus(conn.GetConnectionId(), conn.GetStatus()); err != nil {
-						event.WriteError(cancelCtx, op, err, event.WithInfo("connection_id", conn.GetConnectionId()))
-					}
-				}
-			}
-		}
-	}
-	if recorderManager != nil {
-		if err := recorderManager.ReauthorizeAllExcept(cancelCtx, nonActiveMonitoredSessionIds); err != nil {
-			event.WriteError(cancelCtx, op, err)
-		}
-	}
-
-	// Standard cleanup: Run through current jobs. Cancel connections
-	// for any canceling session or any session that is expired.
-	w.cleanupConnections(cancelCtx, false, sessionManager)
+	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
 	// If we have post hooks for after the first status check, run them now
 	if w.everAuthenticated.CompareAndSwap(authenticationStatusFirstAuthentication, authenticationStatusFirstStatusRpcSuccessful) {
@@ -395,111 +244,6 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			}
 		}
 	}
-}
-
-// Update address receivers and dialing listeners with new addrs
-func (w *Worker) updateAddresses(cancelCtx context.Context, addrs []string, addressReceivers *[]addressReceiver) {
-	const op = "worker.(Worker).updateAddrs"
-
-	if len(addrs) > 0 {
-		lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
-		// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
-		if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
-			upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, addrs)
-			event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
-			for _, as := range *addressReceivers {
-				as.SetAddresses(addrs)
-			}
-		} else if lastStatus == nil {
-			for _, as := range *addressReceivers {
-				as.SetAddresses(addrs)
-			}
-			event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", addrs))
-		}
-	}
-
-	// regardless of whether or not it's a new address, we need to set
-	// them for secondary connections
-	for _, as := range *addressReceivers {
-		switch {
-		case as.Type() == secondaryConnectionReceiverType:
-			tmpAddrs := make([]string, len(addrs))
-			copy(tmpAddrs, addrs)
-			if len(tmpAddrs) == 0 {
-				tmpAddrs = append(tmpAddrs, w.conf.RawConfig.Worker.InitialUpstreams...)
-			}
-			as.SetAddresses(tmpAddrs)
-		}
-	}
-}
-
-// cleanupConnections walks all sessions and shuts down all proxy connections.
-// After the local connections are terminated, they are requested to be marked
-// close on the controller.
-// Additionally, sessions without connections are cleaned up from the
-// local worker's state.
-//
-// Use ignoreSessionState to ignore the state checks, this closes all
-// connections, regardless of whether or not the session is still active.
-func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool, sessionManager session.Manager) {
-	const op = "worker.(Worker).cleanupConnections"
-	closeInfo := make(map[string]*session.ConnectionCloseData)
-	cleanSessionIds := make([]string, 0)
-	sessionManager.ForEachLocalSession(func(s session.Session) bool {
-		switch {
-		case ignoreSessionState,
-			s.GetStatus() == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
-			s.GetStatus() == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
-			time.Until(s.GetExpiration()) < 0:
-			// Cancel connections without regard to individual connection
-			// state.
-			closedIds := s.CancelAllLocalConnections()
-			localConns := s.GetLocalConnections()
-			for _, connId := range closedIds {
-				var bytesUp, bytesDown int64
-				connInfo, ok := localConns[connId]
-				if ok {
-					bytesUp = connInfo.BytesUp()
-					bytesDown = connInfo.BytesDown()
-				}
-				closeInfo[connId] = &session.ConnectionCloseData{
-					SessionId: s.GetId(),
-					BytesUp:   bytesUp,
-					BytesDown: bytesDown,
-				}
-				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", s.GetId(), "connection_id", connId)
-			}
-
-			// If the session is no longer valid and all connections
-			// are marked closed, clean up the session.
-			if len(closedIds) == 0 {
-				cleanSessionIds = append(cleanSessionIds, s.GetId())
-			}
-
-		default:
-			// Cancel connections *with* regard to individual connection
-			// state (ie: only ones that the controller has requested be
-			// terminated).
-			for _, connId := range s.CancelOpenLocalConnections() {
-				closeInfo[connId] = &session.ConnectionCloseData{SessionId: s.GetId()}
-				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", s.GetId(), "connection_id", connId)
-			}
-		}
-
-		return true
-	})
-
-	// Note that we won't clean these from the info map until the
-	// next time we run this function
-	if len(closeInfo) > 0 {
-		// Call out to a helper to send the connection close requests to the
-		// controller, and set the close time. This functionality is shared with
-		// post-close functionality in the proxy handler.
-		_ = sessionManager.RequestCloseConnections(cancelCtx, closeInfo)
-	}
-	// Forget sessions where the session is expired/canceled and all
-	// connections are canceled and marked closed
-	sessionManager.DeleteLocalSession(cleanSessionIds)
 }
 
 func (w *Worker) lastSuccessfulStatusTime() time.Time {
