@@ -274,14 +274,12 @@ If you want to disable the Boundary Client Agent, you can stop it with the follo
 <Tab heading="MacOS" group="macos">
 
 ```shell-session
-$ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
+$ sudo launchctl unload -w /Library/LaunchDaemons/com.hashicorp.boundary.boundary-client-agent.plist
 ```
 
 <Note>
 
-Stopping the Boundary client agent using `launchctl stop` only halts it temporarily, as the `StartInterval` setting causes it to restart automatically after 60 seconds.
-
-**To disable it permanently**, you must unload the service using `launchctl unload`. Unloading not only stops the agent but also removes its configuration from `launchd`. To restart the agent after unloading, you must reload it using `launchctl load`, as the `start` command will not work in this case.
+Unloading the Boundary client agent removes its launch daemon configuration. To restart the agent, use `sudo launchctl load ...`
 
 </Note>
 
