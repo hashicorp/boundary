@@ -108,7 +108,16 @@ Some organizations require explicit destination addresses set in their network f
 
 where the `cluster_uuid` is the HCP Boundary cluster ID. You can find your HCP Boundary cluster ID in the HCP Boundary cluster's URL.
 
-<INSERT CLUSTER URL IMAGE???>
+<Note>
+
+  The Boundary cluster ID is derived from the Boundary address. For example, if
+  your cluster URL is:
+
+  `https://abcd1234-e567-f890-1ab2-cde345f6g789.boundary.hashicorp.cloud`
+
+  Then your cluster id is `abcd1234-e567-f890-1ab2-cde345f6g789`.
+
+</Note>
 
 ### Route end user traffic to targets through HCP-managed workers
 
