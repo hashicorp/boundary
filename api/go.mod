@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/api
 
-go 1.23.1
+go 1.23.3
 
 require (
 	github.com/hashicorp/boundary/sdk v0.0.48
