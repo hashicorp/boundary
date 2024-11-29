@@ -4,14 +4,18 @@
 package server
 
 import (
+	"context"
 	stderrors "errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/event"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
+	gvers "github.com/hashicorp/go-version"
 	"github.com/mitchellh/pointerstructure"
 	"google.golang.org/grpc/codes"
 )
@@ -80,6 +84,51 @@ func (w WorkerList) Filtered(eval *bexpr.Evaluator) (WorkerList, error) {
 		if ok {
 			ret = append(ret, worker)
 		}
+	}
+	return ret, nil
+}
+
+// FilteredWithFeatures returns a new workerList where all elements contained in
+// it are the ones which from the original workerList that pass the evaluator's
+// evaluation and satisfy the features required.
+func (w WorkerList) FilteredWithFeatures(ctx context.Context, eval *bexpr.Evaluator, features []version.Feature) (WorkerList, error) {
+	const op = "server.WorkerList.FilteredWithFeatures"
+	var ret []*Worker
+workerLoop:
+	for _, worker := range w {
+		filterInput := map[string]interface{}{
+			"name": worker.GetName(),
+			"tags": worker.CanonicalTags(),
+		}
+		ok, err := eval.Evaluate(filterInput)
+		if err != nil && !stderrors.Is(err, pointerstructure.ErrNotFound) {
+			// If we find pointerstructure.ErrNotFound, don't error out but
+			// ignore the worker and go to the next.
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+		if len(features) > 0 {
+			versionString := worker.ReleaseVersion
+			idx := strings.Index(versionString, version.BoundaryPrefix)
+			if idx >= 0 {
+				versionString = versionString[idx+len(version.BoundaryPrefix):]
+			}
+			nodeVersion, err := gvers.NewVersion(versionString)
+			if err != nil {
+				// Emit error and continue, as we might still find a different worker
+				event.WriteError(ctx, op, fmt.Errorf("cannot parse worker version %s for worker %s", versionString, worker.Name))
+				continue
+			}
+			for _, f := range features {
+				if !version.SupportsFeature(nodeVersion, f) {
+					continue workerLoop
+				}
+			}
+		}
+
+		ret = append(ret, worker)
 	}
 	return ret, nil
 }
