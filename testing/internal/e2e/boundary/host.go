@@ -370,7 +370,8 @@ func CreateGCPHostCatalogCli(
 	clientEmail string,
 	privateKeyId string,
 	privateKey string,
-	zone string) (string, error) {
+	zone string,
+) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
