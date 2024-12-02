@@ -47,7 +47,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a host set
-	hostSetId1, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter1)
+	hostSetId1, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter1)
 	require.NoError(t, err)
 	var targetIps1 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps1)
@@ -56,7 +56,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, expectedHostSetCount1)
 
 	// Set up another host set
-	hostSetId2, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter2)
+	hostSetId2, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter2)
 	require.NoError(t, err)
 	var targetIps2 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps2), &targetIps2)
