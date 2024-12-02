@@ -200,3 +200,33 @@ variable "hcp_boundary_cluster_id" {
   // If using HCP int, ensure that the cluster id starts with "int-"
   // Example: "int-19283a-123123-..."
 }
+
+variable "gcp_target_instance_type" {
+  description = "Instance type for test target nodes"
+  type        = string
+  default     = "e2-micro"
+}
+
+variable "gcp_region" {
+  description = "GCP region where the resources will be created"
+  type        = string
+  default     = "us-central1"
+}
+
+variable "gcp_zone" {
+  description = "GCP zone where the resources will be created"
+  type        = string
+  default     = "us-central1-a"
+}
+
+variable "gcp_project_id" {
+  description = "GCP project where the resources will be created"
+  type        = string
+  default     = ""
+}
+
+variable "gcp_client_email" {
+  description = "GCP client email"
+  type        = string
+  default     = ""
+}
