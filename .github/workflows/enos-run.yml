@@ -333,21 +333,18 @@ jobs:
         # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
         if: ${{ failure() || (steps.run.outcome == 'failure' && steps.run_retry.outcome == 'failure') }}
         with:
-          channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
           payload: |
-            {
-              "text": ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
+            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+            text: ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
       - name: Send Slack message if Run but Retry passes
         uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
         if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
         with:
-          channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
           payload: |
-            {
-              "text": ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
+            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+            text: ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
+
