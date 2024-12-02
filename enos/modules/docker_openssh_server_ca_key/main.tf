@@ -61,9 +61,14 @@ locals {
   ca_public_key  = data.tls_public_key.ca_key.public_key_openssh
 }
 
+data "docker_registry_image" "openssh" {
+  name = var.image_name
+}
+
 resource "docker_image" "openssh_server" {
-  name         = var.image_name
-  keep_locally = true
+  name          = var.image_name
+  keep_locally  = true
+  pull_triggers = [data.docker_registry_image.openssh.sha256_digest]
 }
 
 resource "docker_container" "openssh_server" {
@@ -75,6 +80,7 @@ resource "docker_container" "openssh_server" {
     "TZ=US/Eastern",
     "USER_NAME=${var.target_user}",
     "PUBLIC_KEY=${local.ssh_public_key}",
+    "SUDO_ACCESS=true",
   ]
   network_mode = "bridge"
   dynamic "networks_advanced" {
