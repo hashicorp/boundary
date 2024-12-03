@@ -312,11 +312,10 @@ test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
 
 .PHONY: test
+test: SHELL := /bin/bash
 test:
-	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) > test-output.json
-	cat test-output.json | tparse -follow
-	cat test-output.json | go run github.com/roblaszczak/vgt@latest -print-html -dont-pass-output > test-results.html
-	rm test-output.json
+	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) -count=1 \
+		| tee >(tparse -follow) >(go run github.com/roblaszczak/vgt@latest -print-html -dont-pass-output > test-results.html)
 
 .PHONY: test-sdk
 test-sdk:
