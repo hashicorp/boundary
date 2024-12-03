@@ -4,8 +4,8 @@
 
 # release configuration
 
-/.release/                               @hashicorp/github-secure-boundary
-/.github/workflows/build.yml             @hashicorp/github-secure-boundary
+/.release/                               @hashicorp/team-selfmanaged-releng
+/.github/workflows/build.yml             @hashicorp/team-selfmanaged-releng
 
 # education
 
