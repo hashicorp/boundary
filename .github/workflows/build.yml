@@ -380,6 +380,7 @@ jobs:
           arch: ${{ matrix.arch }}
           tags: |
             docker.io/hashicorp/${{ env.repo }}:${{ env.version }}
+            docker.io/hashicorp/${{ env.repo }}:${{ env.version }}_${{ github.sha }}
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.version }}
           # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
           # And MAJOR.MINOR-dev-$COMMITSHA
