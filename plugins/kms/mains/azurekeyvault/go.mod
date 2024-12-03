@@ -3,8 +3,8 @@ module github.com/hashicorp/boundary/plugins/kms/mains/azurekeyvault
 go 1.23.0
 
 require (
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5
-	github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.10
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.7
+	github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.11
 )
 
 require (
@@ -28,7 +28,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14 // indirect
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.16 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect

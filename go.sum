@@ -205,8 +205,8 @@ github.com/hashicorp/go-dbw v0.1.5-0.20240909162114-6cee92b3da36 h1:rPD+2QPhCLq8
 github.com/hashicorp/go-dbw v0.1.5-0.20240909162114-6cee92b3da36/go.mod h1:/YHbfK7mgG9k09aB74Imw3fEOwno0eTtlFTTYGZ7SFk=
 github.com/hashicorp/go-hclog v1.6.3 h1:Qr2kF+eVWjTiYmU7Y31tYlP1h0q/X3Nl3tPGdaB11/k=
 github.com/hashicorp/go-hclog v1.6.3/go.mod h1:W4Qnvbt70Wk/zYJryRzDRU/4r0kIg0PVHBcfoyhpF5M=
-github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20231219183231-6bac757bb482 h1:1DqTnLaNk658AEenlF4PNGYd9b1hXE/+0jSOBIGOAms=
-github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20231219183231-6bac757bb482/go.mod h1:323uN1BJ6bc9F1U6DPvgmLTVlBlMMnOIRrzCd5ZDee0=
+github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20241126174344-f3b1a41a15fd h1:CmPn4FXkYbPgmIqAKU970nXOEWW0u2RYZ7NnB6f7jkQ=
+github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20241126174344-f3b1a41a15fd/go.mod h1:8G70jr/DzTk81B2Z+bXnvqWHwPq6GkoRWagyZsbX0U0=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.7 h1:gM4OwbF16Cmfxt2QMkoGMQbRTfYFZLvDMPgU3rM3KIo=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.7/go.mod h1:7ZMHVluyqgHgEuTADeDzFNWoA9mnyPfdiK8Tk2Bct1c=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.17-0.20240313190905-91d44aa8e360 h1:AgzTis5Y2hKvmluFZH7V6+evaB1LoKT1KKjXysywyRI=

@@ -62,10 +62,16 @@ github.com/hashicorp/go-hclog v1.5.0 h1:bI2ocEMgcVlz55Oj1xZNBsVi900c7II+fWDyV9o+
 github.com/hashicorp/go-hclog v1.5.0/go.mod h1:W4Qnvbt70Wk/zYJryRzDRU/4r0kIg0PVHBcfoyhpF5M=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 h1:jrnDfQm2hCQ0/hEselgqzV4fK16gpZoY0OWGZpVPNHM=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5/go.mod h1:psh1qKep5ukvuNobFY/hCybuudlkkACpmazOsCgX5Rg=
+github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.7 h1:gM4OwbF16Cmfxt2QMkoGMQbRTfYFZLvDMPgU3rM3KIo=
+github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.7/go.mod h1:7ZMHVluyqgHgEuTADeDzFNWoA9mnyPfdiK8Tk2Bct1c=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.14 h1:1ZuhfnZgRnLK8S0KovJkoTCRIQId5pv3sDR7pG5VQBw=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.14/go.mod h1:0dWtzl2ilqKpavgM3id/kFK9L3tjo6fS4OhbVPSYpnQ=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.16 h1:WZeXfD26QMWYC35at25KgE021SF9L3u9UMHK8fJAdV0=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.16/go.mod h1:ZiKZctjRTLEppuRwrttWkp71VYMbTTCkazK4xT7U/NQ=
 github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.10 h1:g4F+mrwvfCJJIrLHbKhClClFLz/+T42zASm6S1Av38s=
 github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.10/go.mod h1:+nZqburV15IZlvfxk29XUdwWour3PkYxRaOFesx37OI=
+github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.11 h1:/7SKkYIhA8cr3l8m1EKT6Q90bPoSVqqVBuQ6HgoMIkw=
+github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.11/go.mod h1:LepS5s6ESGE0qQMpYaui5lX+mQYeiYiy06VzwWRioO8=
 github.com/hashicorp/go-plugin v1.5.2 h1:aWv8eimFqWlsEiMrYZdPYl+FdHaBJSN4AWwGWfT1G2Y=
 github.com/hashicorp/go-plugin v1.5.2/go.mod h1:w1sAEES3g3PuV/RzUrgow20W2uErMly84hhD3um1WL4=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 h1:ET4pqyjiGmY09R5y+rSd70J2w45CtbWDNvGqWp/R3Ng=
