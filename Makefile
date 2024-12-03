@@ -313,7 +313,10 @@ test-sql:
 
 .PHONY: test
 test:
-	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
+	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) > test-output.json
+	cat test-output.json | tparse -follow
+	cat test-output.json | go run github.com/roblaszczak/vgt@latest -print-html -dont-pass-output > test-results.html
+	rm test-output.json
 
 .PHONY: test-sdk
 test-sdk:
