@@ -2,11 +2,6 @@
 # the repo, unless a later match takes precedence.
 @hashicorp/boundary
 
-# release configuration
-
-/.release/                               @hashicorp/github-secure-boundary
-/.github/workflows/build.yml             @hashicorp/github-secure-boundary
-
 # education
 
 /website/content/                        @hashicorp/boundary-education-approvers
