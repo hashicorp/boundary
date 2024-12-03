@@ -7,6 +7,17 @@ resource "aws_s3_bucket" "default" {
   bucket_prefix = "enos-${random_pet.default.id}-"
   force_destroy = true
   tags          = local.common_tags
+
+resource "aws_s3_bucket_lifecycle_configuration" "example" {
+  bucket = aws_s3_bucket.default.id
+
+  rule {
+    id = "file_retention"
+    expiration {
+      days = 30
+    }
+    status = "Enabled"
+  }
 }
 
 data "aws_iam_policy_document" "default" {
