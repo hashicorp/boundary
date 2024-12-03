@@ -2,11 +2,6 @@
 # the repo, unless a later match takes precedence.
 * @hashicorp/boundary
 
-# release configuration
-
-/.release/                               @hashicorp/team-selfmanaged-releng
-/.github/workflows/build.yml             @hashicorp/team-selfmanaged-releng
-
 # education
 
 /website/content/                        @hashicorp/boundary-education-approvers
