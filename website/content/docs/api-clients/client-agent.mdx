@@ -274,7 +274,13 @@ If you want to disable the Boundary Client Agent, you can stop it with the follo
 <Tab heading="MacOS" group="macos">
 
 ```shell-session
-$ sudo launchctl stop com.hashicorp.boundary.boundary-client-agent
+$ sudo launchctl unload -w /Library/LaunchDaemons/com.hashicorp.boundary.boundary-client-agent.plist
+```
+
+Unloading the Boundary Client Agent removes its launch daemon configuration. To restart the Client Agent, use:
+
+```shell-session
+$ sudo launchctl load -w /Library/LaunchDaemons/com.hashicorp.boundary.boundary-client-agent.plist
 ```
 
 </Tab>
