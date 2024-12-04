@@ -207,9 +207,7 @@ func (g Grant) clone() *Grant {
 	}
 	if outFields, hasSetFields := g.OutputFields.Fields(); hasSetFields {
 		fieldsToAdd := make([]string, 0, len(outFields))
-		for _, v := range outFields {
-			fieldsToAdd = append(fieldsToAdd, v)
-		}
+		fieldsToAdd = append(fieldsToAdd, outFields...)
 		ret.OutputFields = ret.OutputFields.AddFields(fieldsToAdd)
 	}
 	return ret
