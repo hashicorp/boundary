@@ -159,3 +159,48 @@ func TestEventer_Gating(t *testing.T) {
 		})
 	}
 }
+
+func TestReleaseGate_NoError_CanceledContext(t *testing.T) {
+	require := require.New(t)
+
+	buffer := new(bytes.Buffer)
+	eventerConfig := EventerConfig{
+		AuditEnabled:        true,
+		ObservationsEnabled: true,
+		SysEventsEnabled:    true,
+		Sinks: []*SinkConfig{
+			{
+				Name:       "test-sink",
+				EventTypes: []Type{EveryType},
+				Format:     TextHclogSinkFormat,
+				Type:       WriterSink,
+				WriterConfig: &WriterSinkTypeConfig{
+					Writer: buffer,
+				},
+			},
+		},
+	}
+	testLock := &sync.Mutex{}
+	testLogger := testLogger(t, testLock)
+
+	eventer, err := NewEventer(
+		testLogger,
+		testLock,
+		"TestEventer_Gating",
+		eventerConfig,
+		WithGating(true),
+	)
+	require.NoError(err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	ctx, err = NewEventerContext(ctx, eventer)
+	require.NoError(err)
+
+	WriteError(ctx, "error-1", fmt.Errorf("error-1"))
+	_ = WriteObservation(ctx, "observation-1", WithId("observation-1"), WithHeader("foo", "bar"))
+
+	cancel()
+
+	require.NoError(eventer.ReleaseGate())
+}

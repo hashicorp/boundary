@@ -794,14 +794,18 @@ func (e *Eventer) ReleaseGate() error {
 		if qe == nil {
 			continue // we may have already sent this but gotten errors later
 		}
+		ctx, cancel := newSendCtx(qe.ctx)
+		if cancel != nil {
+			defer cancel()
+		}
 		var queuedOp string
 		switch t := qe.event.(type) {
 		case *sysEvent:
 			queuedOp = "system"
-			writeErr = e.writeSysEvent(qe.ctx, t, WithNoGateLocking(true))
+			writeErr = e.writeSysEvent(ctx, t, WithNoGateLocking(true))
 		case *err:
 			queuedOp = "error"
-			writeErr = e.writeError(qe.ctx, t, WithNoGateLocking(true))
+			writeErr = e.writeError(ctx, t, WithNoGateLocking(true))
 		default:
 			// Have no idea what this is and shouldn't have gotten in here to
 			// begin with, so just continue, and log it
