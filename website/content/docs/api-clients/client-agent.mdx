@@ -277,11 +277,11 @@ If you want to disable the Boundary Client Agent, you can stop it with the follo
 $ sudo launchctl unload -w /Library/LaunchDaemons/com.hashicorp.boundary.boundary-client-agent.plist
 ```
 
-<Note>
+Unloading the Boundary client agent removes its launch daemon configuration. To restart the agent, use:
 
-Unloading the Boundary client agent removes its launch daemon configuration. To restart the agent, use `sudo launchctl load ...`
-
-</Note>
+```shell-session
+$ sudo launchctl load -w /Library/LaunchDaemons/com.hashicorp.boundary.boundary-client-agent.plist
+```
 
 </Tab>
 <Tab heading="Windows" group="windows">
