@@ -193,12 +193,12 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	authorizedDownstreams := &pbs.AuthorizedDownstreamWorkerList{}
 	if len(req.GetConnectedWorkerPublicIds()) > 0 {
-		knownConnectedWorkers, err := serverRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithWorkerPool(req.GetConnectedWorkerPublicIds()), server.WithLiveness(-1))
+		knownConnectedWorkers, err := serverRepo.VerifyKnownWorkers(ctx, req.GetConnectedWorkerPublicIds())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting known connected worker ids"))
 			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting known connected worker ids: %v", err)
 		}
-		authorizedDownstreams.WorkerPublicIds = server.WorkerList(knownConnectedWorkers).PublicIds()
+		authorizedDownstreams.WorkerPublicIds = knownConnectedWorkers
 	}
 
 	if len(req.GetConnectedUnmappedWorkerKeyIdentifiers()) > 0 {
