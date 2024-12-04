@@ -1,8 +1,8 @@
 ---
 layout: docs
-page_title: Controller - configuration
-description: |-
-  The controller stanza configures controller-specifc parameters.
+page_title: Controller configuration
+description: >-
+  Learn about configuring controller-specific parameters. Understand how to configure the required KMS stanzas, and view a complete configuration example.
 ---
 
 # `controller` stanza
@@ -81,7 +81,7 @@ description will be read.
   bind a publicly accessible IP to a NIC on the host directly, such as an Amazon
   EIP. This value can be a direct address string, can refer to a file on disk (file://)
   from which an address will be read; an env var (env://) from which the
-  address will be read; or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template). 
+  address will be read; or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template).
   Note that the address should not include the protocol prefixes like `http://` or `https://`.
 
 - `auth_token_time_to_live` - Maximum time to live (TTL) for all auth tokens globally (pertains
