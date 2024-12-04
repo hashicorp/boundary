@@ -1,8 +1,8 @@
 ---
 layout: docs
 page_title: Data encryption
-description: |-
-  How Boundary secures data at rest
+description: >-
+  Learn how key management services protect the encryption keys used for securing data. Understand key lifecycle management best practices.
 ---
 
 # Data security in Boundary
@@ -15,7 +15,7 @@ Boundary supports and how they are used within the system.
 
 ## The `worker-auth-storage` KMS key
 
-The `worker-auth-storage` KMS key can be used by [Workers registered using worker-led or controller-led 
+The `worker-auth-storage` KMS key can be used by [Workers registered using worker-led or controller-led
 methods](/boundary/docs/configuration/worker/worker-configuration) for storage of authentication
 keys. It is optional for workers; if not specified the authentication keys
 will not be encrypted on disk. This can not used by workers registered using an external KMS.
