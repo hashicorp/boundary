@@ -67,10 +67,10 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.11.0
-	golang.org/x/crypto v0.21.0
+	golang.org/x/crypto v0.22.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.20.0
-	golang.org/x/term v0.18.0
+	golang.org/x/term v0.19.0
 	golang.org/x/tools v0.17.0
 	google.golang.org/genproto v0.0.0-20240205150955-31a09d347014
 	google.golang.org/grpc v1.61.0
@@ -104,7 +104,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3
-	golang.org/x/net v0.23.0
+	golang.org/x/net v0.24.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014
 )
 
@@ -207,7 +207,7 @@ require (
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc6 // indirect
-	github.com/opencontainers/runc v1.2.0-rc.1 // indirect
+	github.com/opencontainers/runc v1.2.0-rc.3 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.46.0 // indirect
