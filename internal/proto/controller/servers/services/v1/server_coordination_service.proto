@@ -15,6 +15,9 @@ service ServerCoordinationService {
   // jobs as well as provide a list of the controllers in the system.
   rpc Status(StatusRequest) returns (StatusResponse) {}
 
+  // Statistics is used by the worker to report non-essential statistics about its sessions and connections.
+  rpc Statistics(StatisticsRequest) returns (StatisticsResponse) {}
+
   // Returns the addresses of HCP Boundary workers, if any
   rpc ListHcpbWorkers(ListHcpbWorkersRequest) returns (ListHcpbWorkersResponse) {}
 }
@@ -93,6 +96,20 @@ message UpstreamServer {
   // Address of the daemon
   string address = 20; // @gotags: `class:"public"`
 }
+
+// StatisticsRequest contains a worker statistics request. This request
+// reports on information that is not important either to maintain existing
+// sessions or create new ones.
+message StatisticsRequest {
+  // The ID of the worker making the request.
+  string worker_id = 10; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The statistics of the sessions managed by this worker
+  repeated servers.v1.SessionStatistics sessions = 20;
+}
+
+// StatisticsResponse contains a controller statistics response. Empty for now.
+message StatisticsResponse {}
 
 message StatusRequest {
   reserved 10;
