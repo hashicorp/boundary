@@ -148,7 +148,7 @@ jobs:
           role-skip-session-tagging: true
           role-duration-seconds: 3600
       - name: Configure GCP credentials
-        uses: hashicorp/doormat-action@v1.1.0
+        uses: hashicorp/doormat-action@v1
         with:
           gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
           gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
