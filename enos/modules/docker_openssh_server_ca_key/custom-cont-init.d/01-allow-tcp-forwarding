@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv bash
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
+sed -i 's/AllowTcpForwarding no/AllowTcpForwarding yes/' /config/sshd/sshd_config
