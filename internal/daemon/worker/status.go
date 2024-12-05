@@ -38,19 +38,6 @@ type LastStatusInformation struct {
 func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager, addrReceivers *[]addressReceiver, recorderManager recorderManager) {
 	const op = "worker.(Worker).startStatusTicking"
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// This function exists to desynchronize calls to controllers from
-	// workers, so we aren't always getting status updates at the exact same
-	// intervals, to ease the load on the DB.
-	getRandomInterval := func() time.Duration {
-		// 0 to 0.5 adjustment to the base
-		f := r.Float64() / 2
-		// Half a chance to be faster, not slower
-		if r.Float32() > 0.5 {
-			f = -1 * f
-		}
-		return common.StatusInterval + time.Duration(f*float64(time.Second))
-	}
-
 	timer := time.NewTimer(0)
 	for {
 		select {
@@ -66,9 +53,10 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 				timer.Reset(10 * time.Millisecond)
 				continue
 			}
-
 			w.sendWorkerStatus(cancelCtx, sessionManager, addrReceivers, recorderManager)
-			timer.Reset(getRandomInterval())
+			// Add a bit of jitter to the wait, so we aren't always getting,
+			// status updates at the exact same intervals, to ease the load on the DB.
+			timer.Reset(common.StatusInterval + getRandomInterval(r))
 		}
 	}
 }
@@ -516,4 +504,17 @@ func (w *Worker) isPastGrace() (bool, time.Time, time.Duration) {
 	u := time.Duration(w.successfulStatusGracePeriod.Load())
 	v := time.Since(t)
 	return v > u, t, u
+}
+
+// getRandomInterval exists to desynchronize calls to controllers from
+// workers, so we aren't always getting statistic updates at the exact same
+// intervals, to ease the load on the DB.
+func getRandomInterval(r *rand.Rand) time.Duration {
+	// 0 to 0.5 adjustment to the base
+	f := r.Float64() / 2
+	// Half a chance to be faster, not slower
+	if r.Float32() > 0.5 {
+		f = -1 * f
+	}
+	return time.Duration(f * float64(time.Second))
 }

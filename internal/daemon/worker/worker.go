@@ -197,6 +197,7 @@ type Worker struct {
 	// because they are casted to time.Duration.
 	successfulStatusGracePeriod         *atomic.Int64
 	statusCallTimeoutDuration           *atomic.Int64
+	statisticsCallTimeoutDuration       *atomic.Int64
 	getDownstreamWorkersTimeoutDuration *atomic.Int64
 
 	// AuthRotationNextRotation is useful in tests to understand how long to
@@ -242,6 +243,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		localStorageState:                   new(atomic.Value),
 		successfulStatusGracePeriod:         new(atomic.Int64),
 		statusCallTimeoutDuration:           new(atomic.Int64),
+		statisticsCallTimeoutDuration:       new(atomic.Int64),
 		getDownstreamWorkersTimeoutDuration: new(atomic.Int64),
 		upstreamConnectionState:             new(atomic.Value),
 		downstreamWorkers:                   new(atomic.Pointer[graphContainer]),
@@ -374,8 +376,10 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	switch conf.RawConfig.Worker.StatusCallTimeoutDuration {
 	case 0:
 		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
+		w.statisticsCallTimeoutDuration.Store(int64(common.DefaultStatisticsTimeout))
 	default:
 		w.statusCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+		w.statisticsCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
 	}
 	switch conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration {
 	case 0:

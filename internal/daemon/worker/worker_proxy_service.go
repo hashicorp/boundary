@@ -30,6 +30,10 @@ func NewWorkerProxyServiceServer(
 	}
 }
 
+func (ws *workerProxyServiceServer) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	return pbs.NewServerCoordinationServiceClient(ws.cc).Statistics(ctx, req)
+}
+
 func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	resp, err := pbs.NewServerCoordinationServiceClient(ws.cc).Status(ctx, req)
 

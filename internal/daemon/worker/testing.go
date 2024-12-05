@@ -29,6 +29,8 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -457,3 +459,28 @@ func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name stri
 	require.NoError(t, err)
 	return w, wr.GetPublicId()
 }
+
+// mockServerCoordinationService is meant to stand in for a controller when testing
+// the methods defined by the server coordination service. It allows applying assertions and specifying
+// the return value of grpc methods by overwriting service methods.
+type mockServerCoordinationService struct {
+	pbs.UnimplementedServerCoordinationServiceServer
+	nextReqAssert       func(*pbs.StatusRequest) (*pbs.StatusResponse, error)
+	nextStatisticAssert func(*pbs.StatisticsRequest) (*pbs.StatisticsResponse, error)
+}
+
+func (m mockServerCoordinationService) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
+	if m.nextReqAssert != nil {
+		return m.nextReqAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "Status not implemented")
+}
+
+func (m mockServerCoordinationService) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	if m.nextStatisticAssert != nil {
+		return m.nextStatisticAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "Statistics not implemented")
+}
+
+var _ pbs.ServerCoordinationServiceServer = (*mockServerCoordinationService)(nil)
