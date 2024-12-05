@@ -5,6 +5,7 @@ package handlers
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
@@ -93,6 +95,47 @@ func NewWorkerServiceServer(
 		livenessTimeToStale: livenessTimeToStale,
 		controllerExt:       controllerExt,
 	}
+}
+
+func (ws *workerServiceServer) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	const op = "workers.(workerServiceServer).Statistics"
+	workerId := req.GetWorkerId()
+	if workerId == "" {
+		return &pbs.StatisticsResponse{}, status.Error(codes.InvalidArgument, "worker id is empty")
+	}
+	connectionRepo, err := ws.connectionRepoFn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting connection repo"))
+		return &pbs.StatisticsResponse{}, status.Errorf(codes.Internal, "Error acquiring connection repo: %v", err)
+	}
+	connectionStats := []*session.Connection{}
+	for _, s := range req.GetSessions() {
+		sessionId := s.GetSessionId()
+		if sessionId == "" {
+			return &pbs.StatisticsResponse{}, status.Error(codes.InvalidArgument, "session id is empty")
+		}
+		for _, c := range s.Connections {
+			connectionId := c.GetConnectionId()
+			if connectionId == "" {
+				return &pbs.StatisticsResponse{}, status.Error(codes.InvalidArgument, "connection id is empty")
+			}
+			connectionStats = append(connectionStats, &session.Connection{
+				PublicId:  c.GetConnectionId(),
+				BytesUp:   c.GetBytesUp(),
+				BytesDown: c.GetBytesDown(),
+			})
+		}
+	}
+	if len(connectionStats) == 0 {
+		return &pbs.StatisticsResponse{}, nil
+	}
+	updateBytesErr := session.UpdateConnectionBytesUpDown(ctx, connectionRepo, connectionStats)
+	_, closeOrphanedErr := session.CloseOrphanedConnections(ctx, connectionRepo, workerId, connectionStats)
+	sessionErrs := stderrors.Join(updateBytesErr, closeOrphanedErr)
+	if sessionErrs != nil {
+		return &pbs.StatisticsResponse{}, errors.Wrap(ctx, sessionErrs, op)
+	}
+	return &pbs.StatisticsResponse{}, nil
 }
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {

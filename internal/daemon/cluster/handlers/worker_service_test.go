@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -31,6 +32,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh/testdata"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
@@ -628,4 +631,208 @@ func TestHcpbWorkers(t *testing.T) {
 		gotValues = append(gotValues, worker.Address)
 	}
 	assert.ElementsMatch(expValues, gotValues)
+}
+
+func TestStatistics(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
+	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
+	connectionRepoErrFn := func() (*session.ConnectionRepository, error) {
+		return nil, fmt.Errorf("test error")
+	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
+	cases := []struct {
+		name               string
+		workerService      *workerServiceServer
+		wantErrMsg         string
+		expectedStatusCode codes.Code
+		req                *pbs.StatisticsRequest
+	}{
+		{
+			name:               "empty worker id",
+			workerService:      NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
+			req:                &pbs.StatisticsRequest{},
+			wantErrMsg:         "rpc error: code = InvalidArgument desc = worker id is empty",
+			expectedStatusCode: codes.InvalidArgument,
+		},
+		{
+			name:          "missing session connection repo",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoErrFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
+			req: &pbs.StatisticsRequest{
+				WorkerId: "w_1234567890",
+				Sessions: []*servers.SessionStatistics{
+					{},
+				},
+			},
+			wantErrMsg:         "rpc error: code = Internal desc = Error acquiring connection repo: test error",
+			expectedStatusCode: codes.Internal,
+		},
+		{
+			name:          "nil sessions",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
+			req: &pbs.StatisticsRequest{
+				WorkerId: "w_1234567890",
+			},
+		},
+		{
+			name:          "empty sessions",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
+			req: &pbs.StatisticsRequest{
+				WorkerId: "w_1234567890",
+				Sessions: []*servers.SessionStatistics{},
+			},
+		},
+		{
+			name:          "empty session id",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
+			req: &pbs.StatisticsRequest{
+				WorkerId: "w_1234567890",
+				Sessions: []*servers.SessionStatistics{
+					{},
+				},
+			},
+			wantErrMsg:         "rpc error: code = InvalidArgument desc = session id is empty",
+			expectedStatusCode: codes.InvalidArgument,
+		},
+		{
+			name:          "empty connection id",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
+			req: &pbs.StatisticsRequest{
+				WorkerId: "w_1234567890",
+				Sessions: []*servers.SessionStatistics{
+					{
+						SessionId: "s_1234567890",
+						Connections: []*servers.ConnectionStatistics{
+							{},
+						},
+					},
+				},
+			},
+			wantErrMsg:         "rpc error: code = InvalidArgument desc = connection id is empty",
+			expectedStatusCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tc.workerService.Statistics(context.Background(), tc.req)
+			require.NotNil(got)
+			if tc.wantErrMsg != "" {
+				require.Error(err)
+				assert.ErrorContains(err, tc.wantErrMsg)
+				actualStatus, ok := status.FromError(err)
+				require.True(ok)
+				assert.Equal(tc.expectedStatusCode, actualStatus.Code())
+				return
+			}
+			require.NoError(err)
+		})
+	}
+
+	// update the bytes up and bytes down for an active session and close an orphaned session connection
+	t.Run("happy path", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		connectionRepoFn := func() (*session.ConnectionRepository, error) {
+			return session.NewConnectionRepository(ctx, rw, rw, kms, session.WithWorkerStateDelay(0))
+		}
+		sessRepo, err := sessionRepoFn()
+		require.NoError(err)
+		connRepo, err := connectionRepoFn()
+		require.NoError(err)
+
+		w := server.TestKmsWorker(t, conn, wrapper)
+		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		authToken := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+		userId := authToken.GetIamUserId()
+		hostCatalog := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+		hostSet := static.TestSets(t, conn, hostCatalog.GetPublicId(), 1)[0]
+		host := static.TestHosts(t, conn, hostCatalog.GetPublicId(), 1)[0]
+		static.TestSetMembers(t, conn, hostSet.GetPublicId(), []*static.Host{host})
+		tar := tcp.TestTarget(
+			context.Background(),
+			t, conn, prj.GetPublicId(), "test",
+			target.WithHostSources([]string{hostSet.GetPublicId()}),
+			target.WithSessionConnectionLimit(-1),
+		)
+		s1 := session.TestSession(t, conn, wrapper, session.ComposedOf{
+			UserId:          userId,
+			HostId:          host.GetPublicId(),
+			TargetId:        tar.GetPublicId(),
+			HostSetId:       hostSet.GetPublicId(),
+			AuthTokenId:     authToken.GetPublicId(),
+			ProjectId:       prj.GetPublicId(),
+			Endpoint:        "tcp://127.0.0.1:22",
+			ConnectionLimit: 10,
+		})
+		s1, _, err = sessRepo.ActivateSession(context.Background(), s1.PublicId, s1.Version, session.TestTofu(t))
+		require.NoError(err)
+		c1, err := connRepo.AuthorizeConnection(context.Background(), s1.PublicId, w.GetPublicId())
+		require.NoError(err)
+
+		s2 := session.TestSession(t, conn, wrapper, session.ComposedOf{
+			UserId:          userId,
+			HostId:          host.GetPublicId(),
+			TargetId:        tar.GetPublicId(),
+			HostSetId:       hostSet.GetPublicId(),
+			AuthTokenId:     authToken.GetPublicId(),
+			ProjectId:       prj.GetPublicId(),
+			Endpoint:        "tcp://127.0.0.1:22",
+			ConnectionLimit: 10,
+		})
+		s2, _, err = sessRepo.ActivateSession(context.Background(), s2.PublicId, s2.Version, session.TestTofu(t))
+		require.NoError(err)
+		c2, err := connRepo.AuthorizeConnection(context.Background(), s2.PublicId, w.PublicId)
+		require.NoError(err)
+
+		var expectedBytesUp int64 = 1024
+		var expectedBytesDown int64 = 2048
+		workerService := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
+		got, err := workerService.Statistics(context.Background(), &pbs.StatisticsRequest{
+			WorkerId: w.GetPublicId(),
+			Sessions: []*servers.SessionStatistics{
+				{
+					SessionId: s1.PublicId,
+					Connections: []*servers.ConnectionStatistics{
+						{
+							ConnectionId: c1.PublicId,
+							BytesUp:      expectedBytesUp,
+							BytesDown:    expectedBytesDown,
+						},
+					},
+				},
+			},
+		})
+		require.NoError(err)
+		assert.NotNil(got)
+
+		conn, err := connRepo.LookupConnection(context.Background(), c1.PublicId)
+		require.NoError(err)
+		assert.Equal(expectedBytesUp, conn.BytesUp)
+		assert.Equal(expectedBytesDown, conn.BytesDown)
+		assert.Equal(session.StatusAuthorized, session.ConnectionStatusFromString(conn.Status))
+
+		conn, err = connRepo.LookupConnection(context.Background(), c2.PublicId)
+		require.NoError(err)
+		assert.Empty(conn.BytesUp)
+		assert.Empty(conn.BytesDown)
+		assert.Equal(session.StatusClosed, session.ConnectionStatusFromString(conn.Status))
+	})
 }
