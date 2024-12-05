@@ -147,6 +147,13 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_CI }}
           role-skip-session-tagging: true
           role-duration-seconds: 3600
+      - name: Configure GCP credentials
+        uses: hashicorp/doormat-action@v1.1.0
+        with:
+          gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
+      - id: validate_gcp_credentials
+        run: curl https://www.googleapis.com/oauth2/v2/tokeninfo?access_token=$GOOGLE_OAUTH_ACCESS_TOKEN
       - name: Set up Enos
         uses: hashicorp/action-setup-enos@v1    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
