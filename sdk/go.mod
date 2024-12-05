@@ -20,7 +20,7 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.7 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
@@ -39,7 +39,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.16
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.11
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.9 // indirect
