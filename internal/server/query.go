@@ -4,6 +4,82 @@
 package server
 
 const (
+	listWorkersQuery = `
+	with connection_count (worker_id, count) as (
+    select worker_id,
+           count(1) as count
+      from session_connection
+     where closed_reason is null
+  group by worker_id
+  )
+    select w.public_id,
+           w.scope_id,
+           w.description,
+           w.name,
+           w.address,
+           w.create_time,
+           w.update_time,
+           w.version,
+           w.last_status_time,
+           w.type,
+           w.release_version,
+           w.operational_state,
+           w.local_storage_state,
+           cc.count as active_connection_count,
+           wt.tags as api_tags,
+           ct.tags as config_tags
+      from server_worker w
+ left join (   select worker_id, 
+                     json_agg(json_build_object('key', key, 'value', value)) as tags 
+                from server_worker_api_tag 
+               group by worker_id) wt
+        on w.public_id = wt.worker_id
+ left join (   select worker_id, 
+                     json_agg(json_build_object('key', key, 'value', value)) as tags 
+                from server_worker_config_tag group by worker_id) ct
+        on w.public_id = ct.worker_id
+ left join connection_count as cc
+        on w.public_id = cc.worker_id
+    `
+
+	lookupWorkerQuery = `
+	with connection_count (worker_id, count) as (
+    select worker_id,
+           count(1) as count
+      from session_connection
+     where closed_reason is null
+  group by worker_id
+  )
+    select w.public_id,
+           w.scope_id,
+           w.description,
+           w.name,
+           w.address,
+           w.create_time,
+           w.update_time,
+           w.version,
+           w.last_status_time,
+           w.type,
+           w.release_version,
+           w.operational_state,
+           w.local_storage_state,
+           cc.count as active_connection_count,
+           wt.tags as api_tags,
+           ct.tags as config_tags
+      from server_worker w
+ left join (   select worker_id, 
+                     json_agg(json_build_object('key', key, 'value', value)) as tags 
+                from server_worker_api_tag 
+               group by worker_id) wt
+        on w.public_id = wt.worker_id
+ left join (   select worker_id, 
+                     json_agg(json_build_object('key', key, 'value', value)) as tags 
+                from server_worker_config_tag group by worker_id) ct
+        on w.public_id = ct.worker_id
+ left join connection_count as cc
+        on w.public_id = cc.worker_id
+     where w.public_id = @worker_id
+    `
 	getStorageBucketCredentialStatesByWorkerId = `
 		select spsb.public_id as storage_bucket_id,
 			   wsbcs.permission_type, wsbcs.state, 

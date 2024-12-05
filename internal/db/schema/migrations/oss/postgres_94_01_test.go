@@ -29,7 +29,7 @@ func Test_WorkerTagTableSplit(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	const priorMigration = 92001
-	const serverEnumMigration = 99001
+	const serverEnumMigration = 94001
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 

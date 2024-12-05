@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	stderrors "errors"
 	"fmt"
 	"strings"
@@ -135,20 +136,19 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 	case id == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "id is empty")
 	}
-	wAgg := &workerAggregate{}
-	wAgg.PublicId = id
-	err := reader.LookupById(ctx, wAgg)
+
+	rows, err := reader.Query(ctx, lookupWorkerQuery, []any{sql.Named("worker_id", id)})
 	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	var worker *Worker
+	for rows.Next() {
+		if err := reader.ScanRows(ctx, rows, &worker); err != nil {
+			return nil, err
 		}
-		return nil, errors.Wrap(ctx, err, op)
 	}
-	w, err := wAgg.toWorker(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return w, nil
+	return worker, nil
 }
 
 // ListHcpbManagedWorkers lists all HCPb managed workers' ids and addresses.
@@ -184,15 +184,15 @@ func (r *Repository) ListHcpbManagedWorkers(ctx context.Context, liveness time.D
 }
 
 // ListWorkers will return a listing of Workers and honor the WithLimit option.
-// Supported options: WithWorkerType, WithActiveWorkers, WithLiveness,
-// WithWorkerPool, WithLimit
+// Supported options: WithLimit
 //
-// If WithLiveness is zero the default liveness value is used, if it is negative
-// then the last status update time is ignored.
 // If WithLimit < 0, then unlimited results are returned. If WithLimit == 0, then
-// default limits are used for results.  WithWorkerPool can be provided with a
-// non-zero length slice of worker ids to restrict the returned workers to only
-// ones with the ids provided.
+// default limits are used for results.
+//
+// Please note the cost of calling ListWorkers, as the underlying query calculates a connection count
+// for each worker by joining with the session connection table. Instead of using this function to get
+// worker information, create a domain-specific function that only returns the information you need.
+// The purpose of ListWorkers is to return a list of workers for the API.
 func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
 	const op = "server.(Repository).ListWorkers"
 
@@ -205,30 +205,20 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	default:
 		newOpts = append(newOpts, WithLimit(r.defaultLimit))
 	}
-	// handle the WithLiveness default
-	switch {
-	case opts.withLiveness != 0:
-		newOpts = append(newOpts, WithLiveness(opts.withLiveness))
-	default:
-		newOpts = append(newOpts, WithLiveness(DefaultLiveness))
 
-	}
-	newOpts = append(newOpts, WithWorkerType(opts.withWorkerType))
-	newOpts = append(newOpts, WithActiveWorkers(opts.withActiveWorkers))
-	newOpts = append(newOpts, WithWorkerPool(opts.withWorkerPool))
 	return ListWorkers(ctx, r.reader, scopeIds, newOpts...)
 }
 
 // ListWorkers will return a listing of Workers and honor the WithLimit option.
-// Supported options: WithWorkerType, WithActiveWorkers, WithLiveness,
-// WithWorkerPool, WithLimit
+// Supported options: WithLimit
 //
-// If WithLiveness is zero the default liveness value is used, if it is negative
-// then the last status update time is ignored.
 // If WithLimit < 0, then unlimited results are returned. If WithLimit == 0, then
-// default limits are used for results.  WithWorkerPool can be provided with a
-// non-zero length slice of worker ids to restrict the returned workers to only
-// ones with the ids provided.
+// default limits are used for results.
+//
+// Please note the cost of calling ListWorkers, as the underlying query calculates a connection count
+// for each worker by joining with the session connection table. Instead of using this function to get
+// worker information, create a domain-specific function that only returns the information you need.
+// The purpose of ListWorkers is to return a list of workers for the API.
 func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt ...Option) ([]*Worker, error) {
 	const op = "server.ListWorkers"
 	switch {
@@ -237,38 +227,13 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 	}
 
 	opts := GetOpts(opt...)
-	liveness := opts.withLiveness
-	if liveness == 0 {
-		liveness = DefaultLiveness
-	}
 
-	var where []string
+	query := listWorkersQuery
 	var whereArgs []any
-	if liveness > 0 {
-		where = append(where, fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds())))
-	}
+
 	if len(scopeIds) > 0 {
-		where = append(where, "scope_id in (?)")
+		query = fmt.Sprintf("%s where scope_id in (?)", query)
 		whereArgs = append(whereArgs, scopeIds)
-	}
-
-	switch opts.withWorkerType {
-	case "":
-	case KmsWorkerType, PkiWorkerType:
-		where = append(where, "type = ?")
-		whereArgs = append(whereArgs, opts.withWorkerType.String())
-	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown worker type %v", opts.withWorkerType))
-	}
-
-	if opts.withActiveWorkers {
-		where = append(where, "operational_state = ?")
-		whereArgs = append(whereArgs, ActiveOperationalState.String())
-	}
-
-	if len(opts.withWorkerPool) > 0 {
-		where = append(where, "public_id in (?)")
-		whereArgs = append(whereArgs, opts.withWorkerPool)
 	}
 
 	limit := db.DefaultLimit
@@ -277,25 +242,24 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 		limit = opts.withLimit
 	}
 
-	var wAggs []*workerAggregate
-	if err := reader.SearchWhere(
-		ctx,
-		&wAggs,
-		strings.Join(where, " and "),
-		whereArgs,
-		db.WithLimit(limit),
-	); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
+	if limit > 0 {
+		query = fmt.Sprintf("%s limit %d", query, limit)
 	}
 
-	workers := make([]*Worker, 0, len(wAggs))
-	for _, a := range wAggs {
-		w, err := a.toWorker(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error converting workerAggregate to Worker"))
-		}
-		workers = append(workers, w)
+	var workers []*Worker
+	rows, err := reader.Query(ctx, query, whereArgs)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var worker Worker
+		if err := reader.ScanRows(context.Background(), rows, &worker); err != nil {
+			return nil, err
+		}
+		workers = append(workers, &worker)
+	}
+
 	return workers, nil
 }
 
@@ -597,16 +561,19 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 			// First we need to do a lookup so we can validate that this
 			// function is not being used for workers registered via KMS-PKI
 			// means
-			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
-			if err := reader.LookupById(ctx, wAgg); err != nil {
+			wLookup, err := lookupWorker(ctx, reader, worker.GetPublicId())
+			if err != nil {
 				return errors.Wrap(ctx, err, op)
+			}
+			if wLookup == nil {
+				return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("failed to find worker %q", worker.GetPublicId()))
 			}
 			// If it's a KMS-PKI worker we do not want to allow
 			// name/description/other updates via the API, it should only come
 			// in via the upsert mechanism via status updates. If the public ID
 			// is predictably generated in the KMS fashion, it's a KMS-PKI
 			// worker.
-			workerId, err := NewWorkerIdFromScopeAndName(ctx, wAgg.ScopeId, wAgg.Name)
+			workerId, err := NewWorkerIdFromScopeAndName(ctx, wLookup.ScopeId, wLookup.Name)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id in kms-pki name check case"))
 			}
@@ -628,12 +595,9 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 
-			wAgg = &workerAggregate{PublicId: worker.GetPublicId()}
-			if err := reader.LookupById(ctx, wAgg); err != nil {
+			ret, err = lookupWorker(ctx, reader, worker.GetPublicId())
+			if err != nil {
 				return errors.Wrap(ctx, err, op)
-			}
-			if ret, err = wAgg.toWorker(ctx); err != nil {
-				return err
 			}
 			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId())
 			if err != nil {
