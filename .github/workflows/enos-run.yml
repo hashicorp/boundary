@@ -148,10 +148,13 @@ jobs:
           role-skip-session-tagging: true
           role-duration-seconds: 3600
       - name: Configure GCP credentials
-        uses: hashicorp/doormat-action@v1
+        id: gcp_auth
+        uses: google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c # v2.1.2
         with:
-          gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          access_token_lifetime: '3600s'
+      - name: 'Set up GCP Cloud SDK'
+        uses: google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200 # v2.1.0
       - id: validate_gcp_credentials
         run: curl https://www.googleapis.com/oauth2/v2/tokeninfo?access_token="$GOOGLE_OAUTH_ACCESS_TOKEN"
       - name: Set up Enos
