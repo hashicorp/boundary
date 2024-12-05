@@ -109,7 +109,7 @@ scenario "e2e_docker_base_with_gcp" {
   }
 
   step "create_gcp_target" {
-    module     = module.gcp_target
+    module = module.gcp_target
     depends_on = [
       step.gcp_iam_setup
     ]
