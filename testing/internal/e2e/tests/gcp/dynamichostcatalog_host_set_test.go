@@ -24,10 +24,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliCreateGCPDynamicHostCatalogWithHostSet uses the boundary cli to create a host catalog with the GCP
+// TestCliCreateGcpDynamicHostCatalogWithHostSet uses the boundary cli to create a host catalog with the GCP
 // plugin. The test sets up an GCP dynamic host catalog, creates some host sets, sets up a target to
 // one of the host sets, and attempts to connect to the target.
-func TestCliCreateGCPDynamicHostCatalogWithHostSet(t *testing.T) {
+func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestCliCreateGCPDynamicHostCatalogWithHostSet(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateGCPHostCatalogCli(t, ctx, projectId, c.GcpProjectId, c.GcpClientEmail, c.GcpPrivateKeyId, c.GcpPrivateKey, c.GcpZone)
+	hostCatalogId, err := boundary.CreateGcpHostCatalogCli(t, ctx, projectId, c.GcpProjectId, c.GcpClientEmail, c.GcpPrivateKeyId, c.GcpPrivateKey, c.GcpZone)
 	require.NoError(t, err)
 
 	// Set up a host set

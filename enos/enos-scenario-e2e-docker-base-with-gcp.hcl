@@ -102,9 +102,9 @@ scenario "e2e_docker_base_with_gcp" {
     ]
 
     variables {
-      test_id         = step.create_test_id.string
-      test_email      = var.test_email
-      gcp_project_id  = var.gcp_project_id
+      test_id        = step.create_test_id.string
+      test_email     = var.test_email
+      gcp_project_id = var.gcp_project_id
     }
   }
 
@@ -115,11 +115,11 @@ scenario "e2e_docker_base_with_gcp" {
     ]
 
     variables {
-      enos_user            = var.enos_user
-      instance_type        = var.gcp_target_instance_type
-      gcp_region           = var.gcp_region
-      gcp_zone             = var.gcp_zone
-      target_count         = 1
+      enos_user     = var.enos_user
+      instance_type = var.gcp_target_instance_type
+      gcp_region    = var.gcp_region
+      gcp_zone      = var.gcp_zone
+      target_count  = 1
     }
   }
 
@@ -130,31 +130,31 @@ scenario "e2e_docker_base_with_gcp" {
       step.create_gcp_target
     ]
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/gcp"
-      docker_mirror            = var.docker_mirror
-      network_name             = step.create_docker_network.network_name
-      go_version               = var.go_version
-      debug_no_run             = var.e2e_debug_no_run
-      alb_boundary_api_addr    = step.create_boundary.address
-      auth_method_id           = step.create_boundary.auth_method_id
-      auth_login_name          = step.create_boundary.login_name
-      auth_password            = step.create_boundary.password
-      local_boundary_dir       = step.build_boundary_docker_image.cli_zip_path
-      local_boundary_src_dir   = local.local_boundary_src_dir
-      gcp_host_set_filter1     = step.create_gcp_target.filter_label1
-      gcp_host_set_filter2     = step.create_gcp_target.filter_label2
-      gcp_private_key_id       = step.gcp_iam_setup.gcp_private_key_id
-      gcp_private_key          = step.gcp_iam_setup.gcp_private_key
-      gcp_zone                 = var.gcp_zone
-      gcp_region               = var.gcp_region
-      gcp_project_id           = var.gcp_project_id
-      gcp_client_email         = step.gcp_iam_setup.gcp_client_email
-      gcp_target_ssh_key       = step.create_gcp_target.target_ssh_key
-      gcp_host_set_ips         = step.create_gcp_target.target_ips
-      target_address           = step.create_gcp_target.target_public_ips[0]
-      target_port              = "22"
-      target_user              = "ubuntu"
-      max_page_size            = step.create_boundary.max_page_size
+      test_package           = "github.com/hashicorp/boundary/testing/internal/e2e/tests/gcp"
+      docker_mirror          = var.docker_mirror
+      network_name           = step.create_docker_network.network_name
+      go_version             = var.go_version
+      debug_no_run           = var.e2e_debug_no_run
+      alb_boundary_api_addr  = step.create_boundary.address
+      auth_method_id         = step.create_boundary.auth_method_id
+      auth_login_name        = step.create_boundary.login_name
+      auth_password          = step.create_boundary.password
+      local_boundary_dir     = step.build_boundary_docker_image.cli_zip_path
+      local_boundary_src_dir = local.local_boundary_src_dir
+      gcp_host_set_filter1   = step.create_gcp_target.filter_label1
+      gcp_host_set_filter2   = step.create_gcp_target.filter_label2
+      gcp_private_key_id     = step.gcp_iam_setup.gcp_private_key_id
+      gcp_private_key        = step.gcp_iam_setup.gcp_private_key
+      gcp_zone               = var.gcp_zone
+      gcp_region             = var.gcp_region
+      gcp_project_id         = var.gcp_project_id
+      gcp_client_email       = step.gcp_iam_setup.gcp_client_email
+      gcp_target_ssh_key     = step.create_gcp_target.target_ssh_key
+      gcp_host_set_ips       = step.create_gcp_target.target_ips
+      target_address         = step.create_gcp_target.target_public_ips[0]
+      target_port            = "22"
+      target_user            = "ubuntu"
+      max_page_size          = step.create_boundary.max_page_size
     }
   }
 }

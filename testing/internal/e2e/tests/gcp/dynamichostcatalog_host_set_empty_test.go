@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -18,10 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliCreateGCPDynamicHostCatalogWithEmptyHostSet uses the boundary cli to create a host catalog with the GCP
+// TestCliCreateGcpDynamicHostCatalogWithEmptyHostSet uses the boundary cli to create a host catalog with the GCP
 // plugin. The test sets up an GCP dynamic host catalog, creates some host sets, sets up a target to
 // one of the host sets, and attempts to connect to the target.
-func TestCliCreateGCPDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
+func TestCliCreateGcpDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -38,7 +39,7 @@ func TestCliCreateGCPDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateGCPHostCatalogCli(t, ctx, projectId, c.GcpProjectId, c.GcpClientEmail, c.GcpPrivateKeyId, c.GcpPrivateKey, c.GcpZone)
+	hostCatalogId, err := boundary.CreateGcpHostCatalogCli(t, ctx, projectId, c.GcpProjectId, c.GcpClientEmail, c.GcpPrivateKeyId, c.GcpPrivateKey, c.GcpZone)
 	require.NoError(t, err)
 
 	// Set up a host set
@@ -101,6 +102,17 @@ func TestCliCreateGCPDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
 
+	// Create a temporary file to store the SSH key string
+	tempFile, err := os.CreateTemp("./", "ssh-key.pem")
+	require.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	// Write the SSH key string to the temporary file
+	_, err = tempFile.WriteString(c.GcpTargetSshKey)
+	require.NoError(t, err)
+	err = tempFile.Close()
+	require.NoError(t, err)
+
 	// Attempt to connect to target
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -109,7 +121,7 @@ func TestCliCreateGCPDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 			"-format", "json",
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.GcpTargetSshUser,
-			"-i", c.GcpTargetSshKey,
+			"-i", tempFile.Name(),
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "IdentitiesOnly=yes", // forces the use of the provided key

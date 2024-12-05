@@ -185,9 +185,8 @@ module "gcp_iam_setup" {
 }
 
 module "gcp_target" {
-  source         = "./modules/gcp_target"
-  target_count   = var.target_count
-
-  environment    = var.environment
-  enos_user      = var.enos_user
+  source       = "./modules/gcp_target"
+  target_count = var.target_count
+  environment  = var.environment
+  enos_user    = var.enos_user
 }

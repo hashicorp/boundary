@@ -347,7 +347,6 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_GCP_PRIVATE_KEY           = var.gcp_private_key
     E2E_GCP_PROJECT_ID            = var.gcp_project_id
     E2E_GCP_CLIENT_EMAIL          = var.gcp_client_email
-    E2E_GCP_REGION                = var.gcp_region
     E2E_GCP_ZONE                  = var.gcp_zone
     E2E_GCP_TARGET_SSH_KEY        = var.gcp_target_ssh_key
     E2E_GCP_HOST_SET_FILTER1      = var.gcp_host_set_filter1

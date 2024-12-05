@@ -360,9 +360,9 @@ func WaitForNumberOfHostsInHostSetCli(t testing.TB, ctx context.Context, hostSet
 	require.NoError(t, err)
 }
 
-// CreateGCPHostCatalogCli uses the cli to create a new GCP dynamic host catalog.
+// CreateGcpHostCatalogCli uses the cli to create a new GCP dynamic host catalog.
 // Returns the id of the new host catalog.
-func CreateGCPHostCatalogCli(
+func CreateGcpHostCatalogCli(
 	t testing.TB,
 	ctx context.Context,
 	projectId string,

@@ -41,8 +41,16 @@ variable "gcp_zone" {
 
 data "enos_environment" "current" {}
 
+resource "random_string" "test_string" {
+  length  = 5
+  lower   = true
+  upper   = false
+  numeric = false
+  special = false
+}
+
 resource "google_compute_network" "boundary_compute_network" {
-  name = "boundary-enos-network"
+  name = "boundary-enos-network-${random_string.test_string.result}"
 }
 
 resource "random_id" "filter_label1" {
@@ -62,16 +70,16 @@ resource "tls_private_key" "ssh" {
 
 resource "google_compute_address" "boundary_external_ip" {
   count        = var.target_count
-  name         = "boundary-external-ip-${count.index}"
+  name         = "boundary-external-ip-${random_string.test_string.result}-${count.index}"
   region       = var.gcp_region
   address_type = "EXTERNAL"
 }
 
 resource "google_compute_firewall" "boundary_private_ssh" {
-  name    = "boundary-private-ssh"
+  name    = "boundary-private-ssh-${random_string.test_string.result}"
   network = google_compute_network.boundary_compute_network.name
   source_ranges = var.private_cidr_block
-  target_tags = ["boundary-target"]
+  target_tags = ["boundary-target-${random_string.test_string.result}"]
 
   allow {
     protocol = "tcp"
@@ -80,10 +88,10 @@ resource "google_compute_firewall" "boundary_private_ssh" {
 }
 
 resource "google_compute_firewall" "boundary_enos_ssh" {
-  name    = "boundary-enos-ssh"
+  name    = "boundary-enos-ssh-${random_string.test_string.result}"
   network = google_compute_network.boundary_compute_network.name
   source_ranges = flatten([formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses)])
-  target_tags = ["boundary-target"]
+  target_tags = ["boundary-target-${random_string.test_string.result}"]
 
   allow {
     protocol = "tcp"
@@ -93,7 +101,7 @@ resource "google_compute_firewall" "boundary_enos_ssh" {
 
 resource "google_compute_instance" "boundary_target" {
   count        = var.target_count
-  name         = "boundary-target-${count.index}"
+  name         = "boundary-target-${random_string.test_string.result}-${count.index}"
   machine_type = var.instance_type
   zone         = var.gcp_zone
 
@@ -111,14 +119,14 @@ resource "google_compute_instance" "boundary_target" {
     }
   }
 
-  tags = ["boundary-target"]
+  tags = ["boundary-target-${random_string.test_string.result}"]
 
   metadata = {
     ssh-keys = "ubuntu:${tls_private_key.ssh.public_key_openssh}"
   }
 
   labels = merge(var.additional_labels, {
-    "name"        : "boundary-target-${count.index}",
+    "name"        : "boundary-target-${random_string.test_string.result}-${count.index}",
     "type"        : "target",
     "project"     : "enos",
     "project_name": "qti-enos-boundary",

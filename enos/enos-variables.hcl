@@ -224,9 +224,3 @@ variable "gcp_project_id" {
   type        = string
   default     = ""
 }
-
-variable "gcp_client_email" {
-  description = "GCP client email"
-  type        = string
-  default     = ""
-}
