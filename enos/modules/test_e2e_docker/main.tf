@@ -224,56 +224,56 @@ variable "test_timeout" {
 }
 variable "gcp_private_key_id" {
   description = "ID of the private key used to authenticate with GCP"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_private_key" {
   description = "Private key used to authenticate with GCP"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_project_id" {
   description = "GCP project where the resources will be created"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_region" {
   description = "GCP region where the resources will be created"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_zone" {
   description = "GCP zone where the resources will be created"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_target_ssh_key" {
   description = "SSH key used to authenticate with GCP target"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_client_email" {
   description = "GCP client email associated with the private key"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_host_set_filter1" {
   description = "value for the first filter in the host set"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_host_set_filter2" {
   description = "value for the second filter in the host set"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "gcp_host_set_ips" {

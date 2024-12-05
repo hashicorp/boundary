@@ -7,13 +7,13 @@ variable "test_id" {}
 variable "test_email" {}
 variable "gcp_project_id" {}
 variable "rolesList" {
-  type = list(string)
+  type        = list(string)
   description = "List of roles to assign to the service account"
-  default = ["roles/compute.viewer","roles/iam.serviceAccountKeyAdmin"]
+  default     = ["roles/compute.viewer", "roles/iam.serviceAccountKeyAdmin"]
 }
 
 locals {
-  user_email =  var.test_email == null ? data.google_client_openid_userinfo.current.email : var.test_email
+  user_email        = var.test_email == null ? data.google_client_openid_userinfo.current.email : var.test_email
   user_email_prefix = replace(split("@", local.user_email)[0], ".", "-")
 }
 
@@ -28,9 +28,9 @@ resource "google_service_account" "enos_service_account" {
 }
 
 resource "google_project_iam_binding" "enos_service_account_user" {
-  count = length(var.rolesList)
+  count   = length(var.rolesList)
   project = var.gcp_project_id
-  role =  var.rolesList[count.index]
+  role    = var.rolesList[count.index]
   members = [
     "serviceAccount:${google_service_account.enos_service_account.email}"
   ]
@@ -44,7 +44,7 @@ resource "google_service_account_key" "enos_service_account_key" {
 }
 
 output "gcp_private_key" {
-  value = jsondecode(base64decode(google_service_account_key.enos_service_account_key.private_key)).private_key
+  value     = jsondecode(base64decode(google_service_account_key.enos_service_account_key.private_key)).private_key
   sensitive = true
 }
 

@@ -76,10 +76,10 @@ resource "google_compute_address" "boundary_external_ip" {
 }
 
 resource "google_compute_firewall" "boundary_private_ssh" {
-  name    = "boundary-private-ssh-${random_string.test_string.result}"
-  network = google_compute_network.boundary_compute_network.name
+  name          = "boundary-private-ssh-${random_string.test_string.result}"
+  network       = google_compute_network.boundary_compute_network.name
   source_ranges = var.private_cidr_block
-  target_tags = ["boundary-target-${random_string.test_string.result}"]
+  target_tags   = ["boundary-target-${random_string.test_string.result}"]
 
   allow {
     protocol = "tcp"
@@ -88,10 +88,10 @@ resource "google_compute_firewall" "boundary_private_ssh" {
 }
 
 resource "google_compute_firewall" "boundary_enos_ssh" {
-  name    = "boundary-enos-ssh-${random_string.test_string.result}"
-  network = google_compute_network.boundary_compute_network.name
+  name          = "boundary-enos-ssh-${random_string.test_string.result}"
+  network       = google_compute_network.boundary_compute_network.name
   source_ranges = flatten([formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses)])
-  target_tags = ["boundary-target-${random_string.test_string.result}"]
+  target_tags   = ["boundary-target-${random_string.test_string.result}"]
 
   allow {
     protocol = "tcp"
@@ -107,12 +107,12 @@ resource "google_compute_instance" "boundary_target" {
 
   boot_disk {
     initialize_params {
-      image  = "ubuntu-os-cloud/ubuntu-2204-lts"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 
   network_interface {
-    network    = google_compute_network.boundary_compute_network.id
+    network = google_compute_network.boundary_compute_network.id
 
     access_config {
       nat_ip = google_compute_address.boundary_external_ip[count.index].address
@@ -126,14 +126,14 @@ resource "google_compute_instance" "boundary_target" {
   }
 
   labels = merge(var.additional_labels, {
-    "name"        : "boundary-target-${random_string.test_string.result}-${count.index}",
-    "type"        : "target",
-    "project"     : "enos",
-    "project_name": "qti-enos-boundary",
+    "name" : "boundary-target-${random_string.test_string.result}-${count.index}",
+    "type" : "target",
+    "project" : "enos",
+    "project_name" : "qti-enos-boundary",
     "environment" : var.environment,
-    "enos_user"   : var.enos_user,
-    "filter_label_1": random_id.filter_label1.hex
-    "filter_label_2": random_id.filter_label2.hex
+    "enos_user" : var.enos_user,
+    "filter_label_1" : random_id.filter_label1.hex
+    "filter_label_2" : random_id.filter_label2.hex
   })
 }
 
@@ -153,7 +153,7 @@ output "target_ips" {
 }
 
 output "target_ssh_key" {
-  value = tls_private_key.ssh.private_key_pem
+  value     = tls_private_key.ssh.private_key_pem
   sensitive = true
 }
 
