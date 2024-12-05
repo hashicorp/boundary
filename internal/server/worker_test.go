@@ -48,12 +48,10 @@ func TestWorkerAggregate(t *testing.T) {
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	getAggWorker := func(id string) *Worker {
-		agg := &workerAggregate{PublicId: id}
-		require.NoError(t, rw.LookupById(ctx, agg))
-		got, err := agg.toWorker(ctx)
-		assert.NoError(t, err)
-		return got
+	getWorker := func(id string) *Worker {
+		ret, err := lookupWorker(ctx, rw, id)
+		require.NoError(t, err)
+		return ret
 	}
 
 	t.Run("kms worker", func(t *testing.T) {
@@ -67,7 +65,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, KmsWorkerType.String(), got.GetType())
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, scope.Global.String(), got.GetScopeId())
@@ -90,7 +88,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
@@ -115,7 +113,7 @@ func TestWorkerAggregate(t *testing.T) {
 				Value:    "val",
 			}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
@@ -149,7 +147,7 @@ func TestWorkerAggregate(t *testing.T) {
 			Value:    "val2",
 		}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
 		assert.Empty(t, got.ApiTags)
 		assert.ElementsMatch(t, got.ConfigTags, []*Tag{
@@ -175,7 +173,7 @@ func TestWorkerAggregate(t *testing.T) {
 				Value:    "val",
 			}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
@@ -209,7 +207,7 @@ func TestWorkerAggregate(t *testing.T) {
 			Value:    "val2",
 		}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
 		assert.ElementsMatch(t, got.ApiTags, []*Tag{
 			{Key: "key", Value: "val2"},
@@ -231,7 +229,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, UnknownLocalStorageState.String(), got.LocalStorageState)
 	})
 
@@ -247,7 +245,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, AvailableLocalStorageState.String(), got.LocalStorageState)
 	})
 }

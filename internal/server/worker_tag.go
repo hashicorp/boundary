@@ -21,6 +21,30 @@ type Tag struct {
 // Tags allows us to scan a JSON array of worker tags from the database
 type Tags []*Tag
 
+func (t *Tags) clone() Tags {
+	newTags := make(Tags, 0, len(*t))
+	for _, tag := range *t {
+		newTags = append(newTags, &Tag{Key: tag.Key, Value: tag.Value})
+	}
+	return newTags
+}
+
+// DeduplicateTags takes a list of Tags and returns a map of deduplicated tags
+func DeduplicateTags(t ...*Tags) map[string][]string {
+	dedupedTags := make(map[Tag]struct{})
+	for _, tags := range t {
+		for _, tag := range *tags {
+			dedupedTags[*tag] = struct{}{}
+		}
+	}
+
+	tags := make(map[string][]string)
+	for t := range dedupedTags {
+		tags[t.Key] = append(tags[t.Key], t.Value)
+	}
+	return tags
+}
+
 // Scan scans value into Tags, and implements the sql.Scanner interface
 func (t *Tags) Scan(in any) error {
 	var err error

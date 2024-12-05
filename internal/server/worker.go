@@ -112,10 +112,9 @@ func AttachWorkerIdToState(ctx context.Context, workerId string) (*structpb.Stru
 // authorizing and establishing a session.  It is owned by a scope.
 type Worker struct {
 	*store.Worker
-	ApiTags    Tags `json:"api_tags" gorm:"->"`
-	ConfigTags Tags `json:"config_tags" gorm:"->"`
-
-	activeConnectionCount uint32 `gorm:"-"`
+	ApiTags               Tags   `json:"api_tags" gorm:"->"`
+	ConfigTags            Tags   `json:"config_tags" gorm:"->"`
+	ActiveConnectionCount uint32 `gorm:"->"`
 
 	// inputTags is not specified to be api or config tags and is not intended
 	// to be read by clients.  Since config tags and api tags are applied in
@@ -168,16 +167,10 @@ func (w *Worker) clone() *Worker {
 		Worker: cw.(*store.Worker),
 	}
 	if w.ApiTags != nil {
-		cWorker.ApiTags = make([]*Tag, 0, len(w.ApiTags))
-		for _, t := range w.ApiTags {
-			cWorker.ApiTags = append(cWorker.ApiTags, &Tag{Key: t.Key, Value: t.Value})
-		}
+		cWorker.ApiTags = w.ApiTags.clone()
 	}
 	if w.ConfigTags != nil {
-		cWorker.ConfigTags = make([]*Tag, 0, len(w.ConfigTags))
-		for _, t := range w.ConfigTags {
-			cWorker.ConfigTags = append(cWorker.ConfigTags, &Tag{Key: t.Key, Value: t.Value})
-		}
+		cWorker.ConfigTags = w.ConfigTags.clone()
 	}
 	if w.inputTags != nil {
 		cWorker.inputTags = make([]*Tag, 0, len(w.inputTags))
@@ -188,28 +181,11 @@ func (w *Worker) clone() *Worker {
 	return cWorker
 }
 
-// ActiveConnectionCount is the current number of sessions this worker is handling
-// according to the controllers.
-func (w *Worker) ActiveConnectionCount() uint32 {
-	return w.activeConnectionCount
-}
-
 // CanonicalTags is the deduplicated set of tags contained on both the resource
 // set over the API as well as the tags reported by the worker itself. This
 // function is guaranteed to return a non-nil map.
 func (w *Worker) CanonicalTags(opt ...Option) map[string][]string {
-	dedupedTags := make(map[Tag]struct{})
-	for _, t := range w.ApiTags {
-		dedupedTags[*t] = struct{}{}
-	}
-	for _, t := range w.ConfigTags {
-		dedupedTags[*t] = struct{}{}
-	}
-	tags := make(map[string][]string)
-	for t := range dedupedTags {
-		tags[t.Key] = append(tags[t.Key], t.Value)
-	}
-	return tags
+	return DeduplicateTags(&w.ApiTags, &w.ConfigTags)
 }
 
 // GetConfigTags returns the tags for this worker which has been set through
@@ -244,61 +220,4 @@ func (w *Worker) GetLastStatusTime() *timestamp.Timestamp {
 // TableName overrides the table name used by Worker to `server_worker`
 func (Worker) TableName() string {
 	return "server_worker"
-}
-
-// workerAggregate contains an aggregated view of the values associated with
-// a single worker.
-type workerAggregate struct {
-	PublicId              string `gorm:"primary_key"`
-	ScopeId               string
-	Name                  string
-	Description           string
-	CreateTime            *timestamp.Timestamp
-	UpdateTime            *timestamp.Timestamp
-	Address               string
-	Version               uint32
-	Type                  string
-	ReleaseVersion        string
-	ApiTags               Tags
-	ActiveConnectionCount uint32
-	OperationalState      string
-	LocalStorageState     string
-	// Config Fields
-	LastStatusTime   *timestamp.Timestamp
-	WorkerConfigTags Tags
-}
-
-func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
-	const op = "server.(workerAggregate).toWorker"
-	worker := &Worker{
-		Worker: &store.Worker{
-			PublicId:          a.PublicId,
-			Name:              a.Name,
-			Description:       a.Description,
-			Address:           a.Address,
-			CreateTime:        a.CreateTime,
-			UpdateTime:        a.UpdateTime,
-			ScopeId:           a.ScopeId,
-			Version:           a.Version,
-			LastStatusTime:    a.LastStatusTime,
-			Type:              a.Type,
-			ReleaseVersion:    a.ReleaseVersion,
-			OperationalState:  a.OperationalState,
-			LocalStorageState: a.LocalStorageState,
-		},
-		activeConnectionCount: a.ActiveConnectionCount,
-		RemoteStorageStates:   map[string]*plugin.StorageBucketCredentialState{},
-		ApiTags:               a.ApiTags,
-		ConfigTags:            a.WorkerConfigTags,
-	}
-
-	return worker, nil
-}
-
-func (a *workerAggregate) GetPublicId() string {
-	return a.PublicId
-}
-
-func (workerAggregate) TableName() string {
-	return "server_worker_aggregate"
 }
