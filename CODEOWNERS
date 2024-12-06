@@ -5,3 +5,8 @@
 # education
 
 /website/content/                        @hashicorp/boundary-education-approvers
+/website/public/                         @hashicorp/boundary-education-approvers
+
+# web presence
+
+/website/                                @hashicorp/web-presence
