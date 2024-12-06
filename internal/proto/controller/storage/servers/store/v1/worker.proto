@@ -80,7 +80,10 @@ message Worker {
 
 // WorkerTag is a tag for a worker.  The primary key is comprised of the
 // worker_id, key, value, and source.
+// WorkerTag is deprecated- use ApiTag and ConfigTag instead.
 message WorkerTag {
+  option deprecated = true;
+
   // worker_id is the public key that key of the worker this tag is for.
   // @inject_tag: `gorm:"primary_key"`
   string worker_id = 10;
@@ -96,6 +99,38 @@ message WorkerTag {
   // source is the source of the tag. Either 'configuration' or 'api'.
   // @inject_tag: `gorm:"primary_key"`
   string source = 40;
+}
+
+// ApiTag is an API tag for a worker. The primary key is comprised of the
+// worker_id, key, and value
+message ApiTag {
+  // worker_id is the public key that key of the worker this tag is for.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // key is the key of the tag. This must be set.
+  // @inject_tag: `gorm:"primary_key"`
+  string key = 20;
+
+  // value is the value
+  // @inject_tag: `gorm:"primary_key"`
+  string value = 30;
+}
+
+// ConfigTag is a configuration tag for a worker. The primary key is comprised of the
+// worker_id, key, and value
+message ConfigTag {
+  // worker_id is the public key that key of the worker this tag is for.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // key is the key of the tag. This must be set.
+  // @inject_tag: `gorm:"primary_key"`
+  string key = 20;
+
+  // value is the value
+  // @inject_tag: `gorm:"primary_key"`
+  string value = 30;
 }
 
 // WorkerStorageBucketCredentialState is a state for a storage bucket credential for a worker.

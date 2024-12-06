@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/db"
@@ -89,8 +90,8 @@ type downstreamWorkersTicker interface {
 var (
 	downstreamReceiverFactory func(*atomic.Int64) (downstreamReceiver, error)
 
-	downstreamersFactory           func(context.Context, string, string) (common.Downstreamers, error)
-	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver, *atomic.Int64) (downstreamWorkersTicker, error)
+	downstreamersFactory           func(context.Context, string, string) (downstream.Downstreamers, error)
+	downstreamWorkersTickerFactory func(context.Context, string, string, downstream.Downstreamers, downstreamReceiver, *atomic.Int64) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
 	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer, kms *kms.Kms) (intglobals.ControllerExtension, error)
 )
@@ -109,7 +110,7 @@ type Controller struct {
 	workerAuthCache *sync.Map
 
 	// downstream workers and routes to those workers
-	downstreamWorkers common.Downstreamers
+	downstreamWorkers downstream.Downstreamers
 	downstreamConns   downstreamReceiver
 
 	apiListeners    []*base.ServerListener

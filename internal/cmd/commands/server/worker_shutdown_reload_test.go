@@ -17,8 +17,8 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
-	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -96,7 +96,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 
 	// Authorize and connect
 	// This prevents us from running tests in parallel.
-	tg.SetupSuiteTargetFilters(t)
+	server.TestUseCommunityFilterWorkersFn(t)
 	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id, helper.WithSkipSessionTeardown(true))
 	sConn := sess.Connect(ctx, t)
 

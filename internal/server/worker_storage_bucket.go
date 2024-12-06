@@ -18,6 +18,11 @@ import (
 
 const UpsertWorkerStorageBucketJobName = "upsert_worker_storage_bucket"
 
+type WorkerStorageBucket struct {
+	WorkerId string
+	Buckets  []*storagebuckets.StorageBucket
+}
+
 type UpdateStorageBucketCredential struct {
 	PublicId                  string `gorm:"primary_key"`
 	StorageBucketCredentialId string
