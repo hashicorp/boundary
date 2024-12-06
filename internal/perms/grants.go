@@ -53,9 +53,10 @@ type GrantTuple struct {
 type GrantTuples []GrantTuple
 
 // GrantsHash returns a stable hash of all the grants in the GrantTuples.
+//
+// In the event that GrantTuples is nil, return a slice of empty bytes: []byte{0,0,0,0,0,0,0,0}
 func (g GrantTuples) GrantHash(ctx context.Context) ([]byte, error) {
 	const op = "perms.(GrantTuples).GrantHash"
-	// TODO: Should this return an error when the GrantTuples is empty?
 	var values []string
 	for _, grant := range g {
 		values = append(values, grant.Grant, grant.RoleId, grant.GrantScopeId)
