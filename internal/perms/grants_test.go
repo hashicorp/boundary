@@ -1083,6 +1083,18 @@ func TestHasActionOrSubaction(t *testing.T) {
 	}
 }
 
+func Test_HasNoGrants(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var gt GrantTuples
+
+	hash, err := gt.GrantHash(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0, 0, 0, 0, 0, 0, 0, 0}, hash)
+}
+
 func FuzzParse(f *testing.F) {
 	ctx := context.Background()
 	tc := []string{

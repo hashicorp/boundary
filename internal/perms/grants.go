@@ -53,9 +53,10 @@ type GrantTuple struct {
 type GrantTuples []GrantTuple
 
 // GrantsHash returns a stable hash of all the grants in the GrantTuples.
+//
+// In the event that GrantTuples is nil, return a slice of empty bytes: []byte{0,0,0,0,0,0,0,0}
 func (g GrantTuples) GrantHash(ctx context.Context) ([]byte, error) {
 	const op = "perms.(GrantTuples).GrantHash"
-	// TODO: Should this return an error when the GrantTuples is empty?
 	var values []string
 	for _, grant := range g {
 		values = append(values, grant.Grant, grant.RoleId, grant.GrantScopeId)
@@ -207,9 +208,7 @@ func (g Grant) clone() *Grant {
 	}
 	if outFields, hasSetFields := g.OutputFields.Fields(); hasSetFields {
 		fieldsToAdd := make([]string, 0, len(outFields))
-		for _, v := range outFields {
-			fieldsToAdd = append(fieldsToAdd, v)
-		}
+		fieldsToAdd = append(fieldsToAdd, outFields...)
 		ret.OutputFields = ret.OutputFields.AddFields(fieldsToAdd)
 	}
 	return ret

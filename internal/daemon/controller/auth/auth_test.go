@@ -341,5 +341,14 @@ func TestGrantsHash(t *testing.T) {
 	hash3, err := res.GrantsHash(ctx)
 	require.NoError(t, err)
 	assert.False(t, bytes.Equal(hash1, hash3))
-	assert.False(t, bytes.Equal(hash1, hash3))
+	assert.False(t, bytes.Equal(hash2, hash3))
+
+	// Recreate auth result with no grants, should return a slice of empty bytes
+	res.grants = nil
+	hash4, err := res.GrantsHash(ctx)
+	require.NoError(t, err)
+	assert.False(t, bytes.Equal(hash1, hash4))
+	assert.False(t, bytes.Equal(hash2, hash4))
+	assert.False(t, bytes.Equal(hash3, hash4))
+	assert.True(t, bytes.Equal([]byte{0, 0, 0, 0, 0, 0, 0, 0}, hash4))
 }
