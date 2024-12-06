@@ -341,5 +341,5 @@ func TestGrantsHash(t *testing.T) {
 	hash3, err := res.GrantsHash(ctx)
 	require.NoError(t, err)
 	assert.False(t, bytes.Equal(hash1, hash3))
-	assert.False(t, bytes.Equal(hash1, hash3))
+	assert.False(t, bytes.Equal(hash2, hash3))
 }
