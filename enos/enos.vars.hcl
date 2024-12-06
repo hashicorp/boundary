@@ -60,6 +60,9 @@
 // Number of target instances to create. Applies to AWS scenarios only.
 // target_count = 1
 
+// The GCP project ID to use for the tests. Only needed if running GCP scenarios.
+// gcp_project_id = "my-gcp-project-id"
+
 // The directory that contains the copy of the boundary cli that the e2e tests
 // will use in CI. Only needed if e2e_debug_no_run = false.
 // local_boundary_dir = "/Users/<user>/.go/bin"

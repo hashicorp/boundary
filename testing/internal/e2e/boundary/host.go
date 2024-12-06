@@ -240,9 +240,9 @@ func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, acces
 	return hostCatalogId, nil
 }
 
-// CreateAwsHostSetCli uses the cli to create a new host set from an AWS dynamic host catalog.
+// CreatePluginHostSetCli uses the cli to create a new host set from a dynamic host catalog.
 // Returns the id of the new host set.
-func CreateAwsHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string, filter string) (string, error) {
+func CreatePluginHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string, filter string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
@@ -358,4 +358,54 @@ func WaitForNumberOfHostsInHostSetCli(t testing.TB, ctx context.Context, hostSet
 		},
 	)
 	require.NoError(t, err)
+}
+
+// CreateGcpHostCatalogCli uses the cli to create a new GCP dynamic host catalog.
+// Returns the id of the new host catalog.
+func CreateGcpHostCatalogCli(
+	t testing.TB,
+	ctx context.Context,
+	projectId string,
+	gcpProjectId string,
+	clientEmail string,
+	privateKeyId string,
+	privateKey string,
+	zone string,
+) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"host-catalogs", "create", "plugin",
+			"-scope-id", projectId,
+			"-plugin-name", "gcp",
+			"-attr", "disable_credential_rotation=true",
+			"-attr", fmt.Sprintf("project_id=%s", gcpProjectId),
+			"-attr", fmt.Sprintf("client_email=%s", clientEmail),
+			"-attr", fmt.Sprintf("zone=%s", zone),
+			"-secret", "private_key_id=env://E2E_GCP_PRIVATE_KEY_ID",
+			"-secret", "private_key=env://E2E_GCP_PRIVATE_KEY",
+			"-name", fmt.Sprintf("e2e Host Catalog %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_GCP_PRIVATE_KEY_ID", privateKeyId),
+		e2e.WithEnv("E2E_GCP_PRIVATE_KEY", privateKey),
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var createHostCatalogResult hostcatalogs.HostCatalogCreateResult
+	err = json.Unmarshal(output.Stdout, &createHostCatalogResult)
+	if err != nil {
+		return "", err
+	}
+
+	hostCatalogId := createHostCatalogResult.Item.Id
+	t.Logf("Created Host Catalog: %s", hostCatalogId)
+	return hostCatalogId, nil
 }
