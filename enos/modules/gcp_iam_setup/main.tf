@@ -14,12 +14,12 @@ variable "rolesList" {
 
 locals {
   user_email        = var.test_email == null ? data.google_client_openid_userinfo.current.email : var.test_email
-  user_email_prefix = replace(split("@", local.user_email)[0], ".", "-")
+  user_email_prefix = replace(split("@", local.user_email)[0], ".", "-", 0, 10)
 }
 
 resource "random_id" "service_account_client_email" {
   prefix      = "enos-${local.user_email_prefix}"
-  byte_length = 4
+  byte_length = 2
 }
 
 resource "google_service_account" "enos_service_account" {
