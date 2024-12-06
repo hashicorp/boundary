@@ -73,7 +73,7 @@ workers are used to access targets.
 
 Many organizations have strict network policies and prohibit all inbound traffic into their network. In these scenarios, HCP-managed workers can be used as the ingress worker. In order to establish a connection into the network, a self-managed worker configured as an egress worker will initiate an outbound connection to the HCP-managed worker, resulting in a persistent connection. As a result, when end users connect to a target, the end user's connection would hop from the Boundary client to the HCP-managed worker (ingress worker) to the self-managed worker (egress worker) to the target (or other intermediary workers if needed). 
 
-### Configuring HCP-managed workers for ingress 
+### Configure HCP-managed workers for ingress 
 
 In order to configure end user traffic to ingress through HCP-managed workers, you will need to configure the self-managed worker (enterprise version). On your self-managed worker that you are using for egress to the HCP-managed worker, set the configuration file with the following parameters:
 - `hcp_boundary_cluster_id` - The HCP Boundary cluster ID, which can be found in the HCP Boundary cluster's URL.
