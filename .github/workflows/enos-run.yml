@@ -102,6 +102,7 @@ jobs:
       ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
       ENOS_VAR_go_version: ${{ inputs.go-version }}
+      ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -154,6 +155,7 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
           access_token_lifetime: '3600s'
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
       - name: 'Set up GCP Cloud SDK'
         uses: google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200 # v2.1.0
       - name: Set up Enos
