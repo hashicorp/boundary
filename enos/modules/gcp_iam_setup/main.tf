@@ -14,7 +14,7 @@ variable "rolesList" {
 
 locals {
   user_email        = var.test_email == null ? data.google_client_openid_userinfo.current.email : var.test_email
-  user_email_prefix = substring(replace(split("@", local.user_email)[0], ".", "-"), 0, 10)
+  user_email_prefix = substr(replace(split("@", local.user_email)[0], ".", "-"), 0, 10)
 }
 
 resource "random_id" "service_account_client_email" {
