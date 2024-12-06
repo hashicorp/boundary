@@ -98,7 +98,7 @@ func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 				return backoff.Permanent(err)
 			}
 
-			t.Logf("Found %v host(s)", hostCatalogListResult.GetItems())
+			t.Logf("Found %v host(s)", len(hostCatalogListResult.GetItems()))
 
 			actualHostCatalogCount = len(hostCatalogListResult.Items)
 			if actualHostCatalogCount == 0 {
