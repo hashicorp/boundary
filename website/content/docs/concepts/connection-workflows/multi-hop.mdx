@@ -77,7 +77,7 @@ Many organizations have strict network policies that prohibit all inbound traffi
 
 To configure end user traffic to ingress through HCP-managed workers, you must configure the self-managed worker (enterprise version). On your self-managed worker that you use for egress to the HCP-managed worker, set the configuration file with the following parameters:
 - `hcp_boundary_cluster_id` - The HCP Boundary cluster ID, which can be found in the HCP Boundary cluster's URL.
-- Omit the `public_addr` parameter. A public address is not needed since the self-managed worker will initiate the connection to HCP-managed workers.
+- Omit the `public_addr` parameter. A public address is not needed since the self-managed worker initiates the connection to HCP-managed workers.
 - Omit the `initial_upstreams` parameter. This is not needed because the `hcp_boundary_cluster_id` parameter is sufficent to indicate the HCP-managed workers as the upstream.  
 - Include a [worker tag](/boundary/docs/concepts/filtering/worker-tags#target-worker-filtering) in the `worker` stanza which will be used to select multi-hop routes for each target. 
 
