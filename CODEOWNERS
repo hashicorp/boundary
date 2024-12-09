@@ -2,6 +2,6 @@
 # the repo, unless a later match takes precedence.
 * @hashicorp/boundary
 
-# education
+# web presence and education
 
-/website/content/                        @hashicorp/boundary-education-approvers
+/website/       @hashicorp/boundary-education-approvers @hashicorp/web-presence @hashicorp/boundary
