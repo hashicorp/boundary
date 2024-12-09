@@ -4,4 +4,4 @@
 
 # web presence and education
 
-/website/                                @hashicorp/boundary-education-approvers @hashicorp/web-presence @hashicorp/boundary
+/website/       @hashicorp/boundary-education-approvers @hashicorp/web-presence @hashicorp/boundary
