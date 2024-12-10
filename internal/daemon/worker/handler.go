@@ -136,7 +136,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		// Later calls will cause this to noop if they return a different status
 		defer conn.Close(websocket.StatusNormalClosure, "done")
 
-		connCtx, connCancel := context.WithDeadline(ctx, sess.GetExpiration())
+		connCtx, connCancel := context.WithDeadlineCause(ctx, sess.GetExpiration(), fmt.Errorf("%s: session expiration exceeded", op))
 		defer connCancel()
 
 		var handshake proxy.ClientHandshake
