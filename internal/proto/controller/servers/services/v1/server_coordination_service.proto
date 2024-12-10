@@ -27,6 +27,12 @@ service ServerCoordinationService {
   // If the worker fails to successfully report its routing info to the controller,
   // it will try again later.
   rpc RoutingInfo(RoutingInfoRequest) returns (RoutingInfoResponse) {}
+
+  // SessionInfo is used by the worker to inform the controller of all the sessions
+  // it is managing. The controller may inform the worker if any sessions need to be changed.
+  // If the worker repeatedly fails to successfully report its session info to the controller,
+  // it will tear down any running sessions.
+  rpc SessionInfo(SessionInfoRequest) returns (SessionInfoResponse) {}
 }
 
 enum CONNECTIONSTATUS {
@@ -254,4 +260,48 @@ message RoutingInfoResponse {
   // Of the downstream workers in the request, these are the ones
   // which are authorized to remain connected.
   AuthorizedDownstreamWorkerList authorized_downstream_workers = 3;
+}
+
+// Session type represents how the worker is processing a session.
+enum SessionType {
+  SESSION_TYPE_UNSPECIFIED = 0;
+  // A session where the worker is the ingress worker.
+  SESSION_TYPE_INGRESSED = 1;
+  // A session where the worker is doing the recording of the session.
+  SESSION_TYPE_RECORDED = 2;
+}
+
+// Session contains information about a worker managed session
+message Session {
+  // The ID of the session.
+  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The status of the session.
+  SESSIONSTATUS session_status = 2; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Represents how the worker is processing the session.
+  SessionType session_type = 3; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Connections contains information about the connections managed by the session
+  repeated Connection connections = 4;
+}
+
+// SessionInfoRequest contains a worker session information request. This request
+// reports on currently managed sessions on the worker. This includes all ingressed
+// and recorded sessions.
+message SessionInfoRequest {
+  // The ID of the worker making the request.
+  string worker_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The sessions which this worker wants to report the status of.
+  // Includes both ingressed sessions and recorded sessions.
+  repeated Session sessions = 2;
+}
+
+// SessionInfoResponse contains a controller session information response. This
+// response indicates what, if any, changes should be made to the sessions.
+// This also includes any sessions the worker is monitoring but not managing directly.
+message SessionInfoResponse {
+  // List of sessions that are no longer active and whose status should be updated.
+  repeated Session non_active_sessions = 1;
 }

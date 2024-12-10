@@ -26,6 +26,7 @@ const (
 	ServerCoordinationService_Statistics_FullMethodName      = "/controller.servers.services.v1.ServerCoordinationService/Statistics"
 	ServerCoordinationService_ListHcpbWorkers_FullMethodName = "/controller.servers.services.v1.ServerCoordinationService/ListHcpbWorkers"
 	ServerCoordinationService_RoutingInfo_FullMethodName     = "/controller.servers.services.v1.ServerCoordinationService/RoutingInfo"
+	ServerCoordinationService_SessionInfo_FullMethodName     = "/controller.servers.services.v1.ServerCoordinationService/SessionInfo"
 )
 
 // ServerCoordinationServiceClient is the client API for ServerCoordinationService service.
@@ -46,6 +47,11 @@ type ServerCoordinationServiceClient interface {
 	// If the worker fails to successfully report its routing info to the controller,
 	// it will try again later.
 	RoutingInfo(ctx context.Context, in *RoutingInfoRequest, opts ...grpc.CallOption) (*RoutingInfoResponse, error)
+	// SessionInfo is used by the worker to inform the controller of all the sessions
+	// it is managing. The controller may inform the worker if any sessions need to be changed.
+	// If the worker repeatedly fails to successfully report its session info to the controller,
+	// it will tear down any running sessions.
+	SessionInfo(ctx context.Context, in *SessionInfoRequest, opts ...grpc.CallOption) (*SessionInfoResponse, error)
 }
 
 type serverCoordinationServiceClient struct {
@@ -92,6 +98,15 @@ func (c *serverCoordinationServiceClient) RoutingInfo(ctx context.Context, in *R
 	return out, nil
 }
 
+func (c *serverCoordinationServiceClient) SessionInfo(ctx context.Context, in *SessionInfoRequest, opts ...grpc.CallOption) (*SessionInfoResponse, error) {
+	out := new(SessionInfoResponse)
+	err := c.cc.Invoke(ctx, ServerCoordinationService_SessionInfo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServerCoordinationServiceServer is the server API for ServerCoordinationService service.
 // All implementations must embed UnimplementedServerCoordinationServiceServer
 // for forward compatibility
@@ -110,6 +125,11 @@ type ServerCoordinationServiceServer interface {
 	// If the worker fails to successfully report its routing info to the controller,
 	// it will try again later.
 	RoutingInfo(context.Context, *RoutingInfoRequest) (*RoutingInfoResponse, error)
+	// SessionInfo is used by the worker to inform the controller of all the sessions
+	// it is managing. The controller may inform the worker if any sessions need to be changed.
+	// If the worker repeatedly fails to successfully report its session info to the controller,
+	// it will tear down any running sessions.
+	SessionInfo(context.Context, *SessionInfoRequest) (*SessionInfoResponse, error)
 	mustEmbedUnimplementedServerCoordinationServiceServer()
 }
 
@@ -128,6 +148,9 @@ func (UnimplementedServerCoordinationServiceServer) ListHcpbWorkers(context.Cont
 }
 func (UnimplementedServerCoordinationServiceServer) RoutingInfo(context.Context, *RoutingInfoRequest) (*RoutingInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RoutingInfo not implemented")
+}
+func (UnimplementedServerCoordinationServiceServer) SessionInfo(context.Context, *SessionInfoRequest) (*SessionInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SessionInfo not implemented")
 }
 func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
 }
@@ -215,6 +238,24 @@ func _ServerCoordinationService_RoutingInfo_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ServerCoordinationService_SessionInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SessionInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerCoordinationServiceServer).SessionInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ServerCoordinationService_SessionInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerCoordinationServiceServer).SessionInfo(ctx, req.(*SessionInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ServerCoordinationService_ServiceDesc is the grpc.ServiceDesc for ServerCoordinationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -237,6 +278,10 @@ var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RoutingInfo",
 			Handler:    _ServerCoordinationService_RoutingInfo_Handler,
+		},
+		{
+			MethodName: "SessionInfo",
+			Handler:    _ServerCoordinationService_SessionInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

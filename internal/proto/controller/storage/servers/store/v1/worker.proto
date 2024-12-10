@@ -159,3 +159,14 @@ message WorkerStorageBucketCredentialState {
   // @inject_tag: `gorm:"not_null"`
   timestamp.v1.Timestamp checked_at = 60;
 }
+
+// WorkerSessionInfoRequest contains information about a worker and its SessionInfo requests.
+message WorkerSessionInfoRequest {
+  // worker_id is the public id of the worker.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // The last_request_time is the last time a worker has reported its session information.
+  // @inject_tag: `gorm:"default:null"`
+  timestamp.v1.Timestamp last_request_time = 20;
+}
