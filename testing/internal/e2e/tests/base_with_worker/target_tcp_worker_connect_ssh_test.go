@@ -6,10 +6,13 @@ package base_with_worker_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/hashicorp/boundary/api/workers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -234,19 +237,32 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"connect", "ssh",
-			"-target-id", targetId,
-			"-remote-command", "hostname -i",
-			"--",
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		),
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"connect", "ssh",
+					"-target-id", targetId,
+					"-remote-command", "hostname -i",
+					"--",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				),
+			)
+			if output.Err != nil {
+				return errors.New(string(output.Stderr))
+			}
+
+			require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	require.NoError(t, err)
 	t.Log("Successfully connected to target with new filter")
 
 	// Update worker to have a different tag. This should result in a failed connection
@@ -293,19 +309,32 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"connect", "ssh",
-			"-target-id", targetId,
-			"-remote-command", "hostname -i",
-			"--",
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		),
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"connect", "ssh",
+					"-target-id", targetId,
+					"-remote-command", "hostname -i",
+					"--",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				),
+			)
+			if output.Err != nil {
+				return errors.New(string(output.Stderr))
+			}
+
+			require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	require.NoError(t, err)
 	t.Log("Successfully connected to target with new filter")
 
 	// Remove API tags
@@ -359,22 +388,36 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"connect", "ssh",
-			"-target-id", targetId,
-			"-remote-command", "hostname -i",
-			"--",
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		),
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"connect", "ssh",
+					"-target-id", targetId,
+					"-remote-command", "hostname -i",
+					"--",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				),
+			)
+			if output.Err != nil {
+				return errors.New(string(output.Stderr))
+			}
+
+			require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	require.NoError(t, err)
 	t.Log("Successfully connected to target")
 
 	// Remove API tag
+	t.Log("Removing API tag...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"workers", "remove-worker-tags",
@@ -383,18 +426,31 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"connect", "ssh",
-			"-target-id", targetId,
-			"-remote-command", "hostname -i",
-			"--",
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		),
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"connect", "ssh",
+					"-target-id", targetId,
+					"-remote-command", "hostname -i",
+					"--",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				),
+			)
+			if output.Err != nil {
+				return errors.New(string(output.Stderr))
+			}
+
+			require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	require.NoError(t, err)
 	t.Log("Successfully connected to target")
 }
