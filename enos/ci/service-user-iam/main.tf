@@ -228,6 +228,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "s3:HeadBucket",
       "s3:PutBucket*",
       "s3:ListBucket",
+      "s3:PutLifecycleConfiguration",
     ]
 
     resources = ["*"]
