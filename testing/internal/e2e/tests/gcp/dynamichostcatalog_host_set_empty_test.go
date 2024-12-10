@@ -1,13 +1,14 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package aws_test
+package gcp_test
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -18,10 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet uses the boundary cli to create a host catalog with the AWS
-// plugin. The test sets up an AWS dynamic host catalog, creates some host sets, sets up a target to
+// TestCliCreateGcpDynamicHostCatalogWithEmptyHostSet uses the boundary cli to create a host catalog with the GCP
+// plugin. The test sets up an GCP dynamic host catalog, creates some host sets, sets up a target to
 // one of the host sets, and attempts to connect to the target.
-func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
+func TestCliCreateGcpDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -38,11 +39,11 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
+	hostCatalogId, err := boundary.CreateGcpHostCatalogCli(t, ctx, projectId, c.GcpProjectId, c.GcpClientEmail, c.GcpPrivateKeyId, c.GcpPrivateKey, c.GcpZone)
 	require.NoError(t, err)
 
 	// Set up a host set
-	hostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, "tag:empty_test=true")
+	hostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, "labels.empty_test=true")
 	require.NoError(t, err)
 
 	// Check that there are no hosts in the host set
@@ -96,9 +97,20 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	t.Log("Successfully detected zero hosts in the host catalog")
 
 	// Create target
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.GcpTargetPort)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
+
+	// Create a temporary file to store the SSH key string
+	tempFile, err := os.CreateTemp("./", "ssh-key.pem")
+	require.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	// Write the SSH key string to the temporary file
+	_, err = tempFile.WriteString(c.GcpTargetSshKey)
+	require.NoError(t, err)
+	err = tempFile.Close()
 	require.NoError(t, err)
 
 	// Attempt to connect to target
@@ -108,8 +120,8 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 			"-target-id", targetId,
 			"-format", "json",
 			"-exec", "/usr/bin/ssh", "--",
-			"-l", c.TargetSshUser,
-			"-i", c.TargetSshKeyPath,
+			"-l", c.GcpTargetSshUser,
+			"-i", tempFile.Name(),
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "IdentitiesOnly=yes", // forces the use of the provided key

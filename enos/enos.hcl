@@ -17,6 +17,11 @@ terraform "default" {
       source  = "hashicorp/aws"
       version = "5.72.1"
     }
+
+    google = {
+      source  = "hashicorp/google"
+      version = "5.22.0"
+    }
   }
 }
 
@@ -31,4 +36,9 @@ provider "enos" "default" {
       private_key_path = abspath(var.aws_ssh_private_key_path)
     }
   }
+}
+
+provider "google" "default" {
+  region  = var.gcp_region
+  project = var.gcp_project_id
 }
