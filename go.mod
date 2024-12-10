@@ -91,7 +91,7 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/cap/ldap v0.0.0-20240206183135-ed8f24513744
 	github.com/hashicorp/dbassert v0.0.0-20231012105025-1bc1bd88e22b
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20241126174344-f3b1a41a15fd
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20231219183231-6bac757bb482
 	github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.13
