@@ -21,11 +21,11 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -413,7 +413,7 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 	})
 
 	// This prevents us from running tests in parallel.
-	tg.SetupSuiteTargetFilters(t)
+	server.TestUseCommunityFilterWorkersFn(t)
 
 	tc := controller.NewTestController(
 		t,
