@@ -225,14 +225,14 @@ variable "test_timeout" {
 variable "gcp_private_key_id" {
   description = "ID of the private key used to authenticate with GCP"
   type        = string
-  sensitive = true
+  sensitive   = true
   default     = ""
 }
 
 variable "gcp_private_key" {
   description = "Private key used to authenticate with GCP"
   type        = string
-  sensitive = true
+  sensitive   = true
   default     = ""
 }
 
