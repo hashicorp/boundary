@@ -225,12 +225,14 @@ variable "test_timeout" {
 variable "gcp_private_key_id" {
   description = "ID of the private key used to authenticate with GCP"
   type        = string
+  sensitive = true
   default     = ""
 }
 
 variable "gcp_private_key" {
   description = "Private key used to authenticate with GCP"
   type        = string
+  sensitive = true
   default     = ""
 }
 
@@ -255,12 +257,14 @@ variable "gcp_zone" {
 variable "gcp_target_ssh_key" {
   description = "SSH key used to authenticate with GCP target"
   type        = string
+  sensitive   = true
   default     = ""
 }
 
 variable "gcp_client_email" {
   description = "GCP client email associated with the private key"
   type        = string
+  sensitive   = true
   default     = ""
 }
 
