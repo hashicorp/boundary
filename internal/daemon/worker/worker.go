@@ -152,10 +152,11 @@ type Worker struct {
 
 	recorderManager recorderManager
 
-	everAuthenticated *ua.Uint32
-	lastStatusSuccess *atomic.Value
-	workerStartTime   time.Time
-	operationalState  *atomic.Value
+	everAuthenticated      *ua.Uint32
+	lastStatusSuccess      *atomic.Value
+	lastSessionInfoSuccess *atomic.Value
+	workerStartTime        time.Time
+	operationalState       *atomic.Value
 	// localStorageState is the current state of the local storage.
 	// The local storage state is updated based on the local storage events.
 	localStorageState *atomic.Value
@@ -198,6 +199,7 @@ type Worker struct {
 	successfulStatusGracePeriod         *atomic.Int64
 	statusCallTimeoutDuration           *atomic.Int64
 	statisticsCallTimeoutDuration       *atomic.Int64
+	sessionInfoCallTimeoutDuration      *atomic.Int64
 	getDownstreamWorkersTimeoutDuration *atomic.Int64
 
 	// AuthRotationNextRotation is useful in tests to understand how long to
@@ -232,6 +234,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		started:                ua.NewBool(false),
 		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
 		lastStatusSuccess:      new(atomic.Value),
+		lastSessionInfoSuccess: new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
 		// controllerUpstreamMsgConn:   new(atomic.Value),
 		tags:                                new(atomic.Value),
@@ -244,6 +247,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		successfulStatusGracePeriod:         new(atomic.Int64),
 		statusCallTimeoutDuration:           new(atomic.Int64),
 		statisticsCallTimeoutDuration:       new(atomic.Int64),
+		sessionInfoCallTimeoutDuration:      new(atomic.Int64),
 		getDownstreamWorkersTimeoutDuration: new(atomic.Int64),
 		upstreamConnectionState:             new(atomic.Value),
 		downstreamWorkers:                   new(atomic.Pointer[graphContainer]),
@@ -252,6 +256,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	w.operationalState.Store(server.UnknownOperationalState)
 	w.localStorageState.Store(server.UnknownLocalStorageState)
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
+	w.lastSessionInfoSuccess.Store((*lastSessionInfo)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.addressReceivers = []addressReceiver{&grpcResolverReceiver{controllerResolver}}
@@ -377,9 +382,11 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	case 0:
 		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
 		w.statisticsCallTimeoutDuration.Store(int64(common.DefaultStatisticsTimeout))
+		w.sessionInfoCallTimeoutDuration.Store(int64(common.DefaultSessionInfoTimeout))
 	default:
 		w.statusCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
 		w.statisticsCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+		w.sessionInfoCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
 	}
 	switch conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration {
 	case 0:

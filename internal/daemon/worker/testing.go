@@ -465,8 +465,9 @@ func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name stri
 // the return value of grpc methods by overwriting service methods.
 type mockServerCoordinationService struct {
 	pbs.UnimplementedServerCoordinationServiceServer
-	nextReqAssert       func(*pbs.StatusRequest) (*pbs.StatusResponse, error)
-	nextStatisticAssert func(*pbs.StatisticsRequest) (*pbs.StatisticsResponse, error)
+	nextReqAssert         func(*pbs.StatusRequest) (*pbs.StatusResponse, error)
+	nextStatisticAssert   func(*pbs.StatisticsRequest) (*pbs.StatisticsResponse, error)
+	nextSessionInfoAssert func(*pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error)
 }
 
 func (m mockServerCoordinationService) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
@@ -481,6 +482,13 @@ func (m mockServerCoordinationService) Statistics(ctx context.Context, req *pbs.
 		return m.nextStatisticAssert(req)
 	}
 	return nil, status.Error(codes.Unavailable, "Statistics not implemented")
+}
+
+func (m mockServerCoordinationService) SessionInfo(ctx context.Context, req *pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error) {
+	if m.nextSessionInfoAssert != nil {
+		return m.nextSessionInfoAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "SessionInfo not implemented")
 }
 
 var _ pbs.ServerCoordinationServiceServer = (*mockServerCoordinationService)(nil)

@@ -41,7 +41,7 @@ func (m *TestManager) StoreConnection(t *testing.T, sessionId, connectionId stri
 	s, ok := m.manager.sessionMap.Load(sessionId)
 	require.True(t, ok)
 	localSession := s.(*sess)
-	localSession.connInfoMap[connectionId] = &ConnInfo{
+	info := &ConnInfo{
 		Id:     connectionId,
 		Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
 		BytesUp: func() int64 {
@@ -51,5 +51,9 @@ func (m *TestManager) StoreConnection(t *testing.T, sessionId, connectionId stri
 			return 0
 		},
 	}
+	info.connCtxCancelFunc = func() {
+		info.Status = pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED
+	}
+	localSession.connInfoMap[connectionId] = info
 	m.manager.sessionMap.Store(sessionId, localSession)
 }

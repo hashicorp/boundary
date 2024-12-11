@@ -19,6 +19,10 @@ const (
 	// during the worker statistics report
 	StatisticsInterval = 15 * time.Second
 
+	// SessionInfoInterval is the base duration used in the calculation of the random backoff
+	// during the worker session information report
+	SessionInfoInterval = 2 * time.Second
+
 	// DefaultStatusTimeout is the timeout duration on status calls to the controller from
 	// the worker
 	DefaultStatusTimeout = server.DefaultLiveness / 3
@@ -26,4 +30,8 @@ const (
 	// DefaultStatisticsTimeout is the timeout duration on Statistics calls to the controller from
 	// the worker
 	DefaultStatisticsTimeout = server.DefaultLiveness
+
+	// DefaultSessionInfoTimeout is the timeout duration on SessionInfo calls to the controller from
+	// the worker
+	DefaultSessionInfoTimeout = server.DefaultLiveness / 3
 )
