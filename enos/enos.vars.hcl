@@ -63,6 +63,20 @@
 // The GCP project ID to use for the tests. Only needed if running GCP scenarios.
 // gcp_project_id = "my-gcp-project-id"
 
+// The GCP private_key_path. This is used to authenticate with GCP. Only needed
+// if running GCP scenarios. This should not be used in combination with gcp_private_key.
+// gcp_private_key_path = ""
+
+// The GCP private_key. This is used to authenticate with GCP. Only needed
+// if running GCP scenarios. This should not be used in combination with gcp_private_key_path.
+// gcp_private_key = ""
+
+// The GCP private_key_id. Only needed if running GCP scenarios. 
+// gcp_private_key_id = ""
+
+// The GCP client_email used to authenticate with GCP
+// gcp_client_email = "my-gcp-client-email"
+
 // The directory that contains the copy of the boundary cli that the e2e tests
 // will use in CI. Only needed if e2e_debug_no_run = false.
 // local_boundary_dir = "/Users/<user>/.go/bin"
