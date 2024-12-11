@@ -6,6 +6,7 @@ package handlers
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -835,6 +836,287 @@ func TestStatistics(t *testing.T) {
 		assert.Empty(conn.BytesUp)
 		assert.Empty(conn.BytesDown)
 		assert.Equal(session.StatusClosed, session.ConnectionStatusFromString(conn.Status))
+	})
+}
+
+func TestSessionInfo(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, testKms)
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, testKms)
+	}
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, testKms, opts...)
+	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, testKms)
+	}
+	serversErrRepoFn := func() (*server.Repository, error) {
+		return nil, errors.New("unknown error")
+	}
+	sessionErrRepoFn := func(opt ...session.Option) (*session.Repository, error) {
+		return nil, errors.New("unknown error")
+	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iam.TestScopes(t, iamRepo)
+	workerId := server.TestPkiWorker(t, conn, wrapper).PublicId
+	cases := []struct {
+		name               string
+		workerService      *workerServiceServer
+		wantErrMsg         string
+		expectedStatusCode codes.Code
+		req                *pbs.SessionInfoRequest
+		expectedResponse   *pbs.SessionInfoResponse
+	}{
+		{
+			name:               "empty worker id",
+			workerService:      NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), testKms, new(atomic.Int64), fce),
+			req:                &pbs.SessionInfoRequest{},
+			wantErrMsg:         "rpc error: code = InvalidArgument desc = worker id is empty",
+			expectedStatusCode: codes.InvalidArgument,
+		},
+		{
+			name:          "invalid unspecified session type",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), testKms, new(atomic.Int64), fce),
+			req: &pbs.SessionInfoRequest{
+				WorkerId: "w_1234567890",
+				Sessions: []*pbs.Session{
+					{
+						SessionId:     "s_A",
+						SessionType:   pbs.SessionType_SESSION_TYPE_UNSPECIFIED,
+						SessionStatus: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+					},
+				},
+			},
+			wantErrMsg:         "rpc error: code = InvalidArgument desc = unspecified session type",
+			expectedStatusCode: codes.InvalidArgument,
+		},
+		{
+			name:          "invalid unknown session type",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), testKms, new(atomic.Int64), fce),
+			req: &pbs.SessionInfoRequest{
+				WorkerId: "w_1234567890",
+				Sessions: []*pbs.Session{
+					{
+						SessionId:     "s_A",
+						SessionType:   pbs.SessionType(-1),
+						SessionStatus: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+					},
+				},
+			},
+			wantErrMsg:         "rpc error: code = InvalidArgument desc = unknown session type",
+			expectedStatusCode: codes.InvalidArgument,
+		},
+		{
+			name:          "session repository error",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionErrRepoFn, connectionRepoFn, nil, new(sync.Map), testKms, new(atomic.Int64), fce),
+			req: &pbs.SessionInfoRequest{
+				WorkerId: "w_1234567890",
+			},
+			wantErrMsg:         "rpc error: code = Internal desc = Error acquiring repo to query session status: unknown error",
+			expectedStatusCode: codes.Internal,
+		},
+		{
+			name:          "server repository error",
+			workerService: NewWorkerServiceServer(serversErrRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), testKms, new(atomic.Int64), fce),
+			req: &pbs.SessionInfoRequest{
+				WorkerId: "w_1234567890",
+			},
+			wantErrMsg:         "rpc error: code = Internal desc = Error acquiring repo to upsert session info status time: unknown error",
+			expectedStatusCode: codes.Internal,
+		},
+		{
+			name:          "ignore canceled and terminated sessions",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), testKms, new(atomic.Int64), fce),
+			req: &pbs.SessionInfoRequest{
+				WorkerId: workerId,
+				Sessions: []*pbs.Session{
+					{
+						SessionId:     "s_A",
+						SessionStatus: pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+						SessionType:   pbs.SessionType_SESSION_TYPE_INGRESSED,
+					},
+					{
+						SessionId:     "s_B",
+						SessionStatus: pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
+						SessionType:   pbs.SessionType_SESSION_TYPE_INGRESSED,
+					},
+					{
+						SessionId:     "s_C",
+						SessionStatus: pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+						SessionType:   pbs.SessionType_SESSION_TYPE_RECORDED,
+					},
+					{
+						SessionId:     "s_D",
+						SessionStatus: pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
+						SessionType:   pbs.SessionType_SESSION_TYPE_RECORDED,
+					},
+				},
+			},
+			expectedResponse: &pbs.SessionInfoResponse{},
+		},
+		{
+			name:          "empty sessions",
+			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), testKms, new(atomic.Int64), fce),
+			req: &pbs.SessionInfoRequest{
+				WorkerId: workerId,
+			},
+			expectedResponse: &pbs.SessionInfoResponse{},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tc.workerService.SessionInfo(context.Background(), tc.req)
+			require.NotNil(got)
+			if tc.wantErrMsg != "" {
+				require.Error(err)
+				assert.ErrorContains(err, tc.wantErrMsg)
+				actualStatus, ok := status.FromError(err)
+				require.True(ok)
+				assert.Equal(tc.expectedStatusCode, actualStatus.Code())
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Len(got.NonActiveSessions, len(tc.expectedResponse.NonActiveSessions))
+		})
+	}
+
+	t.Run("session canceled with active connections", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		sessionTypes := []pbs.SessionType{
+			pbs.SessionType_SESSION_TYPE_INGRESSED,
+			pbs.SessionType_SESSION_TYPE_RECORDED,
+		}
+		for _, sessionType := range sessionTypes {
+			t.Run(sessionType.String(), func(t *testing.T) {
+				t.Parallel()
+				ctx := context.Background()
+				conn, _ := db.TestSetup(t, "postgres")
+				rw := db.New(conn)
+				wrapper := db.TestWrapper(t)
+				testKms := kms.TestKms(t, conn, wrapper)
+				org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+				serverRepo, err := server.NewRepository(ctx, rw, rw, testKms)
+				require.NoError(err)
+				c := &store.Controller{
+					PrivateId: "test_controller1",
+					Address:   "127.0.0.1",
+				}
+				_, err = serverRepo.UpsertController(ctx, c)
+				require.NoError(err)
+
+				serversRepoFn := func() (*server.Repository, error) {
+					return serverRepo, nil
+				}
+				workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+					return server.NewRepositoryStorage(ctx, rw, rw, testKms)
+				}
+				sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+					return session.NewRepository(ctx, rw, rw, testKms, opts...)
+				}
+				connRepoFn := func() (*session.ConnectionRepository, error) {
+					return session.NewConnectionRepository(ctx, rw, rw, testKms)
+				}
+				fce := &fakeControllerExtension{
+					reader: rw,
+					writer: rw,
+				}
+
+				repo, err := sessionRepoFn()
+				require.NoError(err)
+				connRepo, err := connRepoFn()
+				require.NoError(err)
+
+				at := authtoken.TestAuthToken(t, conn, testKms, org.GetPublicId())
+				uId := at.GetIamUserId()
+				hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+				hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+				h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+				static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+				tar := tcp.TestTarget(
+					ctx,
+					t, conn, prj.GetPublicId(), "test",
+					target.WithHostSources([]string{hs.GetPublicId()}),
+					target.WithSessionConnectionLimit(-1),
+				)
+
+				worker1 := server.TestKmsWorker(t, conn, wrapper)
+				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+					UserId:          uId,
+					HostId:          h.GetPublicId(),
+					TargetId:        tar.GetPublicId(),
+					HostSetId:       hs.GetPublicId(),
+					AuthTokenId:     at.GetPublicId(),
+					ProjectId:       prj.GetPublicId(),
+					Endpoint:        "tcp://127.0.0.1:22",
+					ConnectionLimit: 10,
+				})
+				tofu := session.TestTofu(t)
+				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
+				require.NoError(err)
+				sess2 := session.TestSession(t, conn, wrapper, session.ComposedOf{
+					UserId:          uId,
+					HostId:          h.GetPublicId(),
+					TargetId:        tar.GetPublicId(),
+					HostSetId:       hs.GetPublicId(),
+					AuthTokenId:     at.GetPublicId(),
+					ProjectId:       prj.GetPublicId(),
+					Endpoint:        "tcp://127.0.0.1:22",
+					ConnectionLimit: 10,
+				})
+				tofu2 := session.TestTofu(t)
+				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
+				require.NoError(err)
+
+				s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), testKms, new(atomic.Int64), fce)
+				require.NotNil(t, s)
+
+				_, err = connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
+				require.NoError(err)
+
+				_, err = connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker1.PublicId)
+				require.NoError(err)
+
+				_, err = repo.CancelSession(ctx, sess2.PublicId, sess.Version)
+				require.NoError(err)
+
+				got, err := s.SessionInfo(ctx, &pbs.SessionInfoRequest{
+					WorkerId: worker1.GetPublicId(),
+					Sessions: []*pbs.Session{
+						{
+							SessionId:     sess2.PublicId,
+							SessionStatus: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+							SessionType:   sessionType,
+						},
+					},
+				})
+				require.NoError(err)
+				require.NotNil(got)
+				require.Len(got.NonActiveSessions, 1)
+				actualNonActiveSession := got.NonActiveSessions[0]
+				require.NotNil(actualNonActiveSession)
+				assert.Equal(sess2.PublicId, actualNonActiveSession.SessionId)
+				assert.Equal(pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING, actualNonActiveSession.SessionStatus)
+				assert.Equal(sessionType, actualNonActiveSession.SessionType)
+				assert.Empty(actualNonActiveSession.Connections)
+			})
+		}
 	})
 }
 

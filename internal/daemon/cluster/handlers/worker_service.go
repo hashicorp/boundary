@@ -138,6 +138,91 @@ func (ws *workerServiceServer) Statistics(ctx context.Context, req *pbs.Statisti
 	return &pbs.StatisticsResponse{}, nil
 }
 
+func (ws *workerServiceServer) SessionInfo(ctx context.Context, req *pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error) {
+	const op = "workers.(workerServiceServer).SessionInfo"
+	workerId := req.GetWorkerId()
+	if workerId == "" {
+		return &pbs.SessionInfoResponse{}, status.Error(codes.InvalidArgument, "worker id is empty")
+	}
+	sessionTypeCache := map[string]pbs.SessionType{}
+	var recordedSessionIds []string
+	var ingressedSessionIds []string
+	for _, s := range req.GetSessions() {
+		sessionId := s.GetSessionId()
+		sessionStatus := s.GetSessionStatus()
+		sessionType := s.GetSessionType()
+		switch sessionType {
+		case pbs.SessionType_SESSION_TYPE_UNSPECIFIED:
+			return &pbs.SessionInfoResponse{}, status.Errorf(codes.InvalidArgument, "unspecified session type")
+		case pbs.SessionType_SESSION_TYPE_INGRESSED:
+			if sessionStatus == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING || sessionStatus == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED {
+				// No need to see about canceling anything
+				continue
+			}
+			sessionTypeCache[sessionId] = sessionType
+			ingressedSessionIds = append(ingressedSessionIds, sessionId)
+		case pbs.SessionType_SESSION_TYPE_RECORDED:
+			if sessionStatus == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING || sessionStatus == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED {
+				// No need to see about canceling anything
+				continue
+			}
+			sessionTypeCache[sessionId] = sessionType
+			recordedSessionIds = append(recordedSessionIds, sessionId)
+		default:
+			return &pbs.SessionInfoResponse{}, status.Errorf(codes.InvalidArgument, "unknown session type: %q", s.GetSessionType().String())
+		}
+	}
+
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
+	}
+
+	result := &pbs.SessionInfoResponse{}
+	nonActiveSessions, err := sessRepo.CheckIfNotActive(ctx, append(ingressedSessionIds, recordedSessionIds...))
+	if err != nil {
+		return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal,
+			"Error checking if sessions are no longer active: %v", err)
+	}
+	for _, s := range nonActiveSessions {
+		switch sessionTypeCache[s.SessionId] {
+		case pbs.SessionType_SESSION_TYPE_INGRESSED:
+			var connChanges []*pbs.Connection
+			for _, conn := range s.Connections {
+				connChanges = append(connChanges, &pbs.Connection{
+					ConnectionId: conn.GetPublicId(),
+					Status:       session.StatusClosed.ProtoVal(),
+				})
+			}
+			result.NonActiveSessions = append(result.NonActiveSessions, &pbs.Session{
+				SessionId:     s.SessionId,
+				SessionStatus: s.Status.ProtoVal(),
+				SessionType:   pbs.SessionType_SESSION_TYPE_INGRESSED,
+				Connections:   connChanges,
+			})
+		case pbs.SessionType_SESSION_TYPE_RECORDED:
+			result.NonActiveSessions = append(result.NonActiveSessions, &pbs.Session{
+				SessionId:     s.SessionId,
+				SessionStatus: s.Status.ProtoVal(),
+				SessionType:   pbs.SessionType_SESSION_TYPE_RECORDED,
+			})
+		default:
+			return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal,
+				"unknown session type found for non active session: %q", s.SessionId)
+		}
+	}
+
+	serverRepo, err := ws.serversRepoFn()
+	if err != nil {
+		return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to upsert session info status time: %v", err)
+	}
+	err = serverRepo.UpsertSessionInfo(ctx, workerId)
+	if err != nil {
+		return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal, "Error updating the latest status time for the server session info: %v", err)
+	}
+	return result, nil
+}
+
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	const op = "workers.(workerServiceServer).Status"
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
