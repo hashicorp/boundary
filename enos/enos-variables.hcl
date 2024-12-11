@@ -222,29 +222,34 @@ variable "gcp_zone" {
 variable "gcp_project_id" {
   description = "GCP project where the resources will be created"
   type        = string
+  sensitive   = true
   default     = ""
 }
 
 variable "gcp_private_key_path" {
   description = "Path to the GCP private key"
   type        = string
+  sensitive   = true
   default     = null
 }
 
 variable "gcp_private_key" {
   description = "GCP private key"
   type        = string
+  sensitive   = true
   default     = null
 }
 
 variable "gcp_private_key_id" {
   description = "GCP private key ID"
   type        = string
+  sensitive   = true
   default     = null
 }
 
 variable "gcp_client_email" {
   description = "GCP client email"
   type        = string
+  sensitive   = true
   default     = null
 }

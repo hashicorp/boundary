@@ -103,9 +103,9 @@ jobs:
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
       ENOS_VAR_go_version: ${{ inputs.go-version }}
       ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-      ENOS_VAR_client_email: ${{ secrets.GCP_CLIENT_EMAIL_CI }}
-      ENOS_VAR_private_key_id: ${{ secrets.GCP_PRIVATE_KEY_ID_CI }}
-      ENOS_VAR_private_key: ${{ secrets.GCP_PRIVATE_KEY_CI }}
+      ENOS_VAR_gcp__client_email: ${{ secrets.GCP_CLIENT_EMAIL_CI }}
+      ENOS_VAR_gcp_private_key_id: ${{ secrets.GCP_PRIVATE_KEY_ID_CI }}
+      ENOS_VAR_gcp_private_key: ${{ secrets.GCP_PRIVATE_KEY_CI }}
     steps:
       - name: Checkout
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
