@@ -4,10 +4,13 @@
 package server
 
 import (
+	"math/rand/v2"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWorkerList_FilterWorkersByLocalStorageState(t *testing.T) {
@@ -289,4 +292,47 @@ func Test_FilterStorageBucketCredentialByDeleteAccess(t *testing.T) {
 			assert.Equal(tc.expectedFilter, FilterStorageBucketCredentialByDeleteAccess(tc.sbcState))
 		})
 	}
+}
+
+func TestShuffle(t *testing.T) {
+	t.Parallel()
+
+	t.Run("noElements", func(t *testing.T) {
+		in := WorkerList{}
+		out, err := in.Shuffle()
+		require.NoError(t, err)
+		require.Equal(t, in, out)
+	})
+
+	t.Run("oneElement", func(t *testing.T) {
+		in := WorkerList{NewWorker("test_scope", WithName("1"))}
+		out, err := in.Shuffle()
+		require.NoError(t, err)
+		require.Equal(t, in, out)
+	})
+
+	t.Run("multipleElements", func(t *testing.T) {
+		// We need a large amount of minimum workers here to statistically
+		// mitigate against the case where Shuffle just-so-happens to shuffle
+		// the elements into the same order they were in before.
+		n := rand.IntN(1000-99) + 100 // [100, 1000]
+
+		inOrder := make([]int, 0, n)
+		in := make(WorkerList, 0, n)
+		for i := 0; i < n; i++ {
+			inOrder = append(inOrder, i)
+			in = append(in, NewWorker("test", WithName(strconv.Itoa(i))))
+		}
+
+		out, err := in.Shuffle()
+		require.NoError(t, err)
+		require.ElementsMatch(t, in, out)
+
+		outOrder := make([]int, 0)
+		for _, w := range out {
+			i, _ := strconv.Atoi(w.Name)
+			outOrder = append(outOrder, i)
+		}
+		require.NotEqual(t, inOrder, outOrder)
+	})
 }

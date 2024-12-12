@@ -5,8 +5,10 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 	stderrors "errors"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -64,6 +66,31 @@ func (w WorkerList) SupportsFeature(f version.Feature) WorkerList {
 		}
 	}
 	return ret
+}
+
+// Shuffle returns a randomly-shuffled copy of the caller's Workers (using
+// crypto/rand). If the caller's WorkerList has one element or less, this
+// function is a no-op.
+func (w WorkerList) Shuffle() (WorkerList, error) {
+	if len(w) <= 1 {
+		return w, nil
+	}
+
+	ret := make(WorkerList, len(w))
+	copy(ret, w)
+
+	// This is an adaptation of the Fisher-Yates shuffle used in
+	// math/rand.Shuffle, but using the crypto/rand package instead. The same
+	// caveats as math/rand.Shuffle apply.
+	for i := len(ret) - 1; i > 0; i-- {
+		j, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
+		if err != nil {
+			return nil, err
+		}
+		ret[i], ret[j.Uint64()] = ret[j.Uint64()], ret[i]
+	}
+
+	return ret, nil
 }
 
 // filtered returns a new workerList where all elements contained in it are the
