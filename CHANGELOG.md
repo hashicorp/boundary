@@ -9,6 +9,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Introduces soft-delete for users within the client cache.
   ([PR](https://github.com/hashicorp/boundary/pull/5173)).
 
+## 0.18.2 (2024/12/12)
+### Bug fixes
+
+* Fixed an issue where session recordings would fail when large numbers of
+  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
+
 ## 0.18.1 (2024/11/21)
 ### New and Improved
 
