@@ -32,8 +32,8 @@ func (r *testCommander) Client(opt ...base.Option) (*api.Client, error) {
 	return client, nil
 }
 
-func (r *testCommander) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken {
-	return r.at[a]
+func (r *testCommander) ReadTokenFromKeyring(k, a string) (*authtokens.AuthToken, error) {
+	return r.at[a], nil
 }
 
 func TestSearch(t *testing.T) {
@@ -50,7 +50,10 @@ func TestSearch(t *testing.T) {
 		Token:          "at_2_token",
 		ExpirationTime: time.Now().Add(time.Minute),
 	}
-	cmd := &testCommander{t: t, at: map[string]*authtokens.AuthToken{"tokenname": at, "unsupported": unsupportedAt}}
+	cmd := &testCommander{
+		t:  t,
+		at: map[string]*authtokens.AuthToken{"tokenname": at, "unsupported": unsupportedAt},
+	}
 	boundaryTokenReaderFn := func(ctx context.Context, addr, authToken string) (*authtokens.AuthToken, error) {
 		switch authToken {
 		case at.Token:
@@ -67,12 +70,16 @@ func TestSearch(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		srv.Serve(
+		err := srv.Serve(
 			t,
 			daemon.WithBoundaryTokenReaderFunc(ctx, boundaryTokenReaderFn),
 			daemon.WithReadyToServeNotificationCh(context.Background(), readyNotificationCh),
 		)
+		if err != nil {
+			t.Error("Failed to serve daemon:", err)
+		}
 	}()
+	t.Cleanup(wg.Wait)
 	<-readyNotificationCh
 	srv.AddKeyringToken(t, "address", "keyringtype", "tokenname", at.Id, boundaryTokenReaderFn)
 	srv.AddKeyringToken(t, "address", "keyringtype", "unsupported", unsupportedAt.Id, boundaryTokenReaderFn)

@@ -196,7 +196,10 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is empty", errors.WithoutEvent())
 	}
 	kt := token.clone()
-	keyringStoredAt := r.tokenKeyringFn(kt.KeyringType, kt.TokenName)
+	keyringStoredAt, err := r.tokenKeyringFn(kt.KeyringType, kt.TokenName)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup token in keyring, keyring type: %q, token name: %q", kt.KeyringType, kt.TokenName), errors.WithoutEvent())
+	}
 	if keyringStoredAt == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "unable to find token in the keyring specified", errors.WithoutEvent())
 	}
@@ -224,7 +227,7 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 			at = keyringStoredAt
 		}
 	}
-	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
+	if _, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
 		if err := upsertUserAndAuthToken(ctx, reader, writer, bAddr, at); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
@@ -236,8 +239,7 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 

@@ -174,7 +174,7 @@ func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Cli
 
 		// Try to read the token from the keyring in a best effort way. Ignore
 		// any errors since the keyring may not be present on the system.
-		at := base.ReadTokenFromKeyring(ui, keyringType, tokenName)
+		at, _ := base.ReadTokenFromKeyring(ui, keyringType, tokenName)
 		if at != nil && (token == "" || pa.AuthTokenId == at.Id) {
 			pa.Keyring = &daemon.KeyringToken{
 				KeyringType: keyringType,

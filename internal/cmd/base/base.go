@@ -350,8 +350,10 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			return nil, err
 		}
 
-		authToken := c.ReadTokenFromKeyring(keyringType, tokenName)
-		if authToken != nil {
+		authToken, err := c.ReadTokenFromKeyring(keyringType, tokenName)
+		if err != nil {
+			c.UI.Error(err.Error())
+		} else {
 			c.client.SetToken(authToken.Token)
 		}
 	}
