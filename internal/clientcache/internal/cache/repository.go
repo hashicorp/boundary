@@ -20,7 +20,7 @@ const (
 )
 
 // KeyringTokenLookupFn takes a token name and returns the token from the keyring
-type KeyringTokenLookupFn func(keyring string, tokenName string) *authtokens.AuthToken
+type KeyringTokenLookupFn func(keyring string, tokenName string) (*authtokens.AuthToken, error)
 
 // BoundaryTokenReaderFn reads an auth token's resource information from boundary
 type BoundaryTokenReaderFn func(ctx context.Context, addr string, authToken string) (*authtokens.AuthToken, error)

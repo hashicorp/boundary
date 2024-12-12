@@ -154,6 +154,21 @@ func TestRepository_AddKeyringToken(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("When the keyring function errors", func(t *testing.T) {
+		keyringFn := func(keyring, tokenName string) (*authtokens.AuthToken, error) {
+			return nil, stderrors.New("keyring lookup function failed")
+		}
+		r, err := NewRepository(ctx, s, &sync.Map{}, keyringFn, sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+
+		err = r.AddKeyringToken(ctx, "address", KeyringToken{
+			KeyringType: "k",
+			TokenName:   "t",
+			AuthTokenId: "at_1",
+		})
+		assert.ErrorContains(t, err, "keyring lookup function failed")
+	})
 }
 
 func TestRepository_AddRawToken(t *testing.T) {

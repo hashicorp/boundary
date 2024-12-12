@@ -33,8 +33,8 @@ type ringToken struct {
 // mapBasedAuthTokenKeyringLookup provides a fake KeyringTokenLookupFn that uses
 // the provided map to perform lookups for the tokens
 func mapBasedAuthTokenKeyringLookup(m map[ringToken]*authtokens.AuthToken) cache.KeyringTokenLookupFn {
-	return func(k, t string) *authtokens.AuthToken {
-		return m[ringToken{k, t}]
+	return func(k, t string) (*authtokens.AuthToken, error) {
+		return m[ringToken{k, t}], nil
 	}
 }
 

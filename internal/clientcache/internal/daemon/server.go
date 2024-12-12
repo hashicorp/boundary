@@ -48,7 +48,7 @@ const (
 // and retrieve the keyring and token information used by a command.
 type Commander interface {
 	ClientProvider
-	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
+	ReadTokenFromKeyring(keyringType, tokenName string) (*authtokens.AuthToken, error)
 }
 
 // ClientProvider is an interface that provides an api.Client
