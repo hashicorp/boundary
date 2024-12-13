@@ -22,8 +22,6 @@ scenario "e2e_docker_base_with_gcp" {
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
     gcp_private_key            = var.gcp_private_key_path != null ? file(var.gcp_private_key_path) : var.gcp_private_key
-    gcp_private_key_id         = var.gcp_private_key_id
-    gcp_client_email           = var.gcp_client_email
 
     network_cluster = "e2e_gcp"
 
@@ -129,12 +127,11 @@ scenario "e2e_docker_base_with_gcp" {
       local_boundary_src_dir = local.local_boundary_src_dir
       gcp_host_set_filter1   = step.create_gcp_target.filter_label1
       gcp_host_set_filter2   = step.create_gcp_target.filter_label2
-      gcp_private_key_id     = local.gcp_private_key_id
+      gcp_private_key_id     = var.gcp_private_key_id
       gcp_private_key        = local.gcp_private_key
       gcp_zone               = var.gcp_zone
-      gcp_region             = var.gcp_region
       gcp_project_id         = var.gcp_project_id
-      gcp_client_email       = local.gcp_client_email
+      gcp_client_email       = var.gcp_client_email
       gcp_target_ssh_key     = step.create_gcp_target.target_ssh_key
       gcp_host_set_ips       = step.create_gcp_target.target_ips
       target_address         = step.create_gcp_target.target_public_ips[0]
