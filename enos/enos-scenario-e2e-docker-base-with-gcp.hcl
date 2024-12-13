@@ -104,7 +104,6 @@ scenario "e2e_docker_base_with_gcp" {
     variables {
       enos_user     = var.enos_user
       instance_type = var.gcp_target_instance_type
-      gcp_region    = var.gcp_region
       gcp_zone      = var.gcp_zone
       target_count  = 1
     }

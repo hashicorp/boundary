@@ -242,12 +242,6 @@ variable "gcp_project_id" {
   default     = ""
 }
 
-variable "gcp_region" {
-  description = "GCP region where the resources will be created"
-  type        = string
-  default     = ""
-}
-
 variable "gcp_zone" {
   description = "GCP zone where the resources will be created"
   type        = string

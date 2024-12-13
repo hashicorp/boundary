@@ -18,7 +18,6 @@ type config struct {
 	GcpTargetAddress  string `envconfig:"E2E_TARGET_ADDRESS" required:"true"` // e.g. "192.168.0.1"
 	GcpTargetSshUser  string `envconfig:"E2E_SSH_USER" required:"true"`       // e.g. "ubuntu"
 	GcpTargetPort     string `envconfig:"E2E_TARGET_PORT" required:"true"`    // e.g. "22"
-	MaxPageSize       int    `envconfig:"E2E_MAX_PAGE_SIZE" default:"1000"`
 }
 
 func loadTestConfig() (*config, error) {

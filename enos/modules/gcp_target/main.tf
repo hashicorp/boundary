@@ -28,11 +28,6 @@ variable "private_cidr_block" {
   type    = list(string)
   default = ["10.0.0.0/8"]
 }
-variable "gcp_region" {
-  description = "The region to deploy the resources."
-  type        = string
-  default     = "us-central1"
-}
 variable "gcp_zone" {
   description = "The zone to deploy the resources."
   type        = string
@@ -71,7 +66,6 @@ resource "tls_private_key" "ssh" {
 resource "google_compute_address" "boundary_external_ip" {
   count        = var.target_count
   name         = "boundary-external-ip-${random_string.test_string.result}-${count.index}"
-  region       = var.gcp_region
   address_type = "EXTERNAL"
 }
 

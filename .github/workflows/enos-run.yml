@@ -80,11 +80,11 @@ jobs:
           - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
           - filter: 'e2e_docker_base_plus builder:crt'
+          - filter: 'e2e_docker_base_with_gcp builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
           - filter: 'e2e_docker_base_with_worker builder:crt'
           - filter: 'e2e_docker_worker_registration_controller_led builder:crt'
           - filter: 'e2e_docker_worker_registration_worker_led builder:crt'
-          - filter: 'e2e_docker_base_with_gcp builder:crt'
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
@@ -160,6 +160,7 @@ jobs:
           access_token_lifetime: '3600s'
           project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
       - name: 'Set up GCP Cloud SDK'
+        if: contains(matrix.filter, 'gcp')
         uses: google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200 # v2.1.0
       - name: Set up Enos
         uses: hashicorp/action-setup-enos@v1    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
