@@ -20,7 +20,7 @@ methods](/boundary/docs/configuration/worker/worker-configuration) for storage o
 keys. It is optional for workers; if not specified the authentication keys
 will not be encrypted on disk. This can not used by workers registered using an external KMS.
 
-## The `root` KMS key and per-scope KEK/DEKs <sup>Community Edition only</sup>
+## The `root` KMS key and per-scope KEK/DEKs
 
 Following best practices of using different encryption keys for different
 purposes, Boundary has a number of encryption keys generated within each scope.
@@ -34,6 +34,8 @@ KEKs (also referred to as the scope's `root` key). The scope's `root` KEK
 and the various DEKs (Data Encryption Keys) are created when a scope is created.
 The DEKs are encrypted with the scope's `root` KEK, and this is in turn
 encrypted with the KMS key marked for the `root` purpose.
+
+You can configure `root` KMS keys for self-managed Enterprise or Community edition deployments.
 
 The current scoped DEKs and their purposes are detailed below:
 
@@ -113,14 +115,16 @@ The `bsr` KMS key is required for [session recording](/boundary/docs/configurati
 If you do not add a `bsr` key to your controller configuration, you will receive an error when you attempt to enable session recording.
 The key is used for encrypting data and checking the integrity of recordings.
 
-## The `previous-root` KMS key <sup>Community Edition only</sup>
+## The `previous-root` KMS key
 
 The `previous-root` KMS key is used when migrating to a new `root` key. Adding
 the `previous-root` KMS key to your configuration informs the Controller to use
 it for decrypting the existing information in the database, allowing you to
 rotate and rewrap the KEKs to complete the migration to the new root key.
 
-## The `worker-auth` KMS key <sup>Community Edition only</sup>
+You can configure `previous-root` KMS keys for self-managed Enterprise or Community edition deployments.
+
+## The `worker-auth` KMS key
 
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
 to authenticate a Worker to the Controller. Specifics of this mechanism can be
@@ -128,7 +132,10 @@ found on the [Connections/TLS page](/boundary/docs/concepts/security/connections
 a worker is registered with [worker-led or controller-led
 methods](/boundary/docs/configuration/worker/worker-configuration) this is unnecessary.
 
-## The `recovery` KMS key <sup>Community Edition only</sup>
+You can configure `worker-auth` KMS keys for HCP, Enterprise, and Community edition deployments.
+However, you cannot configure `worker-auth` keys for the first set of workers that connect to your HCP workers.
+
+## The `recovery` KMS key
 
 The `recovery` KMS key is used for rescue/recovery operations that can be used
 by a client to authenticate almost any operation within Boundary. Its mechanism
@@ -140,17 +147,23 @@ cannot be replayed by an adversary, and also to ensure that each operation must
 be individually authenticated by a client so that revoking access to the KMS has
 an immediate result.
 
-~> **Note:** It is not required for this `kms` configuration block to exist in the
+You can configure `recovery` KMS keys for self-managed Enterprise or Community edition deployments.
+
+<Note>
+
+It is not required for this `kms` configuration block to exist in the
 Controller's configuration file. It's best practice to leave it out except when
 actually needed, and to use change control capabilities to ensure that the
 configuration file modification is authorized. After it's no longer needed, the
 block should be removed.
 
+</Note>
+
 On the client side, a user can use the `-recovery-config` flag with any
 operation on the CLI to specify a configuration file containing a suitable `kms`
 block. This functionality is also accessible via the Go SDK.
 
-~> **Note:** Requests authorized via this mechanism will show a user of `u_recovery`. This
+Requests authorized via this mechanism will show a user of `u_recovery`. This
 mechanism _cannot_ be used to authorize a session, as there is no uniquely
 identifying user information available.
 
@@ -164,7 +177,7 @@ with the options to skip creating default resources, Terraform can be used to
 create the specific resources needed instead, with the `recovery` KMS used to
 authenticate setting up the initial auth method(s).
 
-## The `config` KMS key <sup>Community Edition only</sup>
+## The `config` KMS key
 
 This key can be used to encrypt values within Boundary's configuration file. By
 sharing this block between Boundary and an operator, the operator can put
@@ -174,3 +187,5 @@ safely pass the file to a change control system. Only another operator or system
 with access to that KMS can decrypt the values. Boundary will check for a
 `config` KMS block on startup, and if it exists, will use it to decrypt any
 encrypted values found at startup time.
+
+You can configure `config` KMS keys for self-managed Enterprise or Community edition deployments.
