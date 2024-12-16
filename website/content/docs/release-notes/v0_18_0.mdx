@@ -170,7 +170,9 @@ description: >-
 
   <tr>
     <td style={{verticalAlign: 'middle'}}>
-    0.18.0 (Fixed in 0.18.1)
+    0.18.0
+    <br /><br />
+    (Fixed in 0.18.1)
     </td>
     <td style={{verticalAlign: 'middle'}}>
     Users are incorrectly removed from managed groups
@@ -181,6 +183,46 @@ description: >-
     In version 0.18.0 and earlier, there was a maximum number of managed groups supported for an auth method. If you had over 10,000 managed groups, Boundary may have incorrectly removed a user from a group during authentication. This issue is fixed in version 0.18.1. There is no longer a maximum number of managed groups.
     <br /><br />
     Learn more:&nbsp; <a href="/boundary/docs/concepts/domain-model/managed-groups">Managed groups</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.18.0
+    <br /><br />
+    (Fixed in 0.18.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Session recordings fail with an error
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When large numbers of sessions were created around the same time using the AssumeRole API, the AWS STS (Security Token Service) credentials sometimes failed to refresh and session recordings would fail. The failure occurred due to throttling from AWS.
+    <br /><br />
+    Version 0.18.2 adds a cache for Amazon S3 clients to store temporary credentials and prevent AWS resources from being overwhelmed. This issue is now resolved.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/configuration/session-recording/storage-providers/configure-s3">Configure Amazon S3 as a storage provider</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.8.0 - 0.18.1
+    <br /><br />
+    (Fixed in Boundary Community Edition and Boundary Enterprise 0.18.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary controller incorrectly handles HTTP requests and stops prematurely (HCSEC-2024-28)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary Community Edition and Boundary Enterprise incorrectly handle HTTP requests while the Boundary controller is starting up, which may cause the controller to stop prematurely. Boundary is only vulnerable to this flaw during the controller's initialization, which usually occurs in milliseconds during Boundary's startup process.
+    <br /><br />
+    This vulnerability, HCSEC-2024-28, is fixed in Boundary Community Edition and Boundary Enterprise versions 0.16.4, 0.17.3, and 0.18.2.
+    <br /><br />
+    Learn more: <a href="https://discuss.hashicorp.com/t/hcsec-2024-28-boundary-controller-incorrectly-handles-http-requests-on-initialization-which-may-lead-to-a-denial-of-service">HCSEC-2024-28: Boundary controller incorrectly handles http requests on initialization which may lead to a denial of service</a>
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
