@@ -1,0 +1,225 @@
+---
+layout: docs
+page_title: GCP dynamic host catalogs
+description: >-
+  Use dynamic host catalogs to automatically discover GCP Compute Engine VM instances and add them as hosts. Create a host catalog and host set for GCP resources.
+---
+# GCP dynamic host catalogs
+Boundary uses dynamic host catalogs to automatically discover GCP Compute Engine VM instances and add them as hosts.
+
+## Create a host catalog to connect with GCP
+Boundary uses plugins to integrate with a variety of providers. To use
+a dynamic host catalog to integrate with GCP, you create a host catalog of the `plugin` type
+and set the `plugin-name` value to `gcp`. You must also provide the specific
+fields needed for Boundary to authenticate with GCP.
+
+### Authentication with service account
+Create a service account in GCP and download the private key file. The service account must have the following roles:
+- `roles/compute.viewer` (Required): To list Compute Engine VM instance in the project.
+- `roles/iam.serviceAccountKeyAdmin` (Optional): - To rotate the service account key if `disable_credential_rotation` is set to `false`.
+
+Pass the following fields to Boundary for authentication:
+
+<Tabs>
+<Tab heading="CLI">
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id $BOUNDARY_PROJECT_ID \
+  -plugin-name gcp \
+  -attr disable_credential_rotation=true \
+  -attr zone=us-central1-a \
+  -attr project_id=env://GCP_PROJECT_ID \
+  -attr client_email=env://CLIENT_EMAIL \
+  -secret private_key_id=env://PRIVATE_KEY_ID \
+  -secret private_key=file://$PRIVATE_KEY_FILE_PATH
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+  ```hcl
+  resource "boundary_host_catalog_plugin" "gcp_host_catalog" {
+    name        = "GCP Catalog"
+    description = "GCP Host Catalog"
+    scope_id    = boundary_scope.project.id
+    plugin_name = "gcp"
+
+    attributes_json = jsonencode({
+      "zone" = "us-central1-a ",
+      "project_id" = var.gcp_project_id,
+      "client_email" = var.gcp_client_email,
+      "disable_credential_rotation" = true })
+    secrets_json = jsonencode({
+      "private_key_id" = var.private_key_id,
+      "private_key" = var.private_key})
+  }
+  ```
+
+</Tab>
+</Tabs>
+
+### Authentication with service account impersonation
+Service account impersonation allows Boundary to authenticate with GCP using a service account that impersonates another service account. 
+This is useful when you want to restrict the permissions of the service account used by Boundary. Two service accounts are required:
+
+- `Base service account`: The service account used by Boundary to authenticate with GCP. The service account must have the following roles:
+  - `roles/iam.serviceAccountTokenCreator` (Required) - To create a token for the target service account.
+  - `roles/iam.serviceAccountKeyAdmin` (Optional) - To rotate the service account key if `disable_credential_rotation` is set to `false`.
+
+- `Target service account`: The service account to impersonate. The service account must have the following roles:
+  - `roles/compute.viewer` (Required): To list Compute Engine VM instance in the project.
+
+Pass the following fields to Boundary for authentication:
+
+<Tabs>
+<Tab heading="CLI">
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id $BOUNDARY_PROJECT_ID \
+  -plugin-name gcp \
+  -attr disable_credential_rotation=true \
+  -attr zone=us-central1-a \
+  -attr project_id=env://GCP_PROJECT_ID \
+  -attr client_email=env://BASE_SERVICE_ACCOUNT_EMAIL \
+  -attr target_service_account_id=env://TARGET_SERVICE_ACCOUNT_EMAIL \
+  -secret private_key_id=env://BASE_SERVICE_ACCOUNT_PRIVATE_KEY_ID \
+  -secret private_key=file://$BASE_SERVICE_ACCOUNT_PRIVATE_KEY_FILE_PATH
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+  ```hcl
+  resource "boundary_host_catalog_plugin" "gcp_host_catalog" {
+    name        = "GCP Catalog"
+    description = "GCP Host Catalog"
+    scope_id    = boundary_scope.project.id
+    plugin_name = "gcp"
+
+    attributes_json = jsonencode({
+      "zone" = "us-central1-a ",
+      "project_id" = var.gcp_project_id,
+      "client_email" = var.gcp_base_service_account_email,
+      "target_service_account_id" = var.gcp_target_service_account_email,
+      "disable_credential_rotation" = true })
+    secrets_json = jsonencode({
+      "private_key_id" = var.base_service_account_private_key_id,
+      "private_key" = var.base_service_account_private_key})
+  }
+  ```
+
+</Tab>
+</Tabs>
+
+### Authentication with Application Default Credentials (ADC)
+If you are running Boundary on a GCP VM instance, you can use Application Default Credentials (ADC) to authenticate with GCP.
+Boundary will use the service account associated with the VM instance to authenticate with GCP.
+
+Pass the following fields to Boundary for authentication:
+
+<Tabs>
+<Tab heading="CLI">
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id $BOUNDARY_PROJECT_ID \
+  -plugin-name gcp \
+  -attr disable_credential_rotation=true \
+  -attr zone=us-central1-a \
+  -attr project_id=env://GCP_PROJECT_ID
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+  ```hcl
+  resource "boundary_host_catalog_plugin" "gcp_host_catalog" {
+    name        = "GCP Catalog"
+    description = "GCP Host Catalog"
+    scope_id    = boundary_scope.project.id
+    plugin_name = "gcp"
+
+    attributes_json = jsonencode({
+      "zone" = "us-central1-a ",
+      "project_id" = var.gcp_project_id,
+      "disable_credential_rotation" = true })
+  }
+  ```
+
+</Tab>
+</Tabs>
+
+The `scope-id` and `plugin-name` fields are required when you create a
+  dynamic host catalog.
+
+The fields following the `attr` and `secret` flags are specific to GCP and are required by
+  Boundary for authentication.
+
+- `zone` (Required): The deployment area within a region. All host sets in this
+  catalog will be configured for this zone.
+- `project_id` (Required): The project ID associated with the service account.
+- `disable_credential_rotation` (Optional): When set to `true`, Boundary will not rotate the credentials with GCP automatically.
+- `client_email` (Optional): The email address associated with the service account. 
+  The email address used to uniquely identify the service account.
+- `target_service_account_id` (Optional): The email address of the service account to impersonate.  
+  This is used for authentication with service account impersonation.
+- `private_key_id` (Optional): The ID of the private key for the service account to use with this host catalog.
+- `private_key` (Optional): The private key for the service account to use with this host catalog.
+
+Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+
+## Create a host set to connect with GCP
+[Host sets](/boundary/docs/concepts/domain-model/host-sets) specify which GCP
+  filters should be used to identify the discovered hosts that should be added as members.
+
+Create a host set using the following command:
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -host-catalog-id $BOUNDARY_HOST_CATALOG_ID \
+  -attr filters=labels.env=prod \
+  -attr filters=labels.app=web
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+```hcl
+resource "boundary_host_set_plugin" "gcp_host_set" {
+  name        = "GCP Host Set"
+  description = "GCP Host Set"
+  host_catalog_id  = boundary_scope.gcp_host_catalog.id
+  attributes_json = jsonencode({
+  "filters" = ["labels.env=prod", "labels.app=web"] })
+}
+```
+
+</Tab>
+</Tabs>
+
+The `host-catalog-id` value is a required field that specifies in which host catalog to
+  create this host set.
+
+Like with the host catalog, the fields passed in after the `attr` flag are
+ specific to GCP.
+
+The `filters` field contains string filters in the format key=val1. The key corresponds to
+  a filter option. For a list of filter options, refer to the
+  [GCP API documentation](https://cloud.google.com/compute/docs/reference/rest/v1/instances/list#filter). 
+  When multiple filters are provided, the plugin will apply a logical `AND` operation to the filters.
+
+  If there is no explicit instance status filter, the default status will be set to `status="RUNNING"`. 
+  This ensures that we filter on running instances only, saving time when processing results.
+
+  Labels are recommended to be used as filters as they are more flexible and can be used to filter on multiple values
+  as in the following examples:
+  - `-attr filters=labels.env=dev`
+  - `-attr filters=labels.env=prod AND labels.app=web`
+
+For more fields that you can use when creating host sets, refer to
+  [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).
