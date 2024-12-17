@@ -1,13 +1,14 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package aws_test
+package gcp_test
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -23,10 +24,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliCreateAwsDynamicHostCatalogWithHostSet uses the boundary cli to create a host catalog with the AWS
-// plugin. The test sets up an AWS dynamic host catalog, creates some host sets, sets up a target to
+// TestCliCreateGcpDynamicHostCatalogWithHostSet uses the boundary cli to create a host catalog with the GCP
+// plugin. The test sets up an GCP dynamic host catalog, creates some host sets, sets up a target to
 // one of the host sets, and attempts to connect to the target.
-func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
+func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -43,26 +44,18 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
+	hostCatalogId, err := boundary.CreateGcpHostCatalogCli(t, ctx, projectId, c.GcpProjectId, c.GcpClientEmail, c.GcpPrivateKeyId, c.GcpPrivateKey, c.GcpZone)
 	require.NoError(t, err)
 
 	// Set up a host set
-	hostSetId1, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter1)
+	hostSetId1, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.GcpHostSetFilter1)
 	require.NoError(t, err)
-	var targetIps1 []string
-	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps1)
-	expectedHostSetCount1 := len(targetIps1)
-	require.NoError(t, err)
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, expectedHostSetCount1)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, 1)
 
 	// Set up another host set
-	hostSetId2, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter2)
+	hostSetId2, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.GcpHostSetFilter2)
 	require.NoError(t, err)
-	var targetIps2 []string
-	err = json.Unmarshal([]byte(c.AwsHostSetIps2), &targetIps2)
-	require.NoError(t, err)
-	expectedHostSetCount2 := len(targetIps2)
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, expectedHostSetCount2)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, 1)
 
 	// Update host set with a different filter
 	t.Log("Updating host set 2 with host set 1's filter...")
@@ -70,11 +63,22 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 		e2e.WithArgs(
 			"host-sets", "update", "plugin",
 			"-id", hostSetId2,
-			"-attr", fmt.Sprintf("filters=%s", c.AwsHostSetFilter1),
+			"-attr", fmt.Sprintf("filters=%s", c.GcpHostSetFilter1),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, expectedHostSetCount1)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, 1)
+
+	// update host set to use preferred endpoints
+	t.Log("Updating host set 1 to use preferred endpoint...")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"host-sets", "update", "plugin",
+			"-id", hostSetId1,
+			"-preferred-endpoint", fmt.Sprintf("cidr:%s/32", c.GcpTargetAddress),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Get list of all hosts from host catalog
 	t.Logf("Looking for items in the host catalog...")
@@ -94,6 +98,8 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 				return backoff.Permanent(err)
 			}
 
+			t.Logf("Found %v host(s)", len(hostCatalogListResult.GetItems()))
+
 			actualHostCatalogCount = len(hostCatalogListResult.Items)
 			if actualHostCatalogCount == 0 {
 				return errors.New("No items are appearing in the host catalog")
@@ -108,13 +114,23 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	expectedHostCatalogCount := expectedHostSetCount1 + expectedHostSetCount2
-	assert.Equal(t, expectedHostCatalogCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
+	assert.Equal(t, 1, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.GcpTargetPort)
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId1)
+	require.NoError(t, err)
+
+	// Create a temporary file to store the SSH key string
+	tempFile, err := os.CreateTemp("./", "ssh-key.pem")
+	require.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	// Write the SSH key string to the temporary file
+	_, err = tempFile.WriteString(c.GcpTargetSshKey)
+	require.NoError(t, err)
+	err = tempFile.Close()
 	require.NoError(t, err)
 
 	// Connect to target
@@ -123,8 +139,8 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 			"connect",
 			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
-			"-l", c.TargetSshUser,
-			"-i", c.TargetSshKeyPath,
+			"-l", c.GcpTargetSshUser,
+			"-i", tempFile.Name(),
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
@@ -140,19 +156,22 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	t.Log("Successfully connected to the target")
 
 	// Check if connected host exists in the host set
+	var targetIps []string
+	err = json.Unmarshal([]byte(c.GcpHostSetIps), &targetIps)
+	require.NoError(t, err)
 	hostIpInList := false
-	for _, v := range targetIps1 {
+	for _, v := range targetIps {
 		if v == hostIp {
 			hostIpInList = true
 		}
 	}
-	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps1))
+	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps))
 }
 
-// TestApiCreateAwsDynamicHostCatalog uses the Go api to create a host catalog with the AWS plugin.
-// The test sets up an AWS dynamic host catalog, creates a host set, and sets up a target to the
+// TestApiCreateGcpDynamicHostCatalog uses the Go api to create a host catalog with the GCP plugin.
+// The test sets up an GCP dynamic host catalog, creates a host set, and sets up a target to the
 // host set.
-func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
+func TestApiCreateGCPDynamicHostCatalog(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -175,14 +194,16 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	hcClient := hostcatalogs.NewClient(client)
 	newHostCatalogResult, err := hcClient.Create(ctx, "plugin", projectId,
 		hostcatalogs.WithName("e2e Automated Test Host Catalog"),
-		hostcatalogs.WithPluginName("aws"),
+		hostcatalogs.WithPluginName("gcp"),
 		hostcatalogs.WithAttributes(map[string]any{
 			"disable_credential_rotation": true,
-			"region":                      c.AwsRegion,
+			"project_id":                  c.GcpProjectId,
+			"client_email":                c.GcpClientEmail,
+			"zone":                        c.GcpZone,
 		}),
 		hostcatalogs.WithSecrets(map[string]any{
-			"access_key_id":     c.AwsAccessKeyId,
-			"secret_access_key": c.AwsSecretAccessKey,
+			"private_key_id": c.GcpPrivateKeyId,
+			"private_key":    c.GcpPrivateKey,
 		}),
 	)
 	require.NoError(t, err)
@@ -193,7 +214,7 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	hsClient := hostsets.NewClient(client)
 	newHostSetResult, err := hsClient.Create(ctx, newHostCatalogId,
 		hostsets.WithAttributes(map[string]any{
-			"filters": c.AwsHostSetFilter1,
+			"filters": c.GcpHostSetFilter1,
 		}),
 		hostsets.WithName("e2e Automated Test Host Set"),
 	)
@@ -227,11 +248,7 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Log("Successfully found items in the host set")
-	var targetIps []string
-	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps)
-	require.NoError(t, err)
-	expectedHostSetCount := len(targetIps)
-	assert.Equal(t, expectedHostSetCount, actualHostSetCount, "Numbers of hosts in host set did not match expected amount")
+	assert.Equal(t, 1, actualHostSetCount, "Numbers of hosts in host set did not match expected amount")
 
 	// Get list of all hosts from host catalog
 	// Retry is needed here since it can take a few tries before hosts start appearing
@@ -260,5 +277,5 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Log("Successfully found items in the host catalog")
-	assert.Equal(t, actualHostCatalogCount, expectedHostSetCount, "Numbers of hosts in host catalog did not match expected amount")
+	assert.Equal(t, 1, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 }

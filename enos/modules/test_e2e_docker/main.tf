@@ -222,6 +222,63 @@ variable "test_timeout" {
   type    = string
   default = "25m"
 }
+variable "gcp_private_key_id" {
+  description = "ID of the private key used to authenticate with GCP"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gcp_private_key" {
+  description = "Private key used to authenticate with GCP"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gcp_project_id" {
+  description = "GCP project where the resources will be created"
+  type        = string
+  default     = ""
+}
+
+variable "gcp_zone" {
+  description = "GCP zone where the resources will be created"
+  type        = string
+  default     = ""
+}
+
+variable "gcp_target_ssh_key" {
+  description = "SSH key used to authenticate with GCP target"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gcp_client_email" {
+  description = "GCP client email associated with the private key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gcp_host_set_filter1" {
+  description = "value for the first filter in the host set"
+  type        = string
+  default     = ""
+}
+
+variable "gcp_host_set_filter2" {
+  description = "value for the second filter in the host set"
+  type        = string
+  default     = ""
+}
+
+variable "gcp_host_set_ips" {
+  description = "List of IP addresses"
+  type        = list(string)
+  default     = [""]
+}
 
 resource "enos_local_exec" "get_go_version" {
   count  = var.go_version == "" ? 1 : 0
@@ -284,6 +341,15 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_LDAP_USER_NAME            = var.ldap_user_name
     E2E_LDAP_USER_PASSWORD        = var.ldap_user_password
     E2E_LDAP_GROUP_NAME           = var.ldap_group_name
+    E2E_GCP_PRIVATE_KEY_ID        = var.gcp_private_key_id
+    E2E_GCP_PRIVATE_KEY           = var.gcp_private_key
+    E2E_GCP_PROJECT_ID            = var.gcp_project_id
+    E2E_GCP_CLIENT_EMAIL          = var.gcp_client_email
+    E2E_GCP_ZONE                  = var.gcp_zone
+    E2E_GCP_TARGET_SSH_KEY        = var.gcp_target_ssh_key
+    E2E_GCP_HOST_SET_FILTER1      = var.gcp_host_set_filter1
+    E2E_GCP_HOST_SET_FILTER2      = var.gcp_host_set_filter2
+    E2E_GCP_HOST_SET_IPS          = jsonencode(var.gcp_host_set_ips)
     E2E_MAX_PAGE_SIZE             = var.max_page_size
     E2E_CONTROLLER_CONTAINER_NAME = var.controller_container_name
     BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir)
