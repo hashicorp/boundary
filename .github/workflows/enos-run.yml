@@ -153,6 +153,7 @@ jobs:
           role-skip-session-tagging: true
           role-duration-seconds: 3600
       - name: Configure GCP credentials
+        if: contains(matrix.filter, 'gcp')
         id: gcp_auth
         uses: google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c # v2.1.2
         with:
