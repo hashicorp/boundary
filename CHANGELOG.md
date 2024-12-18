@@ -8,6 +8,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Introduces soft-delete for users within the client cache.
   ([PR](https://github.com/hashicorp/boundary/pull/5173)).
+* GCP dynamic host catalog: Add dynamic host catalog support for 
+  discovering GCP Compute Engine VM Instances.
+  ([PR](https://github.com/hashicorp/boundary/pull/5229)).
 
 ## 0.18.2 (2024/12/12)
 ### Bug fixes

@@ -90,7 +90,7 @@
         "title": "Architecture",
         "routes": [
           {
-            "title":"System requirements",
+            "title": "System requirements",
             "path": "install-boundary/architecture/system-requirements"
           },
           {
@@ -226,6 +226,10 @@
           {
             "title": "Azure dynamic hosts",
             "path": "concepts/host-discovery/azure"
+          },
+          {
+            "title": "GCP dynamic hosts",
+            "path": "concepts/host-discovery/gcp"
           }
         ]
       },
@@ -601,7 +605,7 @@
           {
             "title": "Connect using a target alias",
             "path": "configuration/target-aliases/connect-target-alias"
-          },          
+          },
           {
             "title": "Connect using transparent sessions",
             "badge": {
