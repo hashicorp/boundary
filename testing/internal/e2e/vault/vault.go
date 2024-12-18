@@ -23,6 +23,15 @@ type CreateTokenResponse struct {
 	}
 }
 
+// AuthListResponse parses the json response from running `vault auth list`
+type AuthListResponse struct {
+	UserPass AuthListUserPassAttributes `json:"userpass/"`
+}
+
+type AuthListUserPassAttributes struct {
+	Accessor string `json:"accessor"`
+}
+
 // Setup verifies if appropriate credentials are set and adds the boundary controller
 // policy to vault. Returns the vault address.
 func Setup(t testing.TB, boundaryControllerFilePath string) (boundaryPolicyName string, kvPolicyFilePath string) {
