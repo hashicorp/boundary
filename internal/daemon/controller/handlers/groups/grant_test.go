@@ -2,9 +2,10 @@ package groups_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -19,17 +20,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test Dimension
+//  Role - which scope the role is created in
+// 		- global level
+// 		- org level
+// 		- project level
+//	Grant - what IAM grant scope is set for the permission
+// 		- global: descendant
+//		- org: children
+// 		- project
+//	Resource - where resources are created (group)
+// 		- global
+//			- org1
+// 				- project1
+//			- org2
+// 				- project2
+
 func TestGrants_Get(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	rw := db.New(conn)
-
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	s, err := groups.NewService(ctx, repoFn, 1000)
+	require.NoError(t, err)
 
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
@@ -41,70 +59,147 @@ func TestGrants_Get(t *testing.T) {
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
-	authMethod := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	// auth account is only used to join auth method to user.
-	// We don't do anything else with the auth account in the test setup.
-	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "myname")
+	globalGroup := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription("global"), iam.WithName("global"))
+	orgGroup := iam.TestGroup(t, conn, org.GetPublicId(), iam.WithDescription("org"), iam.WithName("org"))
+	projGroup := iam.TestGroup(t, conn, proj.GetPublicId(), iam.WithDescription("project"), iam.WithName("project"))
 
-	usr := iam.TestUser(t, iamRepo, org.GetPublicId(), iam.WithAccountIds(acct.GetPublicId()))
-	role := iam.TestRole(t, conn, org.GetPublicId())
-	_ = iam.TestRoleGrant(t, conn, role.PublicId, "id=*;type=*;actions=*;output_fields=*")
-	_ = iam.TestUserRole(t, conn, role.PublicId, usr.PublicId)
-	_ = iam.TestRoleGrantScope(t, conn, role.PublicId, proj.PublicId)
+	authMethod := password.TestAuthMethods(t, conn, globals.GlobalPrefix, 1)[0]
+	testcases := []struct {
+		name            string
+		grantString     string
+		roleScope       string
+		roleGrantScopes []string
+		getIdFound      map[string]bool
+	}{
+		{
+			name:            "global_role_grant_this",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       globals.GlobalPrefix,
+			roleGrantScopes: []string{globals.GrantScopeThis},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: true,
+				orgGroup.PublicId:    false,
+				projGroup.PublicId:   false,
+			},
+		},
+		{
+			name:            "global_role_grant_children",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       globals.GlobalPrefix,
+			roleGrantScopes: []string{globals.GrantScopeChildren},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: false,
+				orgGroup.PublicId:    true,
+				projGroup.PublicId:   false,
+			},
+		},
+		{
+			name:            "global_role_grant_descendant",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       globals.GlobalPrefix,
+			roleGrantScopes: []string{globals.GrantScopeDescendants},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: false,
+				orgGroup.PublicId:    true,
+				projGroup.PublicId:   true,
+			},
+		},
+		{
+			name:            "global_role_grant_this_children",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       globals.GlobalPrefix,
+			roleGrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: true,
+				orgGroup.PublicId:    true,
+				projGroup.PublicId:   false,
+			},
+		},
+		{
+			name:            "global_role_grant_this_descendant",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       globals.GlobalPrefix,
+			roleGrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: true,
+				orgGroup.PublicId:    true,
+				projGroup.PublicId:   true,
+			},
+		},
+		{
+			name:            "org_role_grant_this",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       org.GetPublicId(),
+			roleGrantScopes: []string{globals.GrantScopeThis},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: false,
+				orgGroup.PublicId:    true,
+				projGroup.PublicId:   false,
+			},
+		},
+		{
+			name:            "org_role_grant_children",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       org.GetPublicId(),
+			roleGrantScopes: []string{globals.GrantScopeChildren},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: false,
+				orgGroup.PublicId:    false,
+				projGroup.PublicId:   true,
+			},
+		},
+		{
+			name:            "org_role_grant_this_and_children",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       org.GetPublicId(),
+			roleGrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: false,
+				orgGroup.PublicId:    true,
+				projGroup.PublicId:   true,
+			},
+		},
+		{
+			name:            "project_role_grant_this",
+			grantString:     "id=*;type=*;actions=*",
+			roleScope:       proj.GetPublicId(),
+			roleGrantScopes: []string{globals.GrantScopeThis},
+			getIdFound: map[string]bool{
+				globalGroup.PublicId: false,
+				orgGroup.PublicId:    false,
+				projGroup.PublicId:   true,
+			},
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			// this creates everything required to get a token and creates context with auth token
+			acct := password.TestAccount(t, conn, authMethod.GetPublicId(), uuid.NewString())
+			user := iam.TestUser(t, iamRepo, globals.GlobalPrefix, iam.WithAccountIds(acct.GetPublicId()))
+			role := iam.TestRole(t, conn, tc.roleScope, iam.WithGrantScopeIds(tc.roleGrantScopes))
+			_ = iam.TestRoleGrant(t, conn, role.PublicId, tc.grantString)
+			_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
+			fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := auth.NewVerifierContext(requests.NewRequestContext(ctx, requests.WithUserId(user.GetPublicId())),
+				repoFn, atRepoFn, serversRepoFn, kmsCache, &authpb.RequestInfo{
+					PublicId:    fullGrantToken.PublicId,
+					Token:       fullGrantToken.GetToken(),
+					TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				})
+			for id, found := range tc.getIdFound {
+				_, err := s.GetGroup(fullGrantAuthCtx, &pbs.GetGroupRequest{
+					Id: id,
+				})
+				// not found means expect error
+				if !found {
+					require.Error(t, err)
+					return
+				}
+				require.NoError(t, err)
 
-	orgGroup := iam.TestGroup(t, conn, org.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	_ = iam.TestGroupMember(t, conn, orgGroup.GetPublicId(), usr.GetPublicId())
+			}
+		})
+	}
 
-	projGroup := iam.TestGroup(t, conn, proj.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	_ = iam.TestGroupMember(t, conn, projGroup.GetPublicId(), usr.GetPublicId())
-
-	token, err := atRepo.CreateAuthToken(ctx, usr, acct.GetPublicId())
-	require.NoError(t, err)
-
-	reqCtx := requests.NewRequestContext(ctx, requests.WithUserId(usr.GetPublicId()))
-	authCtx := auth.NewVerifierContext(reqCtx, repoFn, atRepoFn, serversRepoFn, kmsCache, &authpb.RequestInfo{
-		Path:        fmt.Sprintf("/v1/groups/%s", orgGroup.PublicId),
-		Method:      "GET",
-		PublicId:    token.PublicId,
-		Token:       token.GetToken(),
-		TokenFormat: uint32(auth.AuthTokenTypeBearer),
-	})
-	s, err := groups.NewService(ctx, repoFn, 1000)
-	require.NoError(t, err)
-
-	got, gErr := s.GetGroup(authCtx, &pbs.GetGroupRequest{
-		Id: projGroup.PublicId,
-	})
-	require.NoError(t, gErr)
-	fmt.Println(got)
-
-	//if tc.err != nil {
-	//	require.Error(gErr)
-	//	assert.True(errors.Is(gErr, tc.err), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
-	//}
-	//
-	//for _, tc := range cases {
-	//	t.Run(tc.name, func(t *testing.T) {
-	//		assert, require := assert.New(t), require.New(t)
-	//		req := proto.Clone(toMerge).(*pbs.GetGroupRequest)
-	//		proto.Merge(req, tc.req)
-	//
-	//		s, err := groups.NewService(ctx, repoFn, 1000)
-	//		require.NoError(err, "Couldn't create new group service.")
-	//
-	//		got, gErr := s.GetGroup(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
-	//		if tc.err != nil {
-	//			require.Error(gErr)
-	//			assert.True(errors.Is(gErr, tc.err), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.err)
-	//		}
-	//		assert.Empty(cmp.Diff(
-	//			got,
-	//			tc.res,
-	//			protocmp.Transform(),
-	//			cmpopts.SortSlices(func(a, b string) bool {
-	//				return a < b
-	//			}),
-	//		), "GetGroup(%q) got response\n%q, wanted\n%q", req, got, tc.res)
-	//	})
-	//}
 }
