@@ -3,6 +3,8 @@
 
 # For this scenario to work, add the following line to /etc/hosts
 # 127.0.0.1 localhost boundary
+# 127.0.0.1 localhost worker
+# 127.0.0.1 localhost vault
 
 scenario "e2e_docker_base_with_vault" {
   terraform_cli = terraform_cli.default
