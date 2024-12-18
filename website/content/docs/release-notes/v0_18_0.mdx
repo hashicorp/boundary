@@ -44,10 +44,10 @@ description: >-
 
 <tr>
     <td style={{verticalAlign: 'middle'}}>
-    Go version 1.23.3 x509 key pair behavior changes
+    Go version 1.23 x509 key pair behavior changes
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Boundary version 0.18.2 uses Go version 1.23.3, which introduced a new x509 key pair behavior. Some VPN implementations struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.2 controllers or workers being unable to establish SSH connections. As a workaround, you can revert back to the previous key pair behavior.
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new x509 key pair behavior. Some VPN implementations struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x controllers or workers being unable to establish SSH connections. As a workaround, you can revert back to the previous key pair behavior.
     <br /><br />
     Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
     </td>
@@ -242,13 +242,13 @@ description: >-
 
   <tr>
     <td style={{verticalAlign: 'middle'}}>
-    0.18.2
+    0.18.x
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Boundary version 0.18.2 controllers or workers are unable to establish SSH connections using the <code>boundary connect ssh</code> command
+    Boundary version 0.18.x controllers or workers are unable to establish SSH connections using the <code>boundary connect ssh</code> command
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Boundary version 0.18.2 uses Go version 1.23.3, which introduced a new x509 key pair behavior. Some VPN implementations struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.2 controllers or workers being unable to establish SSH connections.
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new x509 key pair behavior. Some VPN implementations struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x controllers or workers being unable to establish SSH connections.
     <br /><br />
     As a workaround, you can revert back to the previous key pair behavior by adding the <code>tlskyber=0</code> and <code>x509keypairleaf=0</code> parameters to the GODEBUG environment variable before the <code>boundary connect ssh command</code>. For example:
     <br /><br />
