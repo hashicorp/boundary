@@ -31,6 +31,9 @@ const (
 	PassPrefix       = "HashiCorp_Boundary"
 )
 
+// ErrNoToken is returned when no matching token could be found in the keyring
+var ErrNoToken = errors.New("no token found")
+
 func (c *Command) DiscoverKeyringTokenInfo() (string, string, error) {
 	// Stops the underlying library from invoking a dbus call that ends up
 	// freezing some systems
@@ -109,13 +112,16 @@ func (c *Command) DiscoverKeyringTokenInfo() (string, string, error) {
 	return keyringType, tokenName, nil
 }
 
-func ReadTokenFromKeyring(ui cli.Ui, keyringType, tokenName string) *authtokens.AuthToken {
+// ReadTokenFromKeyring will attempt to read the token with the name tokenName from the keyring
+// described by keyringType. It will return ErrNoToken if no token is found in the provided keyring.
+func ReadTokenFromKeyring(ui cli.Ui, keyringType, tokenName string) (*authtokens.AuthToken, error) {
+	const op = "base.ReadTokenFromKeyring"
 	var token string
 	var err error
 
 	switch keyringType {
 	case NoneKeyring:
-		return nil
+		return nil, ErrNoToken
 
 	case WincredKeyring, KeychainKeyring:
 		token, err = zkeyring.Get(StoredTokenName, tokenName)
@@ -123,10 +129,9 @@ func ReadTokenFromKeyring(ui cli.Ui, keyringType, tokenName string) *authtokens.
 			if err == zkeyring.ErrNotFound {
 				ui.Error("No saved credential found, continuing without")
 			} else {
-				ui.Error(fmt.Sprintf("Error reading auth token from keyring: %s", err))
 				ui.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
+				return nil, fmt.Errorf("%s: error reading auth token from keyring: %w", op, err)
 			}
-			token = ""
 		}
 
 	default:
@@ -138,16 +143,14 @@ func ReadTokenFromKeyring(ui cli.Ui, keyringType, tokenName string) *authtokens.
 
 		kr, err := nkeyring.Open(krConfig)
 		if err != nil {
-			ui.Error(fmt.Sprintf("Error opening keyring: %s", err))
 			ui.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
-			break
+			return nil, fmt.Errorf("%s: failed to open keyring: %w", op, err)
 		}
 
 		item, err := kr.Get(tokenName)
 		if err != nil {
-			ui.Error(fmt.Sprintf("Error fetching token from keyring: %s", err))
 			ui.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
-			break
+			return nil, fmt.Errorf("%s: failed to get token from keyring: %w", op, err)
 		}
 
 		token = string(item.Data)
@@ -157,22 +160,24 @@ func ReadTokenFromKeyring(ui cli.Ui, keyringType, tokenName string) *authtokens.
 		tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
 		switch {
 		case err != nil:
-			ui.Error(fmt.Errorf("Error base64-unmarshaling stored token from system credential store: %w", err).Error())
+			return nil, fmt.Errorf("error base64-unmarshaling stored token from system credential store: %w", err)
 		case len(tokenBytes) == 0:
-			ui.Error("Zero length token after decoding stored token from system credential store")
+			return nil, errors.New("zero length token after decoding stored token from system credential store")
 		default:
 			var authToken authtokens.AuthToken
 			if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
-				ui.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
+				return nil, fmt.Errorf("error unmarshaling stored token information after reading from system credential store: %s", err)
 			} else {
-				return &authToken
+				return &authToken, nil
 			}
 		}
 	}
-	return nil
+	return nil, ErrNoToken
 }
 
-func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken {
+// ReadTokenFromKeyring will attempt to read the token with the name tokenName from the keyring
+// described by keyringType. It will return ErrNoToken if no token is found in the provided keyring.
+func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) (*authtokens.AuthToken, error) {
 	return ReadTokenFromKeyring(c.UI, keyringType, tokenName)
 }
 
