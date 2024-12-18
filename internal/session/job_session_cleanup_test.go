@@ -278,7 +278,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		t.Helper()
 		pubId := w.GetPublicId()
 		w.PublicId = ""
-		wkr, err := serversRepo.UpsertWorkerStatus(ctx, w, server.WithPublicId(pubId))
+		wkr, err := server.UpsertAndReturnWorker(ctx, t, w, serversRepo, server.WithPublicId(pubId))
 		require.NoError(err)
 		return wkr
 	}
