@@ -2,6 +2,15 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.16.4 (2024/12/12)
+
+### Bug fixes
+
+* Fixed an issue where session recordings would fail when large numbers of
+  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
+* Fixed an issue where the controller would incorrectly handle HTTP requests
+  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
+
 ## 0.16.3 (2024/08/22)
 
 ### New and Improved
