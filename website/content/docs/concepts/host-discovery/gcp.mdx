@@ -14,7 +14,7 @@ and set the `plugin-name` value to `gcp`. You must also provide the specific
 fields needed for Boundary to authenticate with GCP.
 
 ### Authentication with service account
-Create a service account in GCP and download the private key file. The service account must have the following roles:
+Create a service account in GCP and download the private key file. The service account should have the following roles:
 - `roles/compute.viewer` (Required): To list Compute Engine VM instance in the project.
 - `roles/iam.serviceAccountKeyAdmin` (Optional): - To rotate the service account key if `disable_credential_rotation` is set to `false`.
 
@@ -61,13 +61,13 @@ $ boundary host-catalogs create plugin \
 
 ### Authentication with service account impersonation
 Service account impersonation allows Boundary to authenticate with GCP using a service account that impersonates another service account. 
-This is useful when you want to restrict the permissions of the service account used by Boundary. Two service accounts are required:
+Impersonation is useful when you want to restrict the permissions of the service account Boundary uses. Two service accounts are required:
 
-- `Base service account`: The service account used by Boundary to authenticate with GCP. The service account must have the following roles:
+- `Base service account`: The service account Boundary uses to authenticate with GCP. The service account should have the following roles:
   - `roles/iam.serviceAccountTokenCreator` (Required) - To create a token for the target service account.
   - `roles/iam.serviceAccountKeyAdmin` (Optional) - To rotate the service account key if `disable_credential_rotation` is set to `false`.
 
-- `Target service account`: The service account to impersonate. The service account must have the following roles:
+- `Target service account`: The service account to impersonate. The service account should have the following roles:
   - `roles/compute.viewer` (Required): To list Compute Engine VM instance in the project.
 
 Pass the following fields to Boundary for authentication:
@@ -114,8 +114,8 @@ $ boundary host-catalogs create plugin \
 </Tabs>
 
 ### Authentication with Application Default Credentials (ADC)
-If you are running Boundary on a GCP VM instance, you can use Application Default Credentials (ADC) to authenticate with GCP.
-Boundary will use the service account associated with the VM instance to authenticate with GCP.
+If you run Boundary on a GCP VM instance, you can use Application Default Credentials (ADC) to authenticate with GCP.
+Boundary uses the service account associated with the VM instance to authenticate with GCP.
 
 Pass the following fields to Boundary for authentication:
 
@@ -158,12 +158,12 @@ The fields following the `attr` and `secret` flags are specific to GCP and are r
   Boundary for authentication.
 
 - `zone` (Required): The deployment area within a region. All host sets in this
-  catalog will be configured for this zone.
+  catalog are configured for this zone.
 - `project_id` (Required): The project ID associated with the service account.
-- `disable_credential_rotation` (Optional): When set to `true`, Boundary will not rotate the credentials with GCP automatically.
-- `client_email` (Optional): The email address associated with the service account. 
+- `disable_credential_rotation` (Optional): When set to `true`, Boundary does not rotate the credentials with GCP automatically.
+- `client_email` (Optional): Boundary uses this email address associated with the service account. 
   The email address used to uniquely identify the service account.
-- `target_service_account_id` (Optional): The email address of the service account to impersonate.  
+- `target_service_account_id` (Optional): Boundary uses this email address of the service account to impersonate.  
   This is used for authentication with service account impersonation.
 - `private_key_id` (Optional): The ID of the private key for the service account to use with this host catalog.
 - `private_key` (Optional): The private key for the service account to use with this host catalog.
@@ -172,7 +172,7 @@ Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/h
 
 ## Create a host set to connect with GCP
 [Host sets](/boundary/docs/concepts/domain-model/host-sets) specify which GCP
-  filters should be used to identify the discovered hosts that should be added as members.
+  filters Boundary should use to identify which discovered hosts that should be added as members.
 
 Create a host set using the following command:
 
@@ -211,12 +211,12 @@ Like with the host catalog, the fields passed in after the `attr` flag are
 The `filters` field contains string filters in the format key=val1. The key corresponds to
   a filter option. For a list of filter options, refer to the
   [GCP API documentation](https://cloud.google.com/compute/docs/reference/rest/v1/instances/list#filter). 
-  When multiple filters are provided, the plugin will apply a logical `AND` operation to the filters.
+  When you apply multiple filters, the plugin applies a logical `AND` operation to combine the filters.
 
-  If there is no explicit instance status filter, the default status will be set to `status="RUNNING"`. 
-  This ensures that we filter on running instances only, saving time when processing results.
+  If there is no explicit instance status filter, the default status is set to `status="RUNNING"`. 
+  This ensures that Boundary only filters running instances, saving time when processing results.
 
-  Labels are recommended to be used as filters as they are more flexible and can be used to filter on multiple values
+ We recommend using labels as filters because they are more flexible and can filter on multiple values
   as in the following examples:
   - `-attr filters=labels.env=dev`
   - `-attr filters=labels.env=prod AND labels.app=web`
