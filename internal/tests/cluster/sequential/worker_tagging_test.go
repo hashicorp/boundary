@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package sequential
 
 import (
 	"testing"
@@ -33,7 +33,6 @@ func TestWorkerTagging(t *testing.T) {
 		InitialResourcesSuffix: "1234567890",
 		Logger:                 logger.Named("c1"),
 	})
-	defer c1.Shutdown()
 
 	ctx := c1.Context()
 
@@ -62,7 +61,6 @@ func TestWorkerTagging(t *testing.T) {
 		InitialUpstreams: c1.ClusterAddrs(),
 		Logger:           logger.Named("w1"),
 	})
-	defer w1.Shutdown()
 	w1Addr := w1.ProxyAddrs()[0]
 	w1.Worker().WaitForNextSuccessfulStatusUpdate()
 
@@ -80,7 +78,6 @@ func TestWorkerTagging(t *testing.T) {
 		InitialUpstreams: c1.ClusterAddrs(),
 		Logger:           logger.Named("w2"),
 	})
-	defer w2.Shutdown()
 	w2Addr := w2.ProxyAddrs()[0]
 	w2.Worker().WaitForNextSuccessfulStatusUpdate()
 
@@ -98,7 +95,6 @@ func TestWorkerTagging(t *testing.T) {
 		InitialUpstreams: c1.ClusterAddrs(),
 		Logger:           logger.Named("w3"),
 	})
-	defer w3.Shutdown()
 	w3Addr := w3.ProxyAddrs()[0]
 
 	w3.Worker().WaitForNextSuccessfulStatusUpdate()

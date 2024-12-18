@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package sequential
 
 import (
 	"context"
@@ -51,7 +51,6 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		Logger:                          logger.Named("c1"),
 		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
-	t.Cleanup(c1.Shutdown)
 
 	helper.ExpectWorkers(t, c1)
 
@@ -63,9 +62,7 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		dawdle.WithWbufSize(256),
 	)
 	require.NoError(err)
-	t.Cleanup(func() {
-		proxy.Close()
-	})
+	t.Cleanup(func() { _ = proxy.Close() })
 	require.NotEmpty(t, proxy.ListenerAddr())
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
@@ -75,7 +72,6 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 		EnableIPv6:                          true,
 	})
-	t.Cleanup(w1.Shutdown)
 
 	helper.ExpectWorkers(t, c1, w1)
 

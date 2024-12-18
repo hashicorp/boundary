@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package parallel
 
 import (
 	"context"
@@ -32,13 +32,11 @@ func TestIPv6Listener(t *testing.T) {
 		Config: conf,
 		Logger: logger.Named("c1"),
 	})
-	defer c1.Shutdown()
 
 	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
 		Config: conf,
 		Logger: c1.Config().Logger.ResetNamed("c2"),
 	})
-	defer c2.Shutdown()
 
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
@@ -61,7 +59,6 @@ func TestIPv6Listener(t *testing.T) {
 		InitialUpstreams: append(c1.ClusterAddrs(), c2.ClusterAddrs()...),
 		Logger:           logger.Named("w1"),
 	})
-	defer w1.Shutdown()
 
 	wg.Add(2)
 	go func() {
