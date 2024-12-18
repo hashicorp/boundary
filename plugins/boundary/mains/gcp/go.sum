@@ -90,6 +90,8 @@ github.com/hashicorp/boundary-plugin-gcp v0.0.0-20241120152221-baa2c7a2e742 h1:c
 github.com/hashicorp/boundary-plugin-gcp v0.0.0-20241120152221-baa2c7a2e742/go.mod h1:HC8FEkYf/kC0m1w0UiGcxDG6DsmEaVSNDSqFPWyspHc=
 github.com/hashicorp/boundary-plugin-gcp v0.0.0-20241217192246-c04cb367abb4 h1:TeL1WtjoBqIcJEy6HacPd1UPBUDGBv4mzwj/4hov1tE=
 github.com/hashicorp/boundary-plugin-gcp v0.0.0-20241217192246-c04cb367abb4/go.mod h1:3Azvm9j8CHcmBAIX8T0plHLNgwVfkucPM73McKjQx1o=
+github.com/hashicorp/boundary-plugin-gcp v0.0.0-20241218202752-295eb7a018b9 h1:ywSKCV0QQI2hLtMwLAXRLNQkFnsS7aiA73iCePIaOek=
+github.com/hashicorp/boundary-plugin-gcp v0.0.0-20241218202752-295eb7a018b9/go.mod h1:3Azvm9j8CHcmBAIX8T0plHLNgwVfkucPM73McKjQx1o=
 github.com/hashicorp/boundary/sdk v0.0.47 h1:h5AXOASS2duHkCYEmNKnI9AR6YBZxD7VbFPV8BoE0z0=
 github.com/hashicorp/boundary/sdk v0.0.47/go.mod h1:9iOT7kDM6mYcSkKxNuZlv8rP7U5BG1kXoevjLLL8lNQ=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
