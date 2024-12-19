@@ -286,12 +286,9 @@ resource "enos_local_exec" "get_go_version" {
 }
 
 locals {
-  go_version = var.go_version == "" ? enos_local_exec.get_go_version[0].stdout : var.go_version
-  image_name = trimspace("${var.docker_mirror}/library/golang:${local.go_version}")
-
+  go_version               = var.go_version == "" ? enos_local_exec.get_go_version[0].stdout : var.go_version
+  image_name               = trimspace("${var.docker_mirror}/library/golang:${local.go_version}")
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-  vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:${var.vault_port}" : ""
-  vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
   package_name             = reverse(split("/", var.test_package))[0]
 }
 
@@ -317,10 +314,10 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_SSH_USER                  = var.target_user
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path
     E2E_SSH_CA_KEY                = var.target_ca_key
-    VAULT_ADDR                    = local.vault_addr
-    VAULT_ADDR_INTERNAL           = local.vault_addr_internal
+    VAULT_ADDR                    = var.vault_addr
+    VAULT_ADDR_INTERNAL           = var.vault_addr_internal
     VAULT_TOKEN                   = var.vault_root_token
-    E2E_VAULT_ADDR                = local.vault_addr_internal
+    E2E_VAULT_ADDR                = var.vault_addr_internal
     E2E_BUCKET_NAME               = var.bucket_name
     E2E_BUCKET_ENDPOINT_URL       = var.bucket_endpoint_url
     E2E_BUCKET_USER_ID            = var.bucket_user_id
