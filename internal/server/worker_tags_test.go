@@ -25,49 +25,20 @@ func TestWorkerTags_Create(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		want          *store.WorkerTag
+		want          *store.ApiTag
 		wantCreateErr bool
 	}{
 		{
-			name: "success api source",
-			want: &store.WorkerTag{
-				WorkerId: worker.GetPublicId(),
-				Key:      "key",
-				Value:    "value",
-				Source:   ApiTagSource.String(),
-			},
-		},
-		{
-			name: "success config source",
-			want: &store.WorkerTag{
-				WorkerId: worker.GetPublicId(),
-				Key:      "key",
-				Value:    "value",
-				Source:   ConfigurationTagSource.String(),
-			},
-		},
-		{
-			name: "unknown source",
-			want: &store.WorkerTag{
-				WorkerId: worker.GetPublicId(),
-				Key:      "key",
-				Value:    "value",
-				Source:   "unknown",
-			},
-			wantCreateErr: true,
-		},
-		{
-			name: "no source",
-			want: &store.WorkerTag{
+			name: "success- api tag",
+			want: &store.ApiTag{
 				WorkerId: worker.GetPublicId(),
 				Key:      "key",
 				Value:    "value",
 			},
-			wantCreateErr: true,
 		},
 		{
 			name: "bad worker id",
-			want: &store.WorkerTag{
+			want: &store.ApiTag{
 				WorkerId: "w_badworkeridthatdoesntexist",
 				Key:      "key",
 				Value:    "value",
@@ -76,7 +47,7 @@ func TestWorkerTags_Create(t *testing.T) {
 		},
 		{
 			name: "missing worker id",
-			want: &store.WorkerTag{
+			want: &store.ApiTag{
 				Key:   "key",
 				Value: "value",
 			},
@@ -84,7 +55,7 @@ func TestWorkerTags_Create(t *testing.T) {
 		},
 		{
 			name: "missing key",
-			want: &store.WorkerTag{
+			want: &store.ApiTag{
 				WorkerId: worker.GetPublicId(),
 				Value:    "value",
 			},
@@ -92,7 +63,7 @@ func TestWorkerTags_Create(t *testing.T) {
 		},
 		{
 			name: "missing value",
-			want: &store.WorkerTag{
+			want: &store.ApiTag{
 				WorkerId: worker.GetPublicId(),
 				Key:      "key",
 			},
@@ -111,6 +82,15 @@ func TestWorkerTags_Create(t *testing.T) {
 			}
 		})
 	}
+
+	// Create a config tag
+	configTag := &store.ConfigTag{
+		WorkerId: worker.GetPublicId(),
+		Key:      "key",
+		Value:    "value",
+	}
+	err := rw.Create(context.Background(), configTag)
+	assert.NoError(t, err)
 }
 
 func TestRepository_AddWorkerTags(t *testing.T) {
@@ -659,7 +639,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(2), worker.Version)
-	assert.Equal(len(manyTags), len(worker.apiTags))
+	assert.Equal(len(manyTags), len(worker.ApiTags))
 
 	// Delete a valid tag from worker
 	rowsDeleted, err = repo.DeleteWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
@@ -670,8 +650,8 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(3), worker.Version)
-	assert.Contains(worker.apiTags, &Tag{Key: "key", Value: "value"})
-	assert.Contains(worker.apiTags, &Tag{Key: "key2", Value: "value2"})
+	assert.Contains(worker.ApiTags, &Tag{Key: "key", Value: "value"})
+	assert.Contains(worker.ApiTags, &Tag{Key: "key2", Value: "value2"})
 
 	// Add another valid tag to worker
 	_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
@@ -681,8 +661,8 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(4), worker.Version)
-	assert.Contains(worker.apiTags, &Tag{Key: "key!", Value: "value!"})
-	assert.Equal(3, len(worker.apiTags))
+	assert.Contains(worker.ApiTags, &Tag{Key: "key!", Value: "value!"})
+	assert.Equal(3, len(worker.ApiTags))
 
 	// Set all tags to nil
 	set, err = repo.SetWorkerTags(context.Background(), worker.PublicId, worker.Version, nil)
@@ -691,8 +671,8 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(5), worker.Version)
-	assert.Equal(set, worker.apiTags)
-	assert.Equal(0, len(worker.apiTags))
+	assert.Equal(Tags(nil), worker.ApiTags)
+	assert.Equal(0, len(worker.ApiTags))
 
 	// Ensure config tags are untouched
 	for _, ct := range []*Tag{
@@ -701,9 +681,9 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 		{Key: "key3", Value: "value3"},
 		{Key: "key?", Value: "value?"},
 	} {
-		assert.Contains(worker.configTags, ct)
+		assert.Contains(worker.ConfigTags, ct)
 	}
-	assert.Equal(4, len(worker.configTags))
+	assert.Equal(4, len(worker.ConfigTags))
 
 	// Go full circle
 	_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
@@ -711,8 +691,8 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(6), worker.Version)
-	assert.Equal(len(manyTags), len(worker.apiTags))
+	assert.Equal(len(manyTags), len(worker.ApiTags))
 	for _, t := range manyTags {
-		assert.Contains(worker.apiTags, t)
+		assert.Contains(worker.ApiTags, t)
 	}
 }
