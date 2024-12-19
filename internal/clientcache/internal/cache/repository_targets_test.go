@@ -6,9 +6,11 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -157,6 +159,187 @@ func TestRepository_refreshTargets(t *testing.T) {
 					_, err := r.rw.Delete(ctx, refTok)
 					require.NoError(t, err)
 				})
+			} else {
+				assert.ErrorContains(t, err, tc.errorContains)
+			}
+		})
+	}
+}
+
+func TestRepository_refreshTargetsDuringRefreshWindow(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+	s.Debug(true)
+
+	addr := "address"
+	u := user{
+		Id: "u1",
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k", "t"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+	fmt.Println("add keyring")
+
+	ts := []*targets.Target{
+		{
+			Id:                "ttcp_1",
+			Name:              "name1",
+			Description:       "description1",
+			Type:              "tcp",
+			ScopeId:           "p_123",
+			SessionMaxSeconds: 111,
+		},
+		{
+			Id:                "ttcp_2",
+			Name:              "name2",
+			Address:           "address2",
+			Type:              "tcp",
+			ScopeId:           "p_123",
+			SessionMaxSeconds: 222,
+		},
+		{
+			Id:                "ttcp_3",
+			Name:              "name3",
+			Address:           "address3",
+			Type:              "tcp",
+			ScopeId:           "p_123",
+			SessionMaxSeconds: 333,
+		},
+	}
+	var want []*Target
+	for _, tar := range ts {
+		ti, err := json.Marshal(tar)
+		require.NoError(t, err)
+		want = append(want, &Target{
+			FkUserId:    u.Id,
+			Id:          tar.Id,
+			Name:        tar.Name,
+			Description: tar.Description,
+			Address:     tar.Address,
+			ScopeId:     tar.ScopeId,
+			Type:        tar.Type,
+			Item:        string(ti),
+		})
+	}
+
+	defaultCleanupFn := func() {
+		refTok := &refreshToken{
+			UserId:       at.UserId,
+			ResourceType: targetResourceType,
+		}
+		_, err := r.rw.Delete(ctx, refTok)
+		require.NoError(t, err)
+	}
+	cases := []struct {
+		name          string
+		u             *user
+		targets       []*targets.Target
+		want          []*Target
+		setup         func()
+		cleanup       func()
+		errorContains string
+	}{
+		{
+			name: "success-no-token",
+			u: &user{
+				Id:      at.UserId,
+				Address: addr,
+			},
+			targets: ts,
+			want:    want,
+			cleanup: defaultCleanupFn,
+		},
+		// this test case must run after the above test case (success-no-token)
+		// so as to exercise running with an existing token which is within the window.
+		{
+			name: "success-with-existing-token-within-10-day-window",
+			u: &user{
+				Id:      at.UserId,
+				Address: addr,
+			},
+			targets: ts,
+			cleanup: defaultCleanupFn,
+			setup: func() {
+				// insert refresh token
+				refTok := &refreshToken{
+					UserId:       at.UserId,
+					ResourceType: targetResourceType,
+					RefreshToken: "1",
+					UpdateTime:   time.Now(),
+					CreateTime:   time.Now(),
+				}
+				require.NoError(t, db.New(s).Create(ctx, refTok))
+			},
+			want: want,
+		},
+		{
+			name: "no-op-with-existing-token-outside-10-day-window",
+			u: &user{
+				Id:      at.UserId,
+				Address: addr,
+			},
+			targets: ts,
+			cleanup: defaultCleanupFn,
+			setup: func() {
+				n := time.Now().AddDate(0, 0, -11)
+				// insert refresh token
+				refTok := &refreshToken{
+					UserId:       at.UserId,
+					ResourceType: targetResourceType,
+					RefreshToken: "1",
+					UpdateTime:   n,
+					CreateTime:   n,
+				}
+				fmt.Println("inserting")
+				require.NoError(t, db.New(s).Create(ctx, refTok))
+				fmt.Println("done")
+			},
+			want: want,
+		},
+		{
+			name:          "nil user",
+			u:             nil,
+			targets:       ts,
+			errorContains: "user is nil",
+		},
+		{
+			name: "missing user Id",
+			u: &user{
+				Address: addr,
+			},
+			targets:       ts,
+			errorContains: "user id is missing",
+		},
+	}
+	// u1 / target /
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.cleanup != nil {
+				t.Cleanup(tc.cleanup)
+			}
+			if tc.setup != nil {
+				tc.setup()
+			}
+			err := r.refreshTargetsDuringRefreshWindow(ctx, tc.u, map[AuthToken]string{{Id: "id"}: "something"},
+				WithTargetRetrievalFunc(testTargetStaticResourceRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{tc.targets}, [][]string{nil}))))
+			if tc.errorContains == "" {
+				assert.NoError(t, err)
+				rw := db.New(s)
+				var got []*Target
+				require.NoError(t, rw.SearchWhere(ctx, &got, "true", nil))
+				assert.ElementsMatch(t, got, tc.want)
+
 			} else {
 				assert.ErrorContains(t, err, tc.errorContains)
 			}

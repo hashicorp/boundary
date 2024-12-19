@@ -364,6 +364,21 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 			if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
 				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 			}
+			{
+				// now, we need to refreshTargetsDuringRefreshWindow, so we don't
+				// have to wait for the refresh token to expire before refreshing
+				// the targets.
+
+				// notice that we still have the "targets" cache key locked,
+				// since we don't want to run this in parallel with the regular
+				// targets refresh.
+				semaphore, _ = r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+				if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+					if err := r.repo.refreshTargetsDuringRefreshWindow(ctx, u, tokens, opt...); err != nil {
+						retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+					}
+				}
+			}
 			semaphore.(*atomic.Bool).Store(false)
 		}
 
