@@ -47,7 +47,7 @@ description: >-
     Go version 1.23 x509 key pair behavior changes
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Boundary version 0.18.x uses Go version 1.23, which introduced a new x509 key pair behavior. Some VPN implementations struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x controllers or workers being unable to establish SSH connections. As a workaround, you can revert back to the previous key pair behavior.
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new TLS handshake behavior. Some VPN providers struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x controllers, workers or clients being unable to establish connections. As a workaround, you can revert back to the previous TLS handshake behavior.
     <br /><br />
     Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
     </td>
@@ -245,14 +245,14 @@ description: >-
     0.18.x
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Boundary version 0.18.x controllers or workers are unable to establish SSH connections using the <code>boundary connect ssh</code> command
+    Boundary version 0.18.x CLI is unable to establish connections using the <code>boundary connect</code> command.
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Boundary version 0.18.x uses Go version 1.23, which introduced a new x509 key pair behavior. Some VPN implementations struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x controllers or workers being unable to establish SSH connections.
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new TLS handshake behavior. Some VPN providers struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x controllers, workers or clients being unable to establish connections. As a workaround, you can revert back to the previous TLS handshake behavior.
     <br /><br />
-    As a workaround, you can revert back to the previous key pair behavior by adding the <code>tlskyber=0</code> and <code>x509keypairleaf=0</code> parameters to the GODEBUG environment variable before the <code>boundary connect ssh command</code>. For example:
+    As a workaround, you can revert back to the previous TLS handshake behavior by adding the <code>tlskyber=0</code> parameters to the GODEBUG environment variable before the <code>boundary connect</code> command. For example:
     <br /><br />
-    <code>GODEBUG=tlskyber=0,x509keypairleaf=0 boundary connect ssh -target-id&lt;ID&gt;</code>
+    <code>GODEBUG=tlskyber=0 boundary connect ssh -target-id &lt;ID&gt;</code>
     <br /><br />
     Learn more: <a href="https://tip.golang.org/doc/go1.23">Go 1.23 Release Notes</a>
     <br /><br />
