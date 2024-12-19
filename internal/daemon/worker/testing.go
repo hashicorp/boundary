@@ -72,6 +72,9 @@ func (tw *TestWorker) Name() string {
 func (tw *TestWorker) UpstreamAddrs() []string {
 	var addrs []string
 	lastStatus := tw.w.LastStatusSuccess()
+	if lastStatus == nil {
+		return addrs
+	}
 	for _, v := range lastStatus.GetCalculatedUpstreams() {
 		addrs = append(addrs, v.Address)
 	}
@@ -360,7 +363,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	tw.w, err = New(ctx, conf)
 	if err != nil {
-		tw.Shutdown()
 		t.Fatal(err)
 	}
 
@@ -387,7 +389,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	if !opts.DisableAutoStart {
 		if err := tw.w.Start(); err != nil {
-			tw.Shutdown()
 			t.Fatal(err)
 		}
 	}

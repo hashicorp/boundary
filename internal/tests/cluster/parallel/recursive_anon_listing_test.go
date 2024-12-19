@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package parallel
 
 import (
 	"strings"
@@ -16,9 +16,9 @@ import (
 
 // This test validates the fix for ICU-2301
 func TestListAnonymousRecursing(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
 	tc := controller.NewTestController(t, nil)
-	defer tc.Shutdown()
 
 	client := tc.Client()
 	token := tc.Token()

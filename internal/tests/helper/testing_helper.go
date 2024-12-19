@@ -436,26 +436,49 @@ func NewTestTcpServer(t *testing.T) *TestTcpServer {
 	require.NoError(err)
 
 	go ts.run()
+
+	require.Eventually(func() bool {
+		c, err := net.Dial(ts.ln.Addr().Network(), ts.ln.Addr().String())
+		if err != nil {
+			return false
+		}
+		_, err = c.Write([]byte{})
+		if err != nil {
+			return false
+		}
+		_, err = c.Read([]byte{})
+		if err != nil {
+			return false
+		}
+		return true
+	}, 10*time.Second, 100*time.Millisecond)
+
 	return ts
 }
 
 // ExpectWorkers is a blocking call, where the method validates that the expected workers
 // can be found in the controllers status update. If the provided list of workers is empty,
-// this method will sleep for 10 seconds and then validate that the controller worker status
-// is empty.
+// this method will validate that the controller worker status is empty.
 func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worker.TestWorker) {
-	// validate the controller has no reported workers
 	if len(workers) == 0 {
-		c.Controller().WorkerStatusUpdateTimes().Clear()
-		time.Sleep(10 * time.Second)
-		assert.Eventually(t, func() bool {
-			empty := true
-			c.Controller().WorkerStatusUpdateTimes().Range(func(k, v any) bool {
-				empty = false
-				return false
-			})
-			return empty
-		}, 30*time.Second, 2*time.Second)
+		updateTimes := c.Controller().WorkerStatusUpdateTimes()
+		workerMap := map[string]*worker.TestWorker{}
+		for _, w := range workers {
+			workerMap[w.Name()] = w
+		}
+		updateTimes.Range(func(k, v any) bool {
+			require.NotNil(t, k)
+			require.NotNil(t, v)
+			if workerMap[k.(string)] == nil {
+				// We don't remove from updateTimes currently so if we're not
+				// expecting it we'll see an out-of-date entry
+				return true
+			}
+			assert.WithinDuration(t, time.Now(), v.(time.Time), 30*time.Second)
+			delete(workerMap, k.(string))
+			return true
+		})
+		assert.Empty(t, workerMap)
 		return
 	}
 
@@ -465,9 +488,11 @@ func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worke
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, c.WaitForNextWorkerStatusUpdate(w.Name()))
-			_, ok := c.Controller().WorkerStatusUpdateTimes().Load(w.Name())
-			assert.True(t, ok)
+			require.NoError(t, w.Worker().WaitForNextSuccessfulStatusUpdate())
+			require.Eventually(t, func() bool {
+				_, ok := c.Controller().WorkerStatusUpdateTimes().Load(w.Name())
+				return ok
+			}, 30*time.Second, 100*time.Millisecond)
 		}()
 	}
 	wg.Wait()
