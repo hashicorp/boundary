@@ -41,6 +41,18 @@ description: >-
     Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
     </td>
   </tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Go version 1.23 TLS handshake behavior changes
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new TLS handshake behavior. Some VPN providers struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x controllers, workers, or clients being unable to establish connections. As a workaround, you can revert back to the previous TLS handshake behavior.
+    <br /><br />
+    Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
+    </td>
+  </tr>
+
   </tbody>
 </table>
 
@@ -225,6 +237,25 @@ description: >-
     Learn more: <a href="https://discuss.hashicorp.com/t/hcsec-2024-28-boundary-controller-incorrectly-handles-http-requests-on-initialization-which-may-lead-to-a-denial-of-service">HCSEC-2024-28: Boundary controller incorrectly handles http requests on initialization which may lead to a denial of service</a>
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.18.x
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary version 0.18.x CLI is unable to establish connections using the <code>boundary connect</code> command
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new TLS handshake behavior. Some VPN providers struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x controllers, workers, or clients being unable to establish connections. As a workaround, you can revert back to the previous TLS handshake behavior.
+    <br /><br />
+    To revert back to the previous TLS handshake behavior, add the <code>tlskyber=0</code> parameters to the GODEBUG environment variable before the <code>boundary connect</code> command. For example:
+    <br /><br />
+    <code>GODEBUG=tlskyber=0 boundary connect ssh -target-id &lt;ID&gt;</code>
+    <br /><br />
+    Learn more: <a href="https://github.com/golang/go/issues/70047">Go issue #70047</a> and <a href="https://tip.golang.org/doc/go1.23">Go 1.23 Release Notes</a>
+    <br /><br />
     </td>
   </tr>
 
