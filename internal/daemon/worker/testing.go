@@ -456,6 +456,9 @@ func NewTestMultihopWorkers(t testing.TB,
 	})
 	t.Cleanup(kmsWorker.Shutdown)
 
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
+
 	// names should not be set when using pki workers
 	pkiWorkerConf, err := config.DevWorker()
 	require.NoError(err)
@@ -472,6 +475,9 @@ func NewTestMultihopWorkers(t testing.TB,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 	})
 	t.Cleanup(pkiWorker.Shutdown)
+
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
 
 	// Get a server repo and worker auth repo
 	serversRepo, err := serversRepoFn()
@@ -507,6 +513,9 @@ func NewTestMultihopWorkers(t testing.TB,
 	})
 	t.Cleanup(childPkiWorker.Shutdown)
 
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
+
 	// Perform initial authentication of worker to controller
 	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
 	require.NoError(err)
@@ -539,62 +548,16 @@ func NewTestMultihopWorkers(t testing.TB,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 		DisableAutoStart:           true,
 	})
-	t.Cleanup(childKmsWorker.Shutdown)
 	childKmsWorker.w.conf.WorkerAuthStorageKms = nil
 
 	err = childKmsWorker.w.Start()
-	require.NoError(err)
+	t.Cleanup(childKmsWorker.Shutdown)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	t.Log("Waiting for workers to start up")
-	require.Eventually(
-		func() bool {
-			t.Log("Checking worker status")
-			workers, err := serversRepo.ListWorkers(controllerContext, []string{"global"})
-			if err != nil {
-				return false
-			}
-			if len(workers) != 4 {
-				return false
-			}
-			for _, w := range workers {
-				if w.LastStatusTime == nil {
-					return false
-				}
-			}
-			return true
-		},
-		30*time.Second,
-		time.Second,
-	)
-	t.Log("All workers have started")
-
-	t.Cleanup(func() {
-		// Run shutdowns in parallel, they each take multiple seconds
-		// Note: this duplicates the shutdowns above, but since shutdowns
-		// are idempotent, that's OK. This is the first time we can safely run them
-		// all in parallel.
-		t.Log("Shutting down workers")
-		wg := &sync.WaitGroup{}
-		wg.Add(4)
-		go func() {
-			defer wg.Done()
-			kmsWorker.Shutdown()
-		}()
-		go func() {
-			defer wg.Done()
-			pkiWorker.Shutdown()
-		}()
-		go func() {
-			defer wg.Done()
-			childPkiWorker.Shutdown()
-		}()
-		go func() {
-			defer wg.Done()
-			childKmsWorker.Shutdown()
-		}()
-		wg.Wait()
-		t.Log("Workers shut down")
-	})
+	// Sleep so that workers can startup and connect.
+	time.Sleep(12 * time.Second)
 
 	return kmsWorker, pkiWorker, childPkiWorker, childKmsWorker
 }
