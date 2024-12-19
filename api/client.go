@@ -172,12 +172,6 @@ func DefaultConfig() (*Config, error) {
 		TLSConfig:  &TLSConfig{},
 	}
 
-	// We read the environment now; after DefaultClient returns we can override
-	// values from command line flags, which should take precedence.
-	if err := config.ReadEnvironment(); err != nil {
-		return config, fmt.Errorf("failed to read environment: %w", err)
-	}
-
 	transport := config.HttpClient.Transport.(*http.Transport)
 	transport.TLSHandshakeTimeout = 10 * time.Second
 	transport.TLSClientConfig = &tls.Config{
@@ -187,6 +181,11 @@ func DefaultConfig() (*Config, error) {
 	config.Backoff = RateLimitLinearJitterBackoff
 	config.MaxRetries = 2
 	config.Headers = make(http.Header)
+
+	// Read from environment last to ensure it takes precedence.
+	if err := config.ReadEnvironment(); err != nil {
+		return config, fmt.Errorf("failed to read environment: %w", err)
+	}
 
 	return config, nil
 }
