@@ -224,6 +224,36 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	return role
 }
 
+// TestRoleWithGrants creates a role suitable for testing along with grants
+// Note: functional options for GrantScopeIDs aren't used to express that
+// this function does not provide any default grant scope unlike TestRole
+func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
+	t.Helper()
+
+	ctx := context.Background()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	role, err := NewRole(ctx, scopeId)
+	require.NoError(err)
+	id, err := newRoleId(ctx)
+	require.NoError(err)
+	role.PublicId = id
+	require.NoError(rw.Create(ctx, role))
+	require.NotEmpty(role.PublicId)
+
+	for _, gsi := range grantScopeIDs {
+		gs, err := NewRoleGrantScope(ctx, id, gsi)
+		require.NoError(err)
+		require.NoError(rw.Create(ctx, gs))
+		role.GrantScopes = append(role.GrantScopes, gs)
+	}
+	for _, g := range grants {
+		_ = TestRoleGrant(t, conn, role.PublicId, g)
+	}
+	return role
+}
+
 func TestRoleGrant(t testing.TB, conn *db.DB, roleId, grant string, opt ...Option) *RoleGrant {
 	t.Helper()
 	require := require.New(t)
@@ -316,35 +346,6 @@ func TestManagedGroupRole(t testing.TB, conn *db.DB, roleId, managedGrpId string
 	return r
 }
 
-// TestRoleWithGrants creates a role suitable for testing along with grants
-// Functional options for GrantScopes aren't used to express that
-// this function does not provide any default grant scope unlike TestRole
-func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIds []string, grants []string) *Role {
-	t.Helper()
-
-	ctx := context.Background()
-	require := require.New(t)
-	rw := db.New(conn)
-
-	role, err := NewRole(ctx, scopeId)
-	require.NoError(err)
-	id, err := newRoleId(ctx)
-	require.NoError(err)
-	role.PublicId = id
-	require.NoError(rw.Create(ctx, role))
-	require.NotEmpty(role.PublicId)
-
-	for _, gsi := range grantScopeIds {
-		gs, err := NewRoleGrantScope(ctx, id, gsi)
-		require.NoError(err)
-		require.NoError(rw.Create(ctx, gs))
-		role.GrantScopes = append(role.GrantScopes, gs)
-	}
-	for _, g := range grants {
-		_ = TestRoleGrant(t, conn, role.PublicId, g)
-	}
-	return role
-}
 
 type TestRoleGrantsRequest struct {
 	RoleScopeId string
