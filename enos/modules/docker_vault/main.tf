@@ -38,7 +38,7 @@ variable "vault_port" {
   default     = "8300"
 }
 variable "vault_port_internal" {
-  description = "External Port to use"
+  description = "Internal Port to use"
   type        = string
   default     = "8300"
 }
