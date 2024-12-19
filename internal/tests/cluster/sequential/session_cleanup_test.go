@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package sequential
 
 import (
 	"context"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -107,7 +108,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		)
 		require.NoError(err)
 		t.Cleanup(func() {
-			proxy.Close()
+			_ = proxy.Close()
 		})
 		require.NotEmpty(t, proxy.ListenerAddr())
 
@@ -117,11 +118,6 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			Logger:                              logger.Named("w1"),
 			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})
-
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		require.NoError(err)
-		err = c1.WaitForNextWorkerStatusUpdate(w1.Name())
-		require.NoError(err)
 		helper.ExpectWorkers(t, c1, w1)
 
 		// Use an independent context for test things that take a context so
@@ -163,7 +159,6 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			// Wait on worker, then check controller
 			sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusClosed)
 			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().ConnectionRepoFn, session.StatusConnected)
-
 		default:
 			// Should be closed on both worker and controller. Wait on
 			// worker then check controller.
@@ -237,8 +232,18 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			PublicClusterAddr:               pl2.Addr().String(),
 			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
-		helper.ExpectWorkers(t, c1)
-		helper.ExpectWorkers(t, c2)
+
+		wg := new(sync.WaitGroup)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			helper.ExpectWorkers(t, c1)
+		}()
+		go func() {
+			defer wg.Done()
+			helper.ExpectWorkers(t, c2)
+		}()
+		wg.Wait()
 
 		// *************
 		// ** Proxy 1 **
@@ -251,7 +256,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		)
 		require.NoError(err)
 		t.Cleanup(func() {
-			p1.Close()
+			_ = p1.Close()
 		})
 		require.NotEmpty(t, p1.ListenerAddr())
 
@@ -266,7 +271,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		)
 		require.NoError(err)
 		t.Cleanup(func() {
-			p2.Close()
+			_ = p2.Close()
 		})
 		require.NotEmpty(t, p2.ListenerAddr())
 
@@ -279,19 +284,17 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			Logger:                              logger.Named("w1"),
 			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})
-		// Worker needs some extra time to become ready, otherwise for a
-		// currently-unknown reason the next successful status update fails
-		// because it's not sent before the context times out.
-		time.Sleep(5 * time.Second)
 
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		require.NoError(err)
-		err = c1.WaitForNextWorkerStatusUpdate(w1.Name())
-		require.NoError(err)
-		err = c2.WaitForNextWorkerStatusUpdate(w1.Name())
-		require.NoError(err)
-		helper.ExpectWorkers(t, c1, w1)
-		helper.ExpectWorkers(t, c2, w1)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			helper.ExpectWorkers(t, c1, w1)
+		}()
+		go func() {
+			defer wg.Done()
+			helper.ExpectWorkers(t, c2, w1)
+		}()
+		wg.Wait()
 
 		// Use an independent context for test things that take a context so
 		// that we aren't tied to any timeouts in the controller, etc. This
@@ -327,16 +330,14 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		// successful status report to ensure this.
 		event.WriteSysEvent(ctx, op, "pausing link to controller #1")
 		p1.Pause()
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		require.NoError(err)
+		helper.ExpectWorkers(t, c2, w1)
 		sConn.TestSendRecvAll(t)
 
 		// Resume first controller, pause second. This one should work too.
 		event.WriteSysEvent(ctx, op, "pausing link to controller #2, resuming #1")
 		p1.Resume()
 		p2.Pause()
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		require.NoError(err)
+		helper.ExpectWorkers(t, c1, w1)
 		sConn.TestSendRecvAll(t)
 
 		// Kill the first controller connection again. This one should fail
@@ -366,6 +367,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		event.WriteSysEvent(ctx, op, "resuming connections to both controllers")
 		p1.Resume()
 		p2.Resume()
+
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 		require.NoError(err)
 

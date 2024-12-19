@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package parallel
 
 import (
 	// Enable tcp target support.

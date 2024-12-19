@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package sequential
 
 import (
 	"bytes"
@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"sync"
 	"testing"
-	"time"
 
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
@@ -62,12 +61,6 @@ func TestCustomX509Verification_Client(t *testing.T) {
 		InitialUpstreams: c1.ClusterAddrs(),
 		Logger:           logger.Named("w1"),
 	})
-
-	// Give time for it to connect
-	time.Sleep(10 * time.Second)
-
-	err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-	req.NoError(err)
 	helper.ExpectWorkers(t, c1, w1)
 
 	// Connect target
@@ -232,11 +225,7 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		w1.Worker().TestOverrideX509VerifyCertPool = certPool
 		w1.Worker().TestOverrideX509VerifyDnsName = dnsName
 
-		// Give time for it to connect
-		time.Sleep(10 * time.Second)
-
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		req.NoError(err)
+		helper.ExpectWorkers(t, c1, w1)
 
 		// Connect target
 		client := c1.Client()
