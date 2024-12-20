@@ -9,12 +9,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestTestKmsWorker(t *testing.T) {
@@ -70,4 +72,26 @@ func TestTestPkiWorker(t *testing.T) {
 	assert.NotNil(t, authorizedWorker)
 	assert.True(t, strings.HasPrefix(authorizedWorker.GetPublicId(), globals.WorkerPrefix))
 	assert.NotEmpty(t, keyId)
+}
+
+func TestTestLookupWorkerByName(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	w := TestKmsWorker(t, conn, wrapper)
+	t.Run("success", func(t *testing.T) {
+		got, err := TestLookupWorkerByName(ctx, t, w.GetName(), repo)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(w.Worker, got.Worker, protocmp.Transform()))
+	})
+	t.Run("not found", func(t *testing.T) {
+		got, err := TestLookupWorkerByName(ctx, t, "unknown_name", repo)
+		require.NoError(t, err)
+		assert.Nil(t, got)
+	})
 }

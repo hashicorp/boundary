@@ -22,9 +22,9 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
@@ -38,7 +38,7 @@ func TestCustomX509Verification_Client(t *testing.T) {
 	ec := event.TestEventerConfig(t, "TestWorkerReplay", event.TestWithObservationSink(t), event.TestWithSysSink(t))
 	testLock := &sync.Mutex{}
 	// This prevents us from running tests in parallel.
-	tg.SetupSuiteTargetFilters(t)
+	server.TestUseCommunityFilterWorkersFn(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 		Name:  "test",
@@ -212,7 +212,7 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		req := require.New(t)
 		ctx := context.Background()
 		// This prevents us from running tests in parallel.
-		tg.SetupSuiteTargetFilters(t)
+		server.TestUseCommunityFilterWorkersFn(t)
 
 		conf, err := config.DevController()
 		conf.Eventing = &ec.EventerConfig

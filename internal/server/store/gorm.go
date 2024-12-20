@@ -8,7 +8,12 @@ func (*Controller) TableName() string {
 	return "server_controller"
 }
 
-// TableName overrides the table name used by WorkerTag to `worker_tag`
-func (*WorkerTag) TableName() string {
-	return "server_worker_tag"
+// TableName overrides the table name used by ApiTag
+func (w *ApiTag) TableName() string {
+	return "server_worker_api_tag"
+}
+
+// TableName overrides the table name used by ConfigTag
+func (w *ConfigTag) TableName() string {
+	return "server_worker_config_tag"
 }
