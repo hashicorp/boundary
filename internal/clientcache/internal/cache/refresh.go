@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
@@ -82,8 +83,10 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %v, auth token %q", u, t.Id))
 		}
 		for _, kt := range keyringTokens {
-			at := r.repo.tokenKeyringFn(kt.KeyringType, kt.TokenName)
+			at, err := r.repo.tokenKeyringFn(kt.KeyringType, kt.TokenName)
 			switch {
+			case err != nil && !errors.Is(err, base.ErrNoToken):
+				event.WriteSysEvent(ctx, op, "failed to get token from keyring", "keyring", kt.KeyringType, "token name", kt.TokenName, "error", err)
 			case at == nil, at.Id != kt.AuthTokenId, at.UserId != t.UserId:
 				event.WriteSysEvent(ctx, op, "Removed keyring token since the keyring contents have changed since being cached", "keyring", kt.KeyringType, "token name", kt.TokenName, "old auth token id", kt.AuthTokenId)
 				// delete the keyring token if the auth token in the keyring
