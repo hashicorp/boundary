@@ -1,40 +1,41 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package sequential
 
 import (
 	"context"
 	"net"
 	"testing"
 
-	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/dawdle"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWorkerBytesUpDown(t *testing.T) {
-	require := require.New(t)
+func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
+	const op = "cluster.TestWorkerSessionMultipleConnections"
 
 	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 
+	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  t.Name(),
 		Level: hclog.Trace,
 	})
 
-	conf, err := config.DevController(config.WithIPv6Enabled(true))
+	pl, err := net.Listen("tcp", "[::1]:")
 	require.NoError(err)
 
-	pl, err := net.Listen("tcp", "[::1]:")
+	conf, err := config.DevController(config.WithIPv6Enabled(true))
 	require.NoError(err)
 
 	// update cluster listener to utilize proxy listener address
@@ -61,14 +62,14 @@ func TestWorkerBytesUpDown(t *testing.T) {
 		dawdle.WithWbufSize(256),
 	)
 	require.NoError(err)
-	require.NotEmpty(t, proxy.ListenerAddr())
 	t.Cleanup(func() { _ = proxy.Close() })
+	require.NotEmpty(t, proxy.ListenerAddr())
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		WorkerAuthKms:                       c1.Config().WorkerAuthKms,
 		InitialUpstreams:                    []string{proxy.ListenerAddr()},
 		Logger:                              logger.Named("w1"),
-		SuccessfulStatusGracePeriodDuration: helper.DefaultSuccessfulStatusGracePeriod,
+		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 		EnableIPv6:                          true,
 	})
 
@@ -91,56 +92,34 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	ts := helper.NewTestTcpServer(t)
 	require.NotNil(t, ts)
 	t.Cleanup(ts.Close)
+	t.Logf("test server listening on port %d", ts.Port())
+
 	tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()), targets.WithSessionConnectionLimit(-1))
 	require.NoError(err)
 	require.NotNil(tgt)
 
-	// Authorize a session, connect and send/recv some traffic
+	// Authorize and connect
 	workerInfo := []*targets.WorkerInfo{
 		{
 			Address: w1.ProxyAddrs()[0],
 		},
 	}
 	sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890", helper.WithWorkerInfo(workerInfo))
-	conn := sess.Connect(ctx, t)
-	conn.TestSendRecvAll(t)
+	sConn := sess.Connect(ctx, t)
 
-	// Wait for next status and then check DB for bytes up and down
-	require.NoError(w1.Worker().WaitForNextSuccessfulStatusUpdate())
-	require.NoError(c1.WaitForNextWorkerStatusUpdate(w1.Name()))
+	// Run initial send/receive test, make sure things are working
+	event.WriteSysEvent(ctx, op, "running initial send/recv test for initial connection")
+	sConn.TestSendRecvAll(t)
 
-	dbConns1, err := c1.ConnectionsRepo().ListConnectionsBySessionId(ctx, sess.SessionId)
-	require.NoError(err)
-	require.Len(dbConns1, 1)
-	require.NotZero(dbConns1[0].BytesUp)
-	require.NotZero(dbConns1[0].BytesDown)
+	// Create another connection for this session
+	sConn2 := sess.Connect(ctx, t)
+	// Ensure second connection works
+	event.WriteSysEvent(ctx, op, "running initial send/recv test for second connection")
+	sConn2.TestSendRecvAll(t)
 
-	// Also check the connection data via the API
-	sc := sessions.NewClient(c1.Client())
-	apiRes1, err := sc.Read(ctx, sess.SessionId)
-	require.NoError(err)
-	require.Len(apiRes1.Item.Connections, 1)
-	require.NotZero(apiRes1.Item.Connections[0].BytesUp)
-	require.NotZero(apiRes1.Item.Connections[0].BytesDown)
-
-	// Send/recv some more traffic, close connection, wait for the next status
-	// update and check everything again.
-	conn.TestSendRecvAll(t)
-	require.NoError(conn.Close())
-	require.NoError(w1.Worker().WaitForNextSuccessfulStatusUpdate())
-	require.NoError(c1.WaitForNextWorkerStatusUpdate(w1.Name()))
-
-	dbConns2, err := c1.ConnectionsRepo().ListConnectionsBySessionId(ctx, sess.SessionId)
-	require.NoError(err)
-	require.Len(dbConns2, 1)
-	require.Greater(dbConns2[0].BytesUp, dbConns1[0].BytesUp)
-	require.Greater(dbConns2[0].BytesDown, dbConns1[0].BytesDown)
-	require.NotEmpty(dbConns2[0].ClosedReason)
-
-	apiRes2, err := sc.Read(ctx, sess.SessionId)
-	require.NoError(err)
-	require.Len(apiRes2.Item.Connections, 1)
-	require.Greater(apiRes2.Item.Connections[0].BytesUp, apiRes1.Item.Connections[0].BytesUp)
-	require.Greater(apiRes2.Item.Connections[0].BytesDown, apiRes1.Item.Connections[0].BytesDown)
-	require.NotEmpty(apiRes2.Item.Connections[0].ClosedReason)
+	// Create another connection for this session
+	sConn3 := sess.Connect(ctx, t)
+	// Ensure second connection works
+	event.WriteSysEvent(ctx, op, "running initial send/recv test for third connection")
+	sConn3.TestSendRecvAll(t)
 }
