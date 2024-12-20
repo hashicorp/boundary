@@ -106,8 +106,7 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	conn.TestSendRecvAll(t)
 
 	// Wait for next status and then check DB for bytes up and down
-	require.NoError(w1.Worker().WaitForNextSuccessfulStatusUpdate())
-	require.NoError(c1.WaitForNextWorkerStatusUpdate(w1.Name()))
+	helper.ExpectWorkers(t, c1, w1)
 
 	dbConns1, err := c1.ConnectionsRepo().ListConnectionsBySessionId(ctx, sess.SessionId)
 	require.NoError(err)
@@ -127,8 +126,7 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	// update and check everything again.
 	conn.TestSendRecvAll(t)
 	require.NoError(conn.Close())
-	require.NoError(w1.Worker().WaitForNextSuccessfulStatusUpdate())
-	require.NoError(c1.WaitForNextWorkerStatusUpdate(w1.Name()))
+	helper.ExpectWorkers(t, c1, w1)
 
 	dbConns2, err := c1.ConnectionsRepo().ListConnectionsBySessionId(ctx, sess.SessionId)
 	require.NoError(err)

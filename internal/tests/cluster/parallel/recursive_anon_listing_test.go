@@ -20,7 +20,6 @@ func TestListAnonymousRecursing(t *testing.T) {
 
 	require := require.New(t)
 	tc := controller.NewTestController(t, nil)
-	defer tc.Shutdown()
 
 	client := tc.Client()
 	token := tc.Token()

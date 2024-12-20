@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
@@ -75,7 +74,6 @@ func TestUnixListener(t *testing.T) {
 			},
 		},
 	})
-	defer c1.Shutdown()
 
 	helper.ExpectWorkers(t, c1)
 
@@ -88,19 +86,17 @@ func TestUnixListener(t *testing.T) {
 		InitialUpstreams: c1.ClusterAddrs(),
 		Logger:           logger.Named("w1"),
 	})
-	defer w1.Shutdown()
 
-	time.Sleep(10 * time.Second)
 	helper.ExpectWorkers(t, c1, w1)
 
 	require.NoError(w1.Worker().Shutdown())
-	time.Sleep(10 * time.Second)
+
 	helper.ExpectWorkers(t, c1)
 
 	require.NoError(c1.Controller().Shutdown())
-	c1 = controller.NewTestController(t, &controller.TestControllerOpts{
+	c2 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                        conf,
-		Logger:                        logger.Named("c1"),
+		Logger:                        logger.Named("c2"),
 		DisableOidcAuthMethodCreation: true,
 		EventerConfig: &event.EventerConfig{
 			ObservationsEnabled: true,
@@ -120,15 +116,13 @@ func TestUnixListener(t *testing.T) {
 			},
 		},
 	})
-	defer c1.Shutdown()
 
-	time.Sleep(10 * time.Second)
-	helper.ExpectWorkers(t, c1)
+	helper.ExpectWorkers(t, c2)
 
 	client, err := api.NewClient(nil)
 	require.NoError(err)
 
-	addrs := c1.ApiAddrs()
+	addrs := c2.ApiAddrs()
 	require.Len(addrs, 1)
 
 	require.NoError(client.SetAddr(addrs[0]))
