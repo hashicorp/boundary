@@ -17,6 +17,7 @@ project "boundary" {
     release_branches = [
       "main",
       "release/**",
+      "jbrandhorst-downgrade-0.18-go",
     ]
   }
 }
