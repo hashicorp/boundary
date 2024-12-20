@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package parallel
 
 import (
 	"context"
@@ -20,6 +20,8 @@ import (
 )
 
 func TestMultiControllerMultiWorkerConnections(t *testing.T) {
+	t.Parallel()
+
 	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
@@ -143,6 +145,8 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 }
 
 func TestWorkerAppendInitialUpstreams(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	require, assert := require.New(t), assert.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{

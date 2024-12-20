@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package parallel
 
 import (
 	"bytes"
@@ -23,6 +23,8 @@ import (
 )
 
 func TestUnixListener(t *testing.T) {
+	t.Parallel()
+
 	require := require.New(t)
 	buf := new(bytes.Buffer)
 	logger := hclog.New(&hclog.LoggerOptions{
