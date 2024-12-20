@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -28,6 +29,52 @@ type roleRequest struct {
 	roleScopeID  string
 	grantStrings []string
 	grantScopes  []string
+}
+
+// genAuthTokenCtx creates an auth.VerifierContext which contains a valid auth token
+// for a user which is associated with roles in the roles parameter
+// this function creates an authMethod, account, user at global scope
+func genAuthTokenCtx(t *testing.T,
+	ctx context.Context,
+	conn *db.DB,
+	wrap wrapping.Wrapper,
+	iamRepo *iam.Repository,
+	roles []roleRequest,
+) context.Context {
+	t.Helper()
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrap)
+
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return atRepo, nil
+	}
+
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	authMethod := password.TestAuthMethods(t, conn, globals.GlobalPrefix, 1)[0]
+
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), uuid.NewString())
+	user := iam.TestUser(t, iamRepo, globals.GlobalPrefix, iam.WithAccountIds(acct.GetPublicId()))
+	for _, r := range roles {
+		role := iam.TestRoleWithGrants(t, conn, r.roleScopeID, r.grantScopes, r.grantStrings)
+		_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
+	}
+	fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+	require.NoError(t, err)
+	fullGrantAuthCtx := auth.NewVerifierContext(requests.NewRequestContext(ctx, requests.WithUserId(user.GetPublicId())),
+		iamRepoFn, atRepoFn, serversRepoFn, kmsCache, &authpb.RequestInfo{
+			PublicId:    fullGrantToken.PublicId,
+			Token:       fullGrantToken.GetToken(),
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		})
+
+	return fullGrantAuthCtx
 }
 
 // TestGrants_ReadActions tests read actions to assert that grants are being applied properly
@@ -53,8 +100,6 @@ func TestGrants_ReadActions(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kmsCache := kms.TestKms(t, conn, wrap)
-	rw := db.New(conn)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
@@ -65,16 +110,6 @@ func TestGrants_ReadActions(t *testing.T) {
 	}
 	s, err := groups.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err)
-
-	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	require.NoError(t, err)
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return atRepo, nil
-	}
-	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kmsCache)
-	}
-
 	org1, proj1 := iam.TestScopes(t, iamRepo)
 	org2, proj2 := iam.TestScopes(t, iamRepo)
 	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
@@ -85,7 +120,6 @@ func TestGrants_ReadActions(t *testing.T) {
 	proj1Group := iam.TestGroup(t, conn, proj1.GetPublicId(), iam.WithDescription("proj1"), iam.WithName("proj1"))
 	proj2Group := iam.TestGroup(t, conn, proj2.GetPublicId(), iam.WithDescription("proj2"), iam.WithName("proj2"))
 	proj3Group := iam.TestGroup(t, conn, proj3.GetPublicId(), iam.WithDescription("proj3"), iam.WithName("proj3"))
-	authMethod := password.TestAuthMethods(t, conn, globals.GlobalPrefix, 1)[0]
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
@@ -200,21 +234,7 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				// this creates everything required to get a token and creates context with auth token
-				acct := password.TestAccount(t, conn, authMethod.GetPublicId(), uuid.NewString())
-				user := iam.TestUser(t, iamRepo, globals.GlobalPrefix, iam.WithAccountIds(acct.GetPublicId()))
-				for _, r := range tc.rolesToCreate {
-					role := iam.TestRoleWithGrants(t, conn, r.roleScopeID, r.grantScopes, r.grantStrings)
-					_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
-				}
-				fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
-				require.NoError(t, err)
-				fullGrantAuthCtx := auth.NewVerifierContext(requests.NewRequestContext(ctx, requests.WithUserId(user.GetPublicId())),
-					repoFn, atRepoFn, serversRepoFn, kmsCache, &authpb.RequestInfo{
-						PublicId:    fullGrantToken.PublicId,
-						Token:       fullGrantToken.GetToken(),
-						TokenFormat: uint32(auth.AuthTokenTypeBearer),
-					})
+				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.rolesToCreate)
 				got, finalErr := s.ListGroups(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
@@ -438,7 +458,6 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-
 				wantErr: map[string]error{
 					globalGroup.PublicId: nil,
 					org1Group.PublicId:   nil,
@@ -449,21 +468,7 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				// this creates everything required to get a token and creates context with auth token
-				acct := password.TestAccount(t, conn, authMethod.GetPublicId(), uuid.NewString())
-				user := iam.TestUser(t, iamRepo, globals.GlobalPrefix, iam.WithAccountIds(acct.GetPublicId()))
-				for _, r := range tc.rolesToCreate {
-					role := iam.TestRoleWithGrants(t, conn, r.roleScopeID, r.grantScopes, r.grantStrings)
-					_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
-				}
-				fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
-				require.NoError(t, err)
-				fullGrantAuthCtx := auth.NewVerifierContext(requests.NewRequestContext(ctx, requests.WithUserId(user.GetPublicId())),
-					repoFn, atRepoFn, serversRepoFn, kmsCache, &authpb.RequestInfo{
-						PublicId:    fullGrantToken.PublicId,
-						Token:       fullGrantToken.GetToken(),
-						TokenFormat: uint32(auth.AuthTokenTypeBearer),
-					})
+				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.rolesToCreate)
 				for id, wantErr := range tc.wantErr {
 					_, err := s.GetGroup(fullGrantAuthCtx, &pbs.GetGroupRequest{
 						Id: id,
