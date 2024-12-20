@@ -529,7 +529,6 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 	var err error
 	tc.c, err = New(ctx, conf)
 	if err != nil {
-		tc.Shutdown()
 		t.Fatal(err)
 	}
 
@@ -552,7 +551,6 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 
 	if !opts.DisableAutoStart {
 		if err := tc.c.Start(); err != nil {
-			tc.Shutdown()
 			t.Fatal(err)
 		}
 	}

@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package cluster
+package parallel
 
 import (
 	"testing"
@@ -15,6 +15,8 @@ import (
 )
 
 func TestAnonListing(t *testing.T) {
+	t.Parallel()
+
 	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
@@ -28,7 +30,6 @@ func TestAnonListing(t *testing.T) {
 		InitialResourcesSuffix: "1234567890",
 		Logger:                 logger,
 	})
-	defer c1.Shutdown()
 
 	// Anon user has list and read permissions on scopes by default,
 	// verify that list scopes returns expected scope without setting token
