@@ -4,6 +4,9 @@
 package event
 
 import (
+	"cmp"
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -14,12 +17,16 @@ import (
 
 func Test_newError(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
+	canceledCtx, cancel := context.WithCancelCause(ctx)
+	cancel(errors.New("test cancel"))
 
 	tests := []struct {
 		name            string
 		fromOp          Op
 		e               error
 		opts            []Option
+		ctx             context.Context
 		want            *err
 		wantErrIs       error
 		wantErrContains string
@@ -87,11 +94,25 @@ func Test_newError(t *testing.T) {
 				Info:        map[string]any{"msg": "hello"},
 			},
 		},
+		{
+			name:   "context-cause",
+			ctx:    canceledCtx,
+			fromOp: Op("context-cause"),
+			e:      fmt.Errorf("%s: valid: %w", "context-cause", ErrInvalidParameter),
+			want: &err{
+				ErrorFields:  fmt.Errorf("%s: valid: %w", "context-cause", ErrInvalidParameter),
+				Error:        "context-cause: valid: invalid parameter",
+				Version:      errorVersion,
+				Op:           Op("context-cause"),
+				ContextCause: errors.New("test cancel"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newError(tt.fromOp, tt.e, tt.opts...)
+			testCtx := cmp.Or(tt.ctx, ctx)
+			got, err := newError(testCtx, tt.fromOp, tt.e, tt.opts...)
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(got)
