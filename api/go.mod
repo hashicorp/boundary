@@ -3,6 +3,7 @@ module github.com/hashicorp/boundary/api
 go 1.23.3
 
 require (
+	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/boundary/sdk v0.0.48
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.16
