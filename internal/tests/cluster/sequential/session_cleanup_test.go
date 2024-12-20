@@ -173,8 +173,13 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		// Resume the connection, and reconnect.
 		event.WriteSysEvent(ctx, op, "resuming controller/worker link")
 		proxy.Resume()
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		require.NoError(err)
+		require.Eventually(func() bool {
+			err := w1.Worker().WaitForNextSuccessfulStatusUpdate()
+			if err != nil {
+				return false
+			}
+			return true
+		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
 
 		// Do something post-reconnect depending on burden case. Note in
 		// the default case, both worker and controller should be
@@ -286,10 +291,6 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			Logger:                              logger.Named("w1"),
 			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})
-		// Worker needs some extra time to become ready, otherwise for a
-		// currently-unknown reason the next successful status update fails
-		// because it's not sent before the context times out.
-		time.Sleep(5 * time.Second)
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
@@ -335,16 +336,26 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		// successful status report to ensure this.
 		event.WriteSysEvent(ctx, op, "pausing link to controller #1")
 		p1.Pause()
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		require.NoError(err)
+		require.Eventually(func() bool {
+			err := w1.Worker().WaitForNextSuccessfulStatusUpdate()
+			if err != nil {
+				return false
+			}
+			return true
+		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
 		sConn.TestSendRecvAll(t)
 
 		// Resume first controller, pause second. This one should work too.
 		event.WriteSysEvent(ctx, op, "pausing link to controller #2, resuming #1")
 		p1.Resume()
 		p2.Pause()
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		require.NoError(err)
+		require.Eventually(func() bool {
+			err := w1.Worker().WaitForNextSuccessfulStatusUpdate()
+			if err != nil {
+				return false
+			}
+			return true
+		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
 		sConn.TestSendRecvAll(t)
 
 		// Kill the first controller connection again. This one should fail
@@ -374,8 +385,13 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		event.WriteSysEvent(ctx, op, "resuming connections to both controllers")
 		p1.Resume()
 		p2.Resume()
-		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-		require.NoError(err)
+		require.Eventually(func() bool {
+			err := w1.Worker().WaitForNextSuccessfulStatusUpdate()
+			if err != nil {
+				return false
+			}
+			return true
+		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
 
 		// Do something post-reconnect depending on burden case. Note in
 		// the default case, both worker and controller should be
