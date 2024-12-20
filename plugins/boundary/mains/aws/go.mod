@@ -2,6 +2,8 @@ module github.com/hashicorp/boundary/plugins/boundary/mains/aws
 
 go 1.23.3
 
+godebug tlskyber=0
+
 require (
 	github.com/hashicorp/boundary-plugin-aws v0.4.2
 	github.com/hashicorp/boundary/sdk v0.0.49

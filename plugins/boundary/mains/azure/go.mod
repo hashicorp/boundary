@@ -2,6 +2,8 @@ module github.com/hashicorp/boundary/plugins/boundary/mains/azure
 
 go 1.23.0
 
+godebug tlskyber=0
+
 require (
 	github.com/hashicorp/boundary-plugin-azure v0.1.3
 	github.com/hashicorp/boundary/sdk v0.0.39

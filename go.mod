@@ -2,6 +2,8 @@ module github.com/hashicorp/boundary
 
 go 1.23.3
 
+godebug tlskyber=0
+
 replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk

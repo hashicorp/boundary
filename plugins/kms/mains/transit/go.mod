@@ -2,6 +2,8 @@ module github.com/hashicorp/boundary/plugins/kms/mains/transit
 
 go 1.23.0
 
+godebug tlskyber=0
+
 require (
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.7
 	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.12
