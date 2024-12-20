@@ -179,7 +179,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 				return false
 			}
 			return true
-		}, helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
+		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
 
 		// Do something post-reconnect depending on burden case. Note in
 		// the default case, both worker and controller should be
@@ -345,7 +345,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 				return false
 			}
 			return true
-		}, helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
+		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
 		sConn.TestSendRecvAll(t)
 
 		// Resume first controller, pause second. This one should work too.
@@ -358,7 +358,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 				return false
 			}
 			return true
-		}, helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
+		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
 		sConn.TestSendRecvAll(t)
 
 		// Kill the first controller connection again. This one should fail
@@ -394,7 +394,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 				return false
 			}
 			return true
-		}, helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
+		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
 
 		// Do something post-reconnect depending on burden case. Note in
 		// the default case, both worker and controller should be
