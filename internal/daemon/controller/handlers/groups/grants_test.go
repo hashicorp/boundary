@@ -19,8 +19,10 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type roleRequest struct {
@@ -476,4 +478,106 @@ func TestGrants_ReadActions(t *testing.T) {
 			})
 		}
 	})
+}
+
+// TestGrants_ReadActions tests write actions to assert that grants are being applied properly
+//
+//	[create, update, delete]
+//	Role - which scope the role is created in
+//			- global level
+//			- org level
+//			- project level
+//	Grant - what IAM grant scope is set for the permission
+//			- global: descendant
+//			- org: children
+//			- project
+//		Scopes [resource]:
+//			- global [globalGroup]
+//				- org1 [org1Group]
+//					- proj1 [proj1Group]
+//				- org2 [org2Group]
+//					- proj2 [proj2Group]
+//					- proj3 [proj3Group]
+func TestWriteActions(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := groups.NewService(ctx, repoFn, 1000)
+	require.NoError(t, err)
+
+	org1, proj1 := iam.TestScopes(t, iamRepo)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+
+	testcases := []struct {
+		name                   string
+		roles                  []roleRequest
+		createdInScopeAndError map[string]error
+	}{
+		{
+			name: "grant all can create all",
+			roles: []roleRequest{
+				{
+					roleScopeID:  globals.GlobalPrefix,
+					grantStrings: []string{"id=*;type=*;actions=*"},
+					grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+				},
+			},
+			createdInScopeAndError: map[string]error{
+				globals.GlobalPrefix: nil,
+				org1.PublicId:        nil,
+				org2.PublicId:        nil,
+				proj1.PublicId:       nil,
+				proj2.PublicId:       nil,
+				proj3.PublicId:       nil,
+			},
+		},
+		{
+			name: "grant children can only create in orgs",
+			roles: []roleRequest{
+				{
+					roleScopeID:  globals.GlobalPrefix,
+					grantStrings: []string{"id=*;type=*;actions=*"},
+					grantScopes:  []string{globals.GrantScopeChildren},
+				},
+			},
+			createdInScopeAndError: map[string]error{
+				globals.GlobalPrefix: handlers.ForbiddenError(),
+				org1.PublicId:        nil,
+				org2.PublicId:        nil,
+				proj1.PublicId:       handlers.ForbiddenError(),
+				proj2.PublicId:       handlers.ForbiddenError(),
+				proj3.PublicId:       handlers.ForbiddenError(),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
+
+			for scp, wantErr := range tc.createdInScopeAndError {
+				name := uuid.NewString()
+				got, err := s.CreateGroup(fullGrantAuthCtx, &pbs.CreateGroupRequest{
+					Item: &pb.Group{
+						ScopeId:     scp,
+						Name:        &wrapperspb.StringValue{Value: name},
+						Description: &wrapperspb.StringValue{Value: name},
+					},
+				})
+				if wantErr != nil {
+					require.ErrorIs(t, wantErr, err)
+					continue
+				}
+				require.NoErrorf(t, err, "failed to create group in scope %s", scp)
+				g, _, err := iamRepo.LookupGroup(ctx, got.Item.Id)
+				require.NoError(t, err)
+				require.Equal(t, name, g.Name)
+			}
+		})
+	}
 }
