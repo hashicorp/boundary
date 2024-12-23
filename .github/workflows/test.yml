@@ -132,6 +132,7 @@ jobs:
           go-version: "${{ needs.setup.outputs.go-version }}"
           cache: false
       - name: Set up Go modules cache
+        id: go-cache
         uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: |
@@ -142,6 +143,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go
           fail-on-cache-miss: false
+      - name: Install tools if cache restore fails
+        if: steps.go-cache.outputs.cache-hit != 'true'
+        run: |
+          go mod download
+          make tools
       - name: Set up plugin cache
         id: plugin-cache
         uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
