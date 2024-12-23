@@ -30,7 +30,7 @@ func TestEventer_retrySend(t *testing.T) {
 	require.NoError(t, err)
 
 	testError := fmt.Errorf("%s: missing operation: %w", "missing operation", ErrInvalidParameter)
-	testEvent, err := newError("TestEventer_retrySend", testError, WithId("test-error"))
+	testEvent, err := newError(ctx, "TestEventer_retrySend", testError, WithId("test-error"))
 	require.NoError(t, err)
 
 	tests := []struct {
