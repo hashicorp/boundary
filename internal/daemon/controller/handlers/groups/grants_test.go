@@ -3,6 +3,7 @@ package groups_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -480,7 +481,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	})
 }
 
-// TestGrants_ReadActions tests write actions to assert that grants are being applied properly
+// TestWriteActions tests write actions to assert that grants are being applied properly
 //
 //	[create, update, delete]
 //	Role - which scope the role is created in
@@ -499,85 +500,141 @@ func TestGrants_ReadActions(t *testing.T) {
 //					- proj2 [proj2Group]
 //					- proj3 [proj3Group]
 func TestWriteActions(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrap := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrap)
-	repoFn := func() (*iam.Repository, error) {
-		return iamRepo, nil
-	}
-	s, err := groups.NewService(ctx, repoFn, 1000)
-	require.NoError(t, err)
+	t.Run("create", func(t *testing.T) {
+		ctx := context.Background()
+		conn, _ := db.TestSetup(t, "postgres")
+		wrap := db.TestWrapper(t)
+		iamRepo := iam.TestRepo(t, conn, wrap)
+		repoFn := func() (*iam.Repository, error) {
+			return iamRepo, nil
+		}
+		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
 
-	org1, proj1 := iam.TestScopes(t, iamRepo)
-	org2, proj2 := iam.TestScopes(t, iamRepo)
-	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+		org1, proj1 := iam.TestScopes(t, iamRepo)
+		org2, proj2 := iam.TestScopes(t, iamRepo)
+		proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
 
-	testcases := []struct {
-		name                   string
-		roles                  []roleRequest
-		createdInScopeAndError map[string]error
-	}{
-		{
-			name: "grant all can create all",
-			roles: []roleRequest{
-				{
-					roleScopeID:  globals.GlobalPrefix,
-					grantStrings: []string{"id=*;type=*;actions=*"},
-					grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-				},
-			},
-			createdInScopeAndError: map[string]error{
-				globals.GlobalPrefix: nil,
-				org1.PublicId:        nil,
-				org2.PublicId:        nil,
-				proj1.PublicId:       nil,
-				proj2.PublicId:       nil,
-				proj3.PublicId:       nil,
-			},
-		},
-		{
-			name: "grant children can only create in orgs",
-			roles: []roleRequest{
-				{
-					roleScopeID:  globals.GlobalPrefix,
-					grantStrings: []string{"id=*;type=*;actions=*"},
-					grantScopes:  []string{globals.GrantScopeChildren},
-				},
-			},
-			createdInScopeAndError: map[string]error{
-				globals.GlobalPrefix: handlers.ForbiddenError(),
-				org1.PublicId:        nil,
-				org2.PublicId:        nil,
-				proj1.PublicId:       handlers.ForbiddenError(),
-				proj2.PublicId:       handlers.ForbiddenError(),
-				proj3.PublicId:       handlers.ForbiddenError(),
-			},
-		},
-	}
-
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
-
-			for scp, wantErr := range tc.createdInScopeAndError {
-				name := uuid.NewString()
-				got, err := s.CreateGroup(fullGrantAuthCtx, &pbs.CreateGroupRequest{
-					Item: &pb.Group{
-						ScopeId:     scp,
-						Name:        &wrapperspb.StringValue{Value: name},
-						Description: &wrapperspb.StringValue{Value: name},
+		allScopeIDs := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
+		testcases := []struct {
+			name              string
+			roles             []roleRequest
+			canCreateInScopes []string
+		}{
+			{
+				name: "grant all can create all",
+				roles: []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
-				})
-				if wantErr != nil {
-					require.ErrorIs(t, wantErr, err)
-					continue
+				},
+				canCreateInScopes: allScopeIDs,
+			},
+			{
+				name: "grant children can only create in orgs",
+				roles: []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				canCreateInScopes: []string{org1.PublicId, org2.PublicId},
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
+
+				for _, scope := range allScopeIDs {
+					name := uuid.NewString()
+					got, err := s.CreateGroup(fullGrantAuthCtx, &pbs.CreateGroupRequest{
+						Item: &pb.Group{
+							ScopeId:     scope,
+							Name:        &wrapperspb.StringValue{Value: name},
+							Description: &wrapperspb.StringValue{Value: name},
+						},
+					})
+					if !slices.Contains(tc.canCreateInScopes, scope) {
+						require.ErrorIs(t, err, handlers.ForbiddenError())
+						continue
+					}
+					require.NoErrorf(t, err, "failed to create group in scope %s", scope)
+					g, _, err := iamRepo.LookupGroup(ctx, got.Item.Id)
+					require.NoError(t, err)
+					require.Equal(t, name, g.Name)
 				}
-				require.NoErrorf(t, err, "failed to create group in scope %s", scp)
-				g, _, err := iamRepo.LookupGroup(ctx, got.Item.Id)
-				require.NoError(t, err)
-				require.Equal(t, name, g.Name)
-			}
-		})
-	}
+			})
+		}
+	})
+	t.Run("delete", func(t *testing.T) {
+		ctx := context.Background()
+		conn, _ := db.TestSetup(t, "postgres")
+		wrap := db.TestWrapper(t)
+		iamRepo := iam.TestRepo(t, conn, wrap)
+		repoFn := func() (*iam.Repository, error) {
+			return iamRepo, nil
+		}
+		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
+
+		org1, proj1 := iam.TestScopes(t, iamRepo)
+		org2, proj2 := iam.TestScopes(t, iamRepo)
+		proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+
+		allScopeIDs := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
+
+		testcases := []struct {
+			name                    string
+			roles                   []roleRequest
+			deleteAllowedAtScopeIDs []string
+		}{
+			{
+				name: "grant all can delete all",
+				roles: []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				},
+				deleteAllowedAtScopeIDs: allScopeIDs,
+			},
+			{
+				name: "grant children can only delete in orgs",
+				roles: []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				deleteAllowedAtScopeIDs: []string{org1.PublicId, org2.PublicId},
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				// setup a map to track which scope correlates to a group
+				scopeIdGroupMap := map[string]*iam.Group{}
+				for _, scp := range allScopeIDs {
+					g := iam.TestGroup(t, conn, scp)
+					scopeIdGroupMap[scp] = g
+				}
+				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
+				for scope, group := range scopeIdGroupMap {
+					_, err = s.DeleteGroup(fullGrantAuthCtx, &pbs.DeleteGroupRequest{Id: group.PublicId})
+					if !slices.Contains(tc.deleteAllowedAtScopeIDs, scope) {
+						require.ErrorIs(t, err, handlers.ForbiddenError())
+						continue
+					}
+					require.NoErrorf(t, err, "failed to delete group in scope %s", scope)
+				}
+			})
+		}
+	})
+
 }
