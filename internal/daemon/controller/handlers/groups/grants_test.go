@@ -638,86 +638,101 @@ func TestWriteActions(t *testing.T) {
 	})
 
 	t.Run("update", func(t *testing.T) {
-		ctx := context.Background()
-		conn, _ := db.TestSetup(t, "postgres")
-		wrap := db.TestWrapper(t)
-		iamRepo := iam.TestRepo(t, conn, wrap)
-		repoFn := func() (*iam.Repository, error) {
-			return iamRepo, nil
-		}
-		s, err := groups.NewService(ctx, repoFn, 1000)
-		require.NoError(t, err)
-
-		//org1, proj1 := iam.TestScopes(t, iamRepo)
-		//org2, proj2 := iam.TestScopes(t, iamRepo)
-		//proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
-
 		testcases := []struct {
-			name    string
-			roles   []roleRequest
-			setup   func(t *testing.T) (*iam.Group, *pbs.UpdateGroupRequest)
-			wantErr error
+			name                      string
+			setupScopesResourcesRoles func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest)
+			wantErr                   error
 		}{
 			{
 				name: "global_scope_group_good_grant_success",
-				roles: []roleRequest{
-					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
-					},
-				},
-				setup: func(t *testing.T) (*iam.Group, *pbs.UpdateGroupRequest) {
-					g := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithName(uuid.NewString()), iam.WithDescription(uuid.NewString()))
-					require.NoError(t, err)
-					input := &pbs.UpdateGroupRequest{
-						Id: g.PublicId,
-						Item: &pb.Group{
-							Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-							Description: &wrapperspb.StringValue{Value: uuid.NewString()},
-							Version:     1,
-						},
-						UpdateMask: &fieldmaskpb.FieldMask{
-							Paths: []string{"name", "description"},
+				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest) {
+					g := iam.TestGroup(t, conn, globals.GlobalPrefix)
+					roles := []roleRequest{
+						{
+							roleScopeID:  globals.GlobalPrefix,
+							grantStrings: []string{"id=*;type=*;actions=*"},
+							grantScopes:  []string{globals.GrantScopeThis},
 						},
 					}
-					return g, input
+					return g, roles
+				},
+				wantErr: nil,
+			},
+			{
+				name: "grant specific scope success",
+				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest) {
+					_, proj := iam.TestScopes(t, iamRepo)
+					g := iam.TestGroup(t, conn, proj.PublicId)
+					roles := []roleRequest{
+						{
+							roleScopeID:  globals.GlobalPrefix,
+							grantStrings: []string{"id=*;type=*;actions=*"},
+							grantScopes:  []string{proj.PublicId},
+						},
+					}
+					return g, roles
+				},
+				wantErr: nil,
+			},
+			{
+				name: "grant specific resource and scope success",
+				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest) {
+					_, proj := iam.TestScopes(t, iamRepo)
+					g := iam.TestGroup(t, conn, proj.PublicId)
+					roles := []roleRequest{
+						{
+							roleScopeID:  globals.GlobalPrefix,
+							grantStrings: []string{fmt.Sprintf("id=%s;type=*;actions=*", g.PublicId)},
+							grantScopes:  []string{proj.PublicId},
+						},
+					}
+					return g, roles
 				},
 				wantErr: nil,
 			},
 			{
 				name: "no grant fails update",
-				roles: []roleRequest{
-					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeChildren},
-					},
-				},
-				setup: func(t *testing.T) (*iam.Group, *pbs.UpdateGroupRequest) {
-					g := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithName("name"), iam.WithDescription("description"))
-					input := &pbs.UpdateGroupRequest{
-						Id: g.PublicId,
-						Item: &pb.Group{
-							Name:        &wrapperspb.StringValue{Value: "new-name"},
-							Description: &wrapperspb.StringValue{Value: "new-description"},
-							Version:     1,
-						},
-						UpdateMask: &fieldmaskpb.FieldMask{
-							Paths: []string{"name", "description"},
+				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest) {
+					g := iam.TestGroup(t, conn, globals.GlobalPrefix)
+					roles := []roleRequest{
+						{
+							roleScopeID:  globals.GlobalPrefix,
+							grantStrings: []string{"id=*;type=*;actions=*"},
+							grantScopes:  []string{globals.GrantScopeChildren},
 						},
 					}
-					return g, input
+					return g, roles
 				},
 				wantErr: handlers.ForbiddenError(),
 			},
 		}
-
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
-				originalGroup, input := tc.setup(t)
-				got, err := s.UpdateGroup(fullGrantAuthCtx, input)
+				ctx := context.Background()
+				conn, _ := db.TestSetup(t, "postgres")
+				wrap := db.TestWrapper(t)
+				iamRepo := iam.TestRepo(t, conn, wrap)
+				repoFn := func() (*iam.Repository, error) {
+					return iamRepo, nil
+				}
+				s, err := groups.NewService(ctx, repoFn, 1000)
+				require.NoError(t, err)
+
+				original, roles := tc.setupScopesResourcesRoles(t, conn, iamRepo)
+				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, roles)
+
+				got, err := s.UpdateGroup(fullGrantAuthCtx, &pbs.UpdateGroupRequest{
+					Id: original.PublicId,
+					Item: &pb.Group{
+						Name:        &wrapperspb.StringValue{Value: "new-name"},
+						Description: &wrapperspb.StringValue{Value: "new-description"},
+						Version:     1,
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{
+						Paths: []string{"name", "description"},
+					},
+				})
+
 				if tc.wantErr != nil {
 					require.Error(t, err)
 					require.ErrorIs(t, err, tc.wantErr)
@@ -725,9 +740,8 @@ func TestWriteActions(t *testing.T) {
 				}
 				require.NoError(t, err)
 				require.Equal(t, uint32(2), got.Item.Version)
-				require.True(t, got.Item.UpdatedTime.AsTime().After(originalGroup.UpdateTime.AsTime()))
+				require.True(t, got.Item.UpdatedTime.AsTime().After(original.UpdateTime.AsTime()))
 			})
 		}
 	})
-
 }
