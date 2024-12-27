@@ -32,8 +32,9 @@
 -- optional or non-standard columns.
 
 begin;
-  -- Add additional resource type used in this test
-  insert into resource_enm (string)
+  -- setup resource for iam_grant
+  insert into resource_enm
+    (string)
   values
     ('color');
 
