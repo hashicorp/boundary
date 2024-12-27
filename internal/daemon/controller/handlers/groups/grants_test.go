@@ -6,6 +6,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -23,6 +25,8 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -586,7 +590,6 @@ func TestWriteActions(t *testing.T) {
 		proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
 
 		allScopeIDs := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
-
 		testcases := []struct {
 			name                    string
 			roles                   []roleRequest
@@ -633,6 +636,116 @@ func TestWriteActions(t *testing.T) {
 					}
 					require.NoErrorf(t, err, "failed to delete group in scope %s", scope)
 				}
+			})
+		}
+	})
+
+	t.Run("update", func(t *testing.T) {
+		ctx := context.Background()
+		conn, _ := db.TestSetup(t, "postgres")
+		wrap := db.TestWrapper(t)
+		iamRepo := iam.TestRepo(t, conn, wrap)
+		repoFn := func() (*iam.Repository, error) {
+			return iamRepo, nil
+		}
+		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
+
+		//org1, proj1 := iam.TestScopes(t, iamRepo)
+		//org2, proj2 := iam.TestScopes(t, iamRepo)
+		//proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+
+		testcases := []struct {
+			name    string
+			roles   []roleRequest
+			setup   func(*testing.T) (*pbs.UpdateGroupRequest, *pb.Group)
+			wantErr error
+		}{
+			{
+				name: "global_scope_group_good_grant_success",
+				roles: []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				setup: func(t *testing.T) (*pbs.UpdateGroupRequest, *pb.Group) {
+					g := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithName("name"), iam.WithDescription("description"))
+					noAuthCtx := auth.DisabledAuthTestContext(repoFn, globals.GlobalPrefix)
+					gotGroup, err := s.GetGroup(noAuthCtx, &pbs.GetGroupRequest{Id: g.PublicId})
+					require.NoError(t, err)
+					input := &pbs.UpdateGroupRequest{
+						Id: g.PublicId,
+						Item: &pb.Group{
+							Name:        &wrapperspb.StringValue{Value: "new-name"},
+							Description: &wrapperspb.StringValue{Value: "new-description"},
+							Version:     1,
+						},
+						UpdateMask: &fieldmaskpb.FieldMask{
+							Paths: []string{"name", "description"},
+						},
+					}
+					want := gotGroup.Item
+					want.Name = input.Item.Name
+					want.Description = input.Item.Description
+					want.Version = 2
+					return input, want
+				},
+				wantErr: nil,
+			},
+			{
+				name: "no grant fails update",
+				roles: []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				setup: func(t *testing.T) (*pbs.UpdateGroupRequest, *pb.Group) {
+					g := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithName("name"), iam.WithDescription("description"))
+					input := &pbs.UpdateGroupRequest{
+						Id: g.PublicId,
+						Item: &pb.Group{
+							Name:        &wrapperspb.StringValue{Value: "new-name"},
+							Description: &wrapperspb.StringValue{Value: "new-description"},
+							Version:     1,
+						},
+						UpdateMask: &fieldmaskpb.FieldMask{
+							Paths: []string{"name", "description"},
+						},
+					}
+					return input, nil
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
+				input, want := tc.setup(t)
+				got, err := s.UpdateGroup(fullGrantAuthCtx, input)
+				if tc.wantErr != nil {
+					require.Error(t, err)
+					require.ErrorIs(t, err, tc.wantErr)
+					return
+				}
+				require.NoError(t, err)
+
+				// remove update time from assertion due to its unpredictability
+				got.Item.UpdatedTime = nil
+				want.UpdatedTime = nil
+
+				require.Empty(t, cmp.Diff(
+					got.Item,
+					want,
+					protocmp.Transform(),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+				))
 			})
 		}
 	})
