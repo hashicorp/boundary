@@ -32,6 +32,11 @@
 -- optional or non-standard columns.
 
 begin;
+  -- Add additional resource type used in this test
+  insert into resource_enm (string)
+  values
+    ('color');
+
   -- Add organizations
   insert into iam_scope
     (parent_id, type,  public_id,      name)
