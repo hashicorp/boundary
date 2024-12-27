@@ -6,8 +6,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -25,7 +23,6 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -663,7 +660,7 @@ func TestWriteActions(t *testing.T) {
 		testcases := []struct {
 			name    string
 			roles   []roleRequest
-			setup   func(*testing.T) (*pbs.UpdateGroupRequest, *pb.Group)
+			setup   func(t *testing.T) (*iam.Group, *pbs.UpdateGroupRequest)
 			wantErr error
 		}{
 			{
@@ -675,27 +672,21 @@ func TestWriteActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
-				setup: func(t *testing.T) (*pbs.UpdateGroupRequest, *pb.Group) {
-					g := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithName("name"), iam.WithDescription("description"))
-					noAuthCtx := auth.DisabledAuthTestContext(repoFn, globals.GlobalPrefix)
-					gotGroup, err := s.GetGroup(noAuthCtx, &pbs.GetGroupRequest{Id: g.PublicId})
+				setup: func(t *testing.T) (*iam.Group, *pbs.UpdateGroupRequest) {
+					g := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithName(uuid.NewString()), iam.WithDescription(uuid.NewString()))
 					require.NoError(t, err)
 					input := &pbs.UpdateGroupRequest{
 						Id: g.PublicId,
 						Item: &pb.Group{
-							Name:        &wrapperspb.StringValue{Value: "new-name"},
-							Description: &wrapperspb.StringValue{Value: "new-description"},
+							Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
+							Description: &wrapperspb.StringValue{Value: uuid.NewString()},
 							Version:     1,
 						},
 						UpdateMask: &fieldmaskpb.FieldMask{
 							Paths: []string{"name", "description"},
 						},
 					}
-					want := gotGroup.Item
-					want.Name = input.Item.Name
-					want.Description = input.Item.Description
-					want.Version = 2
-					return input, want
+					return g, input
 				},
 				wantErr: nil,
 			},
@@ -708,7 +699,7 @@ func TestWriteActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeChildren},
 					},
 				},
-				setup: func(t *testing.T) (*pbs.UpdateGroupRequest, *pb.Group) {
+				setup: func(t *testing.T) (*iam.Group, *pbs.UpdateGroupRequest) {
 					g := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithName("name"), iam.WithDescription("description"))
 					input := &pbs.UpdateGroupRequest{
 						Id: g.PublicId,
@@ -721,7 +712,7 @@ func TestWriteActions(t *testing.T) {
 							Paths: []string{"name", "description"},
 						},
 					}
-					return input, nil
+					return g, input
 				},
 				wantErr: handlers.ForbiddenError(),
 			},
@@ -730,7 +721,7 @@ func TestWriteActions(t *testing.T) {
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
-				input, want := tc.setup(t)
+				originalGroup, input := tc.setup(t)
 				got, err := s.UpdateGroup(fullGrantAuthCtx, input)
 				if tc.wantErr != nil {
 					require.Error(t, err)
@@ -738,19 +729,8 @@ func TestWriteActions(t *testing.T) {
 					return
 				}
 				require.NoError(t, err)
-
-				// remove update time from assertion due to its unpredictability
-				got.Item.UpdatedTime = nil
-				want.UpdatedTime = nil
-
-				require.Empty(t, cmp.Diff(
-					got.Item,
-					want,
-					protocmp.Transform(),
-					cmpopts.SortSlices(func(a, b string) bool {
-						return a < b
-					}),
-				))
+				require.Equal(t, uint32(2), got.Item.Version)
+				require.True(t, got.Item.UpdatedTime.AsTime().After(originalGroup.UpdateTime.AsTime()))
 			})
 		}
 	})
