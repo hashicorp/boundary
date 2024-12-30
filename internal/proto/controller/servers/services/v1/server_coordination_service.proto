@@ -181,10 +181,10 @@ message AuthorizedWorkerList {
 message AuthorizedDownstreamWorkerList {
   // the key id of authorized workers which do not have a worker id known yet
   // to the requester.
-  repeated string unmapped_worker_key_identifiers = 1;
+  repeated string unmapped_worker_key_identifiers = 1; // @gotags: class:"public" eventstream:"observation"
   // the public id of workers that were reported as being connected and which
   // are known by the controller.
-  repeated string worker_public_ids = 2;
+  repeated string worker_public_ids = 2; // @gotags: class:"public" eventstream:"observation"
 }
 
 message StatusResponse {
@@ -239,23 +239,23 @@ message RoutingInfoRequest {
   servers.v1.ServerWorkerStatus worker_status = 1;
 
   // Whether the tags should be updated or not.
-  bool update_tags = 2; // @gotags: `class:"public" eventstream:"observation"
+  bool update_tags = 2; // @gotags: class:"public" eventstream:"observation"
 
   // The worker key identifiers for downstream workers for which there
   // is not a known worker id.
-  repeated string connected_unmapped_worker_key_identifiers = 3; // @gotags: `class:"public" eventstream:"observation"
+  repeated string connected_unmapped_worker_key_identifiers = 3; // @gotags: class:"public" eventstream:"observation"
 
   // The worker public ids of all downstreams connected to this worker.
-  repeated string connected_worker_public_ids = 4; // @gotags: `class:"public" eventstream:"observation"
+  repeated string connected_worker_public_ids = 4; // @gotags: class:"public" eventstream:"observation"
 }
 
 // RoutingInfoResponse is the response message for the RoutingInfo RPC.
 message RoutingInfoResponse {
   // The controller-assigned ID of the worker which made the request.
-  string worker_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string worker_id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The calculated upstream addresses for the controller cluster.
-  repeated string calculated_upstream_addresses = 2; // @gotags: `class:"public" eventstream:"observation"`
+  repeated string calculated_upstream_addresses = 2; // @gotags: class:"public" eventstream:"observation"
 
   // Of the downstream workers in the request, these are the ones
   // which are authorized to remain connected.
@@ -274,13 +274,13 @@ enum SessionType {
 // Session contains information about a worker managed session
 message Session {
   // The ID of the session.
-  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string session_id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The status of the session.
-  SESSIONSTATUS session_status = 2; // @gotags: `class:"public" eventstream:"observation"`
+  SESSIONSTATUS session_status = 2; // @gotags: class:"public" eventstream:"observation"
 
   // Represents how the worker is processing the session.
-  SessionType session_type = 3; // @gotags: `class:"public" eventstream:"observation"`
+  SessionType session_type = 3; // @gotags: class:"public" eventstream:"observation"
 
   // Connections contains information about the connections managed by the session
   repeated Connection connections = 4;
@@ -291,7 +291,7 @@ message Session {
 // and recorded sessions.
 message SessionInfoRequest {
   // The ID of the worker making the request.
-  string worker_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string worker_id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The sessions which this worker wants to report the status of.
   // Includes both ingressed sessions and recorded sessions.

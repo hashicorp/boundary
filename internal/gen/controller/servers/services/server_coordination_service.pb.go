@@ -1098,10 +1098,10 @@ type AuthorizedDownstreamWorkerList struct {
 
 	// the key id of authorized workers which do not have a worker id known yet
 	// to the requester.
-	UnmappedWorkerKeyIdentifiers []string `protobuf:"bytes,1,rep,name=unmapped_worker_key_identifiers,json=unmappedWorkerKeyIdentifiers,proto3" json:"unmapped_worker_key_identifiers,omitempty"`
+	UnmappedWorkerKeyIdentifiers []string `protobuf:"bytes,1,rep,name=unmapped_worker_key_identifiers,json=unmappedWorkerKeyIdentifiers,proto3" json:"unmapped_worker_key_identifiers,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// the public id of workers that were reported as being connected and which
 	// are known by the controller.
-	WorkerPublicIds []string `protobuf:"bytes,2,rep,name=worker_public_ids,json=workerPublicIds,proto3" json:"worker_public_ids,omitempty"`
+	WorkerPublicIds []string `protobuf:"bytes,2,rep,name=worker_public_ids,json=workerPublicIds,proto3" json:"worker_public_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 }
 
 func (x *AuthorizedDownstreamWorkerList) Reset() {
@@ -1400,12 +1400,12 @@ type RoutingInfoRequest struct {
 	// The worker status of the worker making the request.
 	WorkerStatus *servers.ServerWorkerStatus `protobuf:"bytes,1,opt,name=worker_status,json=workerStatus,proto3" json:"worker_status,omitempty"`
 	// Whether the tags should be updated or not.
-	UpdateTags bool `protobuf:"varint,2,opt,name=update_tags,json=updateTags,proto3" json:"update_tags,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"
+	UpdateTags bool `protobuf:"varint,2,opt,name=update_tags,json=updateTags,proto3" json:"update_tags,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The worker key identifiers for downstream workers for which there
 	// is not a known worker id.
-	ConnectedUnmappedWorkerKeyIdentifiers []string `protobuf:"bytes,3,rep,name=connected_unmapped_worker_key_identifiers,json=connectedUnmappedWorkerKeyIdentifiers,proto3" json:"connected_unmapped_worker_key_identifiers,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"
+	ConnectedUnmappedWorkerKeyIdentifiers []string `protobuf:"bytes,3,rep,name=connected_unmapped_worker_key_identifiers,json=connectedUnmappedWorkerKeyIdentifiers,proto3" json:"connected_unmapped_worker_key_identifiers,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The worker public ids of all downstreams connected to this worker.
-	ConnectedWorkerPublicIds []string `protobuf:"bytes,4,rep,name=connected_worker_public_ids,json=connectedWorkerPublicIds,proto3" json:"connected_worker_public_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"
+	ConnectedWorkerPublicIds []string `protobuf:"bytes,4,rep,name=connected_worker_public_ids,json=connectedWorkerPublicIds,proto3" json:"connected_worker_public_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 }
 
 func (x *RoutingInfoRequest) Reset() {
@@ -1475,9 +1475,9 @@ type RoutingInfoResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The controller-assigned ID of the worker which made the request.
-	WorkerId string `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	WorkerId string `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The calculated upstream addresses for the controller cluster.
-	CalculatedUpstreamAddresses []string `protobuf:"bytes,2,rep,name=calculated_upstream_addresses,json=calculatedUpstreamAddresses,proto3" json:"calculated_upstream_addresses,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	CalculatedUpstreamAddresses []string `protobuf:"bytes,2,rep,name=calculated_upstream_addresses,json=calculatedUpstreamAddresses,proto3" json:"calculated_upstream_addresses,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// Of the downstream workers in the request, these are the ones
 	// which are authorized to remain connected.
 	AuthorizedDownstreamWorkers *AuthorizedDownstreamWorkerList `protobuf:"bytes,3,opt,name=authorized_downstream_workers,json=authorizedDownstreamWorkers,proto3" json:"authorized_downstream_workers,omitempty"`
@@ -1543,11 +1543,11 @@ type Session struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the session.
-	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The status of the session.
-	SessionStatus SESSIONSTATUS `protobuf:"varint,2,opt,name=session_status,json=sessionStatus,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"session_status,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	SessionStatus SESSIONSTATUS `protobuf:"varint,2,opt,name=session_status,json=sessionStatus,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"session_status,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// Represents how the worker is processing the session.
-	SessionType SessionType `protobuf:"varint,3,opt,name=session_type,json=sessionType,proto3,enum=controller.servers.services.v1.SessionType" json:"session_type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	SessionType SessionType `protobuf:"varint,3,opt,name=session_type,json=sessionType,proto3,enum=controller.servers.services.v1.SessionType" json:"session_type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// Connections contains information about the connections managed by the session
 	Connections []*Connection `protobuf:"bytes,4,rep,name=connections,proto3" json:"connections,omitempty"`
 }
@@ -1621,7 +1621,7 @@ type SessionInfoRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the worker making the request.
-	WorkerId string `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	WorkerId string `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The sessions which this worker wants to report the status of.
 	// Includes both ingressed sessions and recorded sessions.
 	Sessions []*Session `protobuf:"bytes,2,rep,name=sessions,proto3" json:"sessions,omitempty"`
