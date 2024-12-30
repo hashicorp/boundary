@@ -42,6 +42,8 @@ var HandleHcpbClusterId func(s string) string
 // StartControllerConnections starts up the resolver and initiates controller
 // connection client creation
 func (w *Worker) StartControllerConnections() error {
+	w.confAddressReceiversLock.Lock()
+	defer w.confAddressReceiversLock.Unlock()
 	const op = "worker.(Worker).StartControllerConnections"
 	initialAddrs := make([]string, 0, len(w.conf.RawConfig.Worker.InitialUpstreams))
 	for _, addr := range w.conf.RawConfig.Worker.InitialUpstreams {

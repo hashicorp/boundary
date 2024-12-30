@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,7 +41,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
@@ -130,7 +130,13 @@ const (
 )
 
 type Worker struct {
-	conf   *Config
+	conf *Config
+	// receives address updates and contains the grpc resolver.
+	addressReceivers []addressReceiver
+	// confAddressReceiversLock is used to protect the conf field
+	// and the addressReceivers field.
+	confAddressReceiversLock sync.Mutex
+
 	logger hclog.Logger
 
 	baseContext context.Context
@@ -144,9 +150,6 @@ type Worker struct {
 	// However this is an atomic because we sometimes swap this pointer out
 	// (mostly in tests) - which isn't thread safe. This is exported for tests.
 	GrpcClientConn atomic.Pointer[grpc.ClientConn]
-
-	// receives address updates and contains the grpc resolver.
-	addressReceivers []addressReceiver
 
 	sessionManager session.Manager
 
@@ -468,10 +471,38 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 
 	w.parseAndStoreTags(newConf.Worker.Tags)
 
-	if !strutil.EquivalentSlices(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
-		w.statusLock.Lock()
-		defer w.statusLock.Unlock()
+	switch newConf.Worker.SuccessfulStatusGracePeriod {
+	case 0:
+		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
+		w.successfulRoutingInfoGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		w.successfulStatusGracePeriod.Store(int64(newConf.Worker.SuccessfulStatusGracePeriodDuration))
+		w.successfulRoutingInfoGracePeriod.Store(int64(newConf.Worker.SuccessfulStatusGracePeriodDuration))
+	}
+	switch newConf.Worker.StatusCallTimeoutDuration {
+	case 0:
+		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
+		w.routingInfoCallTimeoutDuration.Store(int64(common.DefaultRoutingInfoTimeout))
+		w.statisticsCallTimeoutDuration.Store(int64(common.DefaultStatisticsTimeout))
+		w.sessionInfoCallTimeoutDuration.Store(int64(common.DefaultSessionInfoTimeout))
+	default:
+		w.statusCallTimeoutDuration.Store(int64(newConf.Worker.StatusCallTimeoutDuration))
+		w.routingInfoCallTimeoutDuration.Store(int64(newConf.Worker.StatusCallTimeoutDuration))
+		w.statisticsCallTimeoutDuration.Store(int64(newConf.Worker.StatusCallTimeoutDuration))
+		w.sessionInfoCallTimeoutDuration.Store(int64(newConf.Worker.StatusCallTimeoutDuration))
+	}
+	switch newConf.Worker.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		w.getDownstreamWorkersTimeoutDuration.Store(int64(server.DefaultLiveness))
+	default:
+		w.getDownstreamWorkersTimeoutDuration.Store(int64(newConf.Worker.GetDownstreamWorkersTimeoutDuration))
+	}
+	// See comment about this in worker.go
+	session.CloseCallTimeout.Store(w.successfulRoutingInfoGracePeriod.Load())
 
+	w.confAddressReceiversLock.Lock()
+	defer w.confAddressReceiversLock.Unlock()
+	if !slices.Equal(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
 		upstreamsMessage := fmt.Sprintf(
 			"Initial Upstreams has changed; old upstreams were: %s, new upstreams are: %s",
 			w.conf.RawConfig.Worker.InitialUpstreams,
@@ -486,31 +517,6 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 			ar.InitialAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
 		}
 	}
-
-	switch newConf.Worker.SuccessfulStatusGracePeriodDuration {
-	case 0:
-		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
-		w.successfulRoutingInfoGracePeriod.Store(int64(server.DefaultLiveness))
-	default:
-		w.successfulStatusGracePeriod.Store(int64(newConf.Worker.SuccessfulStatusGracePeriodDuration))
-		w.successfulRoutingInfoGracePeriod.Store(int64(newConf.Worker.SuccessfulStatusGracePeriodDuration))
-	}
-	switch newConf.Worker.StatusCallTimeoutDuration {
-	case 0:
-		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
-		w.routingInfoCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
-	default:
-		w.statusCallTimeoutDuration.Store(int64(newConf.Worker.StatusCallTimeoutDuration))
-		w.routingInfoCallTimeoutDuration.Store(int64(newConf.Worker.StatusCallTimeoutDuration))
-	}
-	switch newConf.Worker.GetDownstreamWorkersTimeoutDuration {
-	case 0:
-		w.getDownstreamWorkersTimeoutDuration.Store(int64(server.DefaultLiveness))
-	default:
-		w.getDownstreamWorkersTimeoutDuration.Store(int64(newConf.Worker.GetDownstreamWorkersTimeoutDuration))
-	}
-	// See comment about this in worker.go
-	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
 }
 
 func (w *Worker) Start() error {
@@ -814,9 +820,12 @@ func (w *Worker) Shutdown() error {
 
 	// Proceed with remainder of shutdown.
 	w.baseCancel()
+	// Lock to protect w.addressReceivers
+	w.confAddressReceiversLock.Lock()
 	for _, ar := range w.addressReceivers {
 		ar.SetAddresses(nil)
 	}
+	w.confAddressReceiversLock.Unlock()
 
 	if w.storageEventListener != nil {
 		err := w.storageEventListener.Shutdown(w.baseContext)
