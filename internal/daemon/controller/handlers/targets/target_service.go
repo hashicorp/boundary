@@ -1214,6 +1214,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		HostSetId:          hostSetId,
 		Endpoint:           endpointUrl.String(),
 		Credentials:        creds,
+		ConnectionLimit:    t.GetSessionConnectionLimit(),
 	}
 
 	ret.SessionRecordingId, err = SessionRecordingFn(
