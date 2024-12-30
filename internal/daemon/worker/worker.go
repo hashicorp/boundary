@@ -641,9 +641,6 @@ func (w *Worker) Start() error {
 			return fmt.Errorf("error marshaling worker auth fetch credentials request: %w", err)
 		}
 		w.WorkerAuthRegistrationRequest = base58.FastBase58Encoding(reqBytes)
-		if err != nil {
-			return fmt.Errorf("error encoding worker auth registration request: %w", err)
-		}
 		currentKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 		if err != nil {
 			return fmt.Errorf("error deriving worker auth key id: %w", err)
