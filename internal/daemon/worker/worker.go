@@ -155,6 +155,7 @@ type Worker struct {
 	everAuthenticated      *ua.Uint32
 	lastStatusSuccess      *atomic.Value
 	lastSessionInfoSuccess *atomic.Value
+	lastStatisticsSuccess  *atomic.Value
 	workerStartTime        time.Time
 	operationalState       *atomic.Value
 	// localStorageState is the current state of the local storage.
@@ -235,6 +236,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
 		lastStatusSuccess:      new(atomic.Value),
 		lastSessionInfoSuccess: new(atomic.Value),
+		lastStatisticsSuccess:  new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
 		// controllerUpstreamMsgConn:   new(atomic.Value),
 		tags:                                new(atomic.Value),
@@ -257,6 +259,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	w.localStorageState.Store(server.UnknownLocalStorageState)
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	w.lastSessionInfoSuccess.Store((*lastSessionInfo)(nil))
+	w.lastStatisticsSuccess.Store((*lastStatistics)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.addressReceivers = []addressReceiver{&grpcResolverReceiver{controllerResolver}}

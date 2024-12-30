@@ -15,6 +15,11 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
+// lastStatistics holds the last successful statistics RPC time.
+type lastStatistics struct {
+	LastSuccessfulRequestTime time.Time
+}
+
 func (w *Worker) startStatisticsTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startStatisticsTicking"
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -79,5 +84,42 @@ func (w *Worker) sendStatistic(cancelCtx context.Context) error {
 	if err != nil {
 		return errors.Wrap(cancelCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("error making statistics request to controller: controller_address: %s", clientCon.Target()))
 	}
+
+	w.lastStatisticsSuccess.Store(&lastStatistics{
+		LastSuccessfulRequestTime: time.Now(),
+	})
+
+	return nil
+}
+
+// WaitForNextSuccessfulStatisticsUpdate waits for the next successful statistics. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with twice the worker's statistics timeout duration. A nil error
+// means the statistics was sent successfully.
+func (w *Worker) WaitForNextSuccessfulStatisticsUpdate() error {
+	const op = "worker.(Worker).WaitForNextSuccessfulStatisticsUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(2*w.statisticsCallTimeoutDuration.Load()))
+	defer cancel()
+	event.WriteSysEvent(ctx, op, "waiting for next statistics report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			event.WriteError(ctx, op, ctx.Err(), event.WithInfoMsg("error waiting for next statistics report to controller"))
+			return ctx.Err()
+		}
+
+		si := w.lastStatisticsSuccess.Load().(*lastStatistics)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	event.WriteSysEvent(ctx, op, "next worker statistics update sent successfully")
 	return nil
 }
