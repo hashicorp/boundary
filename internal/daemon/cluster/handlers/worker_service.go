@@ -476,6 +476,11 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		})
 	}
 
+	err = serverRepo.UpsertSessionInfo(ctx, workerId)
+	if err != nil {
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error updating the latest status time for the server session info: %v", err)
+	}
+
 	return ret, nil
 }
 

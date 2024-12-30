@@ -297,11 +297,11 @@ where
    with
    dead_workers (worker_id, last_update_time) as (
          select
-			w.public_id as worker_id,
-			w.last_status_time as last_update_time
-           from server_worker w
+			w.worker_id as worker_id,
+			w.last_request_time as last_update_time
+           from server_worker_session_info_request w
           where
-			w.last_status_time < wt_sub_seconds_from_now(@grace_period_seconds)
+			w.last_request_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
    closed_connections (connection_id, worker_id) as (
          update session_connection
