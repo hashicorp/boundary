@@ -13,13 +13,16 @@ service ServerCoordinationService {
   // Status gets worker status requests which include the ongoing jobs the worker is handling and
   // returns the status response which includes the changes the controller would like to make to
   // jobs as well as provide a list of the controllers in the system.
-  rpc Status(StatusRequest) returns (StatusResponse) {}
-
-  // Statistics is used by the worker to report non-essential statistics about its sessions and connections.
-  rpc Statistics(StatisticsRequest) returns (StatisticsResponse) {}
+  // This RPC is deprecated and is safe to remove after the release of Boundary v0.20.0.
+  rpc Status(StatusRequest) returns (StatusResponse) {
+    option deprecated = true;
+  }
 
   // Returns the addresses of HCP Boundary workers, if any
   rpc ListHcpbWorkers(ListHcpbWorkersRequest) returns (ListHcpbWorkersResponse) {}
+
+  // Statistics is used by the worker to report non-essential statistics about its sessions and connections.
+  rpc Statistics(StatisticsRequest) returns (StatisticsResponse) {}
 
   // RoutingInfo is used by the worker to inform the controller of information
   // required by the controller to make session routing decisions and any startup information.
@@ -57,31 +60,41 @@ enum SESSIONSTATUS {
   SESSIONSTATUS_TERMINATED = 4;
 }
 
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 message SessionJobInfo {
+  option deprecated = true;
   string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   SESSIONSTATUS status = 2;
   repeated Connection connections = 3;
   SessionProcessingError processing_error = 4; // @gotags: `class:"public"`
 }
 
+// This enum is deprecated and is safe to remove after the release of Boundary v0.20.0.
 enum SessionProcessingError {
+  option deprecated = true;
   SESSION_PROCESSING_ERROR_UNSPECIFIED = 0;
   SESSION_PROCESSING_ERROR_UNRECOGNIZED = 1;
 }
 
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 message MonitorSessionJobInfo {
+  option deprecated = true;
   string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   SESSIONSTATUS status = 2; // @gotags: `class:"public"`
   SessionProcessingError processing_error = 3; // @gotags: `class:"public"`
 }
 
+// This enum is deprecated and is safe to remove after the release of Boundary v0.20.0.
 enum JOBTYPE {
+  option deprecated = true;
   JOBTYPE_UNSPECIFIED = 0;
   JOBTYPE_SESSION = 1;
   JOBTYPE_MONITOR_SESSION = 2;
 }
 
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 message Job {
+  option deprecated = true;
   JOBTYPE type = 1;
   oneof job_info {
     // This value is specified when type is JOBTYPE_SESSION.
@@ -90,13 +103,17 @@ message Job {
   }
 }
 
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 message JobStatus {
+  option deprecated = true;
   Job job = 1;
 }
 
 // UpstreamServer returns the controller address in the StatusResponse but may be used in the future to return
 // worker address.
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 message UpstreamServer {
+  option deprecated = true;
   enum TYPE {
     TYPE_UNSPECIFIED = 0;
     TYPE_CONTROLLER = 1;
@@ -110,32 +127,11 @@ message UpstreamServer {
   string address = 20; // @gotags: `class:"public"`
 }
 
-// SessionStatistics contains statistics about a session and its connections.
-message SessionStatistics {
-  // Session ID holds the ID of the session which the statistics belong to.
-  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
-
-  // Connections contains statistics about all the existing connections for the given session.
-  repeated Connection connections = 2;
-}
-
-// StatisticsRequest contains a worker statistics request. This request
-// reports on information that is not important either to maintain existing
-// sessions or create new ones.
-message StatisticsRequest {
-  // The ID of the worker making the request.
-  string worker_id = 10; // @gotags: `class:"public" eventstream:"observation"`
-
-  // The statistics of the sessions managed by this worker
-  repeated SessionStatistics sessions = 20;
-}
-
-// StatisticsResponse contains a controller statistics response. Empty for now.
-message StatisticsResponse {}
-
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 message StatusRequest {
-  reserved 10;
-  reserved "worker";
+  option deprecated = true;
+  reserved 10, 50;
+  reserved "worker", "connected_worker_key_identifiers";
 
   // Jobs which this worker wants to report the status.
   repeated JobStatus jobs = 20;
@@ -152,12 +148,6 @@ message StatusRequest {
   // get access to the key and spoof the connection, you're already compromised.
   servers.v1.ServerWorkerStatus worker_status = 40;
 
-  // The worker key identifiers presented by all downstreams connected to this
-  // worker.
-  // Deprecated. Should be removed in 0.15.0 at which time
-  // connected_unmapped_worker_key_identifiers should be used exclusively.
-  repeated string connected_worker_key_identifiers = 50 [deprecated = true];
-
   // The worker key identifiers for downstream workers for which there
   // is not a known worker id mapping for them yet.
   repeated string connected_unmapped_worker_key_identifiers = 51;
@@ -169,22 +159,20 @@ message StatusRequest {
   repeated string connected_worker_public_ids = 55;
 }
 
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 enum CHANGETYPE {
+  option deprecated = true;
   CHANGETYPE_UNSPECIFIED = 0;
   // Indicates to the worker to update its knowledge of the state, which may
   // cause action to be taken.
   CHANGETYPE_UPDATE_STATE = 1;
 }
 
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 message JobChangeRequest {
+  option deprecated = true;
   Job job = 1;
   CHANGETYPE request_type = 2;
-}
-
-message AuthorizedWorkerList {
-  option deprecated = true;
-  // the key id of authorized workers
-  repeated string worker_key_identifiers = 1 [deprecated = true];
 }
 
 message AuthorizedDownstreamWorkerList {
@@ -196,9 +184,11 @@ message AuthorizedDownstreamWorkerList {
   repeated string worker_public_ids = 2; // @gotags: class:"public" eventstream:"observation"
 }
 
+// This message is deprecated and is safe to remove after the release of Boundary v0.20.0.
 message StatusResponse {
-  reserved 10;
-  reserved "controllers";
+  option deprecated = true;
+  reserved 10, 50;
+  reserved "controllers", "authorized_workers";
 
   // List of jobs and the expected state changes.  For example, this will
   // include jobs witch change type of canceled for jobs which are active on a
@@ -213,12 +203,6 @@ message StatusResponse {
   // The ID of the worker which made the request. The worker can send this value in subsequent requests so the
   // controller does not need to do a database lookup for the id using the name field.
   string worker_id = 40; // @gotags: `class:"public" eventstream:"observation"`
-
-  // Of the worker key identifiers provided in the request, these are the ones
-  // which are authorized to remain connected.
-  // This is deprecated.  Use authorized_downstream_workers instead. This
-  // should be removed in version 0.15.0.
-  AuthorizedWorkerList authorized_workers = 50 [deprecated = true];
 
   // Of the downstream workers in the request, these are the ones
   // which are authorized to remain connected.
@@ -241,6 +225,29 @@ message ListHcpbWorkersRequest {}
 message ListHcpbWorkersResponse {
   repeated WorkerInfo workers = 1;
 }
+
+// SessionStatistics contains statistics about a session and its connections.
+message SessionStatistics {
+  // Session ID holds the ID of the session which the statistics belong to.
+  string session_id = 1; // @gotags: class:"public" eventstream:"observation"
+
+  // Connections contains statistics about all the existing connections for the given session.
+  repeated Connection connections = 2;
+}
+
+// StatisticsRequest contains a worker statistics request. This request
+// reports on information that is not important either to maintain existing
+// sessions or create new ones.
+message StatisticsRequest {
+  // The ID of the worker making the request.
+  string worker_id = 10; // @gotags: class:"public" eventstream:"observation"
+
+  // The statistics of the sessions managed by this worker
+  repeated SessionStatistics sessions = 20;
+}
+
+// StatisticsResponse contains a controller statistics response. Empty for now.
+message StatisticsResponse {}
 
 // RoutingIinfoRequest is the request message for the RoutingInfo RPC.
 message RoutingInfoRequest {

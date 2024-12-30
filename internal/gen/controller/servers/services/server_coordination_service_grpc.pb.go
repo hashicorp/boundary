@@ -23,8 +23,8 @@ const _ = grpc.SupportPackageIsVersion7
 
 const (
 	ServerCoordinationService_Status_FullMethodName          = "/controller.servers.services.v1.ServerCoordinationService/Status"
-	ServerCoordinationService_Statistics_FullMethodName      = "/controller.servers.services.v1.ServerCoordinationService/Statistics"
 	ServerCoordinationService_ListHcpbWorkers_FullMethodName = "/controller.servers.services.v1.ServerCoordinationService/ListHcpbWorkers"
+	ServerCoordinationService_Statistics_FullMethodName      = "/controller.servers.services.v1.ServerCoordinationService/Statistics"
 	ServerCoordinationService_RoutingInfo_FullMethodName     = "/controller.servers.services.v1.ServerCoordinationService/RoutingInfo"
 	ServerCoordinationService_SessionInfo_FullMethodName     = "/controller.servers.services.v1.ServerCoordinationService/SessionInfo"
 )
@@ -33,14 +33,16 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ServerCoordinationServiceClient interface {
+	// Deprecated: Do not use.
 	// Status gets worker status requests which include the ongoing jobs the worker is handling and
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
+	// This RPC is deprecated and is safe to remove after the release of Boundary v0.20.0.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
-	// Statistics is used by the worker to report non-essential statistics about its sessions and connections.
-	Statistics(ctx context.Context, in *StatisticsRequest, opts ...grpc.CallOption) (*StatisticsResponse, error)
 	// Returns the addresses of HCP Boundary workers, if any
 	ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error)
+	// Statistics is used by the worker to report non-essential statistics about its sessions and connections.
+	Statistics(ctx context.Context, in *StatisticsRequest, opts ...grpc.CallOption) (*StatisticsResponse, error)
 	// RoutingInfo is used by the worker to inform the controller of information
 	// required by the controller to make session routing decisions and any startup information.
 	// The controller may inform the worker of any downstream workers that should be disconnected.
@@ -62,6 +64,7 @@ func NewServerCoordinationServiceClient(cc grpc.ClientConnInterface) ServerCoord
 	return &serverCoordinationServiceClient{cc}
 }
 
+// Deprecated: Do not use.
 func (c *serverCoordinationServiceClient) Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, ServerCoordinationService_Status_FullMethodName, in, out, opts...)
@@ -71,18 +74,18 @@ func (c *serverCoordinationServiceClient) Status(ctx context.Context, in *Status
 	return out, nil
 }
 
-func (c *serverCoordinationServiceClient) Statistics(ctx context.Context, in *StatisticsRequest, opts ...grpc.CallOption) (*StatisticsResponse, error) {
-	out := new(StatisticsResponse)
-	err := c.cc.Invoke(ctx, ServerCoordinationService_Statistics_FullMethodName, in, out, opts...)
+func (c *serverCoordinationServiceClient) ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error) {
+	out := new(ListHcpbWorkersResponse)
+	err := c.cc.Invoke(ctx, ServerCoordinationService_ListHcpbWorkers_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *serverCoordinationServiceClient) ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error) {
-	out := new(ListHcpbWorkersResponse)
-	err := c.cc.Invoke(ctx, ServerCoordinationService_ListHcpbWorkers_FullMethodName, in, out, opts...)
+func (c *serverCoordinationServiceClient) Statistics(ctx context.Context, in *StatisticsRequest, opts ...grpc.CallOption) (*StatisticsResponse, error) {
+	out := new(StatisticsResponse)
+	err := c.cc.Invoke(ctx, ServerCoordinationService_Statistics_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -111,14 +114,16 @@ func (c *serverCoordinationServiceClient) SessionInfo(ctx context.Context, in *S
 // All implementations must embed UnimplementedServerCoordinationServiceServer
 // for forward compatibility
 type ServerCoordinationServiceServer interface {
+	// Deprecated: Do not use.
 	// Status gets worker status requests which include the ongoing jobs the worker is handling and
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
+	// This RPC is deprecated and is safe to remove after the release of Boundary v0.20.0.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
-	// Statistics is used by the worker to report non-essential statistics about its sessions and connections.
-	Statistics(context.Context, *StatisticsRequest) (*StatisticsResponse, error)
 	// Returns the addresses of HCP Boundary workers, if any
 	ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error)
+	// Statistics is used by the worker to report non-essential statistics about its sessions and connections.
+	Statistics(context.Context, *StatisticsRequest) (*StatisticsResponse, error)
 	// RoutingInfo is used by the worker to inform the controller of information
 	// required by the controller to make session routing decisions and any startup information.
 	// The controller may inform the worker of any downstream workers that should be disconnected.
@@ -140,11 +145,11 @@ type UnimplementedServerCoordinationServiceServer struct {
 func (UnimplementedServerCoordinationServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
-func (UnimplementedServerCoordinationServiceServer) Statistics(context.Context, *StatisticsRequest) (*StatisticsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Statistics not implemented")
-}
 func (UnimplementedServerCoordinationServiceServer) ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHcpbWorkers not implemented")
+}
+func (UnimplementedServerCoordinationServiceServer) Statistics(context.Context, *StatisticsRequest) (*StatisticsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Statistics not implemented")
 }
 func (UnimplementedServerCoordinationServiceServer) RoutingInfo(context.Context, *RoutingInfoRequest) (*RoutingInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RoutingInfo not implemented")
@@ -184,24 +189,6 @@ func _ServerCoordinationService_Status_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ServerCoordinationService_Statistics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StatisticsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ServerCoordinationServiceServer).Statistics(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ServerCoordinationService_Statistics_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServerCoordinationServiceServer).Statistics(ctx, req.(*StatisticsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ServerCoordinationService_ListHcpbWorkers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListHcpbWorkersRequest)
 	if err := dec(in); err != nil {
@@ -216,6 +203,24 @@ func _ServerCoordinationService_ListHcpbWorkers_Handler(srv interface{}, ctx con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ServerCoordinationServiceServer).ListHcpbWorkers(ctx, req.(*ListHcpbWorkersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ServerCoordinationService_Statistics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatisticsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerCoordinationServiceServer).Statistics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ServerCoordinationService_Statistics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerCoordinationServiceServer).Statistics(ctx, req.(*StatisticsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -268,12 +273,12 @@ var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ServerCoordinationService_Status_Handler,
 		},
 		{
-			MethodName: "Statistics",
-			Handler:    _ServerCoordinationService_Statistics_Handler,
-		},
-		{
 			MethodName: "ListHcpbWorkers",
 			Handler:    _ServerCoordinationService_ListHcpbWorkers_Handler,
+		},
+		{
+			MethodName: "Statistics",
+			Handler:    _ServerCoordinationService_Statistics_Handler,
 		},
 		{
 			MethodName: "RoutingInfo",
