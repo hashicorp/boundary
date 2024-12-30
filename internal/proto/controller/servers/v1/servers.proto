@@ -15,27 +15,6 @@ message TagPair {
   string value = 2; // @gotags: `class:"public"`
 }
 
-// SessionStatistics contains statistics about a session and its connections.
-message SessionStatistics {
-  // Session ID holds the ID of the session which the statistics belong to.
-  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
-
-  // Connections contains statistics about all the existing connections for the given session.
-  repeated ConnectionStatistics connections = 2;
-}
-
-// ConnectionStatistics contains statistics about a connection.
-message ConnectionStatistics {
-  // Connection ID holds the ID of the connection which the statistics belong to.
-  string connection_id = 1; // @gotags: `class:"public" eventstream:"observation"`
-
-  // The total number of bytes sent from the user client to the target
-  int64 bytes_up = 2; // @gotags: `class:"public"`
-
-  // The total number of bytes sent from the target to the user client
-  int64 bytes_down = 3; // @gotags: `class:"public"`
-}
-
 // ServerWorkerStatus is the new message used in place of Server to relay status request info.
 message ServerWorkerStatus {
   // Id of the worker, used after the first request.

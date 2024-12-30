@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
@@ -47,18 +46,19 @@ func (w *Worker) sendStatistic(cancelCtx context.Context) error {
 	if workerId == "" {
 		return errors.New(cancelCtx, errors.Internal, op, "worker id is empty")
 	}
-	sessions := []*servers.SessionStatistics{}
+	sessions := []*pbs.SessionStatistics{}
 	w.sessionManager.ForEachLocalSession(func(s session.Session) bool {
 		localConnections := s.GetLocalConnections()
-		connections := make([]*servers.ConnectionStatistics, 0, len(localConnections))
+		connections := make([]*pbs.Connection, 0, len(localConnections))
 		for connectionId, conn := range localConnections {
-			connections = append(connections, &servers.ConnectionStatistics{
+			connections = append(connections, &pbs.Connection{
 				ConnectionId: connectionId,
 				BytesUp:      conn.BytesUp(),
 				BytesDown:    conn.BytesDown(),
+				Status:       conn.Status,
 			})
 		}
-		sessions = append(sessions, &servers.SessionStatistics{
+		sessions = append(sessions, &pbs.SessionStatistics{
 			SessionId:   s.GetId(),
 			Connections: connections,
 		})

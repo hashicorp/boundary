@@ -680,7 +680,7 @@ func TestStatistics(t *testing.T) {
 			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoErrFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
 			req: &pbs.StatisticsRequest{
 				WorkerId: "w_1234567890",
-				Sessions: []*pb.SessionStatistics{
+				Sessions: []*pbs.SessionStatistics{
 					{},
 				},
 			},
@@ -699,7 +699,7 @@ func TestStatistics(t *testing.T) {
 			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
 			req: &pbs.StatisticsRequest{
 				WorkerId: "w_1234567890",
-				Sessions: []*pb.SessionStatistics{},
+				Sessions: []*pbs.SessionStatistics{},
 			},
 		},
 		{
@@ -707,7 +707,7 @@ func TestStatistics(t *testing.T) {
 			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
 			req: &pbs.StatisticsRequest{
 				WorkerId: "w_1234567890",
-				Sessions: []*pb.SessionStatistics{
+				Sessions: []*pbs.SessionStatistics{
 					{},
 				},
 			},
@@ -719,10 +719,10 @@ func TestStatistics(t *testing.T) {
 			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
 			req: &pbs.StatisticsRequest{
 				WorkerId: "w_1234567890",
-				Sessions: []*pb.SessionStatistics{
+				Sessions: []*pbs.SessionStatistics{
 					{
 						SessionId: "s_1234567890",
-						Connections: []*pb.ConnectionStatistics{
+						Connections: []*pbs.Connection{
 							{},
 						},
 					},
@@ -809,14 +809,15 @@ func TestStatistics(t *testing.T) {
 		workerService := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 		got, err := workerService.Statistics(context.Background(), &pbs.StatisticsRequest{
 			WorkerId: w.GetPublicId(),
-			Sessions: []*pb.SessionStatistics{
+			Sessions: []*pbs.SessionStatistics{
 				{
 					SessionId: s1.PublicId,
-					Connections: []*pb.ConnectionStatistics{
+					Connections: []*pbs.Connection{
 						{
 							ConnectionId: c1.PublicId,
 							BytesUp:      expectedBytesUp,
 							BytesDown:    expectedBytesDown,
+							Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
 						},
 					},
 				},

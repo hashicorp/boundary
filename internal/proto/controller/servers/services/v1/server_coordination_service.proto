@@ -110,6 +110,15 @@ message UpstreamServer {
   string address = 20; // @gotags: `class:"public"`
 }
 
+// SessionStatistics contains statistics about a session and its connections.
+message SessionStatistics {
+  // Session ID holds the ID of the session which the statistics belong to.
+  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Connections contains statistics about all the existing connections for the given session.
+  repeated Connection connections = 2;
+}
+
 // StatisticsRequest contains a worker statistics request. This request
 // reports on information that is not important either to maintain existing
 // sessions or create new ones.
@@ -118,7 +127,7 @@ message StatisticsRequest {
   string worker_id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The statistics of the sessions managed by this worker
-  repeated servers.v1.SessionStatistics sessions = 20;
+  repeated SessionStatistics sessions = 20;
 }
 
 // StatisticsResponse contains a controller statistics response. Empty for now.

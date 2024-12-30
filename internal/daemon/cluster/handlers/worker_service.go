@@ -119,15 +119,17 @@ func (ws *workerServiceServer) Statistics(ctx context.Context, req *pbs.Statisti
 			if connectionId == "" {
 				return &pbs.StatisticsResponse{}, status.Error(codes.InvalidArgument, "connection id is empty")
 			}
-			connectionStats = append(connectionStats, &session.Connection{
-				PublicId:  c.GetConnectionId(),
-				BytesUp:   c.GetBytesUp(),
-				BytesDown: c.GetBytesDown(),
-			})
+			switch c.Status {
+			case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED, pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
+				connectionStats = append(connectionStats, &session.Connection{
+					PublicId:  c.GetConnectionId(),
+					BytesUp:   c.GetBytesUp(),
+					BytesDown: c.GetBytesDown(),
+				})
+			default:
+				// Other statuses are not included in the stats sent to the domain
+			}
 		}
-	}
-	if len(connectionStats) == 0 {
-		return &pbs.StatisticsResponse{}, nil
 	}
 	updateBytesErr := session.UpdateConnectionBytesUpDown(ctx, connectionRepo, connectionStats)
 	_, closeOrphanedErr := session.CloseOrphanedConnections(ctx, connectionRepo, workerId, connectionStats)
