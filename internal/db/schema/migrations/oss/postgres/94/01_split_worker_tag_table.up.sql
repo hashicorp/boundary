@@ -51,4 +51,7 @@ drop view server_worker_aggregate;
 drop table server_worker_tag;
 drop table server_worker_tag_enm;
 
+-- Create an index on server_worker for the new queries
+create index server_worker_operational_state_type_last_status_time_idx on server_worker (operational_state, type, last_status_time);
+
 commit;
