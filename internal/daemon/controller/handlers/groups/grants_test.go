@@ -96,7 +96,6 @@ func genAuthTokenCtx(t *testing.T,
 //				- org2 [org2Group]
 //					- proj2 [proj2Group]
 //					- proj3 [proj3Group]
-
 func TestGrants_ReadActions(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -247,12 +246,11 @@ func TestGrants_ReadActions(t *testing.T) {
 		}
 	})
 
-	t.Run("List", func(t *testing.T) {
+	t.Run("Get", func(t *testing.T) {
 		testcases := []struct {
-			name                string
-			rolesToCreate       []roleRequest
-			wantErr             map[string]error
-			outputFieldAsserter func(t *testing.T)
+			name            string
+			rolesToCreate   []roleRequest
+			inputWantErrMap map[*pbs.GetGroupRequest]error
 		}{
 			{
 				name: "global_role_grant_this",
@@ -263,10 +261,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: nil,
-					org1Group.PublicId:   handlers.ForbiddenError(),
-					proj1Group.PublicId:  handlers.ForbiddenError(),
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: nil,
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -278,10 +276,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeChildren},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  handlers.ForbiddenError(),
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -293,10 +291,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeDescendants},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  nil,
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -308,10 +306,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: nil,
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  handlers.ForbiddenError(),
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: nil,
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -323,10 +321,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: nil,
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  nil,
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: nil,
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -338,10 +336,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  handlers.ForbiddenError(),
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -353,10 +351,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeChildren},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   handlers.ForbiddenError(),
-					proj1Group.PublicId:  nil,
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -368,10 +366,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  nil,
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -383,10 +381,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   handlers.ForbiddenError(),
-					proj1Group.PublicId:  nil,
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -398,10 +396,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  handlers.ForbiddenError(),
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -415,10 +413,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes: []string{org1.PublicId, proj1.PublicId},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  nil,
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -432,10 +430,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes: []string{org1.PublicId, proj1.PublicId},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: handlers.ForbiddenError(),
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  nil,
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -455,10 +453,10 @@ func TestGrants_ReadActions(t *testing.T) {
 						grantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: map[string]error{
-					globalGroup.PublicId: nil,
-					org1Group.PublicId:   nil,
-					proj1Group.PublicId:  nil,
+				inputWantErrMap: map[*pbs.GetGroupRequest]error{
+					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: nil,
+					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
+					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 		}
@@ -466,10 +464,8 @@ func TestGrants_ReadActions(t *testing.T) {
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.rolesToCreate)
-				for id, wantErr := range tc.wantErr {
-					_, err := s.GetGroup(fullGrantAuthCtx, &pbs.GetGroupRequest{
-						Id: id,
-					})
+				for input, wantErr := range tc.inputWantErrMap {
+					_, err := s.GetGroup(fullGrantAuthCtx, input)
 					// not found means expect error
 					if wantErr != nil {
 						require.ErrorIs(t, err, wantErr)
@@ -732,7 +728,6 @@ func TestWriteActions(t *testing.T) {
 						Paths: []string{"name", "description"},
 					},
 				})
-
 				if tc.wantErr != nil {
 					require.Error(t, err)
 					require.ErrorIs(t, err, tc.wantErr)
@@ -744,4 +739,331 @@ func TestWriteActions(t *testing.T) {
 			})
 		}
 	})
+}
+
+// TestGroupMember tests actions performed on the group-members (child-resources)
+func TestGroupMember(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := groups.NewService(ctx, repoFn, 1000)
+	require.NoError(t, err)
+
+	org1, proj1 := iam.TestScopes(t, iamRepo)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+
+	globalUsers := []*iam.User{iam.TestUser(t, iamRepo, globals.GlobalPrefix), iam.TestUser(t, iamRepo, globals.GlobalPrefix)}
+	org1Users := []*iam.User{iam.TestUser(t, iamRepo, org1.PublicId), iam.TestUser(t, iamRepo, org1.PublicId)}
+	org2Users := []*iam.User{iam.TestUser(t, iamRepo, org2.PublicId), iam.TestUser(t, iamRepo, org2.PublicId)}
+
+	type itemGetter interface {
+		GetItem() *pb.Group
+	}
+
+	type testActionResult struct {
+		action  func(context.Context, *iam.Group) (itemGetter, error)
+		wantErr error
+	}
+
+	testcases := []struct {
+		name              string
+		setupGroupAndRole func(t *testing.T) (*iam.Group, []roleRequest)
+		// collection of actions to be executed in the tests in order
+		actions []testActionResult
+	}{
+		{
+			name: "all_actions_valid_grant_success",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, globals.GlobalPrefix)
+				return group, []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeThis},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org1Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.SetGroupMembers(authCtx, &pbs.SetGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(globalUsers),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(globalUsers),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+			},
+		},
+		{
+			name: "add_and_set_allowed_fail_to_remove",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, org1.PublicId)
+				return group, []roleRequest{
+					{
+						roleScopeID:  org1.PublicId,
+						grantStrings: []string{"id=*;type=*;actions=add-members"},
+						grantScopes:  []string{globals.GrantScopeThis},
+					},
+					{
+						roleScopeID:  org1.PublicId,
+						grantStrings: []string{"id=*;type=*;actions=set-members"},
+						grantScopes:  []string{globals.GrantScopeThis},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org1Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.SetGroupMembers(authCtx, &pbs.SetGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org1Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org1Users),
+						})
+						return out, err
+					},
+					wantErr: handlers.ForbiddenError(),
+				},
+			},
+		},
+		{
+			name: "remove_member_valid_grant_success",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, proj1.PublicId)
+				iam.TestGroupMember(t, conn, group.PublicId, org1Users[0].PublicId)
+				iam.TestGroupMember(t, conn, group.PublicId, org1Users[1].PublicId)
+				return group, []roleRequest{
+					{
+						roleScopeID:  proj1.PublicId,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeThis},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org1Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+			},
+		},
+		{
+			name: "set_member_valid_specific_grant_success",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, proj1.PublicId)
+				return group, []roleRequest{
+					{
+						roleScopeID:  proj1.PublicId,
+						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=set-members", group.PublicId)},
+						grantScopes:  []string{globals.GrantScopeThis},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.SetGroupMembers(authCtx, &pbs.SetGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org1Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+			},
+		},
+		{
+			name: "add_member_valid_specific_grant_success",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, org2.PublicId)
+				return group, []roleRequest{
+					{
+						roleScopeID:  org2.PublicId,
+						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
+						grantScopes:  []string{globals.GrantScopeThis},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org2Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+			},
+		},
+		{
+			name: "remove_member_valid_specific_grant_success",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, proj2.PublicId)
+				iam.TestGroupMember(t, conn, group.PublicId, org2Users[0].PublicId)
+				iam.TestGroupMember(t, conn, group.PublicId, org2Users[1].PublicId)
+				return group, []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=remove-members", group.PublicId)},
+						grantScopes:  []string{proj2.PublicId},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org2Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+			},
+		},
+		{
+			name: "cross_scope_add_member_valid_specific_grant_success",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, proj3.PublicId)
+				return group, []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
+						grantScopes:  []string{globals.GrantScopeDescendants},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						users := userIDs(org1Users)
+						users = append(users, userIDs(org2Users)...)
+						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: users,
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+			},
+		},
+		{
+			name: "add_member_with_valid_grant_string_invalid_scope_forbidden_error",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, org2.PublicId)
+				return group, []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantScopes:  []string{globals.GrantScopeThis},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org2Users),
+						})
+						return out, err
+					},
+					wantErr: handlers.ForbiddenError(),
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			group, roleReqs := tc.setupGroupAndRole(t)
+			fullGrantAuthCtx := genAuthTokenCtx(t, ctx, conn, wrap, iamRepo, roleReqs)
+			for _, act := range tc.actions {
+				out, err := act.action(fullGrantAuthCtx, group)
+				if act.wantErr != nil {
+					require.Error(t, err)
+					require.ErrorIs(t, err, act.wantErr)
+					continue
+				}
+				require.NoError(t, err)
+				// set version for future updates
+				group.Version = out.GetItem().Version
+			}
+		})
+	}
+}
+
+func userIDs(users []*iam.User) []string {
+	result := make([]string, len(users))
+	for i, u := range users {
+		result[i] = u.PublicId
+	}
+	return result
 }
