@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
@@ -27,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -862,10 +862,12 @@ func TestCreateTarget_SlashesInName(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 
 	tw, _ := worker.NewAuthorizedPkiTestWorker(t, tc.ServersRepo(), "test", tc.ClusterAddrs())
-	require.NotNil(t, tw)
+	require.NotNil(tw)
 
-	// Wait for worker to become ready
-	time.Sleep(10 * time.Second)
+	helper.ExpectWorkers(t, tc, tw)
+	// Wait for an extra routing info update for good measure
+	// TODO(https://hashicorp.atlassian.net/browse/ICU-16124): why is this necessary?
+	require.NoError(tw.Worker().WaitForNextSuccessfulRoutingInfoUpdate())
 
 	client := tc.Client()
 	token := tc.Token()

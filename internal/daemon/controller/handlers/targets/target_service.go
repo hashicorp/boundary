@@ -121,20 +121,20 @@ func IngressWorkerFilterUnsupported(string) error {
 type Service struct {
 	pbs.UnsafeTargetServiceServer
 
-	repoFn                  target.RepositoryFactory
-	aliasRepoFn             common.TargetAliasRepoFactory
-	iamRepoFn               common.IamRepoFactory
-	serversRepoFn           common.ServersRepoFactory
-	sessionRepoFn           session.RepositoryFactory
-	pluginHostRepoFn        common.PluginHostRepoFactory
-	staticHostRepoFn        common.StaticRepoFactory
-	vaultCredRepoFn         common.VaultCredentialRepoFactory
-	staticCredRepoFn        common.StaticCredentialRepoFactory
-	downstreams             downstream.Graph
-	kmsCache                *kms.Kms
-	workerStatusGracePeriod *atomic.Int64
-	maxPageSize             uint
-	controllerExt           intglobals.ControllerExtension
+	repoFn               target.RepositoryFactory
+	aliasRepoFn          common.TargetAliasRepoFactory
+	iamRepoFn            common.IamRepoFactory
+	serversRepoFn        common.ServersRepoFactory
+	sessionRepoFn        session.RepositoryFactory
+	pluginHostRepoFn     common.PluginHostRepoFactory
+	staticHostRepoFn     common.StaticRepoFactory
+	vaultCredRepoFn      common.VaultCredentialRepoFactory
+	staticCredRepoFn     common.StaticCredentialRepoFactory
+	downstreams          downstream.Graph
+	kmsCache             *kms.Kms
+	workerRPCGracePeriod *atomic.Int64
+	maxPageSize          uint
+	controllerExt        intglobals.ControllerExtension
 }
 
 var _ pbs.TargetServiceServer = (*Service)(nil)
@@ -153,7 +153,7 @@ func NewService(
 	staticCredRepoFn common.StaticCredentialRepoFactory,
 	aliasRepoFn common.TargetAliasRepoFactory,
 	downstreams downstream.Graph,
-	workerStatusGracePeriod *atomic.Int64,
+	workerRPCGracePeriod *atomic.Int64,
 	maxPageSize uint,
 	controllerExt intglobals.ControllerExtension,
 ) (Service, error) {
@@ -184,20 +184,20 @@ func NewService(
 		maxPageSize = uint(globals.DefaultMaxPageSize)
 	}
 	return Service{
-		repoFn:                  repoFn,
-		iamRepoFn:               iamRepoFn,
-		serversRepoFn:           serversRepoFn,
-		sessionRepoFn:           sessionRepoFn,
-		pluginHostRepoFn:        pluginHostRepoFn,
-		staticHostRepoFn:        staticHostRepoFn,
-		vaultCredRepoFn:         vaultCredRepoFn,
-		staticCredRepoFn:        staticCredRepoFn,
-		aliasRepoFn:             aliasRepoFn,
-		downstreams:             downstreams,
-		kmsCache:                kmsCache,
-		workerStatusGracePeriod: workerStatusGracePeriod,
-		maxPageSize:             maxPageSize,
-		controllerExt:           controllerExt,
+		repoFn:               repoFn,
+		iamRepoFn:            iamRepoFn,
+		serversRepoFn:        serversRepoFn,
+		sessionRepoFn:        sessionRepoFn,
+		pluginHostRepoFn:     pluginHostRepoFn,
+		staticHostRepoFn:     staticHostRepoFn,
+		vaultCredRepoFn:      vaultCredRepoFn,
+		staticCredRepoFn:     staticCredRepoFn,
+		aliasRepoFn:          aliasRepoFn,
+		downstreams:          downstreams,
+		kmsCache:             kmsCache,
+		workerRPCGracePeriod: workerRPCGracePeriod,
+		maxPageSize:          maxPageSize,
+		controllerExt:        controllerExt,
 	}, nil
 }
 
@@ -942,7 +942,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// Get workers and filter down to ones that can service this request
 	selectedWorkers, protoWorkerId, err := serversRepo.SelectSessionWorkers(
 		ctx,
-		time.Duration(s.workerStatusGracePeriod.Load()),
+		time.Duration(s.workerRPCGracePeriod.Load()),
 		t,
 		h,
 		s.controllerExt,

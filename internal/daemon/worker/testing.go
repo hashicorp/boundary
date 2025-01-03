@@ -71,16 +71,8 @@ func (tw *TestWorker) Name() string {
 }
 
 func (tw *TestWorker) UpstreamAddrs() []string {
-	var addrs []string
-	lastStatus := tw.w.LastStatusSuccess()
-	if lastStatus == nil {
-		return addrs
-	}
-	for _, v := range lastStatus.GetCalculatedUpstreams() {
-		addrs = append(addrs, v.Address)
-	}
-
-	return addrs
+	lastRoutingInfo := tw.w.LastRoutingInfoSuccess()
+	return lastRoutingInfo.GetCalculatedUpstreamAddresses()
 }
 
 func (tw *TestWorker) ProxyAddrs() []string {
@@ -219,7 +211,7 @@ type TestWorkerOpts struct {
 
 	// The amount of time to wait before marking connections as closed when a
 	// connection cannot be made back to the controller
-	SuccessfulStatusGracePeriodDuration time.Duration
+	SuccessfulControllerRPCGracePeriodDuration time.Duration
 
 	// Overrides worker's nonceFn, for cases where we want to have control
 	// over the nonce we send to the Controller
@@ -319,8 +311,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	tw.b.EnabledPlugins = append(tw.b.EnabledPlugins, base.EnabledPluginLoopback)
 	tw.name = opts.Config.Worker.Name
 
-	if opts.SuccessfulStatusGracePeriodDuration != 0 {
-		opts.Config.Worker.SuccessfulStatusGracePeriodDuration = opts.SuccessfulStatusGracePeriodDuration
+	if opts.SuccessfulControllerRPCGracePeriodDuration != 0 {
+		opts.Config.Worker.SuccessfulControllerRPCGracePeriodDuration = opts.SuccessfulControllerRPCGracePeriodDuration
 	}
 
 	serverName, err := os.Hostname()
@@ -403,14 +395,14 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		opts = new(TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
-		WorkerAuthKms:                       tw.w.conf.WorkerAuthKms,
-		DownstreamWorkerAuthKms:             tw.w.conf.DownstreamWorkerAuthKms,
-		WorkerAuthStorageKms:                tw.w.conf.WorkerAuthStorageKms,
-		Name:                                opts.Name,
-		InitialUpstreams:                    tw.UpstreamAddrs(),
-		Logger:                              tw.w.conf.Logger,
-		SuccessfulStatusGracePeriodDuration: opts.SuccessfulStatusGracePeriodDuration,
-		WorkerAuthDebuggingEnabled:          tw.w.conf.WorkerAuthDebuggingEnabled,
+		WorkerAuthKms:           tw.w.conf.WorkerAuthKms,
+		DownstreamWorkerAuthKms: tw.w.conf.DownstreamWorkerAuthKms,
+		WorkerAuthStorageKms:    tw.w.conf.WorkerAuthStorageKms,
+		Name:                    opts.Name,
+		InitialUpstreams:        tw.UpstreamAddrs(),
+		Logger:                  tw.w.conf.Logger,
+		SuccessfulControllerRPCGracePeriodDuration: opts.SuccessfulControllerRPCGracePeriodDuration,
+		WorkerAuthDebuggingEnabled:                 tw.w.conf.WorkerAuthDebuggingEnabled,
 	}
 	if nextOpts.Name == "" {
 		var err error
@@ -492,3 +484,65 @@ func (m mockServerCoordinationService) SessionInfo(ctx context.Context, req *pbs
 }
 
 var _ pbs.ServerCoordinationServiceServer = (*mockServerCoordinationService)(nil)
+
+// TestWaitForNextSuccessfulSessionInfoUpdate waits for the next successful session info. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with the worker's session info grace period.
+func (w *Worker) TestWaitForNextSuccessfulSessionInfoUpdate(t testing.TB) {
+	t.Helper()
+	const op = "worker.(Worker).WaitForNextSuccessfulSessionInfoUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(w.successfulSessionInfoGracePeriod.Load()))
+	defer cancel()
+	t.Log("waiting for next session info report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			t.Error("error waiting for next session info report to controller")
+			return
+		}
+
+		si := w.lastSessionInfoSuccess.Load().(*lastSessionInfo)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	t.Log("next worker session info update sent successfully")
+}
+
+// TestWaitForNextSuccessfulStatisticsUpdate waits for the next successful statistics. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with twice the worker's statistics timeout duration.
+func (w *Worker) TestWaitForNextSuccessfulStatisticsUpdate(t testing.TB) {
+	t.Helper()
+	const op = "worker.(Worker).WaitForNextSuccessfulStatisticsUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(2*w.statisticsCallTimeoutDuration.Load()))
+	defer cancel()
+	t.Log("waiting for next statistics report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			t.Error("error waiting for next statistics report to controller")
+			return
+		}
+
+		si := w.lastStatisticsSuccess.Load().(*lastStatistics)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	t.Log("next worker statistics update sent successfully")
+}

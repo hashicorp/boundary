@@ -62,7 +62,6 @@ func TestCustomX509Verification_Client(t *testing.T) {
 		Logger:           logger.Named("w1"),
 	})
 
-	// Give time for it to connect
 	helper.ExpectWorkers(t, c1, w1)
 
 	// Connect target

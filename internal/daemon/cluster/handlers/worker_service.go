@@ -495,8 +495,8 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 		return nil, status.Errorf(codes.Internal, "Error getting servers repo: %v", err)
 	}
 
-	// We use the livenessTimeToStale here instead of WorkerStatusGracePeriod
-	// since WorkerStatusGracePeriod is more for deciding which workers should
+	// We use the livenessTimeToStale here instead of WorkerRPCGracePeriod
+	// since WorkerRPCGracePeriod is more for deciding which workers should
 	// be used for session proxying, but here we care about providing the BYOW
 	// workers with a list of which upstreams to connect to as their upstreams.
 	managed, err := serversRepo.ListHcpbManagedWorkers(ctx, time.Duration(ws.livenessTimeToStale.Load()))
@@ -538,6 +538,8 @@ func (ws *workerServiceServer) RoutingInfo(ctx context.Context, req *pbs.Routing
 	case wStat.GetLocalStorageState() == "":
 		return nil, status.Error(codes.InvalidArgument, "local storage state is not set but is required")
 	}
+	// This Store call is currently only for testing purposes
+	ws.updateTimes.Store(wStat.GetName(), time.Now())
 
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {

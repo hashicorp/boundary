@@ -48,26 +48,20 @@ func TestConnectionsLeft(t *testing.T) {
 	conf, err := config.DevController()
 	require.NoError(err)
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config:                          conf,
-		InitialResourcesSuffix:          "1234567890",
-		Logger:                          logger.Named("c1"),
-		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
+		Config:                 conf,
+		InitialResourcesSuffix: "1234567890",
+		Logger:                 logger.Named("c1"),
+		WorkerRPCGracePeriod:   helper.DefaultControllerRPCGracePeriod,
 	})
-	defer c1.Shutdown()
 	helper.ExpectWorkers(t, c1)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:                       c1.Config().WorkerAuthKms,
-		InitialUpstreams:                    c1.ClusterAddrs(),
-		Logger:                              logger.Named("w1"),
-		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
-		Name:                                "w1",
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w1"),
+		SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
+		Name: "w1",
 	})
-	defer w1.Shutdown()
-	err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
-	require.NoError(err)
-	err = c1.WaitForNextWorkerStatusUpdate(w1.Name())
-	require.NoError(err)
 	helper.ExpectWorkers(t, c1, w1)
 
 	// Connect target

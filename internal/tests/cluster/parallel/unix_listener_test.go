@@ -36,9 +36,9 @@ func TestUnixListener(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "boundary-unix-listener-test")
 	require.NoError(err)
 
-	defer func() {
+	t.Cleanup(func() {
 		require.NoError(os.RemoveAll(tempDir))
-	}()
+	})
 
 	for _, l := range conf.Listeners {
 		switch l.Purpose[0] {
@@ -90,7 +90,6 @@ func TestUnixListener(t *testing.T) {
 	helper.ExpectWorkers(t, c1, w1)
 
 	require.NoError(w1.Worker().Shutdown())
-
 	helper.ExpectWorkers(t, c1)
 
 	require.NoError(c1.Controller().Shutdown())

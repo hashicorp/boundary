@@ -898,7 +898,7 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 // Additionally, it returns the data for the the protocol-aware worker that can
 // handle recording operations, if enabled.
 func (r *Repository) SelectSessionWorkers(ctx context.Context,
-	workerStatusGracePeriod time.Duration,
+	workerRPCGracePeriod time.Duration,
 	t target.Target,
 	host string,
 	ce globals.ControllerExtension,
@@ -907,12 +907,12 @@ func (r *Repository) SelectSessionWorkers(ctx context.Context,
 ) ([]WorkerAddress, string, error) {
 	const op = "server.(Repository).SelectSessionWorkers"
 
-	if workerStatusGracePeriod <= 0 {
-		workerStatusGracePeriod = DefaultLiveness
+	if workerRPCGracePeriod <= 0 {
+		workerRPCGracePeriod = DefaultLiveness
 	}
-	workerStatusGracePeriod = workerStatusGracePeriod.Truncate(time.Second)
+	workerRPCGracePeriod = workerRPCGracePeriod.Truncate(time.Second)
 
-	query := fmt.Sprintf(listSelectSessionWorkers, uint32(workerStatusGracePeriod.Seconds()))
+	query := fmt.Sprintf(listSelectSessionWorkers, uint32(workerRPCGracePeriod.Seconds()))
 	var livingWorkers []*Worker
 	_, err := r.writer.DoTx(
 		ctx,

@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
@@ -18,6 +17,7 @@ import (
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -623,19 +623,11 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, tar1)
 
-	require.NoError(t, tc.WaitForNextWorkerStatusUpdate("test"))
-	ctx, cancel := context.WithTimeout(tc.Context(), 10*time.Second)
-	defer cancel()
-	for {
-		_, err = tarClient.AuthorizeSession(ctx, tar1.Item.Id)
-		if err == nil {
-			break
-		}
-		if err != nil && ctx.Err() != nil {
-			require.FailNow(t, "timed out waiting to authorize session without an error. Last error: %s", err.Error())
-			break
-		}
-	}
+	require.NoError(t, tc.WaitForNextWorkerRoutingInfoUpdate("test"))
+	require.Eventually(t, func() bool {
+		_, err = tarClient.AuthorizeSession(tc.Context(), tar1.Item.Id)
+		return err == nil
+	}, 2*common.RoutingInfoInterval, common.RoutingInfoInterval/10, "timed out waiting to authorize session without an error.")
 
 	got, refTok, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "", nil)
 	assert.NoError(t, err)

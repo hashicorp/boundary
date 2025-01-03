@@ -57,7 +57,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 		t.Helper()
 		pubId := w.GetPublicId()
 		w.PublicId = ""
-		wkr, err := server.UpsertAndReturnWorker(ctx, t, w, serversRepo, server.WithPublicId(pubId))
+		wkr, err := server.TestUpsertAndReturnWorker(ctx, t, w, serversRepo, server.WithPublicId(pubId))
 		require.NoError(err)
 		err = serversRepo.UpsertSessionInfo(ctx, pubId)
 		require.NoError(err)
@@ -107,7 +107,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Create the job.
 	job, err := newSessionConnectionCleanupJob(ctx, rw, gracePeriod)
-	job.workerStatusGracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
+	job.workerRPCGracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
 	require.NoError(err)
 
 	// sleep the status grace period.

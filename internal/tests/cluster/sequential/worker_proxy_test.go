@@ -46,10 +46,10 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	}
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config:                          conf,
-		InitialResourcesSuffix:          "1234567890",
-		Logger:                          logger.Named("c1"),
-		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
+		Config:                 conf,
+		InitialResourcesSuffix: "1234567890",
+		Logger:                 logger.Named("c1"),
+		WorkerRPCGracePeriod:   helper.DefaultControllerRPCGracePeriod,
 	})
 
 	helper.ExpectWorkers(t, c1)
@@ -66,11 +66,11 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	require.NotEmpty(t, proxy.ListenerAddr())
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:                       c1.Config().WorkerAuthKms,
-		InitialUpstreams:                    []string{proxy.ListenerAddr()},
-		Logger:                              logger.Named("w1"),
-		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
-		EnableIPv6:                          true,
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: []string{proxy.ListenerAddr()},
+		Logger:           logger.Named("w1"),
+		SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
+		EnableIPv6: true,
 	})
 
 	helper.ExpectWorkers(t, c1, w1)

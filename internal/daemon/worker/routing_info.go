@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
@@ -38,6 +39,11 @@ var firstRoutingInfoCheckPostHooks = []func(context.Context, *Worker) error{
 	},
 }
 
+var downstreamWorkersFactory func(ctx context.Context, workerId string, ver string) (graph, error)
+
+var checkHCPBUpstreams func(w *Worker) bool
+
+// LastRoutingInfo represents the last successful routing info sent to the controller.
 type LastRoutingInfo struct {
 	*pbs.RoutingInfoResponse
 	RoutingInfoTime         time.Time
@@ -116,6 +122,9 @@ func (w *Worker) LastRoutingInfoSuccess() *LastRoutingInfo {
 
 func (w *Worker) sendWorkerRoutingInfo(cancelCtx context.Context) {
 	const op = "worker.(Worker).sendWorkerRoutingInfo"
+	// Lock access to w.conf and w.addressReceivers
+	w.confAddressReceiversLock.Lock()
+	defer w.confAddressReceiversLock.Unlock()
 
 	clientCon := w.GrpcClientConn.Load()
 	// Send RoutingInfo information
@@ -186,13 +195,14 @@ func (w *Worker) sendWorkerRoutingInfo(cancelCtx context.Context) {
 					}
 				}
 
-				addrs = strutil.RemoveDuplicates(addrs, false)
-				if strutil.EquivalentSlices(lastRoutingInfo.LastCalculatedUpstreams, addrs) {
+				slices.Sort(addrs)
+				addrs = slices.Compact(addrs)
+				if slices.Equal(lastRoutingInfo.LastCalculatedUpstreams, addrs) {
 					// Nothing to update
 					return
 				}
 
-				w.updateAddresses(cancelCtx, addrs, &w.addressReceivers)
+				w.updateAddresses(cancelCtx, addrs)
 				lastRoutingInfo.LastCalculatedUpstreams = addrs
 				w.lastRoutingInfoSuccess.Store(lastRoutingInfo)
 			}
@@ -225,12 +235,12 @@ func (w *Worker) sendWorkerRoutingInfo(cancelCtx context.Context) {
 		}
 	}
 
-	w.updateAddresses(cancelCtx, addrs, &w.addressReceivers)
+	w.updateAddresses(cancelCtx, addrs)
 
 	w.lastRoutingInfoSuccess.Store(&LastRoutingInfo{RoutingInfoResponse: result, RoutingInfoTime: time.Now(), LastCalculatedUpstreams: addrs})
 
 	// If we have post hooks for after the first RoutingInfo check, run them now
-	if w.everAuthenticated.CompareAndSwap(authenticationStatusFirstAuthentication, authenticationStatusFirstStatusRpcSuccessful) {
+	if w.everAuthenticated.CompareAndSwap(authenticationStatusFirstAuthentication, authenticationStatusFirstRoutingInfoRpcSuccessful) {
 		if downstreamWorkersFactory != nil {
 			downstreamWorkers, err := downstreamWorkersFactory(cancelCtx, w.LastRoutingInfoSuccess().WorkerId, versionInfo.FullVersionNumber(false))
 			if err != nil {
@@ -238,7 +248,7 @@ func (w *Worker) sendWorkerRoutingInfo(cancelCtx context.Context) {
 				w.conf.ServerSideShutdownCh <- struct{}{}
 				return
 			}
-			w.downstreamWorkers.Store(&downstreamersContainer{downstreamers: downstreamWorkers})
+			w.downstreamWorkers.Store(&graphContainer{graph: downstreamWorkers})
 		}
 		for _, fn := range firstRoutingInfoCheckPostHooks {
 			if err := fn(cancelCtx, w); err != nil {
@@ -262,4 +272,58 @@ func (w *Worker) lastSuccessfulRoutingInfoTime() time.Time {
 	}
 
 	return lastRoutingInfo.RoutingInfoTime
+}
+
+// Update address receivers and dialing listeners with new addrs
+func (w *Worker) updateAddresses(cancelCtx context.Context, addrs []string) {
+	const op = "worker.(Worker).updateAddresses"
+
+	if len(addrs) > 0 {
+		lastRoutingInfo := w.lastRoutingInfoSuccess.Load().(*LastRoutingInfo)
+		// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
+		if lastRoutingInfo != nil && !strutil.EquivalentSlices(lastRoutingInfo.LastCalculatedUpstreams, addrs) {
+			upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastRoutingInfo.LastCalculatedUpstreams, addrs)
+			event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
+			for _, as := range w.addressReceivers {
+				as.SetAddresses(addrs)
+			}
+		} else if lastRoutingInfo == nil {
+			for _, as := range w.addressReceivers {
+				as.SetAddresses(addrs)
+			}
+			event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first RoutingInfo set to: %s", addrs))
+		}
+	}
+
+	// regardless of whether or not it's a new address, we need to set
+	// them for secondary connections
+	for _, as := range w.addressReceivers {
+		switch {
+		case as.Type() == secondaryConnectionReceiverType:
+			tmpAddrs := make([]string, len(addrs))
+			copy(tmpAddrs, addrs)
+			if len(tmpAddrs) == 0 {
+				tmpAddrs = append(tmpAddrs, w.conf.RawConfig.Worker.InitialUpstreams...)
+			}
+			as.SetAddresses(tmpAddrs)
+		}
+	}
+}
+
+func (w *Worker) isPastGrace() (bool, time.Time, time.Duration) {
+	t := w.lastSuccessfulRoutingInfoTime()
+	u := time.Duration(w.successfulRoutingInfoGracePeriod.Load())
+	v := time.Since(t)
+	return v > u, t, u
+}
+
+// getRandomInterval returns a random duration between -0.5 and 0.5 seconds (exclusive).
+func getRandomInterval(r *rand.Rand) time.Duration {
+	// 0 to 0.5 adjustment to the base
+	f := r.Float64() / 2
+	// Half a chance to be faster, not slower
+	if r.Float32() > 0.5 {
+		f = -1 * f
+	}
+	return time.Duration(f * float64(time.Second))
 }

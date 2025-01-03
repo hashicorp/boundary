@@ -23,35 +23,35 @@ func Test_sendSessionInfo(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                   string
-		lastStatus             *LastStatusInformation
+		lastRoutingInfo        *LastRoutingInfo
 		sessionSetup           func(sm *session.TestManager)
 		expectedInternalErrMsg string
 		expectedServerErrMsg   string
 		expectedSessions       bool
 	}{
 		{
-			name:                   "nil last status",
-			expectedInternalErrMsg: "missing latest status",
+			name:                   "nil last routing info",
+			expectedInternalErrMsg: "missing latest routing info",
 		},
 		{
 			name: "empty worker id",
-			lastStatus: &LastStatusInformation{
-				StatusResponse: &pbs.StatusResponse{},
+			lastRoutingInfo: &LastRoutingInfo{
+				RoutingInfoResponse: &pbs.RoutingInfoResponse{},
 			},
 			expectedInternalErrMsg: "worker id is empty",
 		},
 		{
 			name: "empty sessions",
-			lastStatus: &LastStatusInformation{
-				StatusResponse: &pbs.StatusResponse{
+			lastRoutingInfo: &LastRoutingInfo{
+				RoutingInfoResponse: &pbs.RoutingInfoResponse{
 					WorkerId: "w_1234567890",
 				},
 			},
 		},
 		{
 			name: "server error",
-			lastStatus: &LastStatusInformation{
-				StatusResponse: &pbs.StatusResponse{
+			lastRoutingInfo: &LastRoutingInfo{
+				RoutingInfoResponse: &pbs.RoutingInfoResponse{
 					WorkerId: "w_1234567890",
 				},
 			},
@@ -64,8 +64,8 @@ func Test_sendSessionInfo(t *testing.T) {
 		},
 		{
 			name: "success",
-			lastStatus: &LastStatusInformation{
-				StatusResponse: &pbs.StatusResponse{
+			lastRoutingInfo: &LastRoutingInfo{
+				RoutingInfoResponse: &pbs.RoutingInfoResponse{
 					WorkerId: "w_1234567890",
 				},
 			},
@@ -130,7 +130,7 @@ func Test_sendSessionInfo(t *testing.T) {
 			srv := grpc.NewServer()
 			pbs.RegisterServerCoordinationServiceServer(srv, fakeServer)
 			w.Worker().GrpcClientConn.Store(cc)
-			w.Worker().lastStatusSuccess.Store(tt.lastStatus)
+			w.Worker().lastRoutingInfoSuccess.Store(tt.lastRoutingInfo)
 
 			serverStarted := make(chan struct{})
 			var wg sync.WaitGroup
@@ -228,8 +228,8 @@ func Test_sendSessionInfo(t *testing.T) {
 		srv := grpc.NewServer()
 		pbs.RegisterServerCoordinationServiceServer(srv, fakeServer)
 		w.Worker().GrpcClientConn.Store(cc)
-		w.Worker().lastStatusSuccess.Store(&LastStatusInformation{
-			StatusResponse: &pbs.StatusResponse{
+		w.Worker().lastRoutingInfoSuccess.Store(&LastRoutingInfo{
+			RoutingInfoResponse: &pbs.RoutingInfoResponse{
 				WorkerId: "w_1234567890",
 			},
 		})
@@ -294,14 +294,14 @@ func Test_sendSessionInfo(t *testing.T) {
 		srv := grpc.NewServer()
 		pbs.RegisterServerCoordinationServiceServer(srv, fakeServer)
 		w.Worker().GrpcClientConn.Store(cc)
-		w.Worker().lastStatusSuccess.Store(&LastStatusInformation{
-			StatusResponse: &pbs.StatusResponse{
+		w.Worker().lastRoutingInfoSuccess.Store(&LastRoutingInfo{
+			RoutingInfoResponse: &pbs.RoutingInfoResponse{
 				WorkerId: "w_1234567890",
 			},
 		})
 		// Set the status time of the last successful session information
 		// to a value that ensures we have surpassed the grace period time.
-		gracePeriod := time.Duration(w.Worker().successfulStatusGracePeriod.Load()) + (5 * time.Second)
+		gracePeriod := time.Duration(w.Worker().successfulSessionInfoGracePeriod.Load()) + (5 * time.Second)
 		w.Worker().lastSessionInfoSuccess.Store(&lastSessionInfo{
 			LastSuccessfulRequestTime: time.Now().Add(-gracePeriod),
 		})

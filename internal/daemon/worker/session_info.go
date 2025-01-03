@@ -45,13 +45,11 @@ func (w *Worker) startSessionInfoTicking(cancelCtx context.Context) {
 
 func (w *Worker) sendSessionInfo(cancelCtx context.Context) error {
 	const op = "worker.(Worker).sendSessionInfo"
-	// TODO(Damian): replace this with LastRoutingInfoSuccess()
 	// skip when the workerId is not available
-	if w.LastStatusSuccess() == nil {
-		return errors.New(cancelCtx, errors.Internal, op, "missing latest status")
+	if w.LastRoutingInfoSuccess() == nil {
+		return errors.New(cancelCtx, errors.Internal, op, "missing latest routing info")
 	}
-	// TODO(Damian): replace this with LastRoutingInfoSuccess()
-	workerId := w.LastStatusSuccess().GetWorkerId()
+	workerId := w.LastRoutingInfoSuccess().GetWorkerId()
 	if workerId == "" {
 		return errors.New(cancelCtx, errors.Internal, op, "worker id is empty")
 	}
@@ -157,7 +155,76 @@ func (w *Worker) isPastSessionInfoGrace() (bool, time.Time, time.Duration) {
 	if info != nil {
 		t = info.LastSuccessfulRequestTime
 	}
-	u := time.Duration(w.successfulStatusGracePeriod.Load())
+	u := time.Duration(w.successfulSessionInfoGracePeriod.Load())
 	v := time.Since(t)
 	return v > u, t, u
+}
+
+// cleanupConnections walks all sessions and shuts down all proxy connections.
+// After the local connections are terminated, they are requested to be marked
+// closed on the controller.
+// Additionally, sessions without connections are cleaned up from the
+// local worker's state.
+//
+// Use ignoreSessionState to ignore the state checks, this closes all
+// connections, regardless of whether or not the session is still active.
+func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool, sessionManager session.Manager) {
+	const op = "worker.(Worker).cleanupConnections"
+	closeInfo := make(map[string]*session.ConnectionCloseData)
+	cleanSessionIds := make([]string, 0)
+	sessionManager.ForEachLocalSession(func(s session.Session) bool {
+		switch {
+		case ignoreSessionState,
+			s.GetStatus() == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+			s.GetStatus() == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
+			time.Until(s.GetExpiration()) < 0:
+			// Cancel connections without regard to individual connection
+			// state.
+			closedIds := s.CancelAllLocalConnections()
+			localConns := s.GetLocalConnections()
+			for _, connId := range closedIds {
+				var bytesUp, bytesDown int64
+				connInfo, ok := localConns[connId]
+				if ok {
+					bytesUp = connInfo.BytesUp()
+					bytesDown = connInfo.BytesDown()
+				}
+				closeInfo[connId] = &session.ConnectionCloseData{
+					SessionId: s.GetId(),
+					BytesUp:   bytesUp,
+					BytesDown: bytesDown,
+				}
+				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", s.GetId(), "connection_id", connId)
+			}
+
+			// If the session is no longer valid and all connections
+			// are marked closed, clean up the session.
+			if len(closedIds) == 0 {
+				cleanSessionIds = append(cleanSessionIds, s.GetId())
+			}
+
+		default:
+			// Cancel connections *with* regard to individual connection
+			// state (ie: only ones that the controller has requested be
+			// terminated).
+			for _, connId := range s.CancelOpenLocalConnections() {
+				closeInfo[connId] = &session.ConnectionCloseData{SessionId: s.GetId()}
+				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", s.GetId(), "connection_id", connId)
+			}
+		}
+
+		return true
+	})
+
+	// Note that we won't clean these from the info map until the
+	// next time we run this function
+	if len(closeInfo) > 0 {
+		// Call out to a helper to send the connection close requests to the
+		// controller, and set the close time. This functionality is shared with
+		// post-close functionality in the proxy handler.
+		_ = sessionManager.RequestCloseConnections(cancelCtx, closeInfo)
+	}
+	// Forget sessions where the session is expired/canceled and all
+	// connections are canceled and marked closed
+	sessionManager.DeleteLocalSession(cleanSessionIds)
 }

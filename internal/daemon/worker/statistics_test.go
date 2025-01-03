@@ -22,7 +22,7 @@ func Test_sendStatistic(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                   string
-		lastStatus             *LastStatusInformation
+		lastRoutingInfo        *LastRoutingInfo
 		sessionSetup           func(sm *session.TestManager)
 		expectedInternalErrMsg string
 		expectedServerErrMsg   string
@@ -34,23 +34,23 @@ func Test_sendStatistic(t *testing.T) {
 		},
 		{
 			name: "empty worker id",
-			lastStatus: &LastStatusInformation{
-				StatusResponse: &pbs.StatusResponse{},
+			lastRoutingInfo: &LastRoutingInfo{
+				RoutingInfoResponse: &pbs.RoutingInfoResponse{},
 			},
 			expectedInternalErrMsg: "worker id is empty",
 		},
 		{
 			name: "empty sessions",
-			lastStatus: &LastStatusInformation{
-				StatusResponse: &pbs.StatusResponse{
+			lastRoutingInfo: &LastRoutingInfo{
+				RoutingInfoResponse: &pbs.RoutingInfoResponse{
 					WorkerId: "w_1234567890",
 				},
 			},
 		},
 		{
 			name: "server error",
-			lastStatus: &LastStatusInformation{
-				StatusResponse: &pbs.StatusResponse{
+			lastRoutingInfo: &LastRoutingInfo{
+				RoutingInfoResponse: &pbs.RoutingInfoResponse{
 					WorkerId: "w_1234567890",
 				},
 			},
@@ -63,8 +63,8 @@ func Test_sendStatistic(t *testing.T) {
 		},
 		{
 			name: "success",
-			lastStatus: &LastStatusInformation{
-				StatusResponse: &pbs.StatusResponse{
+			lastRoutingInfo: &LastRoutingInfo{
+				RoutingInfoResponse: &pbs.RoutingInfoResponse{
 					WorkerId: "w_1234567890",
 				},
 			},
@@ -122,7 +122,7 @@ func Test_sendStatistic(t *testing.T) {
 			srv := grpc.NewServer()
 			pbs.RegisterServerCoordinationServiceServer(srv, fakeServer)
 			w.Worker().GrpcClientConn.Store(cc)
-			w.Worker().lastStatusSuccess.Store(tt.lastStatus)
+			w.Worker().lastRoutingInfoSuccess.Store(tt.lastRoutingInfo)
 
 			serverStarted := make(chan struct{})
 			var wg sync.WaitGroup

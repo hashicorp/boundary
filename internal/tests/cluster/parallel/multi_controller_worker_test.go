@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
@@ -151,22 +152,27 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 
 	initialUpstreams := append(c1.ClusterAddrs(), "127.0.0.9")
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:                       c1.Config().WorkerAuthKms,
-		InitialUpstreams:                    initialUpstreams,
-		Logger:                              logger.Named("w1"),
-		SuccessfulStatusGracePeriodDuration: 1 * time.Second,
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: initialUpstreams,
+		Logger:           logger.Named("w1"),
+		SuccessfulControllerRPCGracePeriodDuration: 1 * time.Second,
 	})
 
-	// Wait for worker to send status
-	helper.ExpectWorkers(t, c1, w1)
-
-	// Upstreams should be equivalent to the controller cluster addr after status updates
+	// Wait for worker to send routing info
 	require.Eventually(func() bool {
-		if w1.Worker().LastStatusSuccess() == nil {
+		if err := w1.Worker().WaitForNextSuccessfulRoutingInfoUpdate(); err != nil {
 			return false
 		}
-		return slices.Equal(c1.ClusterAddrs(), w1.Worker().LastStatusSuccess().LastCalculatedUpstreams)
-	}, 4*time.Second, 250*time.Millisecond)
+		return true
+	}, 2*common.RoutingInfoInterval, common.RoutingInfoInterval/10)
+
+	// Upstreams should be equivalent to the controller cluster addr after routing info updates
+	require.Eventually(func() bool {
+		if w1.Worker().LastRoutingInfoSuccess() == nil {
+			return false
+		}
+		return slices.Equal(c1.ClusterAddrs(), w1.Worker().LastRoutingInfoSuccess().LastCalculatedUpstreams)
+	}, 2*common.RoutingInfoInterval, common.RoutingInfoInterval/10)
 
 	// Bring down the controller
 	wg := new(sync.WaitGroup)
@@ -178,7 +184,7 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 
 	// Upstreams should now match initial upstreams
 	require.Eventually(func() bool {
-		return slices.Equal(initialUpstreams, w1.Worker().LastStatusSuccess().LastCalculatedUpstreams)
-	}, 4*time.Second, 250*time.Millisecond)
+		return slices.Equal(initialUpstreams, w1.Worker().LastRoutingInfoSuccess().LastCalculatedUpstreams)
+	}, 2*common.RoutingInfoInterval, common.RoutingInfoInterval/10)
 	wg.Wait()
 }

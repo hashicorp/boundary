@@ -263,10 +263,10 @@ func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 		PublicAddr:       w.conf.RawConfig.Worker.PublicAddr,
 		OperationalState: w.operationalState.Load().(server.OperationalState).String(),
 	}
-	if w.LastStatusSuccess() != nil && len(w.LastStatusSuccess().GetWorkerId()) > 0 {
+	if w.LastRoutingInfoSuccess() != nil && len(w.LastRoutingInfoSuccess().GetWorkerId()) > 0 {
 		// even though we wont have the worker the first time we dial, any
 		// redial attempts should result in the worker id being populated
-		wci.WorkerId = w.LastStatusSuccess().GetWorkerId()
+		wci.WorkerId = w.LastRoutingInfoSuccess().GetWorkerId()
 	}
 	st, err := wci.AsConnectionStateStruct()
 	if err != nil {

@@ -44,10 +44,10 @@ func (w *Worker) startStatisticsTicking(cancelCtx context.Context) {
 func (w *Worker) sendStatistic(cancelCtx context.Context) error {
 	const op = "worker.(Worker).sendStatistic"
 	// skip when the workerId is not available
-	if w.LastStatusSuccess() == nil {
+	if w.LastRoutingInfoSuccess() == nil {
 		return errors.New(cancelCtx, errors.Internal, op, "missing latest status")
 	}
-	workerId := w.LastStatusSuccess().GetWorkerId()
+	workerId := w.LastRoutingInfoSuccess().GetWorkerId()
 	if workerId == "" {
 		return errors.New(cancelCtx, errors.Internal, op, "worker id is empty")
 	}
@@ -89,37 +89,5 @@ func (w *Worker) sendStatistic(cancelCtx context.Context) error {
 		LastSuccessfulRequestTime: time.Now(),
 	})
 
-	return nil
-}
-
-// WaitForNextSuccessfulStatisticsUpdate waits for the next successful statistics. It's
-// used by testing in place of a more opaque and possibly unnecessarily long sleep for
-// things like initial controller check-in, etc.
-//
-// The timeout is aligned with twice the worker's statistics timeout duration. A nil error
-// means the statistics was sent successfully.
-func (w *Worker) WaitForNextSuccessfulStatisticsUpdate() error {
-	const op = "worker.(Worker).WaitForNextSuccessfulStatisticsUpdate"
-	waitStart := time.Now()
-	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(2*w.statisticsCallTimeoutDuration.Load()))
-	defer cancel()
-	event.WriteSysEvent(ctx, op, "waiting for next statistics report to controller")
-	for {
-		select {
-		case <-time.After(time.Second):
-			// pass
-
-		case <-ctx.Done():
-			event.WriteError(ctx, op, ctx.Err(), event.WithInfoMsg("error waiting for next statistics report to controller"))
-			return ctx.Err()
-		}
-
-		si := w.lastStatisticsSuccess.Load().(*lastStatistics)
-		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
-			break
-		}
-	}
-
-	event.WriteSysEvent(ctx, op, "next worker statistics update sent successfully")
 	return nil
 }
