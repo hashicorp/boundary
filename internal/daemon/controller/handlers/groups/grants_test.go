@@ -241,11 +241,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					require.ErrorIs(t, finalErr, tc.wantErr)
 					return
 				}
+				require.NoError(t, finalErr)
 				var gotIDs []string
 				for _, g := range got.Items {
 					gotIDs = append(gotIDs, g.GetId())
 				}
-				require.NoError(t, finalErr)
 				require.ElementsMatch(t, tc.wantIDs, gotIDs)
 			})
 		}
@@ -766,12 +766,12 @@ func TestGroupMember(t *testing.T) {
 	org1Users := []*iam.User{iam.TestUser(t, iamRepo, org1.PublicId), iam.TestUser(t, iamRepo, org1.PublicId)}
 	org2Users := []*iam.User{iam.TestUser(t, iamRepo, org2.PublicId), iam.TestUser(t, iamRepo, org2.PublicId)}
 
-	type itemGetter interface {
+	type groupGetter interface {
 		GetItem() *pb.Group
 	}
 
 	type testActionResult struct {
-		action  func(context.Context, *iam.Group) (itemGetter, error)
+		action  func(context.Context, *iam.Group) (groupGetter, error)
 		wantErr error
 	}
 
@@ -795,7 +795,7 @@ func TestGroupMember(t *testing.T) {
 			},
 			actions: []testActionResult{
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -806,7 +806,7 @@ func TestGroupMember(t *testing.T) {
 					wantErr: nil,
 				},
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.SetGroupMembers(authCtx, &pbs.SetGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -817,7 +817,7 @@ func TestGroupMember(t *testing.T) {
 					wantErr: nil,
 				},
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -848,7 +848,7 @@ func TestGroupMember(t *testing.T) {
 			},
 			actions: []testActionResult{
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -859,7 +859,7 @@ func TestGroupMember(t *testing.T) {
 					wantErr: nil,
 				},
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.SetGroupMembers(authCtx, &pbs.SetGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -870,7 +870,7 @@ func TestGroupMember(t *testing.T) {
 					wantErr: nil,
 				},
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -898,7 +898,7 @@ func TestGroupMember(t *testing.T) {
 			},
 			actions: []testActionResult{
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -924,7 +924,7 @@ func TestGroupMember(t *testing.T) {
 			},
 			actions: []testActionResult{
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.SetGroupMembers(authCtx, &pbs.SetGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -950,7 +950,7 @@ func TestGroupMember(t *testing.T) {
 			},
 			actions: []testActionResult{
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -978,7 +978,7 @@ func TestGroupMember(t *testing.T) {
 			},
 			actions: []testActionResult{
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -1004,7 +1004,7 @@ func TestGroupMember(t *testing.T) {
 			},
 			actions: []testActionResult{
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						users := userIDs(org1Users)
 						users = append(users, userIDs(org2Users)...)
 						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
@@ -1032,7 +1032,7 @@ func TestGroupMember(t *testing.T) {
 			},
 			actions: []testActionResult{
 				{
-					action: func(authCtx context.Context, g *iam.Group) (itemGetter, error) {
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
 						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
 							Id:        g.PublicId,
 							Version:   g.Version,
@@ -1041,6 +1041,64 @@ func TestGroupMember(t *testing.T) {
 						return out, err
 					},
 					wantErr: handlers.ForbiddenError(),
+				},
+			},
+		},
+		{
+			name: "multiple_grants_success",
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+				group := iam.TestGroup(t, conn, proj2.PublicId)
+				return group, []roleRequest{
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
+						grantScopes:  []string{proj2.PublicId},
+					},
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=set-members", group.PublicId)},
+						grantScopes:  []string{proj2.PublicId},
+					},
+					{
+						roleScopeID:  globals.GlobalPrefix,
+						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=remove-members", group.PublicId)},
+						grantScopes:  []string{proj2.PublicId},
+					},
+				}
+			},
+			actions: []testActionResult{
+				{
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
+						out, err := s.AddGroupMembers(authCtx, &pbs.AddGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org2Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+				{
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
+						out, err := s.SetGroupMembers(authCtx, &pbs.SetGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org2Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
+				},
+				{
+					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
+						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
+							Id:        g.PublicId,
+							Version:   g.Version,
+							MemberIds: userIDs(org2Users),
+						})
+						return out, err
+					},
+					wantErr: nil,
 				},
 			},
 		},
