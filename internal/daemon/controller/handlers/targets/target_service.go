@@ -130,7 +130,7 @@ type Service struct {
 	staticHostRepoFn        common.StaticRepoFactory
 	vaultCredRepoFn         common.VaultCredentialRepoFactory
 	staticCredRepoFn        common.StaticCredentialRepoFactory
-	downstreams             downstream.Downstreamers
+	downstreams             downstream.Graph
 	kmsCache                *kms.Kms
 	workerStatusGracePeriod *atomic.Int64
 	maxPageSize             uint
@@ -152,7 +152,7 @@ func NewService(
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
 	staticCredRepoFn common.StaticCredentialRepoFactory,
 	aliasRepoFn common.TargetAliasRepoFactory,
-	downstreams downstream.Downstreamers,
+	downstreams downstream.Graph,
 	workerStatusGracePeriod *atomic.Int64,
 	maxPageSize uint,
 	controllerExt intglobals.ControllerExtension,

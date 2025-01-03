@@ -98,7 +98,7 @@ func TestGet(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ downstream.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Graph) []string {
 		return connectedDownstreams
 	}
 
@@ -333,7 +333,7 @@ func TestList(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ downstream.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Graph) []string {
 		return connectedDownstreams
 	}
 
@@ -592,7 +592,7 @@ func TestUpdate(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ downstream.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Graph) []string {
 		return connectedDownstreams
 	}
 

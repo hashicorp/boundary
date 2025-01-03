@@ -86,7 +86,7 @@ func init() {
 	action.RegisterResource(resource.Worker, IdActions, CollectionActions)
 }
 
-func emptyDownstreamWorkers(context.Context, string, downstream.Downstreamers) []string {
+func emptyDownstreamWorkers(context.Context, string, downstream.Graph) []string {
 	return nil
 }
 
@@ -97,14 +97,14 @@ type Service struct {
 	repoFn       common.ServersRepoFactory
 	workerAuthFn common.WorkerAuthRepoStorageFactory
 	iamRepoFn    common.IamRepoFactory
-	downstreams  downstream.Downstreamers
+	downstreams  downstream.Graph
 }
 
 var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
 func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory,
-	workerAuthFn common.WorkerAuthRepoStorageFactory, ds downstream.Downstreamers,
+	workerAuthFn common.WorkerAuthRepoStorageFactory, ds downstream.Graph,
 ) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {

@@ -90,8 +90,8 @@ type downstreamWorkersTicker interface {
 var (
 	downstreamReceiverFactory func(*atomic.Int64) (downstreamReceiver, error)
 
-	downstreamersFactory           func(context.Context, string, string) (downstream.Downstreamers, error)
-	downstreamWorkersTickerFactory func(context.Context, string, string, downstream.Downstreamers, downstreamReceiver, *atomic.Int64) (downstreamWorkersTicker, error)
+	graphFactory                   func(context.Context, string, string) (downstream.Graph, error)
+	downstreamWorkersTickerFactory func(context.Context, string, string, downstream.Graph, downstreamReceiver, *atomic.Int64) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
 	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer, kms *kms.Kms) (intglobals.ControllerExtension, error)
 )
@@ -110,7 +110,7 @@ type Controller struct {
 	workerAuthCache *sync.Map
 
 	// downstream workers and routes to those workers
-	downstreamWorkers downstream.Downstreamers
+	downstreamWorkers downstream.Graph
 	downstreamConns   downstreamReceiver
 
 	apiListeners    []*base.ServerListener
@@ -495,9 +495,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		event.WriteSysEvent(ctx, op, "unable to ensure worker auth roots exist, may be due to multiple controllers starting at once, continuing")
 	}
 
-	if downstreamersFactory != nil {
+	if graphFactory != nil {
 		boundVer := version.Get().VersionNumber()
-		c.downstreamWorkers, err = downstreamersFactory(ctx, "root", boundVer)
+		c.downstreamWorkers, err = graphFactory(ctx, "root", boundVer)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize downstream workers graph: %w", err)
 		}

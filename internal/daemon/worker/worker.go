@@ -69,18 +69,19 @@ type reverseConnReceiver interface {
 	StartProcessingPendingConnections(context.Context, func() string) error
 }
 
-// downstreamersContainer is a struct that exists purely so we can perform
+// graphContainer is a struct that exists purely so we can perform
 // atomic swap operations on the interface, to avoid/fix data races in tests
 // (and any other potential location).
-type downstreamersContainer struct {
-	downstreamers
+// This is used to interact with downstream workers DAG
+type graphContainer struct {
+	graph
 }
 
-// downstreamers provides at least a minimum interface that must be met by a
+// graph provides at least a minimum interface that must be met by a
 // Worker.downstreamWorkers field which is far better than allowing any (empty
 // interface)
-type downstreamers interface {
-	// RootId returns the root ID of the downstreamers' graph
+type graph interface {
+	// RootId returns the root ID of the graph
 	RootId() string
 }
 
@@ -189,7 +190,7 @@ type Worker struct {
 	RecordingStorage storage.RecordingStorage
 
 	// downstream workers and routes to those workers
-	downstreamWorkers  *atomic.Pointer[downstreamersContainer]
+	downstreamWorkers  *atomic.Pointer[graphContainer]
 	downstreamReceiver reverseConnReceiver
 
 	// Timing variables. These are atomics for SIGHUP support, and are int64
@@ -243,7 +244,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		statusCallTimeoutDuration:           new(atomic.Int64),
 		getDownstreamWorkersTimeoutDuration: new(atomic.Int64),
 		upstreamConnectionState:             new(atomic.Value),
-		downstreamWorkers:                   new(atomic.Pointer[downstreamersContainer]),
+		downstreamWorkers:                   new(atomic.Pointer[graphContainer]),
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)

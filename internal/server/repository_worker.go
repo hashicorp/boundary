@@ -902,7 +902,7 @@ func (r *Repository) SelectSessionWorkers(ctx context.Context,
 	host string,
 	ce globals.ControllerExtension,
 	sbFn StorageBucketFilterCredIdFn,
-	ds downstream.Downstreamers,
+	ds downstream.Graph,
 ) ([]WorkerAddress, string, error) {
 	const op = "server.(Repository).SelectSessionWorkers"
 
@@ -970,7 +970,7 @@ func filterWorkers(
 	_ string,
 	_ globals.ControllerExtension,
 	_ StorageBucketFilterCredIdFn,
-	_ downstream.Downstreamers,
+	_ downstream.Graph,
 	_ ...target.Option,
 ) (WorkerList, *Worker, error) {
 	const op = "server.filterWorkers"

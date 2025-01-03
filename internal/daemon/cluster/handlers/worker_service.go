@@ -37,7 +37,7 @@ type workerServiceServer struct {
 	workerAuthRepoFn    common.WorkerAuthRepoStorageFactory
 	sessionRepoFn       session.RepositoryFactory
 	connectionRepoFn    common.ConnectionRepoFactory
-	downstreams         downstream.Downstreamers
+	downstreams         downstream.Graph
 	updateTimes         *sync.Map
 	kms                 *kms.Kms
 	livenessTimeToStale *atomic.Int64
@@ -67,7 +67,7 @@ var (
 )
 
 // singleHopConnectionRoute returns a route consisting of the singlehop worker (the root worker id)
-func singleHopConnectionRoute(_ context.Context, w *server.Worker, _ *session.Session, _ *server.Repository, _ downstream.Downstreamers) ([]string, error) {
+func singleHopConnectionRoute(_ context.Context, w *server.Worker, _ *session.Session, _ *server.Repository, _ downstream.Graph) ([]string, error) {
 	return []string{w.GetPublicId()}, nil
 }
 
@@ -76,7 +76,7 @@ func NewWorkerServiceServer(
 	workerAuthRepoFn common.WorkerAuthRepoStorageFactory,
 	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
-	downstreams downstream.Downstreamers,
+	downstreams downstream.Graph,
 	updateTimes *sync.Map,
 	kms *kms.Kms,
 	livenessTimeToStale *atomic.Int64,
