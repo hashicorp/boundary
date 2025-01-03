@@ -12,6 +12,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   discovering GCP Compute Engine VM Instances.
   ([PR](https://github.com/hashicorp/boundary/pull/5229)).
 
+### Bug fixes
+
+* Fix an issue where, when starting a session, the connection limit always displays 0.
+  ([PR](https://github.com/hashicorp/boundary/pull/5396)).
+
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
 
