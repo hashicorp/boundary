@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package groups_test
 
 import (
@@ -161,7 +164,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				wantErr: nil,
 				// TODO (Bo 20-dec-2024): expect 3 groups but only getting 1 back
 				// need to investigate further
-				//wantIDs: []string{globalGroup.PublicId, org1Group.PublicId, org2Group.PublicId},
+				// wantIDs: []string{globalGroup.PublicId, org1Group.PublicId, org2Group.PublicId},
 				wantIDs: []string{globalGroup.PublicId},
 			},
 			{
@@ -266,9 +269,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: nil,
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
+					{Id: globalGroup.PublicId}: nil,
+					{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
+					{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -281,9 +284,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -296,9 +299,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -311,9 +314,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: nil,
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
+					{Id: globalGroup.PublicId}: nil,
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -326,9 +329,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: nil,
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
+					{Id: globalGroup.PublicId}: nil,
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -341,9 +344,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -356,9 +359,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
+					{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -371,9 +374,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -386,9 +389,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   handlers.ForbiddenError(),
+					{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -401,9 +404,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -413,14 +416,15 @@ func TestGrants_ReadActions(t *testing.T) {
 						roleScopeID: globals.GlobalPrefix,
 						grantStrings: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", org1Group.PublicId),
-							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId)},
+							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
+						},
 						grantScopes: []string{org1.PublicId, proj1.PublicId},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -430,14 +434,15 @@ func TestGrants_ReadActions(t *testing.T) {
 						roleScopeID: globals.GlobalPrefix,
 						grantStrings: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", org1Group.PublicId),
-							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId)},
+							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
+						},
 						grantScopes: []string{org1.PublicId, proj1.PublicId},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
+					{Id: globalGroup.PublicId}: handlers.ForbiddenError(),
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 			{
@@ -446,21 +451,23 @@ func TestGrants_ReadActions(t *testing.T) {
 					{
 						roleScopeID: globals.GlobalPrefix,
 						grantStrings: []string{
-							fmt.Sprintf("ids=%s;types=group;actions=read", globalGroup.PublicId)},
+							fmt.Sprintf("ids=%s;types=group;actions=read", globalGroup.PublicId),
+						},
 						grantScopes: []string{globals.GrantScopeThis},
 					},
 					{
 						roleScopeID: org1.GetPublicId(),
 						grantStrings: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", org1Group.PublicId),
-							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId)},
+							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
+						},
 						grantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
-					&pbs.GetGroupRequest{Id: globalGroup.PublicId}: nil,
-					&pbs.GetGroupRequest{Id: org1Group.PublicId}:   nil,
-					&pbs.GetGroupRequest{Id: proj1Group.PublicId}:  nil,
+					{Id: globalGroup.PublicId}: nil,
+					{Id: org1Group.PublicId}:   nil,
+					{Id: proj1Group.PublicId}:  nil,
 				},
 			},
 		}
