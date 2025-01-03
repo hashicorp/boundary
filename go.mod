@@ -102,7 +102,7 @@ require (
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3
-	golang.org/x/net v0.25.0
+	golang.org/x/net v0.33.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014
 )
 
