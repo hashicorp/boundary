@@ -113,6 +113,15 @@ func (f *cloudEventsFormatterFilter) Rotate(w wrapping.Wrapper, _ ...Option) err
 	return nil
 }
 
+func (f *cloudEventsFormatterFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
+	// The embedded FormatterFilter's Process function calls the signer, but doesn't know
+	// about the lock, leading to a potential race condition. We take the lock here to ensure
+	// that the signer is only accessed by one goroutine at a time.
+	f.l.RLock()
+	defer f.l.RUnlock()
+	return f.FormatterFilter.Process(ctx, e)
+}
+
 func newPredicate(allow, deny []*filter) func(ctx context.Context, ce any) (bool, error) {
 	return func(ctx context.Context, ce any) (bool, error) {
 		if len(allow) == 0 && len(deny) == 0 {
