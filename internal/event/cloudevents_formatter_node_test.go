@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -394,4 +395,37 @@ func Test_cloudEventsFormatter_Rotate(t *testing.T) {
 			assert.NotNil(tt.f.Signer)
 		})
 	}
+}
+
+func Test_cloudEventsFormatter_Race(t *testing.T) {
+	testUrl, err := url.Parse("https://[::1]")
+	require.NoError(t, err)
+
+	testNode, err := newCloudEventsFormatterFilter(testUrl, cloudevents.FormatJSON, WithSchema(testUrl))
+	require.NoError(t, err)
+
+	start := make(chan struct{})
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-start
+		for i := 0; i < 10; i++ {
+			_ = testNode.Rotate(testWrapper(t))
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-start
+		for i := 0; i < 10; i++ {
+			_, _ = testNode.Process(context.Background(), &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: time.Now(),
+				Payload:   "test-data",
+			})
+		}
+	}()
+	close(start)
+	wg.Wait()
 }
