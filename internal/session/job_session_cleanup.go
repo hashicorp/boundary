@@ -40,7 +40,7 @@ type sessionConnectionCleanupJob struct {
 	workerStatusGracePeriod *atomic.Int64
 
 	// The total number of connections closed in the last run.
-	totalClosed int
+	totalClosed *atomic.Int64
 }
 
 // newSessionConnectionCleanupJob instantiates the session cleanup job.
@@ -62,6 +62,7 @@ func newSessionConnectionCleanupJob(
 	return &sessionConnectionCleanupJob{
 		writer:                  writer,
 		workerStatusGracePeriod: workerStatusGracePeriod,
+		totalClosed:             new(atomic.Int64),
 	}, nil
 }
 
@@ -86,16 +87,17 @@ func (j *sessionConnectionCleanupJob) NextRunIn(_ context.Context) (time.Duratio
 
 // Status returns the status of the running job.
 func (j *sessionConnectionCleanupJob) Status() scheduler.JobStatus {
+	totalClosed := j.totalClosed.Load()
 	return scheduler.JobStatus{
-		Completed: j.totalClosed,
-		Total:     j.totalClosed,
+		Completed: int(totalClosed),
+		Total:     int(totalClosed),
 	}
 }
 
 // Run executes the job.
 func (j *sessionConnectionCleanupJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "session.(sessionConnectionCleanupJob).Run"
-	j.totalClosed = 0
+	j.totalClosed.Store(0)
 
 	// Run the atomic dead worker cleanup job.
 	gracePeriod := time.Duration(j.workerStatusGracePeriod.Load())
@@ -113,7 +115,7 @@ func (j *sessionConnectionCleanupJob) Run(ctx context.Context, _ time.Duration) 
 				"number_connections_closed", result.NumberConnectionsClosed,
 			))
 
-		j.totalClosed += result.NumberConnectionsClosed
+		j.totalClosed.Add(int64(result.NumberConnectionsClosed))
 	}
 
 	{
@@ -126,7 +128,7 @@ func (j *sessionConnectionCleanupJob) Run(ctx context.Context, _ time.Duration) 
 				event.WithInfo(
 					"number_connections_closed", count,
 				))
-			j.totalClosed += count
+			j.totalClosed.Add(int64(count))
 		}
 	}
 
