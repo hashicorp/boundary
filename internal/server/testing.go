@@ -125,7 +125,7 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	}
 
 	wrk := NewWorker(scope.Global.String(), opt...)
-	wrk, err = UpsertAndReturnWorker(ctx, t, wrk, serversRepo)
+	wrk, err = TestUpsertAndReturnWorker(ctx, t, wrk, serversRepo)
 	require.NoError(t, err)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
@@ -224,8 +224,8 @@ func TestLookupWorkerByName(ctx context.Context, t *testing.T, name string, serv
 	return nil, nil
 }
 
-// UpsertAndReturnWorker upserts and returns a worker
-func UpsertAndReturnWorker(ctx context.Context, t *testing.T, w *Worker, serversRepo *Repository, opt ...Option) (*Worker, error) {
+// TestUpsertAndReturnWorker upserts and returns a worker
+func TestUpsertAndReturnWorker(ctx context.Context, t *testing.T, w *Worker, serversRepo *Repository, opt ...Option) (*Worker, error) {
 	workerId, err := serversRepo.UpsertWorkerStatus(ctx, w, opt...)
 	require.NoError(t, err)
 	require.NotEmpty(t, workerId)

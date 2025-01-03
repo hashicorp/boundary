@@ -238,7 +238,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			server.WithAddress("address"), server.WithName("config_name1"),
 			server.WithDescription("kms_description1"),
 		)
-		worker, err := server.UpsertAndReturnWorker(ctx, t, wStatus1, repo)
+		worker, err := server.TestUpsertAndReturnWorker(ctx, t, wStatus1, repo)
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -253,7 +253,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		// update again and see updated last status time
 		wStatus2 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("new_address"), server.WithName("config_name1"), server.WithReleaseVersion("test-version"))
-		worker, err = server.UpsertAndReturnWorker(ctx, t, wStatus2, repo)
+		worker, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus2, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		assert.Equal(t, "config_name1", worker.Name)
@@ -272,7 +272,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		wStatus3 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("new_address"), server.WithName("config_name1"),
 			server.WithOperationalState("shutdown"), server.WithReleaseVersion("Boundary v0.11.0"))
-		worker, err = server.UpsertAndReturnWorker(ctx, t, wStatus3, repo)
+		worker, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus3, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		// Version does not change for status updates
@@ -285,7 +285,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			server.WithAddress("new_address"), server.WithName("config_name1"),
 			server.WithOperationalState("shutdown"), server.WithReleaseVersion("Boundary v0.11.0"),
 			server.WithLocalStorageState("available"))
-		worker, err = server.UpsertAndReturnWorker(ctx, t, wStatus4, repo)
+		worker, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus4, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		// Version does not change for status updates
@@ -306,7 +306,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("pki_address"), server.WithDescription("pki_description2"),
 			server.WithReleaseVersion("test-version"))
-		worker, err := server.UpsertAndReturnWorker(ctx, t, wStatus1, repo, server.WithKeyId(pkiWorkerKeyId), server.WithReleaseVersion("test-version"))
+		worker, err := server.TestUpsertAndReturnWorker(ctx, t, wStatus1, repo, server.WithKeyId(pkiWorkerKeyId), server.WithReleaseVersion("test-version"))
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -625,7 +625,7 @@ func TestTagUpdatingListing(t *testing.T) {
 				Value: "value2",
 			}))
 
-	worker1, err = server.UpsertAndReturnWorker(ctx, t, wStatus, repo, server.WithUpdateTags(true))
+	worker1, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus, repo, server.WithUpdateTags(true))
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value1", "value2"}, worker1.CanonicalTags()["tag1"])
@@ -643,13 +643,13 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag22",
 				Value: "value22",
 			}))
-	worker1, err = server.UpsertAndReturnWorker(ctx, t, wStatus, repo)
+	worker1, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus, repo)
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value1", "value2"}, worker1.CanonicalTags()["tag1"])
 
 	// Update tags and test again
-	worker1, err = server.UpsertAndReturnWorker(ctx, t, wStatus, repo, server.WithUpdateTags(true))
+	worker1, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus, repo, server.WithUpdateTags(true))
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value21", "value22"}, worker1.CanonicalTags()["tag22"])

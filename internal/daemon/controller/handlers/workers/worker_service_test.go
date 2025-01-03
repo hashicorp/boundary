@@ -148,7 +148,7 @@ func TestGet(t *testing.T) {
 		server.WithDescription("test pki worker description"),
 		server.WithTestPkiWorkerAuthorizedKeyId(&pkiWorkerKeyId))
 	// Add config tags to the created worker
-	pkiWorker, err = server.UpsertAndReturnWorker(context.Background(), t,
+	pkiWorker, err = server.TestUpsertAndReturnWorker(context.Background(), t,
 		server.NewWorker(pkiWorker.GetScopeId(),
 			server.WithAddress("test pki worker address"),
 			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
@@ -203,7 +203,7 @@ func TestGet(t *testing.T) {
 	)
 
 	// Add config tags to the created worker
-	managedPkiWorker, err = server.UpsertAndReturnWorker(context.Background(), t,
+	managedPkiWorker, err = server.TestUpsertAndReturnWorker(context.Background(), t,
 		server.NewWorker(managedPkiWorker.GetScopeId(),
 			server.WithAddress("test managed pki worker address"),
 			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
