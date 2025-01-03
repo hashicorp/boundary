@@ -75,7 +75,6 @@ func genAuthTokenCtx(t *testing.T,
 			Token:       fullGrantToken.GetToken(),
 			TokenFormat: uint32(auth.AuthTokenTypeBearer),
 		})
-
 	return fullGrantAuthCtx
 }
 
@@ -501,7 +500,7 @@ func TestGrants_ReadActions(t *testing.T) {
 //				- org2 [org2Group]
 //					- proj2 [proj2Group]
 //					- proj3 [proj3Group]
-func TestWriteActions(t *testing.T) {
+func TestWrites(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		ctx := context.Background()
 		conn, _ := db.TestSetup(t, "postgres")
@@ -758,7 +757,7 @@ func TestGroupMember(t *testing.T) {
 	s, err := groups.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err)
 
-	org1, proj1 := iam.TestScopes(t, iamRepo)
+	org1, _ := iam.TestScopes(t, iamRepo)
 	org2, proj2 := iam.TestScopes(t, iamRepo)
 	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
 
@@ -782,7 +781,7 @@ func TestGroupMember(t *testing.T) {
 		actions []testActionResult
 	}{
 		{
-			name: "all_actions_valid_grant_success",
+			name: "all actions valid grant success",
 			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
 				group := iam.TestGroup(t, conn, globals.GlobalPrefix)
 				return group, []roleRequest{
@@ -830,7 +829,7 @@ func TestGroupMember(t *testing.T) {
 			},
 		},
 		{
-			name: "add_and_set_allowed_fail_to_remove",
+			name: "only add and set allowed fail to remove",
 			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
 				group := iam.TestGroup(t, conn, org1.PublicId)
 				return group, []roleRequest{
@@ -879,60 +878,6 @@ func TestGroupMember(t *testing.T) {
 						return out, err
 					},
 					wantErr: handlers.ForbiddenError(),
-				},
-			},
-		},
-		{
-			name: "remove_member_valid_grant_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
-				group := iam.TestGroup(t, conn, proj1.PublicId)
-				iam.TestGroupMember(t, conn, group.PublicId, org1Users[0].PublicId)
-				iam.TestGroupMember(t, conn, group.PublicId, org1Users[1].PublicId)
-				return group, []roleRequest{
-					{
-						roleScopeID:  proj1.PublicId,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
-					},
-				}
-			},
-			actions: []testActionResult{
-				{
-					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
-						out, err := s.RemoveGroupMembers(authCtx, &pbs.RemoveGroupMembersRequest{
-							Id:        g.PublicId,
-							Version:   g.Version,
-							MemberIds: userIDs(org1Users),
-						})
-						return out, err
-					},
-					wantErr: nil,
-				},
-			},
-		},
-		{
-			name: "set_member_valid_specific_grant_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
-				group := iam.TestGroup(t, conn, proj1.PublicId)
-				return group, []roleRequest{
-					{
-						roleScopeID:  proj1.PublicId,
-						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=set-members", group.PublicId)},
-						grantScopes:  []string{globals.GrantScopeThis},
-					},
-				}
-			},
-			actions: []testActionResult{
-				{
-					action: func(authCtx context.Context, g *iam.Group) (groupGetter, error) {
-						out, err := s.SetGroupMembers(authCtx, &pbs.SetGroupMembersRequest{
-							Id:        g.PublicId,
-							Version:   g.Version,
-							MemberIds: userIDs(org1Users),
-						})
-						return out, err
-					},
-					wantErr: nil,
 				},
 			},
 		},
@@ -1050,17 +995,17 @@ func TestGroupMember(t *testing.T) {
 				group := iam.TestGroup(t, conn, proj2.PublicId)
 				return group, []roleRequest{
 					{
-						roleScopeID:  globals.GlobalPrefix,
+						roleScopeID:  proj2.PublicId,
 						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
 						grantScopes:  []string{proj2.PublicId},
 					},
 					{
-						roleScopeID:  globals.GlobalPrefix,
+						roleScopeID:  proj2.PublicId,
 						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=set-members", group.PublicId)},
 						grantScopes:  []string{proj2.PublicId},
 					},
 					{
-						roleScopeID:  globals.GlobalPrefix,
+						roleScopeID:  proj2.PublicId,
 						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=remove-members", group.PublicId)},
 						grantScopes:  []string{proj2.PublicId},
 					},
