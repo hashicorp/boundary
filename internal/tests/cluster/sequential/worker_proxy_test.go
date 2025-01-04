@@ -7,6 +7,7 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -70,7 +71,8 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		InitialUpstreams: []string{proxy.ListenerAddr()},
 		Logger:           logger.Named("w1"),
 		SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
-		EnableIPv6: true,
+		EnableIPv6:        true,
+		WorkerRPCInterval: time.Second,
 	})
 
 	helper.ExpectWorkers(t, c1, w1)

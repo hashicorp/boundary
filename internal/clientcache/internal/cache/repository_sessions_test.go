@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
@@ -17,7 +18,6 @@ import (
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -604,6 +604,7 @@ func TestRepository_QuerySessionsLimiting(t *testing.T) {
 }
 
 func TestDefaultSessionRetrievalFunc(t *testing.T) {
+	// This prevents us from running this test in parallel
 	oldDur := globals.RefreshReadLookbackDuration
 	globals.RefreshReadLookbackDuration = 0
 	t.Cleanup(func() {
@@ -614,9 +615,10 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	tc.Client().SetToken(tc.Token().Token)
 	tarClient := targets.NewClient(tc.Client())
 	_ = worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Name:             "test",
-		InitialUpstreams: tc.ClusterAddrs(),
-		WorkerAuthKms:    tc.Config().WorkerAuthKms,
+		Name:              "test",
+		InitialUpstreams:  tc.ClusterAddrs(),
+		WorkerAuthKms:     tc.Config().WorkerAuthKms,
+		WorkerRPCInterval: time.Second,
 	})
 
 	tar1, err := tarClient.Create(tc.Context(), "tcp", "p_1234567890", targets.WithName("tar1"), targets.WithTcpTargetDefaultPort(1), targets.WithAddress("address"))
@@ -627,7 +629,7 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	require.Eventually(t, func() bool {
 		_, err = tarClient.AuthorizeSession(tc.Context(), tar1.Item.Id)
 		return err == nil
-	}, 2*common.RoutingInfoInterval, common.RoutingInfoInterval/10, "timed out waiting to authorize session without an error.")
+	}, 30*time.Second, time.Second, "timed out waiting to authorize session without an error.")
 
 	got, refTok, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "", nil)
 	assert.NoError(t, err)

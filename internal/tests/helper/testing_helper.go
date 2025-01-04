@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	wcommon "github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +28,7 @@ import (
 
 const (
 	DefaultControllerRPCGracePeriod          = time.Second * 15
-	expectConnectionStateOnControllerTimeout = time.Minute * 5
+	expectConnectionStateOnControllerTimeout = time.Minute * 2
 	expectConnectionStateOnWorkerTimeout     = DefaultControllerRPCGracePeriod * 3
 
 	// This is the interval that we check states on in the worker. It
@@ -492,7 +491,7 @@ func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worke
 			assert.Eventually(t, func() bool {
 				_, ok := c.Controller().WorkerRoutingInfoUpdateTimes().Load(w.Name())
 				return ok
-			}, 3*wcommon.RoutingInfoInterval, wcommon.RoutingInfoInterval/10)
+			}, 30*time.Second, time.Second)
 		}()
 	}
 	wg.Wait()

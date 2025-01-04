@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
@@ -81,10 +82,11 @@ func TestUnixListener(t *testing.T) {
 	require.NoError(err)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           wconf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
-		Logger:           logger.Named("w1"),
+		Config:            wconf,
+		WorkerAuthKms:     c1.Config().WorkerAuthKms,
+		InitialUpstreams:  c1.ClusterAddrs(),
+		Logger:            logger.Named("w1"),
+		WorkerRPCInterval: time.Second,
 	})
 
 	helper.ExpectWorkers(t, c1, w1)

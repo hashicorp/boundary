@@ -87,6 +87,8 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			Logger:                 logger.Named("c1"),
 			PublicClusterAddr:      pl.Addr().String(),
 			WorkerRPCGracePeriod:   controllerGracePeriod(burdenCase),
+			// Run the scheduler more often to speed up cleanup of orphaned connections
+			SchedulerRunJobInterval: time.Second,
 		})
 
 		helper.ExpectWorkers(t, c1)
@@ -109,6 +111,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			InitialUpstreams: []string{proxy.ListenerAddr()},
 			Logger:           logger.Named("w1"),
 			SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
+			WorkerRPCInterval:                          time.Second,
 		})
 
 		helper.ExpectWorkers(t, c1, w1)
@@ -141,6 +144,10 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		// Run initial send/receive test, make sure things are working
 		t.Log("running initial send/recv test")
 		sConn.TestSendRecvAll(t)
+
+		// Wait for a session info to be sent to the server, so the controller has
+		// at least one record of the connection.
+		w1.Worker().TestWaitForNextSuccessfulSessionInfoUpdate(t)
 
 		// Kill the link
 		t.Log("pausing controller/worker link")
@@ -276,6 +283,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			InitialUpstreams: []string{p1.ListenerAddr(), p2.ListenerAddr()},
 			Logger:           logger.Named("w1"),
 			SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
+			WorkerRPCInterval:                          time.Second,
 		})
 
 		wg.Add(2)
@@ -317,6 +325,10 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		// Run initial send/receive test, make sure things are working
 		t.Log("running initial send/recv test")
 		sConn.TestSendRecvAll(t)
+
+		// Wait for a session info to be sent to the server, so the controller has
+		// at least one record of the connection.
+		w1.Worker().TestWaitForNextSuccessfulSessionInfoUpdate(t)
 
 		// Kill connection to first controller, and run test again, should
 		// pass, deferring to other controller. Wait for the next
