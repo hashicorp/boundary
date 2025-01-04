@@ -408,6 +408,11 @@ type Worker struct {
 	// pre-0.13 method of using KMSes to authenticate. This is currently only
 	// supported to throw an error if used telling people they need to upgrade.
 	UseDeprecatedKmsAuthMethod bool `hcl:"use_deprecated_kms_auth_method"`
+
+	// TestWorkerRPCInterval represents the base period of time that
+	// the worker will wait between invoking the controller RPCs.
+	// This is not exposed to users and only used in tests.
+	TestWorkerRPCInterval time.Duration `hcl:"-"`
 }
 
 type Database struct {

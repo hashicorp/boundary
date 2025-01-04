@@ -210,6 +210,14 @@ type Worker struct {
 	routingInfoCallTimeoutDuration      *atomic.Int64
 	getDownstreamWorkersTimeoutDuration *atomic.Int64
 
+	// The time intervals at which the worker will invoke the controller RPCs.
+	// Defaults to common.SessionInfoInterval, common.RoutingInfoInterval
+	// and common.StatisticsInterval and is only overridden by the
+	// TestWorkerRPCInterval test config.
+	sessionInfoInterval time.Duration
+	routingInfoInterval time.Duration
+	statisticsInterval  time.Duration
+
 	// AuthRotationNextRotation is useful in tests to understand how long to
 	// sleep
 	AuthRotationNextRotation atomic.Pointer[time.Time]
@@ -407,6 +415,17 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	}
 	// FIXME: This is really ugly, but works.
 	session.CloseCallTimeout.Store(w.successfulSessionInfoGracePeriod.Load())
+
+	w.sessionInfoInterval = common.SessionInfoInterval
+	w.routingInfoInterval = common.RoutingInfoInterval
+	w.statisticsInterval = common.StatisticsInterval
+	// Override the routing info interval if it is set in the config.
+	// This should only be used by tests.
+	if conf.RawConfig.Worker.TestWorkerRPCInterval > 0 {
+		w.sessionInfoInterval = conf.RawConfig.Worker.TestWorkerRPCInterval
+		w.routingInfoInterval = conf.RawConfig.Worker.TestWorkerRPCInterval
+		w.statisticsInterval = conf.RawConfig.Worker.TestWorkerRPCInterval
+	}
 
 	if reverseConnReceiverFactory != nil {
 		var err error

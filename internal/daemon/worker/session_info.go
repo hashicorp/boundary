@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
@@ -38,7 +37,7 @@ func (w *Worker) startSessionInfoTicking(cancelCtx context.Context) {
 			// Add a bit of jitter to the wait, so we aren't always getting,
 			// session information updates at the exact same intervals, to
 			// ease the load on the DB.
-			timer.Reset(common.SessionInfoInterval + getRandomInterval(r))
+			timer.Reset(w.sessionInfoInterval + getRandomInterval(r))
 		}
 	}
 }

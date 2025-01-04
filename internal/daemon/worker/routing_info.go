@@ -11,7 +11,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/event"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -105,7 +104,7 @@ func (w *Worker) startRoutingInfoTicking(cancelCtx context.Context) {
 			w.sendWorkerRoutingInfo(cancelCtx)
 			// Desynchronize calls to controllers from workers, so we aren't always
 			// getting RoutingInfo updates at the exact same intervals, to ease the load on the DB.
-			timer.Reset(common.RoutingInfoInterval + getRandomInterval(r))
+			timer.Reset(w.routingInfoInterval + getRandomInterval(r))
 		}
 	}
 }
