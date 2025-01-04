@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug fixes
+
+* Fix bug in applying BOUNDARY_MAX_RETRIES for boundary cli. Previously
+  setting this environment variable would result in a max retries of 2,
+  regardless of the value set.
+  ([PR](https://github.com/hashicorp/boundary/pull/5385)).
+
 ### New and Improved
 
 * Introduces soft-delete for users within the client cache.
