@@ -157,16 +157,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				rolesToCreate: []roleRequest{
 					{
 						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
+						grantStrings: []string{"ids=*;type=group;actions=list,read"},
 						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 				wantErr: nil,
-				// TODO (Bo 20-dec-2024): expect 3 groups but only getting 1 back
-				// need to investigate further
-				// wantIDs: []string{globalGroup.PublicId, org1Group.PublicId, org2Group.PublicId},
-				wantIDs: []string{globalGroup.PublicId},
-			},
+				wantIDs: []string{globalGroup.PublicId, org1Group.PublicId, org2Group.PublicId},
+				q},
 			{
 				name: "global role grant this and descendant returns all groups",
 				input: &pbs.ListGroupsRequest{
@@ -673,7 +670,7 @@ func TestWrites(t *testing.T) {
 					roles := []roleRequest{
 						{
 							roleScopeID:  globals.GlobalPrefix,
-							grantStrings: []string{"id=*;type=*;actions=*"},
+							grantStrings: []string{"ids=*;type=*;actions=*"},
 							grantScopes:  []string{proj.PublicId},
 						},
 					}
@@ -689,7 +686,7 @@ func TestWrites(t *testing.T) {
 					roles := []roleRequest{
 						{
 							roleScopeID:  globals.GlobalPrefix,
-							grantStrings: []string{fmt.Sprintf("id=%s;type=*;actions=*", g.PublicId)},
+							grantStrings: []string{fmt.Sprintf("ids=%s;types=group;actions=*", g.PublicId)},
 							grantScopes:  []string{proj.PublicId},
 						},
 					}
