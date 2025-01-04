@@ -163,7 +163,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				wantErr: nil,
 				wantIDs: []string{globalGroup.PublicId, org1Group.PublicId, org2Group.PublicId},
-				q},
+			},
 			{
 				name: "global role grant this and descendant returns all groups",
 				input: &pbs.ListGroupsRequest{
