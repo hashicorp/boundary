@@ -96,7 +96,18 @@ scenario "e2e_docker_base_with_gcp" {
     }
   }
 
-  step "create_gcp_target" {
+  step "create_gcp_target_1" {
+    module = module.gcp_target
+
+    variables {
+      enos_user     = var.enos_user
+      instance_type = var.gcp_target_instance_type
+      gcp_zone      = var.gcp_zone
+      target_count  = 1
+    }
+  }
+
+  step "create_gcp_target_2" {
     module = module.gcp_target
 
     variables {
@@ -111,7 +122,8 @@ scenario "e2e_docker_base_with_gcp" {
     module = module.test_e2e_docker
     depends_on = [
       step.create_boundary,
-      step.create_gcp_target
+      step.create_gcp_target_1,
+      step.create_gcp_target_2
     ]
     variables {
       test_package           = "github.com/hashicorp/boundary/testing/internal/e2e/tests/gcp"
@@ -125,16 +137,17 @@ scenario "e2e_docker_base_with_gcp" {
       auth_password          = step.create_boundary.password
       local_boundary_dir     = step.build_boundary_docker_image.cli_zip_path
       local_boundary_src_dir = local.local_boundary_src_dir
-      gcp_host_set_filter1   = step.create_gcp_target.filter_label1
-      gcp_host_set_filter2   = step.create_gcp_target.filter_label2
+      gcp_host_set_filter1   = step.create_gcp_target_1.filter_label
+      gcp_host_set_filter2   = step.create_gcp_target_2.filter_label
       gcp_private_key_id     = var.gcp_private_key_id
       gcp_private_key        = local.gcp_private_key
       gcp_zone               = var.gcp_zone
       gcp_project_id         = var.gcp_project_id
       gcp_client_email       = var.gcp_client_email
-      gcp_target_ssh_key     = step.create_gcp_target.target_ssh_key
-      gcp_host_set_ips       = step.create_gcp_target.target_ips
-      target_address         = step.create_gcp_target.target_public_ips[0]
+      gcp_target_ssh_key     = step.create_gcp_target_1.target_ssh_key
+      gcp_host_set_ips1      = step.create_gcp_target_1.target_ips
+      gcp_host_set_ips2      = step.create_gcp_target_2.target_ips
+      target_address         = step.create_gcp_target_1.target_public_ips[0]
       target_port            = "22"
       target_user            = "ubuntu"
       max_page_size          = step.create_boundary.max_page_size
