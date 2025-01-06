@@ -822,7 +822,8 @@ func TestGroupMember(t *testing.T) {
 	testcases := []struct {
 		name              string
 		setupGroupAndRole func(t *testing.T) (*iam.Group, []roleRequest)
-		// collection of actions to be executed in the tests in order
+		// collection of actions to be executed in the tests in order, *iam.Group returned from each action which
+		// gets passed to the next action as parameter to preserve information such as `version` increments
 		actions []testActionResult
 	}{
 		{
