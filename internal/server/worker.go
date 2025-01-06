@@ -185,7 +185,7 @@ func (w *Worker) clone() *Worker {
 // set over the API as well as the tags reported by the worker itself. This
 // function is guaranteed to return a non-nil map.
 func (w *Worker) CanonicalTags(opt ...Option) map[string][]string {
-	return DeduplicateTags(&w.ApiTags, &w.ConfigTags)
+	return compactTags(&w.ApiTags, &w.ConfigTags)
 }
 
 // GetConfigTags returns the tags for this worker which has been set through

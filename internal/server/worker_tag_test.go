@@ -20,7 +20,7 @@ func TestDeduplicateTags(t *testing.T) {
 			{Key: fmt.Sprintf("key-%d", pippo), Value: fmt.Sprintf("another-unique-%d", pippo)},
 		})
 	}
-	gotMap := DeduplicateTags(tags...)
+	gotMap := compactTags(tags...)
 	assert.Len(t, gotMap, 6)
 	assert.ElementsMatch(t, gotMap["key"], []string{"shared", "unique-0", "unique-1", "unique-2", "unique-3", "unique-4"})
 	assert.ElementsMatch(t, gotMap["key-0"], []string{"another-unique-0"})

@@ -29,17 +29,17 @@ func (t *Tags) clone() Tags {
 	return newTags
 }
 
-// DeduplicateTags takes a list of Tags and returns a map of deduplicated tags
-func DeduplicateTags(t ...*Tags) map[string][]string {
-	dedupedTags := make(map[Tag]struct{})
+// compactTags takes a list of Tags and returns a map of deduplicated, compated tags
+func compactTags(t ...*Tags) map[string][]string {
+	compactedTags := make(map[Tag]struct{})
 	for _, tags := range t {
 		for _, tag := range *tags {
-			dedupedTags[*tag] = struct{}{}
+			compactedTags[*tag] = struct{}{}
 		}
 	}
 
 	tags := make(map[string][]string)
-	for t := range dedupedTags {
+	for t := range compactedTags {
 		tags[t.Key] = append(tags[t.Key], t.Value)
 	}
 	return tags
