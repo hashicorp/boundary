@@ -22,7 +22,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "example" {
   rule {
     id = "file_retention"
     expiration {
-      days = 30
+      days = 7
     }
     status = "Enabled"
   }
