@@ -8,11 +8,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/hashicorp/boundary/testing/internal/e2e/vault"
@@ -175,11 +178,12 @@ func TestAuthMethodOidcVault(t *testing.T) {
 
 	// Create an OIDC client
 	oidcClientName := "boundary"
+	redirect_uri := fmt.Sprintf("%s/v1/auth-methods/oidc:authenticate:callback", boundary.GetAddr(t))
 	output = e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs(
 			"write",
 			fmt.Sprintf("identity/oidc/client/%s", oidcClientName),
-			"redirect_uris=http://127.0.0.1:9200/v1/auth-methods/oidc:authenticate:callback",
+			fmt.Sprintf("redirect_uris=%s", redirect_uri),
 			fmt.Sprintf(`assignments=%s`, assignmentName),
 			fmt.Sprintf(`key=%s`, keyName),
 			"id_token_ttl=30m",
@@ -200,10 +204,8 @@ func TestAuthMethodOidcVault(t *testing.T) {
 	// Define a Vault OIDC scope for the user
 	userScopeTemplate := `{
 		"username": {{identity.entity.name}},
-		"contact": {
-			"email": {{identity.entity.metadata.email}},
-			"phone_number": {{identity.entity.metadata.phone_number}}
-		}
+		"email": {{identity.entity.metadata.email}},
+		"phone_number": {{identity.entity.metadata.phone_number}}
 	}`
 	userScopeEncoded := base64.StdEncoding.EncodeToString([]byte(userScopeTemplate))
 	output = e2e.RunCommand(ctx, "vault",
@@ -288,7 +290,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 			"-client-id", clientId,
 			"-client-secret", clientSecret,
 			"-signing-algorithm", "RS256",
-			"-api-url-prefix", "http://127.0.0.1:9200",
+			"-api-url-prefix", boundary.GetAddr(t),
 			"-claims-scopes", "groups",
 			"-claims-scopes", "user",
 			"-max-age", "20",
@@ -309,6 +311,177 @@ func TestAuthMethodOidcVault(t *testing.T) {
 			"auth-methods", "change-state", "oidc",
 			"-id", authMethodId,
 			"-state", "active-public",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Set new auth method as primary auth method for the new org
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"scopes", "update",
+			"-id", orgId,
+			"-primary-auth-method-id", authMethodId,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	var updateScopeResult scopes.ScopeUpdateResult
+	err = json.Unmarshal(output.Stdout, &updateScopeResult)
+	require.NoError(t, err)
+	require.Equal(t, authMethodId, updateScopeResult.Item.PrimaryAuthMethodId)
+
+	// Start OIDC authentication process to Boundary
+	t.Log("Authenticating using OIDC...")
+	res, err := http.Post(
+		fmt.Sprintf("%s/v1/auth-methods/%s:authenticate", boundary.GetAddr(t), authMethodId),
+		"application/json",
+		strings.NewReader(
+			fmt.Sprintf(`{"command": "start"}`),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		res.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	var authResult authmethods.AuthenticateResult
+	err = json.NewDecoder(res.Body).Decode(&authResult)
+	require.NoError(t, err)
+	oidcTokenId := authResult.Attributes["token_id"].(string)
+	authUrl := authResult.Attributes["auth_url"].(string)
+	u, err := url.Parse(authUrl)
+	require.NoError(t, err)
+	m, _ := url.ParseQuery(u.RawQuery)
+	nonce := m["nonce"][0]
+	state := m["state"][0]
+
+	// Vault: Authenticate to get a client token
+	res, err = http.Post(
+		fmt.Sprintf("%s/v1/auth/userpass/login/%s", c.VaultAddr, userName),
+		"application/json",
+		strings.NewReader(
+			fmt.Sprintf(`{"password": "%s"}`, userPassword),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		res.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	type vaultLoginResponse struct {
+		Auth struct {
+			ClientToken string `json:"client_token"`
+		}
+	}
+	var loginResponse vaultLoginResponse
+	err = json.NewDecoder(res.Body).Decode(&loginResponse)
+	require.NoError(t, err)
+	vaultClientToken := loginResponse.Auth.ClientToken
+
+	// Vault: authorize oidc request
+	req, err := http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf(
+			"%s/v1/identity/oidc/provider/%s/authorize?scope=%s&response_type=%s&client_id=%s&redirect_uri=%s&state=%s&nonce=%s&max_age=20",
+			c.VaultAddr,
+			providerName,
+			"openid+groups+user",
+			"code",
+			clientId,
+			redirect_uri,
+			state,
+			nonce,
+		),
+		nil,
+	)
+	require.NoError(t, err)
+	req.Header.Set("X-Vault-Token", vaultClientToken)
+	res, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		res.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	type oidcAuthorizeResponse struct {
+		Code string `json:"code"`
+	}
+	var authorizeResponse oidcAuthorizeResponse
+	err = json.NewDecoder(res.Body).Decode(&authorizeResponse)
+	require.NoError(t, err)
+	oidcAuthorizationCode := authorizeResponse.Code
+
+	// Boundary: send a request to the callback URL
+	req, err = http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf(
+			"%s?code=%s&state=%s",
+			redirect_uri,
+			oidcAuthorizationCode,
+			state,
+		),
+		nil,
+	)
+	require.NoError(t, err)
+	res, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		res.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	// Boundary: retrieve the boundary auth token after a successful OIDC login
+	res, err = http.Post(
+		fmt.Sprintf("%s/v1/auth-methods/%s:authenticate", boundary.GetAddr(t), authMethodId),
+		"application/json",
+		strings.NewReader(
+			fmt.Sprintf(`{"command":"token", "attributes":{"token_id":"%s"}}`, oidcTokenId),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		res.Body.Close()
+	})
+	err = json.NewDecoder(res.Body).Decode(&authResult)
+	require.NoError(t, err)
+	require.Contains(t, authResult.Attributes, "token")
+	boundaryToken := authResult.Attributes["token"].(string)
+
+	// Try using the Boundary token to list scopes and users
+	t.Log("Using Boundary token...")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"scopes",
+			"list",
+			"-token", "env://OIDC_USER_TOKEN",
+			"-format", "json",
+		),
+		e2e.WithEnv("OIDC_USER_TOKEN", boundaryToken),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"users",
+			"list",
+			"-token", "env://OIDC_USER_TOKEN",
+			"-format", "json",
+		),
+		e2e.WithEnv("OIDC_USER_TOKEN", boundaryToken),
+	)
+	require.Error(t, output.Err, string(output.Stderr))
+	var response boundary.CliError
+	err = json.Unmarshal(output.Stderr, &response)
+	require.NoError(t, err)
+	// User does not have permissions to list users
+	require.Equal(t, 403, response.Status)
+
+	// Do a user list without the token (using the admin login). Confirm that
+	// this operation works
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"users",
+			"list",
+			"-format", "json",
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
