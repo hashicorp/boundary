@@ -9,7 +9,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -25,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -64,7 +64,9 @@ func testGenAuthTokenCtx(t *testing.T,
 	}
 	authMethod := password.TestAuthMethods(t, conn, globals.GlobalPrefix, 1)[0]
 
-	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), uuid.NewString())
+	loginName, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), loginName)
 	user := iam.TestUser(t, iamRepo, globals.GlobalPrefix, iam.WithAccountIds(acct.GetPublicId()))
 	for _, r := range roles {
 		role := iam.TestRoleWithGrants(t, conn, r.roleScopeID, r.grantScopes, r.grantStrings)
@@ -593,7 +595,8 @@ func TestWrites(t *testing.T) {
 				fullGrantAuthCtx := testGenAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
 
 				for _, scope := range allScopeIDs {
-					name := uuid.NewString()
+					name, err := uuid.GenerateUUID()
+					require.NoError(t, err)
 					got, err := s.CreateGroup(fullGrantAuthCtx, &pbs.CreateGroupRequest{
 						Item: &pb.Group{
 							ScopeId:     scope,
