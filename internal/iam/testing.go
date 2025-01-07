@@ -224,7 +224,7 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 }
 
 // TestRoleWithGrants creates a role suitable for testing along with grants
-// Note: functional options for GrantScopeIDs aren't used to express that
+// Functional options for GrantScopeIDs aren't used to express that
 // this function does not provide any default grant scope unlike TestRole
 func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
 	t.Helper()
