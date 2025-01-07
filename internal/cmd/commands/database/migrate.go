@@ -52,6 +52,7 @@ type MigrateCommand struct {
 	flagMigrationUrl       string
 	flagRepairMigrations   []string
 	flagAllowDevMigrations bool
+	flagPluginName         string
 }
 
 func (c *MigrateCommand) Synopsis() string {
@@ -125,6 +126,13 @@ func (c *MigrateCommand) Flags() *base.FlagSets {
 		Usage:  `Run the repair function for the provided migration version.`,
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:    "plugin-name",
+		Target:  &c.flagPluginName,
+		Usage:   "The 'database migrate' command runs a Boundary plugin environment check by creating a client to a plugin. This flag controls which plugin gets instantiated for that check.",
+		Default: "azure",
+	})
+
 	return set
 }
 
@@ -180,14 +188,14 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	_, awsCleanup, err := external_plugins.CreateHostPlugin(
+	_, plgCleanup, err := external_plugins.CreateHostPlugin(
 		c.Context,
-		"aws",
+		c.flagPluginName,
 		external_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
 			pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 		),
-		external_plugins.WithLogger(pluginLogger.Named("aws")),
+		external_plugins.WithLogger(pluginLogger.Named(c.flagPluginName)),
 	)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
@@ -215,7 +223,7 @@ plugins {
 				"We are committed to resolving any issues as quickly as possible."))
 		return base.CommandCliError
 	}
-	if err := awsCleanup(); err != nil {
+	if err := plgCleanup(); err != nil {
 		c.UI.Error(fmt.Errorf("Error running plugin cleanup function: %w", err).Error())
 		return base.CommandCliError
 	}
@@ -314,6 +322,9 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 	switch {
 	case len(c.flagConfig) == 0:
 		c.UI.Error("Must specify a config file using -config")
+		return base.CommandUserError
+	case len(c.flagPluginName) == 0:
+		c.UI.Error("Must specify a plugin name using -plugin-name")
 		return base.CommandUserError
 	}
 
