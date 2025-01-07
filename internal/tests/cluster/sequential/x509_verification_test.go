@@ -44,6 +44,14 @@ func TestCustomX509Verification_Client(t *testing.T) {
 		Name:  "test",
 	})
 	req.NoError(event.InitSysEventer(logger, testLock, "use-TestCustomX509Verification", event.WithEventerConfig(&ec.EventerConfig)))
+	t.Cleanup(func() {
+		event.TestResetSystEventer(t)
+	})
+	t.Cleanup(func() {
+		all, err := io.ReadAll(ec.AllEvents)
+		require.NoError(t, err)
+		t.Log(string(all))
+	})
 
 	conf, err := config.DevController()
 	conf.Eventing = &ec.EventerConfig
