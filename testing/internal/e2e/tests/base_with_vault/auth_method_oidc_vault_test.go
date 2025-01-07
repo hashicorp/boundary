@@ -542,7 +542,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 	require.Contains(t, accountReadResult.Item.Attributes, "full_name")
 	require.Equal(t, userName, accountReadResult.Item.Attributes["full_name"])
 
-	userInfoClaims, ok := accountReadResult.Item.Attributes["userinfo_claims"].(map[string]interface{})
+	userInfoClaims, ok := accountReadResult.Item.Attributes["userinfo_claims"].(map[string]any)
 	require.True(t, ok, "userinfo_claims is not a map")
 	require.Contains(t, userInfoClaims, "email")
 	require.Equal(t, userEmail, userInfoClaims["email"])
@@ -552,7 +552,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 	require.Equal(t, userName, userInfoClaims["username"])
 	require.Contains(t, userInfoClaims["groups"], groupName)
 
-	tokenClaims, ok := accountReadResult.Item.Attributes["token_claims"].(map[string]interface{})
+	tokenClaims, ok := accountReadResult.Item.Attributes["token_claims"].(map[string]any)
 	require.True(t, ok, "token_claims is not a map")
 	require.Contains(t, tokenClaims, "email")
 	require.Equal(t, userEmail, tokenClaims["email"])
