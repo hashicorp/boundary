@@ -477,7 +477,9 @@ You can also locate this value in the `auth_request_token` file.
 
 1. Click **Done**.
 
-    The new worker appears on the **Workers** page.
+  The new worker appears on the **Workers** page.
+
+1. Repeat the registration process for any other workers, such as the intermediate and egress workers.
 
 </Tab>
 
@@ -487,12 +489,11 @@ Complete the following steps to adopt the worker using the CLI:
 
 1. Use the following command to ensure that the `BOUNDARY_ADDR` is set as an environment variable:
 
-    ```hcl
-    $ export BOUNDARY_ADDR="https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud"
-    ```
+  ```hcl
+  $ export BOUNDARY_ADDR="https://c3a7a20a-f663-40f3-a8e3-1b2f69b3625.boundary.hashicorp.cloud"
+  ```
 
-1. Log into the CLI as the admin user, providing the Auth Method ID, admin login
-name, and admin password when prompted.
+1. Log into the CLI as the admin user, providing the Auth Method ID, admin login name, and admin password when prompted.
 
   ```hcl
   $ boundary authenticate password \
@@ -516,22 +517,91 @@ name, and admin password when prompted.
     Expiration Time: Mon, 27 Jun 2022 22:03:28 MDT
     User ID:         u_ysJd0LXX9T
 
-  The token was successfully stored in the chosen keyring and is not displayed here.
+   The token was successfully stored in the chosen keyring and is not displayed here.
   ```
 
   </CodeBlockConfig>
 
 1. Next, use the following command to export the **Worker Auth Request Token** value as an environment variable:
 
-    ```shell-session
-    $ export WORKER_TOKEN=<Worker Auth Registration Request Value>
-    ```
+  ```shell-session
+  $ export WORKER_TOKEN=<Worker Auth Registration Request Value>
+  ```
 
-    Boundary provides you with the **Worker Auth Registration Request** key in the CLI output when you start the worker.
-    You can also locate this value in the `auth_request_token` file.
+  Boundary provides you with the **Worker Auth Registration Request** key in the CLI output when you start the worker.
+  You can also locate this value in the `auth_request_token` file.
 
-    The token is used to issue a create worker request that will authorize the worker to Boundary and make it available.
-    Currently worker creation is only supported for Workers with an authorization token(worker-led and controller-led).
+  The token is used to issue a create worker request that authorizes the worker to Boundary and makes it available.
+  Currently worker creation is only supported for workers with an authorization token (worker-led and controller-led).
+
+1. Create a new worker using the worker-led registration method with the following command:
+
+  ```shell-session
+  $ boundary workers create worker-led -worker-generated-auth-token=$WORKER_TOKEN
+  
+  Worker information:
+    Active Connection Count:   0
+    Created Time:              Fri, 03 Jan 2025 13:52:04 MST
+    ID:                        w_zLGjAbYx1h
+    Local Storage State:       unknown
+    Type:                      pki
+    Updated Time:              Fri, 03 Jan 2025 13:52:04 MST
+    Version:                   1
+  
+    Scope:
+      ID:                      global
+      Name:                    global
+      Type:                    global
+  
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+  ```
+
+  Confirm the worker registration and view its details by executing the following command and supplying the new worker's id:
+
+  ```shell-session
+  $ boundary workers read -id w_zLGjAbYx1h
+  
+  Worker information:
+    Active Connection Count:   0
+    Address:                   127.0.0.1:9202
+    Created Time:              Fri, 03 Jan 2025 13:52:04 MST
+    ID:                        w_zLGjAbYx1h
+    Last Status Time:          2025-01-03 20:58:41.346537 +0000 UTC
+    Local Storage State:       not configured
+    Release Version:           Boundary v0.18.1+ent
+    Type:                      pki
+    Updated Time:              Fri, 03 Jan 2025 13:58:41 MST
+    Version:                   1
+  
+    Scope:
+      ID:                      global
+      Name:                    global
+      Type:                    global
+  
+    Tags:
+      Configuration:
+        type: ["worker1" "upstream"]
+      Canonical:
+        type: ["upstream" "worker1"]
+  
+    Authorized Actions:
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+      no-op
+      read
+      update
+      delete
+  ```
+
+1. Repeat the registration process for any other workers, such as the intermediate and egress workers.
 
 </Tab>
 </Tabs>
