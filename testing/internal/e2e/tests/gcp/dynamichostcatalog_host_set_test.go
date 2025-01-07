@@ -287,5 +287,5 @@ func TestApiCreateGCPDynamicHostCatalog(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Log("Successfully found items in the host catalog")
-	assert.Equal(t, actualHostCatalogCount, expectedHostSetCount, "Numbers of hosts in host catalog did not match expected amount")
+	assert.Equal(t, expectedHostSetCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 }
