@@ -161,7 +161,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 			"write",
 			fmt.Sprintf("identity/oidc/assignment/%s", assignmentName),
 			fmt.Sprintf(`entity_ids=%s`, entityId),
-			fmt.Sprintf(`group_ids="%s"`, groupId),
+			fmt.Sprintf(`group_ids=%q`, groupId),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -341,7 +341,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 			"managed-groups", "create", "oidc",
 			"-auth-method-id", authMethodId,
 			"-name", groupName,
-			"-filter", fmt.Sprintf(`"%s" in "/userinfo/groups"`, groupName),
+			"-filter", fmt.Sprintf(`%q in "/userinfo/groups"`, groupName),
 			"-format", "json",
 		),
 	)
@@ -382,7 +382,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 		fmt.Sprintf("%s/v1/auth/userpass/login/%s", c.VaultAddr, userName),
 		"application/json",
 		strings.NewReader(
-			fmt.Sprintf(`{"password": "%s"}`, userPassword),
+			fmt.Sprintf(`{"password": %q}`, userPassword),
 		),
 	)
 	require.NoError(t, err)
@@ -456,7 +456,7 @@ func TestAuthMethodOidcVault(t *testing.T) {
 		fmt.Sprintf("%s/v1/auth-methods/%s:authenticate", boundary.GetAddr(t), authMethodId),
 		"application/json",
 		strings.NewReader(
-			fmt.Sprintf(`{"command":"token", "attributes":{"token_id":"%s"}}`, oidcTokenId),
+			fmt.Sprintf(`{"command":"token", "attributes":{"token_id":%q}}`, oidcTokenId),
 		),
 	)
 	require.NoError(t, err)
