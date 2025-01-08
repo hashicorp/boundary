@@ -65,13 +65,18 @@ func TestCliTcpTargetConnectHttp(t *testing.T) {
 	})
 
 	t.Log("Starting a webserver on the target...")
-	htmlPage := "<html>Hello World!</html>"
+	htmlPage := `HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+Server: netcat-can-you-believe-it
+
+<html>Hello World!</html>
+`
 	go func() {
 		_, err = f.Write([]byte(fmt.Sprintf("echo '%s' > somepage.html\n", htmlPage)))
 		require.NoError(t, err)
 		_, err = f.Write([]byte(fmt.Sprintf("while true; do nc -l -p %s -q 1 < somepage.html; done\n", destPort)))
 		require.NoError(t, err)
-		_, _ = io.Copy(io.Discard, f) // Not checking error here since it fails in CI for some reason
+		_, _ = io.Copy(io.Discard, f) // Not checking error here since it will return an error on session close
 	}()
 
 	s := boundary.WaitForSessionCli(t, ctx, projectId)
@@ -85,10 +90,8 @@ func TestCliTcpTargetConnectHttp(t *testing.T) {
 			"connect", "http",
 			"-target-id", httpTargetId,
 			"-scheme", "http",
-			"--",
-			"--http0.9",
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	require.Contains(t, string(output.Stdout), htmlPage)
+	require.Contains(t, string(output.Stdout), "<html>Hello World!</html>")
 }
