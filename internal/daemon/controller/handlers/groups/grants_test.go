@@ -10,78 +10,20 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/server"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-type roleRequest struct {
-	roleScopeID  string
-	grantStrings []string
-	grantScopes  []string
-}
-
-// testGenAuthTokenCtx creates an auth.VerifierContext which contains a valid auth token
-// for a user which is associated with roles in the roles parameter
-// this function creates an authMethod, account, user at global scope
-func testGenAuthTokenCtx(t *testing.T,
-	ctx context.Context,
-	conn *db.DB,
-	wrap wrapping.Wrapper,
-	iamRepo *iam.Repository,
-	roles []roleRequest,
-) context.Context {
-	t.Helper()
-	rw := db.New(conn)
-	kmsCache := kms.TestKms(t, conn, wrap)
-
-	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	require.NoError(t, err)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iamRepo, nil
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return atRepo, nil
-	}
-
-	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	authMethod := password.TestAuthMethods(t, conn, globals.GlobalPrefix, 1)[0]
-
-	loginName, err := uuid.GenerateUUID()
-	require.NoError(t, err)
-	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), loginName)
-	user := iam.TestUser(t, iamRepo, globals.GlobalPrefix, iam.WithAccountIds(acct.GetPublicId()))
-	for _, r := range roles {
-		role := iam.TestRoleWithGrants(t, conn, r.roleScopeID, r.grantScopes, r.grantStrings)
-		_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
-	}
-	fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
-	require.NoError(t, err)
-	fullGrantAuthCtx := auth.NewVerifierContext(requests.NewRequestContext(ctx, requests.WithUserId(user.GetPublicId())),
-		iamRepoFn, atRepoFn, serversRepoFn, kmsCache, &authpb.RequestInfo{
-			PublicId:    fullGrantToken.PublicId,
-			Token:       fullGrantToken.GetToken(),
-			TokenFormat: uint32(auth.AuthTokenTypeBearer),
-		})
-	return fullGrantAuthCtx
-}
 
 // TestGrants_ReadActions tests read actions to assert that grants are being applied properly
 //
@@ -107,8 +49,6 @@ func TestGrants_ReadActions(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	kmsCache := kms.TestKms(t, conn, wrap)
-	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	require.NoError(t, err)
 
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -128,11 +68,11 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name          string
-			input         *pbs.ListGroupsRequest
-			rolesToCreate []roleRequest
-			wantErr       error
-			wantIDs       []string
+			name               string
+			input              *pbs.ListGroupsRequest
+			roleGrantsForToken []authtoken.TestRoleGrantsForToken
+			wantErr            error
+			wantIDs            []string
 		}{
 			{
 				name:    "global role grant this only returns in global groups",
@@ -142,11 +82,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					Recursive: true,
 				},
 				wantIDs: []string{globalGroup.PublicId},
-				rolesToCreate: []roleRequest{
+				roleGrantsForToken: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
 			},
@@ -156,11 +96,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []roleRequest{
+				roleGrantsForToken: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"ids=*;type=group;actions=list,read"},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=group;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 				wantErr: nil,
@@ -172,11 +112,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []roleRequest{
+				roleGrantsForToken: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 				wantErr: nil,
@@ -188,11 +128,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   org2.PublicId,
 					Recursive: true,
 				},
-				rolesToCreate: []roleRequest{
+				roleGrantsForToken: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"ids=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeDescendants},
 					},
 				},
 				wantErr: nil,
@@ -204,11 +144,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   org2.PublicId,
 					Recursive: true,
 				},
-				rolesToCreate: []roleRequest{
+				roleGrantsForToken: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  org2.PublicId,
-						grantStrings: []string{"ids=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  org2.PublicId,
+						GrantStrings: []string{"ids=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
 				wantErr: nil,
@@ -220,13 +160,13 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []roleRequest{
+				roleGrantsForToken: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID: globals.GlobalPrefix,
-						grantStrings: []string{
+						RoleScopeID: globals.GlobalPrefix,
+						GrantStrings: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
 						},
-						grantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 				wantErr: handlers.ForbiddenError(),
@@ -238,16 +178,16 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []roleRequest{
+				roleGrantsForToken: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"ids=*;type=group;actions=read,list"},
-						grantScopes:  []string{proj1.PublicId, proj2.PublicId, proj3.PublicId},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=group;actions=read,list"},
+						GrantScopes:  []string{proj1.PublicId, proj2.PublicId, proj3.PublicId},
 					},
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"ids=*;type=group;actions=read,list"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=group;actions=read,list"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
 				wantErr: nil,
@@ -259,11 +199,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []roleRequest{
+				roleGrantsForToken: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"ids=*;type=target;actions=read,list"},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=target;actions=read,list"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 				wantErr: handlers.ForbiddenError(),
@@ -273,7 +213,8 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				fullGrantAuthCtx := testGenAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.rolesToCreate)
+				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.roleGrantsForToken)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, finalErr := s.ListGroups(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
@@ -292,16 +233,16 @@ func TestGrants_ReadActions(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
 		testcases := []struct {
 			name            string
-			rolesToCreate   []roleRequest
+			rolesToCreate   []authtoken.TestRoleGrantsForToken
 			inputWantErrMap map[*pbs.GetGroupRequest]error
 		}{
 			{
 				name: "global role grant this scope with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -314,11 +255,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "global role grant children scopes with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeChildren},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -331,11 +272,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "global role grant descendant scopes with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeDescendants},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -348,11 +289,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "global role grant this and children scopes with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -365,11 +306,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "global role grant this and descendant scopes with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -382,11 +323,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "org1 role grant this scope with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  org1.GetPublicId(),
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  org1.GetPublicId(),
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -399,11 +340,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "org1 role grant children scope with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  org1.GetPublicId(),
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeChildren},
+						RoleScopeID:  org1.GetPublicId(),
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -416,11 +357,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "org1 role grant this and children scopes with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  org1.GetPublicId(),
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeID:  org1.GetPublicId(),
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -433,11 +374,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "proj1 role grant this scope with all permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  proj1.GetPublicId(),
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  proj1.GetPublicId(),
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -450,11 +391,11 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "global role grant this and descendant scope with read permissions on specific group",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{fmt.Sprintf("ids=%s;types=group ;actions=read", org1Group.PublicId)},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{fmt.Sprintf("ids=%s;types=group ;actions=read", org1Group.PublicId)},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -467,14 +408,14 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "global role grant this and specific scopes with read permissions on specific group",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID: globals.GlobalPrefix,
-						grantStrings: []string{
+						RoleScopeID: globals.GlobalPrefix,
+						GrantStrings: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", org1Group.PublicId),
 							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
 						},
-						grantScopes: []string{org1.PublicId, proj1.PublicId},
+						GrantScopes: []string{org1.PublicId, proj1.PublicId},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -487,21 +428,21 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "union multiple role grant specific resources permissions",
-				rolesToCreate: []roleRequest{
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID: globals.GlobalPrefix,
-						grantStrings: []string{
+						RoleScopeID: globals.GlobalPrefix,
+						GrantStrings: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", globalGroup.PublicId),
 						},
-						grantScopes: []string{globals.GrantScopeThis},
+						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						roleScopeID: org1.GetPublicId(),
-						grantStrings: []string{
+						RoleScopeID: org1.GetPublicId(),
+						GrantStrings: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", org1Group.PublicId),
 							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
 						},
-						grantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
 				inputWantErrMap: map[*pbs.GetGroupRequest]error{
@@ -516,7 +457,8 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				fullGrantAuthCtx := testGenAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.rolesToCreate)
+				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				for input, wantErr := range tc.inputWantErrMap {
 					_, err := s.GetGroup(fullGrantAuthCtx, input)
 					// not found means expect error
@@ -554,6 +496,7 @@ func TestWrites(t *testing.T) {
 		ctx := context.Background()
 		conn, _ := db.TestSetup(t, "postgres")
 		wrap := db.TestWrapper(t)
+		kmsCache := kms.TestKms(t, conn, wrap)
 		iamRepo := iam.TestRepo(t, conn, wrap)
 		repoFn := func() (*iam.Repository, error) {
 			return iamRepo, nil
@@ -568,27 +511,27 @@ func TestWrites(t *testing.T) {
 		allScopeIDs := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
 		testcases := []struct {
 			name              string
-			roles             []roleRequest
+			roles             []authtoken.TestRoleGrantsForToken
 			canCreateInScopes []string
 		}{
 			{
 				name: "grant all can create all",
-				roles: []roleRequest{
+				roles: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 				canCreateInScopes: allScopeIDs,
 			},
 			{
 				name: "grant children can only create in orgs",
-				roles: []roleRequest{
+				roles: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeChildren},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
 					},
 				},
 				canCreateInScopes: []string{org1.PublicId, org2.PublicId},
@@ -597,7 +540,8 @@ func TestWrites(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				fullGrantAuthCtx := testGenAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
+				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.roles)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 
 				for _, scope := range allScopeIDs {
 					name, err := uuid.GenerateUUID()
@@ -626,6 +570,7 @@ func TestWrites(t *testing.T) {
 		conn, _ := db.TestSetup(t, "postgres")
 		wrap := db.TestWrapper(t)
 		iamRepo := iam.TestRepo(t, conn, wrap)
+		kmsCache := kms.TestKms(t, conn, wrap)
 		repoFn := func() (*iam.Repository, error) {
 			return iamRepo, nil
 		}
@@ -639,27 +584,27 @@ func TestWrites(t *testing.T) {
 		allScopeIDs := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
 		testcases := []struct {
 			name                    string
-			roles                   []roleRequest
+			roles                   []authtoken.TestRoleGrantsForToken
 			deleteAllowedAtScopeIDs []string
 		}{
 			{
 				name: "grant all can delete all",
-				roles: []roleRequest{
+				roles: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				},
 				deleteAllowedAtScopeIDs: allScopeIDs,
 			},
 			{
 				name: "grant children can only delete in orgs",
-				roles: []roleRequest{
+				roles: []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeChildren},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
 					},
 				},
 				deleteAllowedAtScopeIDs: []string{org1.PublicId, org2.PublicId},
@@ -674,7 +619,8 @@ func TestWrites(t *testing.T) {
 					g := iam.TestGroup(t, conn, scp)
 					scopeIdGroupMap[scp] = g
 				}
-				fullGrantAuthCtx := testGenAuthTokenCtx(t, ctx, conn, wrap, iamRepo, tc.roles)
+				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.roles)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				for scope, group := range scopeIdGroupMap {
 					_, err = s.DeleteGroup(fullGrantAuthCtx, &pbs.DeleteGroupRequest{Id: group.PublicId})
 					if !slices.Contains(tc.deleteAllowedAtScopeIDs, scope) {
@@ -690,18 +636,18 @@ func TestWrites(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
 		testcases := []struct {
 			name                      string
-			setupScopesResourcesRoles func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest)
+			setupScopesResourcesRoles func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []authtoken.TestRoleGrantsForToken)
 			wantErr                   error
 		}{
 			{
 				name: "global_scope_group_good_grant_success",
-				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest) {
+				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 					g := iam.TestGroup(t, conn, globals.GlobalPrefix)
-					roles := []roleRequest{
+					roles := []authtoken.TestRoleGrantsForToken{
 						{
-							roleScopeID:  globals.GlobalPrefix,
-							grantStrings: []string{"id=*;type=*;actions=*"},
-							grantScopes:  []string{globals.GrantScopeThis},
+							RoleScopeID:  globals.GlobalPrefix,
+							GrantStrings: []string{"id=*;type=*;actions=*"},
+							GrantScopes:  []string{globals.GrantScopeThis},
 						},
 					}
 					return g, roles
@@ -710,14 +656,14 @@ func TestWrites(t *testing.T) {
 			},
 			{
 				name: "grant specific scope success",
-				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest) {
+				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 					_, proj := iam.TestScopes(t, iamRepo)
 					g := iam.TestGroup(t, conn, proj.PublicId)
-					roles := []roleRequest{
+					roles := []authtoken.TestRoleGrantsForToken{
 						{
-							roleScopeID:  globals.GlobalPrefix,
-							grantStrings: []string{"ids=*;type=*;actions=*"},
-							grantScopes:  []string{proj.PublicId},
+							RoleScopeID:  globals.GlobalPrefix,
+							GrantStrings: []string{"ids=*;type=*;actions=*"},
+							GrantScopes:  []string{proj.PublicId},
 						},
 					}
 					return g, roles
@@ -726,14 +672,14 @@ func TestWrites(t *testing.T) {
 			},
 			{
 				name: "grant specific resource and scope success",
-				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest) {
+				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 					_, proj := iam.TestScopes(t, iamRepo)
 					g := iam.TestGroup(t, conn, proj.PublicId)
-					roles := []roleRequest{
+					roles := []authtoken.TestRoleGrantsForToken{
 						{
-							roleScopeID:  globals.GlobalPrefix,
-							grantStrings: []string{fmt.Sprintf("ids=%s;types=group;actions=*", g.PublicId)},
-							grantScopes:  []string{proj.PublicId},
+							RoleScopeID:  globals.GlobalPrefix,
+							GrantStrings: []string{fmt.Sprintf("ids=%s;types=group;actions=*", g.PublicId)},
+							GrantScopes:  []string{proj.PublicId},
 						},
 					}
 					return g, roles
@@ -742,13 +688,13 @@ func TestWrites(t *testing.T) {
 			},
 			{
 				name: "no grant fails update",
-				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []roleRequest) {
+				setupScopesResourcesRoles: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 					g := iam.TestGroup(t, conn, globals.GlobalPrefix)
-					roles := []roleRequest{
+					roles := []authtoken.TestRoleGrantsForToken{
 						{
-							roleScopeID:  globals.GlobalPrefix,
-							grantStrings: []string{"id=*;type=*;actions=*"},
-							grantScopes:  []string{globals.GrantScopeChildren},
+							RoleScopeID:  globals.GlobalPrefix,
+							GrantStrings: []string{"id=*;type=*;actions=*"},
+							GrantScopes:  []string{globals.GrantScopeChildren},
 						},
 					}
 					return g, roles
@@ -762,15 +708,15 @@ func TestWrites(t *testing.T) {
 				conn, _ := db.TestSetup(t, "postgres")
 				wrap := db.TestWrapper(t)
 				iamRepo := iam.TestRepo(t, conn, wrap)
+				kmsCache := kms.TestKms(t, conn, wrap)
 				repoFn := func() (*iam.Repository, error) {
 					return iamRepo, nil
 				}
 				s, err := groups.NewService(ctx, repoFn, 1000)
 				require.NoError(t, err)
-
 				original, roles := tc.setupScopesResourcesRoles(t, conn, iamRepo)
-				fullGrantAuthCtx := testGenAuthTokenCtx(t, ctx, conn, wrap, iamRepo, roles)
-
+				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, roles)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, err := s.UpdateGroup(fullGrantAuthCtx, &pbs.UpdateGroupRequest{
 					Id: original.PublicId,
 					Item: &pb.Group{
@@ -801,6 +747,7 @@ func TestGroupMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -826,20 +773,20 @@ func TestGroupMember(t *testing.T) {
 
 	testcases := []struct {
 		name              string
-		setupGroupAndRole func(t *testing.T) (*iam.Group, []roleRequest)
+		setupGroupAndRole func(t *testing.T) (*iam.Group, []authtoken.TestRoleGrantsForToken)
 		// collection of actions to be executed in the tests in order, *iam.Group returned from each action which
 		// gets passed to the next action as parameter to preserve information such as `version` increments
 		actions []testActionResult
 	}{
 		{
 			name: "all actions valid grant success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 				group := iam.TestGroup(t, conn, globals.GlobalPrefix)
-				return group, []roleRequest{
+				return group, []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				}
 			},
@@ -881,18 +828,18 @@ func TestGroupMember(t *testing.T) {
 		},
 		{
 			name: "only add and set allowed fail to remove",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 				group := iam.TestGroup(t, conn, org1.PublicId)
-				return group, []roleRequest{
+				return group, []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  org1.PublicId,
-						grantStrings: []string{"id=*;type=*;actions=add-members"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"id=*;type=*;actions=add-members"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 					{
-						roleScopeID:  org1.PublicId,
-						grantStrings: []string{"id=*;type=*;actions=set-members"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"id=*;type=*;actions=set-members"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				}
 			},
@@ -934,13 +881,13 @@ func TestGroupMember(t *testing.T) {
 		},
 		{
 			name: "add_member_valid_specific_grant_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 				group := iam.TestGroup(t, conn, org2.PublicId)
-				return group, []roleRequest{
+				return group, []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  org2.PublicId,
-						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  org2.PublicId,
+						GrantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				}
 			},
@@ -960,15 +907,15 @@ func TestGroupMember(t *testing.T) {
 		},
 		{
 			name: "remove_member_valid_specific_grant_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 				group := iam.TestGroup(t, conn, proj2.PublicId)
 				iam.TestGroupMember(t, conn, group.PublicId, org2Users[0].PublicId)
 				iam.TestGroupMember(t, conn, group.PublicId, org2Users[1].PublicId)
-				return group, []roleRequest{
+				return group, []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=remove-members", group.PublicId)},
-						grantScopes:  []string{proj2.PublicId},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=remove-members", group.PublicId)},
+						GrantScopes:  []string{proj2.PublicId},
 					},
 				}
 			},
@@ -988,13 +935,13 @@ func TestGroupMember(t *testing.T) {
 		},
 		{
 			name: "cross_scope_add_member_valid_specific_grant_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 				group := iam.TestGroup(t, conn, proj3.PublicId)
-				return group, []roleRequest{
+				return group, []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
-						grantScopes:  []string{globals.GrantScopeDescendants},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
+						GrantScopes:  []string{globals.GrantScopeDescendants},
 					},
 				}
 			},
@@ -1016,13 +963,13 @@ func TestGroupMember(t *testing.T) {
 		},
 		{
 			name: "add_member_with_valid_grant_string_invalid_scope_forbidden_error",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 				group := iam.TestGroup(t, conn, org2.PublicId)
-				return group, []roleRequest{
+				return group, []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  globals.GlobalPrefix,
-						grantStrings: []string{"id=*;type=*;actions=*"},
-						grantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"id=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				}
 			},
@@ -1042,23 +989,23 @@ func TestGroupMember(t *testing.T) {
 		},
 		{
 			name: "multiple_grants_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, []roleRequest) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, []authtoken.TestRoleGrantsForToken) {
 				group := iam.TestGroup(t, conn, proj2.PublicId)
-				return group, []roleRequest{
+				return group, []authtoken.TestRoleGrantsForToken{
 					{
-						roleScopeID:  proj2.PublicId,
-						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
-						grantScopes:  []string{proj2.PublicId},
+						RoleScopeID:  proj2.PublicId,
+						GrantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=add-members", group.PublicId)},
+						GrantScopes:  []string{proj2.PublicId},
 					},
 					{
-						roleScopeID:  proj2.PublicId,
-						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=set-members", group.PublicId)},
-						grantScopes:  []string{proj2.PublicId},
+						RoleScopeID:  proj2.PublicId,
+						GrantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=set-members", group.PublicId)},
+						GrantScopes:  []string{proj2.PublicId},
 					},
 					{
-						roleScopeID:  proj2.PublicId,
-						grantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=remove-members", group.PublicId)},
-						grantScopes:  []string{proj2.PublicId},
+						RoleScopeID:  proj2.PublicId,
+						GrantStrings: []string{fmt.Sprintf("id=%s;types=group;actions=remove-members", group.PublicId)},
+						GrantScopes:  []string{proj2.PublicId},
 					},
 				}
 			},
@@ -1103,7 +1050,8 @@ func TestGroupMember(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			group, roleReqs := tc.setupGroupAndRole(t)
-			fullGrantAuthCtx := testGenAuthTokenCtx(t, ctx, conn, wrap, iamRepo, roleReqs)
+			tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, roleReqs)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			for _, act := range tc.actions {
 				out, err := act.action(fullGrantAuthCtx, group)
 				if act.wantErr != nil {
