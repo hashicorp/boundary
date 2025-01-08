@@ -6,11 +6,15 @@ package base_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -36,17 +40,13 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
-	require.NoError(t, err)
-	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
-	require.NoError(t, err)
-	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	require.NoError(t, err)
-	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
-	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
-	require.NoError(t, err)
-	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(
+		t,
+		ctx,
+		projectId,
+		c.TargetPort,
+		target.WithAddress(c.TargetAddress),
+	)
 	require.NoError(t, err)
 
 	// Create a session where no additional commands are run
@@ -76,60 +76,88 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 	s := boundary.WaitForSessionCli(t, ctx, projectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
 	assert.Equal(t, targetId, s.TargetId)
-	assert.Equal(t, hostId, s.HostId)
-
-	bytesUp := 0
-	bytesDown := 0
 
 	// Wait until bytes up and down is greater than 0
 	t.Log("Waiting for bytes_up/bytes_down to be greater than 0...")
-	for i := 0; i < 3; i++ {
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("sessions", "read", "-id", s.Id, "-format", "json"),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-		var newSessionReadResult sessions.SessionReadResult
-		err = json.Unmarshal(output.Stdout, &newSessionReadResult)
-		require.NoError(t, err)
+	bytesUp := 0
+	bytesDown := 0
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("sessions", "read", "-id", s.Id, "-format", "json"),
+			)
+			if output.Err != nil {
+				return backoff.Permanent(errors.New(string(output.Stderr)))
+			}
+			var newSessionReadResult sessions.SessionReadResult
+			err = json.Unmarshal(output.Stdout, &newSessionReadResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
 
-		if len(newSessionReadResult.Item.Connections) > 0 {
+			if len(newSessionReadResult.Item.Connections) == 0 {
+				return fmt.Errorf("no connections found in session")
+			}
+
 			bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
 			bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
-			t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
-
-			if bytesUp > 0 && bytesDown > 0 {
-				break
+			if !(bytesUp > 0 && bytesDown > 0) {
+				return fmt.Errorf(
+					"bytes_up: %d, bytes_down: %d, bytes_up or bytes_down is not greater than 0",
+					bytesUp,
+					bytesDown,
+				)
 			}
-		} else {
-			t.Log("No connections found in session. Retrying...")
-		}
 
-		time.Sleep(2 * time.Second)
-	}
-	require.Greater(t, bytesUp, 0)
-	require.Greater(t, bytesDown, 0)
+			t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
 
 	// Confirm that bytes up and down increases
 	t.Log("Waiting for bytes_up/bytes_down to increase...")
 	var newBytesUp, newBytesDown int
-	for i := 0; i < 3; i++ {
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("sessions", "read", "-id", s.Id, "-format", "json"),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-		var newSessionReadResult sessions.SessionReadResult
-		err = json.Unmarshal(output.Stdout, &newSessionReadResult)
-		require.NoError(t, err)
-		newBytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
-		newBytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
-		t.Logf("bytes_up: %d, bytes_down: %d", newBytesUp, newBytesDown)
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("sessions", "read", "-id", s.Id, "-format", "json"),
+			)
+			if output.Err != nil {
+				return backoff.Permanent(errors.New(string(output.Stderr)))
+			}
+			var newSessionReadResult sessions.SessionReadResult
+			err = json.Unmarshal(output.Stdout, &newSessionReadResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
 
-		if newBytesDown > bytesDown {
-			break
-		}
+			if len(newSessionReadResult.Item.Connections) == 0 {
+				return fmt.Errorf("no connections found in session")
+			}
 
-		time.Sleep(2 * time.Second)
-	}
-	require.GreaterOrEqual(t, newBytesUp, bytesUp)
-	require.Greater(t, newBytesDown, bytesDown)
+			newBytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
+			newBytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
+
+			if !(newBytesDown > bytesDown) || !(newBytesUp > bytesUp) {
+				return fmt.Errorf(
+					"bytes_up: %d, bytes_down: %d, bytes_up/bytes_down is not greater than previous value",
+					newBytesUp,
+					newBytesDown,
+				)
+			}
+
+			t.Logf("bytes_up: %d, bytes_down: %d", newBytesUp, newBytesDown)
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
 }
