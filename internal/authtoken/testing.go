@@ -5,7 +5,6 @@ package authtoken
 
 import (
 	"context"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/go-uuid"
 	"testing"
 
@@ -71,7 +70,7 @@ func TestAuthTokenWithRoles(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId str
 	loginName, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), loginName)
-	user := iam.TestUser(t, iamRepo, globals.GlobalPrefix, iam.WithAccountIds(acct.GetPublicId()))
+	user := iam.TestUser(t, iamRepo, scopeId, iam.WithAccountIds(acct.GetPublicId()))
 	for _, r := range roles {
 		role := iam.TestRoleWithGrants(t, conn, r.RoleScopeID, r.GrantScopes, r.GrantStrings)
 		_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
