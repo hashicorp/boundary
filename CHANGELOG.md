@@ -15,8 +15,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52)) 
   * **Note**: As a consequence of updating AWS SDK dependencies to enable
     dual-stack support, this Boundary release may consume more memory. From our
-    testing, the increase seems to be around 1.6x, however we weren't able to
-    test it in varied use-cases due to issues with reproducibility.
+    testing, the increase seems to be around 1.6x, however this
+    may vary depending on your deployment architecture.
 
 ### Bug fixes
 
