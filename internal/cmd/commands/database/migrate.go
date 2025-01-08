@@ -180,14 +180,14 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	_, awsCleanup, err := external_plugins.CreateHostPlugin(
+	_, plgCleanup, err := external_plugins.CreateHostPlugin(
 		c.Context,
-		"aws",
+		"azure",
 		external_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
 			pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 		),
-		external_plugins.WithLogger(pluginLogger.Named("aws")),
+		external_plugins.WithLogger(pluginLogger.Named("azure")),
 	)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
@@ -215,7 +215,7 @@ plugins {
 				"We are committed to resolving any issues as quickly as possible."))
 		return base.CommandCliError
 	}
-	if err := awsCleanup(); err != nil {
+	if err := plgCleanup(); err != nil {
 		c.UI.Error(fmt.Errorf("Error running plugin cleanup function: %w", err).Error())
 		return base.CommandCliError
 	}
