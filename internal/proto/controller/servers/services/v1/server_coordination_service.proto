@@ -20,6 +20,13 @@ service ServerCoordinationService {
 
   // Returns the addresses of HCP Boundary workers, if any
   rpc ListHcpbWorkers(ListHcpbWorkersRequest) returns (ListHcpbWorkersResponse) {}
+
+  // RoutingInfo is used by the worker to inform the controller of information
+  // required by the controller to make session routing decisions and any startup information.
+  // The controller may inform the worker of any downstream workers that should be disconnected.
+  // If the worker fails to successfully report its routing info to the controller,
+  // it will try again later.
+  rpc RoutingInfo(RoutingInfoRequest) returns (RoutingInfoResponse) {}
 }
 
 enum CONNECTIONSTATUS {
@@ -218,4 +225,33 @@ message ListHcpbWorkersRequest {}
 // A response containing worker information
 message ListHcpbWorkersResponse {
   repeated WorkerInfo workers = 1;
+}
+
+// RoutingIinfoRequest is the request message for the RoutingInfo RPC.
+message RoutingInfoRequest {
+  // The worker status of the worker making the request.
+  servers.v1.ServerWorkerStatus worker_status = 1;
+
+  // Whether the tags should be updated or not.
+  bool update_tags = 2; // @gotags: `class:"public" eventstream:"observation"
+
+  // The worker key identifiers for downstream workers for which there
+  // is not a known worker id.
+  repeated string connected_unmapped_worker_key_identifiers = 3; // @gotags: `class:"public" eventstream:"observation"
+
+  // The worker public ids of all downstreams connected to this worker.
+  repeated string connected_worker_public_ids = 4; // @gotags: `class:"public" eventstream:"observation"
+}
+
+// RoutingInfoResponse is the response message for the RoutingInfo RPC.
+message RoutingInfoResponse {
+  // The controller-assigned ID of the worker which made the request.
+  string worker_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The calculated upstream addresses for the controller cluster.
+  repeated string calculated_upstream_addresses = 2; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Of the downstream workers in the request, these are the ones
+  // which are authorized to remain connected.
+  AuthorizedDownstreamWorkerList authorized_downstream_workers = 3;
 }

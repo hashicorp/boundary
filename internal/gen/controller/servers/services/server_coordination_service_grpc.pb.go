@@ -25,6 +25,7 @@ const (
 	ServerCoordinationService_Status_FullMethodName          = "/controller.servers.services.v1.ServerCoordinationService/Status"
 	ServerCoordinationService_Statistics_FullMethodName      = "/controller.servers.services.v1.ServerCoordinationService/Statistics"
 	ServerCoordinationService_ListHcpbWorkers_FullMethodName = "/controller.servers.services.v1.ServerCoordinationService/ListHcpbWorkers"
+	ServerCoordinationService_RoutingInfo_FullMethodName     = "/controller.servers.services.v1.ServerCoordinationService/RoutingInfo"
 )
 
 // ServerCoordinationServiceClient is the client API for ServerCoordinationService service.
@@ -39,6 +40,12 @@ type ServerCoordinationServiceClient interface {
 	Statistics(ctx context.Context, in *StatisticsRequest, opts ...grpc.CallOption) (*StatisticsResponse, error)
 	// Returns the addresses of HCP Boundary workers, if any
 	ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error)
+	// RoutingInfo is used by the worker to inform the controller of information
+	// required by the controller to make session routing decisions and any startup information.
+	// The controller may inform the worker of any downstream workers that should be disconnected.
+	// If the worker fails to successfully report its routing info to the controller,
+	// it will try again later.
+	RoutingInfo(ctx context.Context, in *RoutingInfoRequest, opts ...grpc.CallOption) (*RoutingInfoResponse, error)
 }
 
 type serverCoordinationServiceClient struct {
@@ -76,6 +83,15 @@ func (c *serverCoordinationServiceClient) ListHcpbWorkers(ctx context.Context, i
 	return out, nil
 }
 
+func (c *serverCoordinationServiceClient) RoutingInfo(ctx context.Context, in *RoutingInfoRequest, opts ...grpc.CallOption) (*RoutingInfoResponse, error) {
+	out := new(RoutingInfoResponse)
+	err := c.cc.Invoke(ctx, ServerCoordinationService_RoutingInfo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServerCoordinationServiceServer is the server API for ServerCoordinationService service.
 // All implementations must embed UnimplementedServerCoordinationServiceServer
 // for forward compatibility
@@ -88,6 +104,12 @@ type ServerCoordinationServiceServer interface {
 	Statistics(context.Context, *StatisticsRequest) (*StatisticsResponse, error)
 	// Returns the addresses of HCP Boundary workers, if any
 	ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error)
+	// RoutingInfo is used by the worker to inform the controller of information
+	// required by the controller to make session routing decisions and any startup information.
+	// The controller may inform the worker of any downstream workers that should be disconnected.
+	// If the worker fails to successfully report its routing info to the controller,
+	// it will try again later.
+	RoutingInfo(context.Context, *RoutingInfoRequest) (*RoutingInfoResponse, error)
 	mustEmbedUnimplementedServerCoordinationServiceServer()
 }
 
@@ -103,6 +125,9 @@ func (UnimplementedServerCoordinationServiceServer) Statistics(context.Context, 
 }
 func (UnimplementedServerCoordinationServiceServer) ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHcpbWorkers not implemented")
+}
+func (UnimplementedServerCoordinationServiceServer) RoutingInfo(context.Context, *RoutingInfoRequest) (*RoutingInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RoutingInfo not implemented")
 }
 func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
 }
@@ -172,6 +197,24 @@ func _ServerCoordinationService_ListHcpbWorkers_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ServerCoordinationService_RoutingInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RoutingInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerCoordinationServiceServer).RoutingInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ServerCoordinationService_RoutingInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerCoordinationServiceServer).RoutingInfo(ctx, req.(*RoutingInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ServerCoordinationService_ServiceDesc is the grpc.ServiceDesc for ServerCoordinationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +233,10 @@ var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListHcpbWorkers",
 			Handler:    _ServerCoordinationService_ListHcpbWorkers_Handler,
+		},
+		{
+			MethodName: "RoutingInfo",
+			Handler:    _ServerCoordinationService_RoutingInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

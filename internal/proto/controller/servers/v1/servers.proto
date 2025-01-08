@@ -38,22 +38,22 @@ message ConnectionStatistics {
 
 // ServerWorkerStatus is the new message used in place of Server to relay status request info.
 message ServerWorkerStatus {
-  // Id of the worker.
+  // Id of the worker, used after the first request.
   string public_id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Name of the resource (optional)
+  // Name of the worker, used to identify workers in the KMS registration flow.
   string name = 20; // @gotags: `class:"public"`
 
-  // Description of the resource (optional)
+  // Description of the worker (optional). Only used by KMS workers.
   string description = 25; // @gotags: `class:"public"`
 
-  // Address for the worker. This must be set.
+  // Address for the worker.
   string address = 30; // @gotags: `class:"public"`
 
   // Tags for workers
   repeated TagPair tags = 40;
 
-  // The key id for this worker, if applicable (optional)
+  // The key id of the worker, used to identify workers in the PKI registration flow.
   string key_id = 50; // @gotags: `class:"public"`
 
   // The version of Boundary the worker binary is running
