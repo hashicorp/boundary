@@ -5,9 +5,10 @@ package groups_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/kms"
-	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -97,5 +98,4 @@ func TestGrants_ReadActions(t *testing.T) {
 			})
 		}
 	})
-
 }
