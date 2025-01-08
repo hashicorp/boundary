@@ -5,13 +5,13 @@ package authtoken
 
 import (
 	"context"
-	"github.com/hashicorp/go-uuid"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,7 +48,8 @@ func TestAuthToken(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId string, opt 
 	return at
 }
 
-// TestRoleGrantsForToken
+// TestRoleGrantsForToken contains information used by TestAuthTokenWithRoles to create
+// roles and their associated grants (with grant scopes)
 type TestRoleGrantsForToken struct {
 	RoleScopeID  string
 	GrantStrings []string
