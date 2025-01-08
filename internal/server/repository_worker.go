@@ -39,6 +39,7 @@ var (
 // bucket's worker filter and credential id.
 type StorageBucketFilterCredIdFn func(ctx context.Context, ce globals.ControllerExtension, sbId string) (filter string, credId string, err error)
 
+// WorkerAddress contains a worker's public id and address.
 type WorkerAddress struct {
 	PublicId string
 	Address  string
