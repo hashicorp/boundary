@@ -66,6 +66,8 @@ func TestAuthTokenWithRoles(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId str
 	require.NoError(t, err)
 
 	iamRepo, err := iam.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
 	authMethod := password.TestAuthMethods(t, conn, scopeId, 1)[0]
 
 	loginName, err := uuid.GenerateUUID()
@@ -79,5 +81,4 @@ func TestAuthTokenWithRoles(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId str
 	fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 	require.NoError(t, err)
 	return fullGrantToken
-
 }
