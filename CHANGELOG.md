@@ -18,6 +18,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * GCP dynamic host catalog: Add dynamic host catalog support for 
   discovering GCP Compute Engine VM Instances.
   ([PR](https://github.com/hashicorp/boundary/pull/5229)).
+* Adds support for dual-stack networking for AWS operations.
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52)) 
+  * **Note**: As a consequence of updating AWS SDK dependencies to enable
+    dual-stack support, this Boundary release may consume more memory. From our
+    testing, the increase seems to be around 1.6x, however this
+    may vary depending on your deployment architecture.
 
 ### Bug fixes
 
