@@ -5,6 +5,8 @@ package authtoken
 
 import (
 	"context"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/go-uuid"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -45,4 +47,37 @@ func TestAuthToken(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId string, opt 
 	at, err := repo.CreateAuthToken(ctx, u, acct.GetPublicId(), opt...)
 	require.NoError(t, err)
 	return at
+}
+
+// TestRoleGrantsForToken
+type TestRoleGrantsForToken struct {
+	RoleScopeID  string
+	GrantStrings []string
+	GrantScopes  []string
+}
+
+// TestAuthTokenWithRoles creates auth token associated with roles as requested by the caller along
+// with any required resources to achieve said token
+func TestAuthTokenWithRoles(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId string, roles []TestRoleGrantsForToken) *AuthToken {
+	t.Helper()
+	ctx := context.Background()
+	rw := db.New(conn)
+	atRepo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kms)
+	authMethod := password.TestAuthMethods(t, conn, scopeId, 1)[0]
+
+	loginName, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), loginName)
+	user := iam.TestUser(t, iamRepo, globals.GlobalPrefix, iam.WithAccountIds(acct.GetPublicId()))
+	for _, r := range roles {
+		role := iam.TestRoleWithGrants(t, conn, r.RoleScopeID, r.GrantScopes, r.GrantStrings)
+		_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
+	}
+	fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+	require.NoError(t, err)
+	return fullGrantToken
+
 }
