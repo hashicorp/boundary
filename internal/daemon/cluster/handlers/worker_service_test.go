@@ -16,13 +16,14 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/gen/controller/servers"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -678,7 +679,7 @@ func TestStatistics(t *testing.T) {
 			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoErrFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
 			req: &pbs.StatisticsRequest{
 				WorkerId: "w_1234567890",
-				Sessions: []*servers.SessionStatistics{
+				Sessions: []*pb.SessionStatistics{
 					{},
 				},
 			},
@@ -697,7 +698,7 @@ func TestStatistics(t *testing.T) {
 			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
 			req: &pbs.StatisticsRequest{
 				WorkerId: "w_1234567890",
-				Sessions: []*servers.SessionStatistics{},
+				Sessions: []*pb.SessionStatistics{},
 			},
 		},
 		{
@@ -705,7 +706,7 @@ func TestStatistics(t *testing.T) {
 			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
 			req: &pbs.StatisticsRequest{
 				WorkerId: "w_1234567890",
-				Sessions: []*servers.SessionStatistics{
+				Sessions: []*pb.SessionStatistics{
 					{},
 				},
 			},
@@ -717,10 +718,10 @@ func TestStatistics(t *testing.T) {
 			workerService: NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce),
 			req: &pbs.StatisticsRequest{
 				WorkerId: "w_1234567890",
-				Sessions: []*servers.SessionStatistics{
+				Sessions: []*pb.SessionStatistics{
 					{
 						SessionId: "s_1234567890",
-						Connections: []*servers.ConnectionStatistics{
+						Connections: []*pb.ConnectionStatistics{
 							{},
 						},
 					},
@@ -807,10 +808,10 @@ func TestStatistics(t *testing.T) {
 		workerService := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 		got, err := workerService.Statistics(context.Background(), &pbs.StatisticsRequest{
 			WorkerId: w.GetPublicId(),
-			Sessions: []*servers.SessionStatistics{
+			Sessions: []*pb.SessionStatistics{
 				{
 					SessionId: s1.PublicId,
-					Connections: []*servers.ConnectionStatistics{
+					Connections: []*pb.ConnectionStatistics{
 						{
 							ConnectionId: c1.PublicId,
 							BytesUp:      expectedBytesUp,
@@ -834,5 +835,316 @@ func TestStatistics(t *testing.T) {
 		assert.Empty(conn.BytesUp)
 		assert.Empty(conn.BytesDown)
 		assert.Equal(session.StatusClosed, session.ConnectionStatusFromString(conn.Status))
+	})
+}
+
+func TestRoutingInfo(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	}
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kmsCache, opts...)
+	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kmsCache)
+	}
+	var liveDur atomic.Int64
+	liveDur.Store(int64(1 * time.Second))
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
+	serverRepo, err := serversRepoFn()
+	require.NoError(t, err)
+
+	// Set up resources
+	var w1KeyId, w2KeyId string
+	w1 := server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w1KeyId))
+	_ = server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w2KeyId))
+	w3 := server.TestKmsWorker(t, conn, wrapper, server.WithName("testworker3"))
+
+	c := &store.Controller{
+		PrivateId: "test_controller1",
+		Address:   "1.2.3.4",
+	}
+	_, err = serverRepo.UpsertController(ctx, c)
+	require.NoError(t, err)
+
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, &liveDur, fce)
+	require.NotNil(t, s)
+	require.NoError(t, err)
+
+	t.Run("Missing worker status", func(t *testing.T) {
+		req := &pbs.RoutingInfoRequest{}
+		_, err := s.RoutingInfo(ctx, req)
+		require.ErrorContains(t, err, "worker status is required")
+	})
+
+	t.Run("Missing key ID and public Id", func(t *testing.T) {
+		req := &pbs.RoutingInfoRequest{
+			WorkerStatus: &pb.ServerWorkerStatus{
+				PublicId: "",
+				KeyId:    "",
+				Address:  "2.3.4.5:8080",
+				Tags: []*pb.TagPair{
+					{Key: "tag1", Value: "value1"},
+					{Key: "tag2", Value: "value2"},
+				},
+				ReleaseVersion:    "Boundary v0.18.0",
+				OperationalState:  server.ActiveOperationalState.String(),
+				LocalStorageState: server.AvailableLocalStorageState.String(),
+			},
+			UpdateTags:                            true,
+			ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "worker-key-2"},
+			ConnectedWorkerPublicIds:              []string{w3.PublicId, "worker-3"},
+		}
+		_, err := s.RoutingInfo(ctx, req)
+		require.ErrorContains(t, err, "public id, key id and name are not set in the request; one is required")
+	})
+
+	t.Run("Missing address", func(t *testing.T) {
+		req := &pbs.RoutingInfoRequest{
+			WorkerStatus: &pb.ServerWorkerStatus{
+				PublicId: "",
+				KeyId:    w1KeyId,
+				Address:  "",
+				Tags: []*pb.TagPair{
+					{Key: "tag1", Value: "value1"},
+					{Key: "tag2", Value: "value2"},
+				},
+				ReleaseVersion:    "Boundary v0.18.0",
+				OperationalState:  server.ActiveOperationalState.String(),
+				LocalStorageState: server.AvailableLocalStorageState.String(),
+			},
+			UpdateTags:                            true,
+			ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "worker-key-2"},
+			ConnectedWorkerPublicIds:              []string{w3.PublicId, "worker-3"},
+		}
+		_, err := s.RoutingInfo(ctx, req)
+		require.ErrorContains(t, err, "address is not set but is required")
+	})
+
+	t.Run("Missing release version", func(t *testing.T) {
+		req := &pbs.RoutingInfoRequest{
+			WorkerStatus: &pb.ServerWorkerStatus{
+				PublicId: "",
+				KeyId:    w1KeyId,
+				Address:  "2.3.4.5:8080",
+				Tags: []*pb.TagPair{
+					{Key: "tag1", Value: "value1"},
+					{Key: "tag2", Value: "value2"},
+				},
+				ReleaseVersion:    "",
+				OperationalState:  server.ActiveOperationalState.String(),
+				LocalStorageState: server.AvailableLocalStorageState.String(),
+			},
+			UpdateTags:                            true,
+			ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "worker-key-2"},
+			ConnectedWorkerPublicIds:              []string{w3.PublicId, "worker-3"},
+		}
+		_, err := s.RoutingInfo(ctx, req)
+		require.ErrorContains(t, err, "release version is not set but is required")
+	})
+
+	t.Run("Missing operational state", func(t *testing.T) {
+		req := &pbs.RoutingInfoRequest{
+			WorkerStatus: &pb.ServerWorkerStatus{
+				PublicId: "",
+				KeyId:    w1KeyId,
+				Address:  "2.3.4.5:8080",
+				Tags: []*pb.TagPair{
+					{Key: "tag1", Value: "value1"},
+					{Key: "tag2", Value: "value2"},
+				},
+				ReleaseVersion:    "Boundary v0.18.0",
+				OperationalState:  "",
+				LocalStorageState: server.AvailableLocalStorageState.String(),
+			},
+			UpdateTags:                            true,
+			ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "worker-key-2"},
+			ConnectedWorkerPublicIds:              []string{w3.PublicId, "worker-3"},
+		}
+		_, err := s.RoutingInfo(ctx, req)
+		require.ErrorContains(t, err, "operational state is not set but is required")
+	})
+
+	t.Run("Missing local storage state", func(t *testing.T) {
+		req := &pbs.RoutingInfoRequest{
+			WorkerStatus: &pb.ServerWorkerStatus{
+				PublicId: "",
+				KeyId:    w1KeyId,
+				Address:  "2.3.4.5:8080",
+				Tags: []*pb.TagPair{
+					{Key: "tag1", Value: "value1"},
+					{Key: "tag2", Value: "value2"},
+				},
+				ReleaseVersion:    "Boundary v0.18.0",
+				OperationalState:  server.ActiveOperationalState.String(),
+				LocalStorageState: "",
+			},
+			UpdateTags:                            true,
+			ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "worker-key-2"},
+			ConnectedWorkerPublicIds:              []string{w3.PublicId, "worker-3"},
+		}
+		_, err := s.RoutingInfo(ctx, req)
+		require.ErrorContains(t, err, "local storage state is not set but is required")
+	})
+
+	t.Run("Successful first and second request (PKI worker)", func(t *testing.T) {
+		req := &pbs.RoutingInfoRequest{
+			WorkerStatus: &pb.ServerWorkerStatus{
+				PublicId: "", // Not set on the first request
+				KeyId:    w1KeyId,
+				Address:  "2.3.4.5:8080",
+				Tags: []*pb.TagPair{
+					{Key: "tag1", Value: "value1"},
+					{Key: "tag2", Value: "value2"},
+				},
+				ReleaseVersion:    "Boundary v0.18.0",
+				OperationalState:  server.ActiveOperationalState.String(),
+				LocalStorageState: server.AvailableLocalStorageState.String(),
+			},
+			UpdateTags:                            true,
+			ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "worker-key-2"},
+			ConnectedWorkerPublicIds:              []string{w3.PublicId, "worker-3"},
+		}
+		resp, err := s.RoutingInfo(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		assert.Equal(t, resp.WorkerId, w1.PublicId)
+		assert.Equal(t, resp.CalculatedUpstreamAddresses, []string{c.Address})
+		assert.Equal(t, resp.AuthorizedDownstreamWorkers.UnmappedWorkerKeyIdentifiers, []string{w2KeyId})
+		assert.Equal(t, resp.AuthorizedDownstreamWorkers.WorkerPublicIds, []string{w3.PublicId})
+
+		w1, err := serverRepo.LookupWorker(ctx, resp.WorkerId)
+		require.NoError(t, err)
+
+		assert.Equal(t, w1.Address, "2.3.4.5:8080")
+		expTags := []*server.Tag{
+			{Key: "tag1", Value: "value1"},
+			{Key: "tag2", Value: "value2"},
+		}
+		assert.Empty(
+			t,
+			cmp.Diff(
+				w1.ConfigTags,
+				server.Tags(expTags),
+			),
+		)
+		assert.Equal(t, w1.ReleaseVersion, "Boundary v0.18.0")
+		assert.EqualValues(t, w1.OperationalState, server.ActiveOperationalState)
+		assert.EqualValues(t, w1.LocalStorageState, server.AvailableLocalStorageState)
+
+		// Now send the subsequent routing info request
+		req.WorkerStatus.PublicId = w1.PublicId // Only set on subsequent requests
+		resp, err = s.RoutingInfo(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		assert.Equal(t, resp.WorkerId, w1.PublicId)
+		assert.Equal(t, resp.CalculatedUpstreamAddresses, []string{c.Address})
+		assert.Equal(t, resp.AuthorizedDownstreamWorkers.UnmappedWorkerKeyIdentifiers, []string{w2KeyId})
+		assert.Equal(t, resp.AuthorizedDownstreamWorkers.WorkerPublicIds, []string{w3.PublicId})
+
+		w1, err = serverRepo.LookupWorker(ctx, resp.WorkerId)
+		require.NoError(t, err)
+
+		assert.Equal(t, w1.Address, "2.3.4.5:8080")
+		assert.Empty(
+			t,
+			cmp.Diff(
+				w1.ConfigTags,
+				server.Tags(expTags),
+			),
+		)
+		assert.Equal(t, w1.ReleaseVersion, "Boundary v0.18.0")
+		assert.EqualValues(t, w1.OperationalState, server.ActiveOperationalState)
+		assert.EqualValues(t, w1.LocalStorageState, server.AvailableLocalStorageState)
+	})
+
+	t.Run("Successful first and second request (KMS worker)", func(t *testing.T) {
+		req := &pbs.RoutingInfoRequest{
+			WorkerStatus: &pb.ServerWorkerStatus{
+				PublicId: "", // Not set on the first request
+				Name:     "testworker3",
+				Address:  "2.3.4.5:8080",
+				Tags: []*pb.TagPair{
+					{Key: "tag1", Value: "value1"},
+					{Key: "tag2", Value: "value2"},
+				},
+				ReleaseVersion:    "Boundary v0.18.0",
+				OperationalState:  server.ActiveOperationalState.String(),
+				LocalStorageState: server.AvailableLocalStorageState.String(),
+			},
+			UpdateTags:                            true,
+			ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "worker-key-2"},
+			ConnectedWorkerPublicIds:              []string{w1.PublicId, "worker-4"},
+		}
+		resp, err := s.RoutingInfo(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		assert.Equal(t, resp.WorkerId, w3.PublicId)
+		assert.Equal(t, resp.CalculatedUpstreamAddresses, []string{c.Address})
+		assert.Equal(t, resp.AuthorizedDownstreamWorkers.UnmappedWorkerKeyIdentifiers, []string{w2KeyId})
+		assert.Equal(t, resp.AuthorizedDownstreamWorkers.WorkerPublicIds, []string{w1.PublicId})
+
+		w3, err := serverRepo.LookupWorker(ctx, resp.WorkerId)
+		require.NoError(t, err)
+
+		assert.Equal(t, w3.Address, "2.3.4.5:8080")
+		expTags := []*server.Tag{
+			{Key: "tag1", Value: "value1"},
+			{Key: "tag2", Value: "value2"},
+		}
+		assert.Empty(
+			t,
+			cmp.Diff(
+				w3.ConfigTags,
+				server.Tags(expTags),
+			),
+		)
+		assert.Equal(t, w3.ReleaseVersion, "Boundary v0.18.0")
+		assert.EqualValues(t, w3.OperationalState, server.ActiveOperationalState)
+		assert.EqualValues(t, w3.LocalStorageState, server.AvailableLocalStorageState)
+
+		// Now send the subsequent routing info request
+		req.WorkerStatus.PublicId = w3.PublicId // Only set on subsequent requests
+		resp, err = s.RoutingInfo(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		assert.Equal(t, resp.WorkerId, w3.PublicId)
+		assert.Equal(t, resp.CalculatedUpstreamAddresses, []string{c.Address})
+		assert.Equal(t, resp.AuthorizedDownstreamWorkers.UnmappedWorkerKeyIdentifiers, []string{w2KeyId})
+		assert.Equal(t, resp.AuthorizedDownstreamWorkers.WorkerPublicIds, []string{w1.PublicId})
+
+		w1, err = serverRepo.LookupWorker(ctx, resp.WorkerId)
+		require.NoError(t, err)
+
+		assert.Equal(t, w3.Address, "2.3.4.5:8080")
+		assert.Empty(
+			t,
+			cmp.Diff(
+				w3.ConfigTags,
+				server.Tags(expTags),
+			),
+		)
+		assert.Equal(t, w3.ReleaseVersion, "Boundary v0.18.0")
+		assert.EqualValues(t, w3.OperationalState, server.ActiveOperationalState)
+		assert.EqualValues(t, w3.LocalStorageState, server.AvailableLocalStorageState)
 	})
 }

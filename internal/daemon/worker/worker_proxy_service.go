@@ -50,6 +50,18 @@ func (ws *workerProxyServiceServer) ListHcpbWorkers(ctx context.Context, req *pb
 	return pbs.NewServerCoordinationServiceClient(ws.cc).ListHcpbWorkers(ctx, req)
 }
 
+func (ws *workerProxyServiceServer) RoutingInfo(ctx context.Context, req *pbs.RoutingInfoRequest) (*pbs.RoutingInfoResponse, error) {
+	resp, err := pbs.NewServerCoordinationServiceClient(ws.cc).RoutingInfo(ctx, req)
+
+	if resp != nil {
+		// We don't currently support distributing new addreses to workers
+		// multiple hops away so ensure they're stripped out
+		resp.CalculatedUpstreamAddresses = nil
+	}
+
+	return resp, err
+}
+
 func (ws *workerProxyServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 	return pbs.NewSessionServiceClient(ws.cc).LookupSession(ctx, req)
 }

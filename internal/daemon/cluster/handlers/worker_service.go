@@ -428,6 +428,100 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	return resp, nil
 }
 
+func (ws *workerServiceServer) RoutingInfo(ctx context.Context, req *pbs.RoutingInfoRequest) (*pbs.RoutingInfoResponse, error) {
+	const op = "workers.(workerServiceServer).RoutingInfo"
+	wStat := req.GetWorkerStatus()
+	if wStat == nil {
+		return nil, status.Error(codes.InvalidArgument, "worker status is required")
+	}
+	switch {
+	case wStat.GetPublicId() == "" && wStat.GetKeyId() == "" && wStat.GetName() == "":
+		return nil, status.Error(codes.InvalidArgument, "public id, key id and name are not set in the request; one is required")
+	case wStat.GetAddress() == "":
+		return nil, status.Error(codes.InvalidArgument, "address is not set but is required")
+	case wStat.GetReleaseVersion() == "":
+		return nil, status.Error(codes.InvalidArgument, "release version is not set but is required")
+	case wStat.GetOperationalState() == "":
+		return nil, status.Error(codes.InvalidArgument, "operational state is not set but is required")
+	case wStat.GetLocalStorageState() == "":
+		return nil, status.Error(codes.InvalidArgument, "local storage state is not set but is required")
+	}
+
+	serverRepo, err := ws.serversRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting server repo: %v", err)
+	}
+	workerAuthRepo, err := ws.workerAuthRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting worker auth repo: %v", err)
+	}
+
+	// Convert API tags to storage tags
+	workerTags := make([]*server.Tag, 0, len(wStat.GetTags()))
+	for _, v := range wStat.GetTags() {
+		workerTags = append(workerTags, &server.Tag{
+			Key:   v.GetKey(),
+			Value: v.GetValue(),
+		})
+	}
+
+	wConf := server.NewWorker(
+		scope.Global.String(),
+		server.WithName(wStat.GetName()),
+		server.WithDescription(wStat.GetDescription()),
+		server.WithAddress(wStat.GetAddress()),
+		server.WithWorkerTags(workerTags...),
+		server.WithReleaseVersion(wStat.ReleaseVersion),
+		server.WithOperationalState(wStat.OperationalState),
+		server.WithLocalStorageState(wStat.LocalStorageState),
+	)
+	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
+	if wStat.GetPublicId() != "" {
+		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))
+	}
+	if wStat.GetKeyId() != "" {
+		opts = append(opts, server.WithKeyId(wStat.GetKeyId()))
+	}
+	workerId, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
+	}
+
+	if sbcStates := wStat.GetStorageBucketCredentialStates(); sbcStates != nil {
+		updateWorkerStorageBucketCredentialStatesFn(ctx, serverRepo, workerId, sbcStates)
+	}
+
+	controllers, err := serverRepo.ListControllers(ctx, server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error getting current controllers: %v", err)
+	}
+	var upstreamAddresses []string
+	for _, c := range controllers {
+		upstreamAddresses = append(upstreamAddresses, c.Address)
+	}
+
+	authorizedDownstreams, err := server.VerifyKnownAndUnmappedWorkers(
+		ctx,
+		serverRepo,
+		workerAuthRepo,
+		req.GetConnectedWorkerPublicIds(),
+		req.GetConnectedUnmappedWorkerKeyIdentifiers(),
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error getting known and authorized workers: %v", err)
+	}
+
+	ret := &pbs.RoutingInfoResponse{
+		WorkerId:                    workerId,
+		CalculatedUpstreamAddresses: upstreamAddresses,
+		AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{
+			WorkerPublicIds:              authorizedDownstreams.WorkerPublicIds,
+			UnmappedWorkerKeyIdentifiers: authorizedDownstreams.UnmappedWorkerKeyIds,
+		},
+	}
+	return ret, nil
+}
+
 // Single-hop filter lookup. We have either an egress filter or worker filter to use, if any
 // Used to verify that the worker serving this session to a client matches this filter
 func egressFilterSelector(sessionInfo *session.Session) string {
