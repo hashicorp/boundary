@@ -25,7 +25,7 @@ import (
 
 var firstStatusCheckPostHooks []func(context.Context, *Worker) error
 
-var downstreamWorkersFactory func(ctx context.Context, workerId string, ver string) (downstreamers, error)
+var downstreamWorkersFactory func(ctx context.Context, workerId string, ver string) (graph, error)
 
 var checkHCPBUpstreams func(w *Worker) bool
 
@@ -380,7 +380,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 				w.conf.ServerSideShutdownCh <- struct{}{}
 				return
 			}
-			w.downstreamWorkers.Store(&downstreamersContainer{downstreamers: downstreamWorkers})
+			w.downstreamWorkers.Store(&graphContainer{graph: downstreamWorkers})
 		}
 		for _, fn := range firstStatusCheckPostHooks {
 			if err := fn(cancelCtx, w); err != nil {

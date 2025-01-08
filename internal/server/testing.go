@@ -125,19 +125,19 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	}
 
 	wrk := NewWorker(scope.Global.String(), opt...)
-	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
+	wrk, err = TestUpsertAndReturnWorker(ctx, t, wrk, serversRepo)
+	require.NoError(t, err)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
 	require.Equal(t, "kms", wrk.Type)
 
 	if len(opts.withWorkerTags) > 0 {
-		var tags []*store.WorkerTag
+		var tags []*store.ConfigTag
 		for _, t := range opts.withWorkerTags {
-			tags = append(tags, &store.WorkerTag{
+			tags = append(tags, &store.ConfigTag{
 				WorkerId: wrk.GetPublicId(),
 				Key:      t.Key,
 				Value:    t.Value,
-				Source:   "configuration",
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
@@ -170,13 +170,12 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.NotNil(t, wrk)
 
 	if len(opts.withWorkerTags) > 0 {
-		var tags []*store.WorkerTag
+		var tags []*store.ConfigTag
 		for _, t := range opts.withWorkerTags {
-			tags = append(tags, &store.WorkerTag{
+			tags = append(tags, &store.ConfigTag{
 				WorkerId: wrk.GetPublicId(),
 				Key:      t.Key,
 				Value:    t.Value,
-				Source:   "configuration",
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
@@ -211,4 +210,36 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	wrk, err = serversRepo.LookupWorker(ctx, wrk.GetPublicId())
 	require.NoError(t, err)
 	return wrk
+}
+
+// TestLookupWorkerByName looks up a worker by name
+func TestLookupWorkerByName(ctx context.Context, t *testing.T, name string, serversRepo *Repository) (*Worker, error) {
+	workers, err := serversRepo.ListWorkers(ctx, []string{"global"})
+	require.NoError(t, err)
+	for _, w := range workers {
+		if w.GetName() == name {
+			return w, nil
+		}
+	}
+	return nil, nil
+}
+
+// TestUpsertAndReturnWorker upserts and returns a worker
+func TestUpsertAndReturnWorker(ctx context.Context, t *testing.T, w *Worker, serversRepo *Repository, opt ...Option) (*Worker, error) {
+	workerId, err := serversRepo.UpsertWorkerStatus(ctx, w, opt...)
+	require.NoError(t, err)
+	require.NotEmpty(t, workerId)
+	return serversRepo.LookupWorker(ctx, workerId)
+}
+
+// TestUseCommunityFilterWorkersFn is used to ensure that CE tests run from the
+// ENT repo use the CE worker filtering logic. WARNING: Do NOT run tests in
+// parallel when using this.
+func TestUseCommunityFilterWorkersFn(t *testing.T) {
+	oldFn := FilterWorkersFn
+	FilterWorkersFn = filterWorkers
+
+	t.Cleanup(func() {
+		FilterWorkersFn = oldFn
+	})
 }

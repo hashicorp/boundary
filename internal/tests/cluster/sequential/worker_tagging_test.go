@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	ct "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-hclog"
@@ -97,9 +98,9 @@ func TestWorkerTagging(t *testing.T) {
 
 	helper.ExpectWorkers(t, c1, w1, w2, w3)
 
-	// Ensure we are using the OSS filter, which uses egress only for worker selection
-	oldAuthFun := ct.AuthorizeSessionWorkerFilterFn
-	ct.AuthorizeSessionWorkerFilterFn = ct.AuthorizeSessionWithWorkerFilter
+	// Ensure we are using the OSS filter, which uses egress only for worker
+	// selection. This prevents us from running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
 	validateIngressFn := ct.ValidateIngressWorkerFilterFn
 	ct.ValidateIngressWorkerFilterFn = ct.IngressWorkerFilterUnsupported
 
@@ -171,6 +172,5 @@ func TestWorkerTagging(t *testing.T) {
 			assert.ElementsMatch(tc.expWorkers, addrs)
 		})
 	}
-	ct.AuthorizeSessionWorkerFilterFn = oldAuthFun
 	ct.ValidateIngressWorkerFilterFn = validateIngressFn
 }

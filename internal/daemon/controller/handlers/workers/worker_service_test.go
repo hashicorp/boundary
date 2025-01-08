@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
-	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -98,7 +98,7 @@ func TestGet(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Graph) []string {
 		return connectedDownstreams
 	}
 
@@ -148,7 +148,7 @@ func TestGet(t *testing.T) {
 		server.WithDescription("test pki worker description"),
 		server.WithTestPkiWorkerAuthorizedKeyId(&pkiWorkerKeyId))
 	// Add config tags to the created worker
-	pkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
+	pkiWorker, err = server.TestUpsertAndReturnWorker(context.Background(), t,
 		server.NewWorker(pkiWorker.GetScopeId(),
 			server.WithAddress("test pki worker address"),
 			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
@@ -156,9 +156,11 @@ func TestGet(t *testing.T) {
 				Key:   "config",
 				Value: "test",
 			})),
+		repo,
 		server.WithUpdateTags(true),
 		server.WithPublicId(pkiWorker.GetPublicId()),
-		server.WithKeyId(pkiWorkerKeyId))
+		server.WithKeyId(pkiWorkerKeyId),
+	)
 	require.NoError(t, err)
 
 	wantPkiWorker := &pb.Worker{
@@ -201,7 +203,7 @@ func TestGet(t *testing.T) {
 	)
 
 	// Add config tags to the created worker
-	managedPkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
+	managedPkiWorker, err = server.TestUpsertAndReturnWorker(context.Background(), t,
 		server.NewWorker(managedPkiWorker.GetScopeId(),
 			server.WithAddress("test managed pki worker address"),
 			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
@@ -209,6 +211,7 @@ func TestGet(t *testing.T) {
 				Key:   server.ManagedWorkerTag,
 				Value: "true",
 			})),
+		repo,
 		server.WithUpdateTags(true),
 		server.WithPublicId(managedPkiWorker.GetPublicId()),
 		server.WithKeyId(managedPkiWorkerKeyId))
@@ -330,7 +333,7 @@ func TestList(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Graph) []string {
 		return connectedDownstreams
 	}
 
@@ -589,7 +592,7 @@ func TestUpdate(t *testing.T) {
 		downstreamWorkers = oldDownstramFn
 	})
 	connectedDownstreams := []string{"first", "second", "third"}
-	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+	downstreamWorkers = func(_ context.Context, id string, _ downstream.Graph) []string {
 		return connectedDownstreams
 	}
 

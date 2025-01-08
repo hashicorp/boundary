@@ -1272,7 +1272,6 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1298,9 +1297,9 @@ func TestCreate(t *testing.T) {
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 	_ = iam.TestRoleGrantScope(t, conn, r.GetPublicId(), globals.GrantScopeDescendants)
 
-	// Ensure we are using the OSS worker filter function
-	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
-	targets.AuthorizeSessionWorkerFilterFn = targets.AuthorizeSessionWithWorkerFilter
+	// Ensure we are using the OSS worker filter function. This prevents us from
+	// running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
 
 	cases := []struct {
 		name   string
@@ -1650,12 +1649,9 @@ func TestCreate(t *testing.T) {
 			), "CreateTarget(%q)\n got response %q\n, wanted %q\n", tc.req, got, tc.res)
 		})
 	}
-	// Reset worker filter func
-	targets.AuthorizeSessionWorkerFilterFn = workerFilterFn
 }
 
 func TestCreate_AliasAuthCheck(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1698,12 +1694,9 @@ func TestCreate_AliasAuthCheck(t *testing.T) {
 		},
 	}
 
-	// Ensure we are using the OSS worker filter function
-	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
-	targets.AuthorizeSessionWorkerFilterFn = targets.AuthorizeSessionWithWorkerFilter
-	t.Cleanup(func() {
-		targets.AuthorizeSessionWorkerFilterFn = workerFilterFn
-	})
+	// Ensure we are using the OSS worker filter function. This prevents us from
+	// running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Failed to create a new host set service.")
@@ -1742,7 +1735,6 @@ func TestCreate_AliasAuthCheck(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1810,9 +1802,9 @@ func TestUpdate(t *testing.T) {
 	tested, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
-	// Ensure we are using the OSS worker filter functions
-	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
-	targets.AuthorizeSessionWorkerFilterFn = targets.AuthorizeSessionWithWorkerFilter
+	// Ensure we are using the OSS worker filter functions. This prevents us
+	// from running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
 	validateIngressFn := targets.ValidateIngressWorkerFilterFn
 	targets.ValidateIngressWorkerFilterFn = targets.IngressWorkerFilterUnsupported
 
@@ -2252,7 +2244,6 @@ func TestUpdate(t *testing.T) {
 		})
 	}
 	// Reset worker filter funcs
-	targets.AuthorizeSessionWorkerFilterFn = workerFilterFn
 	targets.ValidateIngressWorkerFilterFn = validateIngressFn
 }
 
@@ -3390,7 +3381,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 func TestAuthorizeSession(t *testing.T) {
 	ctx := context.Background()
 	// This prevents us from running tests in parallel.
-	targets.SetupSuiteTargetFilters(t)
+	server.TestUseCommunityFilterWorkersFn(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -3730,7 +3721,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	// This prevents us from running tests in parallel.
-	targets.SetupSuiteTargetFilters(t)
+	server.TestUseCommunityFilterWorkersFn(t)
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
@@ -4346,7 +4337,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 func TestAuthorizeSession_Errors(t *testing.T) {
 	ctx := context.Background()
 	// This prevents us from running tests in parallel.
-	targets.SetupSuiteTargetFilters(t)
+	server.TestUseCommunityFilterWorkersFn(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

@@ -22,6 +22,9 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/targettest"
+	tgstore "github.com/hashicorp/boundary/internal/target/targettest/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
@@ -110,39 +113,6 @@ func TestDeleteWorker(t *testing.T) {
 	}
 }
 
-func TestLookupWorkerByName(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := server.NewRepository(ctx, rw, rw, kms)
-	require.NoError(t, err)
-
-	w := server.TestKmsWorker(t, conn, wrapper)
-	t.Run("success", func(t *testing.T) {
-		got, err := repo.LookupWorkerByName(ctx, w.GetName())
-		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(w.Worker, got.Worker, protocmp.Transform()))
-	})
-	t.Run("not found", func(t *testing.T) {
-		got, err := repo.LookupWorkerByName(ctx, "unknown_name")
-		require.NoError(t, err)
-		assert.Nil(t, got)
-	})
-	t.Run("db error", func(t *testing.T) {
-		conn, mock := db.TestSetupWithMock(t)
-		rw := db.New(conn)
-		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(ctx, errors.Internal, "test", "lookup-error"))
-		r, err := server.NewRepository(ctx, rw, rw, kms)
-		require.NoError(t, err)
-		got, err := r.LookupWorkerByName(ctx, w.GetName())
-		assert.NoError(t, mock.ExpectationsWereMet())
-		assert.Truef(t, errors.Match(errors.T(errors.Op("server.(Repository).LookupWorkerByName")), err), "got error %v", err)
-		assert.Nil(t, got)
-	})
-}
-
 func TestLookupWorkerIdByKeyId(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -229,7 +199,7 @@ func TestLookupWorker(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, w.GetPublicId())
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
-		assert.Equal(t, uint32(3), got.ActiveConnectionCount())
+		assert.Equal(t, uint32(3), got.ActiveConnectionCount)
 		assert.Equal(t, map[string][]string{
 			"key": {"val"},
 		}, got.CanonicalTags())
@@ -243,7 +213,7 @@ func TestLookupWorker(t *testing.T) {
 	t.Run("db error", func(t *testing.T) {
 		conn, mock := db.TestSetupWithMock(t)
 		rw := db.New(conn)
-		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		mock.ExpectQuery(`with connection_count`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
 		r, err := server.NewRepository(ctx, rw, rw, kms)
 		require.NoError(t, err)
 		got, err := r.LookupWorker(ctx, w.GetPublicId())
@@ -268,7 +238,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			server.WithAddress("address"), server.WithName("config_name1"),
 			server.WithDescription("kms_description1"),
 		)
-		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
+		worker, err := server.TestUpsertAndReturnWorker(ctx, t, wStatus1, repo)
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -283,7 +253,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		// update again and see updated last status time
 		wStatus2 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("new_address"), server.WithName("config_name1"), server.WithReleaseVersion("test-version"))
-		worker, err = repo.UpsertWorkerStatus(ctx, wStatus2)
+		worker, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus2, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		assert.Equal(t, "config_name1", worker.Name)
@@ -293,7 +263,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, "new_address", worker.GetAddress())
 
 		// Expect this worker to be returned as it is active
-		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 		require.NoError(t, err)
 		assert.Len(t, workers, 1)
 		assert.Equal(t, server.KmsWorkerType.String(), workers[0].Type)
@@ -302,7 +272,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		wStatus3 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("new_address"), server.WithName("config_name1"),
 			server.WithOperationalState("shutdown"), server.WithReleaseVersion("Boundary v0.11.0"))
-		worker, err = repo.UpsertWorkerStatus(ctx, wStatus3)
+		worker, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus3, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		// Version does not change for status updates
@@ -315,17 +285,17 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			server.WithAddress("new_address"), server.WithName("config_name1"),
 			server.WithOperationalState("shutdown"), server.WithReleaseVersion("Boundary v0.11.0"),
 			server.WithLocalStorageState("available"))
-		worker, err = repo.UpsertWorkerStatus(ctx, wStatus4)
+		worker, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus4, repo)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		// Version does not change for status updates
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, server.AvailableLocalStorageState.String(), worker.GetLocalStorageState())
 
-		// Should no longer see this worker in listing if we exclude shutdown workers
-		workers, err = repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+		// Check that this worker now returns in the shutdown state
+		workers, err = repo.ListWorkers(ctx, []string{scope.Global.String()})
 		require.NoError(t, err)
-		assert.Len(t, workers, 0)
+		assert.Equal(t, "shutdown", workers[0].GetOperationalState())
 	})
 
 	// Setup and use a pki worker
@@ -336,7 +306,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("pki_address"), server.WithDescription("pki_description2"),
 			server.WithReleaseVersion("test-version"))
-		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyId(pkiWorkerKeyId), server.WithReleaseVersion("test-version"))
+		worker, err := server.TestUpsertAndReturnWorker(ctx, t, wStatus1, repo, server.WithKeyId(pkiWorkerKeyId), server.WithReleaseVersion("test-version"))
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -494,10 +464,17 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 
-		// Filtering out shutdown workers will remove the shutdown KMS and this shutdown worker, resulting in 2
-		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+		// Ensure that we find two shutdown workers
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 		require.NoError(t, err)
-		assert.Len(t, workers, 2)
+		assert.Len(t, workers, 4)
+		numShutdown := 0
+		for _, w := range workers {
+			if w.OperationalState == "shutdown" {
+				numShutdown++
+			}
+		}
+		assert.Equal(t, 2, numShutdown)
 	})
 
 	t.Run("ipv4 address", func(t *testing.T) {
@@ -648,8 +625,7 @@ func TestTagUpdatingListing(t *testing.T) {
 				Value: "value2",
 			}))
 
-	worker1, err = repo.UpsertWorkerStatus(ctx, wStatus,
-		server.WithUpdateTags(true))
+	worker1, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus, repo, server.WithUpdateTags(true))
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value1", "value2"}, worker1.CanonicalTags()["tag1"])
@@ -667,13 +643,13 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag22",
 				Value: "value22",
 			}))
-	worker1, err = repo.UpsertWorkerStatus(ctx, wStatus)
+	worker1, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus, repo)
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value1", "value2"}, worker1.CanonicalTags()["tag1"])
 
 	// Update tags and test again
-	worker1, err = repo.UpsertWorkerStatus(ctx, wStatus, server.WithUpdateTags(true))
+	worker1, err = server.TestUpsertAndReturnWorker(ctx, t, wStatus, repo, server.WithUpdateTags(true))
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
 	assert.ElementsMatch(t, []string{"value21", "value22"}, worker1.CanonicalTags()["tag22"])
@@ -709,29 +685,6 @@ func TestListWorkers(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "only-kms-type",
-			createCnt: testLimit + 1,
-			reqScopes: []string{scope.Global.String()},
-			opts:      []server.Option{server.WithLimit(-1), server.WithWorkerType(server.KmsWorkerType)},
-			wantCnt:   testLimit + 1,
-			wantErr:   false,
-		},
-		{
-			name:      "only-pki-type",
-			createCnt: testLimit + 1,
-			reqScopes: []string{scope.Global.String()},
-			opts:      []server.Option{server.WithLimit(-1), server.WithWorkerType(server.PkiWorkerType)},
-			wantCnt:   testLimit + 1,
-			wantErr:   false,
-		},
-		{
-			name:      "bad-type",
-			createCnt: testLimit + 1,
-			reqScopes: []string{scope.Global.String()},
-			opts:      []server.Option{server.WithLimit(-1), server.WithWorkerType("foo")},
-			wantErr:   true,
-		},
-		{
 			name:      "default-limit",
 			createCnt: testLimit + 1,
 			reqScopes: []string{scope.Global.String()},
@@ -763,10 +716,7 @@ func TestListWorkers(t *testing.T) {
 			for i := 0; i < tt.createCnt; i++ {
 				server.TestPkiWorker(t, conn, wrapper)
 			}
-			// the purpose of these tests isn't to check liveness, so disable
-			// liveness checking.
-			opts := append(tt.opts, server.WithLiveness(-1))
-			got, err := repo.ListWorkers(ctx, tt.reqScopes, opts...)
+			got, err := repo.ListWorkers(ctx, tt.reqScopes, tt.opts...)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -786,253 +736,6 @@ func TestListWorkers(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestListWorkers_WithWorkerPool(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	require := require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kmsCache := kms.TestKms(t, conn, wrapper)
-	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
-
-	serversRepo, err := server.NewRepository(ctx, rw, rw, kmsCache)
-	require.NoError(err)
-
-	worker1 := server.TestKmsWorker(t, conn, wrapper)
-	worker2 := server.TestPkiWorker(t, conn, wrapper)
-	worker3 := server.TestKmsWorker(t, conn, wrapper)
-
-	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1))
-	require.NoError(err)
-	require.Len(result, 3)
-
-	tests := []struct {
-		name       string
-		workerPool []string
-		want       []*server.Worker
-	}{
-		{
-			name:       "one",
-			workerPool: []string{worker1.GetPublicId()},
-			want:       []*server.Worker{worker1},
-		},
-		{
-			name:       "two",
-			workerPool: []string{worker2.GetPublicId(), worker3.GetPublicId()},
-			want:       []*server.Worker{worker2, worker3},
-		},
-		{
-			name:       "none",
-			workerPool: []string{},
-			want:       []*server.Worker{worker1, worker2, worker3},
-		},
-		{
-			name:       "unknown ids",
-			workerPool: []string{"this_is_unknown"},
-			want:       []*server.Worker{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1), server.WithWorkerPool(tt.workerPool))
-			require.NoError(err)
-			assert.ElementsMatch(t, tt.want, got)
-		})
-	}
-}
-
-func TestListWorkers_WithActiveWorkers(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	require := require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := server.NewRepository(ctx, rw, rw, kms)
-	require.NoError(err)
-
-	worker1 := server.TestKmsWorker(t, conn, wrapper)
-	worker2 := server.TestKmsWorker(t, conn, wrapper)
-	worker3 := server.TestKmsWorker(t, conn, wrapper)
-
-	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
-	require.NoError(err)
-	require.Len(result, 3)
-
-	tests := []struct {
-		name      string
-		upsertFn  func() (*server.Worker, error)
-		wantCnt   int
-		wantState string
-	}{
-		{
-			name: "upsert-worker1-to-shutdown",
-			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
-					server.NewWorker(scope.Global.String(),
-						server.WithName(worker1.GetName()),
-						server.WithAddress(worker1.GetAddress()),
-						server.WithOperationalState(server.ShutdownOperationalState.String()),
-						server.WithReleaseVersion("Boundary v.0.11"),
-						server.WithPublicId(worker1.GetPublicId())))
-			},
-			wantCnt:   2,
-			wantState: server.ShutdownOperationalState.String(),
-		},
-		{
-			name: "upsert-worker2-to-shutdown",
-			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
-					server.NewWorker(scope.Global.String(),
-						server.WithName(worker2.GetName()),
-						server.WithAddress(worker2.GetAddress()),
-						server.WithOperationalState(server.ShutdownOperationalState.String()),
-						server.WithReleaseVersion("Boundary v.0.11"),
-						server.WithPublicId(worker2.GetPublicId())))
-			},
-			wantCnt:   1,
-			wantState: server.ShutdownOperationalState.String(),
-		},
-		{
-			name: "upsert-worker3-to-shutdown",
-			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
-					server.NewWorker(scope.Global.String(),
-						server.WithName(worker3.GetName()),
-						server.WithAddress(worker3.GetAddress()),
-						server.WithOperationalState(server.ShutdownOperationalState.String()),
-						server.WithReleaseVersion("Boundary v.0.11"),
-						server.WithPublicId(worker3.GetPublicId())))
-			},
-			wantCnt:   0,
-			wantState: server.ShutdownOperationalState.String(),
-		},
-		{ // Upsert without a release version or state and expect to get a hit- test backwards compatibility
-			// Pre 0.11 workers will default to Active
-			name: "upsert-no-release-version-no-state",
-			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
-					server.NewWorker(scope.Global.String(),
-						server.WithName(worker3.GetName()),
-						server.WithAddress(worker3.GetAddress())),
-					server.WithPublicId(worker3.GetPublicId()))
-			},
-			wantCnt:   1,
-			wantState: server.ActiveOperationalState.String(),
-		},
-		{ // Upsert with active status and no version and expect to get a hit- test backwards compatibility
-			name: "upsert-no-release-version-active-state",
-			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
-					server.NewWorker(scope.Global.String(),
-						server.WithName(worker3.GetName()),
-						server.WithAddress(worker3.GetAddress()),
-						server.WithOperationalState(server.ActiveOperationalState.String())),
-					server.WithPublicId(worker3.GetPublicId()))
-			},
-			wantCnt:   1,
-			wantState: server.ActiveOperationalState.String(),
-		},
-		{ // Upsert with unknown status and do not expect to get a hit- test worker create before status
-			name: "upsert-unknown-status",
-			upsertFn: func() (*server.Worker, error) {
-				return serversRepo.UpsertWorkerStatus(ctx,
-					server.NewWorker(scope.Global.String(),
-						server.WithName(worker3.GetName()),
-						server.WithAddress(worker3.GetAddress()),
-						server.WithOperationalState(server.UnknownOperationalState.String())),
-					server.WithPublicId(worker3.GetPublicId()))
-			},
-			wantCnt:   0,
-			wantState: server.UnknownOperationalState.String(),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			worker, err := tt.upsertFn()
-			require.NoError(err)
-			got, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
-			require.NoError(err)
-			assert.Len(t, got, tt.wantCnt)
-			if len(tt.wantState) > 0 {
-				assert.Equal(t, tt.wantState, worker.OperationalState)
-			}
-		})
-	}
-}
-
-func TestListWorkers_WithLiveness(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	require := require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := server.NewRepository(ctx, rw, rw, kms)
-	require.NoError(err)
-
-	worker1 := server.TestKmsWorker(t, conn, wrapper)
-	worker2 := server.TestKmsWorker(t, conn, wrapper)
-	worker3 := server.TestKmsWorker(t, conn, wrapper)
-
-	// Sleep the default liveness time (15sec currently) +1s
-	time.Sleep(time.Second * 16)
-
-	// Push an upsert to the first worker so that its status has been
-	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx,
-		server.NewWorker(scope.Global.String(),
-			server.WithName(worker1.GetName()),
-			server.WithAddress(worker1.GetAddress())),
-		server.WithPublicId(worker1.GetPublicId()))
-	require.NoError(err)
-
-	requireIds := func(expected []string, actual []*server.Worker) {
-		require.Len(expected, len(actual))
-		want := make(map[string]struct{})
-		for _, v := range expected {
-			want[v] = struct{}{}
-		}
-
-		got := make(map[string]struct{})
-		for _, v := range actual {
-			got[v.PublicId] = struct{}{}
-		}
-
-		require.Equal(want, got)
-	}
-
-	// Default liveness, should only list 1
-	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
-	require.NoError(err)
-	require.Len(result, 1)
-	requireIds([]string{worker1.GetPublicId()}, result)
-
-	// Upsert second server.
-	_, err = serversRepo.UpsertWorkerStatus(ctx,
-		server.NewWorker(scope.Global.String(),
-			server.WithName(worker2.GetName()),
-			server.WithAddress(worker2.GetAddress())),
-		server.WithPublicId(worker2.GetPublicId()))
-	require.NoError(err)
-
-	// Static liveness. Should get two, so long as this did not take
-	// more than 5s to execute.
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Second*5))
-	require.NoError(err)
-	require.Len(result, 2)
-	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId()}, result)
-
-	// Liveness disabled, should get all three workers.
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1))
-	require.NoError(err)
-	require.Len(result, 3)
-	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId(), worker3.GetPublicId()}, result)
 }
 
 func TestRepository_CreateWorker(t *testing.T) {
@@ -1667,4 +1370,390 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			assert.Truef(t, errors.Match(tt.wantErr, err), "Didn't match error %v", err)
 		})
 	}
+}
+
+func TestListHcpbManagedWorkers(t *testing.T) {
+	t.Parallel()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	repo, err := server.NewRepository(ctx, rw, rw, kms.TestKms(t, conn, wrapper))
+	require.NoError(t, err)
+
+	hcpbTag := &server.Tag{Key: server.ManagedWorkerTag, Value: "true"}
+
+	t.Run("invalidLiveness", func(t *testing.T) {
+		worker := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker.GetName()),
+				server.WithAddress(worker.GetAddress()),
+			),
+			server.WithPublicId(worker.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		workers, err := repo.ListHcpbManagedWorkers(ctx, -10)
+		require.NoError(t, err)
+		require.Len(t, workers, 1)
+		require.Equal(t, workers[0].PublicId, worker.GetPublicId())
+		require.Equal(t, workers[0].Address, worker.GetAddress())
+	})
+
+	t.Run("outsideLivenessThreshold", func(t *testing.T) {
+		worker := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker.GetName()),
+				server.WithAddress(worker.GetAddress()),
+			),
+			server.WithPublicId(worker.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		<-time.After(2 * time.Second)
+		workers, err := repo.ListHcpbManagedWorkers(ctx, time.Second)
+		require.NoError(t, err)
+		require.Len(t, workers, 0)
+	})
+
+	t.Run("inLivenessThreshold", func(t *testing.T) {
+		worker := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker.GetName()),
+				server.WithAddress(worker.GetAddress()),
+			),
+			server.WithPublicId(worker.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		workers, err := repo.ListHcpbManagedWorkers(ctx, time.Minute)
+		require.NoError(t, err)
+		require.Len(t, workers, 1)
+		require.Equal(t, workers[0].PublicId, worker.GetPublicId())
+		require.Equal(t, workers[0].Address, worker.GetAddress())
+	})
+
+	t.Run("multipleWorkers", func(t *testing.T) {
+		// Not HCPb managed but in liveness interval.
+		worker1 := server.TestKmsWorker(t, conn, wrapper)
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker1.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		// HCPb managed not in liveness interval.
+		worker2 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker2.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		// HCPb managed in liveness interval.
+		worker3 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker3.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		// HCPb managed in liveness interval.
+		worker4 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(hcpbTag))
+		t.Cleanup(func() {
+			_, err = repo.DeleteWorker(ctx, worker4.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		<-time.After(2 * time.Second)
+
+		// Update all the workers that are meant to be within the liveness
+		// interval (worker1, worker3, worker4).
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker1.GetName()),
+				server.WithAddress(worker1.GetAddress()),
+			),
+			server.WithPublicId(worker1.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		_, err = repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker3.GetName()),
+				server.WithAddress(worker3.GetAddress()),
+			),
+			server.WithPublicId(worker3.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		_, err = repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(worker4.GetName()),
+				server.WithAddress(worker4.GetAddress()),
+			),
+			server.WithPublicId(worker4.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		// List should return worker3 and worker4.
+		workers, err := repo.ListHcpbManagedWorkers(ctx, time.Second)
+		require.NoError(t, err)
+
+		exp := []server.WorkerAddress{
+			{PublicId: worker3.GetPublicId(), Address: worker3.GetAddress()},
+			{PublicId: worker4.GetPublicId(), Address: worker4.GetAddress()},
+		}
+		require.ElementsMatch(t, exp, workers)
+	})
+}
+
+func TestFilterWorkers_EgressFilter(t *testing.T) {
+	ctx := context.Background()
+	// This prevents us from running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	var workers []*server.Worker
+	for i := 0; i < 5; i++ {
+		switch {
+		case i%2 == 0:
+			workers = append(workers, server.TestKmsWorker(t, conn, wrapper,
+				server.WithName(fmt.Sprintf("test_worker_%d", i)),
+				server.WithWorkerTags(&server.Tag{
+					Key:   fmt.Sprintf("key%d", i),
+					Value: fmt.Sprintf("value%d", i),
+				})))
+		default:
+			workers = append(workers, server.TestPkiWorker(t, conn, wrapper,
+				server.WithName(fmt.Sprintf("test_worker_%d", i)),
+				server.WithWorkerTags(&server.Tag{
+					Key:   "key",
+					Value: "configvalue",
+				})))
+		}
+	}
+
+	cases := []struct {
+		name        string
+		in          []*server.Worker
+		out         []*server.Worker
+		filter      string
+		errContains string
+	}{
+		{
+			name:        "no-workers",
+			in:          []*server.Worker{},
+			out:         []*server.Worker{},
+			filter:      "",
+			errContains: "No workers are available to handle this session, or all have been filtered",
+		},
+		{
+			name: "no-filter",
+			in:   workers,
+			out:  workers,
+		},
+		{
+			name:        "filter-no-matches",
+			in:          workers,
+			out:         workers,
+			filter:      `"/name" matches "test_worker_[13]" and "configvalue2" in "/tags/key"`,
+			errContains: "No workers are available to handle this session, or all have been filtered",
+		},
+		{
+			name:   "filter-one-match",
+			in:     workers,
+			out:    []*server.Worker{workers[1]},
+			filter: `"/name" matches "test_worker_[12]" and "configvalue" in "/tags/key"`,
+		},
+		{
+			name:   "filter-two-matches",
+			in:     workers,
+			out:    []*server.Worker{workers[1], workers[3]},
+			filter: `"configvalue" in "/tags/key"`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			target := &targettest.Target{
+				Target: &tgstore.Target{},
+			}
+			if len(tc.filter) > 0 {
+				target.EgressWorkerFilter = tc.filter
+			}
+
+			out, protocolWorker, err := server.FilterWorkersFn(
+				ctx, nil, target, tc.in, "", nil, nil, nil,
+			)
+			if tc.errContains != "" {
+				require.ErrorContains(err, tc.errContains)
+				assert.Nil(out)
+				return
+			}
+
+			require.NoError(err)
+			require.Len(out, len(tc.out))
+			for i, exp := range tc.out {
+				assert.Equal(exp.Name, out[i].Name)
+			}
+			require.Nil(protocolWorker)
+		})
+	}
+}
+
+func TestSelectSessionWorkers(t *testing.T) {
+	// This prevents us from running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	_, proj := iam.TestScopes(t, iamRepo)
+	require.NotNil(t, proj)
+
+	repo, err := server.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	t.Run("noAvailableWorkers", func(t *testing.T) {
+		tg, err := target.New(ctx, targettest.Subtype, proj.GetPublicId(), target.WithWorkerFilter(`"doesnt_exist" in "/tags/type"`))
+		require.NoError(t, err)
+		require.NotNil(t, tg)
+
+		was, protoWorkerId, err := repo.SelectSessionWorkers(ctx, server.DefaultLiveness, tg, "", nil, nil, nil)
+		require.Nil(t, was)
+		require.Empty(t, protoWorkerId)
+		require.ErrorContains(t, err, "No workers are available to handle this session.")
+	})
+
+	t.Run("invalidWorkerStatusGracePeriod", func(t *testing.T) {
+		w1 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "worker1"}))
+		require.NotNil(t, w1)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w1.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		w2 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "worker2"}))
+		require.NotNil(t, w2)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w2.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		tg, err := target.New(ctx, targettest.Subtype, proj.GetPublicId(), target.WithWorkerFilter(`"worker1" in "/tags/type"`))
+		require.NoError(t, err)
+		require.NotNil(t, tg)
+
+		was, protoWorkerId, err := repo.SelectSessionWorkers(ctx, -10, tg, "", nil, nil, nil)
+		require.NoError(t, err)
+		require.Empty(t, protoWorkerId)
+		require.Len(t, was, 1)
+		require.Equal(t, w1.GetPublicId(), was[0].PublicId)
+		require.Equal(t, w1.GetAddress(), was[0].Address)
+	})
+
+	t.Run("validWorkerStatusGracePeriod", func(t *testing.T) {
+		w1 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
+		require.NotNil(t, w1)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w1.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		w2 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
+		require.NotNil(t, w2)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w2.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		<-time.After(2 * time.Second)
+		_, err := repo.UpsertWorkerStatus(ctx,
+			server.NewWorker(
+				scope.Global.String(),
+				server.WithName(w1.GetName()),
+				server.WithAddress(w1.GetAddress()),
+			),
+			server.WithPublicId(w1.GetPublicId()),
+		)
+		require.NoError(t, err)
+
+		tg, err := target.New(ctx, targettest.Subtype, proj.GetPublicId(), target.WithWorkerFilter(`"prod" in "/tags/type"`))
+		require.NoError(t, err)
+		require.NotNil(t, tg)
+
+		was, protoWorkerId, err := repo.SelectSessionWorkers(ctx, time.Second, tg, "", nil, nil, nil)
+		require.NoError(t, err)
+		require.Empty(t, protoWorkerId)
+		require.Len(t, was, 1)
+		require.Equal(t, w1.GetPublicId(), was[0].PublicId)
+		require.Equal(t, w1.GetAddress(), was[0].Address)
+	})
+
+	t.Run("multipleWorkers", func(t *testing.T) {
+		w1 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
+		require.NotNil(t, w1)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w1.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		w2 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
+		require.NotNil(t, w2)
+		t.Cleanup(func() {
+			_, err := repo.DeleteWorker(ctx, w2.GetPublicId())
+			assert.NoError(t, err)
+		})
+
+		tg, err := target.New(ctx, targettest.Subtype, proj.GetPublicId(), target.WithWorkerFilter(`"prod" in "/tags/type"`))
+		require.NoError(t, err)
+		require.NotNil(t, tg)
+
+		was, protoWorkerId, err := repo.SelectSessionWorkers(ctx, server.DefaultLiveness, tg, "", nil, nil, nil)
+		require.NoError(t, err)
+		require.Empty(t, protoWorkerId)
+		require.Len(t, was, 2)
+
+		exp := []server.WorkerAddress{
+			{PublicId: w1.GetPublicId(), Address: w1.GetAddress()},
+			{PublicId: w2.GetPublicId(), Address: w2.GetAddress()},
+		}
+		require.ElementsMatch(t, exp, was)
+	})
 }
