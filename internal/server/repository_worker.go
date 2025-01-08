@@ -284,8 +284,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return "", errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
 	case worker.PublicId != "":
 		return "", errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
-	case worker.GetName() == "" && opts.withKeyId == "":
-		return "", errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
+	case worker.GetName() == "" && opts.withKeyId == "" && opts.withPublicId == "":
+		return "", errors.New(ctx, errors.InvalidParameter, op, "worker keyId, name and public are all empty; one is required")
 	case worker.OperationalState == "":
 		return "", errors.New(ctx, errors.InvalidParameter, op, "worker operational state is empty")
 	case worker.LocalStorageState == "":
