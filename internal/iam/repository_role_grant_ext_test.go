@@ -10,12 +10,14 @@ import (
 	mathrand "math/rand"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -388,4 +390,100 @@ func TestGrantsForUserRandomized(t *testing.T) {
 			", roles from oidc managed groups", rolesFromOidcManagedGroups,
 			", roles from ldap managed groups", rolesFromLdapManagedGroups)
 	}
+}
+
+func TestGrantsForUser_Groups(t *testing.T) {
+	ctx := context.Background()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+
+	repo := iam.TestRepo(t, conn, wrap)
+	user := iam.TestUser(t, repo, "global") // create a user
+
+	group := iam.TestGroup(t, conn, "global") // create a group
+	role := iam.TestRole(t, conn, "global")
+	iam.TestGroupMember(t, conn, group.PublicId, user.PublicId)             // add user to the group
+	iam.TestGroupRole(t, conn, role.PublicId, group.PublicId)               // assign a role to the group
+	iam.TestRoleGrant(t, conn, role.PublicId, "ids=*;type=group;actions=*") // assign a grant to the role
+
+	groupGrantTuples := perms.GrantTuples{
+		{
+			RoleId:            role.PublicId,
+			RoleScopeId:       scope.Global.String(),
+			RoleParentScopeId: "",
+			GrantScopeId:      globals.GlobalPrefix,
+			Grant:             "ids=*;type=group;actions=*",
+		},
+	}
+
+	t.Run("group association", func(t *testing.T) {
+		// _, err := repo.GrantsForUser(ctx, user.PublicId, withTestCacheMultiGrantTuples(multiGrantTuplesCache))
+		grantTuples, err := repo.GrantsForUser(ctx, user.PublicId)
+		require.NoError(t, err)
+
+		assert.ElementsMatch(t, groupGrantTuples, grantTuples)
+	})
+
+	t.Run("managed group association", func(t *testing.T) {
+
+		// ldap setup
+		ldapOrg, _ := iam.TestScopes(t, repo)
+		ldapAm := ldap.TestAuthMethod(t, conn, wrap, ldapOrg.GetPublicId(), []string{"ldaps://ldap1"})
+		ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
+		ldapRole := iam.TestRole(t, conn, ldapOrg.GetPublicId())
+		ldapMgRole := iam.TestManagedGroupRole(t, conn, ldapRole.GetPublicId(), ldapManagedGroup.GetPublicId())
+		iam.TestRoleGrant(t, conn, ldapMgRole.GetRoleId(), "ids=*;type=group;actions=*")
+		want := perms.GrantTuple{
+			RoleId:            ldapRole.GetPublicId(),
+			RoleScopeId:       scope.Global.String(),
+			RoleParentScopeId: "",
+			GrantScopeId:      globals.GlobalPrefix,
+			Grant:             "ids=*;type=group;actions=*",
+		}
+
+		// do the thing
+		grantTuples, err := repo.GrantsForUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.NotEmpty(t, grantTuples)
+		got := grantTuples[0]
+
+		assert.ElementsMatch(t, want, got)
+
+		// oidc setup
+		oidcOrg := iam.TestOrg(t, repo)
+		// TestOrg(t, repo, WithUserId(user.PublicId))
+		oidcAuthMethod := oidc.TestAuthMethod(
+			t, conn, wrap, oidcOrg.PublicId, oidc.ActivePrivateState,
+			"alice-rp", "fido",
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+			oidc.WithSigningAlgs(oidc.RS256),
+			oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		)
+		oidcAcct := oidc.TestAccount(t, conn, oidcAuthMethod, "sub")
+		oidcManagedGroup := oidc.TestManagedGroup(t, conn, oidcAuthMethod, `"/token/sub" matches ".*"`)
+		oidc.TestManagedGroupMember(t, conn, oidcManagedGroup.GetPublicId(), oidcAcct.GetPublicId())
+		_, err = repo.AddUserAccounts(ctx, user.PublicId, 2, []string{oidcAcct.GetPublicId()})
+		require.NoError(t, err)
+		oidcRole := iam.TestRole(t, conn, oidcOrg.GetPublicId())
+		oidcMgRole := iam.TestManagedGroupRole(t, conn, oidcRole.GetPublicId(), oidcManagedGroup.GetPublicId())
+		iam.TestRoleGrant(t, conn, oidcMgRole.GetRoleId(), "ids=*;type=group;actions=*")
+
+		want = perms.GrantTuple{
+			RoleId:            oidcRole.GetPublicId(),
+			RoleScopeId:       scope.Global.String(),
+			RoleParentScopeId: "",
+			GrantScopeId:      globals.GlobalPrefix,
+			Grant:             "ids=*;type=group;actions=*",
+		}
+		// _, err := repo.GrantsForUser(ctx, user.PublicId, withTestCacheMultiGrantTuples(multiGrantTuplesCache))
+
+		// do the thing
+		grantTuples, err = repo.GrantsForUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.NotEmpty(t, grantTuples)
+		got = grantTuples[0]
+
+		assert.ElementsMatch(t, want, got)
+	})
 }
