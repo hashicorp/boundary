@@ -7,18 +7,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/stretchr/testify/require"
-
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/db"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/stretchr/testify/require"
 )
 
 // DisabledAuthTestContext is meant for testing, and uses a context that has
