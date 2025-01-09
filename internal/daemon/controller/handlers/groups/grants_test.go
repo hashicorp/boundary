@@ -5,6 +5,7 @@ package groups_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -47,11 +48,14 @@ func TestGrants_ReadActions(t *testing.T) {
 	s, err := groups.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err)
 	org1, _ := iam.TestScopes(t, iamRepo)
-	org2, _ := iam.TestScopes(t, iamRepo)
-
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+	proj3 := iam.TestProject(t, iamRepo, org2.PublicId)
 	globalGroup := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription("global"), iam.WithName("global"))
 	org1Group := iam.TestGroup(t, conn, org1.GetPublicId(), iam.WithDescription("org1"), iam.WithName("org1"))
 	org2Group := iam.TestGroup(t, conn, org2.GetPublicId(), iam.WithDescription("org2"), iam.WithName("org2"))
+
+	proj2Group := iam.TestGroup(t, conn, proj2.GetPublicId(), iam.WithDescription("proj2"), iam.WithName("proj2"))
+	proj3Group := iam.TestGroup(t, conn, proj3.GetPublicId(), iam.WithDescription("proj3"), iam.WithName("proj3"))
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
@@ -77,6 +81,22 @@ func TestGrants_ReadActions(t *testing.T) {
 				wantErr: nil,
 				wantIDs: []string{globalGroup.PublicId, org1Group.PublicId, org2Group.PublicId},
 			},
+			{
+				name: "org role grant this and children returns org and project groups",
+				input: &pbs.ListGroupsRequest{
+					ScopeId:   org2.PublicId,
+					Recursive: true,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  org2.PublicId,
+						GrantStrings: []string{"ids=*;type=group;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				},
+				wantErr: nil,
+				wantIDs: []string{org2Group.PublicId, proj2Group.PublicId, proj3Group.PublicId},
+			},
 		}
 
 		for _, tc := range testcases {
@@ -91,6 +111,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				require.NoError(t, finalErr)
 				var gotIDs []string
 				for _, g := range got.Items {
+					fmt.Println(g.GetName())
 					gotIDs = append(gotIDs, g.GetId())
 				}
 				require.ElementsMatch(t, tc.wantIDs, gotIDs)
