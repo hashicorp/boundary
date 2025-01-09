@@ -80,6 +80,7 @@ type ClientProxy struct {
 // EXPERIMENTAL: While this API is not expected to change, it is new and
 // feedback from users may necessitate changes.
 func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, error) {
+	const op = "proxy.New"
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse options: %w", err)
@@ -142,7 +143,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
 	// try to actually make it
-	p.ctx, p.cancel = context.WithDeadline(ctx, p.expiration)
+	p.ctx, p.cancel = context.WithDeadlineCause(ctx, p.expiration, fmt.Errorf("%s: session expiration exceeded", op))
 
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
@@ -173,6 +174,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 // EXPERIMENTAL: While this API is not expected to change, it is new and
 // feedback from users may necessitate changes.
 func (p *ClientProxy) Start(opt ...Option) (retErr error) {
+	const op = "proxy.(ClientProxy).Start"
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return fmt.Errorf("could not parse options: %w", err)
@@ -350,9 +352,16 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), opts.withSessionTeardownTimeout)
+	ctx, cancel := context.WithTimeoutCause(
+		context.Background(),
+		opts.withSessionTeardownTimeout,
+		fmt.Errorf("%s: session teardown timeout exceeded", op),
+	)
 	defer cancel()
 	if err := p.sendSessionTeardown(ctx); err != nil {
+		if ctxCause := ctx.Err(); ctxCause != nil {
+			return fmt.Errorf("error sending session teardown request to worker: %w (%w)", err, ctxCause)
+		}
 		return fmt.Errorf("error sending session teardown request to worker: %w", err)
 	}
 

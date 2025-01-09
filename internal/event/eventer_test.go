@@ -304,7 +304,7 @@ func TestEventer_writeError(t *testing.T) {
 	eventer, er := NewEventer(testLogger, testLock, "TestEventer_writeError", testSetup.EventerConfig)
 	require.NoError(t, er)
 
-	testError, er := newError("TestEventer_writeError", fmt.Errorf("%s: no msg: test", ErrIo))
+	testError, er := newError(ctx, "TestEventer_writeError", fmt.Errorf("%s: no msg: test", ErrIo))
 	require.NoError(t, er)
 
 	tests := []struct {

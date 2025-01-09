@@ -4,6 +4,7 @@
 package event
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -13,16 +14,17 @@ import (
 const errorVersion = "v0.1"
 
 type err struct {
-	Error       string         `json:"error"`
-	ErrorFields error          `json:"error_fields"`
-	Id          Id             `json:"id,omitempty"`
-	Version     string         `json:"version"`
-	Op          Op             `json:"op,omitempty"`
-	RequestInfo *RequestInfo   `json:"request_info,omitempty"`
-	Info        map[string]any `json:"info,omitempty"`
+	Error        string         `json:"error"`
+	ErrorFields  error          `json:"error_fields"`
+	Id           Id             `json:"id,omitempty"`
+	Version      string         `json:"version"`
+	Op           Op             `json:"op,omitempty"`
+	RequestInfo  *RequestInfo   `json:"request_info,omitempty"`
+	Info         map[string]any `json:"info,omitempty"`
+	ContextCause error          `json:"cause,omitempty"`
 }
 
-func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
+func newError(ctx context.Context, fromOperation Op, e error, opt ...Option) (*err, error) {
 	const op = "event.newError"
 	if fromOperation == "" {
 		return nil, fmt.Errorf("%s: missing operation: %w", op, ErrInvalidParameter)
@@ -52,6 +54,9 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 		Info:        opts.withInfo,
 		Error:       e.Error(),
 		ErrorFields: e,
+	}
+	if ctx != nil {
+		newErr.ContextCause = context.Cause(ctx)
 	}
 	if err := newErr.validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

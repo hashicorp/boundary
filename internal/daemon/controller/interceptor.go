@@ -495,7 +495,11 @@ func eventsResponseInterceptor(
 func requestMaxDurationInterceptor(_ context.Context, maxRequestDuration time.Duration) grpc.UnaryServerInterceptor {
 	const op = "controller.requestMaxDurationInterceptor"
 	return func(interceptorCtx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		withTimeout, cancel := context.WithTimeout(interceptorCtx, maxRequestDuration)
+		withTimeout, cancel := context.WithTimeoutCause(
+			interceptorCtx,
+			maxRequestDuration,
+			fmt.Errorf("%s: max request duration exceeded", op),
+		)
 		defer cancel()
 		return handler(withTimeout, req)
 	}

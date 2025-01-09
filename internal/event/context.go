@@ -196,7 +196,7 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 			return
 		}
 	}
-	ev, err := newError(caller, e, opt...)
+	ev, err := newError(ctx, caller, e, opt...)
 	if err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
 		eventer.logger.Error(fmt.Sprintf("%s: unable to create new error to write error: %v", op, e))
@@ -363,20 +363,18 @@ func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...any) {
 }
 
 func newSendCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	const op = "event.newSendCtx"
 	var sendCtx context.Context
 	var sendCancel context.CancelFunc
 	switch {
 	case ctx == nil:
 		return context.Background(), nil
-	case ctx.Err() == context.Canceled || ctx.Err() == context.DeadlineExceeded:
-		sendCtx, sendCancel = context.WithTimeout(context.Background(), cancelledSendTimeout)
-		info, ok := RequestInfoFromContext(ctx)
-		if ok {
-			reqCtx, err := NewRequestInfoContext(sendCtx, info)
-			if err == nil {
-				sendCtx = reqCtx
-			}
-		}
+	case ctx.Err() != nil:
+		sendCtx, sendCancel = context.WithTimeoutCause(
+			context.WithoutCancel(ctx),
+			cancelledSendTimeout,
+			fmt.Errorf("%s: cancelled send timeout exceeded", op),
+		)
 	default:
 		sendCtx = ctx
 	}

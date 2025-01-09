@@ -7,7 +7,7 @@ package ops
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -94,18 +95,22 @@ func (s *Server) Shutdown() error {
 			return fmt.Errorf("%s: missing bundle, listener or its fields", op)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), b.ln.Config.MaxRequestDuration)
+		ctx, cancel := context.WithTimeoutCause(
+			context.Background(),
+			b.ln.Config.MaxRequestDuration,
+			fmt.Errorf("%s: max request duration exceeded", op),
+		)
 		defer cancel()
 
 		err := b.ln.HTTPServer.Shutdown(ctx)
 		if err != nil {
-			errors.Join(closeErrors, fmt.Errorf("%s: failed to shutdown http server: %w", op, err))
+			closeErrors = stderrors.Join(closeErrors, errors.Wrap(ctx, err, op, errors.WithMsg("failed to shutdown http server")))
 		}
 
 		err = b.ln.OpsListener.Close()
 		err = listenerCloseErrorCheck(b.ln.Config.Type, err)
 		if err != nil {
-			errors.Join(closeErrors, fmt.Errorf("%s: failed to close listener mux: %w", op, err))
+			closeErrors = stderrors.Join(closeErrors, fmt.Errorf("%s: failed to close listener mux: %w", op, err))
 		}
 	}
 
