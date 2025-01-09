@@ -389,3 +389,82 @@ func TestGrantsForUserRandomized(t *testing.T) {
 			", roles from ldap managed groups", rolesFromLdapManagedGroups)
 	}
 }
+
+func TestGrantsForUser_Groups(t *testing.T) {
+	ctx := context.Background()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+
+	repo := iam.TestRepo(t, conn, wrap)
+	user := iam.TestUser(t, repo, "global") // create a user
+
+	grant := "ids=*;type=*;actions=*"
+
+	group := iam.TestGroup(t, conn, "global") // create a group
+	role := iam.TestRole(t, conn, "global")
+	iam.TestGroupMember(t, conn, group.PublicId, user.PublicId) // add user to the group
+	iam.TestGroupRole(t, conn, role.PublicId, group.PublicId)   // assign a role to the group
+	iam.TestRoleGrant(t, conn, role.PublicId, grant)            // assign a grant to the role
+
+	t.Run("group association", func(t *testing.T) {
+		grantTuples, err := repo.GrantsForUser(ctx, user.PublicId)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, grantTuples)
+		assert.Equal(t, grant, grantTuples[0].Grant)
+	})
+
+	t.Run("managed group association", func(t *testing.T) {
+		ctx := context.Background()
+		conn, _ := db.TestSetup(t, "postgres")
+		wrap := db.TestWrapper(t)
+		iamRepo := iam.TestRepo(t, conn, wrap)
+		kmsCache := kms.TestKms(t, conn, wrap)
+
+		o, _ := iam.TestScopes(
+			t,
+			iamRepo,
+			iam.WithSkipAdminRoleCreation(true),
+			iam.WithSkipDefaultRoleCreation(true),
+		)
+		databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+
+		oidcAuthMethod := oidc.TestAuthMethod(
+			t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
+			"alice-rp", "fido",
+			oidc.WithSigningAlgs(oidc.RS256),
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+			oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		)
+
+		// ldap setup
+		ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldap://test"})
+		ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
+		ldapRole := iam.TestRole(t, conn, o.GetPublicId())
+		ldapMgRole := iam.TestManagedGroupRole(t, conn, ldapRole.GetPublicId(), ldapManagedGroup.GetPublicId())
+		iam.TestRoleGrant(t, conn, ldapMgRole.GetRoleId(), grant)
+
+		// do the thing
+		grantTuples, err := repo.GrantsForUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.NotEmpty(t, grantTuples)
+		assert.Equal(t, grant, grantTuples[0].Grant)
+
+		// oidc setup
+		oidcAcct := oidc.TestAccount(t, conn, oidcAuthMethod, "sub")
+		oidcManagedGroup := oidc.TestManagedGroup(t, conn, oidcAuthMethod, `"/token/sub" matches ".*"`)
+		oidc.TestManagedGroupMember(t, conn, oidcManagedGroup.GetPublicId(), oidcAcct.GetPublicId())
+
+		oidcRole := iam.TestRole(t, conn, o.GetPublicId())
+		oidcMgRole := iam.TestManagedGroupRole(t, conn, oidcRole.GetPublicId(), oidcManagedGroup.GetPublicId())
+		iam.TestRoleGrant(t, conn, oidcMgRole.GetRoleId(), grant)
+
+		// do the thing
+		grantTuples, err = repo.GrantsForUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.NotEmpty(t, grantTuples)
+		assert.Equal(t, grant, grantTuples[0].Grant)
+	})
+}
