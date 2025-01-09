@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAuthMethodOidcVault validates the creation and usage of an OIDC auth
+// method. This test uses Vault as the OIDC provider.
 func TestAuthMethodOidcVault(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
