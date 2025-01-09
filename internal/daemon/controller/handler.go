@@ -243,7 +243,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.baseContext,
 			c.IamRepoFn,
 			c.ServersRepoFn,
-			c.workerStatusGracePeriod,
+			c.workerRPCGracePeriod,
 			c.kms,
 			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension)
@@ -266,7 +266,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.StaticCredentialRepoFn,
 			c.TargetAliasRepoFn,
 			c.downstreamWorkers,
-			c.workerStatusGracePeriod,
+			c.workerRPCGracePeriod,
 			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension,
 		)

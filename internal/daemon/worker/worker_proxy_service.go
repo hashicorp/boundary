@@ -30,6 +30,14 @@ func NewWorkerProxyServiceServer(
 	}
 }
 
+func (ws *workerProxyServiceServer) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	return pbs.NewServerCoordinationServiceClient(ws.cc).Statistics(ctx, req)
+}
+
+func (ws *workerProxyServiceServer) SessionInfo(ctx context.Context, req *pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error) {
+	return pbs.NewServerCoordinationServiceClient(ws.cc).SessionInfo(ctx, req)
+}
+
 func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	resp, err := pbs.NewServerCoordinationServiceClient(ws.cc).Status(ctx, req)
 
@@ -44,6 +52,18 @@ func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusR
 
 func (ws *workerProxyServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.ListHcpbWorkersRequest) (*pbs.ListHcpbWorkersResponse, error) {
 	return pbs.NewServerCoordinationServiceClient(ws.cc).ListHcpbWorkers(ctx, req)
+}
+
+func (ws *workerProxyServiceServer) RoutingInfo(ctx context.Context, req *pbs.RoutingInfoRequest) (*pbs.RoutingInfoResponse, error) {
+	resp, err := pbs.NewServerCoordinationServiceClient(ws.cc).RoutingInfo(ctx, req)
+
+	if resp != nil {
+		// We don't currently support distributing new addreses to workers
+		// multiple hops away so ensure they're stripped out
+		resp.CalculatedUpstreamAddresses = nil
+	}
+
+	return resp, err
 }
 
 func (ws *workerProxyServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {

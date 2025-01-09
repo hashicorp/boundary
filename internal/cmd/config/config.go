@@ -268,15 +268,18 @@ type Controller struct {
 	GracefulShutdownWait         any           `hcl:"graceful_shutdown_wait_duration"`
 	GracefulShutdownWaitDuration time.Duration `hcl:"-"`
 
-	// WorkerStatusGracePeriod represents the period of time (as a duration)
+	// WorkerRPCGracePeriod represents the period of time (as a duration)
 	// that the controller will wait before deciding a worker is disconnected
-	// and marking connections from it as canceling
+	// and marking connections from it as canceling. It is also used to evaluate
+	// whether a worker is available for routing based on the time since its last routing info report.
+	// For backwards compatibility this is still called worker_status_grace_period,
+	// though it is now used with both the SessionInfo and RoutingInfo RPCs.
 	//
 	// TODO: This isn't documented (on purpose) because the right place for this
 	// is central configuration so you can't drift across controllers, but we
 	// don't have that yet.
-	WorkerStatusGracePeriod         any           `hcl:"worker_status_grace_period"`
-	WorkerStatusGracePeriodDuration time.Duration `hcl:"-"`
+	WorkerRPCGracePeriod         any           `hcl:"worker_status_grace_period"`
+	WorkerRPCGracePeriodDuration time.Duration `hcl:"-"`
 
 	// LivenessTimeToStale represents the period of time (as a duration) after
 	// which it will consider other controllers to be no longer accessible,
@@ -351,13 +354,15 @@ type Worker struct {
 	Tags    map[string][]string `hcl:"-"`
 	TagsRaw any                 `hcl:"tags"`
 
-	// StatusCallTimeout represents the period of time (as a duration) that
-	// the worker will allow a status RPC call to attempt to finish before
-	// canceling it to try again.
+	// ControllerRPCCallTimeout represents the period of time (as a duration) that
+	// the worker will allow the SessionInfo, RoutingInfo and Statistics RPC calls to
+	// attempt to finish before canceling them to try again.
+	// For backwards compatibility this is still called status_call_timeout,
+	// though it is now used to control the SessionInfo, Statistics and RoutingInfo RPCs.
 	//
 	// TODO: This is currently not documented and considered internal.
-	StatusCallTimeout         any           `hcl:"status_call_timeout"`
-	StatusCallTimeoutDuration time.Duration `hcl:"-"`
+	ControllerRPCCallTimeout         any           `hcl:"status_call_timeout"`
+	ControllerRPCCallTimeoutDuration time.Duration `hcl:"-"`
 
 	// GetDownstreamWorkersTimeout represents the period of time (as a duration) timeout
 	// for GetDownstreamWorkers call in DownstreamWorkerTicker
@@ -366,14 +371,17 @@ type Worker struct {
 	GetDownstreamWorkersTimeout         any           `hcl:"get_downstream_workers_timeout"`
 	GetDownstreamWorkersTimeoutDuration time.Duration `hcl:"-"`
 
-	// SuccessfulStatusGracePeriod represents the period of time (as a duration)
-	// that the worker will wait before disconnecting connections if it cannot
-	// successfully complete a status report to a controller. This cannot be
-	// less than StatusCallTimeout.
+	// SuccessfulControllerRPCGracePeriod represents the period of time (as a duration)
+	// that the worker will wait before closing connections if it cannot
+	// successfully complete a session info report to a controller. It is also used
+	// to evaluate whether the upstreams need to be recalculated in case of repeated
+	// routing info report failures. This cannot be less than ControllerRPCCallTimeout.
+	// For backwards compatibility this is still called successful_status_grace_period,
+	// though it is now used to control the SessionInfo and RoutingInfo RPCs.
 	//
 	// TODO: This is currently not documented and considered internal.
-	SuccessfulStatusGracePeriod         any           `hcl:"successful_status_grace_period"`
-	SuccessfulStatusGracePeriodDuration time.Duration `hcl:"-"`
+	SuccessfulControllerRPCGracePeriod         any           `hcl:"successful_status_grace_period"`
+	SuccessfulControllerRPCGracePeriodDuration time.Duration `hcl:"-"`
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
@@ -400,6 +408,11 @@ type Worker struct {
 	// pre-0.13 method of using KMSes to authenticate. This is currently only
 	// supported to throw an error if used telling people they need to upgrade.
 	UseDeprecatedKmsAuthMethod bool `hcl:"use_deprecated_kms_auth_method"`
+
+	// TestWorkerRPCInterval represents the base period of time that
+	// the worker will wait between invoking the controller RPCs.
+	// This is not exposed to users and only used in tests.
+	TestWorkerRPCInterval time.Duration `hcl:"-"`
 }
 
 type Database struct {
@@ -721,19 +734,21 @@ func Parse(d string) (*Config, error) {
 			result.Controller.Scheduler.MonitorIntervalDuration = t
 		}
 
-		workerStatusGracePeriod := result.Controller.WorkerStatusGracePeriod
-		if util.IsNil(workerStatusGracePeriod) {
-			workerStatusGracePeriod = os.Getenv("BOUNDARY_CONTROLLER_WORKER_STATUS_GRACE_PERIOD")
+		workerRPCGracePeriod := result.Controller.WorkerRPCGracePeriod
+		if util.IsNil(workerRPCGracePeriod) {
+			// For backwards compatibility this is still called BOUNDARY_CONTROLLER_WORKER_STATUS_GRACE_PERIOD,
+			// though it is now used to control the SessionInfo and RoutingInfo RPCs.
+			workerRPCGracePeriod = os.Getenv("BOUNDARY_CONTROLLER_WORKER_STATUS_GRACE_PERIOD")
 		}
-		if workerStatusGracePeriod != nil {
-			t, err := parseutil.ParseDurationSecond(workerStatusGracePeriod)
+		if workerRPCGracePeriod != nil {
+			t, err := parseutil.ParseDurationSecond(workerRPCGracePeriod)
 			if err != nil {
 				return result, err
 			}
-			result.Controller.WorkerStatusGracePeriodDuration = t
+			result.Controller.WorkerRPCGracePeriodDuration = t
 		}
-		if result.Controller.WorkerStatusGracePeriodDuration < 0 {
-			return nil, errors.New("Controller worker status grace period value is negative")
+		if result.Controller.WorkerRPCGracePeriodDuration < 0 {
+			return nil, errors.New("Controller worker RPC grace period value is negative")
 		}
 
 		livenessTimeToStale := result.Controller.LivenessTimeToStale
@@ -888,8 +903,10 @@ func Parse(d string) (*Config, error) {
 			return nil, fmt.Errorf("Error parsing worker activation token: %w", err)
 		}
 
-		statusCallTimeoutDuration := result.Worker.StatusCallTimeout
+		statusCallTimeoutDuration := result.Worker.ControllerRPCCallTimeout
 		if util.IsNil(statusCallTimeoutDuration) {
+			// For backwards compatibility this is still called BOUNDARY_WORKER_STATUS_CALL_TIMEOUT,
+			// though it is now used to control the SessionInfo, Statistics and RoutingInfo RPCs.
 			statusCallTimeoutDuration = os.Getenv("BOUNDARY_WORKER_STATUS_CALL_TIMEOUT")
 		}
 		if statusCallTimeoutDuration != nil {
@@ -897,10 +914,10 @@ func Parse(d string) (*Config, error) {
 			if err != nil {
 				return result, err
 			}
-			result.Worker.StatusCallTimeoutDuration = t
+			result.Worker.ControllerRPCCallTimeoutDuration = t
 		}
-		if result.Worker.StatusCallTimeoutDuration < 0 {
-			return nil, errors.New("Status call timeout value is negative")
+		if result.Worker.ControllerRPCCallTimeoutDuration < 0 {
+			return nil, errors.New("Controller RPC timeout value is negative")
 		}
 
 		getDownstreamWorkersTimeoutDuration := result.Worker.GetDownstreamWorkersTimeout
@@ -918,19 +935,21 @@ func Parse(d string) (*Config, error) {
 			return nil, errors.New("get downstream workers timeout must be greater than 0")
 		}
 
-		successfulStatusGracePeriod := result.Worker.SuccessfulStatusGracePeriod
-		if util.IsNil(successfulStatusGracePeriod) {
-			successfulStatusGracePeriod = os.Getenv("BOUNDARY_WORKER_SUCCESSFUL_STATUS_GRACE_PERIOD")
+		successfulControllerRPCGracePeriod := result.Worker.SuccessfulControllerRPCGracePeriod
+		if util.IsNil(successfulControllerRPCGracePeriod) {
+			// For backwards compatibility this is still called BOUNDARY_WORKER_SUCCESSFUL_STATUS_GRACE_PERIOD,
+			// though it is now used to control the SessionInfo and RoutingInfo RPCs.
+			successfulControllerRPCGracePeriod = os.Getenv("BOUNDARY_WORKER_SUCCESSFUL_STATUS_GRACE_PERIOD")
 		}
-		if successfulStatusGracePeriod != nil {
-			t, err := parseutil.ParseDurationSecond(successfulStatusGracePeriod)
+		if successfulControllerRPCGracePeriod != nil {
+			t, err := parseutil.ParseDurationSecond(successfulControllerRPCGracePeriod)
 			if err != nil {
 				return result, err
 			}
-			result.Worker.SuccessfulStatusGracePeriodDuration = t
+			result.Worker.SuccessfulControllerRPCGracePeriodDuration = t
 		}
-		if result.Worker.SuccessfulStatusGracePeriodDuration < 0 {
-			return nil, errors.New("Successful status grace period value is negative")
+		if result.Worker.SuccessfulControllerRPCGracePeriodDuration < 0 {
+			return nil, errors.New("Successful controller RPC grace period value is negative")
 		}
 
 		if !util.IsNil(result.Worker.RecordingStorageMinimumAvailableCapacity) {
@@ -949,14 +968,14 @@ func Parse(d string) (*Config, error) {
 		}
 
 		switch {
-		case result.Worker.StatusCallTimeoutDuration == 0 && result.Worker.SuccessfulStatusGracePeriodDuration == 0:
+		case result.Worker.ControllerRPCCallTimeoutDuration == 0 && result.Worker.SuccessfulControllerRPCGracePeriodDuration == 0:
 			// Nothing
-		case result.Worker.StatusCallTimeoutDuration != 0 && result.Worker.SuccessfulStatusGracePeriodDuration != 0:
-			if result.Worker.StatusCallTimeoutDuration > result.Worker.SuccessfulStatusGracePeriodDuration {
-				return nil, fmt.Errorf("Worker setting for status call timeout duration must be less than or equal to successful status grace period duration")
+		case result.Worker.ControllerRPCCallTimeoutDuration != 0 && result.Worker.SuccessfulControllerRPCGracePeriodDuration != 0:
+			if result.Worker.ControllerRPCCallTimeoutDuration > result.Worker.SuccessfulControllerRPCGracePeriodDuration {
+				return nil, fmt.Errorf("Worker setting for controller rpc timeout duration must be less than or equal to successful controller rpc grace period duration")
 			}
 		default:
-			return nil, fmt.Errorf("Worker settings for status call timeout duration and successful status grace period duration must either both be set or both be empty")
+			return nil, fmt.Errorf("Worker settings for controller rpc call timeout duration and successful controller rpc grace period duration must either both be set or both be empty")
 		}
 
 		if result.Worker.TagsRaw != nil {

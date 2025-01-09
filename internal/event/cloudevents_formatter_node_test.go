@@ -36,10 +36,15 @@ func Test_newCloudEventsFormatterFilter(t *testing.T) {
 	}{
 		{
 			// default case should have default deny for filtering ServerCoordinationService/Status for observation events
-			name:     "no-opts",
-			source:   testSource,
-			format:   cloudevents.FormatJSON,
-			wantDeny: []string{`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Status"`},
+			name:   "no-opts",
+			source: testSource,
+			format: cloudevents.FormatJSON,
+			wantDeny: []string{
+				`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Status"`,
+				`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/SessionInfo"`,
+				`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/RoutingInfo"`,
+				`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Statistics"`,
+			},
 		},
 		{
 			name:   "bad-allow-filter",

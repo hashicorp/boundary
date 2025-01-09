@@ -117,11 +117,11 @@ type Controller struct {
 	clusterListener *base.ServerListener
 
 	// Used for testing and tracking worker health
-	workerStatusUpdateTimes *sync.Map
+	workerRoutingInfoUpdateTimes *sync.Map
 
 	// Timing variables. These are atomics for SIGHUP support, and are int64
 	// because they are casted to time.Duration.
-	workerStatusGracePeriod     *atomic.Int64
+	workerRPCGracePeriod        *atomic.Int64
 	livenessTimeToStale         *atomic.Int64
 	getDownstreamWorkersTimeout *atomic.Int64
 
@@ -177,19 +177,19 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
 	ratelimit.InitializeMetrics(conf.PrometheusRegisterer)
 	c := &Controller{
-		conf:                        conf,
-		logger:                      conf.Logger.Named("controller"),
-		started:                     ua.NewBool(false),
-		tickerWg:                    new(sync.WaitGroup),
-		schedulerWg:                 new(sync.WaitGroup),
-		workerAuthCache:             new(sync.Map),
-		workerStatusUpdateTimes:     new(sync.Map),
-		enabledPlugins:              conf.Server.EnabledPlugins,
-		apiListeners:                make([]*base.ServerListener, 0),
-		downstreamConnManager:       cluster.NewDownstreamManager(),
-		workerStatusGracePeriod:     new(atomic.Int64),
-		livenessTimeToStale:         new(atomic.Int64),
-		getDownstreamWorkersTimeout: new(atomic.Int64),
+		conf:                         conf,
+		logger:                       conf.Logger.Named("controller"),
+		started:                      ua.NewBool(false),
+		tickerWg:                     new(sync.WaitGroup),
+		schedulerWg:                  new(sync.WaitGroup),
+		workerAuthCache:              new(sync.Map),
+		workerRoutingInfoUpdateTimes: new(sync.Map),
+		enabledPlugins:               conf.Server.EnabledPlugins,
+		apiListeners:                 make([]*base.ServerListener, 0),
+		downstreamConnManager:        cluster.NewDownstreamManager(),
+		workerRPCGracePeriod:         new(atomic.Int64),
+		livenessTimeToStale:          new(atomic.Int64),
+		getDownstreamWorkersTimeout:  new(atomic.Int64),
 	}
 
 	c.started.Store(false)
@@ -223,11 +223,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	switch conf.RawConfig.Controller.WorkerStatusGracePeriodDuration {
+	switch conf.RawConfig.Controller.WorkerRPCGracePeriodDuration {
 	case 0:
-		c.workerStatusGracePeriod.Store(int64(server.DefaultLiveness))
+		c.workerRPCGracePeriod.Store(int64(server.DefaultLiveness))
 	default:
-		c.workerStatusGracePeriod.Store(int64(conf.RawConfig.Controller.WorkerStatusGracePeriodDuration))
+		c.workerRPCGracePeriod.Store(int64(conf.RawConfig.Controller.WorkerRPCGracePeriodDuration))
 	}
 	switch conf.RawConfig.Controller.LivenessTimeToStaleDuration {
 	case 0:
@@ -623,7 +623,7 @@ func (c *Controller) registerJobs() error {
 	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
-	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerStatusGracePeriod); err != nil {
+	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerRPCGracePeriod); err != nil {
 		return err
 	}
 	var serverJobOpts []serversjob.Option
@@ -633,7 +633,7 @@ func (c *Controller) registerJobs() error {
 			serversjob.WithRotationFrequency(c.conf.TestOverrideWorkerAuthCaCertificateLifetime/2),
 		)
 	}
-	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.ControllerExtension, c.workerStatusGracePeriod, serverJobOpts...); err != nil {
+	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.ControllerExtension, c.workerRPCGracePeriod, serverJobOpts...); err != nil {
 		return err
 	}
 	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
@@ -675,12 +675,12 @@ func (c *Controller) Shutdown() error {
 	return nil
 }
 
-// WorkerStatusUpdateTimes returns the map, which specifically is held in _this_
+// WorkerRoutingInfoUpdateTimes returns the map, which specifically is held in _this_
 // controller, not the DB. It's used in tests to verify that a given controller
 // is receiving updates from an expected set of workers, to test out balancing
 // and auto reconnection.
-func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
-	return c.workerStatusUpdateTimes
+func (c *Controller) WorkerRoutingInfoUpdateTimes() *sync.Map {
+	return c.workerRoutingInfoUpdateTimes
 }
 
 // ReloadTimings reloads timing related parameters
@@ -694,11 +694,11 @@ func (c *Controller) ReloadTimings(newConfig *config.Config) error {
 		return errors.New(c.baseContext, errors.InvalidParameter, op, "nil config.Controller")
 	}
 
-	switch newConfig.Controller.WorkerStatusGracePeriodDuration {
+	switch newConfig.Controller.WorkerRPCGracePeriodDuration {
 	case 0:
-		c.workerStatusGracePeriod.Store(int64(server.DefaultLiveness))
+		c.workerRPCGracePeriod.Store(int64(server.DefaultLiveness))
 	default:
-		c.workerStatusGracePeriod.Store(int64(newConfig.Controller.WorkerStatusGracePeriodDuration))
+		c.workerRPCGracePeriod.Store(int64(newConfig.Controller.WorkerRPCGracePeriodDuration))
 	}
 	switch newConfig.Controller.LivenessTimeToStaleDuration {
 	case 0:

@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
@@ -51,26 +50,19 @@ var timeoutBurdenCases = []timeoutBurdenType{timeoutBurdenTypeDefault, timeoutBu
 
 func controllerGracePeriod(ty timeoutBurdenType) time.Duration {
 	if ty == timeoutBurdenTypeWorker {
-		return helper.DefaultWorkerStatusGracePeriod * 10
+		return helper.DefaultControllerRPCGracePeriod * 10
 	}
 
-	return helper.DefaultWorkerStatusGracePeriod
-}
-
-func workerGracePeriod(ty timeoutBurdenType) time.Duration {
-	return helper.DefaultWorkerStatusGracePeriod
+	return helper.DefaultControllerRPCGracePeriod
 }
 
 // TestSessionCleanup is the main test for session cleanup, and
 // dispatches to the individual subtests.
 func TestSessionCleanup(t *testing.T) {
-	for _, burdenCase := range timeoutBurdenCases {
-		burdenCase := burdenCase
-		t.Run(string(burdenCase), func(t *testing.T) {
-			t.Run("single_controller", testWorkerSessionCleanupSingle(burdenCase))
-			t.Run("multi_controller", testWorkerSessionCleanupMulti(burdenCase))
-		})
-	}
+	t.Run("default/single_controller", testWorkerSessionCleanupSingle("default"))
+	t.Run("default/multi_controller", testWorkerSessionCleanupMulti("default"))
+	t.Run("worker/single_controller", testWorkerSessionCleanupSingle("worker"))
+	t.Run("worker/multi_controller", testWorkerSessionCleanupMulti("worker"))
 }
 
 func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testing.T) {
@@ -90,11 +82,13 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		pl, err := net.Listen("tcp", "[::1]:0")
 		require.NoError(err)
 		c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-			Config:                          conf,
-			InitialResourcesSuffix:          "1234567890",
-			Logger:                          logger.Named("c1"),
-			PublicClusterAddr:               pl.Addr().String(),
-			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
+			Config:                 conf,
+			InitialResourcesSuffix: "1234567890",
+			Logger:                 logger.Named("c1"),
+			PublicClusterAddr:      pl.Addr().String(),
+			WorkerRPCGracePeriod:   controllerGracePeriod(burdenCase),
+			// Run the scheduler more often to speed up cleanup of orphaned connections
+			SchedulerRunJobInterval: time.Second,
 		})
 
 		helper.ExpectWorkers(t, c1)
@@ -113,10 +107,11 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		require.NotEmpty(t, proxy.ListenerAddr())
 
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-			WorkerAuthKms:                       c1.Config().WorkerAuthKms,
-			InitialUpstreams:                    []string{proxy.ListenerAddr()},
-			Logger:                              logger.Named("w1"),
-			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
+			WorkerAuthKms:    c1.Config().WorkerAuthKms,
+			InitialUpstreams: []string{proxy.ListenerAddr()},
+			Logger:           logger.Named("w1"),
+			SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
+			WorkerRPCInterval:                          time.Second,
 		})
 
 		helper.ExpectWorkers(t, c1, w1)
@@ -147,11 +142,15 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		sConn := sess.Connect(ctx, t)
 
 		// Run initial send/receive test, make sure things are working
-		event.WriteSysEvent(ctx, op, "running initial send/recv test")
+		t.Log("running initial send/recv test")
 		sConn.TestSendRecvAll(t)
 
+		// Wait for a session info to be sent to the server, so the controller has
+		// at least one record of the connection.
+		w1.Worker().TestWaitForNextSuccessfulSessionInfoUpdate(t)
+
 		// Kill the link
-		event.WriteSysEvent(ctx, op, "pausing controller/worker link")
+		t.Log("pausing controller/worker link")
 		proxy.Pause()
 
 		// Wait for failure connection state (depends on burden case)
@@ -171,15 +170,9 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		sConn.TestSendRecvFail(t)
 
 		// Resume the connection, and reconnect.
-		event.WriteSysEvent(ctx, op, "resuming controller/worker link")
+		t.Log("resuming controller/worker link")
 		proxy.Resume()
-		require.Eventually(func() bool {
-			err := w1.Worker().WaitForNextSuccessfulStatusUpdate()
-			if err != nil {
-				return false
-			}
-			return true
-		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
+		helper.ExpectWorkers(t, c1, w1)
 
 		// Do something post-reconnect depending on burden case. Note in
 		// the default case, both worker and controller should be
@@ -195,7 +188,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		}
 
 		// Proceed with new connection test
-		event.WriteSysEvent(ctx, op, "connecting to new session after resuming controller/worker link")
+		t.Log("connecting to new session after resuming controller/worker link")
 		sess = helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 		sConn = sess.Connect(ctx, t)
 		sConn.TestSendRecvAll(t)
@@ -222,11 +215,11 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		pl1, err := net.Listen("tcp", "[::1]:0")
 		require.NoError(err)
 		c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-			Config:                          conf1,
-			InitialResourcesSuffix:          "1234567890",
-			Logger:                          logger.Named("c1"),
-			PublicClusterAddr:               pl1.Addr().String(),
-			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
+			Config:                 conf1,
+			InitialResourcesSuffix: "1234567890",
+			Logger:                 logger.Named("c1"),
+			PublicClusterAddr:      pl1.Addr().String(),
+			WorkerRPCGracePeriod:   controllerGracePeriod(burdenCase),
 		})
 
 		// ******************
@@ -235,9 +228,9 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		pl2, err := net.Listen("tcp", "[::1]:0")
 		require.NoError(err)
 		c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
-			Logger:                          logger.Named("c2"),
-			PublicClusterAddr:               pl2.Addr().String(),
-			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
+			Logger:               logger.Named("c2"),
+			PublicClusterAddr:    pl2.Addr().String(),
+			WorkerRPCGracePeriod: controllerGracePeriod(burdenCase),
 		})
 
 		wg := new(sync.WaitGroup)
@@ -286,11 +279,13 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		// ** Worker **
 		// ************
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-			WorkerAuthKms:                       c1.Config().WorkerAuthKms,
-			InitialUpstreams:                    []string{p1.ListenerAddr(), p2.ListenerAddr()},
-			Logger:                              logger.Named("w1"),
-			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
+			WorkerAuthKms:    c1.Config().WorkerAuthKms,
+			InitialUpstreams: []string{p1.ListenerAddr(), p2.ListenerAddr()},
+			Logger:           logger.Named("w1"),
+			SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
+			WorkerRPCInterval:                          time.Second,
 		})
+
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
@@ -328,39 +323,30 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		sConn := sess.Connect(ctx, t)
 
 		// Run initial send/receive test, make sure things are working
-		event.WriteSysEvent(ctx, op, "running initial send/recv test")
+		t.Log("running initial send/recv test")
 		sConn.TestSendRecvAll(t)
+
+		// Wait for a session info to be sent to the server, so the controller has
+		// at least one record of the connection.
+		w1.Worker().TestWaitForNextSuccessfulSessionInfoUpdate(t)
 
 		// Kill connection to first controller, and run test again, should
 		// pass, deferring to other controller. Wait for the next
 		// successful status report to ensure this.
-		event.WriteSysEvent(ctx, op, "pausing link to controller #1")
+		t.Log("pausing link to controller #1")
 		p1.Pause()
-		require.Eventually(func() bool {
-			err := w1.Worker().WaitForNextSuccessfulStatusUpdate()
-			if err != nil {
-				return false
-			}
-			return true
-		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
+		w1.Worker().TestWaitForNextSuccessfulSessionInfoUpdate(t)
 		sConn.TestSendRecvAll(t)
 
 		// Resume first controller, pause second. This one should work too.
-		event.WriteSysEvent(ctx, op, "pausing link to controller #2, resuming #1")
+		t.Log("pausing link to controller #2, resuming #1")
 		p1.Resume()
 		p2.Pause()
-		require.Eventually(func() bool {
-			err := w1.Worker().WaitForNextSuccessfulStatusUpdate()
-			if err != nil {
-				return false
-			}
-			return true
-		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
-		sConn.TestSendRecvAll(t)
+		w1.Worker().TestWaitForNextSuccessfulSessionInfoUpdate(t)
 
 		// Kill the first controller connection again. This one should fail
 		// due to lack of any connection.
-		event.WriteSysEvent(ctx, op, "pausing link to controller #1 again, both connections should be offline")
+		t.Log("pausing link to controller #1 again, both connections should be offline")
 		p1.Pause()
 
 		// Wait for failure connection state (depends on burden case)
@@ -382,16 +368,10 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		sConn.TestSendRecvFail(t)
 
 		// Finally resume both, try again. Should behave as per normal.
-		event.WriteSysEvent(ctx, op, "resuming connections to both controllers")
+		t.Log("resuming connections to both controllers")
 		p1.Resume()
 		p2.Resume()
-		require.Eventually(func() bool {
-			err := w1.Worker().WaitForNextSuccessfulStatusUpdate()
-			if err != nil {
-				return false
-			}
-			return true
-		}, 2*helper.DefaultWorkerStatusGracePeriod, 5*time.Second)
+		w1.Worker().TestWaitForNextSuccessfulSessionInfoUpdate(t)
 
 		// Do something post-reconnect depending on burden case. Note in
 		// the default case, both worker and controller should be
@@ -407,7 +387,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		}
 
 		// Proceed with new connection test
-		event.WriteSysEvent(ctx, op, "connecting to new session after resuming controller/worker link")
+		t.Log("connecting to new session after resuming controller/worker link")
 		sess = helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 		sConn = sess.Connect(ctx, t)
 		sConn.TestSendRecvAll(t)

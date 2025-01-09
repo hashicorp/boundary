@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -462,7 +463,7 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 		WorkerAuthKms:    tc.Config().WorkerAuthKms,
 		Name:             "worker",
 	})
-	require.NoError(w.Worker().WaitForNextSuccessfulStatusUpdate())
+	helper.ExpectWorkers(t, tc, w)
 
 	// Authorize session, requires decrypting json credential
 	_, err = tgClient.AuthorizeSession(ctx, targ.Item.Id)

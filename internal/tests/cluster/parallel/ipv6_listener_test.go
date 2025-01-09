@@ -7,6 +7,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
@@ -55,10 +56,11 @@ func TestIPv6Listener(t *testing.T) {
 	require.NoError(err)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           wconf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: append(c1.ClusterAddrs(), c2.ClusterAddrs()...),
-		Logger:           logger.Named("w1"),
+		Config:            wconf,
+		WorkerAuthKms:     c1.Config().WorkerAuthKms,
+		InitialUpstreams:  append(c1.ClusterAddrs(), c2.ClusterAddrs()...),
+		Logger:            logger.Named("w1"),
+		WorkerRPCInterval: time.Second,
 	})
 
 	wg.Add(2)

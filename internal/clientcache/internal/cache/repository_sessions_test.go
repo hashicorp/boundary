@@ -604,6 +604,7 @@ func TestRepository_QuerySessionsLimiting(t *testing.T) {
 }
 
 func TestDefaultSessionRetrievalFunc(t *testing.T) {
+	// This prevents us from running this test in parallel
 	oldDur := globals.RefreshReadLookbackDuration
 	globals.RefreshReadLookbackDuration = 0
 	t.Cleanup(func() {
@@ -614,28 +615,21 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	tc.Client().SetToken(tc.Token().Token)
 	tarClient := targets.NewClient(tc.Client())
 	_ = worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Name:             "test",
-		InitialUpstreams: tc.ClusterAddrs(),
-		WorkerAuthKms:    tc.Config().WorkerAuthKms,
+		Name:              "test",
+		InitialUpstreams:  tc.ClusterAddrs(),
+		WorkerAuthKms:     tc.Config().WorkerAuthKms,
+		WorkerRPCInterval: time.Second,
 	})
 
 	tar1, err := tarClient.Create(tc.Context(), "tcp", "p_1234567890", targets.WithName("tar1"), targets.WithTcpTargetDefaultPort(1), targets.WithAddress("address"))
 	require.NoError(t, err)
 	require.NotNil(t, tar1)
 
-	require.NoError(t, tc.WaitForNextWorkerStatusUpdate("test"))
-	ctx, cancel := context.WithTimeout(tc.Context(), 10*time.Second)
-	defer cancel()
-	for {
-		_, err = tarClient.AuthorizeSession(ctx, tar1.Item.Id)
-		if err == nil {
-			break
-		}
-		if err != nil && ctx.Err() != nil {
-			require.FailNow(t, "timed out waiting to authorize session without an error. Last error: %s", err.Error())
-			break
-		}
-	}
+	require.NoError(t, tc.WaitForNextWorkerRoutingInfoUpdate("test"))
+	require.Eventually(t, func() bool {
+		_, err = tarClient.AuthorizeSession(tc.Context(), tar1.Item.Id)
+		return err == nil
+	}, 30*time.Second, time.Second, "timed out waiting to authorize session without an error.")
 
 	got, refTok, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "", nil)
 	assert.NoError(t, err)

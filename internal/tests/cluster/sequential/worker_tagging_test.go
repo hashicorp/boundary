@@ -5,6 +5,7 @@ package sequential
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -57,10 +58,11 @@ func TestWorkerTagging(t *testing.T) {
 		"foo":    {"bar"},
 	}
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           conf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
-		Logger:           logger.Named("w1"),
+		Config:            conf,
+		WorkerAuthKms:     c1.Config().WorkerAuthKms,
+		InitialUpstreams:  c1.ClusterAddrs(),
+		Logger:            logger.Named("w1"),
+		WorkerRPCInterval: time.Second,
 	})
 	w1Addr := w1.ProxyAddrs()[0]
 
@@ -73,10 +75,11 @@ func TestWorkerTagging(t *testing.T) {
 		"az":     {"one", "two", "three"},
 	}
 	w2 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           conf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
-		Logger:           logger.Named("w2"),
+		Config:            conf,
+		WorkerAuthKms:     c1.Config().WorkerAuthKms,
+		InitialUpstreams:  c1.ClusterAddrs(),
+		Logger:            logger.Named("w2"),
+		WorkerRPCInterval: time.Second,
 	})
 	w2Addr := w2.ProxyAddrs()[0]
 
@@ -89,10 +92,11 @@ func TestWorkerTagging(t *testing.T) {
 		"az":     {"one", "three"},
 	}
 	w3 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           conf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
-		Logger:           logger.Named("w3"),
+		Config:            conf,
+		WorkerAuthKms:     c1.Config().WorkerAuthKms,
+		InitialUpstreams:  c1.ClusterAddrs(),
+		Logger:            logger.Named("w3"),
+		WorkerRPCInterval: time.Second,
 	})
 	w3Addr := w3.ProxyAddrs()[0]
 

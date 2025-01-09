@@ -198,14 +198,14 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 		}
 
-		if w.LastStatusSuccess() == nil || w.LastStatusSuccess().WorkerId == "" {
+		if w.LastRoutingInfoSuccess() == nil || w.LastRoutingInfoSuccess().WorkerId == "" {
 			event.WriteError(ctx, op, stderrors.New("worker id is empty"))
 			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
 		}
-		workerId := w.LastStatusSuccess().WorkerId
+		workerId := w.LastRoutingInfoSuccess().WorkerId
 
 		var acResp *pbs.AuthorizeConnectionResponse
 		var connsLeft int32

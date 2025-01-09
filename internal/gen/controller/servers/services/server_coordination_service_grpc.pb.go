@@ -24,18 +24,36 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	ServerCoordinationService_Status_FullMethodName          = "/controller.servers.services.v1.ServerCoordinationService/Status"
 	ServerCoordinationService_ListHcpbWorkers_FullMethodName = "/controller.servers.services.v1.ServerCoordinationService/ListHcpbWorkers"
+	ServerCoordinationService_Statistics_FullMethodName      = "/controller.servers.services.v1.ServerCoordinationService/Statistics"
+	ServerCoordinationService_RoutingInfo_FullMethodName     = "/controller.servers.services.v1.ServerCoordinationService/RoutingInfo"
+	ServerCoordinationService_SessionInfo_FullMethodName     = "/controller.servers.services.v1.ServerCoordinationService/SessionInfo"
 )
 
 // ServerCoordinationServiceClient is the client API for ServerCoordinationService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ServerCoordinationServiceClient interface {
+	// Deprecated: Do not use.
 	// Status gets worker status requests which include the ongoing jobs the worker is handling and
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
+	// This RPC is deprecated and is safe to remove after the release of Boundary v0.20.0.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	// Returns the addresses of HCP Boundary workers, if any
 	ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error)
+	// Statistics is used by the worker to report non-essential statistics about its sessions and connections.
+	Statistics(ctx context.Context, in *StatisticsRequest, opts ...grpc.CallOption) (*StatisticsResponse, error)
+	// RoutingInfo is used by the worker to inform the controller of information
+	// required by the controller to make session routing decisions and any startup information.
+	// The controller may inform the worker of any downstream workers that should be disconnected.
+	// If the worker fails to successfully report its routing info to the controller,
+	// it will try again later.
+	RoutingInfo(ctx context.Context, in *RoutingInfoRequest, opts ...grpc.CallOption) (*RoutingInfoResponse, error)
+	// SessionInfo is used by the worker to inform the controller of all the sessions
+	// it is managing. The controller may inform the worker if any sessions need to be changed.
+	// If the worker repeatedly fails to successfully report its session info to the controller,
+	// it will tear down any running sessions.
+	SessionInfo(ctx context.Context, in *SessionInfoRequest, opts ...grpc.CallOption) (*SessionInfoResponse, error)
 }
 
 type serverCoordinationServiceClient struct {
@@ -46,6 +64,7 @@ func NewServerCoordinationServiceClient(cc grpc.ClientConnInterface) ServerCoord
 	return &serverCoordinationServiceClient{cc}
 }
 
+// Deprecated: Do not use.
 func (c *serverCoordinationServiceClient) Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, ServerCoordinationService_Status_FullMethodName, in, out, opts...)
@@ -64,16 +83,58 @@ func (c *serverCoordinationServiceClient) ListHcpbWorkers(ctx context.Context, i
 	return out, nil
 }
 
+func (c *serverCoordinationServiceClient) Statistics(ctx context.Context, in *StatisticsRequest, opts ...grpc.CallOption) (*StatisticsResponse, error) {
+	out := new(StatisticsResponse)
+	err := c.cc.Invoke(ctx, ServerCoordinationService_Statistics_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *serverCoordinationServiceClient) RoutingInfo(ctx context.Context, in *RoutingInfoRequest, opts ...grpc.CallOption) (*RoutingInfoResponse, error) {
+	out := new(RoutingInfoResponse)
+	err := c.cc.Invoke(ctx, ServerCoordinationService_RoutingInfo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *serverCoordinationServiceClient) SessionInfo(ctx context.Context, in *SessionInfoRequest, opts ...grpc.CallOption) (*SessionInfoResponse, error) {
+	out := new(SessionInfoResponse)
+	err := c.cc.Invoke(ctx, ServerCoordinationService_SessionInfo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServerCoordinationServiceServer is the server API for ServerCoordinationService service.
 // All implementations must embed UnimplementedServerCoordinationServiceServer
 // for forward compatibility
 type ServerCoordinationServiceServer interface {
+	// Deprecated: Do not use.
 	// Status gets worker status requests which include the ongoing jobs the worker is handling and
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
+	// This RPC is deprecated and is safe to remove after the release of Boundary v0.20.0.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
 	// Returns the addresses of HCP Boundary workers, if any
 	ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error)
+	// Statistics is used by the worker to report non-essential statistics about its sessions and connections.
+	Statistics(context.Context, *StatisticsRequest) (*StatisticsResponse, error)
+	// RoutingInfo is used by the worker to inform the controller of information
+	// required by the controller to make session routing decisions and any startup information.
+	// The controller may inform the worker of any downstream workers that should be disconnected.
+	// If the worker fails to successfully report its routing info to the controller,
+	// it will try again later.
+	RoutingInfo(context.Context, *RoutingInfoRequest) (*RoutingInfoResponse, error)
+	// SessionInfo is used by the worker to inform the controller of all the sessions
+	// it is managing. The controller may inform the worker if any sessions need to be changed.
+	// If the worker repeatedly fails to successfully report its session info to the controller,
+	// it will tear down any running sessions.
+	SessionInfo(context.Context, *SessionInfoRequest) (*SessionInfoResponse, error)
 	mustEmbedUnimplementedServerCoordinationServiceServer()
 }
 
@@ -86,6 +147,15 @@ func (UnimplementedServerCoordinationServiceServer) Status(context.Context, *Sta
 }
 func (UnimplementedServerCoordinationServiceServer) ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHcpbWorkers not implemented")
+}
+func (UnimplementedServerCoordinationServiceServer) Statistics(context.Context, *StatisticsRequest) (*StatisticsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Statistics not implemented")
+}
+func (UnimplementedServerCoordinationServiceServer) RoutingInfo(context.Context, *RoutingInfoRequest) (*RoutingInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RoutingInfo not implemented")
+}
+func (UnimplementedServerCoordinationServiceServer) SessionInfo(context.Context, *SessionInfoRequest) (*SessionInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SessionInfo not implemented")
 }
 func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
 }
@@ -137,6 +207,60 @@ func _ServerCoordinationService_ListHcpbWorkers_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ServerCoordinationService_Statistics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatisticsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerCoordinationServiceServer).Statistics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ServerCoordinationService_Statistics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerCoordinationServiceServer).Statistics(ctx, req.(*StatisticsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ServerCoordinationService_RoutingInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RoutingInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerCoordinationServiceServer).RoutingInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ServerCoordinationService_RoutingInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerCoordinationServiceServer).RoutingInfo(ctx, req.(*RoutingInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ServerCoordinationService_SessionInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SessionInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerCoordinationServiceServer).SessionInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ServerCoordinationService_SessionInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerCoordinationServiceServer).SessionInfo(ctx, req.(*SessionInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ServerCoordinationService_ServiceDesc is the grpc.ServiceDesc for ServerCoordinationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -151,6 +275,18 @@ var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListHcpbWorkers",
 			Handler:    _ServerCoordinationService_ListHcpbWorkers_Handler,
+		},
+		{
+			MethodName: "Statistics",
+			Handler:    _ServerCoordinationService_Statistics_Handler,
+		},
+		{
+			MethodName: "RoutingInfo",
+			Handler:    _ServerCoordinationService_RoutingInfo_Handler,
+		},
+		{
+			MethodName: "SessionInfo",
+			Handler:    _ServerCoordinationService_SessionInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

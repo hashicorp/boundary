@@ -27,22 +27,14 @@ import (
 )
 
 const (
-	DefaultWorkerStatusGracePeriod           = time.Second * 15
-	DefaultSuccessfulStatusGracePeriod       = time.Second * 15
+	DefaultControllerRPCGracePeriod          = time.Second * 15
 	expectConnectionStateOnControllerTimeout = time.Minute * 2
-	expectConnectionStateOnWorkerTimeout     = DefaultWorkerStatusGracePeriod * 3
+	expectConnectionStateOnWorkerTimeout     = DefaultControllerRPCGracePeriod * 3
 
 	// This is the interval that we check states on in the worker. It
 	// needs to be particularly granular to ensure that we allow for
 	// adequate time to catch any edge cases where the connection state
 	// disappears from the worker before we can update the state.
-	//
-	// As of this writing, the (hardcoded) status request interval on
-	// the worker is 2 seconds, and a session is removed from the state
-	// when it has no connections left on the *next* pass. A one second
-	// interval would only mean two chances to check with a high
-	// possibility of skew; while it seems okay I'm still not 100%
-	// comfortable with this little resolution.
 	expectConnectionStateOnWorkerInterval = time.Millisecond * 100
 )
 
@@ -465,22 +457,27 @@ func NewTestTcpServer(t *testing.T) *TestTcpServer {
 
 // ExpectWorkers is a blocking call, where the method validates that the expected workers
 // can be found in the controllers status update. If the provided list of workers is empty,
-// this method will validate that the controller worker status is empty.
+// this method will validate that the controller worker routing info is not called.
 func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worker.TestWorker) {
+	t.Helper()
 	// validate the controller has no reported workers
 	if len(workers) == 0 {
-		require.Eventually(t, func() bool {
+		assert.Eventually(t, func() bool {
 			workers := []string{}
-			c.Controller().WorkerStatusUpdateTimes().Range(func(workerId, lastStatusTime any) bool {
-				require.NotNil(t, workerId)
-				require.NotNil(t, lastStatusTime)
-				if time.Since(lastStatusTime.(time.Time)) < DefaultSuccessfulStatusGracePeriod {
+			c.Controller().WorkerRoutingInfoUpdateTimes().Range(func(workerId, lastRoutingInfo any) bool {
+				if assert.NotNil(t, workerId) {
+					return false
+				}
+				if assert.NotNil(t, lastRoutingInfo) {
+					return false
+				}
+				if time.Since(lastRoutingInfo.(time.Time)) < DefaultControllerRPCGracePeriod {
 					workers = append(workers, workerId.(string))
 				}
 				return true
 			})
 			return len(workers) == 0
-		}, 2*DefaultSuccessfulStatusGracePeriod, 250*time.Millisecond)
+		}, 2*DefaultControllerRPCGracePeriod, 250*time.Millisecond)
 		return
 	}
 
@@ -490,11 +487,11 @@ func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worke
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, w.Worker().WaitForNextSuccessfulStatusUpdate())
-			require.Eventually(t, func() bool {
-				_, ok := c.Controller().WorkerStatusUpdateTimes().Load(w.Name())
+			assert.NoError(t, w.Worker().WaitForNextSuccessfulRoutingInfoUpdate())
+			assert.Eventually(t, func() bool {
+				_, ok := c.Controller().WorkerRoutingInfoUpdateTimes().Load(w.Name())
 				return ok
-			}, 30*time.Second, 100*time.Millisecond)
+			}, 30*time.Second, time.Second)
 		}()
 	}
 	wg.Wait()

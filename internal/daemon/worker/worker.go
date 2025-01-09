@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,7 +41,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
@@ -85,10 +85,10 @@ type graph interface {
 	RootId() string
 }
 
-// recorderManager updates the status updates with relevant recording
+// recorderManager updates the session info updates with relevant recording
 // information
 type recorderManager interface {
-	// ReauthorizeAllExcept should be called with the result of the status update
+	// ReauthorizeAllExcept should be called with the result of the session info update
 	// to reauthorize all recorders for the relevant sessions except the ones provided
 	ReauthorizeAllExcept(ctx context.Context, closedSessions []string) error
 	// SessionsManaged gets the list of session ids managed by this recorderManager
@@ -126,11 +126,17 @@ var hostServiceServerFactory func(
 const (
 	authenticationStatusNeverAuthenticated uint32 = iota
 	authenticationStatusFirstAuthentication
-	authenticationStatusFirstStatusRpcSuccessful
+	authenticationStatusFirstRoutingInfoRpcSuccessful
 )
 
 type Worker struct {
-	conf   *Config
+	conf *Config
+	// receives address updates and contains the grpc resolver.
+	addressReceivers []addressReceiver
+	// confAddressReceiversLock is used to protect the conf field
+	// and the addressReceivers field.
+	confAddressReceiversLock sync.Mutex
+
 	logger hclog.Logger
 
 	baseContext context.Context
@@ -145,17 +151,16 @@ type Worker struct {
 	// (mostly in tests) - which isn't thread safe. This is exported for tests.
 	GrpcClientConn atomic.Pointer[grpc.ClientConn]
 
-	// receives address updates and contains the grpc resolver.
-	addressReceivers []addressReceiver
-
 	sessionManager session.Manager
 
 	recorderManager recorderManager
 
-	everAuthenticated *ua.Uint32
-	lastStatusSuccess *atomic.Value
-	workerStartTime   time.Time
-	operationalState  *atomic.Value
+	everAuthenticated      *ua.Uint32
+	lastSessionInfoSuccess *atomic.Value
+	lastRoutingInfoSuccess *atomic.Value
+	lastStatisticsSuccess  *atomic.Value
+	workerStartTime        time.Time
+	operationalState       *atomic.Value
 	// localStorageState is the current state of the local storage.
 	// The local storage state is updated based on the local storage events.
 	localStorageState *atomic.Value
@@ -172,11 +177,9 @@ type Worker struct {
 	// Used to generate a random nonce for Controller connections
 	nonceFn randFn
 
-	// We store the current set in an atomic value so that we can add
-	// reload-on-sighup behavior later
 	tags *atomic.Value
-	// This stores whether or not to send updated tags on the next status
-	// request. It can be set via startup in New below, or (eventually) via
+	// This stores whether or not to send updated tags on the next routing info
+	// request. It can be set via startup in New below, or via
 	// SIGHUP.
 	updateTags *ua.Bool
 
@@ -195,9 +198,25 @@ type Worker struct {
 
 	// Timing variables. These are atomics for SIGHUP support, and are int64
 	// because they are casted to time.Duration.
-	successfulStatusGracePeriod         *atomic.Int64
-	statusCallTimeoutDuration           *atomic.Int64
+	successfulRoutingInfoGracePeriod *atomic.Int64
+	successfulSessionInfoGracePeriod *atomic.Int64
+	// Note: Statistics does not require a grace period,
+	// because we do not perform any special action based
+	// on whether it is successful or not, unlike for SessionInfo
+	// and RoutingInfo.
+
+	statisticsCallTimeoutDuration       *atomic.Int64
+	sessionInfoCallTimeoutDuration      *atomic.Int64
+	routingInfoCallTimeoutDuration      *atomic.Int64
 	getDownstreamWorkersTimeoutDuration *atomic.Int64
+
+	// The time intervals at which the worker will invoke the controller RPCs.
+	// Defaults to common.SessionInfoInterval, common.RoutingInfoInterval
+	// and common.StatisticsInterval and is only overridden by the
+	// TestWorkerRPCInterval test config.
+	sessionInfoInterval time.Duration
+	routingInfoInterval time.Duration
+	statisticsInterval  time.Duration
 
 	// AuthRotationNextRotation is useful in tests to understand how long to
 	// sleep
@@ -207,8 +226,6 @@ type Worker struct {
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
 	TestOverrideAuthRotationPeriod time.Duration
-
-	statusLock sync.Mutex
 
 	downstreamConnManager *cluster.DownstreamManager
 
@@ -230,7 +247,9 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		logger:                 conf.Logger.Named("worker"),
 		started:                ua.NewBool(false),
 		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
-		lastStatusSuccess:      new(atomic.Value),
+		lastSessionInfoSuccess: new(atomic.Value),
+		lastRoutingInfoSuccess: new(atomic.Value),
+		lastStatisticsSuccess:  new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
 		// controllerUpstreamMsgConn:   new(atomic.Value),
 		tags:                                new(atomic.Value),
@@ -240,8 +259,11 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		operationalState:                    new(atomic.Value),
 		downstreamConnManager:               cluster.NewDownstreamManager(),
 		localStorageState:                   new(atomic.Value),
-		successfulStatusGracePeriod:         new(atomic.Int64),
-		statusCallTimeoutDuration:           new(atomic.Int64),
+		successfulRoutingInfoGracePeriod:    new(atomic.Int64),
+		successfulSessionInfoGracePeriod:    new(atomic.Int64),
+		statisticsCallTimeoutDuration:       new(atomic.Int64),
+		sessionInfoCallTimeoutDuration:      new(atomic.Int64),
+		routingInfoCallTimeoutDuration:      new(atomic.Int64),
 		getDownstreamWorkersTimeoutDuration: new(atomic.Int64),
 		upstreamConnectionState:             new(atomic.Value),
 		downstreamWorkers:                   new(atomic.Pointer[graphContainer]),
@@ -249,7 +271,9 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 
 	w.operationalState.Store(server.UnknownOperationalState)
 	w.localStorageState.Store(server.UnknownLocalStorageState)
-	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
+	w.lastSessionInfoSuccess.Store((*lastSessionInfo)(nil))
+	w.lastRoutingInfoSuccess.Store((*LastRoutingInfo)(nil))
+	w.lastStatisticsSuccess.Store((*lastStatistics)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.addressReceivers = []addressReceiver{&grpcResolverReceiver{controllerResolver}}
@@ -365,17 +389,23 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 				err)
 		}
 	}
-	switch conf.RawConfig.Worker.SuccessfulStatusGracePeriodDuration {
+	switch conf.RawConfig.Worker.SuccessfulControllerRPCGracePeriodDuration {
 	case 0:
-		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
+		w.successfulRoutingInfoGracePeriod.Store(int64(server.DefaultLiveness))
+		w.successfulSessionInfoGracePeriod.Store(int64(server.DefaultLiveness))
 	default:
-		w.successfulStatusGracePeriod.Store(int64(conf.RawConfig.Worker.SuccessfulStatusGracePeriodDuration))
+		w.successfulRoutingInfoGracePeriod.Store(int64(conf.RawConfig.Worker.SuccessfulControllerRPCGracePeriodDuration))
+		w.successfulSessionInfoGracePeriod.Store(int64(conf.RawConfig.Worker.SuccessfulControllerRPCGracePeriodDuration))
 	}
-	switch conf.RawConfig.Worker.StatusCallTimeoutDuration {
+	switch conf.RawConfig.Worker.ControllerRPCCallTimeoutDuration {
 	case 0:
-		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
+		w.routingInfoCallTimeoutDuration.Store(int64(common.DefaultRoutingInfoTimeout))
+		w.statisticsCallTimeoutDuration.Store(int64(common.DefaultStatisticsTimeout))
+		w.sessionInfoCallTimeoutDuration.Store(int64(common.DefaultSessionInfoTimeout))
 	default:
-		w.statusCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+		w.routingInfoCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.ControllerRPCCallTimeoutDuration))
+		w.statisticsCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.ControllerRPCCallTimeoutDuration))
+		w.sessionInfoCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.ControllerRPCCallTimeoutDuration))
 	}
 	switch conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration {
 	case 0:
@@ -384,7 +414,18 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		w.getDownstreamWorkersTimeoutDuration.Store(int64(conf.RawConfig.Worker.GetDownstreamWorkersTimeoutDuration))
 	}
 	// FIXME: This is really ugly, but works.
-	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
+	session.CloseCallTimeout.Store(w.successfulSessionInfoGracePeriod.Load())
+
+	w.sessionInfoInterval = common.SessionInfoInterval
+	w.routingInfoInterval = common.RoutingInfoInterval
+	w.statisticsInterval = common.StatisticsInterval
+	// Override the routing info interval if it is set in the config.
+	// This should only be used by tests.
+	if conf.RawConfig.Worker.TestWorkerRPCInterval > 0 {
+		w.sessionInfoInterval = conf.RawConfig.Worker.TestWorkerRPCInterval
+		w.routingInfoInterval = conf.RawConfig.Worker.TestWorkerRPCInterval
+		w.statisticsInterval = conf.RawConfig.Worker.TestWorkerRPCInterval
+	}
 
 	if reverseConnReceiverFactory != nil {
 		var err error
@@ -443,10 +484,36 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 
 	w.parseAndStoreTags(newConf.Worker.Tags)
 
-	if !strutil.EquivalentSlices(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
-		w.statusLock.Lock()
-		defer w.statusLock.Unlock()
+	switch newConf.Worker.SuccessfulControllerRPCGracePeriod {
+	case 0:
+		w.successfulRoutingInfoGracePeriod.Store(int64(server.DefaultLiveness))
+		w.successfulSessionInfoGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		w.successfulRoutingInfoGracePeriod.Store(int64(newConf.Worker.SuccessfulControllerRPCGracePeriodDuration))
+		w.successfulSessionInfoGracePeriod.Store(int64(newConf.Worker.SuccessfulControllerRPCGracePeriodDuration))
+	}
+	switch newConf.Worker.ControllerRPCCallTimeoutDuration {
+	case 0:
+		w.routingInfoCallTimeoutDuration.Store(int64(common.DefaultRoutingInfoTimeout))
+		w.statisticsCallTimeoutDuration.Store(int64(common.DefaultStatisticsTimeout))
+		w.sessionInfoCallTimeoutDuration.Store(int64(common.DefaultSessionInfoTimeout))
+	default:
+		w.routingInfoCallTimeoutDuration.Store(int64(newConf.Worker.ControllerRPCCallTimeoutDuration))
+		w.statisticsCallTimeoutDuration.Store(int64(newConf.Worker.ControllerRPCCallTimeoutDuration))
+		w.sessionInfoCallTimeoutDuration.Store(int64(newConf.Worker.ControllerRPCCallTimeoutDuration))
+	}
+	switch newConf.Worker.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		w.getDownstreamWorkersTimeoutDuration.Store(int64(server.DefaultLiveness))
+	default:
+		w.getDownstreamWorkersTimeoutDuration.Store(int64(newConf.Worker.GetDownstreamWorkersTimeoutDuration))
+	}
+	// See comment about this in worker.go
+	session.CloseCallTimeout.Store(w.successfulRoutingInfoGracePeriod.Load())
 
+	w.confAddressReceiversLock.Lock()
+	defer w.confAddressReceiversLock.Unlock()
+	if !slices.Equal(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
 		upstreamsMessage := fmt.Sprintf(
 			"Initial Upstreams has changed; old upstreams were: %s, new upstreams are: %s",
 			w.conf.RawConfig.Worker.InitialUpstreams,
@@ -461,27 +528,6 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 			ar.InitialAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
 		}
 	}
-
-	switch newConf.Worker.SuccessfulStatusGracePeriodDuration {
-	case 0:
-		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
-	default:
-		w.successfulStatusGracePeriod.Store(int64(newConf.Worker.SuccessfulStatusGracePeriodDuration))
-	}
-	switch newConf.Worker.StatusCallTimeoutDuration {
-	case 0:
-		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
-	default:
-		w.statusCallTimeoutDuration.Store(int64(newConf.Worker.StatusCallTimeoutDuration))
-	}
-	switch newConf.Worker.GetDownstreamWorkersTimeoutDuration {
-	case 0:
-		w.getDownstreamWorkersTimeoutDuration.Store(int64(server.DefaultLiveness))
-	default:
-		w.getDownstreamWorkersTimeoutDuration.Store(int64(newConf.Worker.GetDownstreamWorkersTimeoutDuration))
-	}
-	// See comment about this in worker.go
-	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
 }
 
 func (w *Worker) Start() error {
@@ -612,9 +658,6 @@ func (w *Worker) Start() error {
 			return fmt.Errorf("error marshaling worker auth fetch credentials request: %w", err)
 		}
 		w.WorkerAuthRegistrationRequest = base58.FastBase58Encoding(reqBytes)
-		if err != nil {
-			return fmt.Errorf("error encoding worker auth registration request: %w", err)
-		}
 		currentKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 		if err != nil {
 			return fmt.Errorf("error deriving worker auth key id: %w", err)
@@ -659,7 +702,7 @@ func (w *Worker) Start() error {
 	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers, w.recorderManager)
+		w.startRoutingInfoTicking(w.baseContext)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
@@ -669,7 +712,7 @@ func (w *Worker) Start() error {
 	if w.downstreamReceiver != nil {
 		w.tickerWg.Add(2)
 		servNameFn := func() string {
-			if s := w.LastStatusSuccess(); s != nil {
+			if s := w.LastRoutingInfoSuccess(); s != nil {
 				return s.WorkerId
 			}
 			return "unknown worker id"
@@ -706,24 +749,30 @@ func (w *Worker) GracefulShutdown() error {
 	event.WriteSysEvent(w.baseContext, op, "worker entering graceful shutdown")
 	w.operationalState.Store(server.ShutdownOperationalState)
 
-	// As long as some status has been sent in the past, wait for 2 status
-	// updates to be sent since we've updated our operational state.
-	lastStatusTime := w.lastSuccessfulStatusTime()
-	if lastStatusTime != w.workerStartTime {
-		for i := 0; i < 2; i++ {
-			for {
-				if lastStatusTime != w.lastSuccessfulStatusTime() {
-					lastStatusTime = w.lastSuccessfulStatusTime()
-					break
-				}
-				time.Sleep(time.Millisecond * 250)
+	// As long as some routing info has been sent in the past, wait for 1 routing info
+	// update to be sent since we've updated our operational state.
+	lastRoutingInfoTime := w.lastSuccessfulRoutingInfoTime()
+	if !lastRoutingInfoTime.Equal(w.workerStartTime) {
+	WaitForRoutingInfo:
+		for !lastRoutingInfoTime.Before(w.lastSuccessfulRoutingInfoTime()) {
+			select {
+			case <-w.baseContext.Done():
+				event.WriteSysEvent(w.baseContext, op, "context done waiting for routing info to be sent")
+				break WaitForRoutingInfo
+			case <-time.After(time.Millisecond * 250):
 			}
 		}
 	}
 
 	// Wait for running proxy connections to drain
+WaitForConnectionDrain:
 	for proxy.ProxyState.CurrentProxiedConnections() > 0 {
-		time.Sleep(time.Millisecond * 250)
+		select {
+		case <-w.baseContext.Done():
+			event.WriteSysEvent(w.baseContext, op, "context done waiting for connections to be drained")
+			break WaitForConnectionDrain
+		case <-time.After(time.Millisecond * 250):
+		}
 	}
 	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")
 
@@ -767,30 +816,31 @@ func (w *Worker) Shutdown() error {
 	// Shut down all connections.
 	w.cleanupConnections(w.baseContext, true, w.sessionManager)
 
-	// Wait for next status request to succeed. Don't wait too long; time it out
-	// at our default liveness value, which is also our default status grace
-	// period timeout
-	waitStatusStart := time.Now()
-	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, server.DefaultLiveness)
-	defer nextStatusCancel()
-	for {
-		if err := nextStatusCtx.Err(); err != nil {
-			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error waiting for next status report to controller"))
-			break
+	// Wait for next routing info request to succeed. Don't wait too long; time it out
+	// at our default liveness value.
+	nextRoutingInfoCtx, nextRoutingInfoCancel := context.WithTimeout(w.baseContext, server.DefaultLiveness)
+	defer nextRoutingInfoCancel()
+	lastRoutingInfoTime := w.lastSuccessfulRoutingInfoTime()
+	if !lastRoutingInfoTime.Equal(w.workerStartTime) {
+	WaitForRoutingInfo:
+		for !lastRoutingInfoTime.Before(w.lastSuccessfulRoutingInfoTime()) {
+			select {
+			case <-nextRoutingInfoCtx.Done():
+				event.WriteError(w.baseContext, op, nextRoutingInfoCtx.Err(), event.WithInfoMsg("error waiting for next routing info report to controller"))
+				break WaitForRoutingInfo
+			case <-time.After(time.Millisecond * 250):
+			}
 		}
-
-		if w.lastSuccessfulStatusTime().After(waitStatusStart) {
-			break
-		}
-
-		time.Sleep(time.Second)
 	}
 
 	// Proceed with remainder of shutdown.
 	w.baseCancel()
+	// Lock to protect w.addressReceivers
+	w.confAddressReceiversLock.Lock()
 	for _, ar := range w.addressReceivers {
 		ar.SetAddresses(nil)
 	}
+	w.confAddressReceiversLock.Unlock()
 
 	if w.storageEventListener != nil {
 		err := w.storageEventListener.Shutdown(w.baseContext)
@@ -853,10 +903,10 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 			return nil, fmt.Errorf("could not find session ID in SNI or ALPN protos")
 		}
 
-		lastSuccess := w.LastStatusSuccess()
+		lastSuccess := w.LastRoutingInfoSuccess()
 		if lastSuccess == nil {
-			event.WriteSysEvent(ctx, op, "no last status information found at session acceptance time")
-			return nil, fmt.Errorf("no last status information found at session acceptance time")
+			event.WriteSysEvent(ctx, op, "no last routing information found at session acceptance time")
+			return nil, fmt.Errorf("no last routing information found at session acceptance time")
 		}
 
 		timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)

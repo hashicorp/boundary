@@ -11,18 +11,19 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
+func TestWorkerWaitForNextSuccessfulRoutingInfoUpdate(t *testing.T) {
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, "TestWorkerWaitForNextSuccessfulStatusUpdate", event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestWorkerWaitForNextSuccessfulRoutingInfoUpdate", event.WithEventerConfig(testConfig))
 	require.NoError(t, err)
 	t.Cleanup(func() { event.TestResetSystEventer(t) })
 	for _, name := range []string{"ok", "timeout"} {
@@ -31,30 +32,30 @@ func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
 
 			// As-needed initialization of a mock worker
 			w := &Worker{
-				logger:                      hclog.New(nil),
-				lastStatusSuccess:           new(atomic.Value),
-				baseContext:                 context.Background(),
-				successfulStatusGracePeriod: new(atomic.Int64),
+				logger:                           hclog.New(nil),
+				lastRoutingInfoSuccess:           new(atomic.Value),
+				baseContext:                      context.Background(),
+				successfulRoutingInfoGracePeriod: new(atomic.Int64),
 				conf: &Config{
 					Server: &base.Server{},
 				},
 			}
 
 			// This is present in New()
-			w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
-			w.successfulStatusGracePeriod.Store(int64(time.Second * 2))
+			w.lastRoutingInfoSuccess.Store((*LastRoutingInfo)(nil))
+			w.successfulRoutingInfoGracePeriod.Store(int64(common.DefaultRoutingInfoTimeout))
 
 			var wg sync.WaitGroup
 			var err error
 			wg.Add(1)
 			go func() {
-				err = w.WaitForNextSuccessfulStatusUpdate()
+				err = w.WaitForNextSuccessfulRoutingInfoUpdate()
 				wg.Done()
 			}()
 
 			if name == "ok" {
 				time.Sleep(time.Millisecond * 100)
-				w.lastStatusSuccess.Store(&LastStatusInformation{StatusTime: time.Now()})
+				w.lastRoutingInfoSuccess.Store(&LastRoutingInfo{RoutingInfoTime: time.Now()})
 			}
 
 			wg.Wait()

@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
@@ -43,6 +44,14 @@ func TestCustomX509Verification_Client(t *testing.T) {
 		Name:  "test",
 	})
 	req.NoError(event.InitSysEventer(logger, testLock, "use-TestCustomX509Verification", event.WithEventerConfig(&ec.EventerConfig)))
+	t.Cleanup(func() {
+		event.TestResetSystEventer(t)
+	})
+	t.Cleanup(func() {
+		all, err := io.ReadAll(ec.AllEvents)
+		require.NoError(t, err)
+		t.Log(string(all))
+	})
 
 	conf, err := config.DevController()
 	conf.Eventing = &ec.EventerConfig
@@ -57,12 +66,12 @@ func TestCustomX509Verification_Client(t *testing.T) {
 	conf.Eventing = &ec.EventerConfig
 	req.NoError(err)
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
-		Logger:           logger.Named("w1"),
+		WorkerAuthKms:     c1.Config().WorkerAuthKms,
+		InitialUpstreams:  c1.ClusterAddrs(),
+		Logger:            logger.Named("w1"),
+		WorkerRPCInterval: time.Second,
 	})
 
-	// Give time for it to connect
 	helper.ExpectWorkers(t, c1, w1)
 
 	// Connect target
@@ -221,8 +230,9 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		conf.Eventing = &ec.EventerConfig
 		req.NoError(err)
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-			WorkerAuthKms:    c1.Config().WorkerAuthKms,
-			InitialUpstreams: c1.ClusterAddrs(),
+			WorkerAuthKms:     c1.Config().WorkerAuthKms,
+			InitialUpstreams:  c1.ClusterAddrs(),
+			WorkerRPCInterval: time.Second,
 		})
 		w1.Worker().TestOverrideX509VerifyCertPool = certPool
 		w1.Worker().TestOverrideX509VerifyDnsName = dnsName

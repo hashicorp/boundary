@@ -86,17 +86,17 @@ type ServerWorkerStatus struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Id of the worker.
+	// Id of the worker, used after the first request.
 	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	// Name of the resource (optional)
+	// Name of the worker, used to identify workers in the KMS registration flow.
 	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
-	// Description of the resource (optional)
+	// Description of the worker (optional). Only used by KMS workers.
 	Description string `protobuf:"bytes,25,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
-	// Address for the worker. This must be set.
+	// Address for the worker.
 	Address string `protobuf:"bytes,30,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Tags for workers
 	Tags []*TagPair `protobuf:"bytes,40,rep,name=tags,proto3" json:"tags,omitempty"`
-	// The key id for this worker, if applicable (optional)
+	// The key id of the worker, used to identify workers in the PKI registration flow.
 	KeyId string `protobuf:"bytes,50,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The version of Boundary the worker binary is running
 	ReleaseVersion string `protobuf:"bytes,60,opt,name=release_version,proto3" json:"release_version,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`

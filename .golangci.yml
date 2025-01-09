@@ -69,3 +69,9 @@ issues:
     - linters:
         - staticcheck
       text: "SA1019: j.GetId is deprecated:"
+    - linters:
+        - staticcheck
+      text: "SA1019: pbs.StatusRequest is deprecated:"
+    - linters:
+        - staticcheck
+      text: "SA1019: pbs.StatusResponse is deprecated:"

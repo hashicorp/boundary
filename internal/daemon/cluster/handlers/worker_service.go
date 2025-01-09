@@ -5,6 +5,7 @@ package handlers
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
@@ -95,20 +97,148 @@ func NewWorkerServiceServer(
 	}
 }
 
+func (ws *workerServiceServer) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	const op = "workers.(workerServiceServer).Statistics"
+	workerId := req.GetWorkerId()
+	if workerId == "" {
+		return &pbs.StatisticsResponse{}, status.Error(codes.InvalidArgument, "worker id is empty")
+	}
+	connectionRepo, err := ws.connectionRepoFn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting connection repo"))
+		return &pbs.StatisticsResponse{}, status.Errorf(codes.Internal, "Error acquiring connection repo: %v", err)
+	}
+	connectionStats := []*session.Connection{}
+	for _, s := range req.GetSessions() {
+		sessionId := s.GetSessionId()
+		if sessionId == "" {
+			return &pbs.StatisticsResponse{}, status.Error(codes.InvalidArgument, "session id is empty")
+		}
+		for _, c := range s.Connections {
+			connectionId := c.GetConnectionId()
+			if connectionId == "" {
+				return &pbs.StatisticsResponse{}, status.Error(codes.InvalidArgument, "connection id is empty")
+			}
+			switch c.Status {
+			case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED, pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
+				connectionStats = append(connectionStats, &session.Connection{
+					PublicId:  c.GetConnectionId(),
+					BytesUp:   c.GetBytesUp(),
+					BytesDown: c.GetBytesDown(),
+				})
+			default:
+				// Other statuses are not included in the stats sent to the domain
+			}
+		}
+	}
+	updateBytesErr := session.UpdateConnectionBytesUpDown(ctx, connectionRepo, connectionStats)
+	_, closeOrphanedErr := session.CloseOrphanedConnections(ctx, connectionRepo, workerId, connectionStats)
+	sessionErrs := stderrors.Join(updateBytesErr, closeOrphanedErr)
+	if sessionErrs != nil {
+		return &pbs.StatisticsResponse{}, errors.Wrap(ctx, sessionErrs, op)
+	}
+	return &pbs.StatisticsResponse{}, nil
+}
+
+func (ws *workerServiceServer) SessionInfo(ctx context.Context, req *pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error) {
+	const op = "workers.(workerServiceServer).SessionInfo"
+	workerId := req.GetWorkerId()
+	if workerId == "" {
+		return &pbs.SessionInfoResponse{}, status.Error(codes.InvalidArgument, "worker id is empty")
+	}
+	sessionTypeCache := map[string]pbs.SessionType{}
+	var recordedSessionIds []string
+	var ingressedSessionIds []string
+	for _, s := range req.GetSessions() {
+		sessionId := s.GetSessionId()
+		sessionStatus := s.GetSessionStatus()
+		sessionType := s.GetSessionType()
+		switch sessionType {
+		case pbs.SessionType_SESSION_TYPE_UNSPECIFIED:
+			return &pbs.SessionInfoResponse{}, status.Errorf(codes.InvalidArgument, "unspecified session type")
+		case pbs.SessionType_SESSION_TYPE_INGRESSED:
+			if sessionStatus == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING || sessionStatus == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED {
+				// No need to see about canceling anything
+				continue
+			}
+			sessionTypeCache[sessionId] = sessionType
+			ingressedSessionIds = append(ingressedSessionIds, sessionId)
+		case pbs.SessionType_SESSION_TYPE_RECORDED:
+			if sessionStatus == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING || sessionStatus == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED {
+				// No need to see about canceling anything
+				continue
+			}
+			sessionTypeCache[sessionId] = sessionType
+			recordedSessionIds = append(recordedSessionIds, sessionId)
+		default:
+			return &pbs.SessionInfoResponse{}, status.Errorf(codes.InvalidArgument, "unknown session type: %q", s.GetSessionType().String())
+		}
+	}
+
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
+	}
+
+	result := &pbs.SessionInfoResponse{}
+	nonActiveSessions, err := sessRepo.CheckIfNotActive(ctx, append(ingressedSessionIds, recordedSessionIds...))
+	if err != nil {
+		return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal,
+			"Error checking if sessions are no longer active: %v", err)
+	}
+	for _, s := range nonActiveSessions {
+		switch sessionTypeCache[s.SessionId] {
+		case pbs.SessionType_SESSION_TYPE_INGRESSED:
+			var connChanges []*pbs.Connection
+			for _, conn := range s.Connections {
+				connChanges = append(connChanges, &pbs.Connection{
+					ConnectionId: conn.GetPublicId(),
+					Status:       session.StatusClosed.ProtoVal(),
+				})
+			}
+			result.NonActiveSessions = append(result.NonActiveSessions, &pbs.Session{
+				SessionId:     s.SessionId,
+				SessionStatus: s.Status.ProtoVal(),
+				SessionType:   pbs.SessionType_SESSION_TYPE_INGRESSED,
+				Connections:   connChanges,
+			})
+		case pbs.SessionType_SESSION_TYPE_RECORDED:
+			result.NonActiveSessions = append(result.NonActiveSessions, &pbs.Session{
+				SessionId:     s.SessionId,
+				SessionStatus: s.Status.ProtoVal(),
+				SessionType:   pbs.SessionType_SESSION_TYPE_RECORDED,
+			})
+		default:
+			return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal,
+				"unknown session type found for non active session: %q", s.SessionId)
+		}
+	}
+
+	serverRepo, err := ws.serversRepoFn()
+	if err != nil {
+		return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to upsert session info status time: %v", err)
+	}
+	err = serverRepo.UpsertSessionInfo(ctx, workerId)
+	if err != nil {
+		return &pbs.SessionInfoResponse{}, status.Errorf(codes.Internal, "Error updating the latest status time for the server session info: %v", err)
+	}
+	return result, nil
+}
+
+// Status is the deprecated method for worker status updates.
+// This is safe to remove after the release of Boundary v0.20.0.
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	const op = "workers.(workerServiceServer).Status"
-	// TODO: on the worker, if we get errors back from this repeatedly, do we
-	// terminate all sessions since we can't know if they were canceled?
 
 	wStat := req.GetWorkerStatus()
 	if wStat == nil {
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Worker sent nil status.")
+		return nil, status.Error(codes.InvalidArgument, "Worker sent nil status.")
 	}
 	switch {
 	case wStat.GetName() == "" && wStat.GetKeyId() == "":
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; one is required.")
+		return nil, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; one is required.")
 	case wStat.GetAddress() == "":
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
+		return nil, status.Error(codes.InvalidArgument, "Address is not set but is required.")
 	}
 	// This Store call is currently only for testing purposes
 	ws.updateTimes.Store(wStat.GetName(), time.Now())
@@ -116,7 +246,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
 	}
 
 	// Convert API tags to storage tags
@@ -163,7 +293,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	workerId, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
 
 	// update storage states
@@ -174,7 +304,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	controllers, err := serverRepo.ListControllers(ctx, server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting current controllers"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting current controllers: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error getting current controllers: %v", err)
 	}
 
 	responseControllers := []*pbs.UpstreamServer{}
@@ -189,7 +319,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	workerAuthRepo, err := ws.workerAuthRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting worker auth repo"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to lookup worker auth info: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error acquiring repo to lookup worker auth info: %v", err)
 	}
 
 	authorizedDownstreams := &pbs.AuthorizedDownstreamWorkerList{}
@@ -197,7 +327,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		knownConnectedWorkers, err := serverRepo.VerifyKnownWorkers(ctx, req.GetConnectedWorkerPublicIds())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting known connected worker ids"))
-			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting known connected worker ids: %v", err)
+			return nil, status.Errorf(codes.Internal, "Error getting known connected worker ids: %v", err)
 		}
 		authorizedDownstreams.WorkerPublicIds = knownConnectedWorkers
 	}
@@ -206,25 +336,14 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		authorizedKeyIds, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedUnmappedWorkerKeyIdentifiers())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting authorized unmapped worker key ids"))
-			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
+			return nil, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
 		}
 		authorizedDownstreams.UnmappedWorkerKeyIdentifiers = authorizedKeyIds
-	}
-
-	authorizedWorkerList := &pbs.AuthorizedWorkerList{}
-	if len(req.GetConnectedWorkerKeyIdentifiers()) > 0 {
-		authorizedKeyIds, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedWorkerKeyIdentifiers())
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting authorized worker key ids"))
-			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
-		}
-		authorizedWorkerList.WorkerKeyIdentifiers = authorizedKeyIds
 	}
 
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams:         responseControllers,
 		WorkerId:                    workerId,
-		AuthorizedWorkers:           authorizedWorkerList,
 		AuthorizedDownstreamWorkers: authorizedDownstreams,
 	}
 
@@ -281,12 +400,12 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting sessions repo"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
 	}
 	connectionRepo, err := ws.connectionRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting connection repo"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
 	}
 
 	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, workerId, stateReport)
@@ -348,6 +467,11 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		})
 	}
 
+	err = serverRepo.UpsertSessionInfo(ctx, workerId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error updating the latest status time for the server session info: %v", err)
+	}
+
 	return ret, nil
 }
 
@@ -360,8 +484,8 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 		return nil, status.Errorf(codes.Internal, "Error getting servers repo: %v", err)
 	}
 
-	// We use the livenessTimeToStale here instead of WorkerStatusGracePeriod
-	// since WorkerStatusGracePeriod is more for deciding which workers should
+	// We use the livenessTimeToStale here instead of WorkerRPCGracePeriod
+	// since WorkerRPCGracePeriod is more for deciding which workers should
 	// be used for session proxying, but here we care about providing the BYOW
 	// workers with a list of which upstreams to connect to as their upstreams.
 	managed, err := serversRepo.ListHcpbManagedWorkers(ctx, time.Duration(ws.livenessTimeToStale.Load()))
@@ -383,6 +507,102 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	}
 
 	return resp, nil
+}
+
+func (ws *workerServiceServer) RoutingInfo(ctx context.Context, req *pbs.RoutingInfoRequest) (*pbs.RoutingInfoResponse, error) {
+	const op = "workers.(workerServiceServer).RoutingInfo"
+	wStat := req.GetWorkerStatus()
+	if wStat == nil {
+		return nil, status.Error(codes.InvalidArgument, "worker status is required")
+	}
+	switch {
+	case wStat.GetPublicId() == "" && wStat.GetKeyId() == "" && wStat.GetName() == "":
+		return nil, status.Error(codes.InvalidArgument, "public id, key id and name are not set in the request; one is required")
+	case wStat.GetAddress() == "":
+		return nil, status.Error(codes.InvalidArgument, "address is not set but is required")
+	case wStat.GetReleaseVersion() == "":
+		return nil, status.Error(codes.InvalidArgument, "release version is not set but is required")
+	case wStat.GetOperationalState() == "":
+		return nil, status.Error(codes.InvalidArgument, "operational state is not set but is required")
+	case wStat.GetLocalStorageState() == "":
+		return nil, status.Error(codes.InvalidArgument, "local storage state is not set but is required")
+	}
+	// This Store call is currently only for testing purposes
+	ws.updateTimes.Store(wStat.GetName(), time.Now())
+
+	serverRepo, err := ws.serversRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting server repo: %v", err)
+	}
+	workerAuthRepo, err := ws.workerAuthRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting worker auth repo: %v", err)
+	}
+
+	// Convert API tags to storage tags
+	workerTags := make([]*server.Tag, 0, len(wStat.GetTags()))
+	for _, v := range wStat.GetTags() {
+		workerTags = append(workerTags, &server.Tag{
+			Key:   v.GetKey(),
+			Value: v.GetValue(),
+		})
+	}
+
+	wConf := server.NewWorker(
+		scope.Global.String(),
+		server.WithName(wStat.GetName()),
+		server.WithDescription(wStat.GetDescription()),
+		server.WithAddress(wStat.GetAddress()),
+		server.WithWorkerTags(workerTags...),
+		server.WithReleaseVersion(wStat.ReleaseVersion),
+		server.WithOperationalState(wStat.OperationalState),
+		server.WithLocalStorageState(wStat.LocalStorageState),
+	)
+	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
+	if wStat.GetPublicId() != "" {
+		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))
+	}
+	if wStat.GetKeyId() != "" {
+		opts = append(opts, server.WithKeyId(wStat.GetKeyId()))
+	}
+	workerId, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
+	}
+
+	if sbcStates := wStat.GetStorageBucketCredentialStates(); sbcStates != nil {
+		updateWorkerStorageBucketCredentialStatesFn(ctx, serverRepo, workerId, sbcStates)
+	}
+
+	controllers, err := serverRepo.ListControllers(ctx, server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error getting current controllers: %v", err)
+	}
+	var upstreamAddresses []string
+	for _, c := range controllers {
+		upstreamAddresses = append(upstreamAddresses, c.Address)
+	}
+
+	authorizedDownstreams, err := server.VerifyKnownAndUnmappedWorkers(
+		ctx,
+		serverRepo,
+		workerAuthRepo,
+		req.GetConnectedWorkerPublicIds(),
+		req.GetConnectedUnmappedWorkerKeyIdentifiers(),
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error getting known and authorized workers: %v", err)
+	}
+
+	ret := &pbs.RoutingInfoResponse{
+		WorkerId:                    workerId,
+		CalculatedUpstreamAddresses: upstreamAddresses,
+		AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{
+			WorkerPublicIds:              authorizedDownstreams.WorkerPublicIds,
+			UnmappedWorkerKeyIdentifiers: authorizedDownstreams.UnmappedWorkerKeyIds,
+		},
+	}
+	return ret, nil
 }
 
 // Single-hop filter lookup. We have either an egress filter or worker filter to use, if any

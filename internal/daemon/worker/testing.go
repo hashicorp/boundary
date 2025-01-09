@@ -29,6 +29,8 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -69,16 +71,8 @@ func (tw *TestWorker) Name() string {
 }
 
 func (tw *TestWorker) UpstreamAddrs() []string {
-	var addrs []string
-	lastStatus := tw.w.LastStatusSuccess()
-	if lastStatus == nil {
-		return addrs
-	}
-	for _, v := range lastStatus.GetCalculatedUpstreams() {
-		addrs = append(addrs, v.Address)
-	}
-
-	return addrs
+	lastRoutingInfo := tw.w.LastRoutingInfoSuccess()
+	return lastRoutingInfo.GetCalculatedUpstreamAddresses()
 }
 
 func (tw *TestWorker) ProxyAddrs() []string {
@@ -204,6 +198,10 @@ type TestWorkerOpts struct {
 	// The location of the worker's recording storage
 	WorkerRecordingStoragePath string
 
+	// The interval between each respective worker RPC invocation
+	// This sets the interval for SessionInfo, RoutingInfo and Statistics.
+	WorkerRPCInterval time.Duration
+
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
 	Name string
@@ -217,7 +215,7 @@ type TestWorkerOpts struct {
 
 	// The amount of time to wait before marking connections as closed when a
 	// connection cannot be made back to the controller
-	SuccessfulStatusGracePeriodDuration time.Duration
+	SuccessfulControllerRPCGracePeriodDuration time.Duration
 
 	// Overrides worker's nonceFn, for cases where we want to have control
 	// over the nonce we send to the Controller
@@ -286,6 +284,9 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		if opts.Name != "" {
 			opts.Config.Worker.Name = opts.Name
 		}
+		if opts.WorkerRPCInterval > 0 {
+			opts.Config.Worker.TestWorkerRPCInterval = opts.WorkerRPCInterval
+		}
 	}
 
 	if len(opts.InitialUpstreams) > 0 {
@@ -317,8 +318,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	tw.b.EnabledPlugins = append(tw.b.EnabledPlugins, base.EnabledPluginLoopback)
 	tw.name = opts.Config.Worker.Name
 
-	if opts.SuccessfulStatusGracePeriodDuration != 0 {
-		opts.Config.Worker.SuccessfulStatusGracePeriodDuration = opts.SuccessfulStatusGracePeriodDuration
+	if opts.SuccessfulControllerRPCGracePeriodDuration != 0 {
+		opts.Config.Worker.SuccessfulControllerRPCGracePeriodDuration = opts.SuccessfulControllerRPCGracePeriodDuration
 	}
 
 	serverName, err := os.Hostname()
@@ -401,14 +402,14 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		opts = new(TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
-		WorkerAuthKms:                       tw.w.conf.WorkerAuthKms,
-		DownstreamWorkerAuthKms:             tw.w.conf.DownstreamWorkerAuthKms,
-		WorkerAuthStorageKms:                tw.w.conf.WorkerAuthStorageKms,
-		Name:                                opts.Name,
-		InitialUpstreams:                    tw.UpstreamAddrs(),
-		Logger:                              tw.w.conf.Logger,
-		SuccessfulStatusGracePeriodDuration: opts.SuccessfulStatusGracePeriodDuration,
-		WorkerAuthDebuggingEnabled:          tw.w.conf.WorkerAuthDebuggingEnabled,
+		WorkerAuthKms:           tw.w.conf.WorkerAuthKms,
+		DownstreamWorkerAuthKms: tw.w.conf.DownstreamWorkerAuthKms,
+		WorkerAuthStorageKms:    tw.w.conf.WorkerAuthStorageKms,
+		Name:                    opts.Name,
+		InitialUpstreams:        tw.UpstreamAddrs(),
+		Logger:                  tw.w.conf.Logger,
+		SuccessfulControllerRPCGracePeriodDuration: opts.SuccessfulControllerRPCGracePeriodDuration,
+		WorkerAuthDebuggingEnabled:                 tw.w.conf.WorkerAuthDebuggingEnabled,
 	}
 	if nextOpts.Name == "" {
 		var err error
@@ -456,4 +457,99 @@ func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name stri
 	}, server.WithFetchNodeCredentialsRequest(pkiWorkerReq))
 	require.NoError(t, err)
 	return w, wr.GetPublicId()
+}
+
+// mockServerCoordinationService is meant to stand in for a controller when testing
+// the methods defined by the server coordination service. It allows applying assertions and specifying
+// the return value of grpc methods by overwriting service methods.
+type mockServerCoordinationService struct {
+	pbs.UnimplementedServerCoordinationServiceServer
+	nextReqAssert         func(*pbs.StatusRequest) (*pbs.StatusResponse, error)
+	nextStatisticAssert   func(*pbs.StatisticsRequest) (*pbs.StatisticsResponse, error)
+	nextSessionInfoAssert func(*pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error)
+}
+
+func (m mockServerCoordinationService) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
+	if m.nextReqAssert != nil {
+		return m.nextReqAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "Status not implemented")
+}
+
+func (m mockServerCoordinationService) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	if m.nextStatisticAssert != nil {
+		return m.nextStatisticAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "Statistics not implemented")
+}
+
+func (m mockServerCoordinationService) SessionInfo(ctx context.Context, req *pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error) {
+	if m.nextSessionInfoAssert != nil {
+		return m.nextSessionInfoAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "SessionInfo not implemented")
+}
+
+var _ pbs.ServerCoordinationServiceServer = (*mockServerCoordinationService)(nil)
+
+// TestWaitForNextSuccessfulSessionInfoUpdate waits for the next successful session info. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with the worker's session info grace period.
+func (w *Worker) TestWaitForNextSuccessfulSessionInfoUpdate(t testing.TB) {
+	t.Helper()
+	const op = "worker.(Worker).WaitForNextSuccessfulSessionInfoUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(w.successfulSessionInfoGracePeriod.Load()))
+	defer cancel()
+	t.Log("waiting for next session info report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			t.Error("error waiting for next session info report to controller")
+			return
+		}
+
+		si := w.lastSessionInfoSuccess.Load().(*lastSessionInfo)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	t.Log("next worker session info update sent successfully")
+}
+
+// TestWaitForNextSuccessfulStatisticsUpdate waits for the next successful statistics. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with twice the worker's statistics timeout duration.
+func (w *Worker) TestWaitForNextSuccessfulStatisticsUpdate(t testing.TB) {
+	t.Helper()
+	const op = "worker.(Worker).WaitForNextSuccessfulStatisticsUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(2*w.statisticsCallTimeoutDuration.Load()))
+	defer cancel()
+	t.Log("waiting for next statistics report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			t.Error("error waiting for next statistics report to controller")
+			return
+		}
+
+		si := w.lastStatisticsSuccess.Load().(*lastStatistics)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	t.Log("next worker statistics update sent successfully")
 }

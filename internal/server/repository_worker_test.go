@@ -1661,7 +1661,7 @@ func TestSelectSessionWorkers(t *testing.T) {
 		require.ErrorContains(t, err, "No workers are available to handle this session.")
 	})
 
-	t.Run("invalidWorkerStatusGracePeriod", func(t *testing.T) {
+	t.Run("invalidWorkerRPCGracePeriod", func(t *testing.T) {
 		w1 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "worker1"}))
 		require.NotNil(t, w1)
 		t.Cleanup(func() {
@@ -1688,7 +1688,7 @@ func TestSelectSessionWorkers(t *testing.T) {
 		require.Equal(t, w1.GetAddress(), was[0].Address)
 	})
 
-	t.Run("validWorkerStatusGracePeriod", func(t *testing.T) {
+	t.Run("validWorkerRPCGracePeriod", func(t *testing.T) {
 		w1 := server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "type", Value: "prod"}))
 		require.NotNil(t, w1)
 		t.Cleanup(func() {

@@ -23,7 +23,7 @@ func RegisterJobs(
 	w db.Writer,
 	kms *kms.Kms,
 	controllerExt globals.ControllerExtension,
-	workerStatusGracePeriod *atomic.Int64,
+	workerRPCGracePeriod *atomic.Int64,
 	opt ...Option,
 ) error {
 	const op = "server.(Jobs).RegisterJobs"
@@ -40,8 +40,8 @@ func RegisterJobs(
 	if kms == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
-	if isNil(workerStatusGracePeriod) {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing worker status grace period")
+	if isNil(workerRPCGracePeriod) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing worker RPC grace period")
 	}
 
 	rotateRootsJob, err := newRotateRootsJob(ctx, r, w, kms, opt...)
@@ -52,7 +52,7 @@ func RegisterJobs(
 		return errors.Wrap(ctx, err, op)
 	}
 
-	usbJob, err := NewUpsertWorkerStorageBucketJobFn(ctx, r, w, kms, controllerExt, workerStatusGracePeriod, scheduler)
+	usbJob, err := NewUpsertWorkerStorageBucketJobFn(ctx, r, w, kms, controllerExt, workerRPCGracePeriod, scheduler)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error creating upsert worker storage bucket job"))
 	}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -45,10 +46,10 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	}
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config:                          conf,
-		InitialResourcesSuffix:          "1234567890",
-		Logger:                          logger.Named("c1"),
-		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
+		Config:                 conf,
+		InitialResourcesSuffix: "1234567890",
+		Logger:                 logger.Named("c1"),
+		WorkerRPCGracePeriod:   helper.DefaultControllerRPCGracePeriod,
 	})
 
 	helper.ExpectWorkers(t, c1)
@@ -65,11 +66,12 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	t.Cleanup(func() { _ = proxy.Close() })
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:                       c1.Config().WorkerAuthKms,
-		InitialUpstreams:                    []string{proxy.ListenerAddr()},
-		Logger:                              logger.Named("w1"),
-		SuccessfulStatusGracePeriodDuration: helper.DefaultSuccessfulStatusGracePeriod,
-		EnableIPv6:                          true,
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: []string{proxy.ListenerAddr()},
+		Logger:           logger.Named("w1"),
+		SuccessfulControllerRPCGracePeriodDuration: helper.DefaultControllerRPCGracePeriod,
+		EnableIPv6:        true,
+		WorkerRPCInterval: time.Second,
 	})
 
 	helper.ExpectWorkers(t, c1, w1)
@@ -105,8 +107,8 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	conn := sess.Connect(ctx, t)
 	conn.TestSendRecvAll(t)
 
-	// Wait for next status and then check DB for bytes up and down
-	helper.ExpectWorkers(t, c1, w1)
+	// Wait for next statistics update and then check DB for bytes up and down
+	w1.Worker().TestWaitForNextSuccessfulStatisticsUpdate(t)
 
 	dbConns1, err := c1.ConnectionsRepo().ListConnectionsBySessionId(ctx, sess.SessionId)
 	require.NoError(err)
@@ -122,11 +124,11 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	require.NotZero(apiRes1.Item.Connections[0].BytesUp)
 	require.NotZero(apiRes1.Item.Connections[0].BytesDown)
 
-	// Send/recv some more traffic, close connection, wait for the next status
+	// Send/recv some more traffic, close connection, wait for the next statistics
 	// update and check everything again.
 	conn.TestSendRecvAll(t)
 	require.NoError(conn.Close())
-	helper.ExpectWorkers(t, c1, w1)
+	w1.Worker().TestWaitForNextSuccessfulStatisticsUpdate(t)
 
 	dbConns2, err := c1.ConnectionsRepo().ListConnectionsBySessionId(ctx, sess.SessionId)
 	require.NoError(err)

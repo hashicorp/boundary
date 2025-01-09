@@ -18,14 +18,14 @@ import (
 const deleteTerminatedThreshold = time.Hour
 
 // RegisterJobs registers session related jobs with the provided scheduler.
-func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writer, r db.Reader, k *kms.Kms, workerStatusGracePeriod *atomic.Int64) error {
+func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writer, r db.Reader, k *kms.Kms, workerRPCGracePeriod *atomic.Int64) error {
 	const op = "session.RegisterJobs"
 
-	if workerStatusGracePeriod == nil {
+	if workerRPCGracePeriod == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "nil grace period")
 	}
 
-	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(ctx, w, workerStatusGracePeriod)
+	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(ctx, w, workerRPCGracePeriod)
 	if err != nil {
 		return fmt.Errorf("error creating session cleanup job: %w", err)
 	}
