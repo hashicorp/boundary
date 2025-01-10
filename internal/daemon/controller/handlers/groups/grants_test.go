@@ -5,7 +5,6 @@ package groups_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -111,7 +110,6 @@ func TestGrants_ReadActions(t *testing.T) {
 				require.NoError(t, finalErr)
 				var gotIDs []string
 				for _, g := range got.Items {
-					fmt.Println(g.GetName())
 					gotIDs = append(gotIDs, g.GetId())
 				}
 				require.ElementsMatch(t, tc.wantIDs, gotIDs)
