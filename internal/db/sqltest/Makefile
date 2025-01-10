@@ -16,7 +16,8 @@ endif
 # See: https://pgtap.org/pg_prove.html
 PROVE_OPTS ?=
 
-TESTS ?= tests/account/*/*.sql \
+TESTS ?= tests/setup/*.sql \
+		 tests/account/*/*.sql \
 		 tests/alias/*.sql \
 		 tests/auth/*/*.sql \
 		 tests/census/*.sql \
@@ -36,7 +37,6 @@ TESTS ?= tests/account/*/*.sql \
 		 tests/sentinel/*.sql \
 		 tests/server/*.sql \
 		 tests/session/*.sql \
-		 tests/setup/*.sql \
 		 tests/storage/*.sql \
 		 tests/target/*.sql \
 		 tests/wh/*/*.sql \
