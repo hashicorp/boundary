@@ -28,11 +28,12 @@ Complete the following steps to create a dynamic host catalog for Azure:
    - **Description**: (Optional) An optional description of the host catalog for identification purposes.
    - **Type**: (Required) Select **Dynamic** to create a dynamic host catalog.
    - **Provider**: (Required) Select **Azure** to create a dynamic host catalog for your Azure resources.
-   - **Tenant/Directory ID**: (Required) The directory ID for your Azure Active Directory application.
-   - **Subscription ID**: (Required) The subscription ID for the subscription that has read access.
-   - **Client/Application ID**: (Required) The client or application ID of the Azure service principal that Boundary should use to authenticate and discover hosts.
-   - **Client Secret Value**: (Required) The client secret value that Azure generates for authentication.
+   - **Tenant/Directory ID**: (Required) The ARM tenant (directory) ID for your Azure Active Directory application.
+   - **Subscription ID**: (Required) The ARM subscription ID for the subscription that has read access.
+   - **Client/Application ID**: (Required) The client (application) ID of the Azure service principal that Boundary should use to authenticate and discover hosts.
+   - **Client Secret Value**: (Required) The ARM client secret value that Azure generates for authentication.
    - **Disable credential rotation**: When enabled, Boundary does not rotate the credentials with Azure automatically.
+   Azure host catalogs do not currently support credential rotation.
 1. Select **Save**.
 
 </Tab>
@@ -57,10 +58,11 @@ Complete the following steps to create a dynamic host catalog for Azure:
   The fields following the `attr` and `secret` flags are specific to Azure and are required by Boundary for authentication.
 
     - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials automatically.
-    - `tenant_id`: The ARM Tenant(Directory) ID
-    - `subscription_id`: The ARM Subscription ID
-    - `client_id`: The ARM Client (Application) ID
-    - `secret_value`: The ARM Client Secret
+    Azure host catalogs do not currently support credential rotation.
+    - `tenant_id`: (Required) The ARM tenant (directory) ID for your Azure Active Directory application.
+    - `subscription_id`: (Required) The ARM subscription ID for the subscription that has read access.
+    - `client_id`: (Required) The client (application) ID of the Azure service principal that Boundary should use to authenticate and discover hosts.
+    - `secret_value`: (Required) The ARM client secret value that Azure generates for authentication.
 
   Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
 
@@ -95,10 +97,11 @@ The fields following the `attr` and `secret` flags are specific to Azure and are
   Boundary for authentication.
 
 - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials automatically.
-- `tenant_id`: The ARM Tenant(Directory) ID
-- `subscription_id`: The ARM Subscription ID
-- `client_id`: The ARM Client (Application) ID
-- `secret_value`: The ARM Client Secret
+Azure host catalogs do not currently support credential rotation.
+- `tenant_id`: (Required) The ARM tenant (directory) ID for your Azure Active Directory application.
+- `subscription_id`: (Required) The ARM subscription ID for the subscription that has read access.
+- `client_id`: (Required) The client (application) ID of the Azure service principal that Boundary should use to authenticate and discover hosts.
+- `secret_value`: (Required) The ARM client secret value that Azure generates for authentication.
 
 Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
 
