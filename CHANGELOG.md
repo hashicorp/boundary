@@ -46,6 +46,9 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
   ([PR](https://github.com/hashicorp/boundary/pull/5221)).
 * Fix an issue where, when starting a session, the connection limit always displays 0.
   ([PR](https://github.com/hashicorp/boundary/pull/5396)).
+* Fix bug which causes groups in children scope to be filtered out when
+    the scopes are granted access using children keyword.
+    ([PR](https://github.com/hashicorp/boundary/pull/5418)).
 
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
