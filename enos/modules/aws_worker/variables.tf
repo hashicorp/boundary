@@ -142,3 +142,40 @@ variable "bucket_arn" {
   type        = string
   default     = ""
 }
+
+variable "vpc_cidr" {
+  description = "cidr subnet of the vpc created for the enos scenario"
+  type        = string
+  nullable    = true
+  default     = null
+}
+
+variable "vpc_cidr_ipv6" {
+  description = "ipv6 cidr subnet of the vpc created for the enos scenario"
+  type        = string
+  nullable    = true
+  default     = null
+}
+
+variable "ip_version" {
+  description = "ip version used to setup boundary instance, should be 4, 6, or dual"
+  type        = string
+  default     = "4"
+
+  validation {
+    condition     = contains(["4", "6", "dual"], var.ip_version)
+    error_message = "ip_version must be one of: [4, 6, dual]"
+  }
+}
+
+variable "vault_address" {
+  description = "network address to a vault instance"
+  type        = string
+  default     = "localhost"
+}
+
+variable "vault_transit_token" {
+  description = "vault token used for kms transit in the boundary config"
+  type        = string
+  default     = ""
+}

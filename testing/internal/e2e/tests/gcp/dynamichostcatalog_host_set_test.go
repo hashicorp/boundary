@@ -48,12 +48,12 @@ func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a host set
-	hostSetId1, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.GcpHostSetFilter1)
+	hostSetId1, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.GcpHostSetFilter1, "4")
 	require.NoError(t, err)
 	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, 1)
 
 	// Set up another host set
-	hostSetId2, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.GcpHostSetFilter2)
+	hostSetId2, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.GcpHostSetFilter2, "4")
 	require.NoError(t, err)
 	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, 1)
 

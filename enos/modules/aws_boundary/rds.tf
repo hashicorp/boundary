@@ -17,8 +17,10 @@ resource "aws_db_instance" "boundary" {
   instance_class      = var.db_class
   monitoring_interval = var.db_monitoring_interval
   monitoring_role_arn = var.db_monitoring_role_arn
-  publicly_accessible = true
+  publicly_accessible = false
   db_name             = local.db_name
+
+  network_type = var.ip_version == "4" ? "IPV4" : "DUAL"
 
   // username and password must not be provided when restoring from a snapshot
   username                     = local.is_restored_db ? null : var.db_user

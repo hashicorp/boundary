@@ -85,7 +85,7 @@ scenario "e2e_docker_worker_registration_worker_led" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
     }
   }
 

@@ -82,6 +82,18 @@ module "aws_vpc" {
   }
 }
 
+module "aws_vpc_ipv6" {
+  source = "./modules/aws_vpc_ipv6"
+
+  environment = var.environment
+  common_tags = {
+    "Project" : "Enos",
+    "Project Name" : "qti-enos-boundary",
+    "Enos User" : var.enos_user,
+    "Environment" : var.environment
+  }
+}
+
 module "read_license" {
   source = "./modules/read_license"
 }

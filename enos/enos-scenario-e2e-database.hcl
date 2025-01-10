@@ -26,7 +26,7 @@ scenario "e2e_database" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
     }
   }
 
@@ -114,7 +114,7 @@ scenario "e2e_database" {
     module = module.test_e2e
     depends_on = [
       step.create_targets_with_tag,
-      step.iam_setup,
+      step.iam_setup
     ]
 
     variables {

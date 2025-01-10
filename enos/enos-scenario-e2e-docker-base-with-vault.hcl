@@ -70,7 +70,7 @@ scenario "e2e_docker_base_with_vault" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
     }
   }
 

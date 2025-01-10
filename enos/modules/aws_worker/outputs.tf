@@ -3,7 +3,7 @@
 
 output "worker_ip" {
   description = "The public IP of the Boundary worker"
-  value       = aws_instance.worker.public_ip
+  value       = var.ip_version == "6" ? format("[%s]", aws_instance.worker.ipv6_addresses[0]) : aws_instance.worker.public_ip
 }
 
 output "worker_tags" {
@@ -24,4 +24,14 @@ output "pet_id" {
 output "role_arn" {
   description = "The ARN of the IAM role used in this module"
   value       = aws_iam_role.boundary_instance_role.arn
+}
+
+output "worker_cidr" {
+  description = "The subnet of the isolated worker"
+  value       = var.ip_version == "6" ? [] : [aws_subnet.default.cidr_block]
+}
+
+output "worker_ipv6_cidr" {
+  description = "The ipv6 subnet of the isolated worker"
+  value       = var.ip_version == "4" ? [] : [aws_subnet.default.ipv6_cidr_block]
 }

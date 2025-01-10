@@ -76,7 +76,7 @@ jobs:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'e2e_aws builder:crt'
+          - filter: 'e2e_aws builder:crt ip_version:4'
           - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
           - filter: 'e2e_docker_base_plus builder:crt'
@@ -279,7 +279,7 @@ jobs:
       - name: Split matrix filter name
         id: split
         run: |
-          SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1)
+          SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1,3 | sed 's/:/_/g')
           echo fragment="${SCENARIO}" >> "$GITHUB_OUTPUT"
       - name: Upload e2e tests output
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
