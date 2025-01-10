@@ -11,6 +11,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   regardless of the value set.
   ([PR](https://github.com/hashicorp/boundary/pull/5385)).
 
+* Fix bug which causes groups in children scope to be filtered out when
+  the scopes are granted access using children keyword.
+  ([PR](https://github.com/hashicorp/boundary/pull/5418)).
+
+
 ### New and Improved
 
 * Introduces soft-delete for users within the client cache.
