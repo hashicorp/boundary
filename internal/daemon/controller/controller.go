@@ -495,6 +495,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		event.WriteSysEvent(ctx, op, "unable to ensure worker auth roots exist, may be due to multiple controllers starting at once, continuing")
 	}
 
+	if c.conf.RawConfig.Controller.ConcurrentPasswordHashWorkers > 0 {
+		if err := password.SetHashingPermits(int(c.conf.RawConfig.Controller.ConcurrentPasswordHashWorkers)); err != nil {
+			return nil, fmt.Errorf("unable to set number of concurrent password workers: %w", err)
+		}
+	}
+
 	if graphFactory != nil {
 		boundVer := version.Get().VersionNumber()
 		c.downstreamWorkers, err = graphFactory(ctx, "root", boundVer)

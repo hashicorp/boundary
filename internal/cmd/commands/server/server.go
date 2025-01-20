@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/cmd/ops"
@@ -868,6 +869,10 @@ func (c *Command) Reload(newConf *config.Config) error {
 		if workerReloadErr != nil {
 			reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
 		}
+	}
+
+	if newConf != nil && newConf.Controller != nil && newConf.Controller.ConcurrentPasswordHashWorkers > 0 {
+		reloadErrors = stderrors.Join(reloadErrors, password.SetHashingPermits(int(newConf.Controller.ConcurrentPasswordHashWorkers)))
 	}
 
 	// Send a message that we reloaded. This prevents "guessing" sleep times
