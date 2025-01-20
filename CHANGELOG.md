@@ -13,6 +13,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Fix bug in parsing IPv6 addresses. Previously setting a target address or the
   initial upstream address in the config file would result in a malformed value.
   ([PR](https://github.com/hashicorp/boundary/pull/5221)).
+* Fix an issue where, when starting a session, the connection limit always displays 0.
+  ([PR](https://github.com/hashicorp/boundary/pull/5396)).
 
 ### New and Improved
 
@@ -33,11 +35,16 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
   and reliability at large scale. Workers older than v0.19.0 will remain supported
   until the release of v0.20.0, in accordance with
   [our worker/controller compatiblity policy](https://developer.hashicorp.com/boundary/docs/enterprise/supported-versions#control-plane-and-worker-compatibility).
+* Add concurrency limit on the password hashing of all password auth methods.
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/5437)).
 
-### Bug fixes
+  This avoids bursty memory and CPU use during concurrent password auth method
+  authentication attempts. The number of concurrent hashing operations
+  can be set with the new `concurrent_password_hash_workers` configuration
+  value in the controller stanza, or the new 
+  `BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS` environment variable.
+  The default limit is 1.
 
-* Fix an issue where, when starting a session, the connection limit always displays 0.
-  ([PR](https://github.com/hashicorp/boundary/pull/5396)).
 
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
