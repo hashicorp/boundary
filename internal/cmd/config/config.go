@@ -317,6 +317,14 @@ type Controller struct {
 	// it is rejected by the controller.
 	MaxPageSizeRaw any  `hcl:"max_page_size"`
 	MaxPageSize    uint `hcl:"-"`
+
+	// ConcurrentPasswordHashWorkers controls the number of concurrent password
+	// hashing workers is allowed. The default value is 1. Increasing this number
+	// will increase the authentication throughput of all userpass auth methods,
+	// but at the cost of bursty memory and CPU use. Can also be controlled via
+	// the environment variable BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS.
+	ConcurrentPasswordHashWorkersRaw any  `hcl:"concurrent_password_hash_workers"`
+	ConcurrentPasswordHashWorkers    uint `hcl:"-"`
 }
 
 func (c *Controller) InitNameIfEmpty(ctx context.Context) error {
@@ -870,6 +878,37 @@ func Parse(d string) (*Config, error) {
 
 		if result.Controller.ApiRateLimiterMaxQuotas <= 0 {
 			result.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
+		}
+
+		switch t := result.Controller.ConcurrentPasswordHashWorkersRaw.(type) {
+		case string:
+			concurrentPasswordWorkersString, err := parseutil.ParsePath(t)
+			if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+				return nil, fmt.Errorf("Error parsing concurrent password hash workers: %w", err)
+			}
+			concurrentWorkers, err := strconv.Atoi(concurrentPasswordWorkersString)
+			if err != nil {
+				return nil, fmt.Errorf("Concurrent password hash workers value is not an int: %w", err)
+			}
+			if concurrentWorkers <= 0 {
+				return nil, fmt.Errorf("Concurrent password hash workers value must be at least 1, was %d", concurrentWorkers)
+			}
+			result.Controller.ConcurrentPasswordHashWorkers = uint(concurrentWorkers)
+		case int:
+			if t <= 0 {
+				return nil, fmt.Errorf("Concurrent password hash workers value must be at least 1, was %d", t)
+			}
+			result.Controller.ConcurrentPasswordHashWorkers = uint(t)
+		case nil:
+			if envVal := os.Getenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS"); envVal != "" {
+				concurrentPasswordWorkers, err := strconv.Atoi(envVal)
+				if err != nil {
+					return nil, fmt.Errorf("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS value is not an int: %w", err)
+				}
+				result.Controller.ConcurrentPasswordHashWorkers = uint(concurrentPasswordWorkers)
+			}
+		default:
+			return nil, fmt.Errorf("Concurrent password hash workers: unsupported type %q", reflect.TypeOf(t).String())
 		}
 	}
 
