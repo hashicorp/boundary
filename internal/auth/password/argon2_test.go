@@ -5,7 +5,12 @@ package password
 
 import (
 	"context"
+	"runtime"
+	"slices"
+	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -455,4 +460,95 @@ func TestArgon2Credential_New(t *testing.T) {
 			assert.Equal(tt.want.PasswordConfId, gotCred.PasswordConfId)
 		})
 	}
+}
+
+func TestArgon2Credential_ConcurrencyLimit(t *testing.T) {
+	// Do NOT run this concurrently with other tests in this package or elsewhere,
+	// since it relies on the global concurrency limit.
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
+	aut := auts[0]
+	accts := TestMultipleAccounts(t, conn, aut.PublicId, 5)
+	conf := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)[0]
+
+	testTimeout := time.Minute
+	testDeadline, ok := t.Deadline()
+	if ok && time.Until(testDeadline) < testTimeout {
+		// If the test deadline is less than the default timeout, use the deadline
+		testTimeout = time.Until(testDeadline)
+	}
+	deadlineCtx, deadlineCtxCancel := context.WithTimeout(context.Background(), testTimeout)
+	defer deadlineCtxCancel()
+
+	// Measure memory usage when using the default limit of 1
+	mean1, _, _ := measureCredentialCreations(deadlineCtx, t, accts[0].PublicId, conf)
+
+	// Now set the limit to 5 and measure again
+	require.NoError(t, SetHashingPermits(5))
+	t.Cleanup(func() {
+		require.NoError(t, SetHashingPermits(1))
+	})
+	mean5, _, _ := measureCredentialCreations(deadlineCtx, t, accts[0].PublicId, conf)
+
+	// Assert that we used less memory while the limit was in place
+	assert.Less(t, mean1, mean5)
+}
+
+func measureCredentialCreations(ctx context.Context, t testing.TB, publicId string, conf *Argon2Configuration) (mean float64, max, min uint64) {
+	wg := &sync.WaitGroup{}
+	start := make(chan struct{})
+
+	// Start 5 goroutines all trying to create a new credential concurrently
+	for i := range 5 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			t.Log("Credential " + strconv.Itoa(i) + " starting")
+			_, err := newArgon2Credential(ctx, publicId, "password", conf)
+			assert.NoError(t, err)
+			t.Log("Credential " + strconv.Itoa(i) + " finished")
+		}()
+	}
+
+	doneDone := make(chan struct{})
+
+	go func() {
+		wg.Wait()
+		close(doneDone)
+	}()
+
+	// Start the goroutines
+	close(start)
+	var memStats runtime.MemStats
+	var measures []uint64
+	for {
+		select {
+		case <-ctx.Done():
+			t.Error("timeout")
+			return
+		case <-time.After(10 * time.Millisecond):
+			// Run GC and check memory use
+			runtime.GC()
+			runtime.ReadMemStats(&memStats)
+			measures = append(measures, memStats.HeapAlloc)
+		case <-doneDone:
+			// All credential creations done
+			return meanInt(measures), slices.Max(measures), slices.Min(measures)
+		}
+	}
+}
+
+func meanInt(in []uint64) float64 {
+	return sumInt(in) / float64(len(in))
+}
+
+func sumInt(in []uint64) float64 {
+	var sum float64
+	for _, n := range in {
+		sum += float64(n)
+	}
+	return sum
 }
