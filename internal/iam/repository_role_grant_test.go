@@ -589,42 +589,12 @@ func TestGrantsForUser(t *testing.T) {
 
 	// The first org/project do not have any direct grants to the user. They
 	// contain roles but the user is not a principal.
-	noGrantOrg1, noGrantProj1 := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
-	noGrantOrg1Role := TestRole(t, conn, noGrantOrg1.PublicId)
-	TestRoleGrant(t, conn, noGrantOrg1Role.PublicId, "ids=*;type=scope;actions=*")
-	noGrantProj1Role := TestRole(t, conn, noGrantProj1.PublicId)
-	TestRoleGrant(t, conn, noGrantProj1Role.PublicId, "ids=*;type=*;actions=*")
-	noGrantOrg2, noGrantProj2 := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
-	noGrantOrg2Role := TestRole(t, conn, noGrantOrg2.PublicId)
-	TestRoleGrant(t, conn, noGrantOrg2Role.PublicId, "ids=*;type=scope;actions=*")
-	noGrantProj2Role := TestRole(t, conn, noGrantProj2.PublicId)
-	TestRoleGrant(t, conn, noGrantProj2Role.PublicId, "ids=*;type=*;actions=*")
+	noGrantOrg1, noGrantProj1 := SetupNoGrantScopes(t, conn, repo)
+	noGrantOrg2, noGrantProj2 := SetupNoGrantScopes(t, conn, repo)
 
 	// The second org/project set contains direct grants, but without
 	// inheritance. We create two roles in each project.
-	directGrantOrg1, directGrantProj1a := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
-	directGrantProj1b := TestProject(
-		t,
-		repo,
-		directGrantOrg1.PublicId,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
+	directGrantOrg1, directGrantProj1a, directGrantProj1b := SetupDirectGrantScopes(t, conn, repo)
 	directGrantOrg1Role := TestRole(t, conn, directGrantOrg1.PublicId)
 	TestUserRole(t, conn, directGrantOrg1Role.PublicId, user.PublicId)
 	directGrantOrg1RoleGrant1 := "ids=*;type=*;actions=*"
@@ -641,19 +611,7 @@ func TestGrantsForUser(t *testing.T) {
 	directGrantProj1bRoleGrant := "ids=*;type=session;actions=list,read"
 	TestRoleGrant(t, conn, directGrantProj1bRole.PublicId, directGrantProj1bRoleGrant)
 
-	directGrantOrg2, directGrantProj2a := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
-	directGrantProj2b := TestProject(
-		t,
-		repo,
-		directGrantOrg2.PublicId,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
+	directGrantOrg2, directGrantProj2a, directGrantProj2b := SetupDirectGrantScopes(t, conn, repo)
 	directGrantOrg2Role := TestRole(t, conn, directGrantOrg2.PublicId,
 		WithGrantScopeIds([]string{
 			globals.GrantScopeThis,
@@ -676,12 +634,7 @@ func TestGrantsForUser(t *testing.T) {
 
 	// For the third set we create a couple of orgs/projects and then use
 	// globals.GrantScopeChildren.
-	childGrantOrg1, childGrantOrg1Proj := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
+	childGrantOrg1, childGrantOrg1Proj := SetupChildGrantScopes(t, conn, repo)
 	childGrantOrg1Role := TestRole(t, conn, childGrantOrg1.PublicId,
 		WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
@@ -689,12 +642,8 @@ func TestGrantsForUser(t *testing.T) {
 	TestUserRole(t, conn, childGrantOrg1Role.PublicId, user.PublicId)
 	childGrantOrg1RoleGrant := "ids=*;type=host-set;actions=add-hosts,remove-hosts"
 	TestRoleGrant(t, conn, childGrantOrg1Role.PublicId, childGrantOrg1RoleGrant)
-	childGrantOrg2, childGrantOrg2Proj := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
+
+	childGrantOrg2, childGrantOrg2Proj := SetupChildGrantScopes(t, conn, repo)
 	childGrantOrg2Role := TestRole(t, conn, childGrantOrg2.PublicId,
 		WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
@@ -1554,42 +1503,12 @@ func TestGrantsForUser_Group(t *testing.T) {
 
 	// The first org/project do not have any direct grants to the user. They
 	// contain roles but the user is not a principal.
-	noGrantOrg1, noGrantProj1 := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
-	noGrantOrg1Role := TestRole(t, conn, noGrantOrg1.PublicId)
-	TestRoleGrant(t, conn, noGrantOrg1Role.PublicId, "ids=*;type=scope;actions=*")
-	noGrantProj1Role := TestRole(t, conn, noGrantProj1.PublicId)
-	TestRoleGrant(t, conn, noGrantProj1Role.PublicId, "ids=*;type=*;actions=*")
-	noGrantOrg2, noGrantProj2 := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
-	noGrantOrg2Role := TestRole(t, conn, noGrantOrg2.PublicId)
-	TestRoleGrant(t, conn, noGrantOrg2Role.PublicId, "ids=*;type=scope;actions=*")
-	noGrantProj2Role := TestRole(t, conn, noGrantProj2.PublicId)
-	TestRoleGrant(t, conn, noGrantProj2Role.PublicId, "ids=*;type=*;actions=*")
+	noGrantOrg1, noGrantProj1 := SetupNoGrantScopes(t, conn, repo)
+	noGrantOrg2, noGrantProj2 := SetupNoGrantScopes(t, conn, repo)
 
 	// The second org/project set contains direct grants, but without
 	// inheritance. We create two roles in each project.
-	directGrantOrg1, directGrantProj1a := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
-	directGrantProj1b := TestProject(
-		t,
-		repo,
-		directGrantOrg1.PublicId,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
+	directGrantOrg1, directGrantProj1a, directGrantProj1b := SetupDirectGrantScopes(t, conn, repo)
 	directGrantOrg1Role := TestRole(t, conn, directGrantOrg1.PublicId)
 	TestGroupRole(t, conn, directGrantOrg1Role.PublicId, group.PublicId)
 	directGrantOrg1RoleGrant1 := "ids=*;type=*;actions=*"
@@ -1606,19 +1525,7 @@ func TestGrantsForUser_Group(t *testing.T) {
 	directGrantProj1bRoleGrant := "ids=*;type=session;actions=list,read"
 	TestRoleGrant(t, conn, directGrantProj1bRole.PublicId, directGrantProj1bRoleGrant)
 
-	directGrantOrg2, directGrantProj2a := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
-	directGrantProj2b := TestProject(
-		t,
-		repo,
-		directGrantOrg2.PublicId,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
+	directGrantOrg2, directGrantProj2a, directGrantProj2b := SetupDirectGrantScopes(t, conn, repo)
 	directGrantOrg2Role := TestRole(t, conn, directGrantOrg2.PublicId,
 		WithGrantScopeIds([]string{
 			globals.GrantScopeThis,
@@ -1641,12 +1548,7 @@ func TestGrantsForUser_Group(t *testing.T) {
 
 	// For the third set we create a couple of orgs/projects and then use
 	// globals.GrantScopeChildren.
-	childGrantOrg1, childGrantOrg1Proj := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
+	childGrantOrg1, childGrantOrg1Proj := SetupChildGrantScopes(t, conn, repo)
 	childGrantOrg1Role := TestRole(t, conn, childGrantOrg1.PublicId,
 		WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
@@ -1654,12 +1556,8 @@ func TestGrantsForUser_Group(t *testing.T) {
 	TestGroupRole(t, conn, childGrantOrg1Role.PublicId, group.PublicId)
 	childGrantOrg1RoleGrant := "ids=*;type=host-set;actions=add-hosts,remove-hosts"
 	TestRoleGrant(t, conn, childGrantOrg1Role.PublicId, childGrantOrg1RoleGrant)
-	childGrantOrg2, childGrantOrg2Proj := TestScopes(
-		t,
-		repo,
-		WithSkipAdminRoleCreation(true),
-		WithSkipDefaultRoleCreation(true),
-	)
+
+	childGrantOrg2, childGrantOrg2Proj := SetupChildGrantScopes(t, conn, repo)
 	childGrantOrg2Role := TestRole(t, conn, childGrantOrg2.PublicId,
 		WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
@@ -2500,4 +2398,48 @@ func TestGrantsForUser_Group(t *testing.T) {
 			})
 		}
 	})
+}
+
+func SetupNoGrantScopes(t *testing.T, conn *db.DB, repo *Repository) (noGrantOrg, noGrantProj *Scope) {
+	t.Helper()
+	noGrantOrg, noGrantProj = TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	noGrantOrg1Role := TestRole(t, conn, noGrantOrg.PublicId)
+	TestRoleGrant(t, conn, noGrantOrg1Role.PublicId, "ids=*;type=scope;actions=*")
+	noGrantProj1Role := TestRole(t, conn, noGrantProj.PublicId)
+	TestRoleGrant(t, conn, noGrantProj1Role.PublicId, "ids=*;type=*;actions=*")
+	return
+}
+
+func SetupDirectGrantScopes(t *testing.T, conn *db.DB, repo *Repository) (directGrantOrg, directGrantProjA, directGrantProjB *Scope) {
+	t.Helper()
+	directGrantOrg, directGrantProjA = TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	directGrantProjB = TestProject(
+		t,
+		repo,
+		directGrantOrg.PublicId,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	return
+}
+
+func SetupChildGrantScopes(t *testing.T, conn *db.DB, repo *Repository) (childGrantOrg, childGrantOrgProj *Scope) {
+	t.Helper()
+	childGrantOrg, childGrantOrgProj = TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	return
 }
