@@ -1138,9 +1138,10 @@ func validateDestroyKeyVersionRequest(req *pbs.DestroyKeyVersionRequest) error {
 
 func newOutputOpts(ctx context.Context, item *iam.Scope, authResults auth.VerifyResults, scopeInfoMap map[string]*pb.ScopeInfo) ([]handlers.Option, bool, error) {
 	res := perms.Resource{
-		Type:    resource.Scope,
-		Id:      item.GetPublicId(),
-		ScopeId: item.GetParentId(),
+		Type:          resource.Scope,
+		Id:            item.GetPublicId(),
+		ScopeId:       item.GetParentId(),
+		ParentScopeId: scopeInfoMap[item.GetParentId()].GetParentScopeId(),
 	}
 
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActionsById(item.GetPublicId()), auth.WithResource(&res)).Strings()
