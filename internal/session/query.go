@@ -292,16 +292,18 @@ where
 	//
 	// The query returns the set of servers that have had connections closed
 	// along with their last update time and the number of connections closed on
-	// each.  If we do not know the last update time, we use the current time.
+	// each. If the worker has not yet sent a session info update, we use the
+	// worker's last update time as the last update time.
 	closeConnectionsForDeadServersCte = `
    with
    dead_workers (worker_id, last_update_time) as (
-         select
-			w.worker_id as worker_id,
-			w.last_request_time as last_update_time
-           from server_worker_session_info_request w
-          where
-			w.last_request_time < wt_sub_seconds_from_now(@grace_period_seconds)
+         select w.public_id as worker_id,
+                coalesce(wsi.last_request_time, w.update_time) as last_update_time
+           from server_worker w
+      left join server_worker_session_info_request wsi on wsi.worker_id = w.public_id 
+          where wsi.last_request_time < wt_sub_seconds_from_now(@grace_period_seconds)
+             or (    wsi.last_request_time is null
+                 and w.update_time < wt_sub_seconds_from_now(@grace_period_seconds))
    ),
    closed_connections (connection_id, worker_id) as (
          update session_connection
