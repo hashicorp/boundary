@@ -24,16 +24,12 @@ import (
 
 func TestWorkerCanonicalTags(t *testing.T) {
 	w := NewWorker(scope.Global.String())
-	w.ApiTags = []*Tag{
-		{Key: "key", Value: "apis unique"},
-		{Key: "key", Value: "shared"},
-		{Key: "key2", Value: "apis key2 unique"},
-	}
-	w.ConfigTags = []*Tag{
-		{Key: "key", Value: "configs unique"},
-		{Key: "key", Value: "shared"},
-		{Key: "key3", Value: "configs key3 unique"},
-	}
+	w.ApiTags = make(Tags)
+	w.ApiTags["key"] = []string{"apis unique", "shared"}
+	w.ApiTags["key2"] = []string{"apis key2 unique"}
+	w.ConfigTags = make(Tags)
+	w.ConfigTags["key"] = []string{"configs unique", "shared"}
+	w.ConfigTags["key3"] = []string{"configs key3 unique"}
 
 	got := w.CanonicalTags()
 	assert.Len(t, got, 3, "2 keys expected, 'key' and 'key2'")
@@ -119,7 +115,9 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.NotNil(t, got.GetLastStatusTime())
 		assert.NotNil(t, got.GetReleaseVersion())
 		assert.Empty(t, got.ApiTags)
-		assert.Equal(t, got.ConfigTags, Tags{{Key: "key", Value: "val"}})
+		wantTag := make(Tags)
+		wantTag["key"] = []string{"val"}
+		assert.Equal(t, got.ConfigTags, wantTag)
 	})
 
 	t.Run("Worker with many config tag", func(t *testing.T) {
@@ -150,7 +148,7 @@ func TestWorkerAggregate(t *testing.T) {
 		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
 		assert.Empty(t, got.ApiTags)
-		assert.ElementsMatch(t, got.ConfigTags, []*Tag{
+		assert.ElementsMatch(t, got.ConfigTags.ConvertToTag(), []*Tag{
 			{Key: "key", Value: "val"},
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
@@ -177,8 +175,10 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
-		assert.Empty(t, got.GetConfigTags())
-		assert.Equal(t, got.ApiTags, Tags{{Key: "key", Value: "val"}})
+		assert.Empty(t, got.ConfigTags)
+		wantTag := make(Tags)
+		wantTag["key"] = []string{"val"}
+		assert.Equal(t, got.ApiTags, wantTag)
 	})
 
 	// Worker with mix of tag sources
@@ -209,11 +209,11 @@ func TestWorkerAggregate(t *testing.T) {
 
 		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
-		assert.ElementsMatch(t, got.ApiTags, []*Tag{
+		assert.ElementsMatch(t, got.ApiTags.ConvertToTag(), []*Tag{
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
 		})
-		assert.ElementsMatch(t, got.ConfigTags, []*Tag{
+		assert.ElementsMatch(t, got.ConfigTags.ConvertToTag(), []*Tag{
 			{Key: "key", Value: "val"},
 		})
 	})

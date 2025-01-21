@@ -203,7 +203,9 @@ func TestLookupWorker(t *testing.T) {
 		assert.Equal(t, map[string][]string{
 			"key": {"val"},
 		}, got.CanonicalTags())
-		assert.Equal(t, got.CanonicalTags(), got.GetConfigTags())
+		for k, v := range got.CanonicalTags() {
+			assert.ElementsMatch(t, v, got.ConfigTags[k])
+		}
 	})
 	t.Run("not found", func(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, "w_unknownid")

@@ -905,16 +905,16 @@ func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers
 	if outputFields.Has(globals.ControllerGeneratedActivationToken) && in.ControllerGeneratedActivationToken != "" {
 		out.ControllerGeneratedActivationToken = &wrapperspb.StringValue{Value: in.ControllerGeneratedActivationToken}
 	}
-	if outputFields.Has(globals.ConfigTagsField) && len(in.GetConfigTags()) > 0 {
+	if outputFields.Has(globals.ConfigTagsField) && len(in.ConfigTags) > 0 {
 		var err error
-		out.ConfigTags, err = tagsToMapProto(in.GetConfigTags())
+		out.ConfigTags, err = tagsToMapProto(in.ConfigTags)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
 		}
 	}
-	if outputFields.Has(globals.ApiTagsField) && len(in.GetApiTags()) > 0 {
+	if outputFields.Has(globals.ApiTagsField) && len(in.ApiTags) > 0 {
 		var err error
-		out.ApiTags, err = tagsToMapProto(in.GetApiTags())
+		out.ApiTags, err = tagsToMapProto(in.ApiTags)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing api tags proto"))
 		}

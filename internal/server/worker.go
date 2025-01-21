@@ -148,7 +148,7 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 		inputTags: opts.withWorkerTags,
 	}
 	if opts.withTestUseInputTagsAsApiTags {
-		worker.ApiTags = worker.inputTags
+		worker.ApiTags = ConvertToTags(worker.inputTags)
 	}
 	return worker
 }
@@ -184,27 +184,8 @@ func (w *Worker) clone() *Worker {
 // CanonicalTags is the deduplicated set of tags contained on both the resource
 // set over the API as well as the tags reported by the worker itself. This
 // function is guaranteed to return a non-nil map.
-func (w *Worker) CanonicalTags(opt ...Option) map[string][]string {
+func (w *Worker) CanonicalTags() map[string][]string {
 	return compactTags(&w.ApiTags, &w.ConfigTags)
-}
-
-// GetConfigTags returns the tags for this worker which has been set through
-// the worker daemon's configuration file.
-func (w *Worker) GetConfigTags() map[string][]string {
-	tags := make(map[string][]string)
-	for _, t := range w.ConfigTags {
-		tags[t.Key] = append(tags[t.Key], t.Value)
-	}
-	return tags
-}
-
-// GetApiTags returns the api tags which have been set for this worker.
-func (w *Worker) GetApiTags() map[string][]string {
-	tags := make(map[string][]string)
-	for _, t := range w.ApiTags {
-		tags[t.Key] = append(tags[t.Key], t.Value)
-	}
-	return tags
 }
 
 // GetLastStatusTime contains the last time the worker has reported to the

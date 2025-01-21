@@ -18,23 +18,36 @@ type Tag struct {
 	Value string
 }
 
+// ConvertToTags converts a slice of Tags to a map of tags
+func ConvertToTags(tags []*Tag) Tags {
+	t := make(Tags)
+	for _, tag := range tags {
+		t[tag.Key] = append(t[tag.Key], tag.Value)
+	}
+	return t
+}
+
 // Tags allows us to scan a JSON array of worker tags from the database
-type Tags []*Tag
+type Tags map[string][]string
 
 func (t *Tags) clone() Tags {
-	newTags := make(Tags, 0, len(*t))
-	for _, tag := range *t {
-		newTags = append(newTags, &Tag{Key: tag.Key, Value: tag.Value})
+	newTags := make(map[string][]string)
+	for k, v := range *t {
+		for _, val := range v {
+			newTags[k] = append(newTags[k], val)
+		}
 	}
 	return newTags
 }
 
-// compactTags takes a list of Tags and returns a map of deduplicated, compated tags
+// compactTags takes a list of Tags and returns a map of deduplicated, compacted tags
 func compactTags(t ...*Tags) map[string][]string {
 	compactedTags := make(map[Tag]struct{})
-	for _, tags := range t {
-		for _, tag := range *tags {
-			compactedTags[*tag] = struct{}{}
+	for _, keys := range t {
+		for key, tags := range *keys {
+			for _, tag := range tags {
+				compactedTags[Tag{Key: key, Value: tag}] = struct{}{}
+			}
 		}
 	}
 
@@ -45,17 +58,34 @@ func compactTags(t ...*Tags) map[string][]string {
 	return tags
 }
 
+// ConvertToTag converts a map of tags to a slice of Tags
+func (t *Tags) ConvertToTag() []*Tag {
+	var tags []*Tag
+	for key, values := range *t {
+		for _, value := range values {
+			tags = append(tags, &Tag{Key: key, Value: value})
+		}
+	}
+	return tags
+}
+
 // Scan scans value into Tags, and implements the sql.Scanner interface
 func (t *Tags) Scan(in any) error {
 	var err error
+	var test []*Tag
 	switch v := in.(type) {
 	case string:
-		err = json.Unmarshal([]byte(v), &t)
+		err = json.Unmarshal([]byte(v), &test)
 	case []byte:
-		err = json.Unmarshal(v, &t)
+		err = json.Unmarshal([]byte(v), &test)
 	default:
 		return fmt.Errorf("cannot scan type %T into tags", in)
 	}
+	mapTags := make(map[string][]string)
+	for _, tag := range test {
+		mapTags[tag.Key] = append(mapTags[tag.Key], tag.Value)
+	}
+	*t = mapTags
 	return err
 }
 

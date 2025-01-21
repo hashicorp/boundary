@@ -259,7 +259,7 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(tt.want, got)
+			assert.ElementsMatch(tt.want, got.ConvertToTag())
 			repoWorker, err := repo.LookupWorker(context.Background(), tt.args.publicId)
 			require.NoError(err)
 			assert.Equal(tt.args.version+1, repoWorker.Version)
@@ -604,7 +604,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	}
 	added, err := repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
 	assert.NoError(err)
-	assert.Equal(manyTags, added)
+	assert.ElementsMatch(manyTags, added.ConvertToTag())
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(2), worker.Version)
@@ -650,8 +650,8 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(3), worker.Version)
-	assert.Contains(worker.ApiTags, &Tag{Key: "key", Value: "value"})
-	assert.Contains(worker.ApiTags, &Tag{Key: "key2", Value: "value2"})
+	assert.Contains(worker.ApiTags.ConvertToTag(), &Tag{Key: "key", Value: "value"})
+	assert.Contains(worker.ApiTags.ConvertToTag(), &Tag{Key: "key2", Value: "value2"})
 
 	// Add another valid tag to worker
 	_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
@@ -661,7 +661,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(4), worker.Version)
-	assert.Contains(worker.ApiTags, &Tag{Key: "key!", Value: "value!"})
+	assert.Contains(worker.ApiTags.ConvertToTag(), &Tag{Key: "key!", Value: "value!"})
 	assert.Equal(3, len(worker.ApiTags))
 
 	// Set all tags to nil
@@ -681,7 +681,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 		{Key: "key3", Value: "value3"},
 		{Key: "key?", Value: "value?"},
 	} {
-		assert.Contains(worker.ConfigTags, ct)
+		assert.Contains(worker.ConfigTags.ConvertToTag(), ct)
 	}
 	assert.Equal(4, len(worker.ConfigTags))
 
@@ -693,6 +693,6 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Equal(uint32(6), worker.Version)
 	assert.Equal(len(manyTags), len(worker.ApiTags))
 	for _, t := range manyTags {
-		assert.Contains(worker.ApiTags, t)
+		assert.Contains(worker.ApiTags.ConvertToTag(), t)
 	}
 }
