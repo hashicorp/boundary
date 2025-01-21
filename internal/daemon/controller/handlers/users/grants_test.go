@@ -5,7 +5,6 @@ package users_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -122,7 +121,6 @@ func TestGrants_ReadActions(t *testing.T) {
 				}
 				require.NoError(t, finalErr)
 				var gotIDs []string
-				fmt.Println("tok.IamUserId", tok.IamUserId)
 				if tc.input.ScopeId == globals.GlobalPrefix {
 					tc.wantIDs = append(tc.wantIDs, tok.IamUserId)
 				}
