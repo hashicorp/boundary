@@ -143,6 +143,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "elasticloadbalancing:DescribeTargetGroups",
       "elasticloadbalancing:DescribeTargetHealth",
       "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:ModifyListenerAttributes",
       "elasticloadbalancing:ModifyLoadBalancerAttributes",
       "elasticloadbalancing:ModifyRule",
       "elasticloadbalancing:ModifyTargetGroup",
