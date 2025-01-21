@@ -15,6 +15,7 @@ resource "aws_instance" "controller" {
   key_name             = var.ssh_aws_keypair
   iam_instance_profile = aws_iam_instance_profile.boundary_profile.name
   monitoring           = var.controller_monitoring
+  ipv6_address_count   = local.network_stack[var.ip_version].ipv6_address_count
 
   root_block_device {
     iops        = var.controller_ebs_iops
@@ -41,6 +42,7 @@ resource "aws_instance" "worker" {
   key_name               = var.ssh_aws_keypair
   iam_instance_profile   = aws_iam_instance_profile.boundary_profile.name
   monitoring             = var.worker_monitoring
+  ipv6_address_count     = local.network_stack[var.ip_version].ipv6_address_count
 
   root_block_device {
     iops        = var.worker_ebs_iops
@@ -69,7 +71,7 @@ resource "enos_bundle_install" "controller" {
 
   transport = {
     ssh = {
-      host = aws_instance.controller[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
     }
   }
 }
@@ -86,7 +88,7 @@ resource "enos_remote_exec" "update_path_controller" {
 
   transport = {
     ssh = {
-      host = aws_instance.controller[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
     }
   }
 }
@@ -101,26 +103,29 @@ resource "enos_file" "controller_config" {
   destination = "/etc/boundary/boundary.hcl"
   content = templatefile("${path.module}/${var.controller_config_file_path}", {
     id                      = each.value
-    dbuser                  = var.db_user,
-    dbpass                  = var.db_pass,
+    dbuser                  = var.db_user
+    dbpass                  = var.db_pass
     dbhost                  = var.db_host == null ? aws_db_instance.boundary[0].address : var.db_host
     dbport                  = var.db_port
-    dbname                  = local.db_name,
+    dbname                  = local.db_name
     db_max_open_connections = var.db_max_open_connections
-    kms_key_id              = data.aws_kms_key.kms_key.id,
-    local_ipv4              = aws_instance.controller[tonumber(each.value)].private_ip
+    kms_key_id              = data.aws_kms_key.kms_key.id
+    listener_address        = var.ip_version == "4" ? "0.0.0.0" : "[::]"
     api_port                = var.listener_api_port
     ops_port                = var.listener_ops_port
+    cluster_address         = var.ip_version == "4" ? aws_instance.controller[tonumber(each.value)].private_ip : format("[%s]", aws_instance.controller[tonumber(each.value)].ipv6_addresses[0])
     cluster_port            = var.listener_cluster_port
     region                  = var.aws_region
     max_page_size           = var.max_page_size
     audit_log_dir           = local.audit_log_directory
+    vault_address           = local.network_stack[var.ip_version].vault_address
+    vault_transit_token     = var.vault_transit_token
   })
   for_each = toset([for idx in range(var.controller_count) : tostring(idx)])
 
   transport = {
     ssh = {
-      host = aws_instance.controller[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
     }
   }
 }
@@ -135,7 +140,7 @@ resource "enos_boundary_init" "controller" {
 
   transport = {
     ssh = {
-      host = try(aws_instance.controller[0].public_ip, null)
+      host = try(var.ip_version == "6" ? aws_instance.controller[0].ipv6_addresses[0] : aws_instance.controller[0].public_ip, null)
     }
   }
 
@@ -152,7 +157,7 @@ resource "enos_boundary_start" "controller_start" {
 
   transport = {
     ssh = {
-      host = aws_instance.controller[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
     }
   }
 
@@ -177,10 +182,11 @@ resource "enos_remote_exec" "create_controller_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = aws_instance.controller[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.controller[tonumber(each.value)].ipv6_addresses[0] : aws_instance.controller[tonumber(each.value)].public_ip
     }
   }
 }
+
 resource "enos_bundle_install" "worker" {
   depends_on = [aws_instance.worker]
   for_each   = toset([for idx in range(var.worker_count) : tostring(idx)])
@@ -193,7 +199,7 @@ resource "enos_bundle_install" "worker" {
 
   transport = {
     ssh = {
-      host = aws_instance.worker[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
     }
   }
 }
@@ -210,7 +216,7 @@ resource "enos_remote_exec" "update_path_worker" {
 
   transport = {
     ssh = {
-      host = aws_instance.worker[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
     }
   }
 }
@@ -221,19 +227,22 @@ resource "enos_file" "worker_config" {
   content = templatefile("${path.module}/${var.worker_config_file_path}", {
     id                      = each.value
     kms_key_id              = data.aws_kms_key.kms_key.id,
-    controller_ips          = jsonencode(aws_instance.controller.*.private_ip),
-    public_addr             = aws_instance.worker[tonumber(each.value)].public_ip
+    controller_ips          = var.ip_version == "4" ? jsonencode(aws_instance.controller.*.private_ip) : jsonencode(formatlist("[%s]:9201", flatten(aws_instance.controller.*.ipv6_addresses)))
+    listener_address        = var.ip_version == "4" ? "0.0.0.0" : "[::]"
+    public_address          = var.ip_version == "6" ? format("[%s]", aws_instance.worker[tonumber(each.value)].ipv6_addresses[0]) : aws_instance.worker[tonumber(each.value)].public_ip
     region                  = var.aws_region
     type                    = jsonencode(var.worker_type_tags)
     recording_storage_path  = var.recording_storage_path
     audit_log_dir           = local.audit_log_directory
     hcp_boundary_cluster_id = var.hcp_boundary_cluster_id
+    vault_address           = local.network_stack[var.ip_version].vault_address
+    vault_transit_token     = var.vault_transit_token
   })
   for_each = toset([for idx in range(var.worker_count) : tostring(idx)])
 
   transport = {
     ssh = {
-      host = aws_instance.worker[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
     }
   }
 }
@@ -250,7 +259,7 @@ resource "enos_boundary_start" "worker_start" {
 
   transport = {
     ssh = {
-      host = aws_instance.worker[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
     }
   }
 }
@@ -270,7 +279,7 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = aws_instance.worker[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
     }
   }
 }
@@ -282,7 +291,7 @@ resource "enos_remote_exec" "get_worker_token" {
   inline = ["timeout 10s bash -c 'set -eo pipefail; until journalctl -u boundary.service | cat | grep \"Worker Auth Registration Request: .*\" | rev | cut -d \" \" -f 1 | rev | xargs; do sleep 2; done'"]
   transport = {
     ssh = {
-      host = aws_instance.worker[tonumber(each.value)].public_ip
+      host = var.ip_version == "6" ? aws_instance.worker[tonumber(each.value)].ipv6_addresses[0] : aws_instance.worker[tonumber(each.value)].public_ip
     }
   }
 }

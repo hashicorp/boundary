@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: BUSL-1.1
 
 listener "tcp" {
-  purpose = "proxy"
+  purpose     = "proxy"
   tls_disable = true
-  address = "0.0.0.0"
+  address     = "${listener_address}:9202"
 }
 
 worker {
@@ -13,9 +13,9 @@ worker {
   description = "Enos Boundary worker ${id}"
 
   # Workers must be able to reach controllers on :9201
-  initial_upstreams = ${controller_addresses}
+  initial_upstreams = ${controller_ips}
 
-  public_addr = "${public_addr}"
+  public_addr = "${public_address}"
 
   tags {
     region = ["${region}"]

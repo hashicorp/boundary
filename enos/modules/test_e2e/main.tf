@@ -140,7 +140,11 @@ variable "worker_tag_ingress" {
   type    = string
   default = ""
 }
-variable "worker_tag_egress" {
+variable "worker_tag_isolated" {
+  type    = string
+  default = ""
+}
+variable "worker_tag_collocated" {
   type    = string
   default = ""
 }
@@ -155,6 +159,17 @@ variable "test_timeout" {
 variable "boundary_license" {
   type    = string
   default = ""
+}
+
+variable "ip_version" {
+  description = "ip version used to setup boundary instance, should be 4, 6, or dual"
+  type        = string
+  default     = "4"
+
+  validation {
+    condition     = contains(["4", "6", "dual"], var.ip_version)
+    error_message = "ip_version must be one of: [4, 6, dual]"
+  }
 }
 
 locals {
@@ -192,9 +207,11 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
     E2E_AWS_ROLE_ARN              = var.aws_role_arn
     E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
-    E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
+    E2E_WORKER_TAG_ISOLATED       = var.worker_tag_isolated
+    E2E_WORKER_TAG_COLLOCATED     = var.worker_tag_collocated
     E2E_WORKER_ADDRESS            = var.worker_address
     E2E_MAX_PAGE_SIZE             = var.max_page_size
+    E2E_IP_VERSION                = var.ip_version
   }
 
   inline = var.debug_no_run ? [""] : [

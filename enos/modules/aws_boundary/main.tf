@@ -25,6 +25,49 @@ locals {
       Pet    = random_pet.default.id
     },
   )
+
+  network_stack = {
+    "4" = {
+      ingress_cidr_blocks = flatten([
+        formatlist("%s/32", data.enos_environment.localhost.public_ipv4_addresses),
+        join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+        formatlist("%s/32", var.alb_sg_additional_ips),
+      ])
+      ingress_ipv6_cidr_blocks = [],
+      egress_cidr_blocks       = ["0.0.0.0/0"],
+      egress_ipv6_cidr_blocks  = [],
+      ipv6_address_count       = 0,
+      vault_address            = var.vault_address,
+    },
+    "6" = {
+      ingress_cidr_blocks = [],
+      ingress_ipv6_cidr_blocks = flatten([
+        try([for ip in coalesce(data.enos_environment.localhost.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)], []),
+        [data.aws_vpc.infra.ipv6_cidr_block],
+        [for ip in var.alb_sg_additional_ipv6_ips : cidrsubnet("${ip}/64", 0, 0)],
+      ])
+      egress_cidr_blocks      = [],
+      egress_ipv6_cidr_blocks = ["::/0"],
+      ipv6_address_count      = 1,
+      vault_address           = format("[%s]", var.vault_address)
+    },
+    "dual" = {
+      ingress_cidr_blocks = flatten([
+        formatlist("%s/32", data.enos_environment.localhost.public_ipv4_addresses),
+        join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+        formatlist("%s/32", var.alb_sg_additional_ips),
+      ])
+      ingress_ipv6_cidr_blocks = flatten([
+        try([for ip in coalesce(data.enos_environment.localhost.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)], []),
+        [data.aws_vpc.infra.ipv6_cidr_block],
+        [for ip in var.alb_sg_additional_ipv6_ips : cidrsubnet("${ip}/64", 0, 0)],
+      ]),
+      egress_cidr_blocks      = ["0.0.0.0/0"],
+      egress_ipv6_cidr_blocks = ["::/0"],
+      ipv6_address_count      = 1,
+      vault_address           = try(format("[%s]", var.vault_address), "")
+    }
+  }
 }
 
 resource "random_string" "cluster_id" {

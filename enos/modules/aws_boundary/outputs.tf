@@ -3,12 +3,12 @@
 
 output "controller_ips" {
   description = "Public IPs of boundary controllers"
-  value       = aws_instance.controller.*.public_ip
+  value       = var.ip_version == "6" ? flatten(aws_instance.controller.*.ipv6_addresses) : aws_instance.controller.*.public_ip
 }
 
 output "worker_ips" {
   description = "Public IPs of boundary workers"
-  value       = aws_instance.worker.*.public_ip
+  value       = var.ip_version == "6" ? flatten(aws_instance.worker.*.ipv6_addresses) : aws_instance.worker.*.public_ip
 }
 
 output "alb_hostname" {
@@ -208,7 +208,7 @@ output "cluster_tag" {
 }
 
 output "public_controller_addresses" {
-  value = aws_instance.controller[*].public_ip
+  value = var.ip_version == "4" ? aws_instance.controller[*].public_ip : aws_instance.controller[*].ipv6_addresses[0]
 }
 
 output "controller_aux_sg_id" {
@@ -231,4 +231,14 @@ output "worker_tokens" {
   value = try([
     for token in enos_remote_exec.get_worker_token : trimspace(token.stdout)
   ], null)
+}
+
+output "worker_cidr" {
+  description = "List of ipv4 subnets of all workers"
+  value       = formatlist("%s/32", aws_instance.worker.*.public_ip)
+}
+
+output "worker_ipv6_cidr" {
+  description = "List of ipv6 subnets of all workers"
+  value       = distinct([for ip in flatten(aws_instance.worker.*.ipv6_addresses) : cidrsubnet("${ip}/64", 0, 0)])
 }

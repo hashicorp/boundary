@@ -22,24 +22,22 @@ resource "aws_security_group" "boundary_sg" {
 
   # SSH
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = flatten([formatlist("%s/32", data.enos_environment.localhost.public_ipv4_addresses)])
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = local.network_stack[var.ip_version].ingress_cidr_blocks
+    ipv6_cidr_blocks = local.network_stack[var.ip_version].ingress_ipv6_cidr_blocks
   }
 
   dynamic "ingress" {
     for_each = local.listener_ports
 
     content {
-      cidr_blocks = flatten([
-        formatlist("%s/32", data.enos_environment.localhost.public_ipv4_addresses),
-        join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
-      ])
+      cidr_blocks      = local.network_stack[var.ip_version].ingress_cidr_blocks
+      ipv6_cidr_blocks = local.network_stack[var.ip_version].ingress_ipv6_cidr_blocks
       description      = ingress.key
       from_port        = ingress.value
       to_port          = ingress.value
-      ipv6_cidr_blocks = []
       prefix_list_ids  = []
       protocol         = "tcp"
       self             = null
@@ -48,10 +46,11 @@ resource "aws_security_group" "boundary_sg" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = local.network_stack[var.ip_version].egress_cidr_blocks
+    ipv6_cidr_blocks = local.network_stack[var.ip_version].egress_ipv6_cidr_blocks
   }
 
   tags = merge(
@@ -86,27 +85,29 @@ resource "aws_security_group" "boundary_alb_sg" {
 
     content {
       cidr_blocks = flatten([
-        formatlist("%s/32", data.enos_environment.localhost.public_ipv4_addresses),
-        join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
         try(format("%s/32", aws_instance.controller.0.public_ip), []),
-        formatlist("%s/32", var.alb_sg_additional_ips)
-      ])
-      description      = ingress.key
-      from_port        = ingress.value
-      to_port          = ingress.value
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      protocol         = "tcp"
-      self             = null
-      security_groups  = []
+        local.network_stack[var.ip_version].ingress_cidr_blocks]
+      )
+      ipv6_cidr_blocks = flatten([
+        try(cidrsubnet("${aws_instance.controller.0.ipv6_addresses[0]}/64", 0, 0), []),
+        local.network_stack[var.ip_version].ingress_ipv6_cidr_blocks]
+      )
+      description     = ingress.key
+      from_port       = ingress.value
+      to_port         = ingress.value
+      prefix_list_ids = []
+      protocol        = "tcp"
+      self            = null
+      security_groups = []
     }
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = local.network_stack[var.ip_version].egress_cidr_blocks
+    ipv6_cidr_blocks = local.network_stack[var.ip_version].egress_ipv6_cidr_blocks
   }
 
   tags = merge(
@@ -124,11 +125,11 @@ resource "aws_security_group" "boundary_db_sg" {
   vpc_id      = var.vpc_id
 
   ingress {
-    cidr_blocks      = flatten([formatlist("%s/32", data.enos_environment.localhost.public_ipv4_addresses), join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block)])
+    cidr_blocks      = local.network_stack[var.ip_version].ingress_cidr_blocks
+    ipv6_cidr_blocks = local.network_stack[var.ip_version].ingress_ipv6_cidr_blocks
     description      = "database"
     from_port        = 5432
     to_port          = 5432
-    ipv6_cidr_blocks = []
     prefix_list_ids  = []
     protocol         = "tcp"
     self             = null
@@ -136,10 +137,11 @@ resource "aws_security_group" "boundary_db_sg" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = local.network_stack[var.ip_version].egress_cidr_blocks
+    ipv6_cidr_blocks = local.network_stack[var.ip_version].egress_ipv6_cidr_blocks
   }
 
   tags = merge(local.common_tags,

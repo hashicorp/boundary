@@ -241,9 +241,9 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 
 	// Create AWS dynamic host catalog
-	awsHostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
+	awsHostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion, false)
 	require.NoError(t, err)
-	awsHostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, awsHostCatalogId, c.AwsHostSetFilter)
+	awsHostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, awsHostCatalogId, c.AwsHostSetFilter, "4")
 	require.NoError(t, err)
 	boundary.WaitForHostsInHostSetCli(t, ctx, awsHostSetId)
 
