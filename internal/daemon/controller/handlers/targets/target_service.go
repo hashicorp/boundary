@@ -1978,6 +1978,7 @@ func newOutputOpts(ctx context.Context, item target.Target, authResults auth.Ver
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authzScopes[item.GetProjectId()]))
 	}
+	pr.ParentScopeId = authzScopes[item.GetProjectId()].GetParentScopeId()
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&pr)).Strings()
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
