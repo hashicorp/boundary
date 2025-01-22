@@ -10,6 +10,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   setting this environment variable would result in a max retries of 2,
   regardless of the value set.
   ([PR](https://github.com/hashicorp/boundary/pull/5385)).
+* Fix bug in parsing IPv6 addresses. Previously setting a target address or the
+  initial upstream address in the config file would result in a malformed value.
+  ([PR](https://github.com/hashicorp/boundary/pull/5221)).
 
 ### New and Improved
 
