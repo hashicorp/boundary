@@ -18,6 +18,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * GCP dynamic host catalog: Add dynamic host catalog support for 
   discovering GCP Compute Engine VM Instances.
   ([PR](https://github.com/hashicorp/boundary/pull/5229)).
+* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and 
+maintainability of worker queries, and improve DB performance. ([PR](https://github.com/hashicorp/boundary/pull/5338)).
 * Adds support for dual-stack networking for AWS operations.
   ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52)) 
   * **Note**: As a consequence of updating AWS SDK dependencies to enable
