@@ -1,8 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authtokens_test
 
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -12,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // TestGrants_ReadActions tests read actions to assert that grants are being applied properly
