@@ -755,10 +755,11 @@ func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool
 
 func newOutputOpts(ctx context.Context, item host.Set, plg *plugins.PluginInfo, authResults auth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Id:      item.GetPublicId(),
-		Type:    resource.HostSet,
-		Pin:     item.GetCatalogId(),
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Id:            item.GetPublicId(),
+		Type:          resource.HostSet,
+		Pin:           item.GetCatalogId(),
 	}
 	res.Id = item.GetPublicId()
 	idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype]
