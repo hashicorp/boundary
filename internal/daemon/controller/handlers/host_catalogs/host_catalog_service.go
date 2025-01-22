@@ -775,9 +775,10 @@ func newOutputOpts(
 	pluginMap map[string]*plugin.Plugin,
 ) ([]handlers.Option, bool, error) {
 	res := perms.Resource{
-		Type:    resource.HostCatalog,
-		Id:      item.GetPublicId(),
-		ScopeId: item.GetProjectId(),
+		Type:          resource.HostCatalog,
+		Id:            item.GetPublicId(),
+		ScopeId:       item.GetProjectId(),
+		ParentScopeId: scopeInfoMap[item.GetProjectId()].GetParentScopeId(),
 	}
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 	if len(authorizedActions) == 0 {
