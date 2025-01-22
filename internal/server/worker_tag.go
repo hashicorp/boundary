@@ -58,8 +58,8 @@ func compactTags(t ...*Tags) map[string][]string {
 	return tags
 }
 
-// ConvertToTag converts a map of tags to a slice of Tags
-func (t *Tags) ConvertToTag() []*Tag {
+// convertToTag converts a map of tags to a slice of Tags
+func (t *Tags) convertToTag() []*Tag {
 	var tags []*Tag
 	for key, values := range *t {
 		for _, value := range values {

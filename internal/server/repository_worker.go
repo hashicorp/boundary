@@ -783,7 +783,7 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		if rowsUpdated != 1 {
 			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated worker version and %d rows updated", rowsUpdated))
 		}
-		err = setWorkerApiTags(ctx, w, workerId, newTags.ConvertToTag())
+		err = setWorkerApiTags(ctx, w, workerId, newTags.convertToTag())
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}

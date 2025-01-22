@@ -1316,12 +1316,13 @@ func TestRoutingInfo(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, w1.Address, "2.3.4.5:8080")
-		expTags := []*server.Tag{
-			{Key: "tag1", Value: "value1"},
-			{Key: "tag2", Value: "value2"},
+		expTags := server.Tags{
+			"tag1": []string{"value1"},
+			"tag2": []string{"value2"},
 		}
-		gotTags := w1.ConfigTags.ConvertToTag()
-		assert.ElementsMatch(t, expTags, gotTags)
+		for k, v := range expTags {
+			assert.ElementsMatch(t, v, w1.ConfigTags[k])
+		}
 		assert.Equal(t, w1.ReleaseVersion, "Boundary v0.18.0")
 		assert.EqualValues(t, w1.OperationalState, server.ActiveOperationalState)
 		assert.EqualValues(t, w1.LocalStorageState, server.AvailableLocalStorageState)
@@ -1341,8 +1342,9 @@ func TestRoutingInfo(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, w1.Address, "2.3.4.5:8080")
-		gotTags = w1.ConfigTags.ConvertToTag()
-		assert.ElementsMatch(t, expTags, gotTags)
+		for k, v := range expTags {
+			assert.ElementsMatch(t, v, w1.ConfigTags[k])
+		}
 		assert.Equal(t, w1.ReleaseVersion, "Boundary v0.18.0")
 		assert.EqualValues(t, w1.OperationalState, server.ActiveOperationalState)
 		assert.EqualValues(t, w1.LocalStorageState, server.AvailableLocalStorageState)
@@ -1379,12 +1381,13 @@ func TestRoutingInfo(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, w3.Address, "2.3.4.5:8080")
-		expTags := []*server.Tag{
-			{Key: "tag1", Value: "value1"},
-			{Key: "tag2", Value: "value2"},
+		expTags := server.Tags{
+			"tag1": []string{"value1"},
+			"tag2": []string{"value2"},
 		}
-		gotTags := w3.ConfigTags.ConvertToTag()
-		assert.ElementsMatch(t, expTags, gotTags)
+		for k, v := range expTags {
+			assert.ElementsMatch(t, v, w3.ConfigTags[k])
+		}
 		assert.Equal(t, w3.ReleaseVersion, "Boundary v0.18.0")
 		assert.EqualValues(t, w3.OperationalState, server.ActiveOperationalState)
 		assert.EqualValues(t, w3.LocalStorageState, server.AvailableLocalStorageState)
@@ -1404,8 +1407,9 @@ func TestRoutingInfo(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, w3.Address, "2.3.4.5:8080")
-		gotTags = w3.ConfigTags.ConvertToTag()
-		assert.ElementsMatch(t, expTags, gotTags)
+		for k, v := range expTags {
+			assert.ElementsMatch(t, v, w3.ConfigTags[k])
+		}
 		assert.Equal(t, w3.ReleaseVersion, "Boundary v0.18.0")
 		assert.EqualValues(t, w3.OperationalState, server.ActiveOperationalState)
 		assert.EqualValues(t, w3.LocalStorageState, server.AvailableLocalStorageState)

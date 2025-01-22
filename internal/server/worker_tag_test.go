@@ -38,7 +38,7 @@ func TestConvertToTag(t *testing.T) {
 		wantSlice = append(wantSlice, thisTag)
 		tags[fmt.Sprintf("key-%d", i)] = []string{fmt.Sprintf("unique-%d", i)}
 	}
-	gotTags := tags.ConvertToTag()
+	gotTags := tags.convertToTag()
 
 	assert.ElementsMatch(t, gotTags, wantSlice)
 }

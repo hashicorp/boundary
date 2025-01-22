@@ -148,7 +148,7 @@ func TestWorkerAggregate(t *testing.T) {
 		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
 		assert.Empty(t, got.ApiTags)
-		assert.ElementsMatch(t, got.ConfigTags.ConvertToTag(), []*Tag{
+		assert.ElementsMatch(t, got.ConfigTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val"},
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
@@ -209,11 +209,11 @@ func TestWorkerAggregate(t *testing.T) {
 
 		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
-		assert.ElementsMatch(t, got.ApiTags.ConvertToTag(), []*Tag{
+		assert.ElementsMatch(t, got.ApiTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
 		})
-		assert.ElementsMatch(t, got.ConfigTags.ConvertToTag(), []*Tag{
+		assert.ElementsMatch(t, got.ConfigTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val"},
 		})
 	})
