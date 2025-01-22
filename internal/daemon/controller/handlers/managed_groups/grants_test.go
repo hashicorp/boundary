@@ -57,6 +57,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	globalMg2 := oidc.TestManagedGroup(t, conn, globalOidcAm, oidc.TestFakeManagedGroupFilter)
 
 	orgDBWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 	orgLdapAm := ldap.TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap1"}, ldap.WithName(ctx, "global"), ldap.WithDescription(ctx, "global"))
 	_ = ldap.TestAccount(t, conn, orgLdapAm, "test-login-name-1", ldap.WithMemberOfGroups(ctx, "admin"), ldap.WithName(ctx, "org-1"), ldap.WithDescription(ctx, "org-1"))
 	_ = ldap.TestAccount(t, conn, orgLdapAm, "test-login-name-2", ldap.WithMemberOfGroups(ctx, "admin"), ldap.WithName(ctx, "org-2"), ldap.WithDescription(ctx, "org-2"))
