@@ -652,6 +652,17 @@ Learn more: https://cfl.re/CF_DNS_PROXY_FAILURE
 You can still install both the Cloudflare WARP client and the Boundary Client Agent on the same machine.
 As long as you don't run both at the same time, they should work as expected.
 
+### Huntress EDR client
+
+Host isolation and release via Huntress does not work as expected in Windows when used alongside the Boundary Client Agent.
+Huntress EDR client in Windows utilizes the Windows Filtering Platform (WFP) to isolate devices by blocking all non-essential traffic. This behavior conflicts with the Boundary Client Agent during device isolation.
+Specifically, the Boundary Client Agent replaces the default DNS resolver with its own, which can prevent fallback to a secondary DNS when the primary (Boundary) DNS fails during isolation.
+As a result, Huntress is unable to maintain server communication, leaving the device stuck in an isolated state. Device isolation and release via Huntress do not function properly in Windows under these conditions.
+
+A temporary workaround is to manually configure a secondary DNS (e.g., 8.8.8.8); however, this setting is overwritten when the Boundary client is paused or resumed, requiring reapplication.
+
+This issue does not affect macOS devices, where Boundary and Huntress coexist without additional configuration.
+
 ## Uninstall the Client Agent on Mac
 
 If you used the Mac installer, you can run `/Library/Application Support/HashiCorp/Boundary Uninstaller.app` to uninstall Boundary.
