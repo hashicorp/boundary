@@ -63,7 +63,7 @@ require (
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.18.0
 	github.com/ryanuber/go-glob v1.0.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.11.0
 	golang.org/x/crypto v0.31.0
@@ -93,6 +93,7 @@ require (
 	github.com/hashicorp/dbassert v0.0.0-20231012105025-1bc1bd88e22b
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20241126174344-f3b1a41a15fd
 	github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab
+	github.com/hashicorp/go-secure-stdlib/permitpool v1.0.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.13
 	github.com/jackc/pgx/v5 v5.6.0

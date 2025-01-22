@@ -3348,7 +3348,7 @@ func TestMaxPageSize(t *testing.T) {
 			in: `
 			controller {
 				name = "example-controller"
-				max_page_size = "env://ENV_MAX_CONN"
+				max_page_size = "env://ENV_MAX_PAGE_SIZE"
 			}`,
 			expMaxPageSize: 8,
 			envMaxPageSize: "8",
@@ -3359,7 +3359,7 @@ func TestMaxPageSize(t *testing.T) {
 			in: `
 			controller {
 				name = "example-controller"
-				max_page_size = "env://ENV_MAX_CONN"
+				max_page_size = "env://ENV_MAX_PAGE_SIZE"
 			}`,
 			envMaxPageSize: "bogus value",
 			expErr:         true,
@@ -3369,7 +3369,7 @@ func TestMaxPageSize(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("ENV_MAX_CONN", tt.envMaxPageSize)
+			t.Setenv("ENV_MAX_PAGE_SIZE", tt.envMaxPageSize)
 			c, err := Parse(tt.in)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrStr)
@@ -3383,4 +3383,155 @@ func TestMaxPageSize(t *testing.T) {
 			require.Equal(t, tt.expMaxPageSize, c.Controller.MaxPageSize)
 		})
 	}
+}
+
+func TestConcurrentPasswordHashWorkers(t *testing.T) {
+	tests := []struct {
+		name                             string
+		in                               string
+		envConcurrentPasswordHashWorkers string
+		expConcurrentPasswordHashWorkers uint
+		expErr                           bool
+		expErrStr                        string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 5
+			}`,
+			expConcurrentPasswordHashWorkers: 5,
+			expErr:                           false,
+		},
+		{
+			name: "Valid string value",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "5"
+			}`,
+			expConcurrentPasswordHashWorkers: 5,
+			expErr:                           false,
+		},
+		{
+			name: "Invalid value integer",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 0
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers value must be at least 1, was 0",
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "string bad"
+			}`,
+			expErr: true,
+			expErrStr: "Concurrent password hash workers value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value string integer",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "-1"
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers value must be at least 1, was -1",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = false
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "env://ENV_MAX_PW_WORKERS"
+			}`,
+			expConcurrentPasswordHashWorkers: 8,
+			envConcurrentPasswordHashWorkers: "8",
+			expErr:                           false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "env://ENV_MAX_PW_WORKERS"
+			}`,
+			envConcurrentPasswordHashWorkers: "bogus value",
+			expErr:                           true,
+			expErrStr: "Concurrent password hash workers value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_PW_WORKERS", tt.envConcurrentPasswordHashWorkers)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expConcurrentPasswordHashWorkers, c.Controller.ConcurrentPasswordHashWorkers)
+		})
+	}
+
+	t.Run("using environment variable", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "2")
+		in := `
+			controller {
+				name = "example-controller"
+			}`
+		c, err := Parse(in)
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		require.NotNil(t, c.Controller)
+		require.EqualValues(t, 2, c.Controller.ConcurrentPasswordHashWorkers)
+	})
+
+	t.Run("using environment variable with invalid value", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "invalid")
+		in := `
+			controller {
+				name = "example-controller"
+			}`
+		c, err := Parse(in)
+		require.Error(t, err)
+		require.Nil(t, c)
+		require.Contains(t, err.Error(), "BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS value is not an int")
+	})
+
+	t.Run("using environment variable and config value uses config value", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "2")
+		in := `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 3
+			}`
+		c, err := Parse(in)
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		require.NotNil(t, c.Controller)
+		require.EqualValues(t, 3, c.Controller.ConcurrentPasswordHashWorkers)
+	})
 }
