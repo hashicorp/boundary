@@ -29,6 +29,10 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
     dual-stack support, this Boundary release may consume more memory. From our
     testing, the increase seems to be around 1.6x, however this
     may vary depending on your deployment architecture.
+* The worker <-> controller communications have been refactored to improve performance
+  and reliability at large scale. Workers older than v0.19.0 will remain supported
+  until the release of v0.20.0, in accordance with
+  [our worker/controller compatiblity policy](https://developer.hashicorp.com/boundary/docs/enterprise/supported-versions#control-plane-and-worker-compatibility).
 
 ### Bug fixes
 
