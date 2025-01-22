@@ -200,9 +200,9 @@ func TestLookupWorker(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
 		assert.Equal(t, uint32(3), got.ActiveConnectionCount)
-		assert.Equal(t, map[string][]string{
+		assert.Equal(t, server.Tags(map[string][]string{
 			"key": {"val"},
-		}, got.CanonicalTags())
+		}), got.CanonicalTags())
 		for k, v := range got.CanonicalTags() {
 			assert.ElementsMatch(t, v, got.ConfigTags[k])
 		}
