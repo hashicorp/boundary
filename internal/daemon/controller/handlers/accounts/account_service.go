@@ -1488,9 +1488,10 @@ func validateSetPasswordRequest(ctx context.Context, req *pbs.SetPasswordRequest
 
 func newOutputOpts(ctx context.Context, item auth.Account, authMethodId string, authResults requestauth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Account,
-		Pin:     authMethodId,
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Type:          resource.Account,
+		Pin:           authMethodId,
 	}
 	res.Id = item.GetPublicId()
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()
