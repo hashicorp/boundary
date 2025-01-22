@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/boundary/mains/azure
 go 1.23.0
 
 require (
-	github.com/hashicorp/boundary-plugin-azure v0.1.3
+	github.com/hashicorp/boundary-plugin-azure v0.2.0
 	github.com/hashicorp/boundary/sdk v0.0.39
 )
 
@@ -54,6 +54,7 @@ require (
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect
