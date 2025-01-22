@@ -1,7 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authmethods_test
 
 import (
 	"context"
+	"slices"
+	"testing"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
@@ -10,9 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	"slices"
-
-	"testing"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/db"
@@ -127,13 +130,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				// them in the global scope. Auth methods in org 1 and org 2 show up - my guess is because
 				// the u_anon grants allow auth methods to be read on any org.
 				wantIDs: []string{
-					//oidcGlobal.PublicId,
+					// oidcGlobal.PublicId,
 					oidcOrg1.PublicId,
 					oidcOrg2.PublicId,
-					//ldapGlobal.PublicId,
+					// ldapGlobal.PublicId,
 					ldapOrg1.PublicId,
 					ldapOrg2.PublicId,
-					//pwGlobal.PublicId,
+					// pwGlobal.PublicId,
 					pwOrg1.PublicId,
 					pwOrg2.PublicId,
 				},
