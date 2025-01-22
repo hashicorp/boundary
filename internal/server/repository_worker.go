@@ -746,7 +746,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 
 // AddWorkerTags adds specified api tags to the repo worker and returns its new tags.
 // No options are currently supported.
-func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerVersion uint32, tags []*Tag, _ ...Option) ([]*Tag, error) {
+func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerVersion uint32, tags []*Tag, _ ...Option) (Tags, error) {
 	const op = "server.(Repository).AddWorkerTags"
 	switch {
 	case workerId == "":
@@ -765,7 +765,13 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no worker found with public id %s", workerId))
 	}
 
-	newTags := append(worker.ApiTags, tags...)
+	newTags := make(Tags)
+	for _, tag := range tags {
+		newTags[tag.Key] = append(newTags[tag.Key], tag.Value)
+	}
+	for k, v := range worker.ApiTags {
+		newTags[k] = append(newTags[k], v...)
+	}
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		worker := worker.clone()
 		worker.PublicId = workerId
@@ -777,7 +783,7 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		if rowsUpdated != 1 {
 			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated worker version and %d rows updated", rowsUpdated))
 		}
-		err = setWorkerApiTags(ctx, w, workerId, newTags)
+		err = setWorkerApiTags(ctx, w, workerId, newTags.convertToTag())
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}

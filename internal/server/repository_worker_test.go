@@ -200,10 +200,13 @@ func TestLookupWorker(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
 		assert.Equal(t, uint32(3), got.ActiveConnectionCount)
-		assert.Equal(t, map[string][]string{
+		assert.Equal(t, server.Tags(map[string][]string{
 			"key": {"val"},
-		}, got.CanonicalTags())
-		assert.Equal(t, got.CanonicalTags(), got.GetConfigTags())
+		}), got.CanonicalTags())
+		assert.Equal(t, len(got.CanonicalTags()), len(got.ConfigTags))
+		for k, v := range got.CanonicalTags() {
+			assert.ElementsMatch(t, v, got.ConfigTags[k])
+		}
 	})
 	t.Run("not found", func(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, "w_unknownid")
