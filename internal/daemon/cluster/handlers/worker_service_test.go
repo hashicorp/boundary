@@ -1320,6 +1320,7 @@ func TestRoutingInfo(t *testing.T) {
 			"tag1": []string{"value1"},
 			"tag2": []string{"value2"},
 		}
+		assert.Equal(t, len(expTags), len(w1.ConfigTags))
 		for k, v := range expTags {
 			assert.ElementsMatch(t, v, w1.ConfigTags[k])
 		}
@@ -1342,6 +1343,7 @@ func TestRoutingInfo(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, w1.Address, "2.3.4.5:8080")
+		assert.Equal(t, len(expTags), len(w1.ConfigTags))
 		for k, v := range expTags {
 			assert.ElementsMatch(t, v, w1.ConfigTags[k])
 		}
@@ -1385,6 +1387,7 @@ func TestRoutingInfo(t *testing.T) {
 			"tag1": []string{"value1"},
 			"tag2": []string{"value2"},
 		}
+		assert.Equal(t, len(expTags), len(w3.ConfigTags))
 		for k, v := range expTags {
 			assert.ElementsMatch(t, v, w3.ConfigTags[k])
 		}
@@ -1407,6 +1410,7 @@ func TestRoutingInfo(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, w3.Address, "2.3.4.5:8080")
+		assert.Equal(t, len(expTags), len(w3.ConfigTags))
 		for k, v := range expTags {
 			assert.ElementsMatch(t, v, w3.ConfigTags[k])
 		}

@@ -203,6 +203,7 @@ func TestLookupWorker(t *testing.T) {
 		assert.Equal(t, server.Tags(map[string][]string{
 			"key": {"val"},
 		}), got.CanonicalTags())
+		assert.Equal(t, len(got.CanonicalTags()), len(got.ConfigTags))
 		for k, v := range got.CanonicalTags() {
 			assert.ElementsMatch(t, v, got.ConfigTags[k])
 		}

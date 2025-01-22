@@ -57,6 +57,7 @@ func TestConvertToTags(t *testing.T) {
 	}
 	tags := convertToTags(tagsSlice)
 
+	assert.Equal(t, len(tags), len(wantTags))
 	for k, v := range tags {
 		assert.ElementsMatch(t, v, wantTags[k])
 	}
