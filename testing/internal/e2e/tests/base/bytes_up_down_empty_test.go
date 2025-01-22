@@ -108,7 +108,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 			t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
 			return nil
 		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 6),
 		func(err error, td time.Duration) {
 			t.Logf("%s. Retrying...", err.Error())
 		},

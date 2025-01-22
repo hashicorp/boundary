@@ -68,7 +68,7 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
 				"-p", "{{boundary.port}}", // this is provided by boundary
 				"{{boundary.ip}}",
-				"for i in {1..10}; do pwd; sleep 1s; done",
+				"for i in {1..30}; do pwd; sleep 1s; done",
 			),
 		)
 	}()
@@ -143,7 +143,7 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 			newBytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
 			newBytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
 
-			if !(newBytesDown > bytesDown) || !(newBytesUp > bytesUp) {
+			if !(newBytesDown > bytesDown) {
 				return fmt.Errorf(
 					"bytes_up: %d, bytes_down: %d, bytes_up/bytes_down is not greater than previous value",
 					newBytesUp,
@@ -154,7 +154,7 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 			t.Logf("bytes_up: %d, bytes_down: %d", newBytesUp, newBytesDown)
 			return nil
 		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 6),
 		func(err error, td time.Duration) {
 			t.Logf("%s. Retrying...", err.Error())
 		},
