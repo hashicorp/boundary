@@ -622,10 +622,11 @@ func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
 
 func newOutputOpts(ctx context.Context, item host.Host, plg *plugin.Plugin, authResults auth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Host,
-		Pin:     item.GetCatalogId(),
-		Id:      item.GetPublicId(),
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Type:          resource.Host,
+		Pin:           item.GetCatalogId(),
+		Id:            item.GetPublicId(),
 	}
 	res.Id = item.GetPublicId()
 	idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(res.Id).Subtype]
