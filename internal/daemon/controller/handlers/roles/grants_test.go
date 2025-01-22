@@ -63,6 +63,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	org2Roles, err := s.ListRoles(auth.DisabledAuthTestContext(repoFn, org2.GetPublicId()), &pbs.ListRolesRequest{
 		ScopeId: org2.GetPublicId(),
 	})
+	require.NoError(t, err)
 	var defaultOrg2Roles []string
 	for _, r := range org2Roles.Items {
 		defaultOrg2Roles = append(defaultOrg2Roles, r.GetId())
@@ -71,6 +72,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	proj2Roles, err := s.ListRoles(auth.DisabledAuthTestContext(repoFn, proj2.GetPublicId()), &pbs.ListRolesRequest{
 		ScopeId: proj2.GetPublicId(),
 	})
+	require.NoError(t, err)
 	var defaultProj2Roles []string
 	for _, r := range proj2Roles.Items {
 		defaultProj2Roles = append(defaultProj2Roles, r.GetId())
@@ -79,6 +81,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	proj3Roles, err := s.ListRoles(auth.DisabledAuthTestContext(repoFn, proj3.GetPublicId()), &pbs.ListRolesRequest{
 		ScopeId: proj3.GetPublicId(),
 	})
+	require.NoError(t, err)
 	var defaultProj3Roles []string
 	for _, r := range proj3Roles.Items {
 		defaultProj3Roles = append(defaultProj3Roles, r.GetId())
