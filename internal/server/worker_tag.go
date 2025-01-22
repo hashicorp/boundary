@@ -18,8 +18,8 @@ type Tag struct {
 	Value string
 }
 
-// ConvertToTags converts a slice of Tags to a map of tags
-func ConvertToTags(tags []*Tag) Tags {
+// convertToTags converts a slice of Tags to a map of tags
+func convertToTags(tags []*Tag) Tags {
 	t := make(Tags)
 	for _, tag := range tags {
 		t[tag.Key] = append(t[tag.Key], tag.Value)

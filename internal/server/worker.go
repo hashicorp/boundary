@@ -148,7 +148,7 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 		inputTags: opts.withWorkerTags,
 	}
 	if opts.withTestUseInputTagsAsApiTags {
-		worker.ApiTags = ConvertToTags(worker.inputTags)
+		worker.ApiTags = convertToTags(worker.inputTags)
 	}
 	return worker
 }
@@ -184,7 +184,7 @@ func (w *Worker) clone() *Worker {
 // CanonicalTags is the deduplicated set of tags contained on both the resource
 // set over the API as well as the tags reported by the worker itself. This
 // function is guaranteed to return a non-nil map.
-func (w *Worker) CanonicalTags() map[string][]string {
+func (w *Worker) CanonicalTags() Tags {
 	return compactTags(&w.ApiTags, &w.ConfigTags)
 }
 

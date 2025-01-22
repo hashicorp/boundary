@@ -55,7 +55,7 @@ func TestConvertToTags(t *testing.T) {
 		tagsSlice = append(tagsSlice, thisTag)
 		wantTags[fmt.Sprintf("key-%d", i)] = []string{fmt.Sprintf("unique-%d", i)}
 	}
-	tags := ConvertToTags(tagsSlice)
+	tags := convertToTags(tagsSlice)
 
 	for k, v := range tags {
 		assert.ElementsMatch(t, v, wantTags[k])
