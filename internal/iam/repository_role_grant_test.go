@@ -674,7 +674,7 @@ func TestGrantsForUser(t *testing.T) {
 	t.Run("db-grants", func(t *testing.T) {
 		// Here we should see exactly what the DB has returned, before we do some
 		// local exploding of grants and grant scopes
-		expMultiGrantTuples := []multiGrantTuple{
+		expMultiGrantTuples := []MultiGrantTuple{
 			// No grants from noOrg/noProj
 			// Direct org1/2:
 			{
@@ -750,11 +750,11 @@ func TestGrantsForUser(t *testing.T) {
 			},
 		}
 		for i, tuple := range expMultiGrantTuples {
-			tuple.testStableSort()
+			tuple.TestStableSort()
 			expMultiGrantTuples[i] = tuple
 		}
-		multiGrantTuplesCache := new([]multiGrantTuple)
-		_, err := repo.GrantsForUser(ctx, user.PublicId, withTestCacheMultiGrantTuples(multiGrantTuplesCache))
+		multiGrantTuplesCache := new([]MultiGrantTuple)
+		_, err := repo.GrantsForUser(ctx, user.PublicId, WithTestCacheMultiGrantTuples(multiGrantTuplesCache))
 		require.NoError(t, err)
 
 		// log.Println("multiGrantTuplesCache", pretty.Sprint(*multiGrantTuplesCache))
@@ -888,8 +888,8 @@ func TestGrantsForUser(t *testing.T) {
 			},
 		}
 
-		multiGrantTuplesCache := new([]multiGrantTuple)
-		grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, withTestCacheMultiGrantTuples(multiGrantTuplesCache))
+		multiGrantTuplesCache := new([]MultiGrantTuple)
+		grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, WithTestCacheMultiGrantTuples(multiGrantTuplesCache))
 		require.NoError(t, err)
 		assert.ElementsMatch(t, grantTuples, expGrantTuples)
 	})
@@ -1588,7 +1588,7 @@ func TestGrantsForUser_Group(t *testing.T) {
 	t.Run("db-grants", func(t *testing.T) {
 		// Here we should see exactly what the DB has returned, before we do some
 		// local exploding of grants and grant scopes
-		expMultiGrantTuples := []multiGrantTuple{
+		expMultiGrantTuples := []MultiGrantTuple{
 			// No grants from noOrg/noProj
 			// Direct org1/2:
 			{
@@ -1664,11 +1664,11 @@ func TestGrantsForUser_Group(t *testing.T) {
 			},
 		}
 		for i, tuple := range expMultiGrantTuples {
-			tuple.testStableSort()
+			tuple.TestStableSort()
 			expMultiGrantTuples[i] = tuple
 		}
-		multiGrantTuplesCache := new([]multiGrantTuple)
-		_, err := repo.GrantsForUser(ctx, user.PublicId, withTestCacheMultiGrantTuples(multiGrantTuplesCache))
+		multiGrantTuplesCache := new([]MultiGrantTuple)
+		_, err := repo.GrantsForUser(ctx, user.PublicId, WithTestCacheMultiGrantTuples(multiGrantTuplesCache))
 		require.NoError(t, err)
 
 		// log.Println("multiGrantTuplesCache", pretty.Sprint(*multiGrantTuplesCache))
@@ -1802,8 +1802,8 @@ func TestGrantsForUser_Group(t *testing.T) {
 			},
 		}
 
-		multiGrantTuplesCache := new([]multiGrantTuple)
-		grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, withTestCacheMultiGrantTuples(multiGrantTuplesCache))
+		multiGrantTuplesCache := new([]MultiGrantTuple)
+		grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, WithTestCacheMultiGrantTuples(multiGrantTuplesCache))
 		require.NoError(t, err)
 		assert.ElementsMatch(t, grantTuples, expGrantTuples)
 	})
