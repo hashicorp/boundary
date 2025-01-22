@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package accounts_test
 
 import (
@@ -105,5 +108,4 @@ func TestListPassword_Grants(t *testing.T) {
 			require.ElementsMatch(t, tc.wantAccountIDs, gotIDs)
 		})
 	}
-
 }
