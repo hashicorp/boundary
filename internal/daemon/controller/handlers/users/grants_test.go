@@ -129,7 +129,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
-				name: "global role grant children list at org returns org user",
+				name: "org role grant children list at org returns forbidden error",
 				input: &pbs.ListUsersRequest{
 					ScopeId:   org2.PublicId,
 					Recursive: true,
