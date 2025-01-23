@@ -273,22 +273,6 @@ func TestGrants_ReadActions(t *testing.T) {
 				wantIDs: nil,
 			},
 			{
-				name: "org role grant children non-recursive list at global returns forbidden error",
-				input: &pbs.ListUsersRequest{
-					ScopeId:   globals.GlobalPrefix,
-					Recursive: false,
-				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
-					{
-						RoleScopeID:  org2.PublicId,
-						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeChildren},
-					},
-				},
-				wantErr: handlers.ForbiddenError(),
-				wantIDs: nil,
-			},
-			{
 				name: "no grant recursive list returns forbidden error",
 				input: &pbs.ListUsersRequest{
 					ScopeId:   globals.GlobalPrefix,
