@@ -5,6 +5,7 @@ package users_test
 
 import (
 	"context"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -126,6 +127,22 @@ func TestGrants_ReadActions(t *testing.T) {
 					org2User1.PublicId,
 					org2User2.PublicId,
 				},
+			},
+			{
+				name: "global role grant children list at org returns org user",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   org2.PublicId,
+					Recursive: true,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  org2.PublicId,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				wantErr: handlers.ForbiddenError(),
+				wantIDs: nil,
 			},
 		}
 
