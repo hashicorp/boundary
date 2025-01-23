@@ -41,10 +41,10 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
   This avoids bursty memory and CPU use during concurrent password auth method
   authentication attempts. The number of concurrent hashing operations
   can be set with the new `concurrent_password_hash_workers` configuration
-  value in the controller stanza, or the new 
+  value in the controller stanza, or the new
   `BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS` environment variable.
   The default limit is 1.
-
+* ui: Improve worker filter workflow for targets, vault credential-stores, and storage-buckets. ([PR](https://github.com/hashicorp/boundary-ui/pull/2614)).
 
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
