@@ -4,18 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### Bug fixes
-
-* Fix bug in applying BOUNDARY_MAX_RETRIES for boundary cli. Previously
-  setting this environment variable would result in a max retries of 2,
-  regardless of the value set.
-  ([PR](https://github.com/hashicorp/boundary/pull/5385)).
-* Fix bug in parsing IPv6 addresses. Previously setting a target address or the
-  initial upstream address in the config file would result in a malformed value.
-  ([PR](https://github.com/hashicorp/boundary/pull/5221)).
-* Fix an issue where, when starting a session, the connection limit always displays 0.
-  ([PR](https://github.com/hashicorp/boundary/pull/5396)).
-
+## 0.19.0 (2025/01/31)
 ### New and Improved
 
 * Introduces soft-delete for users within the client cache.
@@ -45,6 +34,18 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
   `BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS` environment variable.
   The default limit is 1.
 * ui: Improve worker filter workflow for targets, vault credential-stores, and storage-buckets. ([PR](https://github.com/hashicorp/boundary-ui/pull/2614)).
+
+### Bug fixes
+
+* Fix bug in applying BOUNDARY_MAX_RETRIES for boundary cli. Previously
+  setting this environment variable would result in a max retries of 2,
+  regardless of the value set.
+  ([PR](https://github.com/hashicorp/boundary/pull/5385)).
+* Fix bug in parsing IPv6 addresses. Previously setting a target address or the
+  initial upstream address in the config file would result in a malformed value.
+  ([PR](https://github.com/hashicorp/boundary/pull/5221)).
+* Fix an issue where, when starting a session, the connection limit always displays 0.
+  ([PR](https://github.com/hashicorp/boundary/pull/5396)).
 
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
