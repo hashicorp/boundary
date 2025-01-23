@@ -654,12 +654,12 @@ As long as you don't run both at the same time, they should work as expected.
 
 ### Huntress EDR client
 
-Host isolation and release via Huntress does not work as expected in Windows when used alongside the Boundary Client Agent.
-Huntress EDR client in Windows utilizes the Windows Filtering Platform (WFP) to isolate devices by blocking all non-essential traffic. This behavior conflicts with the Boundary Client Agent during device isolation.
+Host isolation and release do not work as expected in Windows when you use the Huntress EDR client with the Boundary Client Agent.
+The Huntress EDR client for Windows uses the Windows Filtering Platform (WFP) to isolate devices by blocking all non-essential traffic. This behavior conflicts with the Boundary Client Agent during device isolation.
 Specifically, the Boundary Client Agent replaces the default DNS resolver with its own, which can prevent fallback to a secondary DNS when the primary (Boundary) DNS fails during isolation.
-As a result, Huntress is unable to maintain server communication, leaving the device stuck in an isolated state. Device isolation and release via Huntress do not function properly in Windows under these conditions.
+As a result, Huntress is unable to maintain server communication, leaving the device stuck in an isolated state. Huntress cannot isolate and release devices properly in Windows under these conditions.
 
-A temporary workaround is to manually configure a secondary DNS (e.g., 8.8.8.8); however, this setting is overwritten when the Boundary client is paused or resumed, requiring reapplication.
+As a temporary workaround, you can manually configure a secondary DNS (e.g., 8.8.8.8). However, this secondary DNS setting is overwritten when you pause or resume the Boundary Client Agent, so you must configure it again each time.
 
 This issue does not affect macOS devices, where Boundary and Huntress coexist without additional configuration.
 
