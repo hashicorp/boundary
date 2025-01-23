@@ -106,6 +106,7 @@ var (
 	SessionRecordingFn             = NoSessionRecording
 	WorkerFilterDeprecationMessage = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 	StorageBucketFilterCredIdFn    = noStorageBucket
+	ValidateLicenseFn              = noOpValidateLicense
 )
 
 func init() {
@@ -750,6 +751,10 @@ func NoSessionRecording(context.Context, intglobals.ControllerExtension, *kms.Km
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
 	const op = "targets.(Service).AuthorizeSession"
+
+	if err := ValidateLicenseFn(ctx); err != nil {
+		return nil, err
+	}
 
 	if ctxAlias := alias.FromContext(ctx); ctxAlias != nil {
 		a, err := s.resolveAlias(ctx, ctxAlias.PublicId)
@@ -2211,4 +2216,8 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 
 func noStorageBucket(_ context.Context, _ intglobals.ControllerExtension, _ string) (string, string, error) {
 	return "", "", fmt.Errorf("not supported")
+}
+
+func noOpValidateLicense(ctx context.Context) error {
+	return nil
 }
