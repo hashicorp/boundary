@@ -5,13 +5,13 @@ package users_test
 
 import (
 	"context"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
