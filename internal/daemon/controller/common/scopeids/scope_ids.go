@@ -150,6 +150,7 @@ func GetListingResourceInformation(
 	for _, scp := range scps {
 		scpId := scp.GetPublicId()
 		res.ScopeId = scpId
+		res.ParentScopeId = scp.GetParentId()
 		aSet := input.AuthResults.FetchActionSetForType(ctx,
 			// This is overridden by WithResource
 			resource.Unknown,

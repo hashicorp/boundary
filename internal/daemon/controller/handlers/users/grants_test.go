@@ -11,6 +11,7 @@ import (
 	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -59,14 +60,18 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name          string
-			input         *pbs.ListUsersRequest
-			rolesToCreate []authtoken.TestRoleGrantsForToken
-			wantErr       error
-			wantIDs       []string
+			name  string
+			input *pbs.ListUsersRequest
+			// set this flag when the listing user has permission to list global
+			// AND the test attempts to list users at global scope
+			// users which gets created as a part of token generation
+			includeTestUsers bool
+			rolesToCreate    []authtoken.TestRoleGrantsForToken
+			wantErr          error
+			wantIDs          []string
 		}{
 			{
-				name: "global role grant this and children returns global and org users",
+				name: "global role grant this and children recursive list at global returns global and org users",
 				input: &pbs.ListUsersRequest{
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
@@ -78,7 +83,8 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: nil,
+				includeTestUsers: true,
+				wantErr:          nil,
 				wantIDs: []string{
 					globals.AnyAuthenticatedUserId,
 					globals.AnonymousUserId,
@@ -90,11 +96,12 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
-				name: "org role grant this and children returns org user",
+				name: "org role grant this and children recursive list at org returns org user",
 				input: &pbs.ListUsersRequest{
 					ScopeId:   org2.PublicId,
 					Recursive: true,
 				},
+				includeTestUsers: false,
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
 						RoleScopeID:  org2.PublicId,
@@ -108,11 +115,182 @@ func TestGrants_ReadActions(t *testing.T) {
 					org2User2.PublicId,
 				},
 			},
+			{
+				name: "global role grant children recursive list at org returns org user",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   org2.PublicId,
+					Recursive: true,
+				},
+				includeTestUsers: false,
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				wantErr: nil,
+				wantIDs: []string{
+					org2User1.PublicId,
+					org2User2.PublicId,
+				},
+			},
+			{
+				name: "global role grant children recursive list at global returns all org users",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				includeTestUsers: false,
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				wantErr: nil,
+				wantIDs: []string{
+					org1User1.PublicId,
+					org2User1.PublicId,
+					org2User2.PublicId,
+				},
+			},
+			{
+				name: "org1 role grant this recursive list at global returns org1 users",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				includeTestUsers: false,
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				wantErr: nil,
+				wantIDs: []string{
+					org1User1.PublicId,
+				},
+			},
+			{
+				name: "individual org grant this recursive list at global returns org user",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				includeTestUsers: false,
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+					{
+						RoleScopeID:  org2.PublicId,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				wantErr: nil,
+				wantIDs: []string{
+					org1User1.PublicId,
+					org2User1.PublicId,
+					org2User2.PublicId,
+				},
+			},
+			{
+				name: "global role grant this recursive list at org returns no user",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   org2.PublicId,
+					Recursive: true,
+				},
+				includeTestUsers: false,
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				wantErr: nil,
+				wantIDs: []string{},
+			},
+			{
+				name: "global role grant this recursive list at global returns only global user",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				includeTestUsers: true,
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				wantErr: nil,
+				wantIDs: []string{
+					globals.AnyAuthenticatedUserId,
+					globals.AnonymousUserId,
+					globals.RecoveryUserId,
+					globalUser.PublicId,
+				},
+			},
+			{
+				name: "global role grant children non-recursive list at global returns forbidden error",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: false,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				wantErr: handlers.ForbiddenError(),
+				wantIDs: nil,
+			},
+			{
+				name: "org role grant children non-recursive list at global returns forbidden error",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: false,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  org2.PublicId,
+						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				wantErr: handlers.ForbiddenError(),
+				wantIDs: nil,
+			},
+			{
+				name: "no grant recursive list returns forbidden error",
+				input: &pbs.ListUsersRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{},
+				wantErr:       handlers.ForbiddenError(),
+				wantIDs:       nil,
+			},
 		}
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
+				t.Cleanup(func() {
+					// deleting user to keep assertions clean since we're listing users over and over
+					_, _ = iamRepo.DeleteUser(ctx, tok.IamUserId)
+				})
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, finalErr := s.ListUsers(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
@@ -121,7 +299,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				}
 				require.NoError(t, finalErr)
 				var gotIDs []string
-				if tc.input.ScopeId == globals.GlobalPrefix {
+				if tc.includeTestUsers {
 					tc.wantIDs = append(tc.wantIDs, tok.IamUserId)
 				}
 				for _, g := range got.Items {
