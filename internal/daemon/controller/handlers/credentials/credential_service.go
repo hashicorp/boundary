@@ -640,9 +640,10 @@ func newOutputOpts(
 	authResults auth.VerifyResults,
 ) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Credential,
-		Pin:     credentialStoreId,
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Type:          resource.Credential,
+		Pin:           credentialStoreId,
 	}
 	res.Id = item.GetPublicId()
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()

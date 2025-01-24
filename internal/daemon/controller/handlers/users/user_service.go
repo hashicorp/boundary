@@ -1067,6 +1067,7 @@ func newOutputOpts(ctx context.Context, item *iam.User, scopeInfoMap map[string]
 	}
 	res.Id = item.GetPublicId()
 	res.ScopeId = item.GetScopeId()
+	res.ParentScopeId = scopeInfoMap[item.GetScopeId()].GetParentScopeId()
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res))
 	if len(authorizedActions) == 0 {
 		return nil, false

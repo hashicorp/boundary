@@ -998,9 +998,10 @@ func validateListRequest(ctx context.Context, req *pbs.ListManagedGroupsRequest)
 
 func newOutputOpts(ctx context.Context, item auth.ManagedGroup, authMethodId string, authResults requestauth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.ManagedGroup,
-		Pin:     authMethodId,
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Type:          resource.ManagedGroup,
+		Pin:           authMethodId,
 	}
 	res.Id = item.GetPublicId()
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()

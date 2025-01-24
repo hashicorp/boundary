@@ -167,6 +167,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 	for _, item := range ul {
 		res.Id = item.GetPublicId()
 		res.ScopeId = item.GetScopeId()
+		res.ParentScopeId = scopeInfoMap[item.GetScopeId()].GetParentScopeId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
