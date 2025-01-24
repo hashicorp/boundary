@@ -2,10 +2,6 @@
 # the repo, unless a later match takes precedence.
 * @hashicorp/boundary
 
-# web presence and education
-
-/website/       @hashicorp/boundary-education-approvers @hashicorp/web-presence @hashicorp/boundary
-
 # engineering and web presence get notified of, and can approve changes to, web tooling, but not content.
 
 /website/ @hashicorp/web-presence @hashicorp/boundary
