@@ -614,6 +614,10 @@
               "color": "neutral"
             },
             "path": "configuration/target-aliases/transparent-sessions"
+          },
+          {
+            "title": "Transparent sessions interoperability matrix",
+            "path": "configuration/target-aliases/interoperability-matrix"
           }
         ]
       },
