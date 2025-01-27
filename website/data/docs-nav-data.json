@@ -1818,6 +1818,10 @@
         "path": "release-notes"
       },
       {
+        "title": "v0.19.0",
+        "path": "release-notes/v0_19_0"
+      },
+      {
         "title": "v0.18.0",
         "path": "release-notes/v0_18_0"
       },
