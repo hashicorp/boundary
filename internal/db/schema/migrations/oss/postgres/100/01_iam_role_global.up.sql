@@ -114,7 +114,14 @@ begin;
         ),
     constraint iam_role_global_grant_scope_fkey
       foreign key (role_id, grant_scope)
-      references iam_role_global(public_id, grant_scope)
+      references iam_role_global(public_id, grant_scope),
+    create_time wt_timestamp
   );
+
+  create trigger default_create_time_column before insert on iam_role_global_individual_grant_scope
+  for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on iam_role_global_individual_grant_scope
+  for each row execute procedure immutable_columns('scope_id', 'create_time');
 
 commit;

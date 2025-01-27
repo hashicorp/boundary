@@ -39,6 +39,7 @@ begin;
         on delete restrict
         on update cascade,
     version wt_version,
+    grant_this_role_scope_update_time wt_timestamp,
     grant_scope_update_time wt_timestamp,
     unique(public_id, grant_scope)
   );
@@ -48,6 +49,9 @@ begin;
 
   create trigger insert_iam_role_org_grant_scope_update_time before update on iam_role_org
     for each row execute procedure insert_grant_scope_update_time();
+
+  create trigger insert_iam_role_org_grant_this_role_scope_update_time before update on iam_role_org
+    for each row execute procedure insert_grant_this_role_scope_update_time();
 
   create table iam_role_org_individual_grant_scope (
     role_id wt_role_id
@@ -66,14 +70,18 @@ begin;
             grant_scope = 'individual'
         ),
     scope_id wt_scope_id
-      constraint iam_scope_org_fkey
+      constraint iam_scope_org_scope_id_fkey
         references iam_scope_project(scope_id)
         on delete cascade
         on update cascade,
     constraint iam_role_org_grant_scope_fkey 
       foreign key (role_id, grant_scope)
-      references iam_role_org(public_id, grant_scope)
+      references iam_role_org(public_id, grant_scope),
+    create_time wt_timestamp
   );
+
+  create trigger default_create_time_column before insert on iam_role_org_individual_grant_scope
+  for each row execute procedure default_create_time();
 
   -- ensure the project's parent is the role's scope
   create or replace function ensure_project_belongs_to_org() returns trigger
@@ -111,7 +119,6 @@ begin;
   return new;
   end;
   $$ language plpgsql;
-
 
   create trigger ensure_project_belongs_to_org before insert or update on iam_role_org_individual_grant_scope
     for each row execute procedure ensure_project_belongs_to_org();
