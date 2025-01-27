@@ -91,11 +91,11 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 
 	var args []any
 	var destinationIdClauses []string
+	var whereClause string
 
 	switch {
 	case allDescendants:
-		// This matches all targets
-		destinationIdClauses = append(destinationIdClauses, "destination_id in (select public_id from target)")
+		whereClause = "destination_id is not null"
 	default:
 		// Add orgs with all permissions on children
 		if len(childAllScopes) > 0 {
@@ -118,9 +118,8 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 		if len(destinationIdClauses) == 0 && len(childAllScopes) == 0 {
 			return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no target ids or scope ids provided")
 		}
+		whereClause = fmt.Sprintf("destination_id is not null and (%s)", strings.Join(destinationIdClauses, " or "))
 	}
-
-	whereClause := fmt.Sprintf("destination_id is not null and (%s)", strings.Join(destinationIdClauses, " or "))
 
 	if opts.withStartPageAfterItem != nil {
 		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
@@ -166,11 +165,11 @@ func (r *Repository) listResolvableAliasesRefresh(ctx context.Context, updatedAf
 
 	var args []any
 	var destinationIdClauses []string
+	var whereClause string
 
 	switch {
 	case allDescendants:
-		// This matches all targets
-		destinationIdClauses = append(destinationIdClauses, "destination_id in (select public_id from target)")
+		whereClause = fmt.Sprintf("update_time > @updated_after_time and destination_id is not null")
 	default:
 		// Add orgs with all permissions on children
 		if len(childAllScopes) > 0 {
@@ -193,10 +192,9 @@ func (r *Repository) listResolvableAliasesRefresh(ctx context.Context, updatedAf
 		if len(destinationIdClauses) == 0 && len(childAllScopes) == 0 {
 			return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no target ids or scope ids provided")
 		}
+		whereClause = fmt.Sprintf("update_time > @updated_after_time and destination_id is not null and (%s)",
+			strings.Join(destinationIdClauses, " or "))
 	}
-
-	whereClause := fmt.Sprintf("update_time > @updated_after_time and destination_id is not null and (%s)",
-		strings.Join(destinationIdClauses, " or "))
 	args = append(args,
 		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
 	)
@@ -234,11 +232,10 @@ func (r *Repository) listRemovedResolvableAliasIds(ctx context.Context, since ti
 
 	var args []any
 	var destinationIdClauses []string
-
+	var whereClause string
 	switch {
 	case allDescendants:
-		// This matches all targets
-		destinationIdClauses = append(destinationIdClauses, "destination_id not in (select public_id from target)")
+		whereClause = "update_time > @updated_after_time and destination_id is null"
 	default:
 		// Add orgs with all permissions on children
 		if len(childAllScopes) > 0 {
@@ -261,10 +258,9 @@ func (r *Repository) listRemovedResolvableAliasIds(ctx context.Context, since ti
 		if len(destinationIdClauses) == 0 && len(childAllScopes) == 0 {
 			return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no target ids or scope ids provided")
 		}
+		whereClause = fmt.Sprintf("update_time > @updated_after_time and (destination_id is null or (%s))",
+			strings.Join(destinationIdClauses, " and "))
 	}
-
-	whereClause := fmt.Sprintf("update_time > @updated_after_time and (destination_id is null or (%s))",
-		strings.Join(destinationIdClauses, " and "))
 	args = append(args,
 		sql.Named("updated_after_time", timestamp.New(since)),
 	)
