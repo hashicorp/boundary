@@ -16,11 +16,7 @@ begin;
         on update cascade,
     name text,
     description text,
-    version wt_version,
-    grant_scope_update_time wt_timestamp
+    version wt_version
   );
-
-  create trigger insert_iam_role_project_grant_scope_update_time before update on iam_role_project
-    for each row execute procedure insert_grant_scope_update_time();  
 
 commit;

@@ -35,13 +35,18 @@ begin;
   create or replace function insert_grant_scope_update_time() returns trigger
   as $$
   begin
-    if (new.grant_this_role_scope != old.grant_this_role_scope)
-      or (new.grant_scope != old.grant_scope) then
-      -- only update timestamp if one of the relevant columns have changed
+    if (new.grant_scope != old.grant_scope) then
       new.grant_scope_update_time = now();
-    else
-      -- if neither columns have changed, keep the old timestamp
-      new.grant_scope_update_time = old.grant_scope_update_time;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create or replace function insert_grant_this_role_scope_update_time() returns trigger
+  as $$
+  begin
+    if (new.grant_this_role_scope != old.grant_this_role_scope) then
+      new.grant_scope_update_time = now();
     end if;
     return new;
   end;
@@ -68,6 +73,7 @@ begin;
         on delete restrict
         on update cascade,
     version wt_version,
+    grant_this_role_scope_update_time wt_timestamp,
     grant_scope_update_time wt_timestamp,
     unique(public_id, grant_scope)
   );
@@ -76,7 +82,10 @@ begin;
     for each row execute procedure insert_role_subtype();
 
   create trigger insert_iam_role_global_grant_scope_update_time before update on iam_role_global
-    for each row execute procedure insert_grant_scope_update_time();  
+    for each row execute procedure insert_grant_scope_update_time();
+
+  create trigger insert_iam_role_global_grant_this_role_scope_update_time before update on iam_role_global
+    for each row execute procedure insert_grant_this_role_scope_update_time();
 
   create table iam_role_global_individual_grant_scope (
     role_id wt_role_id
