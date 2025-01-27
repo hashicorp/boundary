@@ -1,0 +1,53 @@
+---
+layout: docs
+page_title: Transparent sessions interoperability matrix
+description: >-
+    Refer to a matrix to determine which partner products and applications are supported by the Boundary components required for transparent sessions.
+---
+
+# Transparent sessions interoperability matrix
+
+Transparent sessions require you to use the Boundary installer to install the Boundary Client Agent.
+To support a variety of use cases, Boundary verifies implementation and integrations with partner products and applications.
+
+Refer to the table to determine which products have been tested for use with specific versions of the installer and Client Agent.
+
+| Product | Boundary installer v0.1.0 | Boundary installer v0.1.1 | Client Agent v0.1.0 | Client Agent v0.1.1 | Notes |
+|----------------|---------------------------|----------------------------|---------------------|--------------------|---------------|
+| Cloudflare WARP client | No | Yes | No | Yes | Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#cloudflare-warp-client)
+| Crowdstrike Falcon | No | Yes | No | No |
+| SentinelOne Singularity | No | Yes | No | Yes |
+| ZeroTier | No | Yes | No | Yes |
+| Huntress EDR client | No | Yes | No | Yes | Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#huntress-edr-client)
+| OpenVPN | No | Yes | No | Yes |
+| Tailscale | No | Yes | No | Yes |
+| WireGuard | No | Yes | No | Yes |
+
+| Product | Boundary installer v0.1.0 | Boundary installer v0.1.1 | Client Agent v0.1.0 | Client Agent v0.1.1 | Notes |
+|----------------|---------------------------|----------------------------|---------------------|--------------------|---------------|
+| Cloudflare WARP client | &#x274c; | &#x2705; | &#x274c; | &#x2705; | Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#cloudflare-warp-client)
+| Crowdstrike Falcon | &#x274c;  | &#x2705; | &#x274c; | &#x274c; |
+| SentinelOne Singularity | &#x274c; | &#x2705; | &#x274c; | &#x2705; |
+| ZeroTier | &#x274c; | &#x2705; | &#x274c; | &#x2705; |
+| Huntress EDR client | &#x274c; | &#x2705; | &#x274c; | &#x2705; | Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#huntress-edr-client)
+| OpenVPN | &#x274c; | &#x2705; | &#x274c; | &#x2705; |
+| Tailscale | &#x274c; | &#x2705; | &#x274c; | &#x2705; |
+| WireGuard | &#x274c; | &#x2705; | &#x274c; | &#x2705; |
+
+| Product | Verified Boundary installer versions | Verified Client Agent versions | Notes |
+|----------------|---------------------------|----------------------------|---------------|
+| Cloudflare WARP client | 0.1.1 | 0.1.1 | Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#cloudflare-warp-client)
+| Crowdstrike Falcon | 0.1.1 | N/A |
+| SentinelOne Singularity | 0.1.1 | 0.1.1 |
+| ZeroTier | 0.1.1 | 0.1.1 |
+| Huntress EDR client | 0.1.1 | 0.1.1| Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#huntress-edr-client)
+| OpenVPN | 0.1.1 | 0.1.1 |
+| Tailscale | 0.1.1 | 0.1.1 |
+| WireGuard | 0.1.1 | 0.1.1 |
+
+## More information
+
+For more information, refer to the following topics:
+
+- [Configure transparent sessions](/boundary/docs/configuration/target-aliases/transparent-sessions)
+- [Boundary Client Agent](/boundary/docs/api-clients/client-agent)
