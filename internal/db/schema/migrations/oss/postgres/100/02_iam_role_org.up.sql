@@ -47,10 +47,16 @@ begin;
   create trigger insert_role_subtype before insert on iam_role_org
     for each row execute procedure insert_role_subtype();
 
-  create trigger insert_iam_role_org_grant_scope_update_time before update on iam_role_org
+  create trigger insert_iam_role_org_grant_scope_update_time before insert on iam_role_org
     for each row execute procedure insert_grant_scope_update_time();
 
-  create trigger insert_iam_role_org_grant_this_role_scope_update_time before update on iam_role_org
+  create trigger insert_iam_role_org_grant_this_role_scope_update_time before insert on iam_role_org
+    for each row execute procedure insert_grant_this_role_scope_update_time();
+
+  create trigger update_iam_role_org_grant_scope_update_time before update on iam_role_org
+    for each row execute procedure insert_grant_scope_update_time();
+
+  create trigger update_iam_role_org_grant_this_role_scope_update_time before update on iam_role_org
     for each row execute procedure insert_grant_this_role_scope_update_time();
 
   create table iam_role_org_individual_grant_scope (

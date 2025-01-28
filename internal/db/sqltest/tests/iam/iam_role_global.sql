@@ -81,7 +81,7 @@ begin;
 
   -- 2c) check if grant_scope_update_time is set
   select is(
-    (select grant_scope_update_time is null from iam_role_global where public_id = 'r_1111111111'),
+    (select grant_scope_update_time is not null from iam_role_global where public_id = 'r_1111111111'),
     true,
     'grant_scope_update_time should be set with the default timestamp right after insert'
   );
