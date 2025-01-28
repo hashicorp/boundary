@@ -41,6 +41,8 @@ begin;
     version wt_version,
     grant_this_role_scope_update_time wt_timestamp,
     grant_scope_update_time wt_timestamp,
+    create_time wt_timestamp,
+    updated_at wt_timestamp,
     unique(public_id, grant_scope)
   );
 
@@ -58,6 +60,15 @@ begin;
 
   create trigger update_iam_role_org_grant_this_role_scope_update_time before update on iam_role_org
     for each row execute procedure insert_grant_this_role_scope_update_time();
+
+  create trigger default_create_time_column before insert on iam_role_org
+    for each row execute procedure default_create_time();
+
+  create trigger update_iam_role_table_update_time before update on iam_role_org
+    for each row execute procedure update_iam_role_table_update_time();
+
+  create trigger immutable_columns before update on iam_role_org
+    for each row execute procedure immutable_columns('scope_id', 'create_time');
 
   create table iam_role_org_individual_grant_scope (
     role_id wt_role_id
@@ -90,7 +101,7 @@ begin;
   for each row execute procedure default_create_time();
 
   -- ensure the project's parent is the role's scope
-  create or replace function ensure_project_belongs_to_org() returns trigger
+  create or replace function ensure_project_belongs_to_role_org() returns trigger
   as $$
   declare
     org_scope_id text;
@@ -126,7 +137,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger ensure_project_belongs_to_org before insert or update on iam_role_org_individual_grant_scope
-    for each row execute procedure ensure_project_belongs_to_org();
+  create trigger ensure_project_belongs_to_role_org before insert or update on iam_role_org_individual_grant_scope
+    for each row execute procedure ensure_project_belongs_to_role_org();
 
 commit;

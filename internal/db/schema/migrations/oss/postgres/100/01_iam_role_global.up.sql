@@ -52,6 +52,25 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- Add trigger to update the new column on every iam_role subtype update.
+  -- This is used to update the update_time of the iam_role table
+  -- when either the name or the description of the subtype tables are updated.
+  -- This is only applicable to the name and description columns because we
+  -- do not want the update_time to be updated when the grant_scope or grant_this_role_scope
+  -- columns are updated.
+  create function update_iam_role_table_update_time() returns trigger
+  as $$
+  begin
+    if (new.name is distinct from old.name) or (new.description is distinct from old.description) then
+      update iam_role set update_time = now() where public_id = new.public_id;
+      return new;
+    end if;  
+  end;
+  $$ language plpgsql;
+  comment on function update_iam_role_table_update_time() is
+    'update_iam_role_table_update_time is used to automatically update the update_time '
+    'of the base table whenever one of the subtype tables are updated';
+
   -- global iam_role must have a scope_id of global
   create table iam_role_global (
     public_id wt_role_id not null primary key
@@ -75,6 +94,8 @@ begin;
     version wt_version,
     grant_this_role_scope_update_time wt_timestamp,
     grant_scope_update_time wt_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     unique(public_id, grant_scope)
   );
 
@@ -92,6 +113,15 @@ begin;
 
   create trigger update_iam_role_global_grant_this_role_scope_update_time before update on iam_role_global
     for each row execute procedure insert_grant_this_role_scope_update_time();
+
+  create trigger default_create_time_column before insert on iam_role_global
+    for each row execute procedure default_create_time();
+
+  create trigger update_iam_role_table_update_time before update on iam_role_global
+    for each row execute procedure update_iam_role_table_update_time();
+
+  create trigger immutable_columns before update on iam_role_global
+    for each row execute procedure immutable_columns('scope_id', 'create_time');
 
   create table iam_role_global_individual_grant_scope (
     role_id wt_role_id
@@ -125,9 +155,9 @@ begin;
   );
 
   create trigger default_create_time_column before insert on iam_role_global_individual_grant_scope
-  for each row execute procedure default_create_time();
+    for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on iam_role_global_individual_grant_scope
-  for each row execute procedure immutable_columns('scope_id', 'create_time');
+    for each row execute procedure immutable_columns('scope_id', 'create_time');
 
 commit;
