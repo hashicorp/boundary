@@ -299,6 +299,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
 			switch {
 			case enabledPlugin == base.EnabledPluginHostAzure && !w.conf.SkipPlugins,
+				enabledPlugin == base.EnabledPluginGCP && !w.conf.SkipPlugins,
 				enabledPlugin == base.EnabledPluginAws && !w.conf.SkipPlugins:
 				pluginType := strings.ToLower(enabledPlugin.String())
 				client, cleanup, err := external_plugins.CreateHostPlugin(
