@@ -78,9 +78,37 @@ description: >-
     <td style={{verticalAlign: 'middle'}}>
     Boundary now supports dynamic host catalogs for GCP.
     <br /><br />
-    When you configure dynamic host catalogs, Boundary securely queries infrastructure providers at runtime to discover and configure new services. You can define rules for whether you want Boundary to add any discovered hosts as members of the host set.
+    When you configure dynamic host catalogs, Boundary securely queries infrastructure providers at runtime to discover and configure new services. You can define rules for whether you want Boundary to automatically add any discovered hosts as members of the host set.
     <br /><br />
     Learn more:&nbsp;<a href="/boundary/docs/concepts/host-discovery">Host discovery</a> and <a href="/boundary/docs/concepts/host-discovery/gcp">GCP dynamic hosts</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Worker configuration improvements
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    You can now view and manage all worker tags in the Admin Console UI, allowing you to easily assign worker tags to targets, credential stores, and storage buckets.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/concepts/workers">Workers</a> and <a href="/boundary/docs/concepts/filtering/worker-tags">Worker tags</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Vault brokered credentials format change
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Previously, when you brokered credentials from a Vault credential store, the credentials displayed in raw JSON and could contain special characters. It was difficult to consume the credentials in this format. Credentials are now displayed in a format that is easier to cut and paste.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/configuration/credential-management/static-cred-vault">Create a Vault credential store</a>.
     </td>
   </tr>
 
