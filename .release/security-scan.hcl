@@ -5,6 +5,16 @@ container {
 	dependencies = true
 	alpine_secdb = true
 	secrets      = false
+
+	# Triage items that are _safe_ to ignore here. Note that this list should be
+	# periodically cleaned up to remove items that are no longer found by the scanner.
+	triage {
+		suppress {
+			vulnerabilities = [
+				"CVE-2024-13176", # openssl@3.3.2-r4
+			]
+		}
+	}
 }
 
 binary {
