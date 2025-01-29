@@ -315,20 +315,6 @@ func TestManagedGroupRole(t testing.TB, conn *db.DB, roleId, managedGrpId string
 	return r
 }
 
-type TestRoleGrantsRequest struct {
-	RoleScopeID string
-	GrantScopes []string
-	Grants      []string
-}
-
-type TestGrantAssociationMethod int
-
-const (
-	TestGrantsForUserDirectAssociation TestGrantAssociationMethod = iota
-	TestGrantsForUserGroupAssociation
-	TestGrantsForUserManagedGroupAssociation
-)
-
 // testRoleWithGrants creates a role suitable for testing along with grants
 // Functional options for GrantScopes aren't used to express that
 // this function does not provide any default grant scope unlike TestRole
@@ -357,6 +343,12 @@ func testRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs
 		_ = TestRoleGrant(t, conn, role.PublicId, g)
 	}
 	return role
+}
+
+type TestRoleGrantsRequest struct {
+	RoleScopeID string
+	GrantScopes []string
+	Grants      []string
 }
 
 // TestUserDirectGrantsFunc returns a function that creates a user which has been given
