@@ -30,6 +30,7 @@ binary {
 		suppress {
 			vulnerabilities = [
 				"GO-2025-3408", # yamux@v0.1.1
+				"GHSA-29qp-crvh-w22m", # yamux@v0.1.1
 			]
 		}
 	}
