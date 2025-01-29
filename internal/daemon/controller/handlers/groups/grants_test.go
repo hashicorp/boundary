@@ -6,11 +6,11 @@ package groups_test
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"slices"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -780,6 +780,7 @@ func TestWrites(t *testing.T) {
 				_, err = iamRepo.SetUserAccounts(ctx, user.PublicId, user.Version, []string{acct.PublicId})
 				require.NoError(t, err)
 				tok, err := atRepo.CreateAuthToken(ctx, user, acct.PublicId)
+				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
 				got, err := s.UpdateGroup(fullGrantAuthCtx, &pbs.UpdateGroupRequest{
 					Id: original.PublicId,
@@ -1127,6 +1128,7 @@ func TestGroupMember(t *testing.T) {
 			_, err = iamRepo.SetUserAccounts(ctx, user.PublicId, user.Version, []string{acct.PublicId})
 			require.NoError(t, err)
 			tok, err := atRepo.CreateAuthToken(ctx, user, acct.PublicId)
+			require.NoError(t, err)
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
 			for _, act := range tc.actions {
 				out, err := act.action(fullGrantAuthCtx, group)
