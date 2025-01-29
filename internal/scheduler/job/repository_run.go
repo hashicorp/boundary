@@ -93,7 +93,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 				// Failed to update run, either it does not exist or was in an invalid state
 				if err = r.LookupById(ctx, run); err != nil {
 					if errors.IsNotFoundError(err) {
-						return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
+						return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)), errors.WithoutEvent())
 					}
 					return errors.Wrap(ctx, err, op)
 				}
