@@ -332,8 +332,8 @@ func (s *Scheduler) updateRunningJobProgress(ctx context.Context, j *runningJob)
 	}
 	status := j.status()
 	_, err = repo.UpdateProgress(ctx, j.runId, status.Completed, status.Total, status.Retries)
-	if errors.Match(errors.T(errors.InvalidJobRunState), err) {
-		// Job has been persisted with a final run status, cancel job context to trigger early exit.
+	if errors.Match(errors.T(errors.InvalidJobRunState), err) || errors.IsNotFoundError(err) {
+		// Job has been persisted with a final run status or deleted, cancel job context to trigger early exit.
 		j.cancelCtx()
 		return nil
 	}
