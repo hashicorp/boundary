@@ -12,6 +12,7 @@ container {
 		suppress {
 			vulnerabilities = [
 				"CVE-2024-13176", # openssl@3.3.2-r4
+				"GO-2025-3408", # yamux@v0.1.1
 			]
 		}
 	}
