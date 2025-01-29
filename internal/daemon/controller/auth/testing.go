@@ -41,7 +41,7 @@ func DisabledAuthTestContext(iamRepoFn common.IamRepoFactory, scopeId string, op
 
 // TestAuthContextFromToken creates an auth context with provided token
 // This is used in conjunction with TestAuthTokenWithRoles which creates a test token
-func TestAuthContextFromToken(t *testing.T, conn *db.DB, wrap wrapping.Wrapper, token *authtoken.AuthToken, iamRepo *iam.Repository) context.Context {
+func TestAuthContextFromToken(t *testing.T, conn *db.DB, wrap wrapping.Wrapper, iamRepo *iam.Repository, token *authtoken.AuthToken) context.Context {
 	t.Helper()
 	ctx := context.Background()
 	rw := db.New(conn)
