@@ -329,10 +329,10 @@ const (
 	TestGrantsForUserManagedGroupAssociation
 )
 
-// TestRoleWithGrants creates a role suitable for testing along with grants
+// testRoleWithGrants creates a role suitable for testing along with grants
 // Functional options for GrantScopes aren't used to express that
 // this function does not provide any default grant scope unlike TestRole
-func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
+func testRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
 	t.Helper()
 
 	ctx := context.Background()
@@ -373,7 +373,7 @@ func TestUserDirectGrantsFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scop
 		user, err := repo.CreateUser(ctx, u)
 		require.NoError(t, err)
 		for _, trg := range testRoleGrants {
-			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
+			role := testRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
 			_ = TestUserRole(t, conn, role.PublicId, user.PublicId)
 		}
 		return user
