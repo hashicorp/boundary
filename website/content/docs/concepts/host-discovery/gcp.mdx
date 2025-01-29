@@ -49,7 +49,11 @@ Boundary uses the service account associated with the VM instance to authenticat
 <Note>
 
 If you downloaded the private key from GCP, it may contain extra `/n` characters that cause an error.
-You can use `jq` to remove the extra `/n` characters.
+You can use the `jq` utility to remove the extra `/n` characters. For example:
+
+```shell-session
+$ jq -r '.private_key' my-gcp-private-key.json
+```
 
 </Note>
 
