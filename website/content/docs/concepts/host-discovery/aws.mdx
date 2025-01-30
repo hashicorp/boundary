@@ -13,21 +13,166 @@ a dynamic host catalog to integrate with AWS, you create a host catalog of the `
 and set the `plugin-name` value to `aws`. You must also provide the specific
 fields needed for Boundary to authenticate with AWS.
 
-<Tabs>
-<Tab heading="CLI">
+Complete the following steps to create a dynamic host catalog for AWS:
 
-```shell-session
-$ boundary host-catalogs create plugin \
-  -scope-id $BOUNDARY_PROJECT_ID \
-  -plugin-name aws \
-  -attr disable_credential_rotation=true \
-  -attr region=us-east-1 \
-  -secret access_key_id=env://AWS_ACCESS_KEY_ID \
-  -secret secret_access_key=env://AWS_SECRET_ACCESS_KEY
-```
+<Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select the org, and then select the project you want to create a host catalog for.
+1. Select **Host Catalogs**.
+1. Select **New Host Catalog**.
+1. Complete the following fields:
+   - **Name**: (Optional) An optional name for identification purposes.
+   If you enter a name, it must be unique.
+   - **Description**: (Optional) An optional description of the host catalog for identification purposes.
+   - **Type**: (Required) Select **Dynamic** to create a dynamic host catalog.
+   - **Provider**: (Required) Select **AWS** to create a dynamic host catalog for your AWS resources.
+   - **AWS Region**: (Required) Enter the AWS region of the hosts you want to add to the host catalog.
+   - **Credential type**: (Required) Select the type of credential you want to use to authenticate to the host catalog. The required fields for configuring the host catalog vary depending on whether you configure static or dynamic credentials:
+      - **Use an access key (Static Credentials)**: Authenticates to the host catalog using an access key that you generate in AWS.
+      - **Use Assume Role (Dynamic Credentials)**: Authenticates to the host catalog using credentials that AWS `AssumeRole` generates.
+
+  <Tabs>
+  <Tab heading="Static credentials">
+
+    - **Access Key ID**: (Required) The access key ID for the IAM user to use with this host catalog.
+    - **Secret Access Key**: (Required) The secret access key for the IAM user to use with this host catalog.
+    - **Worker Filter**: (Optional) An optional filter to route requests to a designated worker.
+
+  </Tab>
+  <Tab heading="Dynamic credentials">
+
+    - **Role ARN**: (Required) - The AWS role ARN to use for `AssumeRole` authentication.
+    If you provide a `role_arn` value, you must also set `disable_credential_rotation` to `true`.
+    - **Role external ID**: (Optional) - The external ID for the `AssumeRole` provider.
+    - **Role session name**: (Optional) - The session name for the `AssumeRole` provider.
+    - **Role tags**: (Optional) - The key-value pair tags for the `AssumeRole` provider.
+    - **Worker Filter**: (Optional) - An optional filter to route requests to a designated worker.
+    - **Disable credential rotation**: - When enabled, Boundary does not rotate the credentials with AWS automatically.
+    Credential rotation is automatically disabled when you use dynamic credentials.
+
+  </Tab>
+  </Tabs>
+
+1. Select **Save**.
 
 </Tab>
-<Tab heading="Terraform">
+<Tab heading="CLI" group="cli">
+
+The required fields for creating a dynamic host catalog depend on whether you configure static or dynamic credentials.
+
+<Tabs>
+<Tab heading="Static credentials">
+
+1. Log in to Boundary.
+1. Use the following command to create a dynamic host catalog for AWS using static credentials:
+
+   ```shell-session
+   $ boundary host-catalogs create plugin \
+     -scope-id $BOUNDARY_PROJECT_ID \
+     -plugin-name aws \
+     -attr disable_credential_rotation=true \
+     -attr region=us-east-1 \
+     -secret access_key_id=env://AWS_ACCESS_KEY_ID \
+     -secret secret_access_key=env://AWS_SECRET_ACCESS_KEY
+   ```
+
+  The `scope-id` and `plugin-name` fields are required when you create a
+  dynamic host catalog.
+
+  The fields following the `attr` and `secret` flags are specific to AWS and are required by
+  Boundary for authentication.
+  Replace the values in the command with the following required AWS secrets and any attributes you want to associate with the host catalog:
+
+    - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials with AWS automatically.
+    - `region`: The region to configure the host catalog for. All host sets in this catalog are configured for this region.
+    - `access_key_id`: The access key ID for the IAM user to use with this host catalog.
+    - `secret_access_key`: The secret access key for the IAM user to use with this host catalog.
+
+  Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+
+</Tab>
+
+<Tab heading="Dynamic credentials">
+
+1. Log in to Boundary.
+1. Use the following command to create a dynamic host catalog using dynamic credentials:
+
+  ```shell-session
+  $ boundary host-catalogs create plugin \
+    -scope-id $BOUNDARY_PROJECT_ID \
+    -plugin-name aws \
+    -attr disable_credential_rotation=true \
+    -attr region=us-east-1 \
+    -attr role_arn=AWS_ROLE_ARN_VALUE \
+    -attr role_external_id=AWS_ROLE_EXTERNAL_ID_VALUE \
+    -attr role_session_name=AWS_ROLE_SESSION_NAME_VALUE \
+    -attr role_tags=AWS_ROLE_TAGS_VALUE
+    ```
+
+  The `scope-id` and `plugin-name` fields are required when you create a dynamic host catalog.
+
+  Replace the values in the command with the following required AWS secrets and any attributes you want to associate with the host catalog:
+
+    - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials with AWS automatically.
+    You must disable credential rotation to use dynamic credentials.
+    - `region`: The region to configure the host catalog for. All host sets in this catalog will be configured for this region.
+    - `role_arn`: The AWS role ARN used for `AssumeRole` authentication. If you provide a `role_arn` value, you must also set `disable_credential_rotation` to `true`.
+    - `role_external_id`: The external ID that you configured for the `AssumeRole` provider.
+    - `role_session_name`: The session name that you configured for the `AssumeRole` provider.
+    - `role_tags`: The key-value pair tags that you configured for the `AssumeRole` provider.
+
+  Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+
+</Tab>
+</Tabs>
+
+</Tab>
+
+<Tab heading="Terraform" group="terraform">
+
+The required fields for creating a dynamic host catalog depend on whether you configure static or dynamic credentials.
+
+Refer to the [Boundary Terraform provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) to learn about the requirements for the following example attributes.
+
+<Tabs>
+<Tab heading="Static credentials">
+
+Apply the following Terraform policy:
+
+  ```hcl
+  resource "boundary_host_catalog_plugin" "aws_host_catalog" {
+    name        = "AWS Catalog"
+    description = "AWS Host Catalog"
+    scope_id    = boundary_scope.project.id
+    plugin_name = "aws"
+
+    # recommended to pass in aws secrets using a file() or using environment variables
+    attributes_json = jsonencode({
+      "region" = "eu-west-2",
+      "disable_credential_rotation" = true })
+    secrets_json = jsonencode({
+      "access_key_id" = "AWS_ACCESS_KEY_ID_VALUE",
+      "secret_access_key" = "AWS_SECRET_ACCESS_KEY_VALUE"})
+  }
+  ```
+
+The `scope_id` and `plugin_name` fields are required when you create a dynamic host catalog.
+
+Replace the values in the configuration with the following required AWS secrets and any attributes you want to associate with the host catalog:
+
+  - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials with AWS automatically.
+  - `region`: The region to configure the host catalog for. All host sets in this catalog are configured for this region.
+  - `access_key_id`: The access key ID for the IAM user to use with this host catalog.
+  - `secret_access_key`: The secret access key for the IAM user to use with this host catalog.
+
+Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+
+</Tab>
+<Tab heading="Dynamic credentials">
+
+Apply the following Terraform policy:
 
   ```hcl
   resource "boundary_host_catalog_plugin" "aws_host_catalog" {
@@ -40,81 +185,107 @@ $ boundary host-catalogs create plugin \
       "region" = "eu-west-2",
       "disable_credential_rotation" = true })
     secrets_json = jsonencode({
-      "access_key_id" = var.aws_access,
-      "secret_access_key" = var.aws_secret})
+      "role_arn" = "AWS_ROLE_ARN_VALUE",
+      "role_external_id" = "AWS_ROLE_EXTERNAL_ID_VALUE",
+      "role_session_name" = "AWS_ROLE_SESSION_NAME_VALUE",
+      "role_tags" = "AWS_ROLE_TAGS_VALUE"})
   }
   ```
+
+The `scope_id` and `plugin_name` fields are required when you create a dynamic host catalog.
+
+Replace the values in the configuration with the following required AWS secrets and any attributes you want to associate with the host catalog:
+
+  - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials with AWS automatically.
+  You must disable credential rotation to use dynamic credentials.
+  - `region`: The region to configure the host catalog for. All host sets in this catalog are configured for this region.
+  - `role_arn`: The AWS role ARN used for `AssumeRole` authentication. If you provide a `role_arn` value, you must also set `disable_credential_rotation` to `true`.
+  - `role_external_id`: The external ID that you configured for the `AssumeRole` provider.
+  - `role_session_name`: The session name that you configured for the `AssumeRole` provider.
+  - `role_tags`: The key-value pair tags that you configured for the `AssumeRole` provider.
+
+Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
 
 </Tab>
 </Tabs>
 
-The `scope-id` and `plugin-name` fields are required when you create a
-  dynamic host catalog.
-
-The fields following the `attr` and `secret` flags are specific to AWS and are required by
-  Boundary for authentication.
-
-- `disable_credential_rotation`: When set to `true`, Boundary will not rotate the credentials with AWS automatically.
-- `region`: The region to configure the host catalog for. All host sets in this
-  catalog will be configured for this region.
-- `role_arn`: The AWS role ARN used for `AssumeRole` authentication. If you provide a `role_arn` value, you must also set `disable_credential_rotation` to `true`.
-- `role_external_id`: The external ID that you configured for the `AssumeRole` provider.
-- `role_session_name`: The session name that you configured for the `AssumeRole` provider.
-- `role_tags`: The key-value pair tags that you configured for the `AssumeRole` provider.
-- `access_key_id`: The access key ID for the IAM user to use with this host
-  catalog.
-- `secret_access_key`: The secret access key for the IAM user to use with this
-  host catalog.
-
-
-Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+</Tab>
+</Tabs>
 
 ## Create a host set to connect with AWS
 [Host sets](/boundary/docs/concepts/domain-model/host-sets) specify which AWS
   filters should be used to identify the discovered hosts that should be added as members.
 
-Create a host set using the following command:
+Complete the following steps to create a host set:
 
 <Tabs>
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select the org, and then select the project you want to create a host set for.
+1. Select **Host Catalogs**.
+1. Select the dynamic host catalog to which you want add a host set.
+1. Click the **Host Sets** tab, and then click **New**.
+1. Complete the following fields:
+    - **Name**: (Optional) An optional name for identification purposes.
+    If you enter a name, it must be unique.
+    - **Description**: (Optional) An optional description of the host catalog for identification purposes.
+1. Click **Save**.
+
+</Tab>
+
 <Tab heading="CLI" group="cli">
 
-```shell-session
-$ boundary host-sets create plugin \
-  -host-catalog-id $BOUNDARY_HOST_CATALOG_ID \
-  -attr filters=tag-key=foo,bar \
-  -attr filters=tag-key=baz
-```
+1. Log in to Boundary.
+1. Use the following command to create a host set:
+
+  ```shell-session
+  $ boundary host-sets create plugin \
+    -host-catalog-id $BOUNDARY_HOST_CATALOG_ID \
+    -attr filters=tag-key=foo,bar \
+    -attr filters=tag-key=baz
+  ```
+
+  The `host-catalog-id` value is a required field that specifies in which host catalog to create this host set.
+
+  Like with the host catalog, the fields passed in after the `attr` flag are specific to AWS.
+
+  The `filters` field contains string filters in the format key=val1,val2. The key corresponds to a filter option, and the value(s) are a comma-separated list.
+  For a list of filter options, refer to the [describe-instances in the AWS CLI reference](https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-instances.html).
+
+  When the values in a single `filters` field are separated by a comma, either can be true for the host to match.
+  When multiple filters fields are provided, they must all match for a host to match.
+  In the example above, an instance must have either tags `foo` or `bar`, and must have the tag `baz`.
+
+  For more fields that you can use when creating host sets, refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).
 
 </Tab>
 <Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy:
 
 ```hcl
 resource "boundary_host_set_plugin" "aws_host_set" {
   name        = "AWS Host Set"
   description = "AWS Host Set"
-  host_catalog_id  = boundary_scope.aws_host_catalog.id
+  host_catalog_id  = boundary_host_catalog_plugin.aws_host_catalog.id
   attributes_json = jsonencode({
   "filters" = ["tag-key=foo,bar", "tag-key=baz"] })
 }
 ```
 
+The `host_catalog_id` value is a required field that specifies in which host catalog to create this host set.
+
+The `filters` field contains string filters in the format key=val1,val2.
+The key corresponds to a filter option, and the value(s) are a comma-separated list.
+For a list of filter options, refer to the [describe-instances in the AWS CLI reference](https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-instances.html).
+
+When the values in a single `filters` field are separated by a comma, either can be true for the host to match.
+When multiple filters fields are provided, they must all match for a host to match.
+In the example above, an instance must have either tags `foo` or `bar`, and must have the tag `baz`.
+
+For more fields that you can use when creating host sets, refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).
+
+
 </Tab>
 </Tabs>
-
-The `host-catalog-id` value is a required field that specifies in which host catalog to
-  create this host set.
-
-Like with the host catalog, the fields passed in after the `attr` flag are
- specific to AWS.
-
-The `filters` field contains string filters in the format key=val1,val2. The key corresponds to
-  a filter option, and the value(s) are a comma-separated list. For a list of
-  filter options, refer to the
-  [describe-instances in the AWS CLI reference](https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-instances.html).
-  When the values in a single `filters` field are separated by a comma, either
-  can be true for the host to match.  When multiple filters fields are provided,
-  they must all match for a host to match. In the example above, an instance must
-  have either tags `foo` or `bar`, and must have the tag `baz`.
-
-For more fields that you can use when creating host sets, refer to
-  [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).
