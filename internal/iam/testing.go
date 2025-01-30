@@ -374,7 +374,7 @@ func TestUserDirectGrantsFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scop
 }
 
 // TestUserGroupGrantsFunc returns a function that creates a user which has been given
-// the request grants via direct association.
+// the request grants by being a part of a group.
 // Group is created as a part of this method
 func TestUserGroupGrantsFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string, testRoleGrants []TestRoleGrantsRequest) func() *User {
 	return func() *User {
@@ -399,15 +399,7 @@ func TestUserGroupGrantsFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scope
 		user, err := repo.CreateUser(ctx, u)
 		require.NoError(t, err)
 		for _, trg := range testRoleGrants {
-			for _, gsi := range trg.GrantScopes {
-				gs, err := NewRoleGrantScope(ctx, id, gsi)
-				require.NoError(t, err)
-				require.NoError(t, rw.Create(ctx, gs))
-				role.GrantScopes = append(role.GrantScopes, gs)
-			}
-			for _, g := range trg.Grants {
-				_ = TestRoleGrant(t, conn, role.PublicId, g)
-			}
+			role := testRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
 			_ = TestGroupRole(t, conn, role.PublicId, group.PublicId)
 		}
 		_, err = repo.AddGroupMembers(ctx, group.PublicId, group.Version, []string{user.PublicId})
