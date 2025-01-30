@@ -17,6 +17,8 @@ begin;
     return new;
   end
   $$ language plpgsql;
+  comment on function upsert_canonical_grant() is
+    'upsert_canonical_grant is a trigger function that inserts a row into the iam_grant table if the canonical_grant does not exist.';
 
   create trigger upsert_canonical_grant before insert on iam_role_grant
     for each row execute procedure upsert_canonical_grant();
