@@ -15,20 +15,17 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
-	am "github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -48,29 +45,10 @@ import (
 func Test_UpdateLdap(t *testing.T) {
 	t.Parallel()
 	ctx := context.TODO()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
-		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
-	}
-	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, conn, wrapper, rw, kms := helper.TestDbCore(t)
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := testRepoFuncs(t, ctx, conn, wrapper, rw, kms)
+	iamRepo, err := iamRepoFn()
+	require.NoError(t, err)
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
@@ -938,11 +916,7 @@ func Test_UpdateLdap(t *testing.T) {
 
 func TestAuthenticate_Ldap(t *testing.T) {
 	t.Parallel()
-	testCtx := context.Background()
-	testConn, _ := db.TestSetup(t, "postgres")
-	testRw := db.New(testConn)
-	testRootWrapper := db.TestWrapper(t)
-	testKms := kms.TestKms(t, testConn, testRootWrapper)
+	testCtx, testConn, testRootWrapper, testRw, testKms := helper.TestDbCore(t)
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testRootWrapper))
 	opt := event.TestWithObservationSink(t)
 	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", opt)
@@ -953,24 +927,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	})
 	c.EventerConfig.TelemetryEnabled = true
 	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Authenticate", event.WithEventerConfig(&c.EventerConfig)))
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, testConn, testRootWrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(testCtx, testRw, testRw, testKms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(testCtx, testRw, testRw, testKms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(testCtx, testRw, testRw, testKms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(testCtx, testRw, testRw, testKms)
-	}
-	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
-		return am.NewAuthMethodRepository(testCtx, testRw, testRw, testKms)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := testRepoFuncs(t, testCtx, testConn, testRootWrapper, testRw, testKms)
 
 	orgDbWrapper, err := testKms.GetWrapper(testCtx, o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
