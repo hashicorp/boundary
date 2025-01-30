@@ -428,15 +428,15 @@ Complete the following steps to create a host set:
   ```shell-session
   $ boundary host-sets create plugin \
     -host-catalog-id $BOUNDARY_HOST_CATALOG_ID \
-    -attr filters=labels.env=prod \
-    -attr filters=labels.app=web
+    -attr filters=labels.env:prod \
+    -attr filters=labels.app:web
   ```
 
   The `host-catalog-id` value is a required field that specifies in which host catalog to create this host set.
 
   Like with the host catalog, the fields passed in after the `attr` flag are specific to GCP.
 
-  The `filters` field contains string filters in the format key=val1.
+  The `filters` field contains string filters in the format key=val.
   The key corresponds to a filter option.
   For a list of filter options, refer to the [GCP API documentation](https://cloud.google.com/compute/docs/reference/rest/v1/instances/list#filter).
   When you apply multiple filters, the plugin applies a logical `AND` operation to combine the filters.
@@ -446,8 +446,8 @@ Complete the following steps to create a host set:
 
   We recommend using labels as filters because they are more flexible and can filter on multiple values as in the following examples:
 
-    - `-attr filters=labels.env=dev`
-    - `-attr filters=labels.env=prod AND labels.app=web`
+    - `-attr filters=labels.env:dev`
+    - `-attr filters="labels.env:prod AND labels.app:web"`
 
   For more fields that you can use when creating host sets, refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).
 
@@ -464,7 +464,7 @@ resource "boundary_host_set_plugin" "gcp_host_set" {
   description = "GCP Host Set"
   host_catalog_id  = boundary_scope.gcp_host_catalog.id
   attributes_json = jsonencode({
-  "filters" = ["labels.env=prod", "labels.app=web"] })
+  "filters" = ["labels.env:prod", "labels.app:web"] })
 }
 ```
 
@@ -482,8 +482,8 @@ The default status ensures that Boundary only filters running instances, saving 
 
 We recommend using labels as filters because they are more flexible and can filter on multiple values as in the following examples:
 
-  - `-attr filters=labels.env=dev`
-  - `-attr filters=labels.env=prod AND labels.app=web`
+  - `-attr filters=labels.env:dev`
+  - `-attr filters="labels.env:prod AND labels.app:web"`
 
 For more fields that you can use when creating host sets, refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).
 
