@@ -279,14 +279,15 @@ Apply the following Terraform policy:
     scope_id    = boundary_scope.project.id
     plugin_name = "gcp"
 
+    # recommended to pass in aws secrets using a file() or using environment variables
     attributes_json = jsonencode({
       "zone" = "us-central1-a ",
-      "project_id" = var.gcp_project_id,
-      "client_email" = var.gcp_client_email,
+      "project_id" = "GCP_PROJECT_ID_VALUE",
+      "client_email" = "GCP_CLIENT_EMAIL_VALUE",
       "disable_credential_rotation" = true })
     secrets_json = jsonencode({
-      "private_key_id" = var.private_key_id,
-      "private_key" = var.private_key})
+      "private_key_id" = "GCP_PRIVATE_KEY_ID_VALUE",
+      "private_key" = "GCP_PRIVATE_KEY_VALUE"})
   }
   ```
 
@@ -325,15 +326,16 @@ Apply the following Terraform policy:
     scope_id    = boundary_scope.project.id
     plugin_name = "gcp"
 
+    # recommended to pass in aws secrets using a file() or using environment variables
     attributes_json = jsonencode({
       "zone" = "us-central1-a ",
-      "project_id" = var.gcp_project_id,
-      "client_email" = var.gcp_base_service_account_email,
-      "target_service_account_id" = var.gcp_target_service_account_email,
+      "project_id" = "GCP_PROJECT_ID_VALUE",
+      "client_email" = "GCP_BASE_SERVICE_ACCOUNT_EMAIL_VALUE",
+      "target_service_account_id" = "GCP_TARGET_SERVICE_ACCOUNT_EMAIL_VALUE",
       "disable_credential_rotation" = true })
     secrets_json = jsonencode({
-      "private_key_id" = var.base_service_account_private_key_id,
-      "private_key" = var.base_service_account_private_key})
+      "private_key_id" = "BASE_SERVICE_ACCOUNT_PRIVATE_KEY_ID_VALUE",
+      "private_key" = "BASE_SERVICE_ACCOUNT_PRIVATE_KEY_VALUE"})
   }
   ```
 
@@ -374,9 +376,10 @@ Apply the following Terraform policy:
     scope_id    = boundary_scope.project.id
     plugin_name = "gcp"
 
+    # recommended to pass in aws secrets using a file() or using environment variables
     attributes_json = jsonencode({
       "zone" = "us-central1-a ",
-      "project_id" = var.gcp_project_id,
+      "project_id" = "GCP_PROJECT_ID_VALUE",
       "disable_credential_rotation" = true })
   }
   ```
@@ -462,7 +465,7 @@ Apply the following Terraform policy:
 resource "boundary_host_set_plugin" "gcp_host_set" {
   name        = "GCP Host Set"
   description = "GCP Host Set"
-  host_catalog_id  = boundary_scope.gcp_host_catalog.id
+  host_catalog_id  = boundary_host_catalog_plugin.gcp_host_catalog.id
   attributes_json = jsonencode({
   "filters" = ["labels.env:prod", "labels.app:web"] })
 }
