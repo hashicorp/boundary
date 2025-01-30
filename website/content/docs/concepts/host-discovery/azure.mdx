@@ -80,6 +80,7 @@ resource "boundary_host_catalog_plugin" "azure_host_catalog" {
   scope_id    = boundary_scope.project.id
   plugin_name = "azure"
 
+  # recommended to pass in aws secrets using a file() or using environment variables
   attributes_json = jsonencode({
     "tenant_id"       = "ARM_TENANT_ID",
     "subscription_id" = "ARM_SUBSCRIPTION_ID"
@@ -90,10 +91,10 @@ resource "boundary_host_catalog_plugin" "azure_host_catalog" {
 }
 ```
 
-The `scope-id` and `plugin-name` fields are required when you create a
+The `scope_id` and `plugin_name` fields are required when you create a
 dynamic host catalog.
 
-The fields following the `attr` and `secret` flags are specific to Azure and are required by
+The fields following the `attributes_json` and `secrets_json` flags are specific to Azure and are required by
   Boundary for authentication.
 
 - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials automatically.
@@ -173,10 +174,10 @@ Apply the following Terraform policy:
 }
 ```
 
-The `host-catalog-id` value is a required field that specifies in which host catalog to
+The `host_catalog_id` value is a required field that specifies in which host catalog to
   create this host set.
 
-The fields following the `attr` flag are specific to Azure.
+The fields following the `attributes_json` flag are specific to Azure.
 
 The `filter` field represents the ARM filter used to select resources that should be a part of
   this host set.  There are some limitations with the filtering syntax.

@@ -105,10 +105,10 @@ The required fields for creating a dynamic host catalog depend on whether you co
     -plugin-name aws \
     -attr disable_credential_rotation=true \
     -attr region=us-east-1 \
-    -role_arn \
-    -role_external_id \
-    -role_session_name \
-    -role_tags
+    -attr role_arn=AWS_ROLE_ARN_VALUE \
+    -attr role_external_id=AWS_ROLE_EXTERNAL_ID_VALUE \
+    -attr role_session_name=AWS_ROLE_SESSION_NAME_VALUE \
+    -attr role_tags=AWS_ROLE_TAGS_VALUE
     ```
 
   The `scope-id` and `plugin-name` fields are required when you create a dynamic host catalog.
@@ -148,16 +148,17 @@ Apply the following Terraform policy:
     scope_id    = boundary_scope.project.id
     plugin_name = "aws"
 
+    # recommended to pass in aws secrets using a file() or using environment variables
     attributes_json = jsonencode({
       "region" = "eu-west-2",
       "disable_credential_rotation" = true })
     secrets_json = jsonencode({
-      "access_key_id" = var.aws_access,
-      "secret_access_key" = var.aws_secret})
+      "access_key_id" = "AWS_ACCESS_KEY_ID_VALUE",
+      "secret_access_key" = "AWS_SECRET_ACCESS_KEY_VALUE"})
   }
   ```
 
-The `scope-id` and `plugin-name` fields are required when you create a dynamic host catalog.
+The `scope_id` and `plugin_name` fields are required when you create a dynamic host catalog.
 
 Replace the values in the configuration with the following required AWS secrets and any attributes you want to associate with the host catalog:
 
@@ -184,14 +185,14 @@ Apply the following Terraform policy:
       "region" = "eu-west-2",
       "disable_credential_rotation" = true })
     secrets_json = jsonencode({
-      "role_arn" = var.aws_access,
-      "role_external_id" = var.aws_secret,
-      "role_session_name" = var.aws_secret,
-      "role_tags" = var.aws_secret})
+      "role_arn" = "AWS_ROLE_ARN_VALUE",
+      "role_external_id" = "AWS_ROLE_EXTERNAL_ID_VALUE",
+      "role_session_name" = "AWS_ROLE_SESSION_NAME_VALUE",
+      "role_tags" = "AWS_ROLE_TAGS_VALUE"})
   }
   ```
 
-The `scope-id` and `plugin-name` fields are required when you create a dynamic host catalog.
+The `scope_id` and `plugin_name` fields are required when you create a dynamic host catalog.
 
 Replace the values in the configuration with the following required AWS secrets and any attributes you want to associate with the host catalog:
 
@@ -267,13 +268,13 @@ Apply the following Terraform policy:
 resource "boundary_host_set_plugin" "aws_host_set" {
   name        = "AWS Host Set"
   description = "AWS Host Set"
-  host_catalog_id  = boundary_scope.aws_host_catalog.id
+  host_catalog_id  = boundary_host_catalog_plugin.aws_host_catalog.id
   attributes_json = jsonencode({
   "filters" = ["tag-key=foo,bar", "tag-key=baz"] })
 }
 ```
 
-The `host-catalog-id` value is a required field that specifies in which host catalog to create this host set.
+The `host_catalog_id` value is a required field that specifies in which host catalog to create this host set.
 
 The `filters` field contains string filters in the format key=val1,val2.
 The key corresponds to a filter option, and the value(s) are a comma-separated list.
