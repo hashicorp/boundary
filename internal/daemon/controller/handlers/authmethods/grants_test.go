@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -18,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
-	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -27,30 +25,8 @@ import (
 
 // TestGrants_ReadActions tests read actions to assert that grants are being applied properly
 func TestGrants_ReadActions(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrap := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrap)
-	rw := db.New(conn)
-	kmsCache := kms.TestKms(t, conn, wrap)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iamRepo, nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
-		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
-	}
+	ctx, wrap, conn, rw, kmsCache, iamRepo := getTestCore(t)
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrap, conn, rw, kmsCache, iamRepo)
 
 	s, err := authmethods.NewService(ctx,
 		kmsCache,
