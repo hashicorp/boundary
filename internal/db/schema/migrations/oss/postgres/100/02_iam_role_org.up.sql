@@ -36,7 +36,7 @@ begin;
         on update cascade,
     name text,
     description text,
-    grant_this_role_scope boolean not null,
+    grant_this_role_scope boolean not null default false,
     grant_scope text
       constraint iam_role_org_grant_scope_enm_fkey
         references iam_role_org_grant_scope_enm(name)
@@ -46,7 +46,7 @@ begin;
     grant_this_role_scope_update_time wt_timestamp,
     grant_scope_update_time wt_timestamp,
     create_time wt_timestamp,
-    updated_at wt_timestamp,
+    update_time wt_timestamp,
     unique(public_id, grant_scope)
   );
   comment on table iam_role_org is
@@ -117,8 +117,8 @@ begin;
   -- ensure the project's parent is the role's scope
   create function ensure_project_belongs_to_role_org() returns trigger
   as $$
-  declare
-    perform 
+  begin
+    perform
       from iam_scope_project
       join iam_role_org 
         on iam_role_org.scope_id = iam_scope_project.parent_id 

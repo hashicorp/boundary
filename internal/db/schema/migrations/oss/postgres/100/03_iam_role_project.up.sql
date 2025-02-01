@@ -23,6 +23,9 @@ begin;
   comment on table iam_role_project is
     'iam_role_project is a subtype table of the iam_role table. It is used to store roles that are scoped to a project.';
 
+  create trigger insert_role_subtype before insert on iam_role_project
+    for each row execute procedure insert_role_subtype();
+
   create trigger default_create_time_column before insert on iam_role_project
     for each row execute procedure default_create_time();
   

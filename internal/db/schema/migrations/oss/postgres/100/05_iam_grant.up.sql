@@ -15,8 +15,7 @@ begin;
         on update cascade
   );
   comment on table iam_grant is
-    'iam_grant is the root table for a grant value object. A grant can only reference a single resource, ' +
-    'including the special strings "*" to indicate "all" resources, and "unknown" when no resource is set.';
+    'iam_grant is the root table for a grant value object. A grant can only reference a single resource, including the special strings "*" to indicate "all" resources, and "unknown" when no resource is set.';
 
   create index iam_grant_resource_ix
     on iam_grant (resource);

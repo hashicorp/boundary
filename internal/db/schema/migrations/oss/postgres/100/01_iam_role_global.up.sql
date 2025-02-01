@@ -102,10 +102,7 @@ begin;
     unique(public_id, grant_scope)
   );
   comment on table iam_role_global is
-    'iam_role_global is the subtype table for the global role. ' +
-    'grant_this_role_scope_update_time and grant_scope_update_time ' + 
-    'are used to track the last time the grant_this_role_scope and ' + 
-    'grant_scope columns were updated.';
+    'iam_role_global is the subtype table for the global role. grant_this_role_scope_update_time and grant_scope_update_time are used to track the last time the grant_this_role_scope and grant_scope columns were updated.';
 
   create trigger insert_role_subtype before insert on iam_role_global
     for each row execute procedure insert_role_subtype();

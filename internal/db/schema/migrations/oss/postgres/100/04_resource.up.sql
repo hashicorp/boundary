@@ -40,7 +40,7 @@ begin;
     'resource_enm is an enumeration table for resource types.';
 
   -- Insert the predefined resource types
-  insert into resource_enm (string)
+  insert into resource_enm (name)
   values 
     ('*'),
     ('alias'),
