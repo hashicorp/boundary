@@ -54,15 +54,17 @@ begin;
       ('g___wb-group', 'u_____warren'),
       ('g___ws-group', 'u_____waylon');
 
-    insert into iam_role
+    insert into iam_role_org
       (scope_id, public_id, name)
     values
-            -- ('global', 'r_gg_____buy', 'Purchaser'),
-            -- ('global', 'r_gg____shop', 'Shopper'),
-      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
-      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
       ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer'),
       ('o_____widget', 'r_oo_____eng', 'Widget Engineer');
+
+    insert into iam_role_project
+      (scope_id, public_id, name)
+    values
+      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
+      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder');
 
     insert into iam_role_grant_scope
       (role_id,        scope_id_or_special)
@@ -77,12 +79,12 @@ begin;
     values
       -- ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
       -- ('r_gg____shop', 'type=*;action=view',        'view anything'),
-      ('r_oo_____eng', 'type=widget;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=widget;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=widget;action=tune',   'tune widget'),
-      ('r_op_sw__eng', 'type=widget;action=clean',  'clean widget'),
-      ('r_pp_bw__bld', 'type=widget;action=build',  'build widget'),
-      ('r_pp_sw__bld', 'type=widget;action=build',  'build widget');
+      ('r_oo_____eng', 'type=target;action=design', 'design widget'),
+      ('r_op_sw__eng', 'type=target;action=design', 'design widget'),
+      ('r_op_sw__eng', 'type=target;action=tune',   'tune widget'),
+      ('r_op_sw__eng', 'type=target;action=clean',  'clean widget'),
+      ('r_pp_bw__bld', 'type=target;action=build',  'build widget'),
+      ('r_pp_sw__bld', 'type=target;action=build',  'build widget');
 
     insert into iam_group_role
       (role_id, principal_id)

@@ -32,12 +32,6 @@
 -- optional or non-standard columns.
 
 begin;
-  -- setup resource for iam_grant
-  insert into resource_enm
-    (string)
-  values
-    ('color');
-
   -- Add organizations
   insert into iam_scope
     (parent_id, type,  public_id,      name)
@@ -145,15 +139,15 @@ begin;
   values
     ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
     ('r_gg____shop', 'type=*;action=view',        'view anything'),
-    ('r_go____name', 'type=color;action=name',    'name colors'),
-    ('r_gp____spec', 'type=color;action=inspect', 'inspect colors'),
-    ('r_oo_____art', 'type=color;action=create',  'create color'),
-    ('r_op_bc__art', 'type=color;action=create',  'create color'),
-    ('r_op_rc__art', 'type=color;action=create',  'create color'),
-    ('r_op_gc__art', 'type=color;action=create',  'create color'),
-    ('r_pp_bc__mix', 'type=color;action=mix',     'mix color'),
-    ('r_pp_rc__mix', 'type=color;action=mix',     'mix color'),
-    ('r_pp_gc__mix', 'type=color;action=mix',     'mix color');
+    ('r_go____name', 'type=group;action=name',    'name colors'),
+    ('r_gp____spec', 'type=group;action=inspect', 'inspect colors'),
+    ('r_oo_____art', 'type=group;action=create',  'create color'),
+    ('r_op_bc__art', 'type=group;action=create',  'create color'),
+    ('r_op_rc__art', 'type=group;action=create',  'create color'),
+    ('r_op_gc__art', 'type=group;action=create',  'create color'),
+    ('r_pp_bc__mix', 'type=group;action=mix',     'mix color'),
+    ('r_pp_rc__mix', 'type=group;action=mix',     'mix color'),
+    ('r_pp_gc__mix', 'type=group;action=mix',     'mix color');
 
   insert into iam_group_role
     (role_id,        principal_id)

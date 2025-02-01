@@ -2,12 +2,6 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  -- setup resource for iam_grant
-  insert into resource_enm
-    (string)
-  values
-    ('widget');
-
   -- wtt_load populates tables for the given test persona and set of aggregates.
   -- Valid personas are:
   --  * widgets

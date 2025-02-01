@@ -3,15 +3,7 @@
 
 begin;
   select plan(14);
-
-    -- Set up a scope  to test against
-  insert into iam_scope
-    (type,      public_id,      parent_id)
-  values
-    ('org',     'o_1111111111', 'global');
-
-  -- remove any existing roles and their grant scopes, so we can test fresh
-  delete from iam_role;
+  select wtt_load('widgets', 'iam');
 
   --------------------------------------------------------------------------------
   -- 1) testing iam_role_global table constraints and insert_role_subtype
@@ -28,7 +20,7 @@ begin;
   -- verify it also created a row in base iam_role
   select is(count(*), 1::bigint) from iam_role where public_id = 'r_1111111111';
 
-  -- 1e) try duplicate (public_id, grant_scope) => unique violation
+  -- 1b) try duplicate (public_id, grant_scope) => unique violation
   prepare insert_dup_public_id_grant_scope as
     insert into iam_role_global
         (public_id, scope_id, grant_this_role_scope, grant_scope)
@@ -40,7 +32,7 @@ begin;
     'unique(public_id) is enforced'
   );
 
-  -- 1b) invalid grant_scope (not in iam_role_global_grant_scope_enm table)
+  -- 1c) invalid grant_scope (not in iam_role_global_grant_scope_enm table)
   prepare insert_invalid_grant_scope as
     insert into iam_role_global
         (public_id, scope_id, grant_this_role_scope, grant_scope)
@@ -52,7 +44,7 @@ begin;
     'invalid grant_scope must fail foreign key to iam_role_global_grant_scope_enm'
   );
 
-  -- 1c) invalid scope_id -> must reference iam_scope_global(scope_id)
+  -- 1d) invalid scope_id -> must reference iam_scope_global(scope_id)
   prepare insert_bad_scope_id as
     insert into iam_role_global
         (public_id, scope_id, grant_this_role_scope, grant_scope)
@@ -68,20 +60,17 @@ begin;
   -- 2) testing insert_grant_scope_update_time trigger
   --------------------------------------------------------------------------------
 
-  -- 2a) clean up any previous data
-  delete from iam_role;
- 
   -- 2b) insert a new row (grant_this_role_scope, grant_scope) => should initialize
   prepare insert_with_grant_scope_update_time_set as
     insert into iam_role_global 
-        (public_id, scope_id, grant_this_role_scope, grant_scope, grant_scope_update_time)
+        (public_id, scope_id, grant_scope, grant_scope_update_time)
     values 
-        ('r_1111111111', 'global', false, 'descendants', null);
+        ('r_2222222222', 'global', 'descendants', null);
   select lives_ok('insert_with_grant_scope_update_time_set');
 
   -- 2c) check if grant_scope_update_time is set
   select is(
-    (select grant_scope_update_time is not null from iam_role_global where public_id = 'r_1111111111'),
+    (select grant_scope_update_time is not null from iam_role_global where public_id = 'r_2222222222'),
     true,
     'grant_scope_update_time should be set with the default timestamp right after insert'
   );
@@ -90,10 +79,10 @@ begin;
   prepare update_grant_this_role_scope as
     update iam_role_global
        set grant_this_role_scope = true
-     where public_id = 'r_1111111111';
+     where public_id = 'r_2222222222';
   select lives_ok('update_grant_this_role_scope');
   select is(
-    (select grant_scope_update_time is not null from iam_role_global where public_id = 'r_1111111111'),
+    (select grant_scope_update_time is not null from iam_role_global where public_id = 'r_2222222222'),
     true,
     'grant_scope_update_time should be set with the default timestamp right after insert'
   );
@@ -107,7 +96,7 @@ begin;
     insert into iam_role_global_individual_grant_scope
         (role_id, scope_id, grant_scope)
     values
-        ('r_2111111111', 'descendants', 'global');
+        ('r_3333333333', 'descendants', 'global');
   select throws_like(
     'insert_invalid_individual_grant_scope',
     'new row for relation "iam_role_global_individual_grant_scope" violates check constraint "only_individual_grant_scope_allowed"',
@@ -122,7 +111,7 @@ begin;
         ('r_1111111111', 'individual', 'o_1111111111');
   select throws_like(
         'insert_invalid_iam_role_global_individual_grant_scope',
-        'insert or update on table "iam_role_global_individual_grant_scope" violates foreign key constraint "iam_role_global_grant_scope_fkey"',
+        'insert or update on table "iam_role_global_individual_grant_scope" violates foreign key constraint "iam_scope_fkey"',
         'foreign key also enforces matching grant_scope=individual in iam_role_global'
   );
 
@@ -143,14 +132,14 @@ begin;
     insert into iam_role_global 
         (public_id, scope_id, grant_scope)
     values
-        ('r_3111111111', 'global', 'individual');
+        ('r_3333333333', 'global', 'individual');
   select lives_ok('insert_global_role_for_individual_scope');
 
   prepare insert_valid_individual_org_scope as
     insert into iam_role_global_individual_grant_scope
         (role_id, grant_scope, scope_id)
     values
-        ('r_3111111111', 'individual', 'o_1111111111');
+        ('r_3333333333', 'individual', 'o_____widget');
   select lives_ok('insert_valid_individual_org_scope');
 
   select * from finish();
