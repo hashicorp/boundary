@@ -85,12 +85,11 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name                     string
-			input                    *pbs.ListAuthMethodsRequest
-			includeGlobalAuthMethods bool
-			rolesToCreate            []authtoken.TestRoleGrantsForToken
-			wantErr                  error
-			wantIDs                  []string
+			name          string
+			input         *pbs.ListAuthMethodsRequest
+			rolesToCreate []authtoken.TestRoleGrantsForToken
+			wantErr       error
+			wantIDs       []string
 		}{
 			{
 				name: "global role grant this and children returns all auth methods",
@@ -192,7 +191,6 @@ func TestGrants_ReadActions(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
 		testcases := []struct {
 			name             string
-			input            *pbs.ListAuthMethodsRequest
 			amIDExpectErrMap map[string]error
 			rolesToCreate    []authtoken.TestRoleGrantsForToken
 		}{
@@ -213,10 +211,6 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "org role grant this and children returns auth methods in org1",
-				input: &pbs.ListAuthMethodsRequest{
-					ScopeId:   org1.PublicId,
-					Recursive: true,
-				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
 						RoleScopeId:  globals.GlobalPrefix,
@@ -231,12 +225,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
-				name: "no grants return all auth methods",
-				input: &pbs.ListAuthMethodsRequest{
-					ScopeId:   globals.GlobalPrefix,
-					Recursive: true,
-					PageSize:  500,
-				},
+				name:          "no grants return all auth methods",
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{},
 				amIDExpectErrMap: map[string]error{
 					pwGlobal.GetPublicId(): handlers.ForbiddenError(),
