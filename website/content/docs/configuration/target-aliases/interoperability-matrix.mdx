@@ -8,28 +8,223 @@ description: >-
 # Transparent sessions interoperability matrix
 
 Transparent sessions require you to use the Boundary installer to install the Boundary Client Agent.
-To support a variety of use cases, Boundary verifies implementation and integrations with partner products and applications.
+To support a variety of use cases, HashiCorp verifies implementation and integrations with partner products and applications.
 
-Refer to the table to determine which products have been tested for use with specific versions of the installer and Client Agent.
+HashiCorp has tested and confirmed that you can use the following third-party products with the specific versions of the installer and Client Agent listed in the table.
+Products may be compatible with other versions as well, but they have not been tested.
+We will update the list of products as we test them.
 
-| Product | Verified Boundary installer versions | Verified Client Agent versions | Notes |
-|----------------|---------------------------|----------------------------|---------------|
-| Cloudflare WARP client | 0.1.1 | 0.1.1 | Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#cloudflare-warp-client)
-| Crowdstrike Falcon | 0.1.1 | N/A |
-| SentinelOne Singularity | 0.1.1 | 0.1.1 |
-| ZeroTier | 0.1.1 | 0.1.1 |
-| Huntress EDR client | 0.1.1 | 0.1.1| Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#huntress-edr-client)
-| OpenVPN | 0.1.1 | 0.1.1 |
-| Tailscale | 0.1.1 | 0.1.1 |
-| WireGuard | 0.1.1 | 0.1.1 |
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Product</th>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Boundary installer versions</th>
+      <th style={{veritcalAlign: 'middle'}}>Client Agent versions</th>
+      <th style={{verticalAlign: 'middle'}}>OS versions</th>
+      <th style={{veritcalAlign: 'middle'}}>Additional information</th>
+    </tr>
+  </thead>
+  <tbody>
 
-| Product | Version | Verified Boundary installer versions | Verified Client Agent versions | OS versions | Additional information
-|---------|---------|--------------------------------------|--------------------------------|-------------|------------|
-| Cloudflare WARP client | 2024.12.554.0 | 0.1.1 | 0.1.1 | Windows 11 Pro (Version 24H2), MacOS Sonoma 14.6 | Refer to [compatibility issue](/boundary/docs/api-clients/client-agent#cloudflare-warp-client)
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    CloudFlare WARP client
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    2024.12.554.0
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    MacOS 14.6
+    <br /><br />
+    Windows 11 Pro, version 24H2
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Refer to the <a href="/boundary/docs/api-clients/client-agent#cloudflare-warp-client">Conflicting software</a> section
+    </td>
+</tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Crowdstrike Falcon
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    &nbsp;
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    N/A
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    N/A
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    &nbsp;
+    </td>
+</tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Huntress
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    <b>MacOS</b>: 0.13.228
+    <br /><br />
+    <b>Windows</b>: 0.13.234
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    MacOS 14.6
+    <br /><br />
+    Windows 11 Pro, version 24H2
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Refer to the <a href="/boundary/docs/api-clients/client-agent#huntress-edr-client">Conflicting software</a> section
+    </td>
+</tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    OpenVPN
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    <b>MacOS</b>: OpenVPN v3 client 3.5.0 (5200)
+    <br/ ><br />
+    <b>Server</b>: OpenVPN 2.6.12 on AWS EC2 Ubuntu cluster (x86)
+    <br /><br />
+    <b>Windows</b>: OpenVPN v3 client 3.5.1 (3946)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    MacOS 14.7.1 (arm64)
+    <br /><br />
+    Windows 11 Pro, version 24H2 (arm64)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    &nbsp;
+    </td>
+</tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    SentinelOne Singularity
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    &nbsp;
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.2
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.2
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    MacOS 15.2
+    <br /><br />
+    Windows 11
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    &nbsp;
+    </td>
+</tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Tailscale
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    1.78.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    MacOS 15
+    <br /><br />
+    Windows 11
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    &nbsp;
+    </td>
+</tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    WireGuard
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    <b>MacOS</b>: WireGuard client version 1.0.16 (27)
+    <br /><br />
+    <b>Windows</b>: WireGuard client version 0.5.3
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    MacOS 14.7.1 (arm64)
+    <br /><br />
+    Windows 11 Pro, version 24H2 (arm64)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    &nbsp;
+    </td>
+</tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    ZeroTier
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    1.14.0
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    0.1.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    MacOS 15
+    <br /><br />
+    Windows 11
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    &nbsp;
+    </td>
+</tr>
+
+  </tbody>
+</table>
+
 
 ## More information
 
 For more information, refer to the following topics:
 
+- [Transparent sessions](/boundary/docs/concepts/transparent-sessions)
 - [Configure transparent sessions](/boundary/docs/configuration/target-aliases/transparent-sessions)
 - [Boundary Client Agent](/boundary/docs/api-clients/client-agent)

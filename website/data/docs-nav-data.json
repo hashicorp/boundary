@@ -617,6 +617,11 @@
           },
           {
             "title": "Transparent sessions interoperability matrix",
+            "badge": {
+              "text": "HCP/ENT BETA",
+              "type": "outlined",
+              "color": "neutral"
+            },
             "path": "configuration/target-aliases/interoperability-matrix"
           }
         ]
