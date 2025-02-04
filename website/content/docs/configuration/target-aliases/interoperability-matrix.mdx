@@ -7,11 +7,15 @@ description: >-
 
 # Transparent sessions interoperability matrix
 
+@include 'alerts/enterprise-only.mdx'
+
+@include 'alerts/beta.mdx'
+
 Transparent sessions require you to use the Boundary installer to install the Boundary Client Agent.
 To support a variety of use cases, HashiCorp verifies implementation and integrations with partner products and applications.
 
-HashiCorp has tested and confirmed that you can use the following third-party products with the specific versions of the installer and Client Agent listed in the table.
-Products may be compatible with other versions as well, but they have not been tested.
+HashiCorp has tested and confirmed that you can use the following third-party products with the specific versions of the installer, Client Agent, and any operating systems listed in the table.
+Products may operate with other versions as well, but they have not been tested.
 We will update the list of products as we test them.
 
 <table>
@@ -19,10 +23,10 @@ We will update the list of products as we test them.
     <tr>
       <th style={{verticalAlign: 'middle'}}>Product</th>
       <th style={{verticalAlign: 'middle'}}>Version</th>
-      <th style={{verticalAlign: 'middle'}}>Boundary installer versions</th>
+      <th style={{verticalAlign: 'middle'}}>Installer versions</th>
       <th style={{veritcalAlign: 'middle'}}>Client Agent versions</th>
       <th style={{verticalAlign: 'middle'}}>OS versions</th>
-      <th style={{veritcalAlign: 'middle'}}>Additional information</th>
+      <th style={{veritcalAlign: 'middle'}}>Notes</th>
     </tr>
   </thead>
   <tbody>
@@ -46,7 +50,7 @@ We will update the list of products as we test them.
     Windows 11 Pro, version 24H2
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Refer to the <a href="/boundary/docs/api-clients/client-agent#cloudflare-warp-client">Conflicting software</a> section
+    Refer to <a href="/boundary/docs/api-clients/client-agent#cloudflare-warp-client">Conflicting software</a>
     </td>
 </tr>
 
@@ -92,7 +96,7 @@ We will update the list of products as we test them.
     Windows 11 Pro, version 24H2
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Refer to the <a href="/boundary/docs/api-clients/client-agent#huntress-edr-client">Conflicting software</a> section
+    Refer to <a href="/boundary/docs/api-clients/client-agent#huntress-edr-client">Conflicting software</a>
     </td>
 </tr>
 
