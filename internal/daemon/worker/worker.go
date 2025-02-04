@@ -485,7 +485,7 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 
 	w.parseAndStoreTags(newConf.Worker.Tags)
 
-	switch newConf.Worker.SuccessfulControllerRPCGracePeriod {
+	switch newConf.Worker.SuccessfulControllerRPCGracePeriodDuration {
 	case 0:
 		w.successfulRoutingInfoGracePeriod.Store(int64(server.DefaultLiveness))
 		w.successfulSessionInfoGracePeriod.Store(int64(server.DefaultLiveness))

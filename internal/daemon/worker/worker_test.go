@@ -15,6 +15,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/event"
@@ -221,6 +222,98 @@ func TestWorkerNew(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWorkerReload(t *testing.T) {
+	t.Run("default config is the same as the reload config", func(t *testing.T) {
+		require, assert := require.New(t), assert.New(t)
+		cfg := &Config{
+			Server: &base.Server{
+				Logger:  hclog.Default(),
+				Eventer: &event.Eventer{},
+				Listeners: []*base.ServerListener{
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+				},
+			},
+			RawConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				Worker:       &config.Worker{},
+			},
+		}
+		w, err := New(context.Background(), cfg)
+		require.NoError(err)
+
+		assert.Equal(int64(server.DefaultLiveness), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(common.DefaultRoutingInfoTimeout), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultStatisticsTimeout), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultSessionInfoTimeout), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(server.DefaultLiveness), w.getDownstreamWorkersTimeoutDuration.Load())
+
+		w.Reload(context.Background(), cfg.RawConfig)
+
+		assert.Equal(int64(server.DefaultLiveness), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(common.DefaultRoutingInfoTimeout), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultStatisticsTimeout), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultSessionInfoTimeout), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(server.DefaultLiveness), w.getDownstreamWorkersTimeoutDuration.Load())
+	})
+
+	t.Run("new config is the same as the reload config", func(t *testing.T) {
+		require, assert := require.New(t), assert.New(t)
+		cfg := &Config{
+			Server: &base.Server{
+				Logger:  hclog.Default(),
+				Eventer: &event.Eventer{},
+				Listeners: []*base.ServerListener{
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+				},
+			},
+			RawConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				Worker: &config.Worker{
+					SuccessfulControllerRPCGracePeriodDuration: 5 * time.Second,
+					ControllerRPCCallTimeoutDuration:           10 * time.Second,
+					GetDownstreamWorkersTimeoutDuration:        20 * time.Second,
+				},
+			},
+		}
+		w, err := New(context.Background(), cfg)
+		require.NoError(err)
+
+		assert.Equal(int64(5*time.Second), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(5*time.Second), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(w.successfulRoutingInfoGracePeriod.Load(), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(10*time.Second), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(20*time.Second), w.getDownstreamWorkersTimeoutDuration.Load())
+
+		w.Reload(context.Background(), cfg.RawConfig)
+
+		assert.Equal(int64(5*time.Second), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(5*time.Second), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(w.successfulRoutingInfoGracePeriod.Load(), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(10*time.Second), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(20*time.Second), w.getDownstreamWorkersTimeoutDuration.Load())
+	})
 }
 
 func TestSetupWorkerAuthStorage(t *testing.T) {
