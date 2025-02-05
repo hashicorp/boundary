@@ -516,6 +516,11 @@ $ boundary client-agent pause
 
 Follow the troubleshooting steps to understand why the Client Agent is not able to reach the controller.
 
+#### sendmsg: broken pipe
+
+On MacOS versions 15.1 and 15.2, the firewall may incorrectly block the Client Agent from sending DNS responses. To resolve this issue,
+upgrade to MacOS version 15.3 or later.
+
 #### WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!
 
 This error arises when you use an alias to connect to an SSH target after the first successful connection using that alias. The issue occurs because Boundary workers generate a new host key on every new SSH connection. You can safely ignore the warning using the `StrictHostKeyChecking=no` command line option:
