@@ -6,10 +6,15 @@ container {
 	alpine_secdb = true
 	secrets      = false
 
+	# Triage items that are _safe_ to ignore here. Note that this list should be
+	# periodically cleaned up to remove items that are no longer found by the scanner.
 	triage {
     	    suppress {
     	        // Suppress wget vulnerability
-    	        vulnerabilities = ["CVE-2024-10524"]
+    	        vulnerabilities = [
+					"CVE-2024-10524", # Suppress wget vulnerability
+					"CVE-2024-13176", # openssl@3.3.2-r4
+				]
     	    }
     	}
 }
@@ -20,4 +25,15 @@ binary {
 	osv          = true
 	oss_index    = true
 	nvd          = true
+
+	# Triage items that are _safe_ to ignore here. Note that this list should be
+	# periodically cleaned up to remove items that are no longer found by the scanner.
+	triage {
+		suppress {
+			vulnerabilities = [
+				"GO-2025-3408", # yamux@v0.1.1
+				"GHSA-29qp-crvh-w22m", # yamux@v0.1.1
+			]
+		}
+	}
 }
