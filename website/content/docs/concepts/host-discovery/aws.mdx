@@ -46,7 +46,7 @@ Example policy:
 }
 ```
 
-To enable allow for static credential rotation, add the `iam:GetUser`, `iam:CreateAccessKey`, and `iam:DeleteAccessKey` policies:
+To allow static credential rotation, add the `iam:GetUser`, `iam:CreateAccessKey`, and `iam:DeleteAccessKey` policies:
 
 ```json
 {
@@ -70,9 +70,11 @@ To enable allow for static credential rotation, add the `iam:GetUser`, `iam:Crea
 
 <Note>
 
-  This feature requires a self-managed Boundary [worker](/boundary/docs/install-boundary/configure-workers).
+  [Cross-account access](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies-cross-account-resource-access.html) for AWS IAM roles is not currently supported.
 
 </Note>
+
+This feature requires a self-managed Boundary [worker](/boundary/docs/install-boundary/configure-workers).
 
 To set up a dynamic host catalog using an AWS role, a self-managed worker must assume the role. You must assign the role to the self-managed worker AWS instance, and then supply a worker filter that matches the AWS worker when you set up the dynamic host catalog.
 
