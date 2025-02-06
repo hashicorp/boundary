@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 var ErrMetadataScopeNotFound = errors.New(context.Background(), errors.RecordNotFound, "iam", "scope not found for metadata", errors.WithoutEvent())
@@ -65,7 +66,7 @@ func (r *Repository) list(ctx context.Context, resources any, where string, args
 		limit = opts.withLimit
 	}
 	reader := r.reader
-	if opts.withReader != nil {
+	if !util.IsNil(opts.withReader) {
 		reader = opts.withReader
 	}
 	return reader.SearchWhere(ctx, resources, where, args, db.WithLimit(limit))
@@ -150,7 +151,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 	reader := r.reader
 	writer := r.writer
 	needFreshReaderWriter := true
-	if opts.withReader != nil && opts.withWriter != nil {
+	if !util.IsNil(opts.withReader) && !util.IsNil(opts.withWriter) {
 		reader = opts.withReader
 		writer = opts.withWriter
 		if !writer.IsTx(ctx) {
