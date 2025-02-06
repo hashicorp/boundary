@@ -9,11 +9,12 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/util"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
 // ListWorkerStorageBucketCredentialState returns a list of storage bucket credential states for the given worker.
-func (r *Repository) ListWorkerStorageBucketCredentialState(ctx context.Context, workerId string) (map[string]*plgpb.StorageBucketCredentialState, error) {
+func (r *Repository) ListWorkerStorageBucketCredentialState(ctx context.Context, workerId string, opts ...Option) (map[string]*plgpb.StorageBucketCredentialState, error) {
 	const op = "server.(Repository).ListWorkerStorageBucketCredentialState"
 	if workerId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty worker id")
@@ -25,7 +26,12 @@ func (r *Repository) ListWorkerStorageBucketCredentialState(ctx context.Context,
 		CheckedAt       *timestamp.Timestamp
 		ErrorDetails    string
 	}
-	rows, err := r.reader.Query(ctx, getStorageBucketCredentialStatesByWorkerId, []any{sql.Named("worker_id", workerId)})
+	opt := GetOpts(opts...)
+	reader := r.reader
+	if !util.IsNil(opt.WithReader) {
+		reader = opt.WithReader
+	}
+	rows, err := reader.Query(ctx, getStorageBucketCredentialStatesByWorkerId, []any{sql.Named("worker_id", workerId)})
 	if err != nil && !errors.Match(errors.T(errors.RecordNotFound), err) {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -36,7 +42,7 @@ func (r *Repository) ListWorkerStorageBucketCredentialState(ctx context.Context,
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		var row remoteStorageState
-		if err := r.reader.ScanRows(ctx, rows, &row); err != nil {
+		if err := reader.ScanRows(ctx, rows, &row); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch remote storage state"))
 		}
 		s, ok := remoteStorageStates[row.StorageBucketId]
