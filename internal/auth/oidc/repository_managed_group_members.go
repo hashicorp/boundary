@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // SetManagedGroupMemberships will set the managed groups for the given account
@@ -207,7 +208,7 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 		limit = opts.withLimit
 	}
 	reader := r.reader
-	if opts.withReader != nil {
+	if !util.IsNil(opts.withReader) {
 		reader = opts.withReader
 	}
 	var mgs []*ManagedGroupMemberAccount
@@ -232,7 +233,7 @@ func (r *Repository) ListManagedGroupMembershipsByGroup(ctx context.Context, wit
 		limit = opts.withLimit
 	}
 	reader := r.reader
-	if opts.withReader != nil {
+	if !util.IsNil(opts.withReader) {
 		reader = opts.withReader
 	}
 	var mgs []*ManagedGroupMemberAccount

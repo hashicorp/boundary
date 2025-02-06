@@ -6,7 +6,9 @@ package host
 import (
 	"errors"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // GetOpts - iterate the inbound Options and return a struct
@@ -26,6 +28,8 @@ type Option func(*options) error
 // options = how options are represented
 type options struct {
 	WithLimit              int
+	WithReader             db.Reader
+	WithWriter             db.Writer
 	WithOrderByCreateTime  bool
 	Ascending              bool
 	WithStartPageAfterItem pagination.Item
@@ -63,6 +67,22 @@ func WithStartPageAfterItem(item pagination.Item) Option {
 			return errors.New("item cannot be nil")
 		}
 		o.WithStartPageAfterItem = item
+		return nil
+	}
+}
+
+// WithReaderWriter is used to share the same database reader
+// and writer when executing sql within a transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) error {
+		if util.IsNil(r) {
+			return errors.New("reader cannot be nil")
+		}
+		if util.IsNil(w) {
+			return errors.New("writer cannot be nil")
+		}
+		o.WithReader = r
+		o.WithWriter = w
 		return nil
 	}
 }
