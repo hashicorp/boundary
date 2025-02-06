@@ -4,6 +4,7 @@
 package plugin
 
 import (
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/pagination"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -38,6 +39,8 @@ type options struct {
 	withSecretsHmac         []byte
 	withStartPageAfterItem  pagination.Item
 	withWorkerFilter        string
+	WithReader              db.Reader
+	withWriter              db.Writer
 }
 
 func getDefaultOptions() options {
@@ -160,5 +163,14 @@ func WithStartPageAfterItem(item pagination.Item) Option {
 func WithWorkerFilter(wf string) Option {
 	return func(o *options) {
 		o.withWorkerFilter = wf
+	}
+}
+
+// WithReaderWriter is used to share the same database reader
+// and writer when executing sql within a transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.WithReader = r
+		o.withWriter = w
 	}
 }
