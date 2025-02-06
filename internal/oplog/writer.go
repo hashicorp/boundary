@@ -25,7 +25,7 @@ func (w *Writer) hasTable(ctx context.Context, tableName string) (bool, error) {
 	}
 	var count int64
 	rw := dbw.New(w.DB)
-	rows, err := rw.Query(context.Background(), "select count(*) from information_schema.tables where table_name = ? and table_type = ?", []any{tableName, "BASE TABLE"})
+	rows, err := rw.Query(ctx, "select count(*) from information_schema.tables where table_name = ? and table_type = ?", []any{tableName, "BASE TABLE"})
 	if err != nil {
 		return false, errors.Wrap(ctx, err, op)
 	}

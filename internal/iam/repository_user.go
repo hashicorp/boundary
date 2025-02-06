@@ -234,7 +234,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 
 	acct := allocAccount()
 	acct.PublicId = accountId
-	err = r.reader.LookupByPublicId(context.Background(), &acct)
+	err = r.reader.LookupByPublicId(ctx, &acct)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 	}
@@ -329,7 +329,7 @@ func (r *Repository) allowUserAutoVivify(ctx context.Context, acct *authAccount)
 	}
 	acctScope := AllocScope()
 	acctScope.PublicId = acct.ScopeId
-	err := r.reader.LookupByPublicId(context.Background(), &acctScope)
+	err := r.reader.LookupByPublicId(ctx, &acctScope)
 	if err != nil {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account's scope %s", acct.ScopeId)))
 	}
@@ -733,7 +733,7 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 	for _, accountId := range accountIds {
 		acct := allocAccount()
 		acct.PublicId = accountId
-		err := reader.LookupByPublicId(context.Background(), &acct)
+		err := reader.LookupByPublicId(ctx, &acct)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}

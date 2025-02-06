@@ -676,7 +676,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 
 	var workerAuthRepo *WorkerAuthRepositoryStorage
 
-	databaseWrapper, err := r.kms.GetWrapper(context.Background(), worker.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, worker.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}

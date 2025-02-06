@@ -75,7 +75,7 @@ func newToken(ctx context.Context, storeId string, token TokenSecret, accessor [
 	accessorCopy := make([]byte, len(accessor))
 	copy(accessorCopy, accessor)
 
-	hmac, err := crypto.HmacSha256WithPrk(context.Background(), tokenCopy, accessorCopy)
+	hmac, err := crypto.HmacSha256WithPrk(ctx, tokenCopy, accessorCopy)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
