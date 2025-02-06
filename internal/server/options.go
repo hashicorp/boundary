@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/nodeenrollment/types"
 )
@@ -54,6 +55,8 @@ type options struct {
 	withFeature                            version.Feature
 	withDirectlyConnected                  bool
 	withWorkerPool                         []string
+	WithReader                             db.Reader
+	WithWriter                             db.Writer
 }
 
 func getDefaultOptions() options {
@@ -274,5 +277,14 @@ func WithWorkerPool(workerIds []string) Option {
 func WithLocalStorageState(state string) Option {
 	return func(o *options) {
 		o.withLocalStorageState = state
+	}
+}
+
+// WithReaderWriter is used to share the same database reader
+// and writer when executing sql within a transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.WithReader = r
+		o.WithWriter = w
 	}
 }
