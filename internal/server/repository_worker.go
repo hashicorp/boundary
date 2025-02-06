@@ -603,7 +603,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 			if ret, err = wAgg.toWorker(ctx); err != nil {
 				return err
 			}
-			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId())
+			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId(), WithReaderWriter(reader, w))
 			if err != nil {
 				return err
 			}

@@ -147,7 +147,7 @@ func (amr *AuthMethodRepository) ListDeletedIds(ctx context.Context, since time.
 	var deletedAuthMethodIDs []string
 	var transactionTimestamp time.Time
 	if _, err := amr.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		rows, err := amr.writer.Query(ctx, listDeletedIdsQuery, []any{sql.Named("since", since)})
+		rows, err := w.Query(ctx, listDeletedIdsQuery, []any{sql.Named("since", since)})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
