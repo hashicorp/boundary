@@ -255,7 +255,7 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 	defer rows.Close()
 	for rows.Next() {
 		var worker Worker
-		if err := reader.ScanRows(context.Background(), rows, &worker); err != nil {
+		if err := reader.ScanRows(ctx, rows, &worker); err != nil {
 			return nil, err
 		}
 		workers = append(workers, &worker)
