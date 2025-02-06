@@ -359,7 +359,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 
-			currentRoleGrants, err = r.ListRoleGrants(ctx, roleId)
+			currentRoleGrants, err = r.ListRoleGrants(ctx, roleId, WithReaderWriter(reader, w))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current role grants after set"))
 			}
