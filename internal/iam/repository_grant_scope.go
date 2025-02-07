@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // AddRoleGrantScopes will add role grant scopes associated with the role ID in
@@ -235,7 +236,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	writer := r.writer
 	needFreshReaderWriter := true
 	opts := getOpts(opt...)
-	if opts.withReader != nil && opts.withWriter != nil {
+	if !util.IsNil(opts.withReader) && !util.IsNil(opts.withWriter) {
 		reader = opts.withReader
 		writer = opts.withWriter
 		needFreshReaderWriter = false
