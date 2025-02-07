@@ -55,6 +55,24 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Remove unnecessary subquery from alias refresh
     ([PR](https://github.com/hashicorp/boundary/pull/5481)).
 
+## 0.18.3 (TBD) (Enterprise only)
+### Bug fixes
+
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+## 0.17.4 (TBD) (Enterprise only)
+### Bug fixes
+
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
 
@@ -69,6 +87,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Fixed an issue where session recordings would fail when large numbers of
   sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
 * Fixed an issue where the controller would incorrectly handle HTTP requests
+  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
 
 ## 0.18.1 (2024/11/21)
 ### New and Improved
