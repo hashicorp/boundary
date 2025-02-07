@@ -264,7 +264,7 @@ func nextRenewal(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 		return 0, errors.New(ctx, errors.Unknown, op, "unknown job")
 	}
 
-	rows, err := r.Query(context.Background(), query, nil)
+	rows, err := r.Query(ctx, query, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}

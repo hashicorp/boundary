@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/version"
 	"github.com/stretchr/testify/assert"
 )
@@ -249,6 +250,21 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLocalStorageState = AvailableLocalStorageState.String()
 		opts.withNewIdFunc = nil
 		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithReaderWriter", func(t *testing.T) {
+		reader := &db.Db{}
+		writer := &db.Db{}
+		testOpts := getDefaultOptions()
+		assert.Nil(t, testOpts.WithReader)
+		assert.Nil(t, testOpts.WithWriter)
+		testOpts.WithReader = reader
+		testOpts.WithWriter = writer
+		opts := GetOpts(WithReaderWriter(reader, writer))
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, reader, opts.WithReader)
+		assert.Equal(t, writer, opts.WithWriter)
 		assert.Equal(t, opts, testOpts)
 	})
 }
