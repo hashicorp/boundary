@@ -118,7 +118,7 @@ func (s *StoreRepository) ListDeletedIds(ctx context.Context, since time.Time) (
 	var deletedStoreIDs []string
 	var transactionTimestamp time.Time
 	if _, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		rows, err := s.writer.Query(ctx, listDeletedIdsQuery, []any{sql.Named("since", since)})
+		rows, err := w.Query(ctx, listDeletedIdsQuery, []any{sql.Named("since", since)})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}

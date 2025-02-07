@@ -688,7 +688,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 
 				if strings.HasSuffix(req.URL.Path, "oidc:authenticate") {
 					if s, ok := values["state"].(string); ok {
-						stateWrapper, err := oidc.UnwrapMessage(context.Background(), s)
+						stateWrapper, err := oidc.UnwrapMessage(ctx, s)
 						if err != nil {
 							event.WriteError(ctx, op, err, event.WithInfoMsg("error marshaling state"))
 							w.WriteHeader(http.StatusInternalServerError)

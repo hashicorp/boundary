@@ -148,7 +148,7 @@ func nextSync(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 		return 0, errors.New(ctx, errors.Unknown, op, "unknown job")
 	}
 
-	rows, err := r.Query(context.Background(), query, []any{setSyncJobRunInterval})
+	rows, err := r.Query(ctx, query, []any{setSyncJobRunInterval})
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}

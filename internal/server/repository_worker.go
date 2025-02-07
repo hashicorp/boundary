@@ -603,7 +603,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 			if ret, err = wAgg.toWorker(ctx); err != nil {
 				return err
 			}
-			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId())
+			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId(), WithReaderWriter(reader, w))
 			if err != nil {
 				return err
 			}
@@ -676,7 +676,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 
 	var workerAuthRepo *WorkerAuthRepositoryStorage
 
-	databaseWrapper, err := r.kms.GetWrapper(context.Background(), worker.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, worker.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
