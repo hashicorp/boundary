@@ -4,7 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.19.0 (2025/01/31)
+## 0.19.0 (TBD)
 ### New and Improved
 
 * Introduces soft-delete for users within the client cache.
@@ -49,6 +49,11 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Fix bug which caused the `children` keyword not to apply the appropriate
   permissions for a number of resources.
     ([PR](https://github.com/hashicorp/boundary/pull/5418)).
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
 
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
@@ -57,6 +62,13 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
   sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
 * Fixed an issue where the controller would incorrectly handle HTTP requests
   and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
+
+## 0.17.3 (2024/12/12)
+### Bug fixes
+
+* Fixed an issue where session recordings would fail when large numbers of
+  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
+* Fixed an issue where the controller would incorrectly handle HTTP requests
 
 ## 0.18.1 (2024/11/21)
 ### New and Improved
