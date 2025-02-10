@@ -259,5 +259,72 @@ description: >-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0 - 0.18.2
+    <br /><br />
+    (Fixed in Boundary Enterprise 0.18.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Performance is impacted by query
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A query that was added with the aliases feature performed a full table scan of the target table. The scan could negatively impact performance.
+    <br /><br />
+    The scan was replaced with a more efficient method for scanning targets. This issue has been resolved.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0 - 0.18.2
+    <br /><br />
+    (Fixed in Boundary Enterprise 0.18.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Performance is impacted by database transactions
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Database transactions were not using the correct reader and writer functions or context. This issue could cause delays and negatively impact system performance.
+    <br /><br />
+    A number of minor fixes were added to improve the way Boundary performs database transactions. This issue has been resolved.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.0 - 0.18.2
+    <br /><br />
+    (Fixed in Boundary Enterprise 0.18.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    GO-2024-3333
+    <br /><br />
+    CVE-2024-45338
+    <br /><br />
+    CVE-2024-45337
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.18.x contained security vulnerabilities. Boundary Enterprise 0.18.3 was updated to use a new version of Go. This issue is resolved.
+    <br /><br />
+    Learn more:
+    <br /><br />
+    GO-2024-3333: <a href="https://pkg.go.dev/vuln/GO-2024-3333">An attacker can craft an input to the Parse functions that would be processed non-linearly with respect to its length, resulting in extremely slow parsing. This could cause a denial of service.</a>
+    <br /><br />
+    CVE-2024-45338: <a href="https://www.cve.org/CVERecord?id=CVE-2024-45338">Non-linear parsing of case-insensitive content in golang.org/x/net/html</a>
+    <br /><br />
+    CVE-2024-45337: <a href="https://www.cve.org/CVERecord?id=CVE-2024-45337">Misuse of ServerConfig.PublicKeyCallback may cause authorization bypass in golang.org/x/crypto</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    </td>
+  </tr>
+
   </tbody>
 </table>
