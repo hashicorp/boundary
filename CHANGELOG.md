@@ -4,7 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.19.0 (2025/01/31)
+## 0.19.0 (2025/02/10)
 ### New and Improved
 
 * Introduces soft-delete for users within the client cache.
@@ -49,6 +49,18 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Fix bug which caused the `children` keyword not to apply the appropriate
   permissions for a number of resources.
     ([PR](https://github.com/hashicorp/boundary/pull/5418)).
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5405).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5354)).
 
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
