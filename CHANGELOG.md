@@ -55,6 +55,13 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Remove unnecessary subquery from alias refresh
     ([PR](https://github.com/hashicorp/boundary/pull/5481)).
 
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5405).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5354)).
+
 ## 0.18.3 (TBD) (Enterprise only)
 ### Bug fixes
 
@@ -64,6 +71,13 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Remove unnecessary subquery from alias refresh
     ([PR](https://github.com/hashicorp/boundary/pull/5481)).
 
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5406).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5365)).
+
 ## 0.17.4 (TBD) (Enterprise only)
 ### Bug fixes
 
@@ -72,6 +86,13 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
     ([PR](https://github.com/hashicorp/boundary/pull/5522)).
 * Remove unnecessary subquery from alias refresh
     ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5528).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5366)).
 
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
