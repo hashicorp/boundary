@@ -523,6 +523,8 @@ upgrade to MacOS version 15.3 or later.
 
 It may be neccessary to explicitly allow the `boundary-client-agent` process access to incoming network connections.
 
+From the Firewall options in System Settings, toggle the `boundary-client-agent' to **Allow incoming connections**.  
+
 #### WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!
 
 This error arises when you use an alias to connect to an SSH target after the first successful connection using that alias. The issue occurs because Boundary workers generate a new host key on every new SSH connection. You can safely ignore the warning using the `StrictHostKeyChecking=no` command line option:
