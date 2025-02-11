@@ -38,7 +38,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -110,7 +110,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up Go
-        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -234,7 +234,7 @@ jobs:
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         if: contains(matrix.filter, 'e2e_ui')
         with:
           node-version: '16.x'
@@ -282,7 +282,7 @@ jobs:
           SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1,3 | sed 's/:/_/g')
           echo fragment="${SCENARIO}" >> "$GITHUB_OUTPUT"
       - name: Upload e2e tests output
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: test-${{ steps.split.outputs.fragment }}
           path: enos/*.log
@@ -295,7 +295,7 @@ jobs:
           docker logs database
       - name: Upload e2e UI tests debug info
         if: contains(matrix.filter, 'e2e_ui') && steps.run.outcome == 'failure'
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: test-e2e-ui-debug
           path: enos/support/src/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
@@ -308,7 +308,7 @@ jobs:
           enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Upload Debug Data
         if: ${{ always() && steps.run_retry.outcome == 'failure' }}
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores and colons replaced by equals.
           name: ${{ steps.prepare_scenario.outputs.debug_data_artifact_name }}
