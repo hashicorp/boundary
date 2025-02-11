@@ -4,7 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.19.0 (TBD)
+## 0.19.0 (2025/02/10)
 ### New and Improved
 
 * Introduces soft-delete for users within the client cache.
@@ -62,7 +62,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Go Cryptography dependency update to address CVE-2024-45337
     ([PR](https://github.com/hashicorp/boundary/pull/5354)).
 
-## 0.18.3 (TBD) (Enterprise only)
+## 0.18.3 (2025/02/10) (Enterprise only)
 ### Bug fixes
 
 * Fix bug where database transactions were not using the correct reader & writer functions
@@ -78,7 +78,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Go Cryptography dependency update to address CVE-2024-45337
     ([PR](https://github.com/hashicorp/boundary/pull/5365)).
 
-## 0.17.4 (TBD) (Enterprise only)
+## 0.17.4 (2025/02/10) (Enterprise only)
 ### Bug fixes
 
 * Fix bug where database transactions were not using the correct reader & writer functions
