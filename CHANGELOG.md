@@ -2,6 +2,24 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+## 0.18.3 (2025/02/10) (Enterprise only)
+### Bug fixes
+
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5406).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5365)).
+
 ## 0.18.2 (2024/12/12)
 ### Bug fixes
 
