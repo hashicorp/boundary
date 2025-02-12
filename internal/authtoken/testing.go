@@ -15,6 +15,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestRoleGrantsForToken contains information used by TestAuthTokenWithRoles to create
+// roles and their associated grants (with grant scopes)
+type TestRoleGrantsForToken struct {
+	RoleScopeID  string
+	GrantStrings []string
+	GrantScopes  []string
+}
+
+// TestAuthTokenWithRoles creates auth token associated with roles as requested by the caller along
+// with any required resources to achieve said token
+func TestAuthTokenWithRoles(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId string, roles []TestRoleGrantsForToken) *AuthToken {
+	t.Helper()
+	ctx := context.Background()
+	rw := db.New(conn)
+	atRepo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	authMethod := password.TestAuthMethods(t, conn, scopeId, 1)[0]
+
+	loginName, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), loginName)
+	user := iam.TestUser(t, iamRepo, scopeId, iam.WithAccountIds(acct.GetPublicId()))
+	for _, r := range roles {
+		role := iam.TestRoleWithGrants(t, conn, r.RoleScopeID, r.GrantScopes, r.GrantStrings)
+		_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
+	}
+	fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+	require.NoError(t, err)
+	return fullGrantToken
+}
+
 // TestAuthToken, despite its name, does more than just return an auth token; it
 // also creates an auth method, an account, and a user and binds them together,
 // then creates an auth token against it
