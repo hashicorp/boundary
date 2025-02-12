@@ -5,7 +5,9 @@ package authmethods_test
 
 import (
 	"context"
+	"os"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -16,6 +18,8 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/go-hclog"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -107,7 +111,6 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: nil,
 				wantIDs: []string{
 					oidcGlobal.PublicId,
 					oidcOrg1.PublicId,
@@ -156,7 +159,6 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: nil,
 				wantIDs: []string{oidcOrg1.PublicId, ldapOrg1.PublicId, pwOrg1.PublicId},
 			},
 		}
@@ -326,7 +328,6 @@ func TestGrants_WriteActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: nil,
 			},
 			{
 				name:  "global role grant this and children & org role grant this can create org auth method",
@@ -343,7 +344,6 @@ func TestGrants_WriteActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
-				wantErr: nil,
 			},
 			{
 				name:  "org role can't create global auth methods",
@@ -432,7 +432,6 @@ func TestGrants_WriteActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: nil,
 			},
 			{
 				name: "global role grant this and children & org role grant this can update org auth method",
@@ -455,7 +454,6 @@ func TestGrants_WriteActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
-				wantErr: nil,
 			},
 			{
 				name: "org role can't update global auth methods",
@@ -541,7 +539,6 @@ func TestGrants_WriteActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: nil,
 			},
 			{
 				name: "global role grant this and children & org role grant this can delete org auth method",
@@ -558,7 +555,6 @@ func TestGrants_WriteActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
-				wantErr: nil,
 			},
 			{
 				name: "org role can't delete global auth methods",
@@ -606,6 +602,160 @@ func TestGrants_WriteActions(t *testing.T) {
 					return
 				}
 				require.NoError(t, finalErr)
+			})
+		}
+	})
+
+	t.Run("Authenticate", func(t *testing.T) {
+		pwRepo, err := pwRepoFn()
+		require.NoError(t, err)
+
+		// We need a sys eventer in order to authenticate
+		eventConfig := event.TestEventerConfig(t, "TestGrants_WriteActions", event.TestWithObservationSink(t))
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+
+		require.NoError(t, event.InitSysEventer(testLogger, testLock, "TestGrants_WriteActions", event.WithEventerConfig(&eventConfig.EventerConfig)))
+		sinkFileName := eventConfig.ObservationEvents.Name()
+		t.Cleanup(func() {
+			require.NoError(t, os.Remove(sinkFileName))
+			event.TestResetSystEventer(t)
+		})
+
+		testcases := []struct {
+			name          string
+			scopeId       string
+			input         *pbs.AuthenticateRequest
+			rolesToCreate []authtoken.TestRoleGrantsForToken
+			wantErr       error
+		}{
+			{
+				name:    "global role grant this and children can authenticate against a global auth method",
+				scopeId: globals.GlobalPrefix,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeId:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				},
+			},
+			{
+				name:    "org role can't authenticate against a global auth method",
+				scopeId: globals.GlobalPrefix,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeId:  org1.PublicId,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:    "no grants returns 403 error for a global auth method",
+				scopeId: globals.GlobalPrefix,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:    "org scopes grant anyone permission to authenticate (and list) auth methods by default",
+				scopeId: org1.PublicId,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+			},
+			{
+				name:    "granting authenticate again at the org scope allows authentication",
+				scopeId: org1.PublicId,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeId:  org1.PublicId,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				// Create auth method
+				if tc.scopeId == globals.GlobalPrefix {
+					tc.input.AuthMethodId = password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
+				} else {
+					tc.input.AuthMethodId = password.TestAuthMethod(t, conn, org1.PublicId).PublicId
+				}
+
+				// Create account for the auth method
+				acct, err := password.NewAccount(ctx, tc.input.AuthMethodId, password.WithLoginName(testLoginName))
+				require.NoError(t, err)
+				acct, err = pwRepo.CreateAccount(context.Background(), tc.scopeId, acct, password.WithPassword(testPassword))
+				require.NoError(t, err)
+				require.NotNil(t, acct)
+
+				// Create user linked to the account
+				user := iam.TestUser(t, iamRepo, tc.scopeId, iam.WithAccountIds(acct.PublicId))
+
+				// Create the desired role/grants for the user
+				for _, roleToCreate := range tc.rolesToCreate {
+					role := iam.TestRoleWithGrants(t, conn, roleToCreate.RoleScopeId, roleToCreate.GrantScopes, roleToCreate.GrantStrings)
+					iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
+				}
+
+				// Create auth token for the user
+				atRepo, err := atRepoFn()
+				require.NoError(t, err)
+				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+				require.NoError(t, err)
+				ctx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+				_, err = s.Authenticate(ctx, tc.input)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, err, tc.wantErr)
+					return
+				}
+				require.NoError(t, err)
 			})
 		}
 	})
