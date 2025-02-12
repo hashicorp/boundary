@@ -89,7 +89,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, finalErr := s.ListAliases(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
