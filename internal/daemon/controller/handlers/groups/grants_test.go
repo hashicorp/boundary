@@ -236,7 +236,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				user, accountID := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, finalErr := s.ListGroups(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
@@ -499,7 +499,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				user, accountID := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				for input, wantErr := range tc.inputWantErrMap {
 					_, err := s.GetGroup(fullGrantAuthCtx, input)
 					// not found means expect error
@@ -600,7 +600,7 @@ func TestWrites(t *testing.T) {
 				user, accountID := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 
 				for req, wantErr := range tc.canCreateInScopes {
 					_, err := s.CreateGroup(fullGrantAuthCtx, req)
@@ -674,7 +674,7 @@ func TestWrites(t *testing.T) {
 				user, accountID := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				for scope, group := range scopeIdGroupMap {
 					_, err = s.DeleteGroup(fullGrantAuthCtx, &pbs.DeleteGroupRequest{Id: group.PublicId})
 					if !slices.Contains(tc.deleteAllowedAtScopeIDs, scope) {
@@ -771,7 +771,7 @@ func TestWrites(t *testing.T) {
 				user, accountID := userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, err := s.UpdateGroup(fullGrantAuthCtx, &pbs.UpdateGroupRequest{
 					Id: original.PublicId,
 					Item: &pb.Group{
@@ -1113,7 +1113,7 @@ func TestGroupMember(t *testing.T) {
 			user, accountID := userFn()
 			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 			require.NoError(t, err)
-			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			for _, act := range tc.actions {
 				out, err := act.action(fullGrantAuthCtx, group)
 				if act.wantErr != nil {
