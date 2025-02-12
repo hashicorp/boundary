@@ -55,10 +55,10 @@ begin;
       ('g___ws-group', 'u_____waylon');
 
     insert into iam_role_org
-      (scope_id, public_id, name)
+      (scope_id, public_id, name, grant_scope)
     values
-      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer'),
-      ('o_____widget', 'r_oo_____eng', 'Widget Engineer');
+      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer', 'individual'),
+      ('o_____widget', 'r_oo_____eng', 'Widget Engineer', 'individual');
 
     insert into iam_role_project
       (scope_id, public_id, name)
@@ -79,12 +79,12 @@ begin;
     values
       -- ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
       -- ('r_gg____shop', 'type=*;action=view',        'view anything'),
-      ('r_oo_____eng', 'type=target;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=target;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=target;action=tune',   'tune widget'),
-      ('r_op_sw__eng', 'type=target;action=clean',  'clean widget'),
-      ('r_pp_bw__bld', 'type=target;action=build',  'build widget'),
-      ('r_pp_sw__bld', 'type=target;action=build',  'build widget');
+      ('r_oo_____eng', 'type=target;action=create,update,authorize-session',                                         'type=target;action=create,update,authorize-session'),
+      ('r_op_sw__eng', 'type=target;action=add-credential-sources,remove-credential-sources,set-credential-sources', 'type=target;action=add-credential-sources,remove-credential-sources,set-credential-sources'),
+      ('r_op_sw__eng', 'type=target;action=add-host-sources,remove-host-sources,set-host-sources',                   'type=target;action=add-host-sources,remove-host-sources,set-host-sources'),
+      ('r_op_sw__eng', 'type=target;action=read,list',                                                               'type=target;action=read,list'),
+      ('r_pp_bw__bld', 'type=target;action=create,delete',                                                           'type=target;action=create,delete'),
+      ('r_pp_sw__bld', 'type=target;action=authorize-session',                                                       'type=target;action=authorize-session');
 
     insert into iam_group_role
       (role_id, principal_id)

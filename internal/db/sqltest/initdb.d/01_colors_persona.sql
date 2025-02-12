@@ -137,17 +137,17 @@ begin;
   insert into iam_role_grant
     (role_id,        canonical_grant,             raw_grant)
   values
-    ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
-    ('r_gg____shop', 'type=*;action=view',        'view anything'),
-    ('r_go____name', 'type=group;action=name',    'name colors'),
-    ('r_gp____spec', 'type=group;action=inspect', 'inspect colors'),
-    ('r_oo_____art', 'type=group;action=create',  'create color'),
-    ('r_op_bc__art', 'type=group;action=create',  'create color'),
-    ('r_op_rc__art', 'type=group;action=create',  'create color'),
-    ('r_op_gc__art', 'type=group;action=create',  'create color'),
-    ('r_pp_bc__mix', 'type=group;action=mix',     'mix color'),
-    ('r_pp_rc__mix', 'type=group;action=mix',     'mix color'),
-    ('r_pp_gc__mix', 'type=group;action=mix',     'mix color');
+    ('r_gg_____buy', 'type=*;actions=update',                     'type=*;actions=update'),
+    ('r_gg____shop', 'type=*;actions=read',                       'type=*;actions=read'),
+    ('r_go____name', 'type=group;action=create,update,read,list', 'type=group;action=create,update,read,list'),
+    ('r_gp____spec', 'type=group;action=delete',                  'type=group;action=delete'),
+    ('r_oo_____art', 'type=group;action=create',                  'type=group;action=create'),
+    ('r_op_bc__art', 'type=group;action=create',                  'type=group;action=create'),
+    ('r_op_rc__art', 'type=group;action=create',                  'type=group;action=create'),
+    ('r_op_gc__art', 'type=group;action=create',                  'type=group;action=create'),
+    ('r_pp_bc__mix', 'type=group;action=add-members',             'type=group;action=add-members'),
+    ('r_pp_rc__mix', 'type=group;action=set-members',             'type=group;action=set-members'),
+    ('r_pp_gc__mix', 'type=group;action=delete-members',          'type=group;action=delete-members');
 
   insert into iam_group_role
     (role_id,        principal_id)
