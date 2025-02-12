@@ -1,5 +1,5 @@
--- copyright (c) hashicorp, inc.
--- spdx-license-identifier: busl-1.1
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
 
 begin;
 select plan(8);
