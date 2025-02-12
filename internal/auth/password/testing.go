@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,6 +71,19 @@ func TestMultipleAccounts(t testing.TB, conn *db.DB, authMethodId string, count 
 		auts = append(auts, TestAccount(t, conn, authMethodId, fmt.Sprintf("name%d", i)))
 	}
 	return auts
+}
+
+// TestAccountFunc returns a function that creates auth method and an account in that auth method
+// which returns the created account ID in a slice
+// This is used to normalize account creation across multiple auth method types
+func TestAccountFunc(t testing.TB, conn *db.DB) func() string {
+	return func() string {
+		authMethod := TestAuthMethod(t, conn, globals.GlobalPrefix)
+		loginName, err := uuid.GenerateUUID()
+		require.NoError(t, err)
+		acct := TestAccount(t, conn, authMethod.GetPublicId(), loginName)
+		return acct.PublicId
+	}
 }
 
 // TestAccount creates a password account to the provided DB with the provided
