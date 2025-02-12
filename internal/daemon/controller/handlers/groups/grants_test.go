@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
-	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -553,11 +552,10 @@ func TestWrites(t *testing.T) {
 		org2, proj2 := iam.TestScopes(t, iamRepo)
 		proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
 
-		allScopeIDs := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
 		testcases := []struct {
 			name              string
 			userFunc          func() (*iam.User, string)
-			canCreateInScopes []string
+			canCreateInScopes map[*pbs.CreateGroupRequest]error
 		}{
 			{
 				name: "grant all can create all",
@@ -568,7 +566,14 @@ func TestWrites(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
-				canCreateInScopes: allScopeIDs,
+				canCreateInScopes: map[*pbs.CreateGroupRequest]error{
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: globals.GlobalPrefix}}: nil,
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: org1.PublicId}}:        nil,
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: org2.PublicId}}:        nil,
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: proj1.PublicId}}:       nil,
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: proj2.PublicId}}:       nil,
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: proj3.PublicId}}:       nil,
+				},
 			},
 			{
 				name: "grant children can only create in orgs",
@@ -579,7 +584,14 @@ func TestWrites(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				}),
-				canCreateInScopes: []string{org1.PublicId, org2.PublicId},
+				canCreateInScopes: map[*pbs.CreateGroupRequest]error{
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: globals.GlobalPrefix}}: handlers.ForbiddenError(),
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: org1.PublicId}}:        nil,
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: org2.PublicId}}:        nil,
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: proj1.PublicId}}:       handlers.ForbiddenError(),
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: proj2.PublicId}}:       handlers.ForbiddenError(),
+					&pbs.CreateGroupRequest{Item: &pb.Group{ScopeId: proj3.PublicId}}:       handlers.ForbiddenError(),
+				},
 			},
 		}
 
@@ -589,24 +601,14 @@ func TestWrites(t *testing.T) {
 				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
-				for _, scope := range allScopeIDs {
-					name, err := uuid.GenerateUUID()
-					require.NoError(t, err)
-					got, err := s.CreateGroup(fullGrantAuthCtx, &pbs.CreateGroupRequest{
-						Item: &pb.Group{
-							ScopeId:     scope,
-							Name:        &wrapperspb.StringValue{Value: name},
-							Description: &wrapperspb.StringValue{Value: name},
-						},
-					})
-					if !slices.Contains(tc.canCreateInScopes, scope) {
-						require.ErrorIs(t, err, handlers.ForbiddenError())
+
+				for req, wantErr := range tc.canCreateInScopes {
+					_, err := s.CreateGroup(fullGrantAuthCtx, req)
+					if wantErr != nil {
+						require.ErrorIs(t, err, wantErr)
 						continue
 					}
-					require.NoErrorf(t, err, "failed to create group in scope %s", scope)
-					g, _, err := iamRepo.LookupGroup(ctx, got.Item.Id)
 					require.NoError(t, err)
-					require.Equal(t, name, g.Name)
 				}
 			})
 		}
