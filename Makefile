@@ -136,6 +136,9 @@ perms-table:
 .PHONY: gen
 gen: cleangen proto api cli perms-table fmt copywrite
 
+.PHONY: gen-offline
+gen-offline: cleangen protobuild api cli perms-table fmt copywrite
+
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
 .PHONY: proto

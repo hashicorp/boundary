@@ -47,6 +47,7 @@ func NewCredentialStore(projectId string, vaultAddress string, token TokenSecret
 			TlsServerName: opts.withTlsServerName,
 			TlsSkipVerify: opts.withTlsSkipVerify,
 			WorkerFilter:  opts.withWorkerFilter,
+			TokenWrapped:  opts.withTokenWrapped,
 		},
 	}
 	return cs, nil
@@ -206,4 +207,45 @@ func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []any) {
 		cs.PublicId,
 	}
 	return
+}
+
+// Unwrap assumes that the cs.inputToken has been wrapped by vault and attempts
+// to unwrap it. Returns errors if the token is not wrapped, has been unwrapped
+// previously, is expired, or is invalid. Paths are checked for equality, and
+// return an error if they do not match. See
+// https://developer.hashicorp.com/vault/docs/concepts/response-wrapping#response-wrapping-token-validation
+func (cs *CredentialStore) Unwrap(ctx context.Context) error {
+	const op = "vault.(CredentialStore).Unwrap"
+	// we cannot do a standard client.lookupToken here, as it is a wrapping token
+	client, err := cs.client(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("usnable to create vault client"))
+	}
+	res, err := client.lookupWrappedToken(ctx, string(cs.inputToken))
+	if err != nil {
+		if errors.Match(errors.T(errors.VaultCredentialRequest), err) {
+			// TODO: we received an error from vault for the lookup, and we should probably fire an alert or log
+			// this is considered less high-risk than the path matching error, but is still grounds for investigation
+		}
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup wrapped token"))
+	}
+
+	// since this unwrap function lives within CredentialStore, we always know what the expect path is
+	const vaultAuthTokenCreationPath = "auth/token/create"
+	if res.CreationPath != vaultAuthTokenCreationPath {
+		// TODO: fire an alert here that the wrapped token was potentially tampered with
+		return errors.New(ctx, errors.VaultWrappedSecretPathInvalid, op, "vault token creation path did not match the expected path")
+	}
+
+	sec, err := client.unwrap(ctx, string(cs.inputToken))
+	if err != nil {
+		// TODO: we received an error from vault for the unwrapping, and we should probably fire an alert or log
+		// again, this is considered less high-risk than the path matching error, but is still grounds for investigation
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to unwrap token"))
+	}
+
+	// sec will be in the format returned by the vault auth token create endpoint, so we can parse it as that api response
+	cs.inputToken = TokenSecret(sec.Auth.ClientToken)
+
+	return nil
 }
