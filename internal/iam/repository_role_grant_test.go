@@ -757,7 +757,6 @@ func TestGrantsForUser(t *testing.T) {
 		_, err := repo.GrantsForUser(ctx, user.PublicId, WithTestCacheMultiGrantTuples(multiGrantTuplesCache))
 		require.NoError(t, err)
 
-		// log.Println("multiGrantTuplesCache", pretty.Sprint(*multiGrantTuplesCache))
 		assert.ElementsMatch(t, *multiGrantTuplesCache, expMultiGrantTuples)
 	})
 
@@ -1070,14 +1069,7 @@ func TestGrantsForUser(t *testing.T) {
 					},
 				},
 			}
-			/*
-				log.Println("org1", directGrantOrg1.PublicId)
-				log.Println("proj1a", directGrantProj1a.PublicId)
-				log.Println("proj1b", directGrantProj1b.PublicId)
-				log.Println("org2", directGrantOrg2.PublicId)
-				log.Println("proj2a", directGrantProj2a.PublicId)
-				log.Println("proj2b", directGrantProj2b.PublicId)
-			*/
+
 			assert.Len(t, directGrants, len(expDirectGrants))
 			for k, v := range directGrants {
 				assert.ElementsMatch(t, v, expDirectGrants[k])
@@ -1671,7 +1663,6 @@ func TestGrantsForUser_Group(t *testing.T) {
 		_, err := repo.GrantsForUser(ctx, user.PublicId, WithTestCacheMultiGrantTuples(multiGrantTuplesCache))
 		require.NoError(t, err)
 
-		// log.Println("multiGrantTuplesCache", pretty.Sprint(*multiGrantTuplesCache))
 		assert.ElementsMatch(t, *multiGrantTuplesCache, expMultiGrantTuples)
 	})
 
@@ -1984,14 +1975,7 @@ func TestGrantsForUser_Group(t *testing.T) {
 					},
 				},
 			}
-			/*
-				log.Println("org1", directGrantOrg1.PublicId)
-				log.Println("proj1a", directGrantProj1a.PublicId)
-				log.Println("proj1b", directGrantProj1b.PublicId)
-				log.Println("org2", directGrantOrg2.PublicId)
-				log.Println("proj2a", directGrantProj2a.PublicId)
-				log.Println("proj2b", directGrantProj2b.PublicId)
-			*/
+
 			assert.Len(t, directGrants, len(expDirectGrants))
 			for k, v := range directGrants {
 				assert.ElementsMatch(t, v, expDirectGrants[k])
