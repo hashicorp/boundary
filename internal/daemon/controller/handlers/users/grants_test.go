@@ -291,7 +291,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					// deleting user to keep assertions clean since we're listing users over and over
 					_, _ = iamRepo.DeleteUser(ctx, tok.IamUserId)
 				})
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
 				got, finalErr := s.ListUsers(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)

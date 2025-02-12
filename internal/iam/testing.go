@@ -315,10 +315,10 @@ func TestManagedGroupRole(t testing.TB, conn *db.DB, roleId, managedGrpId string
 	return r
 }
 
-// testRoleWithGrants creates a role suitable for testing along with grants
+// TestRoleWithGrants creates a role suitable for testing along with grants
 // Functional options for GrantScopes aren't used to express that
 // this function does not provide any default grant scope unlike TestRole
-func testRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
+func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
 	t.Helper()
 
 	ctx := context.Background()
@@ -362,7 +362,8 @@ func TestUserManagedGroupGrantsFunc(
 	kmsCache *kms.Kms,
 	scopeID string,
 	managedGroupAccountSetupFunc func() (string, string),
-	testRoleGrants []TestRoleGrantsRequest) func() (*User, string) {
+	testRoleGrants []TestRoleGrantsRequest,
+) func() (*User, string) {
 	return func() (*User, string) {
 		t.Helper()
 		ctx := context.Background()
@@ -372,7 +373,7 @@ func TestUserManagedGroupGrantsFunc(
 		managedGroupID, accountID := managedGroupAccountSetupFunc()
 		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
 		for _, trg := range testRoleGrants {
-			role := testRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
 			_ = TestManagedGroupRole(t, conn, role.PublicId, managedGroupID)
 		}
 		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
@@ -391,7 +392,8 @@ func TestUserDirectGrantsFunc(
 	kmsCache *kms.Kms,
 	scopeID string,
 	accountIDFunc func() string,
-	testRoleGrants []TestRoleGrantsRequest) func() (*User, string) {
+	testRoleGrants []TestRoleGrantsRequest,
+) func() (*User, string) {
 	return func() (*User, string) {
 		t.Helper()
 		accountID := accountIDFunc()
@@ -402,7 +404,7 @@ func TestUserDirectGrantsFunc(
 		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
 		require.NoError(t, err)
 		for _, trg := range testRoleGrants {
-			role := testRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
 			_ = TestUserRole(t, conn, role.PublicId, user.PublicId)
 		}
 		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
@@ -422,7 +424,8 @@ func TestUserGroupGrantsFunc(
 	kmsCache *kms.Kms,
 	scopeID string,
 	accountIDsFunc func() string,
-	testRoleGrants []TestRoleGrantsRequest) func() (*User, string) {
+	testRoleGrants []TestRoleGrantsRequest,
+) func() (*User, string) {
 	return func() (*User, string) {
 		t.Helper()
 		accountID := accountIDsFunc()
@@ -442,7 +445,7 @@ func TestUserGroupGrantsFunc(
 		require.NoError(t, err)
 		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
 		for _, trg := range testRoleGrants {
-			role := testRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
 			_ = TestGroupRole(t, conn, role.PublicId, group.PublicId)
 		}
 		_, err = repo.AddGroupMembers(ctx, group.PublicId, group.Version, []string{user.PublicId})
