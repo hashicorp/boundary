@@ -165,7 +165,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				// auth method created during token generation will not be taken into considerations during this test
 				// adding to the ignoreList so it can be ignored later
 				ignoreList = append(ignoreList, tok.GetAuthMethodId())
-				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
 				got, finalErr := s.ListAuthMethods(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
@@ -249,7 +249,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
-				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
 				for amId, wantErr := range tc.amIDExpectErrMap {
 					_, err := s.GetAuthMethod(fullGrantAuthCtx, &pbs.GetAuthMethodRequest{
 						Id: amId,
