@@ -92,7 +92,8 @@ func TestListPassword_Grants(t *testing.T) {
 			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(t, err, "Couldn't create new user service.")
 			tok := authtoken.TestAuthTokenWithRoles(t, conn, kms, globals.GlobalPrefix, tc.roleRequest)
-			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, iamRepo, tok)
+
 			got, gErr := s.ListAccounts(fullGrantAuthCtx, tc.input)
 			if tc.wantErr != nil {
 				require.Error(t, err)
