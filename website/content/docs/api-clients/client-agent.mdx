@@ -546,11 +546,14 @@ Docker Desktop sometimes creates a local DNS listener that prevents the Client A
 If you run Docker Desktop 4.26 or later, you must clear the `Use kernel networking for UDP` option.
 Otherwise, the Client Agent refuses to start.
 
-### Internet Sharing (macOS)
-Enabling Internet Sharing on macOS causes the system's DNS resolver (`mDNSResponder`) to bind to all interfaces on port 53, preventing the Client Agent from starting. Disable Internet Sharing before running the Client Agent.
+### Internet Sharing (MacOS)
+Enabling Internet Sharing on MacOS causes the system's DNS resolver (`mDNSResponder`) to bind to all interfaces on port 53, preventing the Client Agent from starting. Disable Internet Sharing before running the Client Agent.
 
-### Parallels Desktop (macOS VM on macOS Host)
-Running a macOS VM in Parallels Desktop with shared networking causes the system's DNS resolver (`mDNSResponder`) to bind to all interfaces, blocking port 53 and preventing the Client Agent from starting.
+### Parallels Desktop (MacOS VM on MacOS Host)
+Running a MacOS VM in Parallels Desktop with shared networking causes the system's DNS resolver (`mDNSResponder`) to bind to all interfaces, blocking port 53 and preventing the Client Agent from starting.
+
+**Workaround:** Configure Parallels Desktop to use a different network mode.
+Go to **Hardware > Network > Source**, and select an alternative network configuration such as **Host-Only, Default Adapter, or Wi-Fi** instead of Shared Network.
 
 ### Palo Alto Networking Global Protect VPN
 
