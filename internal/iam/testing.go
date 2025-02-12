@@ -352,35 +352,85 @@ type TestRoleGrantsRequest struct {
 	Grants      []string
 }
 
-// TestUserDirectGrantsFunc returns a function that creates a user which has been given
-// the request grants via direct association
-func TestUserDirectGrantsFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string, testRoleGrants []TestRoleGrantsRequest) func() *User {
-	return func() *User {
+// TestUserManagedGroupGrantsFunc returns a function that creates a user which has been given
+// the request grants through managed group.
+// Note: This method is not responsible for associating the user to the managed group. That action needs to be done
+// by the caller
+// This function returns iam.User and the AccountID from the account setup func
+func TestUserManagedGroupGrantsFunc(
+	t *testing.T,
+	conn *db.DB,
+	kmsCache *kms.Kms,
+	scopeID string,
+	managedGroupAccountSetupFunc func() (string, string),
+	testRoleGrants []TestRoleGrantsRequest) func() (*User, string) {
+	return func() (*User, string) {
 		t.Helper()
 		ctx := context.Background()
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
-		u, err := NewUser(ctx, scopeID)
+		managedGroupID, accountID := managedGroupAccountSetupFunc()
+		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
+		for _, trg := range testRoleGrants {
+			role := testRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
+			_ = TestManagedGroupRole(t, conn, role.PublicId, managedGroupID)
+		}
+		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
 		require.NoError(t, err)
-		user, err := repo.CreateUser(ctx, u)
+		require.Len(t, acctIDs, 1)
+		return user, acctIDs[0]
+	}
+}
+
+// TestUserDirectGrantsFunc returns a function that creates and returns user which has been given
+// the request grants via direct association.
+// This function returns iam.User and the AccountID from the account setup func
+func TestUserDirectGrantsFunc(
+	t *testing.T,
+	conn *db.DB,
+	kmsCache *kms.Kms,
+	scopeID string,
+	accountIDFunc func() string,
+	testRoleGrants []TestRoleGrantsRequest) func() (*User, string) {
+	return func() (*User, string) {
+		t.Helper()
+		accountID := accountIDFunc()
+		ctx := context.Background()
+		rw := db.New(conn)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
 		require.NoError(t, err)
 		for _, trg := range testRoleGrants {
 			role := testRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
 			_ = TestUserRole(t, conn, role.PublicId, user.PublicId)
 		}
-		return user
+		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.Len(t, acctIDs, 1)
+		return user, acctIDs[0]
 	}
 }
 
 // TestUserGroupGrantsFunc returns a function that creates a user which has been given
 // the request grants by being a part of a group.
 // Group is created as a part of this method
-func TestUserGroupGrantsFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string, testRoleGrants []TestRoleGrantsRequest) func() *User {
-	return func() *User {
+// This function returns iam.User and the AccountID from the account setup func
+func TestUserGroupGrantsFunc(
+	t *testing.T,
+	conn *db.DB,
+	kmsCache *kms.Kms,
+	scopeID string,
+	accountIDsFunc func() string,
+	testRoleGrants []TestRoleGrantsRequest) func() (*User, string) {
+	return func() (*User, string) {
 		t.Helper()
+		accountID := accountIDsFunc()
 		ctx := context.Background()
 		rw := db.New(conn)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
 		role, err := NewRole(ctx, scopeID)
 		require.NoError(t, err)
 		id, err := newRoleId(ctx)
@@ -388,23 +438,20 @@ func TestUserGroupGrantsFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scope
 		role.PublicId = id
 		require.NoError(t, rw.Create(ctx, role))
 		require.NotEmpty(t, role.PublicId)
-		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
-		g, err := NewGroup(ctx, scopeID)
+		group := TestGroup(t, conn, scopeID)
 		require.NoError(t, err)
-		group, err := repo.CreateGroup(ctx, g)
-		require.NoError(t, err)
-		u, err := NewUser(ctx, scopeID)
-		require.NoError(t, err)
-		user, err := repo.CreateUser(ctx, u)
-		require.NoError(t, err)
+		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
 		for _, trg := range testRoleGrants {
 			role := testRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
 			_ = TestGroupRole(t, conn, role.PublicId, group.PublicId)
 		}
 		_, err = repo.AddGroupMembers(ctx, group.PublicId, group.Version, []string{user.PublicId})
 		require.NoError(t, err)
-		return user
+		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.Len(t, acctIDs, 1)
+		return user, acctIDs[0]
 	}
 }
 
