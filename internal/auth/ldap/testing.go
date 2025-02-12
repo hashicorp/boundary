@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -173,6 +174,21 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, loginName string, op
 
 	require.NoError(rw.Create(ctx, a))
 	return a
+}
+
+// TestAccountFunc returns a function that creates an LDAP auth method, a managed group, and an account in that method which
+// is also a member of the created ManagedGroup. The function returns the public ID of the managed group and the account.
+func TestAccountFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) func() (managedGroupID string, accountID string) {
+	return func() (string, string) {
+		t.Helper()
+		ctx := context.Background()
+		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeID, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		am := TestAuthMethod(t, conn, databaseWrapper, scopeID, []string{"ldap://testldap"})
+		managedGroup := TestManagedGroup(t, conn, am, []string{"test-group"})
+		acct := TestAccount(t, conn, am, "testacct", WithMemberOfGroups(ctx, "test-group"))
+		return managedGroup.PublicId, acct.PublicId
+	}
 }
 
 // TestManagedGroup creates a test ldap managed group.
