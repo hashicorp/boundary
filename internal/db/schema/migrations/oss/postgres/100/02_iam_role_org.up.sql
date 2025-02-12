@@ -37,7 +37,7 @@ begin;
     name text,
     description text,
     grant_this_role_scope boolean not null default false,
-    grant_scope text
+    grant_scope text not null
       constraint iam_role_org_grant_scope_enm_fkey
         references iam_role_org_grant_scope_enm(name)
         on delete restrict
@@ -119,11 +119,11 @@ begin;
   as $$
   begin
     perform
-      from iam_scope_project
-      join iam_role_org 
-        on iam_role_org.scope_id = iam_scope_project.parent_id 
+       from iam_scope_project
+       join iam_role_org 
+         on iam_role_org.scope_id      = iam_scope_project.parent_id 
       where iam_scope_project.scope_id = new.scope_id
-        and iam_role_org.public_id = new.role_id; 
+        and iam_role_org.public_id     = new.role_id; 
     if not found then 
       raise exception 'project scope_id % not found in org', new.scope_id;
     end if;

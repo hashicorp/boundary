@@ -16,7 +16,7 @@ begin;
         )
   );
   comment on table iam_role_global_grant_scope_enm is
-    'iam_role_global_grant_scope_enm is an enumeration table for role grant scope types for for the iam_role_global table.';
+    'iam_role_global_grant_scope_enm is an enumeration table for role grant scope types for the iam_role_global table.';
 
   -- Insert the predefined grant scope types for iam_role_global
   insert into iam_role_global_grant_scope_enm (name)
@@ -75,6 +75,8 @@ begin;
   -- the last time the grant_this_role_scope and grant_scope columns were updated.
   -- This is used to represent the grant scope create_time column from the 
   -- iam_role_grant_scope table in 83/01_iam_role_grant_scope.up.sql.
+  -- This matches the representation of the existing create_time field at the 
+  -- role domain layer that indicates when the grant scope was created.
   create table iam_role_global (
     public_id wt_role_id not null primary key
       constraint iam_role_fkey
@@ -89,7 +91,7 @@ begin;
     name text,
     description text,
     grant_this_role_scope boolean not null default false,
-    grant_scope text
+    grant_scope text not null
       constraint iam_role_global_grant_scope_enm_fkey
         references iam_role_global_grant_scope_enm(name)
         on delete restrict
