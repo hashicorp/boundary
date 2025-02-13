@@ -558,8 +558,62 @@ func TestWrites(t *testing.T) {
 			canCreateInScopes map[*pbs.CreateGroupRequest]error
 		}{
 			{
-				name: "grant all can create all",
+				name: "direct grant all can create all",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				canCreateInScopes: map[*pbs.CreateGroupRequest]error{
+					{Item: &pb.Group{ScopeId: globals.GlobalPrefix}}: nil,
+					{Item: &pb.Group{ScopeId: org1.PublicId}}:        nil,
+					{Item: &pb.Group{ScopeId: org2.PublicId}}:        nil,
+					{Item: &pb.Group{ScopeId: proj1.PublicId}}:       nil,
+					{Item: &pb.Group{ScopeId: proj2.PublicId}}:       nil,
+					{Item: &pb.Group{ScopeId: proj3.PublicId}}:       nil,
+				},
+			},
+			{
+				name: "groups grant all can create all",
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				canCreateInScopes: map[*pbs.CreateGroupRequest]error{
+					{Item: &pb.Group{ScopeId: globals.GlobalPrefix}}: nil,
+					{Item: &pb.Group{ScopeId: org1.PublicId}}:        nil,
+					{Item: &pb.Group{ScopeId: org2.PublicId}}:        nil,
+					{Item: &pb.Group{ScopeId: proj1.PublicId}}:       nil,
+					{Item: &pb.Group{ScopeId: proj2.PublicId}}:       nil,
+					{Item: &pb.Group{ScopeId: proj3.PublicId}}:       nil,
+				},
+			},
+			{
+				name: "ldap grant all can create all",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				canCreateInScopes: map[*pbs.CreateGroupRequest]error{
+					{Item: &pb.Group{ScopeId: globals.GlobalPrefix}}: nil,
+					{Item: &pb.Group{ScopeId: org1.PublicId}}:        nil,
+					{Item: &pb.Group{ScopeId: org2.PublicId}}:        nil,
+					{Item: &pb.Group{ScopeId: proj1.PublicId}}:       nil,
+					{Item: &pb.Group{ScopeId: proj2.PublicId}}:       nil,
+					{Item: &pb.Group{ScopeId: proj3.PublicId}}:       nil,
+				},
+			},
+			{
+				name: "oidc grant all can create all",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeID: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=*;actions=*"},
