@@ -405,66 +405,72 @@ func TestGrantsForUser_DirectAssociation(t *testing.T) {
 	user := iam.TestUser(t, repo, "global")
 	user2 := iam.TestUser(t, repo, "global")
 
+	testUserRole := func(roleId, userId string) func() {
+		return func() { iam.TestUserRole(t, conn, roleId, userId) }
+	}
+
 	// Create a series of scopes with roles in each. We'll create two of each
 	// kind to ensure we're not just picking up the first role in each.
 
 	// The first org/project set contains direct grants, but without
 	// inheritance. We create two roles in each project.
+
+	// Org1, Project1a, Project1b
 	directGrantOrg1, directGrantProj1a, directGrantProj1b := iam.SetupDirectGrantScopes(t, conn, repo)
 
 	// user
 	directGrantOrg1Role := iam.TestRole(t, conn, directGrantOrg1.PublicId)
-	iam.TestUserRole(t, conn, directGrantOrg1Role.PublicId, user.PublicId)
 	directGrantOrg1RoleGrant1 := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role.PublicId, directGrantOrg1RoleGrant1)
 	directGrantOrg1RoleGrant2 := "ids=*;type=group;actions=create,list"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role.PublicId, directGrantOrg1RoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantOrg1Role.PublicId, testUserRole(directGrantOrg1Role.PublicId, user.PublicId),
+		directGrantOrg1RoleGrant1, directGrantOrg1RoleGrant2,
+	)
+
 	// user2
 	directGrantOrg1Role2 := iam.TestRole(t, conn, directGrantOrg1.PublicId)
-	iam.TestUserRole(t, conn, directGrantOrg1Role2.PublicId, user2.PublicId)
 	directGrantOrg1RoleGrant3 := "ids=*;type=group;actions=update"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role2.PublicId, directGrantOrg1RoleGrant3)
+	grantRoleAndAssociate(t, conn, directGrantOrg1Role2.PublicId, testUserRole(directGrantOrg1Role2.PublicId, user2.PublicId), directGrantOrg1RoleGrant3)
 
 	// user
 	directGrantProj1aRole := iam.TestRole(t, conn, directGrantProj1a.PublicId)
-	iam.TestUserRole(t, conn, directGrantProj1aRole.PublicId, user.PublicId)
 	directGrantProj1aRoleGrant := "ids=*;type=group;actions=add-members,read"
-	iam.TestRoleGrant(t, conn, directGrantProj1aRole.PublicId, directGrantProj1aRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj1aRole.PublicId, testUserRole(directGrantProj1aRole.PublicId, user.PublicId), directGrantProj1aRoleGrant)
+
 	directGrantProj1bRole := iam.TestRole(t, conn, directGrantProj1b.PublicId)
-	iam.TestUserRole(t, conn, directGrantProj1bRole.PublicId, user.PublicId)
 	directGrantProj1bRoleGrant := "ids=*;type=group;actions=list,read"
-	iam.TestRoleGrant(t, conn, directGrantProj1bRole.PublicId, directGrantProj1bRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj1bRole.PublicId, testUserRole(directGrantProj1bRole.PublicId, user.PublicId), directGrantProj1bRoleGrant)
+
 	// user2
 	directGrantProj1aRole2 := iam.TestRole(t, conn, directGrantProj1a.PublicId)
-	iam.TestUserRole(t, conn, directGrantProj1aRole2.PublicId, user2.PublicId)
 	directGrantProj1aRoleGrant2 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, directGrantProj1aRole2.PublicId, directGrantProj1aRoleGrant2)
-	directGrantProj1bRole2 := iam.TestRole(t, conn, directGrantProj1b.PublicId)
-	iam.TestUserRole(t, conn, directGrantProj1bRole2.PublicId, user2.PublicId)
-	directGrantProj1bRoleGrant2 := "ids=*;type=group;actions=delete"
-	iam.TestRoleGrant(t, conn, directGrantProj1bRole2.PublicId, directGrantProj1bRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj1aRole2.PublicId, testUserRole(directGrantProj1aRole2.PublicId, user2.PublicId), directGrantProj1aRoleGrant2)
 
+	directGrantProj1bRole2 := iam.TestRole(t, conn, directGrantProj1b.PublicId)
+	directGrantProj1bRoleGrant2 := "ids=*;type=group;actions=delete"
+	grantRoleAndAssociate(t, conn, directGrantProj1bRole2.PublicId, testUserRole(directGrantProj1bRole2.PublicId, user2.PublicId), directGrantProj1bRoleGrant2)
+
+	// Org2, Project2a, Project2b
 	directGrantOrg2, directGrantProj2a, directGrantProj2b := iam.SetupDirectGrantScopes(t, conn, repo)
+
 	// user
 	directGrantOrg2Role := iam.TestRole(t, conn, directGrantOrg2.PublicId,
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeThis,
 			directGrantProj2a.PublicId,
 		}))
-	iam.TestUserRole(t, conn, directGrantOrg2Role.PublicId, user.PublicId)
 	directGrantOrg2RoleGrant1 := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role.PublicId, directGrantOrg2RoleGrant1)
 	directGrantOrg2RoleGrant2 := "ids=*;type=group;actions=list,read"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role.PublicId, directGrantOrg2RoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantOrg2Role.PublicId, testUserRole(directGrantOrg2Role.PublicId, user.PublicId),
+		directGrantOrg2RoleGrant1, directGrantOrg2RoleGrant2,
+	)
 
 	directGrantProj2aRole := iam.TestRole(t, conn, directGrantProj2a.PublicId)
-	iam.TestUserRole(t, conn, directGrantProj2aRole.PublicId, user.PublicId)
 	directGrantProj2aRoleGrant := "ids=hcst_abcd1234,hcst_1234abcd;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantProj2aRole.PublicId, directGrantProj2aRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj2aRole.PublicId, testUserRole(directGrantProj2aRole.PublicId, user.PublicId), directGrantProj2aRoleGrant)
+
 	directGrantProj2bRole := iam.TestRole(t, conn, directGrantProj2b.PublicId)
-	iam.TestUserRole(t, conn, directGrantProj2bRole.PublicId, user.PublicId)
 	directGrantProj2bRoleGrant := "ids=cs_abcd1234;actions=read,update"
-	iam.TestRoleGrant(t, conn, directGrantProj2bRole.PublicId, directGrantProj2bRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj2bRole.PublicId, testUserRole(directGrantProj2bRole.PublicId, user.PublicId), directGrantProj2bRoleGrant)
 
 	// user2
 	directGrantOrg2Role2 := iam.TestRole(t, conn, directGrantOrg2.PublicId,
@@ -472,20 +478,20 @@ func TestGrantsForUser_DirectAssociation(t *testing.T) {
 			globals.GrantScopeThis,
 			directGrantProj2a.PublicId,
 		}))
-	iam.TestUserRole(t, conn, directGrantOrg2Role2.PublicId, user2.PublicId)
 	directGrantOrg2RoleGrant3 := "ids=*;type=group;actions=add-members"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role2.PublicId, directGrantOrg2RoleGrant3)
+	grantRoleAndAssociate(t, conn, directGrantOrg2Role2.PublicId, testUserRole(directGrantOrg2Role2.PublicId, user2.PublicId), directGrantOrg2RoleGrant3)
 
 	directGrantProj2aRole2 := iam.TestRole(t, conn, directGrantProj2a.PublicId)
-	iam.TestUserRole(t, conn, directGrantProj2aRole2.PublicId, user2.PublicId)
 	directGrantProj2aRoleGrant2 := "ids=hcst_abcd1234,hcst_1234abcd;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantProj2aRole2.PublicId, directGrantProj2aRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj2aRole2.PublicId, testUserRole(directGrantProj2aRole2.PublicId, user2.PublicId), directGrantProj2aRoleGrant2)
+
 	directGrantProj2bRole2 := iam.TestRole(t, conn, directGrantProj2b.PublicId)
-	iam.TestUserRole(t, conn, directGrantProj2bRole2.PublicId, user2.PublicId)
 	directGrantProj2bRoleGrant2 := "ids=cs_abcd1234;actions=read,update"
-	iam.TestRoleGrant(t, conn, directGrantProj2bRole2.PublicId, directGrantProj2bRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj2bRole2.PublicId, testUserRole(directGrantProj2bRole2.PublicId, user2.PublicId), directGrantProj2bRoleGrant2)
 
 	// For the second set we create a couple of orgs/projects and then use globals.GrantScopeChildren
+	//
+	// child org 1
 	childGrantOrg1, _ := iam.SetupChildGrantScopes(t, conn, repo)
 
 	// user
@@ -493,72 +499,72 @@ func TestGrantsForUser_DirectAssociation(t *testing.T) {
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestUserRole(t, conn, childGrantOrg1Role.PublicId, user.PublicId)
 	childGrantOrg1RoleGrant := "ids=*;type=group;actions=add-members,remove-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg1Role.PublicId, childGrantOrg1RoleGrant)
+	grantRoleAndAssociate(t, conn, childGrantOrg1Role.PublicId, testUserRole(childGrantOrg1Role.PublicId, user.PublicId), childGrantOrg1RoleGrant)
+
 	// user2
 	childGrantOrg1Role2 := iam.TestRole(t, conn, childGrantOrg1.PublicId,
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestUserRole(t, conn, childGrantOrg1Role2.PublicId, user2.PublicId)
 	childGrantOrg1RoleGrant2 := "ids=*;type=group;actions=read"
-	iam.TestRoleGrant(t, conn, childGrantOrg1Role2.PublicId, childGrantOrg1RoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantOrg1Role2.PublicId, testUserRole(childGrantOrg1Role2.PublicId, user2.PublicId), childGrantOrg1RoleGrant2)
 
+	// child org 2
 	childGrantOrg2, _ := iam.SetupChildGrantScopes(t, conn, repo)
+
 	// user
 	childGrantOrg2Role := iam.TestRole(t, conn, childGrantOrg2.PublicId,
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestUserRole(t, conn, childGrantOrg2Role.PublicId, user.PublicId)
 	childGrantOrg2RoleGrant1 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role.PublicId, childGrantOrg2RoleGrant1)
 	childGrantOrg2RoleGrant2 := "ids=*;type=group;actions=delete"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role.PublicId, childGrantOrg2RoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantOrg2Role.PublicId, testUserRole(childGrantOrg2Role.PublicId, user.PublicId),
+		childGrantOrg2RoleGrant1, childGrantOrg2RoleGrant2,
+	)
+
 	// user2
 	childGrantOrg2Role2 := iam.TestRole(t, conn, childGrantOrg2.PublicId,
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestUserRole(t, conn, childGrantOrg2Role2.PublicId, user2.PublicId)
 	childGrantOrg2RoleGrant3 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role2.PublicId, childGrantOrg2RoleGrant3)
+	grantRoleAndAssociate(t, conn, childGrantOrg2Role2.PublicId, testUserRole(childGrantOrg2Role2.PublicId, user2.PublicId), childGrantOrg2RoleGrant3)
 
 	// Finally, let's create some roles at global scope with children and descendants grants
-
+	//
 	// user
 	childGrantGlobalRole := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestUserRole(t, conn, childGrantGlobalRole.PublicId, user.PublicId)
 	childGrantGlobalRoleGrant := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, childGrantGlobalRole.PublicId, childGrantGlobalRoleGrant)
+	grantRoleAndAssociate(t, conn, childGrantGlobalRole.PublicId, testUserRole(childGrantGlobalRole.PublicId, user.PublicId), childGrantGlobalRoleGrant)
+
 	// user2
 	childGrantGlobalRole2 := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestUserRole(t, conn, childGrantGlobalRole2.PublicId, user2.PublicId)
 	childGrantGlobalRoleGrant2 := "ids=*;type=group;actions=list"
-	iam.TestRoleGrant(t, conn, childGrantGlobalRole2.PublicId, childGrantGlobalRoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantGlobalRole2.PublicId, testUserRole(childGrantGlobalRole2.PublicId, user2.PublicId), childGrantGlobalRoleGrant2)
+
 	// user
 	descendantGrantGlobalRole := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeDescendants,
 		}))
-	iam.TestUserRole(t, conn, descendantGrantGlobalRole.PublicId, user.PublicId)
 	descendantGrantGlobalRoleGrant := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, descendantGrantGlobalRole.PublicId, descendantGrantGlobalRoleGrant)
+	grantRoleAndAssociate(t, conn, descendantGrantGlobalRole.PublicId, testUserRole(descendantGrantGlobalRole.PublicId, user.PublicId), descendantGrantGlobalRoleGrant)
+
 	// user2
 	descendantGrantGlobalRole2 := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeDescendants,
 		}))
-	iam.TestUserRole(t, conn, descendantGrantGlobalRole2.PublicId, user2.PublicId)
 	descendantGrantGlobalRoleGrant2 := "ids=*;type=group;actions=add-members"
-	iam.TestRoleGrant(t, conn, descendantGrantGlobalRole2.PublicId, descendantGrantGlobalRoleGrant2)
+	grantRoleAndAssociate(t, conn, descendantGrantGlobalRole2.PublicId, testUserRole(descendantGrantGlobalRole2.PublicId, user2.PublicId), descendantGrantGlobalRoleGrant2)
 
 	t.Run("db-grants", func(t *testing.T) {
 		// Here we should see exactly what the DB has returned, before we do some
@@ -1060,6 +1066,10 @@ func TestGrantsForUser_Group(t *testing.T) {
 	iam.TestGroupMember(t, conn, group.PublicId, user.PublicId)
 	iam.TestGroupMember(t, conn, group2.PublicId, user2.PublicId)
 
+	testGroupRole := func(roleId, groupId string) func() {
+		return func() { iam.TestGroupRole(t, conn, roleId, groupId) }
+	}
+
 	// Create a series of scopes with roles in each. We'll create two of each
 	// kind to ensure we're not just picking up the first role in each.
 
@@ -1069,37 +1079,34 @@ func TestGrantsForUser_Group(t *testing.T) {
 
 	// group
 	directGrantOrg1Role := iam.TestRole(t, conn, directGrantOrg1.PublicId)
-	iam.TestGroupRole(t, conn, directGrantOrg1Role.PublicId, group.PublicId)
 	directGrantOrg1RoleGrant1 := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role.PublicId, directGrantOrg1RoleGrant1)
 	directGrantOrg1RoleGrant2 := "ids=*;type=group;actions=create,list"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role.PublicId, directGrantOrg1RoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantOrg1Role.PublicId, testGroupRole(directGrantOrg1Role.PublicId, group.PublicId),
+		directGrantOrg1RoleGrant1, directGrantOrg1RoleGrant2,
+	)
 
 	// group2
 	directGrantOrg1Role2 := iam.TestRole(t, conn, directGrantOrg1.PublicId)
-	iam.TestGroupRole(t, conn, directGrantOrg1Role2.PublicId, group2.PublicId)
 	directGrantOrg1RoleGrant3 := "ids=*;type=group;actions=update"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role2.PublicId, directGrantOrg1RoleGrant3)
+	grantRoleAndAssociate(t, conn, directGrantOrg1Role2.PublicId, testGroupRole(directGrantOrg1Role2.PublicId, group2.PublicId), directGrantOrg1RoleGrant3)
 
 	// group
 	directGrantProj1aRole := iam.TestRole(t, conn, directGrantProj1a.PublicId)
-	iam.TestGroupRole(t, conn, directGrantProj1aRole.PublicId, group.PublicId)
 	directGrantProj1aRoleGrant := "ids=*;type=group;actions=add-members,read"
-	iam.TestRoleGrant(t, conn, directGrantProj1aRole.PublicId, directGrantProj1aRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj1aRole.PublicId, testGroupRole(directGrantProj1aRole.PublicId, group.PublicId), directGrantProj1aRoleGrant)
+
 	directGrantProj1bRole := iam.TestRole(t, conn, directGrantProj1b.PublicId)
-	iam.TestGroupRole(t, conn, directGrantProj1bRole.PublicId, group.PublicId)
 	directGrantProj1bRoleGrant := "ids=*;type=group;actions=list,read"
-	iam.TestRoleGrant(t, conn, directGrantProj1bRole.PublicId, directGrantProj1bRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj1bRole.PublicId, testGroupRole(directGrantProj1bRole.PublicId, group.PublicId), directGrantProj1bRoleGrant)
 
 	// group2
 	directGrantProj1aRole2 := iam.TestRole(t, conn, directGrantProj1a.PublicId)
-	iam.TestGroupRole(t, conn, directGrantProj1aRole2.PublicId, group2.PublicId)
 	directGrantProj1aRoleGrant2 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, directGrantProj1aRole2.PublicId, directGrantProj1aRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj1aRole2.PublicId, testGroupRole(directGrantProj1aRole2.PublicId, group2.PublicId), directGrantProj1aRoleGrant2)
+
 	directGrantProj1bRole2 := iam.TestRole(t, conn, directGrantProj1b.PublicId)
-	iam.TestGroupRole(t, conn, directGrantProj1bRole2.PublicId, group2.PublicId)
 	directGrantProj1bRoleGrant2 := "ids=*;type=group;actions=delete"
-	iam.TestRoleGrant(t, conn, directGrantProj1bRole2.PublicId, directGrantProj1bRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj1bRole2.PublicId, testGroupRole(directGrantProj1bRole2.PublicId, group2.PublicId), directGrantProj1bRoleGrant2)
 
 	directGrantOrg2, directGrantProj2a, directGrantProj2b := iam.SetupDirectGrantScopes(t, conn, repo)
 
@@ -1109,20 +1116,19 @@ func TestGrantsForUser_Group(t *testing.T) {
 			globals.GrantScopeThis,
 			directGrantProj2a.PublicId,
 		}))
-	iam.TestGroupRole(t, conn, directGrantOrg2Role.PublicId, group.PublicId)
 	directGrantOrg2RoleGrant1 := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role.PublicId, directGrantOrg2RoleGrant1)
 	directGrantOrg2RoleGrant2 := "ids=*;type=group;actions=list,read"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role.PublicId, directGrantOrg2RoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantOrg2Role.PublicId, testGroupRole(directGrantOrg2Role.PublicId, group.PublicId),
+		directGrantOrg2RoleGrant1, directGrantOrg2RoleGrant2,
+	)
 
 	directGrantProj2aRole := iam.TestRole(t, conn, directGrantProj2a.PublicId)
-	iam.TestGroupRole(t, conn, directGrantProj2aRole.PublicId, group.PublicId)
 	directGrantProj2aRoleGrant := "ids=hcst_abcd1234,hcst_1234abcd;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantProj2aRole.PublicId, directGrantProj2aRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj2aRole.PublicId, testGroupRole(directGrantProj2aRole.PublicId, group.PublicId), directGrantProj2aRoleGrant)
+
 	directGrantProj2bRole := iam.TestRole(t, conn, directGrantProj2b.PublicId)
-	iam.TestGroupRole(t, conn, directGrantProj2bRole.PublicId, group.PublicId)
 	directGrantProj2bRoleGrant := "ids=cs_abcd1234;actions=read,update"
-	iam.TestRoleGrant(t, conn, directGrantProj2bRole.PublicId, directGrantProj2bRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj2bRole.PublicId, testGroupRole(directGrantProj2bRole.PublicId, group.PublicId), directGrantProj2bRoleGrant)
 
 	// group2
 	directGrantOrg2Role2 := iam.TestRole(t, conn, directGrantOrg2.PublicId,
@@ -1130,18 +1136,16 @@ func TestGrantsForUser_Group(t *testing.T) {
 			globals.GrantScopeThis,
 			directGrantProj2a.PublicId,
 		}))
-	iam.TestGroupRole(t, conn, directGrantOrg2Role2.PublicId, group2.PublicId)
 	directGrantOrg2RoleGrant3 := "ids=*;type=group;actions=add-members"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role2.PublicId, directGrantOrg2RoleGrant3)
+	grantRoleAndAssociate(t, conn, directGrantOrg2Role2.PublicId, testGroupRole(directGrantOrg2Role2.PublicId, group2.PublicId), directGrantOrg2RoleGrant3)
 
 	directGrantProj2aRole2 := iam.TestRole(t, conn, directGrantProj2a.PublicId)
-	iam.TestGroupRole(t, conn, directGrantProj2aRole2.PublicId, group2.PublicId)
 	directGrantProj2aRoleGrant2 := "ids=hcst_abcd1234,hcst_1234abcd;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantProj2aRole2.PublicId, directGrantProj2aRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj2aRole2.PublicId, testGroupRole(directGrantProj2aRole2.PublicId, group2.PublicId), directGrantProj2aRoleGrant2)
+
 	directGrantProj2bRole2 := iam.TestRole(t, conn, directGrantProj2b.PublicId)
-	iam.TestGroupRole(t, conn, directGrantProj2bRole2.PublicId, group2.PublicId)
 	directGrantProj2bRoleGrant2 := "ids=cs_abcd1234;actions=read,update"
-	iam.TestRoleGrant(t, conn, directGrantProj2bRole2.PublicId, directGrantProj2bRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj2bRole2.PublicId, testGroupRole(directGrantProj2bRole2.PublicId, group2.PublicId), directGrantProj2bRoleGrant2)
 
 	// For the second set we create a couple of orgs/projects and then use
 	// globals.GrantScopeChildren.
@@ -1152,17 +1156,16 @@ func TestGrantsForUser_Group(t *testing.T) {
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestGroupRole(t, conn, childGrantOrg1Role.PublicId, group.PublicId)
 	childGrantOrg1RoleGrant := "ids=*;type=group;actions=add-members,remove-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg1Role.PublicId, childGrantOrg1RoleGrant)
+	grantRoleAndAssociate(t, conn, childGrantOrg1Role.PublicId, testGroupRole(childGrantOrg1Role.PublicId, group.PublicId), childGrantOrg1RoleGrant)
+
 	// group2
 	childGrantOrg1Role2 := iam.TestRole(t, conn, childGrantOrg1.PublicId,
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestGroupRole(t, conn, childGrantOrg1Role2.PublicId, group2.PublicId)
 	childGrantOrg1RoleGrant2 := "ids=*;type=group;actions=read"
-	iam.TestRoleGrant(t, conn, childGrantOrg1Role2.PublicId, childGrantOrg1RoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantOrg1Role2.PublicId, testGroupRole(childGrantOrg1Role2.PublicId, group2.PublicId), childGrantOrg1RoleGrant2)
 
 	childGrantOrg2, _ := iam.SetupChildGrantScopes(t, conn, repo)
 
@@ -1171,20 +1174,19 @@ func TestGrantsForUser_Group(t *testing.T) {
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestGroupRole(t, conn, childGrantOrg2Role.PublicId, group.PublicId)
 	childGrantOrg2RoleGrant1 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role.PublicId, childGrantOrg2RoleGrant1)
 	childGrantOrg2RoleGrant2 := "ids=*;type=group;actions=delete"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role.PublicId, childGrantOrg2RoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantOrg2Role.PublicId, testGroupRole(childGrantOrg2Role.PublicId, group.PublicId),
+		childGrantOrg2RoleGrant1, childGrantOrg2RoleGrant2,
+	)
 
 	// group2
 	childGrantOrg2Role2 := iam.TestRole(t, conn, childGrantOrg2.PublicId,
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestGroupRole(t, conn, childGrantOrg2Role2.PublicId, group2.PublicId)
 	childGrantOrg2RoleGrant3 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role2.PublicId, childGrantOrg2RoleGrant3)
+	grantRoleAndAssociate(t, conn, childGrantOrg2Role2.PublicId, testGroupRole(childGrantOrg2Role2.PublicId, group2.PublicId), childGrantOrg2RoleGrant3)
 
 	// Finally, let's create some roles at global scope with children and descendants grants
 
@@ -1193,35 +1195,32 @@ func TestGrantsForUser_Group(t *testing.T) {
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestGroupRole(t, conn, childGrantGlobalRole.PublicId, group.PublicId)
 	childGrantGlobalRoleGrant := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, childGrantGlobalRole.PublicId, childGrantGlobalRoleGrant)
+	grantRoleAndAssociate(t, conn, childGrantGlobalRole.PublicId, testGroupRole(childGrantGlobalRole.PublicId, group.PublicId), childGrantGlobalRoleGrant)
+
 	// group2
 	childGrantGlobalRole2 := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestGroupRole(t, conn, childGrantGlobalRole2.PublicId, group2.PublicId)
 	childGrantGlobalRoleGrant2 := "ids=*;type=group;actions=list"
-	iam.TestRoleGrant(t, conn, childGrantGlobalRole2.PublicId, childGrantGlobalRoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantGlobalRole2.PublicId, testGroupRole(childGrantGlobalRole2.PublicId, group2.PublicId), childGrantGlobalRoleGrant2)
 
 	// group
 	descendantGrantGlobalRole := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeDescendants,
 		}))
-	iam.TestGroupRole(t, conn, descendantGrantGlobalRole.PublicId, group.PublicId)
 	descendantGrantGlobalRoleGrant := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, descendantGrantGlobalRole.PublicId, descendantGrantGlobalRoleGrant)
+	grantRoleAndAssociate(t, conn, descendantGrantGlobalRole.PublicId, testGroupRole(descendantGrantGlobalRole.PublicId, group.PublicId), descendantGrantGlobalRoleGrant)
 
 	// group2
 	descendantGrantGlobalRole2 := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeDescendants,
 		}))
-	iam.TestGroupRole(t, conn, descendantGrantGlobalRole2.PublicId, group2.PublicId)
 	descendantGrantGlobalRoleGrant2 := "ids=*;type=group;actions=add-members"
-	iam.TestRoleGrant(t, conn, descendantGrantGlobalRole2.PublicId, descendantGrantGlobalRoleGrant2)
+	grantRoleAndAssociate(t, conn, descendantGrantGlobalRole2.PublicId, testGroupRole(descendantGrantGlobalRole2.PublicId, group2.PublicId), descendantGrantGlobalRoleGrant2)
 
 	t.Run("db-grants", func(t *testing.T) {
 		// Here we should see exactly what the DB has returned, before we do some
@@ -1734,6 +1733,11 @@ func TestGrantsForUser_ManagedGroup(t *testing.T) {
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
+
+	testManagedGroupRole := func(roleId, managedGrpId string) func() {
+		return func() { iam.TestManagedGroupRole(t, conn, roleId, managedGrpId) }
+	}
+
 	// oidcManagedGroup
 	oidcAcct := oidc.TestAccount(t, conn, oidcAuthMethod, "sub")
 	oidcManagedGroup := oidc.TestManagedGroup(t, conn, oidcAuthMethod, `"/token/sub" matches ".*"`)
@@ -1755,37 +1759,34 @@ func TestGrantsForUser_ManagedGroup(t *testing.T) {
 
 	// oidcManagedGroup
 	directGrantOrg1Role := iam.TestRole(t, conn, directGrantOrg1.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantOrg1Role.PublicId, oidcManagedGroup.PublicId)
 	directGrantOrg1RoleGrant1 := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role.PublicId, directGrantOrg1RoleGrant1)
 	directGrantOrg1RoleGrant2 := "ids=*;type=group;actions=create,list"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role.PublicId, directGrantOrg1RoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantOrg1Role.PublicId, testManagedGroupRole(directGrantOrg1Role.PublicId, oidcManagedGroup.PublicId),
+		directGrantOrg1RoleGrant1, directGrantOrg1RoleGrant2,
+	)
 
 	// oidcManagedGroup2
 	directGrantOrg1Role2 := iam.TestRole(t, conn, directGrantOrg1.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantOrg1Role2.PublicId, oidcManagedGroup2.PublicId)
 	directGrantOrg1RoleGrant3 := "ids=*;type=group;actions=update"
-	iam.TestRoleGrant(t, conn, directGrantOrg1Role2.PublicId, directGrantOrg1RoleGrant3)
+	grantRoleAndAssociate(t, conn, directGrantOrg1Role2.PublicId, testManagedGroupRole(directGrantOrg1Role2.PublicId, oidcManagedGroup2.PublicId), directGrantOrg1RoleGrant3)
 
 	// oidcManagedGroup
 	directGrantProj1aRole := iam.TestRole(t, conn, directGrantProj1a.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantProj1aRole.PublicId, oidcManagedGroup.PublicId)
 	directGrantProj1aRoleGrant := "ids=*;type=group;actions=add-members,read"
-	iam.TestRoleGrant(t, conn, directGrantProj1aRole.PublicId, directGrantProj1aRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj1aRole.PublicId, testManagedGroupRole(directGrantProj1aRole.PublicId, oidcManagedGroup.PublicId), directGrantProj1aRoleGrant)
+
 	directGrantProj1bRole := iam.TestRole(t, conn, directGrantProj1b.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantProj1bRole.PublicId, oidcManagedGroup.PublicId)
 	directGrantProj1bRoleGrant := "ids=*;type=group;actions=list,read"
-	iam.TestRoleGrant(t, conn, directGrantProj1bRole.PublicId, directGrantProj1bRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj1bRole.PublicId, testManagedGroupRole(directGrantProj1bRole.PublicId, oidcManagedGroup.PublicId), directGrantProj1bRoleGrant)
 
 	// oidcManagedGroup2
 	directGrantProj1aRole2 := iam.TestRole(t, conn, directGrantProj1a.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantProj1aRole2.PublicId, oidcManagedGroup2.PublicId)
 	directGrantProj1aRoleGrant2 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, directGrantProj1aRole2.PublicId, directGrantProj1aRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj1aRole2.PublicId, testManagedGroupRole(directGrantProj1aRole2.PublicId, oidcManagedGroup2.PublicId), directGrantProj1aRoleGrant2)
+
 	directGrantProj1bRole2 := iam.TestRole(t, conn, directGrantProj1b.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantProj1bRole2.PublicId, oidcManagedGroup2.PublicId)
 	directGrantProj1bRoleGrant2 := "ids=*;type=group;actions=delete"
-	iam.TestRoleGrant(t, conn, directGrantProj1bRole2.PublicId, directGrantProj1bRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj1bRole2.PublicId, testManagedGroupRole(directGrantProj1bRole2.PublicId, oidcManagedGroup2.PublicId), directGrantProj1bRoleGrant2)
 
 	directGrantOrg2, directGrantProj2a, directGrantProj2b := iam.SetupDirectGrantScopes(t, conn, repo)
 
@@ -1795,20 +1796,19 @@ func TestGrantsForUser_ManagedGroup(t *testing.T) {
 			globals.GrantScopeThis,
 			directGrantProj2a.PublicId,
 		}))
-	iam.TestManagedGroupRole(t, conn, directGrantOrg2Role.PublicId, oidcManagedGroup.PublicId)
 	directGrantOrg2RoleGrant1 := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role.PublicId, directGrantOrg2RoleGrant1)
 	directGrantOrg2RoleGrant2 := "ids=*;type=group;actions=list,read"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role.PublicId, directGrantOrg2RoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantOrg2Role.PublicId, testManagedGroupRole(directGrantOrg2Role.PublicId, oidcManagedGroup.PublicId),
+		directGrantOrg2RoleGrant1, directGrantOrg2RoleGrant2,
+	)
 
 	directGrantProj2aRole := iam.TestRole(t, conn, directGrantProj2a.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantProj2aRole.PublicId, oidcManagedGroup.PublicId)
 	directGrantProj2aRoleGrant := "ids=hcst_abcd1234,hcst_1234abcd;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantProj2aRole.PublicId, directGrantProj2aRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj2aRole.PublicId, testManagedGroupRole(directGrantProj2aRole.PublicId, oidcManagedGroup.PublicId), directGrantProj2aRoleGrant)
+
 	directGrantProj2bRole := iam.TestRole(t, conn, directGrantProj2b.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantProj2bRole.PublicId, oidcManagedGroup.PublicId)
 	directGrantProj2bRoleGrant := "ids=cs_abcd1234;actions=read,update"
-	iam.TestRoleGrant(t, conn, directGrantProj2bRole.PublicId, directGrantProj2bRoleGrant)
+	grantRoleAndAssociate(t, conn, directGrantProj2bRole.PublicId, testManagedGroupRole(directGrantProj2bRole.PublicId, oidcManagedGroup.PublicId), directGrantProj2bRoleGrant)
 
 	// oidcManagedGroup2
 	directGrantOrg2Role2 := iam.TestRole(t, conn, directGrantOrg2.PublicId,
@@ -1816,18 +1816,16 @@ func TestGrantsForUser_ManagedGroup(t *testing.T) {
 			globals.GrantScopeThis,
 			directGrantProj2a.PublicId,
 		}))
-	iam.TestManagedGroupRole(t, conn, directGrantOrg2Role2.PublicId, oidcManagedGroup2.PublicId)
 	directGrantOrg2RoleGrant3 := "ids=*;type=group;actions=add-members"
-	iam.TestRoleGrant(t, conn, directGrantOrg2Role2.PublicId, directGrantOrg2RoleGrant3)
+	grantRoleAndAssociate(t, conn, directGrantOrg2Role2.PublicId, testManagedGroupRole(directGrantOrg2Role2.PublicId, oidcManagedGroup2.PublicId), directGrantOrg2RoleGrant3)
 
 	directGrantProj2aRole2 := iam.TestRole(t, conn, directGrantProj2a.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantProj2aRole2.PublicId, oidcManagedGroup2.PublicId)
 	directGrantProj2aRoleGrant2 := "ids=hcst_abcd1234,hcst_1234abcd;actions=*"
-	iam.TestRoleGrant(t, conn, directGrantProj2aRole2.PublicId, directGrantProj2aRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj2aRole2.PublicId, testManagedGroupRole(directGrantProj2aRole2.PublicId, oidcManagedGroup2.PublicId), directGrantProj2aRoleGrant2)
+
 	directGrantProj2bRole2 := iam.TestRole(t, conn, directGrantProj2b.PublicId)
-	iam.TestManagedGroupRole(t, conn, directGrantProj2bRole2.PublicId, oidcManagedGroup2.PublicId)
 	directGrantProj2bRoleGrant2 := "ids=cs_abcd1234;actions=read,update"
-	iam.TestRoleGrant(t, conn, directGrantProj2bRole2.PublicId, directGrantProj2bRoleGrant2)
+	grantRoleAndAssociate(t, conn, directGrantProj2bRole2.PublicId, testManagedGroupRole(directGrantProj2bRole2.PublicId, oidcManagedGroup2.PublicId), directGrantProj2bRoleGrant2)
 
 	// For the second set we create a couple of orgs/projects and then use
 	// globals.GrantScopeChildren.
@@ -1838,17 +1836,16 @@ func TestGrantsForUser_ManagedGroup(t *testing.T) {
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestManagedGroupRole(t, conn, childGrantOrg1Role.PublicId, oidcManagedGroup.PublicId)
 	childGrantOrg1RoleGrant := "ids=*;type=group;actions=add-members,remove-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg1Role.PublicId, childGrantOrg1RoleGrant)
+	grantRoleAndAssociate(t, conn, childGrantOrg1Role.PublicId, testManagedGroupRole(childGrantOrg1Role.PublicId, oidcManagedGroup.PublicId), childGrantOrg1RoleGrant)
+
 	// oidcManagedGroup2
 	childGrantOrg1Role2 := iam.TestRole(t, conn, childGrantOrg1.PublicId,
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestManagedGroupRole(t, conn, childGrantOrg1Role2.PublicId, oidcManagedGroup2.PublicId)
 	childGrantOrg1RoleGrant2 := "ids=*;type=group;actions=read"
-	iam.TestRoleGrant(t, conn, childGrantOrg1Role2.PublicId, childGrantOrg1RoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantOrg1Role2.PublicId, testManagedGroupRole(childGrantOrg1Role2.PublicId, oidcManagedGroup2.PublicId), childGrantOrg1RoleGrant2)
 
 	childGrantOrg2, _ := iam.SetupChildGrantScopes(t, conn, repo)
 
@@ -1857,20 +1854,19 @@ func TestGrantsForUser_ManagedGroup(t *testing.T) {
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestManagedGroupRole(t, conn, childGrantOrg2Role.PublicId, oidcManagedGroup.PublicId)
 	childGrantOrg2RoleGrant1 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role.PublicId, childGrantOrg2RoleGrant1)
 	childGrantOrg2RoleGrant2 := "ids=*;type=group;actions=delete"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role.PublicId, childGrantOrg2RoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantOrg2Role.PublicId, testManagedGroupRole(childGrantOrg2Role.PublicId, oidcManagedGroup.PublicId),
+		childGrantOrg2RoleGrant1, childGrantOrg2RoleGrant2,
+	)
 
 	// oidcManagedGroup2
 	childGrantOrg2Role2 := iam.TestRole(t, conn, childGrantOrg2.PublicId,
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestManagedGroupRole(t, conn, childGrantOrg2Role2.PublicId, oidcManagedGroup2.PublicId)
 	childGrantOrg2RoleGrant3 := "ids=*;type=group;actions=set-members"
-	iam.TestRoleGrant(t, conn, childGrantOrg2Role2.PublicId, childGrantOrg2RoleGrant3)
+	grantRoleAndAssociate(t, conn, childGrantOrg2Role2.PublicId, testManagedGroupRole(childGrantOrg2Role2.PublicId, oidcManagedGroup2.PublicId), childGrantOrg2RoleGrant3)
 
 	// Finally, let's create some roles at global scope with children and descendants grants
 
@@ -1879,35 +1875,33 @@ func TestGrantsForUser_ManagedGroup(t *testing.T) {
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestManagedGroupRole(t, conn, childGrantGlobalRole.PublicId, oidcManagedGroup.PublicId)
 	childGrantGlobalRoleGrant := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, childGrantGlobalRole.PublicId, childGrantGlobalRoleGrant)
+	grantRoleAndAssociate(t, conn, childGrantGlobalRole.PublicId, testManagedGroupRole(childGrantGlobalRole.PublicId, oidcManagedGroup.PublicId), childGrantGlobalRoleGrant)
+
 	// oidcManagedGroup2
 	childGrantGlobalRole2 := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeChildren,
 		}))
-	iam.TestManagedGroupRole(t, conn, childGrantGlobalRole2.PublicId, oidcManagedGroup2.PublicId)
 	childGrantGlobalRoleGrant2 := "ids=*;type=group;actions=list"
-	iam.TestRoleGrant(t, conn, childGrantGlobalRole2.PublicId, childGrantGlobalRoleGrant2)
+	grantRoleAndAssociate(t, conn, childGrantGlobalRole2.PublicId, testManagedGroupRole(childGrantGlobalRole2.PublicId, oidcManagedGroup2.PublicId), childGrantGlobalRoleGrant2)
 
 	// oidcManagedGroup
 	descendantGrantGlobalRole := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeDescendants,
 		}))
-	iam.TestManagedGroupRole(t, conn, descendantGrantGlobalRole.PublicId, oidcManagedGroup.PublicId)
 	descendantGrantGlobalRoleGrant := "ids=*;type=group;actions=*"
-	iam.TestRoleGrant(t, conn, descendantGrantGlobalRole.PublicId, descendantGrantGlobalRoleGrant)
+	grantRoleAndAssociate(t, conn, descendantGrantGlobalRole.PublicId, testManagedGroupRole(descendantGrantGlobalRole.PublicId, oidcManagedGroup.PublicId), descendantGrantGlobalRoleGrant)
 
 	// oidcManagedGroup2
 	descendantGrantGlobalRole2 := iam.TestRole(t, conn, scope.Global.String(),
 		iam.WithGrantScopeIds([]string{
 			globals.GrantScopeDescendants,
 		}))
-	iam.TestManagedGroupRole(t, conn, descendantGrantGlobalRole2.PublicId, oidcManagedGroup2.PublicId)
 	descendantGrantGlobalRoleGrant2 := "ids=*;type=group;actions=add-members"
-	iam.TestRoleGrant(t, conn, descendantGrantGlobalRole2.PublicId, descendantGrantGlobalRoleGrant2)
+	grantRoleAndAssociate(t, conn, descendantGrantGlobalRole2.PublicId, testManagedGroupRole(descendantGrantGlobalRole2.PublicId, oidcManagedGroup2.PublicId), descendantGrantGlobalRoleGrant2)
+
 	t.Run("db-grants", func(t *testing.T) {
 		// Here we should see exactly what the DB has returned, before we do some
 		// local exploding of grants and grant scopes
@@ -2392,4 +2386,13 @@ func TestGrantsForUser_ManagedGroup(t *testing.T) {
 			}
 		})
 	})
+}
+
+// grantRoleAndAssociate link one or more grants to a role and associate the role with a principal (i.e. user, group, or managed group)
+func grantRoleAndAssociate(t *testing.T, conn *db.DB, roleId string, roleAssociationFunc func(), grants ...string) {
+	t.Helper()
+	for _, grant := range grants {
+		iam.TestRoleGrant(t, conn, roleId, grant)
+	}
+	roleAssociationFunc()
 }
