@@ -99,14 +99,14 @@ The configuration file contains the following fields:
 
    Example:
    ```hcl
-   alias_refresh_interval=60s
+   alias_refresh_interval="60s"
    ```
 
 - `dns_request_timeout` - Specifies for how long the Client Agent DNS request handling, including any recursion, is allowed to run before it is canceled.
 
    Example:
    ```hcl
-   dns_request_timeout=300s
+   dns_request_timeout="300s"
    ```
 
 - `interface_to_use` - Specifies the interface to use instead of the default.
@@ -520,6 +520,10 @@ Follow the troubleshooting steps to understand why the Client Agent is not able 
 
 On MacOS versions 15.1 and 15.2, the firewall may incorrectly block the Client Agent from sending DNS responses. To resolve this issue,
 upgrade to MacOS version 15.3 or later.
+
+It may be neccessary to explicitly allow the `boundary-client-agent` process access to incoming network connections.
+
+From the Firewall options in System Settings, toggle the `boundary-client-agent` to **Allow incoming connections**.
 
 #### WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!
 
