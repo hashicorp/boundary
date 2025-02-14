@@ -51,7 +51,8 @@ func upsertUserAndAuthToken(ctx context.Context, reader db.Reader, writer db.Wri
 		}
 		onConflict := &db.OnConflict{
 			Target: db.Columns{"id"},
-			Action: db.DoNothing(true),
+			// Unset the deleted_at column if it was set to un-delete the user
+			Action: db.SetColumnValues(map[string]any{"deleted_at": "infinity"}),
 		}
 		if err := writer.Create(ctx, u, db.WithOnConflict(onConflict)); err != nil {
 			return errors.Wrap(ctx, err, op)
