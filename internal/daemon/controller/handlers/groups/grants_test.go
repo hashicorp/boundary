@@ -1197,8 +1197,8 @@ func TestOutputFields(t *testing.T) {
 			return iamRepo, nil
 		}
 		u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
-		globalGroup := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription("global"), iam.WithName("global"))
-		_ = iam.TestGroupMember(t, conn, globalGroup.PublicId, u.PublicId)
+		globalGroupWithMember := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription("global"), iam.WithName("global"))
+		_ = iam.TestGroupMember(t, conn, globalGroupWithMember.PublicId, u.PublicId)
 		s, err := groups.NewService(ctx, repoFn, 1000)
 		require.NoError(t, err)
 
@@ -1290,80 +1290,25 @@ func TestOutputFields(t *testing.T) {
 				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
-				out, err := s.GetGroup(fullGrantAuthCtx, &pbs.GetGroupRequest{Id: globalGroup.PublicId})
+				out, err := s.GetGroup(fullGrantAuthCtx, &pbs.GetGroupRequest{Id: globalGroupWithMember.PublicId})
 				require.NoError(t, err)
 				assertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
-
 	})
+
 }
-
 func assertOutputFields(t *testing.T, g *pb.Group, expectFields []string) {
-	if slices.Contains(expectFields, globals.IdField) {
-		require.NotEmpty(t, g.Id)
-	} else {
-		require.Empty(t, g.Id)
-	}
-
-	if slices.Contains(expectFields, globals.ScopeIdField) {
-		require.NotEmpty(t, g.ScopeId)
-	} else {
-		require.Empty(t, g.ScopeId)
-	}
-
-	if slices.Contains(expectFields, globals.DescriptionField) {
-		require.NotEmpty(t, g.Description)
-	} else {
-		require.Empty(t, g.Description)
-	}
-
-	if slices.Contains(expectFields, globals.NameField) {
-		require.NotEmpty(t, g.Name)
-	} else {
-		require.Empty(t, g.Name)
-	}
-
-	if slices.Contains(expectFields, globals.CreatedTimeField) {
-		require.NotEmpty(t, g.CreatedTime)
-	} else {
-		require.Empty(t, g.CreatedTime)
-	}
-
-	if slices.Contains(expectFields, globals.UpdatedTimeField) {
-		require.NotEmpty(t, g.UpdatedTime)
-	} else {
-		require.Empty(t, g.UpdatedTime)
-	}
-
-	if slices.Contains(expectFields, globals.VersionField) {
-		require.NotEmpty(t, g.Version)
-	} else {
-		require.Empty(t, g.Version)
-	}
-
-	if slices.Contains(expectFields, globals.ScopeField) {
-		require.NotEmpty(t, g.Scope)
-	} else {
-		require.Empty(t, g.Scope)
-	}
-
-	if slices.Contains(expectFields, globals.AuthorizedActionsField) {
-		require.NotEmpty(t, g.AuthorizedActions)
-	} else {
-		require.Empty(t, g.AuthorizedActions)
-	}
-
-	if slices.Contains(expectFields, globals.MemberIdsField) {
-		require.NotEmpty(t, g.MemberIds)
-	} else {
-		require.Empty(t, g.MemberIds)
-	}
-
-	if slices.Contains(expectFields, globals.MembersField) {
-		require.NotEmpty(t, g.Members)
-	} else {
-		require.Empty(t, g.Members)
+	msg := g.ProtoReflect()
+	descriptor := msg.Descriptor()
+	for i := 0; i < descriptor.Fields().Len(); i++ {
+		fd := descriptor.Fields().Get(i)
+		fieldName := string(fd.Name())
+		if !slices.Contains(expectFields, fieldName) {
+			require.Falsef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
+			continue
+		}
+		require.Truef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
 	}
 }
 
