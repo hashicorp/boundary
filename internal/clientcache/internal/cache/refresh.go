@@ -96,7 +96,6 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				}
 			default:
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
-				var apiErr *api.Error
 				switch {
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
@@ -104,7 +103,7 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 					}
 					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
 					continue
-				case err != nil && !errors.Is(err, apiErr):
+				case err != nil:
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating keyring stored token against boundary", "auth token id", at.Id))
 					continue
 				}
@@ -114,7 +113,6 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 		if atv, ok := r.repo.idToKeyringlessAuthToken.Load(t.Id); ok {
 			if at, ok := atv.(*authtokens.AuthToken); ok {
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
-				var apiErr *api.Error
 				switch {
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					r.repo.idToKeyringlessAuthToken.Delete(t.Id)
@@ -123,11 +121,10 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
 					}
 					continue
-				case err != nil && !errors.Is(err, apiErr):
+				case err != nil:
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating in memory stored token against boundary", "auth token id", at.Id))
 					continue
 				}
-
 				ret[*t] = at.Token
 			}
 		}
