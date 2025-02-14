@@ -119,6 +119,9 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					r.repo.idToKeyringlessAuthToken.Delete(t.Id)
 					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
+					if err := r.repo.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
+						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
+					}
 					continue
 				case err != nil && !errors.Is(err, apiErr):
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating in memory stored token against boundary", "auth token id", at.Id))
