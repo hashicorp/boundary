@@ -94,7 +94,7 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
 					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
 				}
-			case at != nil:
+			default:
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
 				var apiErr *api.Error
 				switch {
