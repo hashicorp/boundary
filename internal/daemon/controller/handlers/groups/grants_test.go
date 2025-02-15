@@ -1185,6 +1185,129 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 }
 
 func TestOutputFields(t *testing.T) {
+
+	t.Run("ListGroups", func(t *testing.T) {
+		ctx := context.Background()
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
+		wrap := db.TestWrapper(t)
+		iamRepo := iam.TestRepo(t, conn, wrap)
+		kmsCache := kms.TestKms(t, conn, wrap)
+		atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		repoFn := func() (*iam.Repository, error) {
+			return iamRepo, nil
+		}
+
+		globalGroup := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription("global"), iam.WithName("global"))
+
+		org, proj := iam.TestScopes(t, iamRepo)
+		orgGroup := iam.TestGroup(t, conn, org.PublicId, iam.WithDescription("org"), iam.WithName("org"))
+		projGroup := iam.TestGroup(t, conn, proj.PublicId, iam.WithDescription("proj"), iam.WithName("proj"))
+
+		globalUser := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+		orgUser := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+		projectUser := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
+
+		_ = iam.TestGroupMember(t, conn, globalGroup.PublicId, globalUser.PublicId)
+		_ = iam.TestGroupMember(t, conn, orgGroup.PublicId, orgUser.PublicId)
+		_ = iam.TestGroupMember(t, conn, projGroup.PublicId, projectUser.PublicId)
+		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
+		testcases := []struct {
+			name     string
+			userFunc func() (*iam.User, string)
+			// keys are the group IDs | this also means 'id' is required in the outputfields for assertions to work properly
+			expectOutfields map[string][]string
+		}{
+			{
+				name: "grants name, version, description",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=group;actions=*;output_fields=id,name,description"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				expectOutfields: map[string][]string{
+					globalGroup.PublicId: {globals.IdField, globals.NameField, globals.DescriptionField},
+					orgGroup.PublicId:    {globals.IdField, globals.NameField, globals.DescriptionField},
+					projGroup.PublicId:   {globals.IdField, globals.NameField, globals.DescriptionField},
+				},
+			},
+			{
+				name: "grants scope, scopeID, authorized_actions",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=group;actions=*;output_fields=id,scope,scope_id,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				expectOutfields: map[string][]string{
+					globalGroup.PublicId: {globals.IdField, globals.ScopeField, globals.ScopeIdField, globals.AuthorizedActionsField},
+					orgGroup.PublicId:    {globals.IdField, globals.ScopeField, globals.ScopeIdField, globals.AuthorizedActionsField},
+					projGroup.PublicId:   {globals.IdField, globals.ScopeField, globals.ScopeIdField, globals.AuthorizedActionsField},
+				}},
+			{
+				name: "grants update_time, create_time",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=group;actions=*;output_fields=id,updated_time,created_time,members,member_ids"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				expectOutfields: map[string][]string{
+					globalGroup.PublicId: {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					orgGroup.PublicId:    {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					projGroup.PublicId:   {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
+				},
+			},
+			{
+				name: "different output_fields for different scope",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=group;actions=*;output_fields=id,name,description"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=group;actions=*;output_fields=id,scope,scope_id,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeID: proj.PublicId,
+						Grants:      []string{"id=*;type=group;actions=*;output_fields=id,authorized_actions"},
+						GrantScopes: []string{proj.PublicId},
+					},
+				}),
+				expectOutfields: map[string][]string{
+					globalGroup.PublicId: {globals.IdField, globals.NameField, globals.DescriptionField},
+					orgGroup.PublicId:    {globals.IdField, globals.ScopeField, globals.ScopeIdField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					projGroup.PublicId:   {globals.IdField, globals.AuthorizedActionsField},
+				},
+			},
+		}
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				user, accountID := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				require.NoError(t, err)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				out, err := s.ListGroups(fullGrantAuthCtx, &pbs.ListGroupsRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				})
+				require.NoError(t, err)
+				for _, item := range out.Items {
+					assertOutputFields(t, item, tc.expectOutfields[item.Id])
+				}
+			})
+		}
+	})
+
 	t.Run("GetGroup", func(t *testing.T) {
 		ctx := context.Background()
 		conn, _ := db.TestSetup(t, "postgres")
@@ -2047,6 +2170,7 @@ func TestOutputFields(t *testing.T) {
 			})
 		}
 	})
+
 }
 
 // assertOutputFields asserts that the output fields of a group match the expected fields
