@@ -285,4 +285,131 @@ func TestCliSearch(t *testing.T) {
 	err = json.Unmarshal(output.Stdout, &searchResult)
 	require.NoError(t, err)
 	require.Len(t, searchResult.Item.Sessions, 0)
+
+	// Log out and confirm search does not work
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("logout"))
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-format", "json",
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+		),
+	)
+	require.Error(t, output.Err)
+
+	// Log back in and confirm search works
+	boundary.AuthenticateAdminCli(t, ctx)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-format", "json",
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	searchResult = clientcache.SearchResult{}
+	err = json.Unmarshal(output.Stdout, &searchResult)
+	require.NoError(t, err)
+	require.Len(t, searchResult.Item.Targets, len(targetIds))
+
+	// Restart cache and confirm search works
+	t.Log("Restarting cache...")
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"cache", "start",
+			"-refresh-interval", "5s",
+			"-background",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+			if output.Err != nil {
+				return errors.New(strings.TrimSpace(string(output.Stderr)))
+			}
+
+			err = json.Unmarshal(output.Stdout, &statusResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, statusResult.StatusCode, 200)
+	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-format", "json",
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	searchResult = clientcache.SearchResult{}
+	err = json.Unmarshal(output.Stdout, &searchResult)
+	require.NoError(t, err)
+	require.Len(t, searchResult.Item.Targets, len(targetIds))
+
+	// Log out and restart cache. Log in and confirm search works
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("logout"))
+	t.Log("Restarting cache...")
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"cache", "start",
+			"-refresh-interval", "5s",
+			"-background",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+			if output.Err != nil {
+				return errors.New(strings.TrimSpace(string(output.Stderr)))
+			}
+
+			err = json.Unmarshal(output.Stdout, &statusResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, statusResult.StatusCode, 200)
+	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
+	boundary.AuthenticateAdminCli(t, ctx)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-format", "json",
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	searchResult = clientcache.SearchResult{}
+	err = json.Unmarshal(output.Stdout, &searchResult)
+	require.NoError(t, err)
+	require.Len(t, searchResult.Item.Targets, len(targetIds))
 }
