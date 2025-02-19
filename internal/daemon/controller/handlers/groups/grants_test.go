@@ -1433,6 +1433,7 @@ func TestOutputFields(t *testing.T) {
 			return iamRepo, nil
 		}
 		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
 		testcases := []struct {
 			name            string
 			userFunc        func() (*iam.User, string)
@@ -1619,6 +1620,7 @@ func TestOutputFields(t *testing.T) {
 		}
 
 		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
 		testcases := []struct {
 			name            string
 			userFunc        func() (*iam.User, string)
@@ -1762,6 +1764,7 @@ func TestOutputFields(t *testing.T) {
 			}
 		}
 		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
 		testcases := []struct {
 			name            string
 			userFunc        func() (*iam.User, string)
