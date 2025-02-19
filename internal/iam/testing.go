@@ -424,12 +424,12 @@ func TestUserGroupGrantsFunc(
 	conn *db.DB,
 	kmsCache *kms.Kms,
 	scopeID string,
-	accountIDsFunc func() string,
+	accountIDFunc func() string,
 	testRoleGrants []TestRoleGrantsRequest,
 ) func() (*User, string) {
 	return func() (*User, string) {
 		t.Helper()
-		accountID := accountIDsFunc()
+		accountID := accountIDFunc()
 		ctx := context.Background()
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
