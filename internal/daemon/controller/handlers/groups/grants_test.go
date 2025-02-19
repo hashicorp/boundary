@@ -1302,7 +1302,7 @@ func TestOutputFields(t *testing.T) {
 				})
 				require.NoError(t, err)
 				for _, item := range out.Items {
-					assertOutputFields(t, item, tc.expectOutfields[item.Id])
+					handlers.AssertOutputFields(t, item, tc.expectOutfields[item.Id])
 				}
 			})
 		}
@@ -1416,7 +1416,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.GetGroup(fullGrantAuthCtx, &pbs.GetGroupRequest{Id: globalGroupWithMember.PublicId})
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1582,7 +1582,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.CreateGroup(fullGrantAuthCtx, tc.input)
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1733,7 +1733,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.UpdateGroup(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1876,7 +1876,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.AddGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -2019,7 +2019,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.SetGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -2166,28 +2166,11 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.RemoveGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
 
-}
-
-// assertOutputFields asserts that the output fields of a group match the expected fields
-// fields that is nil or empty in the result will throw an error if they are listed in expectedFields
-// e.g. members when group does not contian any members
-func assertOutputFields(t *testing.T, g *pb.Group, expectFields []string) {
-	msg := g.ProtoReflect()
-	descriptor := msg.Descriptor()
-	for i := 0; i < descriptor.Fields().Len(); i++ {
-		fd := descriptor.Fields().Get(i)
-		fieldName := string(fd.Name())
-		if !slices.Contains(expectFields, fieldName) {
-			require.Falsef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
-			continue
-		}
-		require.Truef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
-	}
 }
 
 func userIDs(users []*iam.User) []string {
