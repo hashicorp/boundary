@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
-
 package handlers
 
 import (
@@ -8,13 +5,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-// TestAssertOutputFields asserts that the output fields of a group match the expected fields
+type protoReflector interface {
+	ProtoReflect() protoreflect.Message
+}
+
+// assertOutputFields asserts that the output fields of a group match the expected fields
 // fields that is nil or empty in the result will throw an error if they are listed in expectedFields
-// e.g. members when group does not contain any members
-func TestAssertOutputFields(t *testing.T, p proto.Message, expectFields []string) {
+// e.g. members when group does not contian any members
+func AssertOutputFields(t *testing.T, p protoReflector, expectFields []string) {
 	msg := p.ProtoReflect()
 	descriptor := msg.Descriptor()
 	for i := 0; i < descriptor.Fields().Len(); i++ {
@@ -24,6 +25,6 @@ func TestAssertOutputFields(t *testing.T, p proto.Message, expectFields []string
 			require.Falsef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
 			continue
 		}
-		require.Truef(t, msg.Has(fd), "expect field '%s' NOT be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
+		require.Truef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
 	}
 }
