@@ -1185,7 +1185,6 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 }
 
 func TestOutputFields(t *testing.T) {
-
 	t.Run("ListGroups", func(t *testing.T) {
 		ctx := context.Background()
 		conn, _ := db.TestSetup(t, "postgres")
@@ -1248,7 +1247,8 @@ func TestOutputFields(t *testing.T) {
 					globalGroup.PublicId: {globals.IdField, globals.ScopeField, globals.ScopeIdField, globals.AuthorizedActionsField},
 					orgGroup.PublicId:    {globals.IdField, globals.ScopeField, globals.ScopeIdField, globals.AuthorizedActionsField},
 					projGroup.PublicId:   {globals.IdField, globals.ScopeField, globals.ScopeIdField, globals.AuthorizedActionsField},
-				}},
+				},
+			},
 			{
 				name: "grants update_time, create_time",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -2173,7 +2173,6 @@ func TestOutputFields(t *testing.T) {
 			})
 		}
 	})
-
 }
 
 func userIDs(users []*iam.User) []string {
