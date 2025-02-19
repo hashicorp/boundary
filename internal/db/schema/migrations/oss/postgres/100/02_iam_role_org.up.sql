@@ -5,7 +5,7 @@ begin;
  
   -- Create the enumeration table for the grant scope types for the org iam_role
   create table iam_role_org_grant_scope_enm (
-    name text not null primary key
+    name text primary key
       constraint only_predefined_scope_types_allowed
         check(
           name in (

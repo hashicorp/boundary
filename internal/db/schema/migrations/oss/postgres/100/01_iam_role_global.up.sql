@@ -78,7 +78,7 @@ begin;
   -- This matches the representation of the existing create_time field at the 
   -- role domain layer that indicates when the grant scope was created.
   create table iam_role_global (
-    public_id wt_role_id not null primary key
+    public_id wt_role_id primary key
       constraint iam_role_fkey
         references iam_role(public_id)
         on delete cascade
