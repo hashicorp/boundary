@@ -8,17 +8,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/proto"
 )
-
-type protoReflector interface {
-	ProtoReflect() protoreflect.Message
-}
 
 // assertOutputFields asserts that the output fields of a group match the expected fields
 // fields that is nil or empty in the result will throw an error if they are listed in expectedFields
 // e.g. members when group does not contian any members
-func AssertOutputFields(t *testing.T, p protoReflector, expectFields []string) {
+func AssertOutputFields(t *testing.T, p proto.Message, expectFields []string) {
 	msg := p.ProtoReflect()
 	descriptor := msg.Descriptor()
 	for i := 0; i < descriptor.Fields().Len(); i++ {
