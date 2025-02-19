@@ -9,7 +9,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -23,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -1432,6 +1432,11 @@ func TestOutputFields(t *testing.T) {
 		repoFn := func() (*iam.Repository, error) {
 			return iamRepo, nil
 		}
+		genUuid := func() string {
+			u, _ := uuid.GenerateUUID()
+			return u
+		}
+
 		s, err := groups.NewService(ctx, repoFn, 1000)
 		require.NoError(t, err)
 		testcases := []struct {
@@ -1444,8 +1449,8 @@ func TestOutputFields(t *testing.T) {
 				name: "grants name and description",
 				input: &pbs.CreateGroupRequest{
 					Item: &pb.Group{
-						Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:        &wrapperspb.StringValue{Value: genUuid()},
+						Description: &wrapperspb.StringValue{Value: genUuid()},
 						ScopeId:     globals.GlobalPrefix,
 					},
 				},
@@ -1462,8 +1467,8 @@ func TestOutputFields(t *testing.T) {
 				name: "grants scope and scopeID",
 				input: &pbs.CreateGroupRequest{
 					Item: &pb.Group{
-						Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:        &wrapperspb.StringValue{Value: genUuid()},
+						Description: &wrapperspb.StringValue{Value: genUuid()},
 						ScopeId:     globals.GlobalPrefix,
 					},
 				},
@@ -1480,8 +1485,8 @@ func TestOutputFields(t *testing.T) {
 				name: "grants update_time and create_time",
 				input: &pbs.CreateGroupRequest{
 					Item: &pb.Group{
-						Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:        &wrapperspb.StringValue{Value: genUuid()},
+						Description: &wrapperspb.StringValue{Value: genUuid()},
 						ScopeId:     globals.GlobalPrefix,
 					},
 				},
@@ -1498,8 +1503,8 @@ func TestOutputFields(t *testing.T) {
 				name: "grants id, authorized_actions, version",
 				input: &pbs.CreateGroupRequest{
 					Item: &pb.Group{
-						Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:        &wrapperspb.StringValue{Value: genUuid()},
+						Description: &wrapperspb.StringValue{Value: genUuid()},
 						ScopeId:     globals.GlobalPrefix,
 					},
 				},
@@ -1516,8 +1521,8 @@ func TestOutputFields(t *testing.T) {
 				name: "composite grants all fields",
 				input: &pbs.CreateGroupRequest{
 					Item: &pb.Group{
-						Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:        &wrapperspb.StringValue{Value: genUuid()},
+						Description: &wrapperspb.StringValue{Value: genUuid()},
 						ScopeId:     globals.GlobalPrefix,
 					},
 				},
@@ -1603,14 +1608,16 @@ func TestOutputFields(t *testing.T) {
 
 		// this can be used across test cases because we're only testing for output fields, not the update behaviors
 		inputFunc := func(t *testing.T) *pbs.UpdateGroupRequest {
+			name, _ := uuid.GenerateUUID()
+			desc, _ := uuid.GenerateUUID()
 			globalGroupWithMember := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription("global"), iam.WithName("global"))
 			u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
 			_ = iam.TestGroupMember(t, conn, globalGroupWithMember.PublicId, u.PublicId)
 			return &pbs.UpdateGroupRequest{
 				Id: globalGroupWithMember.PublicId,
 				Item: &pb.Group{
-					Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-					Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+					Name:        &wrapperspb.StringValue{Value: name},
+					Description: &wrapperspb.StringValue{Value: desc},
 					Version:     globalGroupWithMember.Version,
 				},
 				UpdateMask: &fieldmaskpb.FieldMask{
@@ -1755,7 +1762,9 @@ func TestOutputFields(t *testing.T) {
 
 		// this can be used across test cases because we're only testing for output fields, not the update behaviors
 		inputFunc := func(t *testing.T) *pbs.AddGroupMembersRequest {
-			globalGroupWithMember := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription(uuid.NewString()), iam.WithName(uuid.NewString()))
+			name, _ := uuid.GenerateUUID()
+			desc, _ := uuid.GenerateUUID()
+			globalGroupWithMember := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription(desc), iam.WithName(name))
 			u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
 			return &pbs.AddGroupMembersRequest{
 				Id:        globalGroupWithMember.PublicId,
@@ -1899,7 +1908,9 @@ func TestOutputFields(t *testing.T) {
 
 		// this can be used across test cases because we're only testing for output fields, not the update behaviors
 		inputFunc := func(t *testing.T) *pbs.SetGroupMembersRequest {
-			globalGroupWithMember := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription(uuid.NewString()), iam.WithName(uuid.NewString()))
+			name, _ := uuid.GenerateUUID()
+			desc, _ := uuid.GenerateUUID()
+			globalGroupWithMember := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription(desc), iam.WithName(name))
 			u := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
 			return &pbs.SetGroupMembersRequest{
 				Id:        globalGroupWithMember.PublicId,
@@ -1908,6 +1919,7 @@ func TestOutputFields(t *testing.T) {
 			}
 		}
 		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
 		testcases := []struct {
 			name            string
 			userFunc        func() (*iam.User, string)
@@ -2042,7 +2054,9 @@ func TestOutputFields(t *testing.T) {
 
 		// this can be used across test cases because we're only testing for output fields, not the update behaviors
 		inputFunc := func(t *testing.T) *pbs.RemoveGroupMembersRequest {
-			globalGroupWithMember := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription(uuid.NewString()), iam.WithName(uuid.NewString()))
+			name, _ := uuid.GenerateUUID()
+			desc, _ := uuid.GenerateUUID()
+			globalGroupWithMember := iam.TestGroup(t, conn, globals.GlobalPrefix, iam.WithDescription(desc), iam.WithName(name))
 			// create 2 users and remove one so the tests can differentiate between the group without members vs. having no access to read members
 			u1 := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
 			u2 := iam.TestUser(t, iamRepo, globals.GlobalPrefix)
@@ -2055,6 +2069,7 @@ func TestOutputFields(t *testing.T) {
 			}
 		}
 		s, err := groups.NewService(ctx, repoFn, 1000)
+		require.NoError(t, err)
 		testcases := []struct {
 			name            string
 			userFunc        func() (*iam.User, string)
