@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
@@ -58,7 +59,7 @@ func (a *authAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 }
 
 func (a *authAccount) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Global, scope.Org}
+	return scope.AllowedIn(resource.Account)
 }
 
 // GetScope returns the scope for the auth account.

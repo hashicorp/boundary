@@ -82,7 +82,7 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, o
 }
 
 func (u *User) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Global, scope.Org}
+	return scope.AllowedIn(resource.User)
 }
 
 // GetScope returns the scope for the User

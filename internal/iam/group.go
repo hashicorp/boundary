@@ -79,7 +79,7 @@ func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 }
 
 func (g *Group) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Global, scope.Org, scope.Project}
+	return scope.AllowedIn(resource.Group)
 }
 
 // GetScope returns the scope for the Group.
