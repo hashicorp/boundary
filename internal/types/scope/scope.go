@@ -3,7 +3,10 @@
 
 package scope
 
-import "github.com/hashicorp/boundary/globals"
+import (
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/types/resource"
+)
 
 // Type defines the possible types for Scopes
 type Type uint
@@ -37,4 +40,20 @@ var Map = map[string]Type{
 	Global.String():  Global,
 	Org.String():     Org,
 	Project.String(): Project,
+}
+
+// AllowedIn returns the set of Scopes a Resource is allowed in.
+func AllowedIn(r resource.Type) []Type {
+	switch r {
+	case resource.Alias, resource.Billing, resource.Worker:
+		return []Type{Global}
+	case resource.Account, resource.AuthMethod, resource.AuthToken, resource.ManagedGroup, resource.Policy, resource.Scope, resource.SessionRecording, resource.StorageBucket, resource.User:
+		return []Type{Global, Org}
+	case resource.All, resource.Group, resource.Role:
+		return []Type{Global, Org, Project}
+	case resource.CredentialLibrary, resource.Credential, resource.CredentialStore, resource.HostCatalog, resource.HostSet, resource.Host, resource.Session, resource.Target:
+		return []Type{Project}
+	default:
+		return []Type{Unknown}
+	}
 }
