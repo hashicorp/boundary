@@ -91,29 +91,13 @@ Perform the following steps to set up a host catalog using [AssumeRole](https://
            {
                "Effect": "Allow",
                "Action": [
-                   "ec2:Describe*",
-                   "ec2:GetSecurityGroupsForVpc"
+                   "sts:AssumeRole"
                ],
-               "Resource": "*"
-           },
-           {
-               "Effect": "Allow",
-               "Action": "elasticloadbalancing:Describe*",
-               "Resource": "*"
-           },
-           {
-               "Effect": "Allow",
-               "Action": [
-                   "cloudwatch:ListMetrics",
-                   "cloudwatch:GetMetricStatistics",
-                   "cloudwatch:Describe*"
-               ],
-               "Resource": "*"
-           },
-           {
-               "Effect": "Allow",
-               "Action": "autoscaling:Describe*",
-               "Resource": "*"
+               "Principal": {
+                   "Service": [
+                       "ec2.amazonaws.com"
+                   ]
+               }
            }
        ]
    }
