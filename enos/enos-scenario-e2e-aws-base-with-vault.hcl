@@ -159,8 +159,8 @@ scenario "e2e_aws_base_with_vault" {
       target_address           = step.create_target.target_private_ips[0]
       target_user              = "ubuntu"
       target_port              = "22"
-      vault_addr               = step.create_vault_cluster.instance_addresses[0]
-      vault_addr_internal      = step.create_vault_cluster.instance_addresses[0]
+      vault_addr_public        = step.create_vault_cluster.instance_addresses[0]
+      vault_addr_private       = step.create_vault_cluster.instance_addresses[0]
       vault_root_token         = step.create_vault_cluster.vault_root_token
       aws_region               = var.aws_region
       max_page_size            = step.create_boundary_cluster.max_page_size
