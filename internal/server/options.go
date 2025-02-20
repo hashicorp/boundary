@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/nodeenrollment/types"
 )
@@ -63,6 +64,8 @@ type options struct {
 	withWorkerPool                                  []string
 	withFilterWorkersByStorageBucketCredentialState *StorageBucketCredentialInfo
 	withFilterWorkersByLocalStorageState            bool
+	WithReader                                      db.Reader
+	WithWriter                                      db.Writer
 }
 
 func getDefaultOptions() options {
@@ -301,5 +304,14 @@ func WithFilterWorkersByStorageBucketCredentialState(ci *StorageBucketCredential
 func WithFilterWorkersByLocalStorageState(filter bool) Option {
 	return func(o *options) {
 		o.withFilterWorkersByLocalStorageState = filter
+	}
+}
+
+// WithReaderWriter is used to share the same database reader
+// and writer when executing sql within a transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.WithReader = r
+		o.WithWriter = w
 	}
 }

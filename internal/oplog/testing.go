@@ -125,6 +125,7 @@ func testInitStore(t testing.TB, cleanup func() error, url string) {
 	require.NoError(t, err)
 	sm, err := schema.NewManager(ctx, schema.Dialect(dialect), d)
 	require.NoError(t, err)
+	t.Cleanup(func() { sm.Close(context.Background()) })
 	_, err = sm.ApplyMigrations(ctx)
 	require.NoError(t, err)
 }

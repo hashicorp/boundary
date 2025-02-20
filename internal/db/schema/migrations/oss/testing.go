@@ -19,6 +19,7 @@ func ApplyMigration(t *testing.T, ctx context.Context, d *sql.DB, migrationId in
 		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": migrationId}),
 	))
 	require.NoError(t, err)
+	t.Cleanup(func() { m.Close(context.Background()) })
 	_, err = m.ApplyMigrations(ctx)
 	require.NoError(t, err)
 	state, err := m.CurrentState(ctx)

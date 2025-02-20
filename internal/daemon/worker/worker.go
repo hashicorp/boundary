@@ -299,6 +299,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
 			switch {
 			case enabledPlugin == base.EnabledPluginHostAzure && !w.conf.SkipPlugins,
+				enabledPlugin == base.EnabledPluginGCP && !w.conf.SkipPlugins,
 				enabledPlugin == base.EnabledPluginAws && !w.conf.SkipPlugins:
 				pluginType := strings.ToLower(enabledPlugin.String())
 				client, cleanup, err := external_plugins.CreateHostPlugin(
@@ -484,7 +485,7 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 
 	w.parseAndStoreTags(newConf.Worker.Tags)
 
-	switch newConf.Worker.SuccessfulControllerRPCGracePeriod {
+	switch newConf.Worker.SuccessfulControllerRPCGracePeriodDuration {
 	case 0:
 		w.successfulRoutingInfoGracePeriod.Store(int64(server.DefaultLiveness))
 		w.successfulSessionInfoGracePeriod.Store(int64(server.DefaultLiveness))
