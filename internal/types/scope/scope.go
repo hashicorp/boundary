@@ -12,10 +12,10 @@ import (
 type Type uint
 
 const (
-	Unknown Type = 0
-	Global  Type = 1
-	Org     Type = 2
-	Project Type = 3
+	Unknown Type = iota
+	Global
+	Org
+	Project
 )
 
 func (s Type) String() string {
