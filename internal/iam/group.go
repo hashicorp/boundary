@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -78,8 +77,8 @@ func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 	return nil
 }
 
-func (g *Group) validScopeTypes() []scope.Type {
-	return scope.AllowedIn(resource.Group)
+func (g *Group) getResourceType() resource.Type {
+	return resource.Group
 }
 
 // GetScope returns the scope for the Group.

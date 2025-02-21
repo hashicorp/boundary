@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -82,8 +81,8 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	return nil
 }
 
-func (role *Role) validScopeTypes() []scope.Type {
-	return scope.AllowedIn(resource.Role)
+func (role *Role) getResourceType() resource.Type {
+	return resource.Role
 }
 
 // GetScope returns the scope for the Role.
