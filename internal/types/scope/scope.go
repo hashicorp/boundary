@@ -53,11 +53,15 @@ func AllowedIn(ctx context.Context, r resource.Type) ([]Type, error) {
 		return []Type{Global}, nil
 	case resource.Account, resource.AuthMethod, resource.AuthToken, resource.ManagedGroup, resource.Policy, resource.Scope, resource.SessionRecording, resource.StorageBucket, resource.User:
 		return []Type{Global, Org}, nil
-	case resource.All, resource.Group, resource.Role:
+	case resource.Group, resource.Role:
 		return []Type{Global, Org, Project}, nil
 	case resource.CredentialLibrary, resource.Credential, resource.CredentialStore, resource.HostCatalog, resource.HostSet, resource.Host, resource.Session, resource.Target:
 		return []Type{Project}, nil
+	case resource.Unknown:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown resource type")
+	case resource.All:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type '*' is not supported")
 	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid or unknown resource type")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid resource type")
 	}
 }
