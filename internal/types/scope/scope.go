@@ -4,7 +4,10 @@
 package scope
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
@@ -42,18 +45,19 @@ var Map = map[string]Type{
 	Project.String(): Project,
 }
 
-// AllowedIn returns the set of Scopes a Resource is allowed in.
-func AllowedIn(r resource.Type) []Type {
+// AllowedIn returns the set of Scopes a known Resource type is allowed in.
+func AllowedIn(ctx context.Context, r resource.Type) ([]Type, error) {
+	const op = "scope.AllowedIn"
 	switch r {
 	case resource.Alias, resource.Billing, resource.Worker:
-		return []Type{Global}
+		return []Type{Global}, nil
 	case resource.Account, resource.AuthMethod, resource.AuthToken, resource.ManagedGroup, resource.Policy, resource.Scope, resource.SessionRecording, resource.StorageBucket, resource.User:
-		return []Type{Global, Org}
+		return []Type{Global, Org}, nil
 	case resource.All, resource.Group, resource.Role:
-		return []Type{Global, Org, Project}
+		return []Type{Global, Org, Project}, nil
 	case resource.CredentialLibrary, resource.Credential, resource.CredentialStore, resource.HostCatalog, resource.HostSet, resource.Host, resource.Session, resource.Target:
-		return []Type{Project}
+		return []Type{Project}, nil
 	default:
-		return []Type{Unknown}
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid or unknown resource type")
 	}
 }
