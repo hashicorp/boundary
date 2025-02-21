@@ -142,8 +142,8 @@ var Map = map[string]Type{
 
 // Parent returns the parent type for a given type; if there is no parent, it
 // returns the incoming type
-func Parent(in Type) Type {
-	switch in {
+func (r Type) Parent() Type {
+	switch r {
 	case Account, ManagedGroup:
 		return AuthMethod
 	case HostSet, Host:
@@ -151,13 +151,13 @@ func Parent(in Type) Type {
 	case CredentialLibrary, Credential:
 		return CredentialStore
 	}
-	return in
+	return r
 }
 
 // HasChildTypes indicates whether this is a type that has child resource types;
 // it's essentially the inverse of Parent
-func HasChildTypes(in Type) bool {
-	switch in {
+func (r Type) HasChildTypes() bool {
+	switch r {
 	case AuthMethod, HostCatalog, CredentialStore:
 		return true
 	}
@@ -166,8 +166,8 @@ func HasChildTypes(in Type) bool {
 
 // TopLevelType indicates whether this is a type that supports collection
 // actions, e.g. Create/List
-func TopLevelType(typ Type) bool {
-	switch typ {
+func (r Type) TopLevelType() bool {
+	switch r {
 	case AuthMethod,
 		AuthToken,
 		CredentialStore,
