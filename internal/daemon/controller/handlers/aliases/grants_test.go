@@ -43,6 +43,8 @@ func TestGrants_ReadActions(t *testing.T) {
 	}
 	s, err := aliases.NewService(ctx, repoFn, iamRepoFn, 1000)
 	require.NoError(t, err)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+
 	globalAlias1 := target.TestAlias(t, rw, "test.alias.one", target.WithDescription("alias_1"), target.WithName("alias_one"))
 	globalAlias2 := target.TestAlias(t, rw, "test.alias.two", target.WithDescription("alias_2"), target.WithName("alias_two"))
 	t.Run("List", func(t *testing.T) {
@@ -70,7 +72,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				wantIDs: []string{globalAlias1.PublicId, globalAlias2.PublicId},
 			},
 			{
-				name: "global role grant this with a non-applicable type throws an error",
+				name: "global role grant this with a non-applicable type returns a permission error",
 				input: &pbs.ListAliasesRequest{
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
@@ -83,6 +85,36 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				},
 				wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+			},
+			{
+				name: "global role grant descendant returns no aliases",
+				input: &pbs.ListAliasesRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=alias;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeDescendants},
+					},
+				},
+				wantIDs: nil,
+			},
+			{
+				name: "org role grant returns no aliases",
+				input: &pbs.ListAliasesRequest{
+					ScopeId:   org.PublicId,
+					Recursive: true,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=alias;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				wantIDs: nil,
 			},
 		}
 
