@@ -18,6 +18,8 @@ Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 LimitMEMLOCK=infinity
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
