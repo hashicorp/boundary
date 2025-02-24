@@ -5,6 +5,7 @@ package scope
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -62,6 +63,6 @@ func AllowedIn(ctx context.Context, r resource.Type) ([]Type, error) {
 	case resource.All:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type '*' is not supported")
 	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid resource type")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid resource type: %d", r))
 	}
 }
