@@ -70,7 +70,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				wantIDs: []string{globalAlias1.PublicId, globalAlias2.PublicId},
 			},
 			{
-				name: "global role grant this with a non-applicable type throws an a permission error",
+				name: "global role grant this with a non-applicable type throws an error",
 				input: &pbs.ListAliasesRequest{
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
