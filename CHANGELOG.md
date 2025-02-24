@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved 
+
+* Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
+  ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
+
 ## 0.19.0 (2025/02/10)
 ### New and Improved
 
