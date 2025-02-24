@@ -36,6 +36,7 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
 	repoFn := func() (*billing.Repository, error) {
 		return billing.TestRepo(t, conn), nil
@@ -179,6 +180,51 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 					{
 						RoleScopeID: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=billing;actions=no-op"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				input: &pbs.MonthlyActiveUsersRequest{
+					StartTime: threeMonthsAgo,
+					EndTime:   oneMonthAgo,
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "global role grant this with a non-applicable type returns a permission error",
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				input: &pbs.MonthlyActiveUsersRequest{
+					StartTime: threeMonthsAgo,
+					EndTime:   oneMonthAgo,
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "global role grant descendant returns no monthly active users",
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=billing;actions=*"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
+				input: &pbs.MonthlyActiveUsersRequest{
+					StartTime: threeMonthsAgo,
+					EndTime:   oneMonthAgo,
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "global role grant descendant returns no monthly active users",
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: org.PublicId,
+						Grants:      []string{"ids=*;type=billing;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
