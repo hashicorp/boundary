@@ -6,7 +6,6 @@ package aliases_test
 import (
 	"context"
 	"fmt"
-	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -27,7 +26,6 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -762,7 +760,7 @@ func TestOutputFields(t *testing.T) {
 				})
 				require.NoError(t, err)
 				for _, item := range out.Items {
-					assertOutputFields(t, item, tc.expectOutfields[item.Id])
+					handlers.AssertOutputFields(t, item, tc.expectOutfields[item.Id])
 				}
 			})
 		}
@@ -883,7 +881,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.GetAlias(fullGrantAuthCtx, &pbs.GetAliasRequest{Id: globalAlias1.PublicId})
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1082,7 +1080,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.CreateAlias(fullGrantAuthCtx, tc.input)
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1263,24 +1261,8 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.UpdateAlias(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				assertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
-}
-
-// assertOutputFields asserts that the output fields of a proto message match the expected fields
-// fields that is nil or empty in the result will throw an error if they are listed in expectedFields
-func assertOutputFields(t *testing.T, m proto.Message, expectFields []string) {
-	msg := m.ProtoReflect()
-	descriptor := msg.Descriptor()
-	for i := 0; i < descriptor.Fields().Len(); i++ {
-		fd := descriptor.Fields().Get(i)
-		fieldName := string(fd.Name())
-		if !slices.Contains(expectFields, fieldName) {
-			require.Falsef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
-			continue
-		}
-		require.Truef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
-	}
 }
