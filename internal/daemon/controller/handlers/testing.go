@@ -24,6 +24,6 @@ func AssertOutputFields(t *testing.T, p proto.Message, expectFields []string) {
 			require.Falsef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
 			continue
 		}
-		require.Truef(t, msg.Has(fd), "expect field '%s' to be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
+		require.Truef(t, msg.Has(fd), "expect field '%s' NOT be empty but got %+v", fd.Name(), msg.Get(fd).Interface())
 	}
 }
