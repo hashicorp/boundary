@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -28,6 +29,7 @@ import (
 )
 
 func TestGrants_ListAccounts(t *testing.T) {
+	t.Parallel()
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -225,6 +227,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 }
 
 func TestGrants_GetAccounts(t *testing.T) {
+	t.Parallel()
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -570,6 +573,7 @@ func TestGrants_CreateAccount(t *testing.T) {
 }
 
 func TestGrants_DeleteAccount(t *testing.T) {
+	t.Parallel()
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -753,6 +757,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 }
 
 func TestGrants_UpdateAccount(t *testing.T) {
+	t.Parallel()
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -942,5 +947,399 @@ func TestGrants_UpdateAccount(t *testing.T) {
 			}
 		})
 	}
+
+}
+
+func TestGrants_SetPassword(t *testing.T) {
+	t.Parallel()
+	ctx := context.TODO()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(ctx, rw, rw, kms)
+	}
+	// not using OIDC or LDAP in this test so no need to set them up
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return &oidc.Repository{}, nil
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return &ldap.Repository{}, nil
+	}
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	org1 := iam.TestOrg(t, iamRepo)
+	org2 := iam.TestOrg(t, iamRepo)
+
+	globalAM := password.TestAuthMethod(t, conn, globals.GlobalPrefix)
+	org1AM := password.TestAuthMethod(t, conn, org1.GetPublicId())
+	org2AM := password.TestAuthMethod(t, conn, org2.GetPublicId())
+
+	allAuthMethodIds := []string{globalAM.PublicId, org1AM.PublicId, org2AM.PublicId}
+
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
+	require.NoError(t, err)
+	testcases := []struct {
+		name                     string
+		userAcountFunc           func(t *testing.T) func() (*iam.User, string)
+		authmethodIdExpectErrMap map[string]error
+	}{
+		{
+			name: "grant this and descendant at global can set-password everywhere",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=set-password"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: nil,
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "grant this and children at global can set-password everywhere",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kms, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=set-password"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: nil,
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "grant children at global can set-password in org",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kms, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=set-password"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: handlers.ForbiddenError(),
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "grant descendant at global can set-password in org",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=set-password"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: handlers.ForbiddenError(),
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "grant this and descendant at global with specific type and action can set-password in org",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=account;actions=set-password"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: nil,
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "pinned grant org1AM can only set-password in org1AM",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=account;actions=set-password", org1AM.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: handlers.ForbiddenError(),
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "grant auth-method type does not allow set-password",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=auth-method;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: handlers.ForbiddenError(),
+				org1AM.PublicId:   handlers.ForbiddenError(),
+				org2AM.PublicId:   handlers.ForbiddenError(),
+			},
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			authMethodAccountMap := map[string]*password.Account{}
+			for _, amid := range allAuthMethodIds {
+				loginName, _ := uuid.GenerateUUID()
+				acct := password.TestAccount(t, conn, amid, loginName)
+				authMethodAccountMap[amid] = acct
+			}
+			user, accountID := tc.userAcountFunc(t)()
+			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+			require.NoError(t, err)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			for authMethodId, wantErr := range tc.authmethodIdExpectErrMap {
+				pwd, _ := uuid.GenerateUUID()
+				acct := authMethodAccountMap[authMethodId]
+				_, err := s.SetPassword(fullGrantAuthCtx, &pbs.SetPasswordRequest{
+					Id:       acct.PublicId,
+					Version:  acct.Version,
+					Password: pwd,
+				})
+				if wantErr != nil {
+					require.Error(t, err)
+					require.ErrorIs(t, err, wantErr)
+					continue
+				}
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+func TestGrants_ChangePassword(t *testing.T) {
+	t.Parallel()
+	ctx := context.TODO()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	pwRepo, err := password.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	pwRepoFn := func() (*password.Repository, error) {
+		return pwRepo, nil
+	}
+	// not using OIDC or LDAP in this test so no need to set them up
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return &oidc.Repository{}, nil
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return &ldap.Repository{}, nil
+	}
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	org1 := iam.TestOrg(t, iamRepo)
+	org2 := iam.TestOrg(t, iamRepo)
+
+	globalAM := password.TestAuthMethod(t, conn, globals.GlobalPrefix)
+	org1AM := password.TestAuthMethod(t, conn, org1.GetPublicId())
+	org2AM := password.TestAuthMethod(t, conn, org2.GetPublicId())
+
+	amIdsToScope := map[string]string{
+		globalAM.PublicId: globals.GlobalPrefix,
+		org1AM.PublicId:   org1.GetPublicId(),
+		org2AM.PublicId:   org2.GetPublicId(),
+	}
+
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
+	require.NoError(t, err)
+	testcases := []struct {
+		name                     string
+		userAcountFunc           func(t *testing.T) func() (*iam.User, string)
+		authmethodIdExpectErrMap map[string]error
+	}{
+		{
+			name: "grant this and descendant at global can change-password everywhere",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=change-password"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: nil,
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "grant this and children at global can change-password everywhere",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kms, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=change-password"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: nil,
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "grant children at global can change-password in org",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kms, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=change-password"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: handlers.ForbiddenError(),
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "grant descendant at global can change-password in org",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=change-password"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: handlers.ForbiddenError(),
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "grant this and descendant at global with specific type and action can change-password in org",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=account;actions=change-password"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: nil,
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   nil,
+			},
+		},
+		{
+			name: "pinned grant org1AM can only change-password in org1AM",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=account;actions=change-password", org1AM.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: handlers.ForbiddenError(),
+				org1AM.PublicId:   nil,
+				org2AM.PublicId:   handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "grant auth-method type does not allow change-password",
+			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeID: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=auth-method;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				})
+			},
+			authmethodIdExpectErrMap: map[string]error{
+				globalAM.PublicId: handlers.ForbiddenError(),
+				org1AM.PublicId:   handlers.ForbiddenError(),
+				org2AM.PublicId:   handlers.ForbiddenError(),
+			},
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			authMethodAccountMap := map[string]*password.Account{}
+			for amID, scopeID := range amIdsToScope {
+				loginName, _ := uuid.GenerateUUID()
+				// use repo.CreateAccount instead of `password.TestAccount` because
+				// the test version does not set the password even with the password.WithPassword option
+				acct, err := pwRepo.CreateAccount(context.Background(), scopeID, &password.Account{
+					Account: &pwstore.Account{
+						AuthMethodId: amID,
+						LoginName:    loginName,
+					},
+				}, password.WithPassword("oldpassword"))
+				require.NoError(t, err)
+				authMethodAccountMap[amID] = acct
+			}
+			user, accountID := tc.userAcountFunc(t)()
+			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+			require.NoError(t, err)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			for authMethodId, wantErr := range tc.authmethodIdExpectErrMap {
+				newpassword, _ := uuid.GenerateUUID()
+				testAcct := authMethodAccountMap[authMethodId]
+				_, err := s.ChangePassword(fullGrantAuthCtx, &pbs.ChangePasswordRequest{
+					Id:              testAcct.PublicId,
+					Version:         testAcct.Version,
+					CurrentPassword: "oldpassword",
+					NewPassword:     newpassword,
+				})
+				if wantErr != nil {
+					require.Error(t, err)
+					require.ErrorIs(t, err, wantErr)
+					continue
+				}
+				require.NoErrorf(t, err, "failed at authMethodId %s", authMethodId)
+			}
+		})
+	}
+
+}
+
+func TestGrants_OutputFields(t *testing.T) {
 
 }
