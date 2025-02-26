@@ -465,7 +465,6 @@ func TestGrants_CreateAccount(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_DeleteAccount(t *testing.T) {
@@ -649,7 +648,6 @@ func TestGrants_DeleteAccount(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_UpdateAccount(t *testing.T) {
@@ -843,7 +841,6 @@ func TestGrants_UpdateAccount(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_SetPassword(t *testing.T) {
@@ -1033,6 +1030,7 @@ func TestGrants_SetPassword(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_ChangePassword(t *testing.T) {
 	t.Parallel()
 	ctx := context.TODO()
@@ -1233,7 +1231,6 @@ func TestGrants_ChangePassword(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_OutputFields(t *testing.T) {
@@ -1595,7 +1592,6 @@ func TestGrants_OutputFields(t *testing.T) {
 				}
 			})
 		}
-
 	})
 	t.Run("CreateAccount", func(t *testing.T) {
 		ctx := context.TODO()
@@ -1987,7 +1983,6 @@ func TestGrants_OutputFields(t *testing.T) {
 				handlers.AssertOutputFields(t, got.GetItem(), tc.expectOutfields)
 			})
 		}
-
 	})
 	t.Run("GetAccounts", func(t *testing.T) {
 		ctx := context.TODO()
@@ -2341,7 +2336,6 @@ func TestGrants_OutputFields(t *testing.T) {
 				handlers.AssertOutputFields(t, got.GetItem(), tc.expectOutfields)
 			})
 		}
-
 	})
 	t.Run("UpdateAccount", func(t *testing.T) {
 		ctx := context.TODO()
@@ -2716,7 +2710,6 @@ func TestGrants_OutputFields(t *testing.T) {
 				handlers.AssertOutputFields(t, got.GetItem(), tc.expectOutfields)
 			})
 		}
-
 	})
 
 	// only test password accounts since SetPassword is only available for password accounts
@@ -2867,7 +2860,6 @@ func TestGrants_OutputFields(t *testing.T) {
 				handlers.AssertOutputFields(t, got.GetItem(), tc.expectOutfields)
 			})
 		}
-
 	})
 
 	// only test password accounts since SetPassword is only available for password accounts
@@ -3019,7 +3011,5 @@ func TestGrants_OutputFields(t *testing.T) {
 				handlers.AssertOutputFields(t, got.GetItem(), tc.expectOutfields)
 			})
 		}
-
 	})
-
 }
