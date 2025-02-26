@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -197,13 +198,15 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, subject string, opt 
 func TestAccountFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) func() (managedGroupID string, accountID string) {
 	return func() (string, string) {
 		t.Helper()
+		uuid, err := uuid.GenerateUUID()
+		require.NoError(t, err)
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeID, kms.KeyPurposeDatabase)
 		require.NoError(t, err)
 		testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, scopeID, ActivePublicState,
 			"alice-rp", "fido",
-			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
+			WithIssuer(TestConvertToUrls(t, fmt.Sprintf("https://%s.com", uuid))[0]),
 			WithSigningAlgs(Alg(oidc.RS256)),
-			WithApiUrl(TestConvertToUrls(t, "https://alice.com/callback")[0]))
+			WithApiUrl(TestConvertToUrls(t, fmt.Sprintf("https://%s.com/callback", uuid))[0]))
 		account := TestAccount(t, conn, testAuthMethod, "testacct")
 		managedGroup := TestManagedGroup(t, conn, testAuthMethod, `"/token/sub" matches ".*"`)
 		TestManagedGroupMember(t, conn, managedGroup.PublicId, account.PublicId)
