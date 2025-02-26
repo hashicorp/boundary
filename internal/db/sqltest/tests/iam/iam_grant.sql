@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-select plan(15);
+select plan(31);
 select wtt_load('widgets', 'iam');
 
 -- insert canonical_grant with valid resource
@@ -84,12 +84,12 @@ select throws_like(
 
 -- insert a canonical grant string with wildcards for id, type, actions, and output_fields
 -- validate that the resource is set to '*'
-prepare insert_grant_wildcard_actions as
+prepare insert_grant_wildcard as
   insert into iam_grant
     (canonical_grant)
   values
     ('ids=*;type=*;actions=*;output_fields=*');
-select lives_ok('insert_grant_wildcard_actions');
+select lives_ok('insert_grant_wildcard');
 select is(
   (select resource
      from iam_grant
@@ -115,7 +115,7 @@ select is(
 );
 
 -- insert a canonical grant string with type=group, multiple actions, single type and multiple output_fields
--- validate that the resource is set to 'role'
+-- validate that the resource is set to 'group'
 prepare insert_grant_role_multiple_actions as
   insert into iam_grant
     (canonical_grant)
@@ -131,7 +131,7 @@ select is(
 );
 
 -- insert a canonical grant string with with multiple types
--- validate that the resource is set to 'role'
+-- the insert should fail because the resource is not a single value
 prepare insert_grant_multiple_types as
   insert into iam_grant
     (canonical_grant)
@@ -141,6 +141,138 @@ select throws_like(
   'insert_grant_multiple_types',
   'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
   'inserting a resource not in iam_grant_resource_enm should fail because type is not a single value'
+);
+
+-- insert a canonical grant string with type with dash
+-- validate that the resource is set to 'credential-library'
+prepare insert_grant_with_dash as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;type=credential-library;actions=create;output_fields=id');
+select lives_ok('insert_grant_with_dash');
+select is(
+  (select resource
+     from iam_grant
+    where canonical_grant = 'ids=*;type=credential-library;actions=create;output_fields=id'),
+  'credential-library',
+  'resource should be set to "credential-library" if type is "credential-library"'
+);
+
+-- insert a canonical grant string with type with underscore
+-- the insert should fail because a resource with underscore is not in the resource_enm table
+prepare insert_grant_with_underscore as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;type=credential_library;actions=create;output_fields=id');
+select throws_like(
+  'insert_grant_with_underscore',
+  'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
+  'inserting a a resource with underscore should fail'
+);
+
+-- insert a canonical grant string with type malformed with no semicolon
+-- the insert should fail because the type is malformed
+prepare insert_grant_malformed_type_with_no_semicolon as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;type=credential-library actions=create;output_fields=id');
+select throws_like(
+  'insert_grant_malformed_type_with_no_semicolon',
+  'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
+  'inserting a resource with a malformed type should fail'
+);
+
+-- insert a canonical grant string with type malformed with no equals sign
+prepare insert_grant_malformed_type_with_no_equals as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;type;actions=create;output_fields=id');
+select lives_ok('insert_grant_malformed_type_with_no_equals');
+select is(
+  (select resource
+     from iam_grant
+    where canonical_grant = 'ids=*;type;actions=create;output_fields=id'),
+  'unknown',
+  'resource should default to "unknown" if the type has no equals sign'
+);
+
+-- insert a canonical grant string with type malformed with no value
+prepare insert_grant_malformed_type_with_no_value as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;type=;actions=create;output_fields=id');
+select lives_ok('insert_grant_malformed_type_with_no_value');
+select is(
+  (select resource
+     from iam_grant
+    where canonical_grant = 'ids=*;type=;actions=create;output_fields=id'),
+  'unknown',
+  'resource should default to "unknown" if the type has no value'
+);
+
+-- insert a canonical grant string with type malformed with no type
+prepare insert_grant_malformed_type_with_no_type as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;actions=create;output_fields=id');
+select lives_ok('insert_grant_malformed_type_with_no_type');
+select is(
+  (select resource
+     from iam_grant
+    where canonical_grant = 'ids=*;actions=create;output_fields=id'),
+  'unknown',
+  'resource should default to "unknown" if the type is not found'
+);
+
+-- insert a canonical grant string with type malformed with double ids semicolon
+prepare insert_grant_malformed_type_with_double_ids_semicolon as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;;type=credential-library;actions=create;output_fields=id');
+select lives_ok('insert_grant_malformed_type_with_double_ids_semicolon');
+select is(
+  (select resource
+     from iam_grant
+    where canonical_grant = 'ids=*;;type=credential-library;actions=create;output_fields=id'),
+  'credential-library',
+  'resource should be set to "credential-library"'
+);
+
+-- insert a canonical grant string with type at the end of the string
+prepare insert_grant_malformed_type_with_type_at_the_end as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;actions=create;output_fields=id;type=credential-library');
+select lives_ok('insert_grant_malformed_type_with_type_at_the_end');
+select is(
+  (select resource
+     from iam_grant
+    where canonical_grant = 'ids=*;actions=create;output_fields=id;type=credential-library'),
+  'unknown',
+  'resource should default to "unknown" if the type is not in the expected order'
+);
+
+-- insert a canonical grant string with type malformed with semicolon after type
+prepare insert_grant_malformed_type_with_semicolon_after_type as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;type;=credential-library;actions=create;output_fields=id;');
+select lives_ok('insert_grant_malformed_type_with_semicolon_after_type');
+select is(
+  (select resource
+     from iam_grant
+    where canonical_grant = 'ids=*;type;=credential-library;actions=create;output_fields=id;'),
+  'unknown',
+  'resource should default to "unknown" if the type is not found'
 );
 
 select * from finish();
