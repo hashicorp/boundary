@@ -47,7 +47,8 @@ begin;
     grant_scope_update_time wt_timestamp,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    unique(public_id, grant_scope)
+    constraint iam_role_org_grant_scope_public_id_uq
+      unique(grant_scope, public_id)
   );
   comment on table iam_role_org is
     'iam_role_org is a subtype table of the iam_role table. It is used to store roles that are scoped to an org.';
@@ -90,7 +91,7 @@ begin;
     -- and since it is also a foreign key to the iam_role_org
     -- grant_scope, it ensures that iam_role_org is set to 'individual'
     -- if this table is populated for the corresponding role.
-    grant_scope text
+    grant_scope text not null
       constraint only_individual_grant_scope_allowed
         check(
             grant_scope = 'individual'
@@ -102,7 +103,9 @@ begin;
         on update cascade,
     constraint iam_role_org_grant_scope_fkey 
       foreign key (role_id, grant_scope)
-      references iam_role_org(public_id, grant_scope),
+      references iam_role_org(public_id, grant_scope)
+        on delete cascade
+        on update cascade,
     create_time wt_timestamp
   );
   comment on table iam_role_org_individual_grant_scope is

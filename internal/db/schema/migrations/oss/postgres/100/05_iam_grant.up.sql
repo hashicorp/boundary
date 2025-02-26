@@ -9,8 +9,8 @@ begin;
   create table iam_grant (
     canonical_grant text primary key,
     resource text not null
-      constraint resource_enm_fkey
-        references resource_enm(name)
+      constraint iam_grant_resource_enm_fkey
+        references iam_grant_resource_enm(name)
         on delete restrict
         on update cascade
   );

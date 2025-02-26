@@ -3,7 +3,7 @@
 
 begin;
 
-  create table resource_enm (
+  create table iam_grant_resource_enm (
     name text primary key
     constraint only_predefined_resource_types_allowed
       check(
@@ -36,11 +36,11 @@ begin;
         )
       )
   );
-  comment on table resource_enm is
-    'resource_enm is an enumeration table for resource types.';
+  comment on table iam_grant_resource_enm is
+    'iam_grant_resource_enm is an enumeration table for resource types.';
 
   -- Insert the predefined resource types
-  insert into resource_enm (name)
+  insert into iam_grant_resource_enm (name)
   values 
     ('*'),
     ('alias'),

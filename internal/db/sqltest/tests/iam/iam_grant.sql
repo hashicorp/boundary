@@ -46,8 +46,8 @@ prepare insert_grant_role as
     ('type=role,group;foo=bar;');
 select throws_like(
   'insert_grant_role',
-  'insert or update on table "iam_grant" violates foreign key constraint "resource_enm_fkey"',
-  'inserting a resource not in resource_enm should fail because type is not a single value'
+  'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
+  'inserting a resource not in iam_grant_resource_enm should fail because type is not a single value'
 );
 
 -- the set_resource() trigger will set resource='bogus', but we did not insert 'bogus'
@@ -59,8 +59,8 @@ prepare insert_grant_bogus as
     ('type=bogus;some=thing;');
 select throws_like(
   'insert_grant_bogus',
-  'insert or update on table "iam_grant" violates foreign key constraint "resource_enm_fkey"',
-  'inserting a resource not in resource_enm should fail'
+  'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
+  'inserting a resource not in iam_grant_resource_enm should fail'
 );
 
 -- insert a duplicate canonical_grant
@@ -88,12 +88,12 @@ prepare insert_grant_wildcard_actions as
   insert into iam_grant
     (canonical_grant)
   values
-    ('id=*;type=*;actions=*;output_fields=*');
+    ('ids=*;type=*;actions=*;output_fields=*');
 select lives_ok('insert_grant_wildcard_actions');
 select is(
   (select resource
      from iam_grant
-    where canonical_grant = 'id=*;type=*;actions=*;output_fields=*'),
+    where canonical_grant = 'ids=*;type=*;actions=*;output_fields=*'),
   '*',
   'resource should be set to "*" if type is "*"'
 );
@@ -104,12 +104,12 @@ prepare insert_grant_single_action as
   insert into iam_grant
     (canonical_grant)
   values
-    ('id=o_1234;type=host;actions=create;output_fields=id');
+    ('ids=o_1234;type=host;actions=create;output_fields=id');
 select lives_ok('insert_grant_single_action');
 select is(
   (select resource
      from iam_grant
-    where canonical_grant = 'id=o_1234;type=host;actions=create;output_fields=id'),
+    where canonical_grant = 'ids=o_1234;type=host;actions=create;output_fields=id'),
   'host',
   'resource should be set to "host" if type is "host"'
 );
@@ -120,12 +120,12 @@ prepare insert_grant_role_multiple_actions as
   insert into iam_grant
     (canonical_grant)
   values
-    ('id=o_1234,o_4567;type=group;actions=create,update;output_fields=id,name');
+    ('ids=o_1234,o_4567;type=group;actions=create,update;output_fields=id,name');
 select lives_ok('insert_grant_role_multiple_actions');
 select is(
   (select resource
      from iam_grant
-    where canonical_grant = 'id=o_1234,o_4567;type=group;actions=create,update;output_fields=id,name'),
+    where canonical_grant = 'ids=o_1234,o_4567;type=group;actions=create,update;output_fields=id,name'),
   'group',
   'resource should be set to "group" if type is "group"'
 );
@@ -136,11 +136,11 @@ prepare insert_grant_multiple_types as
   insert into iam_grant
     (canonical_grant)
   values
-    ('id=o_1234,o_4567;type=target,role,group;actions=create,update;output_fields=id,name');
+    ('ids=o_1234,o_4567;type=target,role,group;actions=create,update;output_fields=id,name');
 select throws_like(
   'insert_grant_multiple_types',
-  'insert or update on table "iam_grant" violates foreign key constraint "resource_enm_fkey"',
-  'inserting a resource not in resource_enm should fail because type is not a single value'
+  'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
+  'inserting a resource not in iam_grant_resource_enm should fail because type is not a single value'
 );
 
 select * from finish();

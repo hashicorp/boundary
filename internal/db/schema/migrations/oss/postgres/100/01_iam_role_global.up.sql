@@ -101,7 +101,8 @@ begin;
     grant_scope_update_time wt_timestamp,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    unique(public_id, grant_scope)
+    constraint iam_role_global_grant_scope_public_id_uq
+      unique(grant_scope, public_id)
   );
   comment on table iam_role_global is
     'iam_role_global is the subtype table for the global role. grant_this_role_scope_update_time and grant_scope_update_time are used to track the last time the grant_this_role_scope and grant_scope columns were updated.';
@@ -144,7 +145,7 @@ begin;
     -- and since it is also a foreign key to the iam_role_global
     -- grant_scope, it ensures that iam_role_global is set to 'individual'
     -- if this table is populated for the corresponding role.
-    grant_scope text
+    grant_scope text not null
        constraint only_individual_grant_scope_allowed
          check(
           grant_scope = 'individual'
@@ -160,7 +161,9 @@ begin;
         ),
     constraint iam_role_global_grant_scope_fkey
       foreign key (role_id, grant_scope)
-      references iam_role_global(public_id, grant_scope),
+      references iam_role_global(public_id, grant_scope)
+      on delete cascade
+      on update cascade,
     create_time wt_timestamp
   );
   comment on table iam_role_global_individual_grant_scope is
