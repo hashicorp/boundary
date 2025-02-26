@@ -184,12 +184,14 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, loginName string, op
 func TestAccountFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) func() (managedGroupID string, accountID string) {
 	return func() (string, string) {
 		t.Helper()
+		uuid, err := uuid.GenerateUUID()
+		require.NoError(t, err)
 		ctx := context.Background()
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeID, kms.KeyPurposeDatabase)
 		require.NoError(t, err)
-		am := TestAuthMethod(t, conn, databaseWrapper, scopeID, []string{"ldap://testldap"})
-		managedGroup := TestManagedGroup(t, conn, am, []string{"test-group"})
-		acct := TestAccount(t, conn, am, "testacct", WithMemberOfGroups(ctx, "test-group"))
+		am := TestAuthMethod(t, conn, databaseWrapper, scopeID, []string{fmt.Sprintf("ldap://%s", uuid)})
+		managedGroup := TestManagedGroup(t, conn, am, []string{uuid})
+		acct := TestAccount(t, conn, am, "testacct", WithMemberOfGroups(ctx, uuid))
 		return managedGroup.PublicId, acct.PublicId
 	}
 }
