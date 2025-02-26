@@ -1237,7 +1237,7 @@ func TestGrants_ChangePassword(t *testing.T) {
 }
 
 func TestGrants_OutputFields(t *testing.T) {
-	t.Run("GetAccounts", func(t *testing.T) {
+	t.Run("ListAccounts", func(t *testing.T) {
 		ctx := context.TODO()
 		conn, _ := db.TestSetup(t, "postgres")
 		rw := db.New(conn)
@@ -1268,7 +1268,7 @@ func TestGrants_OutputFields(t *testing.T) {
 		// only testing global to reduce the permutations and mostly because we're only testing the output fields
 		// grants behavior for walking down the scope tree should be tested in the other tests
 		passwordAM := password.TestAuthMethod(t, conn, globals.GlobalPrefix)
-		passwordAccount, err := pwRepo.CreateAccount(context.Background(), globals.GlobalPrefix, &password.Account{
+		_, err = pwRepo.CreateAccount(context.Background(), globals.GlobalPrefix, &password.Account{
 			Account: &pwstore.Account{
 				AuthMethodId: passwordAM.PublicId,
 				LoginName:    "globalname",
@@ -1280,7 +1280,7 @@ func TestGrants_OutputFields(t *testing.T) {
 
 		ldapAM := ldap.TestAuthMethod(t, conn, wrap, globals.GlobalPrefix, []string{"ldap://test"})
 		_ = ldap.TestManagedGroup(t, conn, ldapAM, []string{"ldap"})
-		ldapAccount := ldap.TestAccount(t, conn, ldapAM, "ldapname", ldap.WithName(ctx, "ldapname"), ldap.WithDescription(ctx, "ldapdesc"), ldap.WithMemberOfGroups(ctx, "ldap"))
+		_ = ldap.TestAccount(t, conn, ldapAM, "ldapname", ldap.WithName(ctx, "ldapname"), ldap.WithDescription(ctx, "ldapdesc"), ldap.WithMemberOfGroups(ctx, "ldap"))
 
 		databaseWrapper, err := kmsCache.GetWrapper(ctx, globals.GlobalPrefix, kms.KeyPurposeDatabase)
 		require.NoError(t, err)
@@ -1300,13 +1300,13 @@ func TestGrants_OutputFields(t *testing.T) {
 		testcases := []struct {
 			name            string
 			userAcountFunc  func(t *testing.T) func() (*iam.User, string)
-			input           *pbs.GetAccountRequest
+			input           *pbs.ListAccountsRequest
 			expectOutfields []string
 		}{
 			{
 				name: "password account all output fields",
-				input: &pbs.GetAccountRequest{
-					Id: passwordAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: passwordAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
@@ -1333,8 +1333,8 @@ func TestGrants_OutputFields(t *testing.T) {
 			},
 			{
 				name: "password account id,name,scope,description output fields",
-				input: &pbs.GetAccountRequest{
-					Id: passwordAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: passwordAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
@@ -1354,8 +1354,8 @@ func TestGrants_OutputFields(t *testing.T) {
 			},
 			{
 				name: "password account created_time,updated_time,version,type output fields",
-				input: &pbs.GetAccountRequest{
-					Id: passwordAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: passwordAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
@@ -1375,8 +1375,8 @@ func TestGrants_OutputFields(t *testing.T) {
 			},
 			{
 				name: "password account auth_method_id,attributes,authorized_actions output fields",
-				input: &pbs.GetAccountRequest{
-					Id: passwordAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: passwordAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
@@ -1395,8 +1395,8 @@ func TestGrants_OutputFields(t *testing.T) {
 			},
 			{
 				name: "ldap account all output fields",
-				input: &pbs.GetAccountRequest{
-					Id: ldapAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: ldapAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -1419,13 +1419,14 @@ func TestGrants_OutputFields(t *testing.T) {
 					globals.AuthMethodIdField,
 					"ldap_account_attributes",
 					globals.AuthorizedActionsField,
-					globals.ManagedGroupIdsField,
+					// this is not returned with a list call
+					// globals.ManagedGroupIdsField,
 				},
 			},
 			{
 				name: "ldap account id,scope,name,description output fields",
-				input: &pbs.GetAccountRequest{
-					Id: ldapAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: ldapAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -1445,8 +1446,8 @@ func TestGrants_OutputFields(t *testing.T) {
 			},
 			{
 				name: "ldap account created_time,updated_time,version,type output fields",
-				input: &pbs.GetAccountRequest{
-					Id: ldapAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: ldapAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -1466,8 +1467,8 @@ func TestGrants_OutputFields(t *testing.T) {
 			},
 			{
 				name: "ldap account auth_method_id,attributes,authorized_actions,managed_group_ids output fields",
-				input: &pbs.GetAccountRequest{
-					Id: ldapAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: ldapAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -1482,13 +1483,14 @@ func TestGrants_OutputFields(t *testing.T) {
 					globals.AuthMethodIdField,
 					"ldap_account_attributes",
 					globals.AuthorizedActionsField,
-					globals.ManagedGroupIdsField,
+					// this is not returned with a list call
+					// globals.ManagedGroupIdsField,
 				},
 			},
 			{
 				name: "oidc account all output fields",
-				input: &pbs.GetAccountRequest{
-					Id: oidcAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: oidcAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -1511,13 +1513,14 @@ func TestGrants_OutputFields(t *testing.T) {
 					globals.AuthMethodIdField,
 					"oidc_account_attributes",
 					globals.AuthorizedActionsField,
-					globals.ManagedGroupIdsField,
+					// this is not returned with a list call
+					// globals.ManagedGroupIdsField,
 				},
 			},
 			{
 				name: "oidc account id,scope,name,description output fields",
-				input: &pbs.GetAccountRequest{
-					Id: oidcAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: oidcAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -1537,8 +1540,8 @@ func TestGrants_OutputFields(t *testing.T) {
 			},
 			{
 				name: "oidc account created_time,updated_time,version,type output fields",
-				input: &pbs.GetAccountRequest{
-					Id: oidcAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: oidcAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -1558,8 +1561,8 @@ func TestGrants_OutputFields(t *testing.T) {
 			},
 			{
 				name: "oidc account auth_method_id,attributes,authorized_actions,managed_group_ids output fields",
-				input: &pbs.GetAccountRequest{
-					Id: oidcAccount.PublicId,
+				input: &pbs.ListAccountsRequest{
+					AuthMethodId: oidcAM.PublicId,
 				},
 				userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
 					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
@@ -1574,7 +1577,8 @@ func TestGrants_OutputFields(t *testing.T) {
 					globals.AuthMethodIdField,
 					"oidc_account_attributes",
 					globals.AuthorizedActionsField,
-					globals.ManagedGroupIdsField,
+					// this is not returned with a list call
+					// globals.ManagedGroupIdsField,
 				},
 			},
 		}
@@ -1584,9 +1588,11 @@ func TestGrants_OutputFields(t *testing.T) {
 				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
-				got, err := s.GetAccount(fullGrantAuthCtx, tc.input)
+				got, err := s.ListAccounts(fullGrantAuthCtx, tc.input)
 				require.NoError(t, err)
-				handlers.AssertOutputFields(t, got.GetItem(), tc.expectOutfields)
+				for _, item := range got.Items {
+					handlers.AssertOutputFields(t, item, tc.expectOutfields)
+				}
 			})
 		}
 
