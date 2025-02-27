@@ -19,7 +19,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -34,7 +33,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
@@ -101,24 +99,7 @@ func TestGet(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
-		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, kmsCache, nil)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -299,24 +280,7 @@ func TestList(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
-		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, kmsCache, nil)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	oNoAuthMethods, _ := iam.TestScopes(t, iamRepo)
@@ -574,24 +538,7 @@ func TestDelete(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
-		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, kmsCache, nil)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -670,24 +617,7 @@ func TestDelete_twice(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
-		return auth.NewAuthMethodRepository(ctx, rw, rw, kms)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, kms, nil)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -712,24 +642,7 @@ func TestCreate(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, testKms)
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, testKms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, testKms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, testKms)
-	}
-	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
-		return auth.NewAuthMethodRepository(ctx, rw, rw, testKms)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, testKms, nil)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -1613,27 +1526,7 @@ func TestListPagination(t *testing.T) {
 	require.NoError(t, err)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
-		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, tokenRepoFn, serversRepoFn, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, kmsCache, nil)
 
 	iamRepo, err := iamRepoFn()
 	require.NoError(t, err)

@@ -5,52 +5,35 @@ package authmethods_test
 
 import (
 	"context"
+	"os"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/go-hclog"
+	"google.golang.org/genproto/protobuf/field_mask"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
-	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"github.com/stretchr/testify/require"
 )
 
 // TestGrants_ReadActions tests read actions to assert that grants are being applied properly
 func TestGrants_ReadActions(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrap := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrap)
-	rw := db.New(conn)
-	kmsCache := kms.TestKms(t, conn, wrap)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iamRepo, nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	}
-	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
-		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
-	}
+	ctx, wrap, conn, rw, kmsCache, iamRepo := getTestCore(t)
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrap, conn, rw, kmsCache, iamRepo)
 
 	s, err := authmethods.NewService(ctx,
 		kmsCache,
@@ -85,12 +68,11 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name                     string
-			input                    *pbs.ListAuthMethodsRequest
-			includeGlobalAuthMethods bool
-			rolesToCreate            []authtoken.TestRoleGrantsForToken
-			wantErr                  error
-			wantIDs                  []string
+			name          string
+			input         *pbs.ListAuthMethodsRequest
+			rolesToCreate []authtoken.TestRoleGrantsForToken
+			wantErr       error
+			wantIDs       []string
 		}{
 			{
 				name: "global role grant this and children returns all auth methods",
@@ -105,7 +87,6 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: nil,
 				wantIDs: []string{
 					oidcGlobal.PublicId,
 					oidcOrg1.PublicId,
@@ -154,7 +135,6 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				},
-				wantErr: nil,
 				wantIDs: []string{oidcOrg1.PublicId, ldapOrg1.PublicId, pwOrg1.PublicId},
 			},
 		}
@@ -192,7 +172,6 @@ func TestGrants_ReadActions(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
 		testcases := []struct {
 			name             string
-			input            *pbs.ListAuthMethodsRequest
 			amIDExpectErrMap map[string]error
 			rolesToCreate    []authtoken.TestRoleGrantsForToken
 		}{
@@ -213,10 +192,6 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "org role grant this and children returns auth methods in org1",
-				input: &pbs.ListAuthMethodsRequest{
-					ScopeId:   org1.PublicId,
-					Recursive: true,
-				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
 						RoleScopeID:  globals.GlobalPrefix,
@@ -231,12 +206,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
-				name: "no grants return all auth methods",
-				input: &pbs.ListAuthMethodsRequest{
-					ScopeId:   globals.GlobalPrefix,
-					Recursive: true,
-					PageSize:  500,
-				},
+				name:          "no grants return all auth methods",
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{},
 				amIDExpectErrMap: map[string]error{
 					pwGlobal.GetPublicId(): handlers.ForbiddenError(),
@@ -260,6 +230,485 @@ func TestGrants_ReadActions(t *testing.T) {
 					}
 					require.NoError(t, err)
 				}
+			})
+		}
+	})
+}
+
+// TestGrants_WriteActions tests write actions to assert that grants are being applied properly
+func TestGrants_WriteActions(t *testing.T) {
+	ctx, wrap, conn, rw, kmsCache, iamRepo := getTestCore(t)
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrap, conn, rw, kmsCache, iamRepo)
+
+	s, err := authmethods.NewService(ctx,
+		kmsCache,
+		pwRepoFn,
+		oidcRepoFn,
+		iamRepoFn,
+		atRepoFn,
+		ldapRepoFn,
+		authMethodRepoFn,
+		1000)
+	require.NoError(t, err)
+	org1, _ := iam.TestScopes(t, iamRepo)
+
+	t.Run("Create", func(t *testing.T) {
+		globalAm := &pb.AuthMethod{
+			Name:        wrapperspb.String("test global auth method"),
+			Description: wrapperspb.String("test description"),
+			ScopeId:     globals.GlobalPrefix,
+			Type:        "password",
+		}
+		org1Am := &pb.AuthMethod{
+			Name:        wrapperspb.String("test org auth method"),
+			Description: wrapperspb.String("test description"),
+			ScopeId:     org1.PublicId,
+			Type:        "password",
+		}
+
+		testcases := []struct {
+			name          string
+			input         *pbs.CreateAuthMethodRequest
+			rolesToCreate []authtoken.TestRoleGrantsForToken
+			wantErr       error
+		}{
+			{
+				name:  "global role grant this and children can create global auth method",
+				input: &pbs.CreateAuthMethodRequest{Item: globalAm},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=create"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				},
+			},
+			{
+				name:  "global role grant this and children & org role grant this can create org auth method",
+				input: &pbs.CreateAuthMethodRequest{Item: org1Am},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=create"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=create"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+			},
+			{
+				name:  "org role can't create global auth methods",
+				input: &pbs.CreateAuthMethodRequest{Item: globalAm},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeID:  org1.PublicId,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=create"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:  "incorrect grants returns 403 error",
+				input: &pbs.CreateAuthMethodRequest{Item: org1Am},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=list,read,update"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=list,read,update"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:          "no grants returns 403 error",
+				input:         &pbs.CreateAuthMethodRequest{Item: globalAm},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{},
+				wantErr:       handlers.ForbiddenError(),
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				_, finalErr := s.CreateAuthMethod(fullGrantAuthCtx, tc.input)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, finalErr, tc.wantErr)
+					return
+				}
+				require.NoError(t, finalErr)
+			})
+		}
+	})
+
+	t.Run("Update", func(t *testing.T) {
+		// Create global & org auth methods to test updates
+		globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
+		globalAm := &pb.AuthMethod{
+			Name:        &wrapperspb.StringValue{Value: "new name"},
+			Description: &wrapperspb.StringValue{Value: "new desc"},
+			Version:     1,
+		}
+
+		org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
+		org1Am := &pb.AuthMethod{
+			Name:        &wrapperspb.StringValue{Value: "new name"},
+			Description: &wrapperspb.StringValue{Value: "new desc"},
+			Version:     1,
+		}
+
+		testcases := []struct {
+			name          string
+			input         *pbs.UpdateAuthMethodRequest
+			rolesToCreate []authtoken.TestRoleGrantsForToken
+			wantErr       error
+		}{
+			{
+				name: "global role grant this and children can update global auth method",
+				input: &pbs.UpdateAuthMethodRequest{
+					Id: globalAmId,
+					UpdateMask: &field_mask.FieldMask{
+						Paths: []string{"name", "description"},
+					},
+					Item: globalAm,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=update"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				},
+			},
+			{
+				name: "global role grant this and children & org role grant this can update org auth method",
+				input: &pbs.UpdateAuthMethodRequest{
+					Id: org1AmId,
+					UpdateMask: &field_mask.FieldMask{
+						Paths: []string{"name", "description"},
+					},
+					Item: org1Am,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=update"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=update"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+			},
+			{
+				name: "org role can't update global auth methods",
+				input: &pbs.UpdateAuthMethodRequest{
+					Id: globalAmId,
+					UpdateMask: &field_mask.FieldMask{
+						Paths: []string{"name", "description"},
+					},
+					Item: globalAm,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeID:  org1.PublicId,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=update"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "incorrect grants returns 403 error",
+				input: &pbs.UpdateAuthMethodRequest{
+					Id: org1AmId,
+					UpdateMask: &field_mask.FieldMask{
+						Paths: []string{"name", "description"},
+					},
+					Item: org1Am,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=list,read,create"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=list,read,create"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "no grants returns 403 error",
+				input: &pbs.UpdateAuthMethodRequest{
+					Id: globalAmId,
+					UpdateMask: &field_mask.FieldMask{
+						Paths: []string{"name", "description"},
+					},
+					Item: globalAm,
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{},
+				wantErr:       handlers.ForbiddenError(),
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				_, finalErr := s.UpdateAuthMethod(fullGrantAuthCtx, tc.input)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, finalErr, tc.wantErr)
+					return
+				}
+				require.NoError(t, finalErr)
+			})
+		}
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		testcases := []struct {
+			name          string
+			am            *password.AuthMethod
+			rolesToCreate []authtoken.TestRoleGrantsForToken
+			wantErr       error
+		}{
+			{
+				name: "global role grant this and children can delete global auth method",
+				am:   password.TestAuthMethod(t, conn, globals.GlobalPrefix),
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=delete"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				},
+			},
+			{
+				name: "global role grant this and children & org role grant this can delete org auth method",
+				am:   password.TestAuthMethod(t, conn, org1.PublicId),
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=delete"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=delete"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+			},
+			{
+				name: "org role can't delete global auth methods",
+				am:   password.TestAuthMethod(t, conn, globals.GlobalPrefix),
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeID:  org1.PublicId,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=delete"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "incorrect grants returns 403 error",
+				am:   password.TestAuthMethod(t, conn, org1.PublicId),
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=list,read,create,update"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeID:  org1.PublicId,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=list,read,create,update"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:          "no grants returns 403 error",
+				am:            password.TestAuthMethod(t, conn, globals.GlobalPrefix),
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{},
+				wantErr:       handlers.ForbiddenError(),
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				input := &pbs.DeleteAuthMethodRequest{Id: tc.am.PublicId}
+				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				_, finalErr := s.DeleteAuthMethod(fullGrantAuthCtx, input)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, finalErr, tc.wantErr)
+					return
+				}
+				require.NoError(t, finalErr)
+			})
+		}
+	})
+
+	t.Run("Authenticate", func(t *testing.T) {
+		pwRepo, err := pwRepoFn()
+		require.NoError(t, err)
+
+		// We need a sys eventer in order to authenticate
+		eventConfig := event.TestEventerConfig(t, "TestGrants_WriteActions", event.TestWithObservationSink(t))
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+
+		require.NoError(t, event.InitSysEventer(testLogger, testLock, "TestGrants_WriteActions", event.WithEventerConfig(&eventConfig.EventerConfig)))
+		sinkFileName := eventConfig.ObservationEvents.Name()
+		t.Cleanup(func() {
+			require.NoError(t, os.Remove(sinkFileName))
+		})
+
+		testcases := []struct {
+			name          string
+			scopeId       string
+			input         *pbs.AuthenticateRequest
+			rolesToCreate []authtoken.TestRoleGrantsForToken
+			wantErr       error
+		}{
+			{
+				name:    "global role grant this and children can authenticate against a global auth method",
+				scopeId: globals.GlobalPrefix,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeID:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
+						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				},
+			},
+			{
+				name:    "org role can't authenticate against a global auth method",
+				scopeId: globals.GlobalPrefix,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeID:  org1.PublicId,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:    "no grants returns 403 error for a global auth method",
+				scopeId: globals.GlobalPrefix,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:    "org scopes grant anyone permission to authenticate (and list) auth methods by default",
+				scopeId: org1.PublicId,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+			},
+			{
+				name:    "granting authenticate again at the org scope allows authentication",
+				scopeId: org1.PublicId,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeID:  org1.PublicId,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				// Create auth method
+				if tc.scopeId == globals.GlobalPrefix {
+					tc.input.AuthMethodId = password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
+				} else {
+					tc.input.AuthMethodId = password.TestAuthMethod(t, conn, org1.PublicId).PublicId
+				}
+
+				// Create account for the auth method
+				acct, err := password.NewAccount(ctx, tc.input.AuthMethodId, password.WithLoginName(testLoginName))
+				require.NoError(t, err)
+				acct, err = pwRepo.CreateAccount(context.Background(), tc.scopeId, acct, password.WithPassword(testPassword))
+				require.NoError(t, err)
+				require.NotNil(t, acct)
+
+				// Create user linked to the account
+				user := iam.TestUser(t, iamRepo, tc.scopeId, iam.WithAccountIds(acct.PublicId))
+
+				// Create the desired role/grants for the user
+				for _, roleToCreate := range tc.rolesToCreate {
+					role := iam.TestRoleWithGrants(t, conn, roleToCreate.RoleScopeID, roleToCreate.GrantScopes, roleToCreate.GrantStrings)
+					iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
+				}
+
+				// Create auth token for the user
+				atRepo, err := atRepoFn()
+				require.NoError(t, err)
+				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+				require.NoError(t, err)
+				ctx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+				_, err = s.Authenticate(ctx, tc.input)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, err, tc.wantErr)
+					return
+				}
+				require.NoError(t, err)
 			})
 		}
 	})

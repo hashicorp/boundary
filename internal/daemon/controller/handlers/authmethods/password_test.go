@@ -14,11 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
-	am "github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/auth/ldap"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
@@ -48,24 +44,7 @@ func TestUpdate_Password(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
-		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, kms, nil)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -499,24 +478,7 @@ func TestAuthenticate_Password(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
-		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, kms, nil)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, am.PublicId)
@@ -727,24 +689,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
-		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := getRepoFuncs(t, ctx, wrapper, conn, rw, kms, nil)
 
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	acct, err := password.NewAccount(ctx, am.GetPublicId(), password.WithLoginName(testLoginName))
