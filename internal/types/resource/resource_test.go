@@ -137,9 +137,9 @@ func Test_Resource(t *testing.T) {
 		t.Run(tt.typeString, func(t *testing.T) {
 			assert.Equalf(t, tt.want, Map[tt.typeString], "unexpected type for %s", tt.typeString)
 			assert.Equalf(t, tt.typeString, tt.want.String(), "unexpected string for %s", tt.typeString)
-			assert.Equalf(t, tt.topLevelType, TopLevelType(tt.want), "unexpected top level type types for %s", tt.typeString)
-			assert.Equalf(t, tt.hasChildTypes, HasChildTypes(tt.want), "unexpected has child types for %s", tt.typeString)
-			parent := Parent(tt.want)
+			assert.Equalf(t, tt.topLevelType, tt.want.TopLevelType(), "unexpected top level type types for %s", tt.typeString)
+			assert.Equalf(t, tt.hasChildTypes, tt.want.HasChildTypes(), "unexpected has child types for %s", tt.typeString)
+			parent := tt.want.Parent()
 			if tt.parent == Unknown {
 				assert.Equal(t, tt.want, parent)
 			} else {
