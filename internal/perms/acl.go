@@ -333,7 +333,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			r.Id == "" &&
 			grant.Type == r.Type &&
 			grant.Type != resource.Unknown &&
-			resource.TopLevelType(r.Type) &&
+			r.Type.TopLevelType() &&
 			(action.List.IsActionOrParent(aType) ||
 				action.Create.IsActionOrParent(aType)):
 
@@ -357,7 +357,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			grant.Id == r.Pin &&
 			grant.Type != resource.Unknown &&
 			(grant.Type == r.Type || grant.Type == resource.All) &&
-			!resource.TopLevelType(r.Type):
+			!r.Type.TopLevelType():
 
 			found = true
 		}
