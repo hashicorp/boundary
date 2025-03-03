@@ -55,6 +55,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrap)
 	sche := scheduler.TestScheduler(t, conn, wrap)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	staticRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(ctx, rw, rw, kmsCache)
 	}
@@ -521,6 +522,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		kmsCache := kms.TestKms(t, conn, wrap)
 		sche := scheduler.TestScheduler(t, conn, wrap)
 		atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
 		staticRepoFn := func() (*static.Repository, error) {
 			return static.NewRepository(ctx, rw, rw, kmsCache)
 		}
@@ -700,6 +702,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		kmsCache := kms.TestKms(t, conn, wrap)
 		sche := scheduler.TestScheduler(t, conn, wrap)
 		atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
 		staticRepoFn := func() (*static.Repository, error) {
 			return static.NewRepository(ctx, rw, rw, kmsCache)
 		}
@@ -835,6 +838,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		kmsCache := kms.TestKms(t, conn, wrap)
 		sche := scheduler.TestScheduler(t, conn, wrap)
 		atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
 		staticRepoFn := func() (*static.Repository, error) {
 			return static.NewRepository(ctx, rw, rw, kmsCache)
 		}
