@@ -20,22 +20,34 @@ begin;
   create index iam_grant_resource_ix
     on iam_grant (resource);
 
-  create function set_resource() returns trigger
+  create or replace function set_resource() returns trigger
   as $$
-  declare resource text[];
+  declare type_matches text[];
   begin
-    select regexp_matches(new.canonical_grant, 'type=([^;]+);')
-    into resource;
-    if resource is null then
-      new.resource = 'unknown';
+    -- validate that every token is in the form key=value
+    if not new.canonical_grant ~ '^(?:[^;=]+=[^;=]+)(?:;[^;=]+=[^;=]+)*;?$' then
+      raise exception 'malformed grant: %', new.canonical_grant;
+    end if;
+
+    -- Extract all "type" tokens from the canonical_grant string
+    select array_agg(t[1])
+      into type_matches
+    from regexp_matches(new.canonical_grant, '(?<=^|;)type=([^;]+)(?=;|$)', 'g') AS t;
+
+    -- if there are multiple canonical grant types specified, throw an error.
+    -- Ensure that the canonical_grant type is only referencing a single resource
+    if type_matches is not null and array_length(type_matches, 1) > 1 then
+      raise exception 'multiple type tokens in grant. only one type expected: %', new.canonical_grant;
+    elsif type_matches is not null and array_length(type_matches, 1) = 1 then
+      new.resource := type_matches[1];
     else
-      new.resource = resource[1];
+      new.resource := 'unknown';
     end if;
     return new;
   end
   $$ language plpgsql;
   comment on function set_resource() is
-    'set_resource is a trigger function that sets the resource column based on the canonical_grant.';
+    'set_resource is a trigger function that validates the canonical grant string and sets the resource column based on the "type" token. Malformed tokens raise an exception. A valid grant without a type token results in resource being set to "unknown".';
 
   create trigger set_resource before insert on iam_grant
     for each row execute procedure set_resource();
