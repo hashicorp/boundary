@@ -112,6 +112,20 @@ description: >-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Azure Virtual Machine Scale Set support for dynamic host catalogs
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA in version 0.19.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The Azure plugin now supports Azure Virtual Machine Scale Sets in both Flexible and Uniform orchestration modes for dynamic host catalogs. It automatically discovers any individual virtual machine instances that are part of the scale sets and adds them as hosts.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/concepts/host-discovery/azure">Azure dynamic host catalogs</a>.
+    </td>
+  </tr>
+
   </tbody>
 </table>
 
@@ -196,6 +210,24 @@ description: >-
     <br /><br />
     Learn more: <a href="https://github.com/golang/go/issues/70047">Go issue #70047</a> and <a href="https://tip.golang.org/doc/go1.23">Go 1.23 Release Notes</a>
     <br /><br />
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.19.0
+    <br /><br />
+    (Fixed in 0.19.1)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Deleted auth tokens prevent reauthentication
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In previous versions, when the auth tokens associated with a user were deleted, Boundary deleted the user as well. When the user logged in later, Boundary would have to reload the user's resources before they could access them.
+    <br/><br />
+    Version 0.19.1 introduces a soft delete for when a cached user's auth tokens are deleted and there is a valid refresh token that is less than 20 days old. Boundary marks the user as deleted, so they do not show up in lists and searches. But it keeps their user information in the cache.
+    <br /><br />
+    When the user logs in again, Boundary changes the user's status to active and there is no need to reload the resources. When the refresh token is older than 20 days, Boundary deletes the user and their resources from the cache.
     </td>
   </tr>
 
