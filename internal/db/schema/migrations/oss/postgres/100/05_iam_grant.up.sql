@@ -32,7 +32,7 @@ begin;
     -- Extract all "type" tokens from the canonical_grant string
     select array_agg(t[1])
       into type_matches
-    from regexp_matches(new.canonical_grant, '(?<=^|;)type=([^;]+)(?=;|$)', 'g') AS t;
+    from regexp_matches(new.canonical_grant, '(?<=^|;)type=([^;]+)(?=;|$)', 'g') as t;
 
     -- if there are multiple canonical grant types specified, throw an error.
     -- Ensure that the canonical_grant type is only referencing a single resource
