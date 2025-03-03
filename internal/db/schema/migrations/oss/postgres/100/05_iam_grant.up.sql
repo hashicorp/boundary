@@ -3,7 +3,7 @@
 
 begin;
 
-  -- Create the domain wt_canonical_grant to enforce the canonical grant format.
+  -- wt_canonical_grant domain represents Boundary canonical grant.
   -- A canonical grant is a semicolon-separated list of key=value pairs.
   -- e.g. "id=*;type=role;action=read;output_fields=id,name"
   create domain wt_canonical_grant as text
