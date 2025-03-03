@@ -30,7 +30,7 @@ prepare insert_malformed_grant as
     ('no_type_at_all;');
 select throws_like(
   'insert_malformed_grant',
-  'malformed grant: no_type_at_all;',
+  'value for domain wt_canonical_grant violates check constraint "wt_canonical_grant_check"',
   'inserting a grant that is malformed should fail'
 );
 
@@ -178,7 +178,7 @@ prepare insert_grant_malformed_type_with_no_semicolon as
     ('ids=*;type=credential-library actions=create;output_fields=id');
 select throws_like(
   'insert_grant_malformed_type_with_no_semicolon',
-  'malformed grant: ids=*;type=credential-library actions=create;output_fields=id',
+  'value for domain wt_canonical_grant violates check constraint "wt_canonical_grant_check"',
   'inserting a resource with a malformed type should fail'
 );
 
@@ -190,7 +190,7 @@ prepare insert_grant_malformed_type_with_no_equals as
     ('ids=*;type;actions=create;output_fields=id');
 select throws_like(
   'insert_grant_malformed_type_with_no_equals',
-  'malformed grant: ids=*;type;actions=create;output_fields=id',
+  'value for domain wt_canonical_grant violates check constraint "wt_canonical_grant_check"',
   'inserting a resource with a malformed type should fail'
 );
 
@@ -202,7 +202,7 @@ prepare insert_grant_malformed_type_with_no_value as
     ('ids=*;type=;actions=create;output_fields=id');
 select throws_like(
   'insert_grant_malformed_type_with_no_value',
-  'malformed grant: ids=*;type=;actions=create;output_fields=id',
+  'value for domain wt_canonical_grant violates check constraint "wt_canonical_grant_check"',
   'inserting a resource with a malformed type should fail'
 );
 
@@ -229,7 +229,7 @@ prepare insert_grant_malformed_type_with_double_ids_semicolon as
     ('ids=*;;type=credential-library;actions=create;output_fields=id');
 select throws_like(
   'insert_grant_malformed_type_with_double_ids_semicolon',
-  'malformed grant: ids=*;;type=credential-library;actions=create;output_fields=id',
+  'value for domain wt_canonical_grant violates check constraint "wt_canonical_grant_check"',
   'inserting a resource with a malformed type should fail'
 );
 
@@ -256,7 +256,7 @@ prepare insert_grant_malformed_type_with_semicolon_after_type as
     ('ids=*;type;=credential-library;actions=create;output_fields=id;');
 select throws_like(
   'insert_grant_malformed_type_with_semicolon_after_type',
-  'malformed grant: ids=*;type;=credential-library;actions=create;output_fields=id;',
+  'value for domain wt_canonical_grant violates check constraint "wt_canonical_grant_check"',
   'inserting a resource with a malformed type should fail'
 );
 

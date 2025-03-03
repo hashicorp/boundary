@@ -3,11 +3,21 @@
 
 begin;
 
+  -- Create the domain wt_canonical_grant to enforce the canonical grant format.
+  -- A canonical grant is a semicolon-separated list of key=value pairs.
+  -- e.g. "id=*;type=role;action=read;output_fields=id,name"
+  create domain wt_canonical_grant as text
+    check(
+      value ~ '^(?:[^;=]+=[^;=]+)(?:;[^;=]+=[^;=]+)*;?$'
+    );
+  comment on domain wt_canonical_grant is
+    'A canonical grant is a semicolon-separated list of key=value pairs.';
+
   -- iam_grant is the root table for a grant value object.
   -- A grant can only reference a single resource, including the special
   -- strings "*" to indicate "all" resources, and "unknown" when no resource is set.
   create table iam_grant (
-    canonical_grant text primary key,
+    canonical_grant wt_canonical_grant primary key,
     resource text not null
       constraint iam_grant_resource_enm_fkey
         references iam_grant_resource_enm(name)
@@ -20,15 +30,11 @@ begin;
   create index iam_grant_resource_ix
     on iam_grant (resource);
 
+  -- set_resource sets the resource column based on the "type" token in the canonical_grant.
   create or replace function set_resource() returns trigger
   as $$
   declare type_matches text[];
   begin
-    -- validate that every token is in the form key=value
-    if not new.canonical_grant ~ '^(?:[^;=]+=[^;=]+)(?:;[^;=]+=[^;=]+)*;?$' then
-      raise exception 'malformed grant: %', new.canonical_grant;
-    end if;
-
     -- Extract all "type" tokens from the canonical_grant string
     select array_agg(t[1])
       into type_matches
@@ -47,7 +53,7 @@ begin;
   end
   $$ language plpgsql;
   comment on function set_resource() is
-    'set_resource is a trigger function that validates the canonical grant string and sets the resource column based on the "type" token. Malformed tokens raise an exception. A valid grant without a type token results in resource being set to "unknown".';
+    'set_resource sets the resource column based on the "type" token. A valid grant without a type token results in resource being set to "unknown".';
 
   create trigger set_resource before insert on iam_grant
     for each row execute procedure set_resource();
