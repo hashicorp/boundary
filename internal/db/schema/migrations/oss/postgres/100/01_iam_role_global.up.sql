@@ -164,7 +164,8 @@ begin;
       references iam_role_global(public_id, grant_scope)
       on delete cascade
       on update cascade,
-    create_time wt_timestamp
+    create_time wt_timestamp,
+    primary key(role_id, scope_id)
   );
   comment on table iam_role_global_individual_grant_scope is
     'iam_role_global_individual_grant_scope is the subtype table for the global role with grant_scope as individual.';

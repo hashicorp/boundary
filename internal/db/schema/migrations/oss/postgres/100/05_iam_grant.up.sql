@@ -31,7 +31,7 @@ begin;
     on iam_grant (resource);
 
   -- set_resource sets the resource column based on the "type" token in the canonical_grant.
-  create or replace function set_resource() returns trigger
+  create function set_resource() returns trigger
   as $$
   declare type_matches text[];
   begin
