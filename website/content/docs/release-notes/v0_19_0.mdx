@@ -225,7 +225,7 @@ description: >-
     <td style={{verticalAlign: 'middle'}}>
     Version 0.19.0 introduced a soft delete for when a cached user's auth tokens are deleted, but there is a valid refresh token that is less than 20 days old. Boundary considers those users as deleted. But it keeps their user information in the cache so that it can restore the information, if they log in again.
     <br /><br />
-    However, soft-deleted users were not being properly restored when they logged back in, and it affected search capabilities.
+    However, soft-deleted users were not being properly restored when they logged back in and it affected search capabilities.
     <br/><br />
     This issue is resolved in version 0.19.1. Soft-deleted users are now properly restored as active when they log in again if the refresh token is less than 20 days old.
     </td>
