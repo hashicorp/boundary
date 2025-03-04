@@ -412,7 +412,7 @@ func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleIds []string, 
 	return roleGrantScopes, nil
 }
 
-type multiGrantTuple struct {
+type MultiGrantTuple struct {
 	RoleId            string
 	RoleScopeId       string
 	RoleParentScopeId string
@@ -441,7 +441,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Op
 		query = fmt.Sprintf(grantsForUserQuery, authUser)
 	}
 
-	var grants []multiGrantTuple
+	var grants []MultiGrantTuple
 	rows, err := r.reader.Query(ctx, query, []any{userId})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -477,7 +477,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Op
 
 	if opts.withTestCacheMultiGrantTuples != nil {
 		for i, grant := range grants {
-			grant.testStableSort()
+			grant.TestStableSort()
 			grants[i] = grant
 		}
 		*opts.withTestCacheMultiGrantTuples = grants
@@ -486,7 +486,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Op
 	return ret, nil
 }
 
-func (m *multiGrantTuple) testStableSort() {
+func (m *MultiGrantTuple) TestStableSort() {
 	grantScopeIds := strings.Split(m.GrantScopeIds, "^")
 	sort.Strings(grantScopeIds)
 	m.GrantScopeIds = strings.Join(grantScopeIds, "^")
