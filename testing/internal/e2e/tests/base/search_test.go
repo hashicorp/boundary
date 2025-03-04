@@ -102,6 +102,17 @@ func TestCliSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get current number of targets
+	// Do a force-refresh first to ensure cache has the latest information
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-force-refresh", "true",
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
 	var currentCount int
 	err = backoff.RetryNotify(
 		func() error {
@@ -301,19 +312,62 @@ func TestCliSearch(t *testing.T) {
 
 	// Log back in and confirm search works
 	boundary.AuthenticateAdminCli(t, ctx)
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"search",
-			"-resource", "targets",
-			"-format", "json",
-			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
-		),
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"search",
+					"-resource", "targets",
+					"-format", "json",
+					"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+				),
+			)
+			if output.Err != nil {
+				outputStatus := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+				t.Log("Printing cache status...")
+				t.Log(string(outputStatus.Stdout))
+				var statusResult clientcache.StatusResult
+				err = json.Unmarshal(outputStatus.Stdout, &statusResult)
+				if err != nil {
+					return backoff.Permanent(err)
+				}
+
+				outputLog := e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(outputLog.Stdout))
+
+				// BUG WORKAROUND: It seems like there's some weird interaction where
+				// occasionally, the cache fails to update after authentication
+				// on Linux environments
+				// https://hashicorp.atlassian.net/browse/ICU-16595
+				boundary.AuthenticateAdminCli(t, ctx)
+
+				return errors.New(string(output.Stderr))
+			}
+
+			searchResult := clientcache.SearchResult{}
+			err := json.Unmarshal(output.Stdout, &searchResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
+			if len(searchResult.Item.Targets) != len(targetIds) {
+				return errors.New(
+					fmt.Sprintf(
+						"Search did not return expected number of targets, EXPECTED: %d, ACTUAL: %d",
+						len(targetIds),
+						len(searchResult.Item.Targets),
+					),
+				)
+			}
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	searchResult = clientcache.SearchResult{}
-	err = json.Unmarshal(output.Stdout, &searchResult)
-	require.NoError(t, err)
-	require.Len(t, searchResult.Item.Targets, len(targetIds))
 
 	// Restart cache and confirm search works
 	t.Log("Restarting cache...")
