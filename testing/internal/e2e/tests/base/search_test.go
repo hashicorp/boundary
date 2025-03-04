@@ -336,9 +336,10 @@ func TestCliSearch(t *testing.T) {
 				t.Log("Printing cache log...")
 				t.Log(string(outputLog.Stdout))
 
-				// BUG: It seems like there's some weird interaction where
+				// BUG WORKAROUND: It seems like there's some weird interaction where
 				// occasionally, the cache fails to update after authentication
 				// on Linux environments
+				// https://hashicorp.atlassian.net/browse/ICU-16595
 				boundary.AuthenticateAdminCli(t, ctx)
 
 				return errors.New(string(output.Stderr))
