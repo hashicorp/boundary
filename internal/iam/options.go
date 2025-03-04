@@ -42,7 +42,7 @@ type options struct {
 	withReader                    db.Reader
 	withWriter                    db.Writer
 	withStartPageAfterItem        pagination.Item
-	withTestCacheMultiGrantTuples *[]multiGrantTuple
+	withTestCacheMultiGrantTuples *[]MultiGrantTuple
 }
 
 func getDefaultOptions() options {
@@ -177,7 +177,7 @@ func WithStartPageAfterItem(item pagination.Item) Option {
 	}
 }
 
-func withTestCacheMultiGrantTuples(cache *[]multiGrantTuple) Option {
+func WithTestCacheMultiGrantTuples(cache *[]MultiGrantTuple) Option {
 	return func(o *options) {
 		o.withTestCacheMultiGrantTuples = cache
 	}
