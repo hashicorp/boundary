@@ -112,6 +112,20 @@ description: >-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Azure Virtual Machine Scale Set support for dynamic host catalogs
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA in version 0.19.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The Azure plugin now supports Azure Virtual Machine Scale Sets in both Flexible and Uniform orchestration modes for dynamic host catalogs. It automatically discovers any individual virtual machine instances that are part of the scale sets and adds them as hosts.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/concepts/host-discovery/azure">Azure dynamic host catalogs</a>.
+    </td>
+  </tr>
+
   </tbody>
 </table>
 
@@ -196,6 +210,24 @@ description: >-
     <br /><br />
     Learn more: <a href="https://github.com/golang/go/issues/70047">Go issue #70047</a> and <a href="https://tip.golang.org/doc/go1.23">Go 1.23 Release Notes</a>
     <br /><br />
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.19.0
+    <br /><br />
+    (Fixed in 0.19.1)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Soft-deleted users are not properly authenticated
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Version 0.19.0 introduced a soft delete for when a cached user's auth tokens are deleted, but there is a valid refresh token that is less than 20 days old. Boundary considers those users as deleted. But it keeps their user information in the cache so that it can restore the information, if they log in again.
+    <br /><br />
+    However, soft-deleted users were not being properly restored when they logged back in and it affected search capabilities.
+    <br/><br />
+    This issue is resolved in version 0.19.1. Soft-deleted users are now properly restored as active when they log in again if the refresh token is less than 20 days old.
     </td>
   </tr>
 
