@@ -319,7 +319,7 @@ func TestManagedGroupRole(t testing.TB, conn *db.DB, roleId, managedGrpId string
 // TestRoleWithGrants creates a role suitable for testing along with grants
 // Functional options for GrantScopes aren't used to express that
 // this function does not provide any default grant scope unlike TestRole
-func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
+func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIds []string, grants []string) *Role {
 	t.Helper()
 
 	ctx := context.Background()
@@ -334,7 +334,7 @@ func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs
 	require.NoError(rw.Create(ctx, role))
 	require.NotEmpty(role.PublicId)
 
-	for _, gsi := range grantScopeIDs {
+	for _, gsi := range grantScopeIds {
 		gs, err := NewRoleGrantScope(ctx, id, gsi)
 		require.NoError(err)
 		require.NoError(rw.Create(ctx, gs))
@@ -347,7 +347,7 @@ func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs
 }
 
 type TestRoleGrantsRequest struct {
-	RoleScopeID string
+	RoleScopeId string
 	GrantScopes []string
 	Grants      []string
 }
@@ -361,7 +361,7 @@ func TestUserManagedGroupGrantsFunc(
 	t *testing.T,
 	conn *db.DB,
 	kmsCache *kms.Kms,
-	scopeID string,
+	scopeId string,
 	managedGroupAccountSetupFunc auth.TestAuthMethodWithAccountInManagedGroup,
 	testRoleGrants []TestRoleGrantsRequest,
 ) func() (*User, string) {
@@ -371,10 +371,10 @@ func TestUserManagedGroupGrantsFunc(
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
-		_, account, mg := managedGroupAccountSetupFunc(t, conn, kmsCache, scopeID)
-		user := TestUser(t, repo, scopeID, WithAccountIds(account.GetPublicId()))
+		_, account, mg := managedGroupAccountSetupFunc(t, conn, kmsCache, scopeId)
+		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
 		for _, trg := range testRoleGrants {
-			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
 			_ = TestManagedGroupRole(t, conn, role.PublicId, mg.GetPublicId())
 		}
 		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
@@ -391,7 +391,7 @@ func TestUserDirectGrantsFunc(
 	t *testing.T,
 	conn *db.DB,
 	kmsCache *kms.Kms,
-	scopeID string,
+	scopeId string,
 	setupFunc auth.TestAuthMethodWithAccountFunc,
 	testRoleGrants []TestRoleGrantsRequest,
 ) func() (*User, string) {
@@ -402,10 +402,10 @@ func TestUserDirectGrantsFunc(
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
-		user := TestUser(t, repo, scopeID, WithAccountIds(account.GetPublicId()))
+		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
 		require.NoError(t, err)
 		for _, trg := range testRoleGrants {
-			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
 			_ = TestUserRole(t, conn, role.PublicId, user.PublicId)
 		}
 		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
@@ -423,7 +423,7 @@ func TestUserGroupGrantsFunc(
 	t *testing.T,
 	conn *db.DB,
 	kmsCache *kms.Kms,
-	scopeID string,
+	scopeId string,
 	setupFunc auth.TestAuthMethodWithAccountFunc,
 	testRoleGrants []TestRoleGrantsRequest,
 ) func() (*User, string) {
@@ -434,7 +434,7 @@ func TestUserGroupGrantsFunc(
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
-		role, err := NewRole(ctx, scopeID)
+		role, err := NewRole(ctx, scopeId)
 		require.NoError(t, err)
 		id, err := newRoleId(ctx)
 		require.NoError(t, err)
@@ -442,11 +442,11 @@ func TestUserGroupGrantsFunc(
 		require.NoError(t, rw.Create(ctx, role))
 		require.NotEmpty(t, role.PublicId)
 		require.NoError(t, err)
-		group := TestGroup(t, conn, scopeID)
+		group := TestGroup(t, conn, scopeId)
 		require.NoError(t, err)
-		user := TestUser(t, repo, scopeID, WithAccountIds(account.GetPublicId()))
+		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
 		for _, trg := range testRoleGrants {
-			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
 			_ = TestGroupRole(t, conn, role.PublicId, group.PublicId)
 		}
 		_, err = repo.AddGroupMembers(ctx, group.PublicId, group.Version, []string{user.PublicId})

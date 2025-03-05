@@ -88,7 +88,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -103,7 +103,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=list,read"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
@@ -119,7 +119,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: org1.PublicId,
+						RoleScopeId: org1.PublicId,
 						Grants:      []string{"ids=*;type=group;actions=list,read"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
@@ -135,7 +135,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -151,7 +151,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeDescendants},
 					},
@@ -167,7 +167,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: org2.PublicId,
+						RoleScopeId: org2.PublicId,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -183,7 +183,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
 						},
@@ -201,12 +201,12 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read,list"},
 						GrantScopes: []string{proj1.PublicId, proj2.PublicId, proj3.PublicId},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read,list"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -222,7 +222,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=target;actions=read,list"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -263,7 +263,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "global role group grant this scope with all permissions",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -280,7 +280,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "global role group grant this scope with all permissions",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -297,7 +297,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "global role grant children scopes with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
@@ -314,7 +314,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "global role grant descendant scopes with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeDescendants},
 					},
@@ -331,7 +331,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "global role grant this and children scopes with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
@@ -348,7 +348,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "global role grant this and descendant scopes with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -365,7 +365,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "org1 role grant this scope with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: org1.GetPublicId(),
+						RoleScopeId: org1.GetPublicId(),
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -382,7 +382,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "org1 role grant children scope with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: org1.GetPublicId(),
+						RoleScopeId: org1.GetPublicId(),
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
@@ -399,7 +399,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "org1 role grant this and children scopes with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: org1.GetPublicId(),
+						RoleScopeId: org1.GetPublicId(),
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
@@ -416,7 +416,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "proj1 role grant this scope with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: proj1.GetPublicId(),
+						RoleScopeId: proj1.GetPublicId(),
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -433,7 +433,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "global role grant this and descendant scope with read permissions on specific group",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{fmt.Sprintf("ids=%s;types=group ;actions=read", org1Group.PublicId)},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -450,7 +450,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "global role grant this and specific scopes with read permissions on specific group",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", org1Group.PublicId),
 							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
@@ -470,14 +470,14 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "union multiple role grant specific resources permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", globalGroup.PublicId),
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: org1.GetPublicId(),
+						RoleScopeId: org1.GetPublicId(),
 						Grants: []string{
 							fmt.Sprintf("ids=%s;types=group;actions=read", org1Group.PublicId),
 							fmt.Sprintf("ids=%s;types=group;actions=read", proj1Group.PublicId),
@@ -562,7 +562,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant all can create all",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -580,7 +580,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "groups grant all can create all",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -598,7 +598,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "ldap grant all can create all",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -616,7 +616,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "oidc grant all can create all",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -634,7 +634,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "grant children can only create in orgs",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
@@ -688,33 +688,33 @@ func TestGrants_WriteActions(t *testing.T) {
 		org2, proj2 := iam.TestScopes(t, iamRepo)
 		proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
 
-		allScopeIDs := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
+		allScopeIds := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
 		testcases := []struct {
 			name                    string
 			userFunc                func() (*iam.User, string)
-			deleteAllowedAtScopeIDs []string
+			deleteAllowedAtScopeIds []string
 		}{
 			{
 				name: "grant all can delete all",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
-				deleteAllowedAtScopeIDs: allScopeIDs,
+				deleteAllowedAtScopeIds: allScopeIds,
 			},
 			{
 				name: "grant children can only delete in orgs",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				}),
-				deleteAllowedAtScopeIDs: []string{org1.PublicId, org2.PublicId},
+				deleteAllowedAtScopeIds: []string{org1.PublicId, org2.PublicId},
 			},
 		}
 
@@ -722,7 +722,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				// setup a map to track which scope correlates to a group
 				scopeIdGroupMap := map[string]*iam.Group{}
-				for _, scp := range allScopeIDs {
+				for _, scp := range allScopeIds {
 					g := iam.TestGroup(t, conn, scp)
 					scopeIdGroupMap[scp] = g
 				}
@@ -732,7 +732,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				for scope, group := range scopeIdGroupMap {
 					_, err = s.DeleteGroup(fullGrantAuthCtx, &pbs.DeleteGroupRequest{Id: group.PublicId})
-					if !slices.Contains(tc.deleteAllowedAtScopeIDs, scope) {
+					if !slices.Contains(tc.deleteAllowedAtScopeIds, scope) {
 						require.ErrorIs(t, err, handlers.ForbiddenError())
 						continue
 					}
@@ -754,7 +754,7 @@ func TestGrants_WriteActions(t *testing.T) {
 					g := iam.TestGroup(t, conn, globals.GlobalPrefix)
 					return g, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 						{
-							RoleScopeID: globals.GlobalPrefix,
+							RoleScopeId: globals.GlobalPrefix,
 							Grants:      []string{"ids=*;type=*;actions=*"},
 							GrantScopes: []string{globals.GrantScopeThis},
 						},
@@ -769,7 +769,7 @@ func TestGrants_WriteActions(t *testing.T) {
 					g := iam.TestGroup(t, conn, proj.PublicId)
 					return g, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 						{
-							RoleScopeID: globals.GlobalPrefix,
+							RoleScopeId: globals.GlobalPrefix,
 							Grants:      []string{"ids=*;type=*;actions=*"},
 							GrantScopes: []string{proj.PublicId},
 						},
@@ -784,7 +784,7 @@ func TestGrants_WriteActions(t *testing.T) {
 					g := iam.TestGroup(t, conn, proj.PublicId)
 					return g, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 						{
-							RoleScopeID: globals.GlobalPrefix,
+							RoleScopeId: globals.GlobalPrefix,
 							Grants:      []string{fmt.Sprintf("ids=%s;types=group;actions=*", g.PublicId)},
 							GrantScopes: []string{proj.PublicId},
 						},
@@ -798,7 +798,7 @@ func TestGrants_WriteActions(t *testing.T) {
 					g := iam.TestGroup(t, conn, globals.GlobalPrefix)
 					return g, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 						{
-							RoleScopeID: globals.GlobalPrefix,
+							RoleScopeId: globals.GlobalPrefix,
 							Grants:      []string{"ids=*;type=*;actions=*"},
 							GrantScopes: []string{globals.GrantScopeChildren},
 						},
@@ -899,7 +899,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 				group := iam.TestGroup(t, conn, globals.GlobalPrefix)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -947,12 +947,12 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 				group := iam.TestGroup(t, conn, org1.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: org1.PublicId,
+						RoleScopeId: org1.PublicId,
 						Grants:      []string{"ids=*;type=*;actions=add-members"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: org1.PublicId,
+						RoleScopeId: org1.PublicId,
 						Grants:      []string{"ids=*;type=*;actions=set-members"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1000,7 +1000,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 				group := iam.TestGroup(t, conn, org2.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: org2.PublicId,
+						RoleScopeId: org2.PublicId,
 						Grants:      []string{fmt.Sprintf("ids=%s;types=group;actions=add-members", group.PublicId)},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1028,7 +1028,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 				iam.TestGroupMember(t, conn, group.PublicId, org2Users[1].PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{fmt.Sprintf("ids=%s;types=group;actions=remove-members", group.PublicId)},
 						GrantScopes: []string{proj2.PublicId},
 					},
@@ -1054,7 +1054,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 				group := iam.TestGroup(t, conn, proj3.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{fmt.Sprintf("ids=%s;types=group;actions=add-members", group.PublicId)},
 						GrantScopes: []string{globals.GrantScopeDescendants},
 					},
@@ -1082,7 +1082,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 				group := iam.TestGroup(t, conn, org2.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1108,17 +1108,17 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 				group := iam.TestGroup(t, conn, proj2.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: proj2.PublicId,
+						RoleScopeId: proj2.PublicId,
 						Grants:      []string{fmt.Sprintf("ids=%s;types=group;actions=add-members", group.PublicId)},
 						GrantScopes: []string{proj2.PublicId},
 					},
 					{
-						RoleScopeID: proj2.PublicId,
+						RoleScopeId: proj2.PublicId,
 						Grants:      []string{fmt.Sprintf("ids=%s;types=group;actions=set-members", group.PublicId)},
 						GrantScopes: []string{proj2.PublicId},
 					},
 					{
-						RoleScopeID: proj2.PublicId,
+						RoleScopeId: proj2.PublicId,
 						Grants:      []string{fmt.Sprintf("ids=%s;types=group;actions=remove-members", group.PublicId)},
 						GrantScopes: []string{proj2.PublicId},
 					},
@@ -1223,7 +1223,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants name, version, description",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,name,description"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -1235,10 +1235,10 @@ func TestOutputFields(t *testing.T) {
 				},
 			},
 			{
-				name: "grants scope, scopeID, authorized_actions",
+				name: "grants scope, scopeId, authorized_actions",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,scope,scope_id,authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -1253,7 +1253,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants update_time, create_time",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,updated_time,created_time,members,member_ids"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -1268,17 +1268,17 @@ func TestOutputFields(t *testing.T) {
 				name: "different output_fields for different scope",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,name,description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,scope,scope_id,created_time,updated_time"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 					{
-						RoleScopeID: proj.PublicId,
+						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,authorized_actions"},
 						GrantScopes: []string{proj.PublicId},
 					},
@@ -1302,7 +1302,7 @@ func TestOutputFields(t *testing.T) {
 				})
 				require.NoError(t, err)
 				for _, item := range out.Items {
-					handlers.AssertOutputFields(t, item, tc.expectOutfields[item.Id])
+					handlers.TestAssertOutputFields(t, item, tc.expectOutfields[item.Id])
 				}
 			})
 		}
@@ -1335,7 +1335,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants name and description",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read;output_fields=name,description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1343,10 +1343,10 @@ func TestOutputFields(t *testing.T) {
 				expectOutfields: []string{globals.NameField, globals.DescriptionField},
 			},
 			{
-				name: "grants scope and scopeID",
+				name: "grants scope and scopeId",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read;output_fields=scope,scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1357,7 +1357,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants update_time and create_time",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read;output_fields=updated_time,created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1368,7 +1368,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants id, authorized_actions, version",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read;output_fields=id,authorized_actions,version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1379,7 +1379,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants members, member_id",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read;output_fields=members,member_ids"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1390,17 +1390,17 @@ func TestOutputFields(t *testing.T) {
 				name: "composite grants id, authorized_actions, member_ids",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read;output_fields=id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read;output_fields=member_ids"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=read;output_fields=authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1416,7 +1416,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.GetGroup(fullGrantAuthCtx, &pbs.GetGroupRequest{Id: globalGroupWithMember.PublicId})
 				require.NoError(t, err)
-				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1456,7 +1456,7 @@ func TestOutputFields(t *testing.T) {
 				},
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name,description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1464,7 +1464,7 @@ func TestOutputFields(t *testing.T) {
 				expectOutfields: []string{globals.NameField, globals.DescriptionField},
 			},
 			{
-				name: "grants scope and scopeID",
+				name: "grants scope and scopeId",
 				input: &pbs.CreateGroupRequest{
 					Item: &pb.Group{
 						Name:        &wrapperspb.StringValue{Value: genUuid()},
@@ -1474,7 +1474,7 @@ func TestOutputFields(t *testing.T) {
 				},
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope,scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1492,7 +1492,7 @@ func TestOutputFields(t *testing.T) {
 				},
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=updated_time,created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1510,7 +1510,7 @@ func TestOutputFields(t *testing.T) {
 				},
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,authorized_actions,version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1528,42 +1528,42 @@ func TestOutputFields(t *testing.T) {
 				},
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1588,7 +1588,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.CreateGroup(fullGrantAuthCtx, tc.input)
 				require.NoError(t, err)
-				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1637,7 +1637,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants name and description",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name,description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1645,10 +1645,10 @@ func TestOutputFields(t *testing.T) {
 				expectOutfields: []string{globals.NameField, globals.DescriptionField},
 			},
 			{
-				name: "grants scope and scopeID",
+				name: "grants scope and scopeId",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope,scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1660,7 +1660,7 @@ func TestOutputFields(t *testing.T) {
 
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=updated_time,created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1671,7 +1671,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants id, authorized_actions, version",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,authorized_actions,version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1682,42 +1682,42 @@ func TestOutputFields(t *testing.T) {
 				name: "composite grants all fields",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1742,7 +1742,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.UpdateGroup(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1783,7 +1783,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants name and description",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name,description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1791,10 +1791,10 @@ func TestOutputFields(t *testing.T) {
 				expectOutfields: []string{globals.NameField, globals.DescriptionField},
 			},
 			{
-				name: "grants scope and scopeID",
+				name: "grants scope and scopeId",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope,scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1806,7 +1806,7 @@ func TestOutputFields(t *testing.T) {
 
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=updated_time,created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1817,7 +1817,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants id, authorized_actions, version",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,authorized_actions,version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1828,42 +1828,42 @@ func TestOutputFields(t *testing.T) {
 				name: "composite grants all fields",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1888,7 +1888,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.AddGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -1929,7 +1929,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants name and description",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name,description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1937,10 +1937,10 @@ func TestOutputFields(t *testing.T) {
 				expectOutfields: []string{globals.NameField, globals.DescriptionField},
 			},
 			{
-				name: "grants scope and scopeID",
+				name: "grants scope and scopeId",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope,scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1952,7 +1952,7 @@ func TestOutputFields(t *testing.T) {
 
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=updated_time,created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1963,7 +1963,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants id, authorized_actions, version",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,authorized_actions,version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -1974,42 +1974,42 @@ func TestOutputFields(t *testing.T) {
 				name: "composite grants all fields",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -2034,7 +2034,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.SetGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
@@ -2079,7 +2079,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants name and description",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name,description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -2087,10 +2087,10 @@ func TestOutputFields(t *testing.T) {
 				expectOutfields: []string{globals.NameField, globals.DescriptionField},
 			},
 			{
-				name: "grants scope and scopeID",
+				name: "grants scope and scopeId",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope,scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -2102,7 +2102,7 @@ func TestOutputFields(t *testing.T) {
 
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=updated_time,created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -2113,7 +2113,7 @@ func TestOutputFields(t *testing.T) {
 				name: "grants id, authorized_actions, version",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id,authorized_actions,version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -2124,42 +2124,42 @@ func TestOutputFields(t *testing.T) {
 				name: "composite grants all fields",
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=name"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=created_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=*;output_fields=version"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -2184,7 +2184,7 @@ func TestOutputFields(t *testing.T) {
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.RemoveGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
-				handlers.AssertOutputFields(t, out.Item, tc.expectOutfields)
+				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
 			})
 		}
 	})
