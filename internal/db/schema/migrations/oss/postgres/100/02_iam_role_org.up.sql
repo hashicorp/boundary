@@ -86,6 +86,11 @@ begin;
         references iam_role_org(public_id)
         on delete cascade
         on update cascade,
+    scope_id wt_scope_id not null
+      constraint iam_scope_org_scope_id_fkey
+        references iam_scope_project(scope_id)
+        on delete cascade
+        on update cascade,
     -- grant_scope is used for constraint checking.
     -- This restricts the grant_scope to be 'individual'
     -- and since it is also a foreign key to the iam_role_org
@@ -96,11 +101,6 @@ begin;
         check(
             grant_scope = 'individual'
         ),
-    scope_id wt_scope_id not null
-      constraint iam_scope_org_scope_id_fkey
-        references iam_scope_project(scope_id)
-        on delete cascade
-        on update cascade,
     constraint iam_role_org_grant_scope_fkey 
       foreign key (role_id, grant_scope)
       references iam_role_org(public_id, grant_scope)

@@ -140,6 +140,15 @@ begin;
         references iam_role_global(public_id)
         on delete cascade
         on update cascade,
+    scope_id wt_scope_id not null
+      constraint iam_scope_fkey
+        references iam_scope(public_id)
+        on delete cascade
+        on update cascade
+      constraint scope_id_is_not_global
+        check(
+          scope_id != 'global'
+        ),
     -- grant_scope is used for constraint checking.
     -- This restricts the grant_scope to be 'individual'
     -- and since it is also a foreign key to the iam_role_global
@@ -149,15 +158,6 @@ begin;
        constraint only_individual_grant_scope_allowed
          check(
           grant_scope = 'individual'
-        ),
-    scope_id wt_scope_id not null
-      constraint iam_scope_fkey
-        references iam_scope(public_id)
-        on delete cascade
-        on update cascade
-      constraint scope_id_is_not_global
-        check(
-          scope_id != 'global'
         ),
     constraint iam_role_global_grant_scope_fkey
       foreign key (role_id, grant_scope)
