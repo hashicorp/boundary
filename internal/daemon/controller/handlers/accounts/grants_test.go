@@ -566,7 +566,6 @@ func TestGrants_CreateAccount(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_DeleteAccount(t *testing.T) {
@@ -749,7 +748,6 @@ func TestGrants_DeleteAccount(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_UpdateAccount(t *testing.T) {
@@ -942,5 +940,4 @@ func TestGrants_UpdateAccount(t *testing.T) {
 			}
 		})
 	}
-
 }
