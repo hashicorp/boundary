@@ -14,6 +14,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type (
+	TestAuthMethodWithAccountFunc           func(t *testing.T, conn *db.DB) (AuthMethod, Account)
+	TestAuthMethodWithAccountInManagedGroup func(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) (AuthMethod, Account, ManagedGroup)
+)
+
 // ManagedGroupMemberAccount represents an entry from
 // auth_managed_group_member_account.  These are used to determine the account
 // ids where are a member of managed groups.  See: oidc and ldap managed groups
@@ -57,6 +62,3 @@ func TestManagedGroupMemberAccounts(t *testing.T, conn *db.DB, managedGroupId st
 	TestSortManagedGroupMemberAccounts(t, mgmAccts)
 	return mgmAccts
 }
-
-type TestAuthMethodWithAccountFunc func(t *testing.T, conn *db.DB) (AuthMethod, Account)
-type TestAuthMethodWithAccountInManagedGroup func(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) (AuthMethod, Account, ManagedGroup)
