@@ -16,7 +16,7 @@ import (
 
 type (
 	TestAuthMethodWithAccountFunc           func(t *testing.T, conn *db.DB) (AuthMethod, Account)
-	TestAuthMethodWithAccountInManagedGroup func(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) (AuthMethod, Account, ManagedGroup)
+	TestAuthMethodWithAccountInManagedGroup func(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeId string) (AuthMethod, Account, ManagedGroup)
 )
 
 // ManagedGroupMemberAccount represents an entry from
