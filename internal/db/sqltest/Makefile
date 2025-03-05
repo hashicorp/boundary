@@ -17,28 +17,29 @@ endif
 PROVE_OPTS ?=
 
 TESTS ?= tests/setup/*.sql \
-		 tests/org/*.sql \
-		 tests/wh/*/*.sql \
-		 tests/sentinel/*.sql \
-		 tests/credential/*/*.sql \
-		 tests/session/*.sql \
 		 tests/account/*/*.sql \
-		 tests/target/*.sql \
-		 tests/controller/*.sql \
-		 tests/hcp/*/*.sql \
-		 tests/census/*.sql \
-		 tests/kms/*.sql \
-		 tests/storage/*.sql \
-		 tests/domain/*.sql \
-		 tests/history/*.sql \
-		 tests/recording/*.sql \
 		 tests/alias/*.sql \
 		 tests/auth/*/*.sql \
-		 tests/purge/*.sql \
+		 tests/census/*.sql \
+		 tests/controller/*.sql \
+		 tests/credential/*/*.sql \
+		 tests/domain/*.sql \
+		 tests/hcp/*/*.sql \
+		 tests/history/*.sql \
+		 tests/host/*.sql \
+		 tests/iam/*.sql \
+		 tests/kms/*.sql \
+		 tests/org/*.sql \
 		 tests/pagination/*.sql \
 		 tests/policy/*.sql \
-		 tests/host/*.sql \
-		 tests/server/*.sql
+		 tests/purge/*.sql \
+		 tests/recording/*.sql \
+		 tests/sentinel/*.sql \
+		 tests/server/*.sql \
+		 tests/session/*.sql \
+		 tests/storage/*.sql \
+		 tests/target/*.sql \
+		 tests/wh/*/*.sql \
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
 

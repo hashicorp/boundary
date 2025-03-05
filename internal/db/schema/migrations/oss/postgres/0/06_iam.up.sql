@@ -332,6 +332,7 @@ create table iam_role (
   );
 
   -- Grants are immutable, which is enforced via the trigger below
+  -- Altered in 100/05_iam_grant.up.sql to add constraint on canonical_grant
   create table iam_role_grant (
     create_time wt_timestamp,
     role_id wt_role_id -- pk

@@ -54,15 +54,17 @@ begin;
       ('g___wb-group', 'u_____warren'),
       ('g___ws-group', 'u_____waylon');
 
-    insert into iam_role
+    insert into iam_role_org
+      (scope_id, public_id, name, grant_scope)
+    values
+      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer', 'individual'),
+      ('o_____widget', 'r_oo_____eng', 'Widget Engineer', 'individual');
+
+    insert into iam_role_project
       (scope_id, public_id, name)
     values
-            -- ('global', 'r_gg_____buy', 'Purchaser'),
-            -- ('global', 'r_gg____shop', 'Shopper'),
       ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
-      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
-      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer'),
-      ('o_____widget', 'r_oo_____eng', 'Widget Engineer');
+      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder');
 
     insert into iam_role_grant_scope
       (role_id,        scope_id_or_special)
@@ -77,12 +79,12 @@ begin;
     values
       -- ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
       -- ('r_gg____shop', 'type=*;action=view',        'view anything'),
-      ('r_oo_____eng', 'type=widget;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=widget;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=widget;action=tune',   'tune widget'),
-      ('r_op_sw__eng', 'type=widget;action=clean',  'clean widget'),
-      ('r_pp_bw__bld', 'type=widget;action=build',  'build widget'),
-      ('r_pp_sw__bld', 'type=widget;action=build',  'build widget');
+      ('r_oo_____eng', 'type=target;action=create,update,authorize-session',                                         'type=target;action=create,update,authorize-session'),
+      ('r_op_sw__eng', 'type=target;action=add-credential-sources,remove-credential-sources,set-credential-sources', 'type=target;action=add-credential-sources,remove-credential-sources,set-credential-sources'),
+      ('r_op_sw__eng', 'type=target;action=add-host-sources,remove-host-sources,set-host-sources',                   'type=target;action=add-host-sources,remove-host-sources,set-host-sources'),
+      ('r_op_sw__eng', 'type=target;action=read,list',                                                               'type=target;action=read,list'),
+      ('r_pp_bw__bld', 'type=target;action=create,delete',                                                           'type=target;action=create,delete'),
+      ('r_pp_sw__bld', 'type=target;action=authorize-session',                                                       'type=target;action=authorize-session');
 
     insert into iam_group_role
       (role_id, principal_id)
