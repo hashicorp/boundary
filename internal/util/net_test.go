@@ -230,9 +230,9 @@ func Test_SplitHostPort(t *testing.T) {
 			expectedPort: "80",
 		},
 		{
-			name:           "ipv6-missing-square-brackets",
-			hostport:       "::1:80",
-			expectedErrMsg: "address ::1:80: too many colons in address",
+			name:         "ipv6-missing-square-brackets",
+			hostport:     "::1:80",
+			expectedHost: "::1:80",
 		},
 		{
 			name:         "ipv6-ignore-missing-port",
@@ -333,14 +333,14 @@ func Test_ParseAddress(t *testing.T) {
 			expectedAddress: "2001:4860:4860::8888",
 		},
 		{
-			name:            "valid-[ipv6]",
-			address:         "[2001:4860:4860:0:0:0:0:8888]",
-			expectedAddress: "2001:4860:4860:0:0:0:0:8888",
+			name:           "valid-[ipv6]",
+			address:        "[2001:4860:4860:0:0:0:0:8888]",
+			expectedErrMsg: "address cannot be encapsulated by brackets",
 		},
 		{
-			name:            "valid-[ipv6]:",
-			address:         "[2001:4860:4860:0:0:0:0:8888]:",
-			expectedAddress: "2001:4860:4860:0:0:0:0:8888",
+			name:           "valid-[ipv6]:",
+			address:        "[2001:4860:4860:0:0:0:0:8888]:",
+			expectedErrMsg: "url has malformed host: missing port value after colon",
 		},
 		{
 			name:           "invalid-ipv6-with-port",
@@ -353,14 +353,14 @@ func Test_ParseAddress(t *testing.T) {
 			expectedAddress: "2001:4860:4860::8888",
 		},
 		{
-			name:            "valid-abbreviated-[ipv6]",
-			address:         "[2001:4860:4860::8888]",
-			expectedAddress: "2001:4860:4860::8888",
+			name:           "valid-abbreviated-[ipv6]",
+			address:        "[2001:4860:4860::8888]",
+			expectedErrMsg: "address cannot be encapsulated by brackets",
 		},
 		{
-			name:            "valid-abbreviated-[ipv6]:",
-			address:         "[2001:4860:4860::8888]:",
-			expectedAddress: "2001:4860:4860::8888",
+			name:           "valid-abbreviated-[ipv6]:",
+			address:        "[2001:4860:4860::8888]:",
+			expectedErrMsg: "url has malformed host: missing port value after colon",
 		},
 		{
 			name:           "invalid-abbreviated-[ipv6]-with-port",
