@@ -87,7 +87,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=credential-store;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
@@ -103,7 +103,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  org.PublicId,
+						RoleScopeId:  org.PublicId,
 						GrantStrings: []string{"ids=*;type=credential-store;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
@@ -118,7 +118,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  proj.PublicId,
+						RoleScopeId:  proj.PublicId,
 						GrantStrings: []string{"ids=*;type=credential-store;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
