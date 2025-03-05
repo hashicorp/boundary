@@ -194,25 +194,23 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, subject string, opt 
 	return a
 }
 
-// TestAccountFunc returns a function that creates an OIDC auth method, an account on that auth method, and an OIDC managed group
-// which has a filter that matches the account's subject. The function returns the managed group's public ID and the account's public ID.
-func TestAccountFunc(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) func() (managedGroupID string, accountID string) {
-	return func() (string, string) {
-		t.Helper()
-		uuid, err := uuid.GenerateUUID()
-		require.NoError(t, err)
-		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeID, kms.KeyPurposeDatabase)
-		require.NoError(t, err)
-		testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, scopeID, ActivePublicState,
-			"alice-rp", "fido",
-			WithIssuer(TestConvertToUrls(t, fmt.Sprintf("https://%s.com", uuid))[0]),
-			WithSigningAlgs(Alg(oidc.RS256)),
-			WithApiUrl(TestConvertToUrls(t, fmt.Sprintf("https://%s.com/callback", uuid))[0]))
-		account := TestAccount(t, conn, testAuthMethod, "testacct")
-		managedGroup := TestManagedGroup(t, conn, testAuthMethod, `"/token/sub" matches ".*"`)
-		TestManagedGroupMember(t, conn, managedGroup.PublicId, account.PublicId)
-		return managedGroup.PublicId, account.PublicId
-	}
+// TestAuthMethodWithAccountInManagedGroup creates an authMethod, and an account within that authmethod, an
+// OIDC managed group, and add the newly created account as a member of the OIDC managed group.
+func TestAuthMethodWithAccountInManagedGroup(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) (auth.AuthMethod, auth.Account, auth.ManagedGroup) {
+	t.Helper()
+	uuid, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeID, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, scopeID, ActivePublicState,
+		"alice-rp", "fido",
+		WithIssuer(TestConvertToUrls(t, fmt.Sprintf("https://%s.com", uuid))[0]),
+		WithSigningAlgs(Alg(oidc.RS256)),
+		WithApiUrl(TestConvertToUrls(t, fmt.Sprintf("https://%s.com/callback", uuid))[0]))
+	account := TestAccount(t, conn, testAuthMethod, "testacct")
+	managedGroup := TestManagedGroup(t, conn, testAuthMethod, `"/token/sub" matches ".*"`)
+	TestManagedGroupMember(t, conn, managedGroup.PublicId, account.PublicId)
+	return testAuthMethod, account, managedGroup
 }
 
 // TestManagedGroup creates a test oidc managed group.
