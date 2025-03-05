@@ -196,13 +196,13 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, subject string, opt 
 
 // TestAuthMethodWithAccountInManagedGroup creates an authMethod, and an account within that authmethod, an
 // OIDC managed group, and add the newly created account as a member of the OIDC managed group.
-func TestAuthMethodWithAccountInManagedGroup(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) (auth.AuthMethod, auth.Account, auth.ManagedGroup) {
+func TestAuthMethodWithAccountInManagedGroup(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeId string) (auth.AuthMethod, auth.Account, auth.ManagedGroup) {
 	t.Helper()
 	uuid, err := uuid.GenerateUUID()
 	require.NoError(t, err)
-	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeID, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, scopeID, ActivePublicState,
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, scopeId, ActivePublicState,
 		"alice-rp", "fido",
 		WithIssuer(TestConvertToUrls(t, fmt.Sprintf("https://%s.com", uuid))[0]),
 		WithSigningAlgs(Alg(oidc.RS256)),
