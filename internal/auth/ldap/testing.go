@@ -181,14 +181,14 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, loginName string, op
 
 // TestAuthMethodWithAccountInManagedGroup creates an authMethod, and an account within that authmethod, an
 // LDAP managed group, and add the newly created account as a member of the LDAP managed group.
-func TestAuthMethodWithAccountInManagedGroup(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) (auth.AuthMethod, auth.Account, auth.ManagedGroup) {
+func TestAuthMethodWithAccountInManagedGroup(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeId string) (auth.AuthMethod, auth.Account, auth.ManagedGroup) {
 	t.Helper()
 	uuid, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 	ctx := context.Background()
-	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeID, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	am := TestAuthMethod(t, conn, databaseWrapper, scopeID, []string{fmt.Sprintf("ldap://%s", uuid)})
+	am := TestAuthMethod(t, conn, databaseWrapper, scopeId, []string{fmt.Sprintf("ldap://%s", uuid)})
 	managedGroup := TestManagedGroup(t, conn, am, []string{uuid})
 	acct := TestAccount(t, conn, am, "testacct", WithMemberOfGroups(ctx, uuid))
 	return am, acct, managedGroup

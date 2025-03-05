@@ -11,10 +11,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// AssertOutputFields asserts that the output fields of a group match the expected fields
+// TestAssertOutputFields asserts that the output fields of a group match the expected fields
 // fields that is nil or empty in the result will throw an error if they are listed in expectedFields
 // e.g. members when group does not contain any members
-func AssertOutputFields(t *testing.T, p proto.Message, expectFields []string) {
+func TestAssertOutputFields(t *testing.T, p proto.Message, expectFields []string) {
 	msg := p.ProtoReflect()
 	descriptor := msg.Descriptor()
 	for i := 0; i < descriptor.Fields().Len(); i++ {
