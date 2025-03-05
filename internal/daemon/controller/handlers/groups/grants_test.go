@@ -851,7 +851,7 @@ func TestGrants_WriteActions(t *testing.T) {
 	})
 }
 
-// TestGroupMember tests actions performed on the group-members (child-resources)
+// TestGrants_ChildResourcesActions tests actions performed on the group-members (child-resources)
 func TestGrants_ChildResourcesActions(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
