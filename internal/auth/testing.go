@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,3 +57,6 @@ func TestManagedGroupMemberAccounts(t *testing.T, conn *db.DB, managedGroupId st
 	TestSortManagedGroupMemberAccounts(t, mgmAccts)
 	return mgmAccts
 }
+
+type TestAuthMethodWithAccountFunc func(t *testing.T, conn *db.DB) (AuthMethod, Account)
+type TestAuthMethodWithAccountInManagedGroup func(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeID string) (AuthMethod, Account, ManagedGroup)

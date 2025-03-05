@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -361,7 +362,7 @@ func TestUserManagedGroupGrantsFunc(
 	conn *db.DB,
 	kmsCache *kms.Kms,
 	scopeID string,
-	managedGroupAccountSetupFunc func() (string, string),
+	managedGroupAccountSetupFunc auth.TestAuthMethodWithAccountInManagedGroup,
 	testRoleGrants []TestRoleGrantsRequest,
 ) func() (*User, string) {
 	return func() (*User, string) {
@@ -370,11 +371,11 @@ func TestUserManagedGroupGrantsFunc(
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
-		managedGroupID, accountID := managedGroupAccountSetupFunc()
-		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
+		_, account, mg := managedGroupAccountSetupFunc(t, conn, kmsCache, scopeID)
+		user := TestUser(t, repo, scopeID, WithAccountIds(account.GetPublicId()))
 		for _, trg := range testRoleGrants {
 			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
-			_ = TestManagedGroupRole(t, conn, role.PublicId, managedGroupID)
+			_ = TestManagedGroupRole(t, conn, role.PublicId, mg.GetPublicId())
 		}
 		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
 		require.NoError(t, err)
@@ -391,17 +392,17 @@ func TestUserDirectGrantsFunc(
 	conn *db.DB,
 	kmsCache *kms.Kms,
 	scopeID string,
-	accountIDFunc func() string,
+	setupFunc auth.TestAuthMethodWithAccountFunc,
 	testRoleGrants []TestRoleGrantsRequest,
 ) func() (*User, string) {
 	return func() (*User, string) {
 		t.Helper()
-		accountID := accountIDFunc()
+		_, account := setupFunc(t, conn)
 		ctx := context.Background()
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
-		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
+		user := TestUser(t, repo, scopeID, WithAccountIds(account.GetPublicId()))
 		require.NoError(t, err)
 		for _, trg := range testRoleGrants {
 			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
@@ -423,12 +424,12 @@ func TestUserGroupGrantsFunc(
 	conn *db.DB,
 	kmsCache *kms.Kms,
 	scopeID string,
-	accountIDFunc func() string,
+	setupFunc auth.TestAuthMethodWithAccountFunc,
 	testRoleGrants []TestRoleGrantsRequest,
 ) func() (*User, string) {
 	return func() (*User, string) {
 		t.Helper()
-		accountID := accountIDFunc()
+		_, account := setupFunc(t, conn)
 		ctx := context.Background()
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
@@ -443,7 +444,7 @@ func TestUserGroupGrantsFunc(
 		require.NoError(t, err)
 		group := TestGroup(t, conn, scopeID)
 		require.NoError(t, err)
-		user := TestUser(t, repo, scopeID, WithAccountIds(accountID))
+		user := TestUser(t, repo, scopeID, WithAccountIds(account.GetPublicId()))
 		for _, trg := range testRoleGrants {
 			role := TestRoleWithGrants(t, conn, trg.RoleScopeID, trg.GrantScopes, trg.Grants)
 			_ = TestGroupRole(t, conn, role.PublicId, group.PublicId)
