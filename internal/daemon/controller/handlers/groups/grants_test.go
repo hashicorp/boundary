@@ -10,11 +10,12 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	cauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/db"
@@ -75,7 +76,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		testcases := []struct {
 			name     string
 			input    *pbs.ListGroupsRequest
-			userFunc func() (*iam.User, string)
+			userFunc func() (*iam.User, auth.Account)
 			wantErr  error
 			wantIDs  []string
 		}{
@@ -234,10 +235,10 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, finalErr := s.ListGroups(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
@@ -256,7 +257,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
 		testcases := []struct {
 			name            string
-			userFunc        func() (*iam.User, string)
+			userFunc        func() (*iam.User, auth.Account)
 			inputWantErrMap map[*pbs.GetGroupRequest]error
 		}{
 			{
@@ -497,10 +498,10 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				for input, wantErr := range tc.inputWantErrMap {
 					_, err := s.GetGroup(fullGrantAuthCtx, input)
 					// not found means expect error
@@ -555,7 +556,7 @@ func TestGrants_WriteActions(t *testing.T) {
 
 		testcases := []struct {
 			name              string
-			userFunc          func() (*iam.User, string)
+			userFunc          func() (*iam.User, auth.Account)
 			canCreateInScopes map[*pbs.CreateGroupRequest]error
 		}{
 			{
@@ -652,10 +653,10 @@ func TestGrants_WriteActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 
 				for req, wantErr := range tc.canCreateInScopes {
 					_, err := s.CreateGroup(fullGrantAuthCtx, req)
@@ -691,7 +692,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		allScopeIds := []string{globals.GlobalPrefix, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId, proj3.PublicId}
 		testcases := []struct {
 			name                    string
-			userFunc                func() (*iam.User, string)
+			userFunc                func() (*iam.User, auth.Account)
 			deleteAllowedAtScopeIds []string
 		}{
 			{
@@ -726,10 +727,10 @@ func TestGrants_WriteActions(t *testing.T) {
 					g := iam.TestGroup(t, conn, scp)
 					scopeIdGroupMap[scp] = g
 				}
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				for scope, group := range scopeIdGroupMap {
 					_, err = s.DeleteGroup(fullGrantAuthCtx, &pbs.DeleteGroupRequest{Id: group.PublicId})
 					if !slices.Contains(tc.deleteAllowedAtScopeIds, scope) {
@@ -745,12 +746,12 @@ func TestGrants_WriteActions(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
 		testcases := []struct {
 			name                        string
-			setupScopesResourcesAndUser func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, string))
+			setupScopesResourcesAndUser func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, auth.Account))
 			wantErr                     error
 		}{
 			{
 				name: "global_scope_group_good_grant_success",
-				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, string)) {
+				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, auth.Account)) {
 					g := iam.TestGroup(t, conn, globals.GlobalPrefix)
 					return g, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 						{
@@ -764,7 +765,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "grant specific scope success",
-				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, string)) {
+				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, auth.Account)) {
 					_, proj := iam.TestScopes(t, iamRepo)
 					g := iam.TestGroup(t, conn, proj.PublicId)
 					return g, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
@@ -779,7 +780,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "grant specific resource and scope success",
-				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, string)) {
+				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, auth.Account)) {
 					_, proj := iam.TestScopes(t, iamRepo)
 					g := iam.TestGroup(t, conn, proj.PublicId)
 					return g, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
@@ -794,7 +795,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "no grant fails update",
-				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, string)) {
+				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*iam.Group, func() (*iam.User, auth.Account)) {
 					g := iam.TestGroup(t, conn, globals.GlobalPrefix)
 					return g, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 						{
@@ -823,10 +824,10 @@ func TestGrants_WriteActions(t *testing.T) {
 				s, err := groups.NewService(ctx, repoFn, 1000)
 				require.NoError(t, err)
 				original, userFunc := tc.setupScopesResourcesAndUser(t, conn, iamRepo, kmsCache)
-				user, accountID := userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, err := s.UpdateGroup(fullGrantAuthCtx, &pbs.UpdateGroupRequest{
 					Id: original.PublicId,
 					Item: &pb.Group{
@@ -887,7 +888,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 	testcases := []struct {
 		name              string
 		userFunc          func() *iam.User
-		setupGroupAndRole func(t *testing.T) (*iam.Group, func() (*iam.User, string))
+		setupGroupAndRole func(t *testing.T) (*iam.Group, func() (*iam.User, auth.Account))
 		// collection of actions to be executed in the tests in order, *iam.Group returned from each action which
 		// gets passed to the next action as parameter to preserve information such as `version` increments
 		actions []testActionResult
@@ -895,7 +896,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 		{
 			name: "all actions valid grant success",
 
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, string)) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, auth.Account)) {
 				group := iam.TestGroup(t, conn, globals.GlobalPrefix)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
@@ -943,7 +944,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 		},
 		{
 			name: "only add and set allowed fail to remove",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, string)) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, auth.Account)) {
 				group := iam.TestGroup(t, conn, org1.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
@@ -996,7 +997,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 		},
 		{
 			name: "add_member_valid_specific_grant_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, string)) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, auth.Account)) {
 				group := iam.TestGroup(t, conn, org2.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
@@ -1022,7 +1023,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 		},
 		{
 			name: "remove_member_valid_specific_grant_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, string)) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, auth.Account)) {
 				group := iam.TestGroup(t, conn, proj2.PublicId)
 				iam.TestGroupMember(t, conn, group.PublicId, org2Users[0].PublicId)
 				iam.TestGroupMember(t, conn, group.PublicId, org2Users[1].PublicId)
@@ -1050,7 +1051,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 		},
 		{
 			name: "cross_scope_add_member_valid_specific_grant_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, string)) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, auth.Account)) {
 				group := iam.TestGroup(t, conn, proj3.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
@@ -1078,7 +1079,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 		},
 		{
 			name: "add_member_with_valid_grant_string_invalid_scope_forbidden_error",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, string)) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, auth.Account)) {
 				group := iam.TestGroup(t, conn, org2.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
@@ -1104,7 +1105,7 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 		},
 		{
 			name: "multiple_grants_success",
-			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, string)) {
+			setupGroupAndRole: func(t *testing.T) (*iam.Group, func() (*iam.User, auth.Account)) {
 				group := iam.TestGroup(t, conn, proj2.PublicId)
 				return group, iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
@@ -1165,10 +1166,10 @@ func TestGrants_ChildResourcesActions(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			group, userFn := tc.setupGroupAndRole(t)
-			user, accountID := userFn()
-			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+			user, account := userFn()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 			require.NoError(t, err)
-			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			for _, act := range tc.actions {
 				out, err := act.action(fullGrantAuthCtx, group)
 				if act.wantErr != nil {
@@ -1215,7 +1216,7 @@ func TestOutputFields(t *testing.T) {
 		require.NoError(t, err)
 		testcases := []struct {
 			name     string
-			userFunc func() (*iam.User, string)
+			userFunc func() (*iam.User, auth.Account)
 			// keys are the group IDs | this also means 'id' is required in the outputfields for assertions to work properly
 			expectOutfields map[string][]string
 		}{
@@ -1292,10 +1293,10 @@ func TestOutputFields(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.ListGroups(fullGrantAuthCtx, &pbs.ListGroupsRequest{
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
@@ -1328,7 +1329,7 @@ func TestOutputFields(t *testing.T) {
 
 		testcases := []struct {
 			name            string
-			userFunc        func() (*iam.User, string)
+			userFunc        func() (*iam.User, auth.Account)
 			expectOutfields []string
 		}{
 			{
@@ -1410,10 +1411,10 @@ func TestOutputFields(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.GetGroup(fullGrantAuthCtx, &pbs.GetGroupRequest{Id: globalGroupWithMember.PublicId})
 				require.NoError(t, err)
 				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
@@ -1441,7 +1442,7 @@ func TestOutputFields(t *testing.T) {
 		require.NoError(t, err)
 		testcases := []struct {
 			name            string
-			userFunc        func() (*iam.User, string)
+			userFunc        func() (*iam.User, auth.Account)
 			input           *pbs.CreateGroupRequest
 			expectOutfields []string
 		}{
@@ -1582,10 +1583,10 @@ func TestOutputFields(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.CreateGroup(fullGrantAuthCtx, tc.input)
 				require.NoError(t, err)
 				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
@@ -1630,7 +1631,7 @@ func TestOutputFields(t *testing.T) {
 		require.NoError(t, err)
 		testcases := []struct {
 			name            string
-			userFunc        func() (*iam.User, string)
+			userFunc        func() (*iam.User, auth.Account)
 			expectOutfields []string
 		}{
 			{
@@ -1736,10 +1737,10 @@ func TestOutputFields(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.UpdateGroup(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
 				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
@@ -1776,7 +1777,7 @@ func TestOutputFields(t *testing.T) {
 		require.NoError(t, err)
 		testcases := []struct {
 			name            string
-			userFunc        func() (*iam.User, string)
+			userFunc        func() (*iam.User, auth.Account)
 			expectOutfields []string
 		}{
 			{
@@ -1882,10 +1883,10 @@ func TestOutputFields(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.AddGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
 				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
@@ -1922,7 +1923,7 @@ func TestOutputFields(t *testing.T) {
 		require.NoError(t, err)
 		testcases := []struct {
 			name            string
-			userFunc        func() (*iam.User, string)
+			userFunc        func() (*iam.User, auth.Account)
 			expectOutfields []string
 		}{
 			{
@@ -2028,10 +2029,10 @@ func TestOutputFields(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.SetGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
 				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
@@ -2072,7 +2073,7 @@ func TestOutputFields(t *testing.T) {
 		require.NoError(t, err)
 		testcases := []struct {
 			name            string
-			userFunc        func() (*iam.User, string)
+			userFunc        func() (*iam.User, auth.Account)
 			expectOutfields []string
 		}{
 			{
@@ -2178,10 +2179,10 @@ func TestOutputFields(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				out, err := s.RemoveGroupMembers(fullGrantAuthCtx, inputFunc(t))
 				require.NoError(t, err)
 				handlers.TestAssertOutputFields(t, out.Item, tc.expectOutfields)
