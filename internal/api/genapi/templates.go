@@ -285,7 +285,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 
 	// In case we shortcut out due to client directed pagination, ensure these
 	// are set
-{{ if .RecursiveListing }} 
+{{ if .RecursiveListing }}
 	target.recursive = opts.withRecursive
 {{ end }}
 	target.pageSize = opts.withPageSize
@@ -295,8 +295,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 		return target, nil
 	}
 
-	allItems := make([]*{{ .Name }}, 0, target.EstItemCount)
-	allItems = append(allItems, target.Items...)
+	allItems := target.Items
 
 	// If there are more results, automatically fetch the rest of the results.
 	// idToIndex keeps a map from the ID of an item to its index in target.Items.
@@ -399,7 +398,7 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *{{ .Name }}ListR
 	opts, apiOpts := getOpts(opt...)
 	opts.queryMap["{{ snakeCase .CollectionFunctionArg }}"] = currentPage.{{ .CollectionFunctionArg }}
 
-{{ if .RecursiveListing }} 
+{{ if .RecursiveListing }}
 	// Don't require them to re-specify recursive
 	if currentPage.recursive {
 		opts.queryMap["recursive"] = "true"
@@ -446,7 +445,7 @@ func (c *Client) ListNextPage(ctx context.Context, currentPage *{{ .Name }}ListR
 	nextPage.{{ .CollectionFunctionArg }} = currentPage.{{ .CollectionFunctionArg }}
 {{ if .RecursiveListing }}
 	nextPage.recursive = currentPage.recursive
-{{ end }} 
+{{ end }}
 	nextPage.pageSize = currentPage.pageSize
 	// Cache the removed IDs from this page
 	nextPage.allRemovedIds = append(currentPage.allRemovedIds, nextPage.RemovedIds...)
@@ -516,14 +515,14 @@ func (c *Client) Read(ctx context.Context, id string, opt... Option) (*{{ .Name 
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Delete(ctx context.Context, id string, opt... Option) (*{{ .Name }}DeleteResult, error) { 
+func (c *Client) Delete(ctx context.Context, id string, opt... Option) (*{{ .Name }}DeleteResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
 	}
-	
+
 	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", {{ .ResourcePath }}, nil, apiOpts...)
