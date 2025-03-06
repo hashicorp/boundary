@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-select plan(27);
+select plan(29);
 select wtt_load('widgets', 'iam');
 
 -- insert canonical_grant with valid resource
@@ -11,36 +11,49 @@ prepare insert_grant_scope as
   insert into iam_grant
     (canonical_grant)
   values
-    ('type=scope;others=stuff;');
+    ('type=scope;others=stuff');
 select lives_ok('insert_grant_scope');
 select is(
   (select resource
      from iam_grant
-    where canonical_grant = 'type=scope;others=stuff;'),
+    where canonical_grant = 'type=scope;others=stuff'),
   'scope',
   'resource should be set to "scope" by set_resource() trigger'
 );
 
--- insert canonical_grant with no type
--- the insert should fail because the type is malformed
+-- insert invalid canonical_grant which does not match the wt_canonical_grant domain
+-- the insert should fail because the canonical_grant is malformed
 prepare insert_malformed_grant as
   insert into iam_grant
     (canonical_grant)
   values
-    ('no_type_at_all;');
+    ('no_type_at_all');
 select throws_like(
   'insert_malformed_grant',
   'value for domain wt_canonical_grant violates check constraint "wt_canonical_grant_check"',
   'inserting a grant that is malformed should fail'
 );
 
+-- insert invalid canonical_grant with trailing semicolon
+-- the insert should fail because the the canonical_grant has a trailing semicolon
+prepare insert_grant_with_trailing_semicolon as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('ids=*;type=role;actions=*;');
+select throws_like(
+  'insert_grant_with_trailing_semicolon',
+  'value for domain wt_canonical_grant violates check constraint "wt_canonical_grant_check"',
+  'inserting a grant with trailing semicolon should fail'
+);
+
 -- insert canonical_grant with type=role,group
--- validate the resource is set to 'role'
+-- the insert should fail because the resource is not a single value
 prepare insert_grant_role as
   insert into iam_grant
     (canonical_grant)
   values
-    ('type=role,group;foo=bar;');
+    ('type=role,group;foo=bar');
 select throws_like(
   'insert_grant_role',
   'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
@@ -53,9 +66,22 @@ prepare insert_grant_bogus as
   insert into iam_grant
     (canonical_grant)
   values
-    ('type=bogus;some=thing;');
+    ('type=bogus;some=thing');
 select throws_like(
   'insert_grant_bogus',
+  'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
+  'inserting a resource not in iam_grant_resource_enm should fail'
+);
+
+-- the set_resource() trigger will set resource='bogus', but we did not insert 'bogus'
+-- into resource_enm, so it should fail.
+prepare insert_grant_bogus_with_action as
+  insert into iam_grant
+    (canonical_grant)
+  values
+    ('type=bogus;actions=create');
+select throws_like(
+  'insert_grant_bogus_with_action',
   'insert or update on table "iam_grant" violates foreign key constraint "iam_grant_resource_enm_fkey"',
   'inserting a resource not in iam_grant_resource_enm should fail'
 );

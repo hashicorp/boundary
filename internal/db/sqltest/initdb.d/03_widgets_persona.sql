@@ -77,14 +77,14 @@ begin;
     insert into iam_role_grant
       (role_id, canonical_grant, raw_grant)
     values
-      -- ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
-      -- ('r_gg____shop', 'type=*;action=view',        'view anything'),
-      ('r_oo_____eng', 'type=target;action=create,update,authorize-session',                                         'type=target;action=create,update,authorize-session'),
-      ('r_op_sw__eng', 'type=target;action=add-credential-sources,remove-credential-sources,set-credential-sources', 'type=target;action=add-credential-sources,remove-credential-sources,set-credential-sources'),
-      ('r_op_sw__eng', 'type=target;action=add-host-sources,remove-host-sources,set-host-sources',                   'type=target;action=add-host-sources,remove-host-sources,set-host-sources'),
-      ('r_op_sw__eng', 'type=target;action=read,list',                                                               'type=target;action=read,list'),
-      ('r_pp_bw__bld', 'type=target;action=create,delete',                                                           'type=target;action=create,delete'),
-      ('r_pp_sw__bld', 'type=target;action=authorize-session',                                                       'type=target;action=authorize-session');
+      -- ('r_gg_____buy', 'type=*;actions=purchase',    'purchase anything'),
+      -- ('r_gg____shop', 'type=*;actions=view',        'view anything'),
+      ('r_oo_____eng', 'ids=*;type=alias;actions=create,update',                                                            'ids=*;type=alias;actions=create,update'),
+      ('r_op_sw__eng', 'ids=*;type=target;actions=add-credential-sources,remove-credential-sources,set-credential-sources', 'ids=*;type=target;actions=add-credential-sources,remove-credential-sources,set-credential-source'),
+      ('r_op_sw__eng', 'ids=*;type=target;actions=add-host-sources,remove-host-sources,set-host-sources',                   'ids=*;type=target;actions=add-host-sources,remove-host-sources,set-host-sources'),
+      ('r_op_sw__eng', 'ids=*;type=host-catalog;actions=read,list',                                                         'ids=*;type=host-catalog;actions=read,list'),
+      ('r_pp_bw__bld', 'ids=*;type=credential-library;actions=create,delete',                                               'ids=*;type=credential-library;actions=create,delete'),
+      ('r_pp_sw__bld', 'ids=*;type=scope;actions=no-op,list',                                                               'ids=*;type=scope;actions=no-op,list');
 
     insert into iam_group_role
       (role_id, principal_id)

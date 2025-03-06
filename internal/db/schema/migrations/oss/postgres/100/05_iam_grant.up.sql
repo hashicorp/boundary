@@ -5,10 +5,10 @@ begin;
 
   -- wt_canonical_grant domain represents Boundary canonical grant.
   -- A canonical grant is a semicolon-separated list of key=value pairs.
-  -- e.g. "id=*;type=role;action=read;output_fields=id,name"
+  -- e.g. "ids=*;type=role;actions=read;output_fields=id,name"
   create domain wt_canonical_grant as text
     check(
-      value ~ '^(?:[^;=]+=[^;=]+)(?:;[^;=]+=[^;=]+)*;?$'
+      value ~ '^(?:[^;=]+=[^;=]+)(?:;[^;=]+=[^;=]+)*?$'
     );
   comment on domain wt_canonical_grant is
     'A canonical grant is a semicolon-separated list of key=value pairs.';
@@ -36,9 +36,21 @@ begin;
   declare type_matches text[];
   begin
     -- Extract all "type" tokens from the canonical_grant string
-    select array_agg(t[1])
+    with
+    parts (p) as (
+      select p
+        from regexp_split_to_table(new.canonical_grant, ';') as p
+    ),
+    kv (k, v) as (
+    select part[1] as k,
+      part[2] as v
+    from parts,
+      regexp_split_to_array(parts.p, '=') as part
+    )
+    select array_agg(v)
       into type_matches
-    from regexp_matches(new.canonical_grant, '(?<=^|;)type=([^;]+)(?=;|$)', 'g') as t;
+    from kv
+    where k = 'type';
 
     -- if there are multiple canonical grant types specified, throw an error.
     -- Ensure that the canonical_grant type is only referencing a single resource

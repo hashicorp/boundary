@@ -135,19 +135,19 @@ begin;
     ('r_gg____shop', 'global');
 
   insert into iam_role_grant
-    (role_id,        canonical_grant,                             raw_grant)
+    (role_id,        canonical_grant,                                    raw_grant)
   values
-    ('r_gg_____buy', 'type=*;actions=update',                     'type=*;actions=update'),
-    ('r_gg____shop', 'type=*;actions=read',                       'type=*;actions=read'),
-    ('r_go____name', 'type=group;action=create,update,read,list', 'type=group;action=create,update,read,'),
-    ('r_gp____spec', 'type=group;action=delete',                  'type=group;action=delete'),
-    ('r_oo_____art', 'type=group;action=create',                  'type=group;action=create'),
-    ('r_op_bc__art', 'type=group;action=create',                  'type=group;action=create'),
-    ('r_op_rc__art', 'type=group;action=create',                  'type=group;action=create'),
-    ('r_op_gc__art', 'type=group;action=create',                  'type=group;action=create'),
-    ('r_pp_bc__mix', 'type=group;action=add-members',             'type=group;action=add-members'),
-    ('r_pp_rc__mix', 'type=group;action=set-members',             'type=group;action=set-members'),
-    ('r_pp_gc__mix', 'type=group;action=delete-members',          'type=group;action=delete-members');
+    ('r_gg_____buy', 'ids=*;type=*;actions=update',                      'ids=*;type=*;actions=update'),
+    ('r_gg____shop', 'ids=*;type=*;actions=read;output_fields=id',       'ids=*;type=*;actions=read;output_fields=id'),
+    ('r_go____name', 'ids=*;type=group;actions=create,update,read,list', 'ids=*;type=group;actions=create,update,read,'),
+    ('r_gp____spec', 'ids=*;type=group;actions=delete',                  'ids=*;type=group;actions=delete'),
+    ('r_oo_____art', 'ids=*;type=group;actions=create',                  'ids=*;type=group;actions=create'),
+    ('r_op_bc__art', 'ids=*;type=auth-token;actions=create',             'ids=*;type=auth-token;actions=create'),
+    ('r_op_rc__art', 'ids=*;type=target;actions=create',                 'ids=*;type=targets;actions=create'),
+    ('r_op_gc__art', 'ids=*;type=auth-method;actions=authenticate',      'ids=*;type=auth-method;actions=create'),
+    ('r_pp_bc__mix', 'ids=*;type=group;actions=add-members',             'ids=*;type=group;actions=add-members'),
+    ('r_pp_rc__mix', 'ids=*;type=group;actions=set-members',             'ids=*;type=group;actions=set-members'),
+    ('r_pp_gc__mix', 'ids=*;type=group;actions=delete-members',          'ids=*;type=group;actions=delete-members');
 
   insert into iam_group_role
     (role_id,        principal_id)
