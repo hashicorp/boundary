@@ -20,6 +20,7 @@ resource "aws_instance" "controller" {
     volume_type = var.controller_ebs_type
     throughput  = var.controller_ebs_throughput
     tags        = local.common_tags
+    encrypted   = true
   }
 
   tags = merge(local.common_tags,
@@ -46,6 +47,7 @@ resource "aws_instance" "worker" {
     volume_type = var.worker_ebs_type
     throughput  = var.worker_ebs_throughput
     tags        = local.common_tags
+    encrypted   = true
   }
 
   tags = merge(local.common_tags,
