@@ -364,8 +364,8 @@ func TestUserManagedGroupGrantsFunc(
 	scopeId string,
 	managedGroupAccountSetupFunc auth.TestAuthMethodWithAccountInManagedGroup,
 	testRoleGrants []TestRoleGrantsRequest,
-) func() (*User, string) {
-	return func() (*User, string) {
+) func() (*User, auth.Account) {
+	return func() (*User, auth.Account) {
 		t.Helper()
 		ctx := context.Background()
 		rw := db.New(conn)
@@ -394,8 +394,8 @@ func TestUserDirectGrantsFunc(
 	scopeId string,
 	setupFunc auth.TestAuthMethodWithAccountFunc,
 	testRoleGrants []TestRoleGrantsRequest,
-) func() (*User, string) {
-	return func() (*User, string) {
+) func() (*User, auth.Account) {
+	return func() (*User, auth.Account) {
 		t.Helper()
 		_, account := setupFunc(t, conn)
 		ctx := context.Background()
@@ -411,7 +411,7 @@ func TestUserDirectGrantsFunc(
 		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
 		require.NoError(t, err)
 		require.Len(t, acctIDs, 1)
-		return user, acctIDs[0]
+		return user, account
 	}
 }
 
@@ -426,8 +426,8 @@ func TestUserGroupGrantsFunc(
 	scopeId string,
 	setupFunc auth.TestAuthMethodWithAccountFunc,
 	testRoleGrants []TestRoleGrantsRequest,
-) func() (*User, string) {
-	return func() (*User, string) {
+) func() (*User, auth.Account) {
+	return func() (*User, auth.Account) {
 		t.Helper()
 		_, account := setupFunc(t, conn)
 		ctx := context.Background()
@@ -454,7 +454,7 @@ func TestUserGroupGrantsFunc(
 		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
 		require.NoError(t, err)
 		require.Len(t, acctIDs, 1)
-		return user, acctIDs[0]
+		return user, account
 	}
 }
 
