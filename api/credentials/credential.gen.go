@@ -372,8 +372,7 @@ func (c *Client) List(ctx context.Context, credentialStoreId string, opt ...Opti
 		return target, nil
 	}
 
-	allItems := make([]*Credential, 0, target.EstItemCount)
-	allItems = append(allItems, target.Items...)
+	allItems := target.Items
 
 	// If there are more results, automatically fetch the rest of the results.
 	// idToIndex keeps a map from the ID of an item to its index in target.Items.
