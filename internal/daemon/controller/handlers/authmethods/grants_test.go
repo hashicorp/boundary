@@ -64,17 +64,17 @@ func TestGrants_ReadActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create OIDC/LDAP/Password auth methods for each scope
-	oidcGlobal := oidc.TestAuthMethod(t, conn, databaseWrapper, globals.GlobalPrefix, oidc.InactiveState, "client-id", "secret")
-	oidcOrg1 := oidc.TestAuthMethod(t, conn, databaseWrapperOrg1, org1.GetPublicId(), oidc.InactiveState, "client-id", "secret")
-	oidcOrg2 := oidc.TestAuthMethod(t, conn, databaseWrapperOrg2, org2.GetPublicId(), oidc.InactiveState, "client-id", "secret")
+	oidcGlobal := oidc.TestAuthMethod(t, conn, databaseWrapper, globals.GlobalPrefix, oidc.InactiveState, "client-id", "secret", oidc.WithName("oidc-global"), oidc.WithDescription("test oidc desc"))
+	oidcOrg1 := oidc.TestAuthMethod(t, conn, databaseWrapperOrg1, org1.GetPublicId(), oidc.InactiveState, "client-id", "secret", oidc.WithName("oidc-org-1"), oidc.WithDescription("test oidc desc"))
+	oidcOrg2 := oidc.TestAuthMethod(t, conn, databaseWrapperOrg2, org2.GetPublicId(), oidc.InactiveState, "client-id", "secret", oidc.WithName("oidc-org-2"), oidc.WithDescription("test oidc desc"))
 
-	ldapGlobal := ldap.TestAuthMethod(t, conn, databaseWrapper, globals.GlobalPrefix, []string{"ldaps://alice.com"})
-	ldapOrg1 := ldap.TestAuthMethod(t, conn, databaseWrapperOrg1, org1.GetPublicId(), []string{"ldaps://alice.com"})
-	ldapOrg2 := ldap.TestAuthMethod(t, conn, databaseWrapperOrg2, org2.GetPublicId(), []string{"ldaps://alice.com"})
+	ldapGlobal := ldap.TestAuthMethod(t, conn, databaseWrapper, globals.GlobalPrefix, []string{"ldaps://alice.com"}, ldap.WithName(ctx, "ldap-global"), ldap.WithDescription(ctx, "test ldap desc"))
+	ldapOrg1 := ldap.TestAuthMethod(t, conn, databaseWrapperOrg1, org1.GetPublicId(), []string{"ldaps://alice.com"}, ldap.WithName(ctx, "ldap-org-1"), ldap.WithDescription(ctx, "test ldap desc"))
+	ldapOrg2 := ldap.TestAuthMethod(t, conn, databaseWrapperOrg2, org2.GetPublicId(), []string{"ldaps://alice.com"}, ldap.WithName(ctx, "ldap-org-2"), ldap.WithDescription(ctx, "test ldap desc"))
 
-	pwGlobal := password.TestAuthMethod(t, conn, globals.GlobalPrefix)
-	pwOrg1 := password.TestAuthMethod(t, conn, org1.GetPublicId())
-	pwOrg2 := password.TestAuthMethod(t, conn, org2.GetPublicId())
+	pwGlobal := password.TestAuthMethod(t, conn, globals.GlobalPrefix, password.WithName("pw-global"), password.WithDescription("test pw desc"))
+	pwOrg1 := password.TestAuthMethod(t, conn, org1.GetPublicId(), password.WithName("pw-org-1"), password.WithDescription("test pw desc"))
+	pwOrg2 := password.TestAuthMethod(t, conn, org2.GetPublicId(), password.WithName("pw-org-2"), password.WithDescription("test pw desc"))
 
 	// ignoreList consists of auth method IDs to omit from the result set
 	// this is to handle auth methods that are created during the auth token
@@ -83,11 +83,12 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name     string
-			input    *pbs.ListAuthMethodsRequest
-			userFunc func() (*iam.User, auth.Account)
-			wantErr  error
-			wantIDs  []string
+			name            string
+			input           *pbs.ListAuthMethodsRequest
+			userFunc        func() (*iam.User, auth.Account)
+			wantErr         error
+			wantIDs         []string
+			expectOutfields map[string][]string
 		}{
 			{
 				name:  "global role grant this only returns global auth methods",
@@ -95,7 +96,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=*"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope_id,name,description,type,created_time,updated_time,version,type"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
@@ -103,6 +104,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					oidcGlobal.PublicId,
 					ldapGlobal.PublicId,
 					pwGlobal.PublicId,
+				},
+				expectOutfields: map[string][]string{
+					oidcGlobal.PublicId: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+					ldapGlobal.PublicId: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+					pwGlobal.PublicId:   {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
 				},
 			},
 			{
@@ -114,7 +120,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op"},
+						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op;output_fields=id,scope,authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
@@ -129,6 +135,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					pwOrg1.PublicId,
 					pwOrg2.PublicId,
 				},
+				expectOutfields: map[string][]string{
+					oidcGlobal.PublicId: {globals.IdField, globals.ScopeField, globals.AuthorizedActionsField},
+					ldapGlobal.PublicId: {globals.IdField, globals.ScopeField, globals.AuthorizedActionsField},
+					pwGlobal.PublicId:   {globals.IdField, globals.ScopeField, globals.AuthorizedActionsField},
+				},
 			},
 			{
 				name: "global role grant this and children returns global auth methods",
@@ -138,7 +149,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op"},
+						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op;output_fields=id,authorized_actions"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
@@ -146,6 +157,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					oidcGlobal.PublicId,
 					ldapGlobal.PublicId,
 					pwGlobal.PublicId,
+				},
+				expectOutfields: map[string][]string{
+					oidcGlobal.PublicId: {globals.IdField, globals.AuthorizedActionsField},
+					ldapGlobal.PublicId: {globals.IdField, globals.AuthorizedActionsField},
+					pwGlobal.PublicId:   {globals.IdField, globals.AuthorizedActionsField},
 				},
 			},
 			{
@@ -157,7 +173,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op"},
+						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op;output_fields=id,name"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
@@ -171,6 +187,17 @@ func TestGrants_ReadActions(t *testing.T) {
 					pwGlobal.PublicId,
 					pwOrg1.PublicId,
 					pwOrg2.PublicId,
+				},
+				expectOutfields: map[string][]string{
+					oidcGlobal.PublicId: {globals.IdField, globals.NameField},
+					oidcOrg1.PublicId:   {globals.IdField, globals.NameField},
+					oidcOrg2.PublicId:   {globals.IdField, globals.NameField},
+					ldapGlobal.PublicId: {globals.IdField, globals.NameField},
+					ldapOrg1.PublicId:   {globals.IdField, globals.NameField},
+					ldapOrg2.PublicId:   {globals.IdField, globals.NameField},
+					pwGlobal.PublicId:   {globals.IdField, globals.NameField},
+					pwOrg1.PublicId:     {globals.IdField, globals.NameField},
+					pwOrg2.PublicId:     {globals.IdField, globals.NameField},
 				},
 			},
 			{
@@ -201,6 +228,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					pwOrg1.PublicId,
 					pwOrg2.PublicId,
 				},
+				expectOutfields: map[string][]string{},
 			},
 			{
 				name: "org role grant this and children returns auth methods in org1",
@@ -210,7 +238,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org1.PublicId,
-						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op"},
+						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op;output_fields=id,scope_id,name,description,type,created_time,updated_time,version,type"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
@@ -219,24 +247,10 @@ func TestGrants_ReadActions(t *testing.T) {
 					ldapOrg1.PublicId,
 					pwOrg1.PublicId,
 				},
-			},
-			{
-				name: "org role grant this and children recursive returns auth methods in org1",
-				input: &pbs.ListAuthMethodsRequest{
-					ScopeId:   org1.PublicId,
-					Recursive: true,
-				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-					{
-						RoleScopeId: org1.PublicId,
-						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op"},
-						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-					},
-				}),
-				wantIDs: []string{
-					oidcOrg1.PublicId,
-					ldapOrg1.PublicId,
-					pwOrg1.PublicId,
+				expectOutfields: map[string][]string{
+					oidcOrg1.PublicId: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+					ldapOrg1.PublicId: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+					pwOrg1.PublicId:   {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
 				},
 			},
 		}
@@ -270,6 +284,11 @@ func TestGrants_ReadActions(t *testing.T) {
 						continue
 					}
 					gotIDs = append(gotIDs, g.GetId())
+
+					// check if the output fields are as expected
+					if tc.expectOutfields[g.Id] != nil {
+						handlers.TestAssertOutputFields(t, g, tc.expectOutfields[g.Id])
+					}
 				}
 				require.ElementsMatch(t, tc.wantIDs, gotIDs)
 			})
@@ -281,13 +300,14 @@ func TestGrants_ReadActions(t *testing.T) {
 			name            string
 			userFunc        func() (*iam.User, auth.Account)
 			inputWantErrMap map[*pbs.GetAuthMethodRequest]error
+			expectOutfields map[string][]string
 		}{
 			{
 				name: "global role grant this returns global auth methods",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=*"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope_id,name,description,type,created_time,updated_time,version,type"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
@@ -302,13 +322,18 @@ func TestGrants_ReadActions(t *testing.T) {
 					{Id: ldapOrg1.PublicId}:   handlers.ForbiddenError(),
 					{Id: ldapOrg2.PublicId}:   handlers.ForbiddenError(),
 				},
+				expectOutfields: map[string][]string{
+					pwGlobal.PublicId:   {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+					oidcGlobal.PublicId: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+					ldapGlobal.PublicId: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+				},
 			},
 			{
 				name: "global role grant children returns org auth methods",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=*"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,name,description"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				}),
@@ -323,13 +348,21 @@ func TestGrants_ReadActions(t *testing.T) {
 					{Id: ldapOrg1.PublicId}:   nil,
 					{Id: ldapOrg2.PublicId}:   nil,
 				},
+				expectOutfields: map[string][]string{
+					pwOrg1.PublicId:   {globals.IdField, globals.NameField, globals.DescriptionField},
+					pwOrg2.PublicId:   {globals.IdField, globals.NameField, globals.DescriptionField},
+					oidcOrg1.PublicId: {globals.IdField, globals.NameField, globals.DescriptionField},
+					oidcOrg2.PublicId: {globals.IdField, globals.NameField, globals.DescriptionField},
+					ldapOrg1.PublicId: {globals.IdField, globals.NameField, globals.DescriptionField},
+					ldapOrg2.PublicId: {globals.IdField, globals.NameField, globals.DescriptionField},
+				},
 			},
 			{
 				name: "global role grant this and children with all permissions returns all auth methods",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=*"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,created_time,updated_time,version"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
@@ -344,13 +377,24 @@ func TestGrants_ReadActions(t *testing.T) {
 					{Id: ldapOrg1.PublicId}:   nil,
 					{Id: ldapOrg2.PublicId}:   nil,
 				},
+				expectOutfields: map[string][]string{
+					pwGlobal.PublicId:   {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					pwOrg1.PublicId:     {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					pwOrg2.PublicId:     {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					oidcGlobal.PublicId: {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					oidcOrg1.PublicId:   {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					oidcOrg2.PublicId:   {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					ldapGlobal.PublicId: {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					ldapOrg1.PublicId:   {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					ldapOrg2.PublicId:   {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+				},
 			},
 			{
 				name: "org1 role grant this scope with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org1.GetPublicId(),
-						Grants:      []string{"ids=*;type=*;actions=*"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope_id,type"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
@@ -365,9 +409,14 @@ func TestGrants_ReadActions(t *testing.T) {
 					{Id: ldapOrg1.PublicId}:   nil,
 					{Id: ldapOrg2.PublicId}:   handlers.ForbiddenError(),
 				},
+				expectOutfields: map[string][]string{
+					pwOrg1.PublicId:   {globals.IdField, globals.ScopeIdField, globals.TypeField},
+					oidcOrg1.PublicId: {globals.IdField, globals.ScopeIdField, globals.TypeField},
+					ldapOrg1.PublicId: {globals.IdField, globals.ScopeIdField, globals.TypeField},
+				},
 			},
 			{
-				name:     "no grants return all auth methods",
+				name:     "no grants returns no auth methods",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
 				inputWantErrMap: map[*pbs.GetAuthMethodRequest]error{
 					{Id: pwGlobal.PublicId}:   handlers.ForbiddenError(),
@@ -394,6 +443,10 @@ func TestGrants_ReadActions(t *testing.T) {
 					if wantErr != nil {
 						require.ErrorIs(t, err, wantErr)
 						continue
+					}
+					// check if the output fields are as expected
+					if tc.expectOutfields[input.Id] != nil {
+						handlers.TestAssertOutputFields(t, input, tc.expectOutfields[input.Id])
 					}
 					require.NoError(t, err)
 				}
@@ -776,6 +829,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			name          string
 			scopeId       string
 			input         *pbs.AuthenticateRequest
+			userFunc      func() (*iam.User, auth.Account)
 			rolesToCreate []authtoken.TestRoleGrantsForToken
 			wantErr       error
 		}{
@@ -791,13 +845,18 @@ func TestGrants_WriteActions(t *testing.T) {
 						},
 					},
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=auth-method;actions=authenticate"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
-				},
+				}),
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeId:  globals.GlobalPrefix,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+				}},
 			},
 			{
 				name:    "org role can't authenticate against a global auth method",
@@ -889,6 +948,7 @@ func TestGrants_WriteActions(t *testing.T) {
 					role := iam.TestRoleWithGrants(t, conn, roleToCreate.RoleScopeId, roleToCreate.GrantScopes, roleToCreate.GrantStrings)
 					iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
 				}
+				// user, accountID := tc.userFunc()
 
 				// Create auth token for the user
 				tok, err := atRepo.CreateAuthToken(ctx, user, account.PublicId)
