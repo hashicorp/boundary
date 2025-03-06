@@ -48,12 +48,7 @@ resource "google_compute_network" "boundary_compute_network" {
   name = "boundary-enos-network-${random_string.test_string.result}"
 }
 
-resource "random_id" "filter_label1" {
-  prefix      = "enos_boundary"
-  byte_length = 4
-}
-
-resource "random_id" "filter_label2" {
+resource "random_id" "filter_label" {
   prefix      = "enos_boundary"
   byte_length = 4
 }
@@ -126,8 +121,7 @@ resource "google_compute_instance" "boundary_target" {
     "project_name" : "qti-enos-boundary",
     "environment" : var.environment,
     "enos_user" : replace(var.enos_user, "/[\\W]+/", ""),
-    "filter_label_1" : random_id.filter_label1.hex
-    "filter_label_2" : random_id.filter_label2.hex
+    "filter_label" : random_id.filter_label.hex
   })
 }
 
@@ -151,10 +145,6 @@ output "target_ssh_key" {
   sensitive = true
 }
 
-output "filter_label1" {
-  value = "labels.filter_label_1=${random_id.filter_label1.hex}"
-}
-
-output "filter_label2" {
-  value = "labels.filter_label_2=${random_id.filter_label2.hex}"
+output "filter_label" {
+  value = "labels.filter_label=${random_id.filter_label.hex}"
 }

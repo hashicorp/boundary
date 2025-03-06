@@ -13,7 +13,8 @@ type config struct {
 	GcpClientEmail    string `envconfig:"E2E_GCP_CLIENT_EMAIL" required:"true"`
 	GcpHostSetFilter1 string `envconfig:"E2E_GCP_HOST_SET_FILTER1" required:"true"`
 	GcpHostSetFilter2 string `envconfig:"E2E_GCP_HOST_SET_FILTER2" required:"true"`
-	GcpHostSetIps     string `envconfig:"E2E_GCP_HOST_SET_IPS" required:"true"`
+	GcpHostSetIps1    string `envconfig:"E2E_GCP_HOST_SET_IPS1" required:"true"`
+	GcpHostSetIps2    string `envconfig:"E2E_GCP_HOST_SET_IPS2" required:"true"`
 	GcpTargetSshKey   string `envconfig:"E2E_GCP_TARGET_SSH_KEY" required:"true"`
 	GcpTargetAddress  string `envconfig:"E2E_TARGET_ADDRESS" required:"true"` // e.g. "192.168.0.1"
 	GcpTargetSshUser  string `envconfig:"E2E_SSH_USER" required:"true"`       // e.g. "ubuntu"

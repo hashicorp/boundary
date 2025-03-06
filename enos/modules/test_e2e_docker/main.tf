@@ -275,7 +275,13 @@ variable "gcp_host_set_filter2" {
   default     = ""
 }
 
-variable "gcp_host_set_ips" {
+variable "gcp_host_set_ips1" {
+  description = "List of IP addresses"
+  type        = list(string)
+  default     = [""]
+}
+
+variable "gcp_host_set_ips2" {
   description = "List of IP addresses"
   type        = list(string)
   default     = [""]
@@ -348,7 +354,8 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_GCP_TARGET_SSH_KEY        = var.gcp_target_ssh_key
     E2E_GCP_HOST_SET_FILTER1      = var.gcp_host_set_filter1
     E2E_GCP_HOST_SET_FILTER2      = var.gcp_host_set_filter2
-    E2E_GCP_HOST_SET_IPS          = jsonencode(var.gcp_host_set_ips)
+    E2E_GCP_HOST_SET_IPS1         = jsonencode(var.gcp_host_set_ips1)
+    E2E_GCP_HOST_SET_IPS2         = jsonencode(var.gcp_host_set_ips2)
     E2E_MAX_PAGE_SIZE             = var.max_page_size
     E2E_CONTROLLER_CONTAINER_NAME = var.controller_container_name
     BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir)
