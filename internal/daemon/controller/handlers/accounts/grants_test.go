@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	authdomain "github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -59,7 +60,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 
 	testcases := []struct {
 		name           string
-		userAcountFunc func(t *testing.T) func() (*iam.User, string)
+		userAcountFunc func(t *testing.T) func() (*iam.User, authdomain.Account)
 		input          *pbs.ListAccountsRequest
 		wantAccountIDs []string
 		wantErr        error
@@ -69,7 +70,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: orgAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, auth.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -86,7 +87,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: globalPasswordAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -103,7 +104,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: globalPasswordAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -120,7 +121,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: orgAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -137,7 +138,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: orgAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
@@ -154,7 +155,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: orgAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
@@ -171,7 +172,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: orgAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -188,7 +189,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: globalPasswordAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -203,8 +204,8 @@ func TestGrants_ListAccounts(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			user, accountID := tc.userAcountFunc(t)()
-			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+			user, account := tc.userAcountFunc(t)()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 			require.NoError(t, err)
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			got, err := s.ListAccounts(fullGrantAuthCtx, tc.input)
@@ -256,7 +257,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 
 	testcases := []struct {
 		name           string
-		userAcountFunc func(t *testing.T) func() (*iam.User, string)
+		userAcountFunc func(t *testing.T) func() (*iam.User, authdomain.Account)
 		input          *pbs.GetAccountRequest
 		wantAccountID  string
 		wantErr        error
@@ -266,7 +267,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 			input: &pbs.GetAccountRequest{
 				Id: orgPWAccount.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -283,7 +284,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 			input: &pbs.GetAccountRequest{
 				Id: globalPWAccount.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -300,7 +301,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 			input: &pbs.GetAccountRequest{
 				Id: globalPWAccount.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -317,7 +318,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 			input: &pbs.GetAccountRequest{
 				Id: orgPWAccount.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
@@ -334,7 +335,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 			input: &pbs.GetAccountRequest{
 				Id: orgPWAccount.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
@@ -351,7 +352,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 			input: &pbs.GetAccountRequest{
 				Id: orgPWAccount.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -368,7 +369,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 			input: &pbs.GetAccountRequest{
 				Id: globalPWAccount.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -383,8 +384,8 @@ func TestGrants_GetAccounts(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			user, accountID := tc.userAcountFunc(t)()
-			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+			user, account := tc.userAcountFunc(t)()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 			require.NoError(t, err)
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			got, err := s.GetAccount(fullGrantAuthCtx, tc.input)
@@ -430,12 +431,12 @@ func TestGrants_CreateAccount(t *testing.T) {
 
 	testcases := []struct {
 		name                     string
-		userAcountFunc           func(t *testing.T) func() (*iam.User, string)
+		userAcountFunc           func(t *testing.T) func() (*iam.User, authdomain.Account)
 		authmethodIdExpectErrMap map[string]error
 	}{
 		{
 			name: "grant this and descendant at global can create accounts everywhere",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -452,7 +453,7 @@ func TestGrants_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "grant this and children at global can create accounts everywhere",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -469,7 +470,7 @@ func TestGrants_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "grant children at global can create accounts in org",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -486,7 +487,7 @@ func TestGrants_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "grant descendant at global can create accounts in org",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -503,7 +504,7 @@ func TestGrants_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "pinned grant org1AM can only create accounts in org1AM",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -520,7 +521,7 @@ func TestGrants_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "grant auth-method type does not allow create account",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -538,8 +539,8 @@ func TestGrants_CreateAccount(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			user, accountID := tc.userAcountFunc(t)()
-			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+			user, account := tc.userAcountFunc(t)()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 			require.NoError(t, err)
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			for authMethodId, wantErr := range tc.authmethodIdExpectErrMap {
@@ -600,12 +601,12 @@ func TestGrants_DeleteAccount(t *testing.T) {
 	require.NoError(t, err)
 	testcases := []struct {
 		name                     string
-		userAcountFunc           func(t *testing.T) func() (*iam.User, string)
+		userAcountFunc           func(t *testing.T) func() (*iam.User, authdomain.Account)
 		authmethodIdExpectErrMap map[string]error
 	}{
 		{
 			name: "grant this and descendant at global can delete accounts everywhere",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -622,7 +623,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 		},
 		{
 			name: "grant this and children at global can delete accounts everywhere",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -639,7 +640,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 		},
 		{
 			name: "grant children at global can delete accounts in org",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -656,7 +657,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 		},
 		{
 			name: "grant descendant at global can delete accounts in org",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -673,7 +674,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 		},
 		{
 			name: "grant this and descendant at global with specific type and action can delete accounts in org",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -690,7 +691,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 		},
 		{
 			name: "pinned grant org1AM can only delete accounts in org1AM",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -707,7 +708,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 		},
 		{
 			name: "grant auth-method type does not allow delete create account",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -731,8 +732,8 @@ func TestGrants_DeleteAccount(t *testing.T) {
 				acct := password.TestAccount(t, conn, amid, loginName)
 				authMethodAccountMap[amid] = acct
 			}
-			user, accountID := tc.userAcountFunc(t)()
-			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+			user, account := tc.userAcountFunc(t)()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 			require.NoError(t, err)
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			for authMethodId, wantErr := range tc.authmethodIdExpectErrMap {
@@ -782,12 +783,12 @@ func TestGrants_UpdateAccount(t *testing.T) {
 	require.NoError(t, err)
 	testcases := []struct {
 		name                     string
-		userAcountFunc           func(t *testing.T) func() (*iam.User, string)
+		userAcountFunc           func(t *testing.T) func() (*iam.User, authdomain.Account)
 		authmethodIdExpectErrMap map[string]error
 	}{
 		{
 			name: "grant this and descendant at global can update accounts everywhere",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -804,7 +805,7 @@ func TestGrants_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "grant this and children at global can update accounts everywhere",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -821,7 +822,7 @@ func TestGrants_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "grant children at global can update accounts in org",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -838,7 +839,7 @@ func TestGrants_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "grant descendant at global can update accounts in org",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -855,7 +856,7 @@ func TestGrants_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "grant this and descendant at global with specific type and action can update accounts in org",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -872,7 +873,7 @@ func TestGrants_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "pinned grant org1AM can only update accounts in org1AM",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -889,7 +890,7 @@ func TestGrants_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "grant auth-method type does not allow update create account",
-			userAcountFunc: func(t *testing.T) func() (*iam.User, string) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -913,8 +914,8 @@ func TestGrants_UpdateAccount(t *testing.T) {
 				acct := password.TestAccount(t, conn, amid, loginName)
 				authMethodAccountMap[amid] = acct
 			}
-			user, accountID := tc.userAcountFunc(t)()
-			tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+			user, account := tc.userAcountFunc(t)()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 			require.NoError(t, err)
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			for authMethodId, wantErr := range tc.authmethodIdExpectErrMap {
