@@ -70,7 +70,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			input: &pbs.ListAccountsRequest{
 				AuthMethodId: orgAM.PublicId,
 			},
-			userAcountFunc: func(t *testing.T) func() (*iam.User, auth.Account) {
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
