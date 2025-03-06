@@ -524,13 +524,14 @@ func TestGrants_WriteActions(t *testing.T) {
 			name              string
 			userFunc          func() (*iam.User, auth.Account)
 			canCreateInScopes map[string]error
+			expectOutfields   map[string][]string
 		}{
 			{
 				name: "direct grant all can create all",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=*"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope_id,name,description,type,created_time,updated_time,version"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
@@ -539,13 +540,18 @@ func TestGrants_WriteActions(t *testing.T) {
 					org1.PublicId:        nil,
 					org2.PublicId:        nil,
 				},
+				expectOutfields: map[string][]string{
+					globals.GlobalPrefix: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					org1.PublicId:        {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+					org2.PublicId:        {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+				},
 			},
 			{
 				name: "global role grant children can only create org auth methods",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=auth-method;actions=create"},
+						Grants:      []string{"ids=*;type=auth-method;actions=create;output_fields=id,scope_id,created_time"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				}),
@@ -554,13 +560,17 @@ func TestGrants_WriteActions(t *testing.T) {
 					org1.PublicId:        nil,
 					org2.PublicId:        nil,
 				},
+				expectOutfields: map[string][]string{
+					org1.PublicId: {globals.IdField, globals.ScopeIdField, globals.CreatedTimeField},
+					org2.PublicId: {globals.IdField, globals.ScopeIdField, globals.CreatedTimeField},
+				},
 			},
 			{
 				name: "org role can't create global auth methods nor auth methods in other orgs",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org2.PublicId,
-						Grants:      []string{"ids=*;type=auth-method;actions=create"},
+						Grants:      []string{"ids=*;type=auth-method;actions=create;output_fields=id,name,description"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
@@ -569,18 +579,21 @@ func TestGrants_WriteActions(t *testing.T) {
 					org1.PublicId:        handlers.ForbiddenError(),
 					org2.PublicId:        nil,
 				},
+				expectOutfields: map[string][]string{
+					org2.PublicId: {globals.IdField, globals.NameField, globals.DescriptionField},
+				},
 			},
 			{
 				name: "incorrect grants returns 403 error",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=auth-method;actions=list,read,update"},
+						Grants:      []string{"ids=*;type=auth-method;actions=list,read,update;output_fields=id,scope_id"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 					{
 						RoleScopeId: org1.PublicId,
-						Grants:      []string{"ids=*;type=auth-method;actions=list,read,update"},
+						Grants:      []string{"ids=*;type=auth-method;actions=list,read,update;output_fields=id,name"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
@@ -622,7 +635,7 @@ func TestGrants_WriteActions(t *testing.T) {
 						t.Fatalf("Unexpected scope ID: %s", scopeId)
 					}
 
-					_, err := s.CreateAuthMethod(fullGrantAuthCtx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+					resp, err := s.CreateAuthMethod(fullGrantAuthCtx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 						Name:        wrapperspb.String(name),
 						Description: wrapperspb.String("test description"),
 						ScopeId:     scopeId,
@@ -633,6 +646,7 @@ func TestGrants_WriteActions(t *testing.T) {
 						continue
 					}
 					require.NoError(t, err)
+					handlers.TestAssertOutputFields(t, resp.Item, tc.expectOutfields[scopeId])
 				}
 			})
 		}
@@ -642,88 +656,101 @@ func TestGrants_WriteActions(t *testing.T) {
 		// Create global & org auth methods to test updates
 		globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
 		globalAm := &pb.AuthMethod{
-			Name:        &wrapperspb.StringValue{Value: "new name"},
-			Description: &wrapperspb.StringValue{Value: "new desc"},
-			Version:     1,
+			Name:        &wrapperspb.StringValue{Value: "global name"},
+			Description: &wrapperspb.StringValue{Value: "global desc"},
 		}
 
 		org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
 		org1Am := &pb.AuthMethod{
-			Name:        &wrapperspb.StringValue{Value: "new name"},
-			Description: &wrapperspb.StringValue{Value: "new desc"},
-			Version:     1,
+			Name:        &wrapperspb.StringValue{Value: "org 1 name"},
+			Description: &wrapperspb.StringValue{Value: "org 1 desc"},
+		}
+
+		org2AmId := password.TestAuthMethod(t, conn, org2.PublicId).PublicId
+		org2Am := &pb.AuthMethod{
+			Name:        &wrapperspb.StringValue{Value: "org 2 name"},
+			Description: &wrapperspb.StringValue{Value: "org 2 desc"},
+		}
+
+		getAuthMethod := func(id string) *pb.AuthMethod {
+			if id == org1AmId {
+				return org1Am
+			}
+			if id == org2AmId {
+				return org2Am
+			}
+			return globalAm
 		}
 
 		testcases := []struct {
 			name          string
-			input         *pbs.UpdateAuthMethodRequest
 			rolesToCreate []authtoken.TestRoleGrantsForToken
-			wantErr       error
+			// TODO: Combine these two fields into one struct
+			canUpdateAuthMethodIds map[string]error
+			expectOutfields        map[string][]string
 		}{
 			{
 				name: "global role grant this and children can update global auth method",
-				input: &pbs.UpdateAuthMethodRequest{
-					Id: globalAmId,
-					UpdateMask: &field_mask.FieldMask{
-						Paths: []string{"name", "description"},
-					},
-					Item: globalAm,
-				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
 						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=auth-method;actions=update"},
+						GrantStrings: []string{"ids=*;type=auth-method;actions=update;output_fields=id,scope_id,name,description,type,version"},
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
+				},
+				canUpdateAuthMethodIds: map[string]error{
+					globalAmId: nil,
+					org1AmId:   nil,
+					org2AmId:   nil,
+				},
+				expectOutfields: map[string][]string{
+					globalAmId: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.VersionField},
+					org1AmId:   {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.VersionField},
+					org2AmId:   {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.VersionField},
 				},
 			},
 			{
-				name: "global role grant this and children & org role grant this can update org auth method",
-				input: &pbs.UpdateAuthMethodRequest{
-					Id: org1AmId,
-					UpdateMask: &field_mask.FieldMask{
-						Paths: []string{"name", "description"},
-					},
-					Item: org1Am,
-				},
+				name: "global role grant this & org role grant this can update their respective auth methods",
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
 						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=auth-method;actions=update"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						GrantStrings: []string{"ids=*;type=auth-method;actions=update;output_fields=id,name,description,version"},
+						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 					{
 						RoleScopeId:  org1.PublicId,
-						GrantStrings: []string{"ids=*;type=auth-method;actions=update"},
+						GrantStrings: []string{"ids=*;type=auth-method;actions=update;output_fields=id,scope_id,type,version"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
+				},
+				canUpdateAuthMethodIds: map[string]error{
+					globalAmId: nil,
+					org1AmId:   nil,
+					org2AmId:   handlers.ForbiddenError(),
+				},
+				expectOutfields: map[string][]string{
+					globalAmId: {globals.IdField, globals.NameField, globals.DescriptionField, globals.VersionField},
+					org1AmId:   {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.VersionField},
 				},
 			},
 			{
 				name: "org role can't update global auth methods",
-				input: &pbs.UpdateAuthMethodRequest{
-					Id: globalAmId,
-					UpdateMask: &field_mask.FieldMask{
-						Paths: []string{"name", "description"},
-					},
-					Item: globalAm,
-				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
 					RoleScopeId:  org1.PublicId,
-					GrantStrings: []string{"ids=*;type=auth-method;actions=update"},
+					GrantStrings: []string{"ids=*;type=auth-method;actions=update;output_fields=id,version,created_time,updated_time"},
 					GrantScopes:  []string{globals.GrantScopeThis},
 				}},
-				wantErr: handlers.ForbiddenError(),
+				canUpdateAuthMethodIds: map[string]error{
+					globalAmId: handlers.ForbiddenError(),
+					org1AmId:   nil,
+					org2AmId:   handlers.ForbiddenError(),
+				},
+				expectOutfields: map[string][]string{
+					org1AmId: {globals.IdField, globals.VersionField, globals.CreatedTimeField, globals.UpdatedTimeField},
+				},
 			},
 			{
 				name: "incorrect grants returns 403 error",
-				input: &pbs.UpdateAuthMethodRequest{
-					Id: org1AmId,
-					UpdateMask: &field_mask.FieldMask{
-						Paths: []string{"name", "description"},
-					},
-					Item: org1Am,
-				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
 						RoleScopeId:  globals.GlobalPrefix,
@@ -736,32 +763,47 @@ func TestGrants_WriteActions(t *testing.T) {
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 				},
-				wantErr: handlers.ForbiddenError(),
+				canUpdateAuthMethodIds: map[string]error{
+					globalAmId: handlers.ForbiddenError(),
+					org1AmId:   handlers.ForbiddenError(),
+					org2AmId:   handlers.ForbiddenError(),
+				},
 			},
 			{
-				name: "no grants returns 403 error",
-				input: &pbs.UpdateAuthMethodRequest{
-					Id: globalAmId,
-					UpdateMask: &field_mask.FieldMask{
-						Paths: []string{"name", "description"},
-					},
-					Item: globalAm,
-				},
+				name:          "no grants returns 403 error",
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{},
-				wantErr:       handlers.ForbiddenError(),
+				canUpdateAuthMethodIds: map[string]error{
+					globalAmId: handlers.ForbiddenError(),
+					org1AmId:   handlers.ForbiddenError(),
+					org2AmId:   handlers.ForbiddenError(),
+				},
+				expectOutfields: map[string][]string{},
 			},
 		}
 
-		for _, tc := range testcases {
+		for i, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
 				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
-				_, finalErr := s.UpdateAuthMethod(fullGrantAuthCtx, tc.input)
-				if tc.wantErr != nil {
-					require.ErrorIs(t, finalErr, tc.wantErr)
-					return
+
+				for amId, wantErr := range tc.canUpdateAuthMethodIds {
+					am := getAuthMethod(amId)
+					am.Version = uint32(i + 1) // increment version to simulate an update
+
+					resp, err := s.UpdateAuthMethod(fullGrantAuthCtx, &pbs.UpdateAuthMethodRequest{
+						Id: amId,
+						UpdateMask: &field_mask.FieldMask{
+							Paths: []string{"name", "description"},
+						},
+						Item: getAuthMethod(amId),
+					})
+					if wantErr != nil {
+						require.ErrorIs(t, err, wantErr)
+						return
+					}
+					require.NoError(t, err)
+					handlers.TestAssertOutputFields(t, resp.Item, tc.expectOutfields[amId])
 				}
-				require.NoError(t, finalErr)
 			})
 		}
 	})
