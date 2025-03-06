@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static"
@@ -73,11 +74,11 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name          string
-			input         *pbs.ListCredentialStoresRequest
-			rolesToCreate []authtoken.TestRoleGrantsForToken
-			wantErr       error
-			wantIDs       []string
+			name     string
+			input    *pbs.ListCredentialStoresRequest
+			userFunc func() (*iam.User, string)
+			wantErr  error
+			wantIDs  []string
 		}{
 			{
 				name: "global role grant this returns all created credential stores",
@@ -85,13 +86,13 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=credential-store;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: wantStores,
 			},
@@ -101,13 +102,13 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   org.GetPublicId(),
 					Recursive: true,
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  org.PublicId,
-						GrantStrings: []string{"ids=*;type=credential-store;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: wantStores,
 			},
@@ -116,13 +117,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListCredentialStoresRequest{
 					ScopeId: proj.GetPublicId(),
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  proj.PublicId,
-						GrantStrings: []string{"ids=*;type=credential-store;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: wantStores,
 			},
