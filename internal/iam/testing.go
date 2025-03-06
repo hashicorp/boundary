@@ -380,7 +380,7 @@ func TestUserManagedGroupGrantsFunc(
 		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
 		require.NoError(t, err)
 		require.Len(t, acctIDs, 1)
-		return user, acctIDs[0]
+		return user, account
 	}
 }
 
