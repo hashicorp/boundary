@@ -1733,9 +1733,12 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 		}
 	}
 	if outputFields.Has(globals.AddressField) {
-		addr, err := parseutil.NormalizeAddr(in.GetAddress())
-		if err != nil {
-			errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to normalize the given target address: %q", in.GetAddress()))
+		addr := in.GetAddress()
+		if addr != "" {
+			var err error
+			if addr, err = parseutil.NormalizeAddr(in.GetAddress()); err != nil {
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to normalize the given target address: %q", in.GetAddress()))
+			}
 		}
 		out.Address = wrapperspb.String(addr)
 	}
