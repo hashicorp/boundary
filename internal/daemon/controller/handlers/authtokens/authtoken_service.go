@@ -242,9 +242,10 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 			return nil, handlers.ForbiddenError()
 		}
 		outputFields = authResults.FetchOutputFields(perms.Resource{
-			Id:      at.GetPublicId(),
-			ScopeId: at.GetScopeId(),
-			Type:    resource.AuthToken,
+			Id:            at.GetPublicId(),
+			ScopeId:       at.GetScopeId(),
+			Type:          resource.AuthToken,
+			ParentScopeId: authResults.Scope.GetParentScopeId(),
 		}, action.Read).SelfOrDefaults(authResults.UserId)
 	} else {
 		var ok bool
