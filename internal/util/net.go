@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 const (
@@ -18,6 +19,10 @@ const (
 	MinAddressLength = 3
 	// MaxAddressLength
 	MaxAddressLength = 255
+	// address is not within the lengths defined above
+	InvalidAddressLength = "invalid address length"
+	// address contains a port
+	InvalidAddressContainsPort = "address contains a port"
 )
 
 // This regular expression is used to find all instances of square brackets within a string.
@@ -32,9 +37,12 @@ func JoinHostPort(host, port string) string {
 }
 
 // SplitHostPort splits a network address of the form "host:port", "host%zone:port", "[host]:port" or "[host%zone]:port" into host or host%zone and port.
-//
-// A literal IPv6 address in hostport must be enclosed in square brackets, as in "[::1]:80", "[::1%lo0]:80".
 func SplitHostPort(hostport string) (host string, port string, err error) {
+	// in case hostport is just an ip, we can grab that early
+	if ip := net.ParseIP(hostport); ip != nil {
+		host = ip.String()
+		return
+	}
 	host, port, err = net.SplitHostPort(hostport)
 	// use the hostport value as a backup when we have a missing port error
 	if err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr) {
@@ -55,18 +63,11 @@ func ParseAddress(ctx context.Context, address string) (string, error) {
 	const op = "util.ParseAddress"
 	address = strings.TrimSpace(address)
 	if len(address) < MinAddressLength || len(address) > MaxAddressLength {
-		return "", errors.New("invalid address length")
+		return "", errors.New(InvalidAddressLength)
 	}
-	host, port, err := SplitHostPort(address)
-	if err != nil {
-		ip := net.ParseIP(address)
-		if ip.To4() == nil && ip.To16() == nil {
-			return "", err
-		}
-		host = ip.String()
+	_, port, err := SplitHostPort(address)
+	if err == nil && port != "" {
+		return "", errors.New(InvalidAddressContainsPort)
 	}
-	if port != "" {
-		return "", errors.New("address contains a port")
-	}
-	return host, nil
+	return parseutil.NormalizeAddr(address)
 }
