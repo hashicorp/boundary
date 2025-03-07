@@ -310,3 +310,208 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 	}
 
 }
+
+// TestGrants_GetCredentialStores tests read actions to assert that grants are being applied properly
+func TestGrants_GetCredentialStores(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	vaultRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(ctx, rw, rw, kmsCache, scheduler.TestScheduler(t, conn, wrap))
+	}
+	staticRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	credStoreRepoFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
+	}
+	s, err := credentialstores.NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreRepoFn, 1000)
+	require.NoError(t, err)
+
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+
+	proj1VaultStore := vault.TestCredentialStores(t, conn, wrap, proj1.GetPublicId(), 1)[0]
+	proj2StaticStore := static.TestCredentialStores(t, conn, wrap, proj2.GetPublicId(), 1)[0]
+	proj3VaultStore := vault.TestCredentialStores(t, conn, wrap, proj3.GetPublicId(), 1)[0]
+
+	testcases := []struct {
+		name          string
+		userFunc      func() (*iam.User, authdomain.Account)
+		inputErrorMap map[*pbs.GetCredentialStoreRequest]error
+	}{
+		{
+			name: "global role grant descendant can list all created credential stores",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
+				{Id: proj1VaultStore.GetPublicId()}:  nil,
+				{Id: proj2StaticStore.GetPublicId()}: nil,
+				{Id: proj3VaultStore.GetPublicId()}:  nil,
+			},
+		},
+		{
+			name: "global role grant this and children cannot get any credential stores",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+				},
+			}),
+			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
+				{Id: proj1VaultStore.GetPublicId()}:  handlers.ForbiddenError(),
+				{Id: proj2StaticStore.GetPublicId()}: handlers.ForbiddenError(),
+				{Id: proj3VaultStore.GetPublicId()}:  handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "org role grant children can read all credential stores under granted org",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+				},
+			}),
+			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
+				{Id: proj1VaultStore.GetPublicId()}:  nil,
+				{Id: proj2StaticStore.GetPublicId()}: nil,
+				{Id: proj3VaultStore.GetPublicId()}:  nil,
+			},
+		},
+		{
+			name: "project role can only read credential stores in this project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
+				{Id: proj1VaultStore.GetPublicId()}:  nil,
+				{Id: proj2StaticStore.GetPublicId()}: handlers.ForbiddenError(),
+				{Id: proj3VaultStore.GetPublicId()}:  handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "composite grants individually grant each project roles can read all credential stores",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj3.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
+				{Id: proj1VaultStore.GetPublicId()}:  nil,
+				{Id: proj2StaticStore.GetPublicId()}: nil,
+				{Id: proj3VaultStore.GetPublicId()}:  nil,
+			},
+		},
+		{
+			name: "composite grants individually grant each project roles can read all credential stores",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj3.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
+				{Id: proj1VaultStore.GetPublicId()}:  nil,
+				{Id: proj2StaticStore.GetPublicId()}: nil,
+				{Id: proj3VaultStore.GetPublicId()}:  nil,
+			},
+		},
+		{
+			name: "global grants individual resources can only read resources that are granted access",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{fmt.Sprintf("ids=%s,%s;type=credential-store;actions=read", proj1VaultStore.GetPublicId(), proj3VaultStore.GetPublicId())},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
+				{Id: proj1VaultStore.GetPublicId()}:  nil,
+				{Id: proj2StaticStore.GetPublicId()}: handlers.ForbiddenError(),
+				{Id: proj3VaultStore.GetPublicId()}:  nil,
+			},
+		},
+		{
+			name: "global grants not granting read permission cannot read credentials store",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=list,create,delete"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+				{
+					RoleScopeId: proj2.GetPublicId(),
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
+				{Id: proj1VaultStore.GetPublicId()}:  handlers.ForbiddenError(),
+				{Id: proj2StaticStore.GetPublicId()}: nil,
+				{Id: proj3VaultStore.GetPublicId()}:  handlers.ForbiddenError(),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, account := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			for input, wantErr := range tc.inputErrorMap {
+				_, err = s.GetCredentialStore(fullGrantAuthCtx, input)
+				if wantErr != nil {
+					require.ErrorIs(t, err, wantErr)
+					continue
+				}
+				require.NoError(t, err)
+			}
+		})
+	}
+
+}
