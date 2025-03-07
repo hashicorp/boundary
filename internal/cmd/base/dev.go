@@ -262,7 +262,7 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 	// added back, otherwise the gldap server will fail to start due to a parsing
 	// error.
 	if ip := net.ParseIP(host); ip != nil {
-		if ip.To16() != nil {
+		if ip.To4() == nil && ip.To16() != nil {
 			host = fmt.Sprintf("[%s]", host)
 		}
 	}

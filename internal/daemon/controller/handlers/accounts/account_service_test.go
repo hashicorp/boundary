@@ -2427,6 +2427,41 @@ func TestCreateOidc(t *testing.T) {
 			},
 		},
 		{
+			name: "Create a valid Account with IPv6 issuer address",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
+					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
+					Type:         oidc.Subtype.String(),
+					Attrs: &pb.Account_OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
+							Issuer:  "https://[2001:BEEF:0000:0000:0000:0000:0000:0001]:44344/v1/myissuer",
+							Subject: "valid-account-ipv6-iss",
+						},
+					},
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
+					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         oidc.Subtype.String(),
+					Attrs: &pb.Account_OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
+							Subject: "valid-account-ipv6-iss",
+							Issuer:  "https://[2001:beef::1]:44344/v1/myissuer",
+						},
+					},
+					AuthorizedActions: oidcAuthorizedActions,
+				},
+			},
+		},
+		{
 			name: "Create a valid Account without type defined",
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
@@ -2565,6 +2600,25 @@ func TestCreateOidc(t *testing.T) {
 			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Malformed issuer url",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
+					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
+					Type:         oidc.Subtype.String(),
+					Attrs: &pb.Account_OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
+							Issuer:  "https://2000:0005::0001]", // missing '[' after https://
+							Subject: "valid-account-ipv6-iss",
+						},
+					},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, `Error: "Error in provided request.", Details: {{name: "attributes.issuer", desc: "Cannot be parsed as a url. parse \"https://2000:0005::0001]\": invalid port \":0001]\" after host"}}`),
 		},
 	}
 	for _, tc := range cases {

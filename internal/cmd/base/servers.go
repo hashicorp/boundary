@@ -812,12 +812,16 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 	if flagValue != "" {
 		conf.Worker.PublicAddr = flagValue
 	}
+	isUnixListener := false
 	if conf.Worker.PublicAddr == "" {
 	FindAddr:
 		for _, listener := range conf.Listeners {
 			for _, purpose := range listener.Purpose {
 				if purpose == "proxy" {
 					conf.Worker.PublicAddr = listener.Address
+					if strings.EqualFold(listener.Type, "unix") {
+						isUnixListener = true
+					}
 					break FindAddr
 				}
 			}
@@ -843,6 +847,16 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		port = "9202"
 	}
 	conf.Worker.PublicAddr = util.JoinHostPort(host, port)
+
+	if host != "" && !isUnixListener {
+		// NormalizeAddr requires that a host be present, but that is not
+		// guaranteed in this code path. Additionally, if no host is present,
+		// there's no need to normalize.
+		conf.Worker.PublicAddr, err = parseutil.NormalizeAddr(conf.Worker.PublicAddr)
+		if err != nil {
+			return fmt.Errorf("Failed to normalize worker public adddress: %w", err)
+		}
+	}
 
 	return nil
 }

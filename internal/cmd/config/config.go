@@ -139,7 +139,7 @@ kms "aead" {
 }
 
 listener "tcp" {
-	address = "[::1]"
+	address = "::1"
 	purpose = "api"
 	tls_disable = true
 	cors_enabled = true
@@ -147,12 +147,12 @@ listener "tcp" {
 }
 
 listener "tcp" {
-	address = "[::1]"
+	address = "::1"
 	purpose = "cluster"
 }
 
 listener "tcp" {
-	address = "[::1]"
+	address = "::1"
 	purpose = "ops"
 	tls_disable = true
 }
@@ -160,15 +160,15 @@ listener "tcp" {
 
 	devIpv6WorkerExtraConfig = `
 listener "tcp" {
-	address = "[::1]"
+	address = "::1"
 	purpose = "proxy"
 }
 
 worker {
 	name = "w_1234567890"
 	description = "A default worker created in dev mode"
-	public_addr = "[::1]"
-	initial_upstreams = ["[::1]"]
+	public_addr = "::1"
+	initial_upstreams = ["::1"]
 	tags {
 		type = ["dev", "local"]
 	}
@@ -1240,14 +1240,13 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 		return nil, nil
 	}
 
+	upstreams := make([]string, 0)
 	switch t := c.Worker.InitialUpstreamsRaw.(type) {
 	case []any:
-		var upstreams []string
 		err := mapstructure.WeakDecode(c.Worker.InitialUpstreamsRaw, &upstreams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode worker initial_upstreams block into config field: %w", err)
 		}
-		return upstreams, nil
 
 	case string:
 		upstreamsStr, err := parseutil.ParsePath(t)
@@ -1255,17 +1254,25 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 			return nil, fmt.Errorf("bad env var or file pointer: %w", err)
 		}
 
-		var upstreams []string
 		err = json.Unmarshal([]byte(upstreamsStr), &upstreams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal env/file contents: %w", err)
 		}
-		return upstreams, nil
 
 	default:
 		typ := reflect.TypeOf(t)
 		return nil, fmt.Errorf("unexpected type %q", typ.String())
 	}
+
+	for i := range upstreams {
+		normalized, err := parseutil.NormalizeAddr(upstreams[i])
+		if err != nil {
+			return nil, fmt.Errorf("failed to normalize worker upstream %q: %w", upstreams[i], err)
+		}
+		upstreams[i] = normalized
+	}
+
+	return upstreams, nil
 }
 
 func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
@@ -1379,12 +1386,16 @@ func (c *Config) SetupControllerPublicClusterAddress(flagValue string) error {
 	if flagValue != "" {
 		c.Controller.PublicClusterAddr = flagValue
 	}
+	isUnixListener := false
 	if c.Controller.PublicClusterAddr == "" {
 	FindAddr:
 		for _, listener := range c.Listeners {
 			for _, purpose := range listener.Purpose {
 				if purpose == "cluster" {
 					c.Controller.PublicClusterAddr = listener.Address
+					if strings.EqualFold(listener.Type, "unix") {
+						isUnixListener = true
+					}
 					break FindAddr
 				}
 			}
@@ -1410,6 +1421,16 @@ func (c *Config) SetupControllerPublicClusterAddress(flagValue string) error {
 		port = "9201"
 	}
 	c.Controller.PublicClusterAddr = util.JoinHostPort(host, port)
+
+	if host != "" && !isUnixListener {
+		// NormalizeAddr requires that a host be present, but that is not
+		// guaranteed in this code path. Additionally, if no host is present,
+		// there's no need to normalize.
+		c.Controller.PublicClusterAddr, err = parseutil.NormalizeAddr(c.Controller.PublicClusterAddr)
+		if err != nil {
+			return fmt.Errorf("Failed to normalize controller public cluster adddress: %w", err)
+		}
+	}
 
 	return nil
 }
