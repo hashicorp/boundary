@@ -6,6 +6,9 @@ package credentialstores_test
 import (
 	"context"
 	"fmt"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
+	"github.com/hashicorp/go-uuid"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	"slices"
 	"testing"
 
@@ -28,7 +31,7 @@ import (
 )
 
 // TestGrants_ListCredentialStores tests read actions to assert that grants are being applied properly
-// non-recursive list is not allowed at global/org so those will not be tested
+// non-recursive list is not allowed at global/org so non-recursive lists at global/org will not be covered
 func TestGrants_ListCredentialStores(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -311,7 +314,6 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 
 }
 
-// TestGrants_GetCredentialStores tests read actions to assert that grants are being applied properly
 func TestGrants_GetCredentialStores(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -351,11 +353,11 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 		inputErrorMap map[*pbs.GetCredentialStoreRequest]error
 	}{
 		{
-			name: "global role grant descendant can list all created credential stores",
+			name: "global role grant descendant can read all created credential stores",
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=credential-store;actions=read"},
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
 					GrantScopes: []string{globals.GrantScopeDescendants},
 				},
 			}),
@@ -505,6 +507,417 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			for input, wantErr := range tc.inputErrorMap {
 				_, err = s.GetCredentialStore(fullGrantAuthCtx, input)
+				if wantErr != nil {
+					require.ErrorIs(t, err, wantErr)
+					continue
+				}
+				require.NoError(t, err)
+			}
+		})
+	}
+
+}
+
+func TestGrants_CreateCredentialStores(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	vaultRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(ctx, rw, rw, kmsCache, scheduler.TestScheduler(t, conn, wrap))
+	}
+	staticRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	credStoreRepoFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
+	}
+	s, err := credentialstores.NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreRepoFn, 1000)
+	require.NoError(t, err)
+
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
+
+	staticCredStoreInput := func(scopeID string) *pbs.CreateCredentialStoreRequest {
+		return &pbs.CreateCredentialStoreRequest{
+			Item: &pb.CredentialStore{
+				ScopeId: scopeID,
+				Type:    static.Subtype.String(),
+			},
+		}
+	}
+	vaultCredStoreInput := func(scopeID string) *pbs.CreateCredentialStoreRequest {
+		_, token := v.CreateToken(t)
+		return &pbs.CreateCredentialStoreRequest{
+			Item: &pb.CredentialStore{
+				ScopeId: scopeID,
+				Type:    vault.Subtype.String(),
+				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
+					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
+						Address:           wrapperspb.String(v.Addr),
+						Token:             wrapperspb.String(token),
+						CaCert:            wrapperspb.String(string(v.CaCert)),
+						ClientCertificate: wrapperspb.String(string(v.ClientCert) + string(v.ClientKey)),
+					},
+				},
+			},
+		}
+	}
+
+	testcases := []struct {
+		name          string
+		userFunc      func() (*iam.User, authdomain.Account)
+		inputErrorMap map[*pbs.CreateCredentialStoreRequest]error
+	}{
+		{
+			name: "global role grant descendant can list all created credential stores",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			inputErrorMap: map[*pbs.CreateCredentialStoreRequest]error{
+				staticCredStoreInput(proj1.PublicId): nil,
+				staticCredStoreInput(proj2.PublicId): nil,
+				staticCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "global role grant this and children cannot create credential store in any project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+				},
+			}),
+			inputErrorMap: map[*pbs.CreateCredentialStoreRequest]error{
+				staticCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				staticCredStoreInput(proj2.PublicId): handlers.ForbiddenError(),
+				staticCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "org role grant children can create credential stores under granted org",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeChildren},
+				},
+			}),
+			inputErrorMap: map[*pbs.CreateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "project role can only read credential stores in this project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.CreateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "composite grants individually grant each project roles can create in granted project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj3.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.CreateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "composite grants individually grant each project roles can create credential stores where granted",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj3.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.CreateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "global grants not granting create permission cannot create credentials store",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+				{
+					RoleScopeId: proj2.GetPublicId(),
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.CreateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, account := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			for input, wantErr := range tc.inputErrorMap {
+				_, err = s.CreateCredentialStore(fullGrantAuthCtx, input)
+				if wantErr != nil {
+					require.ErrorIs(t, err, wantErr)
+					continue
+				}
+				require.NoError(t, err)
+			}
+		})
+	}
+
+}
+
+func TestGrants_DeleteCredentialStores(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	vaultRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(ctx, rw, rw, kmsCache, scheduler.TestScheduler(t, conn, wrap))
+	}
+	staticRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	credStoreRepoFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
+	}
+	s, err := credentialstores.NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreRepoFn, 1000)
+	require.NoError(t, err)
+
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+
+	staticCredStoreInput := func(scopeID string) *pbs.DeleteCredentialStoreRequest {
+		store := static.TestCredentialStores(t, conn, wrap, scopeID, 1)[0]
+		return &pbs.DeleteCredentialStoreRequest{
+			Id: store.PublicId,
+		}
+	}
+	vaultCredStoreInput := func(scopeID string) *pbs.DeleteCredentialStoreRequest {
+		id, _ := uuid.GenerateUUID()
+		store := vault.TestCredentialStore(t, conn, wrap, scopeID, fmt.Sprintf("http://vault%s", id), id, fmt.Sprintf("accessor-%s", id))
+		return &pbs.DeleteCredentialStoreRequest{
+			Id: store.PublicId,
+		}
+	}
+
+	testcases := []struct {
+		name          string
+		userFunc      func() (*iam.User, authdomain.Account)
+		inputErrorMap map[*pbs.DeleteCredentialStoreRequest]error
+	}{
+		{
+			name: "global role grant descendant can delete credential stores everywhere",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			inputErrorMap: map[*pbs.DeleteCredentialStoreRequest]error{
+				staticCredStoreInput(proj1.PublicId): nil,
+				staticCredStoreInput(proj2.PublicId): nil,
+				staticCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "global role grant this and children cannot delete credential store in any project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+				},
+			}),
+			inputErrorMap: map[*pbs.DeleteCredentialStoreRequest]error{
+				staticCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				staticCredStoreInput(proj2.PublicId): handlers.ForbiddenError(),
+				staticCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "org role grant children can delete credential stores under granted org",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeChildren},
+				},
+			}),
+			inputErrorMap: map[*pbs.DeleteCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "project role can only delete credential stores in this project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.DeleteCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "composite grants individually grant each project roles can delete in granted project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj3.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.DeleteCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "composite grants individually grant each project roles can delete credential stores where granted",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj3.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.DeleteCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "global grants not granting create permission cannot delete credentials store",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=list"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+				{
+					RoleScopeId: proj2.GetPublicId(),
+					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.DeleteCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, account := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			for input, wantErr := range tc.inputErrorMap {
+				_, err = s.DeleteCredentialStore(fullGrantAuthCtx, input)
 				if wantErr != nil {
 					require.ErrorIs(t, err, wantErr)
 					continue
