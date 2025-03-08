@@ -8,6 +8,7 @@ import (
 	"fmt"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"github.com/hashicorp/go-uuid"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 	"slices"
 	"testing"
@@ -410,31 +411,6 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 				{Id: proj1VaultStore.GetPublicId()}:  nil,
 				{Id: proj2StaticStore.GetPublicId()}: handlers.ForbiddenError(),
 				{Id: proj3VaultStore.GetPublicId()}:  handlers.ForbiddenError(),
-			},
-		},
-		{
-			name: "composite grants individually grant each project roles can read all credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: proj1.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=read"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: proj2.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=read"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: proj3.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=read"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-			}),
-			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
-				{Id: proj1VaultStore.GetPublicId()}:  nil,
-				{Id: proj2StaticStore.GetPublicId()}: nil,
-				{Id: proj3VaultStore.GetPublicId()}:  nil,
 			},
 		},
 		{
@@ -918,6 +894,224 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			for input, wantErr := range tc.inputErrorMap {
 				_, err = s.DeleteCredentialStore(fullGrantAuthCtx, input)
+				if wantErr != nil {
+					require.ErrorIs(t, err, wantErr)
+					continue
+				}
+				require.NoError(t, err)
+			}
+		})
+	}
+
+}
+
+func TestGrants_UpdateCredentialStores(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	vaultRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(ctx, rw, rw, kmsCache, scheduler.TestScheduler(t, conn, wrap))
+	}
+	staticRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	credStoreRepoFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
+	}
+	s, err := credentialstores.NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreRepoFn, 1000)
+	require.NoError(t, err)
+
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	org2, proj2 := iam.TestScopes(t, iamRepo)
+	proj3 := iam.TestProject(t, iamRepo, org2.GetPublicId())
+
+	staticCredStoreInput := func(scopeID string) *pbs.UpdateCredentialStoreRequest {
+		old, _ := uuid.GenerateUUID()
+		newId, _ := uuid.GenerateUUID()
+		store := static.TestCredentialStore(t, conn, wrap, scopeID, static.WithName(old), static.WithDescription(old))
+		return &pbs.UpdateCredentialStoreRequest{
+			Id: store.PublicId,
+			Item: &pb.CredentialStore{
+				Name:        &wrapperspb.StringValue{Value: newId},
+				Description: &wrapperspb.StringValue{Value: newId},
+				Version:     store.Version,
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"name", "description"},
+			},
+		}
+	}
+	vaultCredStoreInput := func(scopeID string) *pbs.UpdateCredentialStoreRequest {
+		id, _ := uuid.GenerateUUID()
+		newId, _ := uuid.GenerateUUID()
+		store := vault.TestCredentialStore(t, conn, wrap, scopeID, fmt.Sprintf("http://vault%s", id), id, fmt.Sprintf("accessor-%s", id))
+		return &pbs.UpdateCredentialStoreRequest{
+			Id: store.PublicId,
+			Item: &pb.CredentialStore{
+				Name:        &wrapperspb.StringValue{Value: newId},
+				Description: &wrapperspb.StringValue{Value: newId},
+				Version:     store.Version,
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"name", "description"},
+			},
+		}
+	}
+
+	testcases := []struct {
+		name          string
+		userFunc      func() (*iam.User, authdomain.Account)
+		inputErrorMap map[*pbs.UpdateCredentialStoreRequest]error
+	}{
+		{
+			name: "global role grant descendant can update credential stores everywhere",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			inputErrorMap: map[*pbs.UpdateCredentialStoreRequest]error{
+				staticCredStoreInput(proj1.PublicId): nil,
+				staticCredStoreInput(proj2.PublicId): nil,
+				staticCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "global role grant this and children cannot update credential store in any project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+				},
+			}),
+			inputErrorMap: map[*pbs.UpdateCredentialStoreRequest]error{
+				staticCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				staticCredStoreInput(proj2.PublicId): handlers.ForbiddenError(),
+				staticCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "org role grant children can update credential stores under granted org",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeChildren},
+				},
+			}),
+			inputErrorMap: map[*pbs.UpdateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "project role can only update credential stores in this project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.UpdateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "composite grants individually grant each project roles can update in granted project",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj3.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.UpdateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "composite grants individually grant each project roles can update credential stores where granted",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj1.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj2.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+				{
+					RoleScopeId: proj3.PublicId,
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.UpdateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): nil,
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): nil,
+			},
+		},
+		{
+			name: "global grants not granting create permission cannot update credentials store",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+				{
+					RoleScopeId: proj2.GetPublicId(),
+					Grants:      []string{"ids=*;type=credential-store;actions=update"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			inputErrorMap: map[*pbs.UpdateCredentialStoreRequest]error{
+				vaultCredStoreInput(proj1.PublicId): handlers.ForbiddenError(),
+				vaultCredStoreInput(proj2.PublicId): nil,
+				vaultCredStoreInput(proj3.PublicId): handlers.ForbiddenError(),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, account := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			for input, wantErr := range tc.inputErrorMap {
+				_, err = s.UpdateCredentialStore(fullGrantAuthCtx, input)
 				if wantErr != nil {
 					require.ErrorIs(t, err, wantErr)
 					continue
