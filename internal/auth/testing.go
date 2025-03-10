@@ -10,7 +10,13 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/require"
+)
+
+type (
+	TestAuthMethodWithAccountFunc           func(t *testing.T, conn *db.DB) (AuthMethod, Account)
+	TestAuthMethodWithAccountInManagedGroup func(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeId string) (AuthMethod, Account, ManagedGroup)
 )
 
 // ManagedGroupMemberAccount represents an entry from
