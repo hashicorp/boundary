@@ -77,8 +77,6 @@ begin;
     insert into iam_role_grant
       (role_id, canonical_grant, raw_grant)
     values
-      -- ('r_gg_____buy', 'type=*;actions=purchase',    'purchase anything'),
-      -- ('r_gg____shop', 'type=*;actions=view',        'view anything'),
       ('r_oo_____eng', 'ids=*;type=alias;actions=create,update',                                                            'ids=*;type=alias;actions=create,update'),
       ('r_op_sw__eng', 'ids=*;type=target;actions=add-credential-sources,remove-credential-sources,set-credential-sources', 'ids=*;type=target;actions=add-credential-sources,remove-credential-sources,set-credential-source'),
       ('r_op_sw__eng', 'ids=*;type=target;actions=add-host-sources,remove-host-sources,set-host-sources',                   'ids=*;type=target;actions=add-host-sources,remove-host-sources,set-host-sources'),
