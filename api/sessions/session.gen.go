@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"time"
@@ -228,7 +229,9 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Sess
 		return target, nil
 	}
 
-	allItems := target.Items
+	fmt.Fprintln(os.Stderr, "Estimated item count (postgres):", target.EstItemCount)
+	allItems := make([]*Session, 0, target.EstItemCount)
+	allItems = append(allItems, target.Items...)
 
 	// If there are more results, automatically fetch the rest of the results.
 	// idToIndex keeps a map from the ID of an item to its index in target.Items.

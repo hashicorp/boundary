@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"time"
@@ -369,7 +370,9 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Grou
 		return target, nil
 	}
 
-	allItems := target.Items
+	fmt.Fprintln(os.Stderr, "Estimated item count (postgres):", target.EstItemCount)
+	allItems := make([]*Group, 0, target.EstItemCount)
+	allItems = append(allItems, target.Items...)
 
 	// If there are more results, automatically fetch the rest of the results.
 	// idToIndex keeps a map from the ID of an item to its index in target.Items.
