@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"time"
@@ -374,6 +375,7 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 		return target, nil
 	}
 
+	fmt.Fprintln(os.Stderr, "Estimated item count (postgres):", target.EstItemCount)
 	allItems := make([]*Host, 0, target.EstItemCount)
 	allItems = append(allItems, target.Items...)
 
