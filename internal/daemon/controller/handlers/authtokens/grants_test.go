@@ -266,7 +266,8 @@ func TestGrants_List(t *testing.T) {
 			require.NoError(t, err)
 			t.Cleanup(func() {
 				// cleanup toke created token for auth
-				atRepo.DeleteAuthToken(ctx, tok.GetPublicId())
+				_, err = atRepo.DeleteAuthToken(ctx, tok.GetPublicId())
+				require.NoError(t, err)
 			})
 			fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			got, finalErr := s.ListAuthTokens(fullGrantAuthCtx, tc.input)
