@@ -43,7 +43,7 @@ type ListResponse[T boundary.Resource] struct {
 	// a List call is complete, this number is equal to
 	// the number of items returned. Otherwise, the
 	// estimated count function is consulted for an estimate.
-	EstimatedItemCount int
+	EstimatedItemCount uint
 }
 
 // ListFilterFunc is a callback used to filter out resources that don't match
@@ -329,7 +329,7 @@ func buildListResp[T boundary.Resource](
 	resp := &ListResponse[T]{
 		Items:              items,
 		CompleteListing:    completeListing,
-		EstimatedItemCount: len(items),
+		EstimatedItemCount: uint(len(items)),
 	}
 
 	var err error
@@ -368,10 +368,13 @@ func buildListResp[T boundary.Resource](
 	if !completeListing {
 		// If this was not a complete listing, get an estimate
 		// of the total items from the DB.
-		var err error
-		resp.EstimatedItemCount, err = estimatedCountFn(ctx)
+		estimatedItemCount, err := estimatedCountFn(ctx)
 		if err != nil {
 			return nil, err
+		}
+		// The estimate may be -1 if the count is unknown.
+		if estimatedItemCount >= 0 {
+			resp.EstimatedItemCount = uint(estimatedItemCount)
 		}
 	}
 	return resp, err
@@ -394,10 +397,13 @@ func buildListPageResp[T boundary.Resource](
 		DeletedIds:      deletedIds,
 	}
 
-	var err error
-	resp.EstimatedItemCount, err = estimatedCountFn(ctx)
+	estimatedItemCount, err := estimatedCountFn(ctx)
 	if err != nil {
 		return nil, err
+	}
+	// The estimate may be -1 if the count is unknown.
+	if estimatedItemCount >= 0 {
+		resp.EstimatedItemCount = uint(estimatedItemCount)
 	}
 	var lastItem boundary.Resource
 	if len(items) > 0 {
