@@ -94,7 +94,7 @@ func (s *StoreRepository) ListRefresh(ctx context.Context, projectIds []string, 
 }
 
 // EstimatedCount estimates the total number of credential stores.
-func (s *StoreRepository) EstimatedCount(ctx context.Context) (int, error) {
+func (s *StoreRepository) estimatedCount(ctx context.Context) (uint, error) {
 	const op = "credential.(*StoreRepository).EstimatedCount"
 	rows, err := s.reader.Query(ctx, estimateCountStoresQuery, nil)
 	if err != nil {

@@ -674,7 +674,7 @@ func (r *Repository) listGroupDeletedIds(ctx context.Context, since time.Time) (
 }
 
 // estimatedGroupCount returns an estimate of the total number of items in the iam_group table.
-func (r *Repository) estimatedGroupCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedGroupCount(ctx context.Context) (uint, error) {
 	const op = "iam.(Repository).estimatedGroupCount"
 	rows, err := r.reader.Query(ctx, estimateCountGroups, nil)
 	if err != nil {

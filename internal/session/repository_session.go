@@ -422,7 +422,7 @@ func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]str
 }
 
 // estimatedCount returns an estimate of the total number of items in the session table.
-func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedCount(ctx context.Context) (uint, error) {
 	const op = "session.(Repository).estimatedCount"
 	rows, err := r.reader.Query(ctx, estimateCountSessions, nil)
 	if err != nil {

@@ -977,7 +977,7 @@ func (r *Repository) listUserDeletedIds(ctx context.Context, since time.Time) ([
 }
 
 // estimatedUserCount returns an estimate of the total number of items in the iam_user table.
-func (r *Repository) estimatedUserCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedUserCount(ctx context.Context) (uint, error) {
 	const op = "iam.(Repository).estimatedUserCount"
 	rows, err := r.reader.Query(ctx, estimateCountUsers, nil)
 	if err != nil {

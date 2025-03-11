@@ -369,20 +369,32 @@ func (r *Repository) listDeletedManagedGroupIds(ctx context.Context, since time.
 }
 
 // estimatedManagedGroupCount returns an estimate of the total number of managed groups.
-func (r *Repository) estimatedManagedGroupCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedManagedGroupCount(ctx context.Context) (uint, error) {
 	const op = "ldap.(Repository).estimatedManagedGroupCount"
 	rows, err := r.reader.Query(ctx, estimateCountManagedGroups, nil)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap managed group counts"))
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query estimate ldap managed group counts"))
 	}
-	var count int
+	var estimatedCount int
 	for rows.Next() {
-		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
-			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap managed group counts"))
+		if err := r.reader.ScanRows(ctx, rows, &estimatedCount); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query estimate ldap managed group counts"))
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap managed group counts"))
+	if estimatedCount >= 0 {
+		return uint(estimatedCount), nil
+	}
+	// Fall back to a full table scan if the estimate is negative,
+	// which can happen if Postgres does not yet have statistics for the table.
+	rows, err = r.reader.Query(ctx, accurateCountManagedGroups, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total ldap managed group counts"))
+	}
+	var count uint
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan total ldap managed group counts"))
+		}
 	}
 	return count, nil
 }

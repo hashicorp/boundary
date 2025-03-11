@@ -429,7 +429,7 @@ func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]str
 }
 
 // estimatedCount returns an estimate of the total number of items across all targets.
-func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedCount(ctx context.Context) (uint, error) {
 	const op = "target.(Repository).estimatedCount"
 	rows, err := r.reader.Query(ctx, estimateCountTargets, nil)
 	if err != nil {

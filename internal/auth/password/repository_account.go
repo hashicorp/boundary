@@ -430,20 +430,32 @@ func (r *Repository) listDeletedAccountIds(ctx context.Context, since time.Time)
 }
 
 // estimatedAccountCount returns an estimate of the total number of accounts.
-func (r *Repository) estimatedAccountCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedAccountCount(ctx context.Context) (uint, error) {
 	const op = "password.(Repository).estimatedAccountCount"
 	rows, err := r.reader.Query(ctx, estimateCountAccounts, nil)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap account counts"))
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query estimate password account count"))
 	}
-	var count int
+	var estimatedCount int
 	for rows.Next() {
-		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
-			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap account counts"))
+		if err := r.reader.ScanRows(ctx, rows, &estimatedCount); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan estimate password account count"))
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap account counts"))
+	if estimatedCount >= 0 {
+		return uint(estimatedCount), nil
+	}
+	// Fall back to a full table scan if the estimate is negative,
+	// which can happen if Postgres does not yet have statistics for the table.
+	rows, err = r.reader.Query(ctx, accurateCountAccounts, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total password account count"))
+	}
+	var count uint
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan total password account count"))
+		}
 	}
 	return count, nil
 }

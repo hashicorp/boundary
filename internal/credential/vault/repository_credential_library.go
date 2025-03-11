@@ -583,7 +583,7 @@ func (r *Repository) queryLibraries(ctx context.Context, query string, args []an
 }
 
 // EstimatedLibraryCount returns an estimate of the number of Vault credential libraries
-func (r *Repository) EstimatedLibraryCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedLibraryCount(ctx context.Context) (uint, error) {
 	const op = "vault.(Repository).EstimatedLibraryCount"
 	rows, err := r.reader.Query(ctx, estimateCountCredentialLibraries, nil)
 	if err != nil {

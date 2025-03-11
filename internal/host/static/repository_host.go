@@ -391,7 +391,7 @@ func (r *Repository) listDeletedHostIds(ctx context.Context, since time.Time) ([
 }
 
 // estimatedHostCount returns an estimate of the total number of static hosts.
-func (r *Repository) estimatedHostCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedHostCount(ctx context.Context) (uint, error) {
 	const op = "static.(Repository).estimatedHostCount"
 	rows, err := r.reader.Query(ctx, estimateCountHosts, nil)
 	if err != nil {

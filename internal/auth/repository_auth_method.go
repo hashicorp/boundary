@@ -123,20 +123,32 @@ func (amr *AuthMethodRepository) ListRefresh(ctx context.Context, scopeIds []str
 }
 
 // EstimatedCount estimates the total number of auth methods.
-func (amr *AuthMethodRepository) EstimatedCount(ctx context.Context) (int, error) {
+func (amr *AuthMethodRepository) EstimatedCount(ctx context.Context) (uint, error) {
 	const op = "auth.(*AuthMethodRepository).EstimatedCount"
 	rows, err := amr.reader.Query(ctx, estimateCountAuthMethodsQuery, nil)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth methods"))
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query estimated auth method count"))
 	}
-	var count int
+	var estimatedCount int
 	for rows.Next() {
-		if err := amr.reader.ScanRows(ctx, rows, &count); err != nil {
-			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth methods"))
+		if err := amr.reader.ScanRows(ctx, rows, &estimatedCount); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query estimated auth method count"))
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth methods"))
+	if estimatedCount >= 0 {
+		return uint(estimatedCount), nil
+	}
+	// Fall back to a full table scan if the estimate is negative,
+	// which can happen if Postgres does not yet have statistics for the table.
+	rows, err = amr.reader.Query(ctx, accountCountAuthMethodsQuery, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth method count"))
+	}
+	var count uint
+	for rows.Next() {
+		if err := amr.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan total auth method count"))
+		}
 	}
 	return count, nil
 }

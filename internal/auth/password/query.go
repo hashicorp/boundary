@@ -47,4 +47,7 @@ select *
 	estimateCountAccounts = `
 select sum(reltuples::bigint) as estimate from pg_class where oid in ('auth_password_account'::regclass)
 `
+	accurateCountAccounts = `
+select count(*) from auth_password_account
+`
 )

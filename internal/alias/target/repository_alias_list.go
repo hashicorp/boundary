@@ -144,16 +144,31 @@ func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]str
 }
 
 // estimatedCount returns an estimate of the total number of items in the alias table.
-func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedCount(ctx context.Context) (uint, error) {
 	const op = "target.(Repository).estimatedCount"
 	rows, err := r.reader.Query(ctx, estimateCount, nil)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total aliases"))
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query estimate target aliases count"))
 	}
-	var count int
+	var estimatedCount int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &estimatedCount); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan estimate target aliases count"))
+		}
+	}
+	if estimatedCount >= 0 {
+		return uint(estimatedCount), nil
+	}
+	// Fall back to a full table scan if the estimate is negative,
+	// which can happen if Postgres does not yet have statistics for the table.
+	rows, err = r.reader.Query(ctx, accurateCount, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total target aliases count"))
+	}
+	var count uint
 	for rows.Next() {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
-			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total aliases"))
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan total target aliases count"))
 		}
 	}
 	return count, nil

@@ -922,7 +922,7 @@ func (r *Repository) listDeletedSetIds(ctx context.Context, since time.Time) ([]
 }
 
 // estimatedSetCount returns an estimate of the total number of plugin host sets.
-func (r *Repository) estimatedSetCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedSetCount(ctx context.Context) (uint, error) {
 	const op = "plugin.(Repository).estimatedHostSetCount"
 	rows, err := r.reader.Query(ctx, estimateCountHostSets, nil)
 	if err != nil {

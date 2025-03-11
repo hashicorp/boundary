@@ -688,7 +688,7 @@ func (r *Repository) listScopeDeletedIds(ctx context.Context, since time.Time) (
 }
 
 // estimatedScopeCount returns and estimate of the total number of items in the scopes table.
-func (r *Repository) estimatedScopeCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedScopeCount(ctx context.Context) (uint, error) {
 	const op = "iam.(Repository).estimatedScopeCount"
 	rows, err := r.reader.Query(ctx, estimateCountScopes, nil)
 	if err != nil {

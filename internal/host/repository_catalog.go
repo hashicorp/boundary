@@ -95,7 +95,7 @@ func (s *CatalogRepository) ListRefresh(ctx context.Context, projectIds []string
 }
 
 // EstimatedCount estimates the total number of host catalogs.
-func (s *CatalogRepository) EstimatedCount(ctx context.Context) (int, error) {
+func (s *CatalogRepository) estimatedCount(ctx context.Context) (uint, error) {
 	const op = "host.(*CatalogRepository).EstimatedCount"
 	rows, err := s.reader.Query(ctx, estimateCountCatalogsQuery, nil)
 	if err != nil {

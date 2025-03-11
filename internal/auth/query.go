@@ -12,6 +12,15 @@ select sum(reltuples::bigint) as estimate from pg_class where oid in (
 )
 `
 
+	accountCountAuthMethodsQuery = `
+select count(auth_password_method.*) +
+       count(auth_oidc_method.*) +
+       count(auth_ldap_method.*) as count
+  from auth_password_method, 
+       auth_ldap_method, 
+       auth_oidc_method
+`
+
 	listDeletedIdsQuery = `
 select public_id
   from auth_password_method_deleted

@@ -400,7 +400,7 @@ func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]str
 }
 
 // estimatedCount returns an estimate of the total number of items in the auth tokens table.
-func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedCount(ctx context.Context) (uint, error) {
 	const op = "authtoken.(Repository).estimatedCount"
 	rows, err := r.reader.Query(ctx, estimateCountAuthTokens, nil)
 	if err != nil {

@@ -372,7 +372,7 @@ func (r *Repository) listRoleDeletedIds(ctx context.Context, since time.Time) ([
 }
 
 // estimatedRoleCount returns an estimate of the total number of items in the iam_role table.
-func (r *Repository) estimatedRoleCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedRoleCount(ctx context.Context) (uint, error) {
 	const op = "iam.(Repository).estimatedRoleCount"
 	rows, err := r.reader.Query(ctx, estimateCountRoles, nil)
 	if err != nil {

@@ -7,4 +7,7 @@ const (
 	estimateCount = `
 select sum(reltuples::bigint) as estimate from pg_class where oid in ('alias'::regclass)
 `
+	accurateCount = `
+select count(*) from alias
+`
 )

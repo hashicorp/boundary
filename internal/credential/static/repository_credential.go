@@ -908,7 +908,7 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 }
 
 // EstimatedCredentialCount returns an estimate of the number of static credentials
-func (r *Repository) EstimatedCredentialCount(ctx context.Context) (int, error) {
+func (r *Repository) estimatedCredentialCount(ctx context.Context) (uint, error) {
 	const op = "static.(Repository).EstimatedCredentialCount"
 	rows, err := r.reader.Query(ctx, estimateCountCredentials, nil)
 	if err != nil {
