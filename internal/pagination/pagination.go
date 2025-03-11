@@ -59,7 +59,7 @@ type ListItemsFunc[T boundary.Resource] func(ctx context.Context, prevPageLastIt
 
 // EstimatedCountFunc is used to estimate the total number of items
 // available for the resource that is being listed.
-type EstimatedCountFunc func(ctx context.Context) (int, error)
+type EstimatedCountFunc func(ctx context.Context) (uint, error)
 
 // ListDeletedIDsFunc is used to list the IDs of the resources deleted since
 // the given timestamp. It returns a slice of IDs and the timestamp of the

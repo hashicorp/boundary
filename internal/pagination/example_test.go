@@ -80,7 +80,7 @@ func ExampleList() {
 			{nil, 10},
 		}, time.Now(), nil
 	}
-	estimatedCountFunc := func(ctx context.Context) (int, error) {
+	estimatedCountFunc := func(ctx context.Context) (uint, error) {
 		// Get an estimate from the database of the total number
 		// of entries for this resource, usually using some
 		// repository method.
@@ -166,7 +166,7 @@ func ExampleListPage() {
 			{nil, 10},
 		}, time.Now(), nil
 	}
-	estimatedCountFunc := func(ctx context.Context) (int, error) {
+	estimatedCountFunc := func(ctx context.Context) (uint, error) {
 		// Get an estimate from the database of the total number
 		// of entries for this resource, usually using some
 		// repository method.
@@ -264,7 +264,7 @@ func ExampleListRefresh() {
 			{nil, 10},
 		}, time.Now(), nil
 	}
-	estimatedCountFunc := func(ctx context.Context) (int, error) {
+	estimatedCountFunc := func(ctx context.Context) (uint, error) {
 		// Get an estimate from the database of the total number
 		// of entries for this resource, usually using some
 		// repository method.
@@ -376,7 +376,7 @@ func ExampleListRefreshPage() {
 			{nil, 10},
 		}, time.Now(), nil
 	}
-	estimatedCountFunc := func(ctx context.Context) (int, error) {
+	estimatedCountFunc := func(ctx context.Context) (uint, error) {
 		// Get an estimate from the database of the total number
 		// of entries for this resource, usually using some
 		// repository method.
