@@ -14,20 +14,15 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
-	am "github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/auth/ldap"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -44,29 +39,10 @@ import (
 
 func TestUpdate_Password(t *testing.T) {
 	ctx := context.TODO()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
-		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
-	}
-	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, conn, wrapper, rw, kms := helper.TestDbCore(t)
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := testRepoFuncs(t, ctx, conn, wrapper, rw, kms)
+	iamRepo, err := iamRepoFn()
+	require.NoError(t, err)
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
@@ -493,30 +469,10 @@ func TestUpdate_Password(t *testing.T) {
 
 func TestAuthenticate_Password(t *testing.T) {
 	ctx := context.TODO()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	_, conn, wrapper, rw, kms := helper.TestDbCore(t)
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
-		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
-	}
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := testRepoFuncs(t, ctx, conn, wrapper, rw, kms)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, am.PublicId)
@@ -721,31 +677,10 @@ func TestAuthenticate_Password(t *testing.T) {
 func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 	ctx := context.TODO()
 	assert, require := assert.New(t), require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	_, conn, wrapper, rw, kms := helper.TestDbCore(t)
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.TestRepo(t, conn, wrapper), nil
-	}
-	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
-	}
-	ldapRepoFn := func() (*ldap.Repository, error) {
-		return ldap.NewRepository(ctx, rw, rw, kms)
-	}
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
-	}
-	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
-	}
-	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
-		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
-	}
-
+	iamRepoFn, oidcRepoFn, ldapRepoFn, pwRepoFn, atRepoFn, _, authMethodRepoFn := testRepoFuncs(t, ctx, conn, wrapper, rw, kms)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	acct, err := password.NewAccount(ctx, am.GetPublicId(), password.WithLoginName(testLoginName))
 	require.NoError(err)
