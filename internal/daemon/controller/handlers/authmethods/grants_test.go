@@ -79,7 +79,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		authMethodRepoFn,
 		1000)
 	require.NoError(t, err)
-	org1, _ := iam.TestScopes(t, iamRepo)
+	org1, p1 := iam.TestScopes(t, iamRepo)
 	org2, _ := iam.TestScopes(t, iamRepo)
 
 	// Need to create a wrapper for each scope (global, org1, org2) to test grants against OIDC/LDAP at that scope
@@ -228,7 +228,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
-				name: "no grants return children org",
+				name: "no grants recursive return children org",
 				input: &pbs.ListAuthMethodsRequest{
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
@@ -279,6 +279,20 @@ func TestGrants_ReadActions(t *testing.T) {
 					ldapOrg1.PublicId: {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
 					pwOrg1.PublicId:   {globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
 				},
+			},
+			{
+				name: "project role can't list auth methods (403)",
+				input: &pbs.ListAuthMethodsRequest{
+					ScopeId: globals.GlobalPrefix,
+				},
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: p1.PublicId,
+						Grants:      []string{"ids=*;type=auth-method;actions=list,no-op;output_fields=id,scope_id,name"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
 			},
 		}
 
@@ -416,7 +430,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				name: "org1 role grant this scope with all permissions",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId: org1.GetPublicId(),
+						RoleScopeId: org1.PublicId,
 						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope_id,type"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -436,6 +450,27 @@ func TestGrants_ReadActions(t *testing.T) {
 			{
 				name:     "no grants returns no auth methods",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				canGetAuthMethod: map[string]expectedOutput{
+					pwGlobal.PublicId:   {wantErr: handlers.ForbiddenError()},
+					pwOrg1.PublicId:     {wantErr: handlers.ForbiddenError()},
+					pwOrg2.PublicId:     {wantErr: handlers.ForbiddenError()},
+					oidcGlobal.PublicId: {wantErr: handlers.ForbiddenError()},
+					oidcOrg1.PublicId:   {wantErr: handlers.ForbiddenError()},
+					oidcOrg2.PublicId:   {wantErr: handlers.ForbiddenError()},
+					ldapGlobal.PublicId: {wantErr: handlers.ForbiddenError()},
+					ldapOrg1.PublicId:   {wantErr: handlers.ForbiddenError()},
+					ldapOrg2.PublicId:   {wantErr: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "project role can't get auth methods (403)",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: p1.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,name,description"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				canGetAuthMethod: map[string]expectedOutput{
 					pwGlobal.PublicId:   {wantErr: handlers.ForbiddenError()},
 					pwOrg1.PublicId:     {wantErr: handlers.ForbiddenError()},
@@ -514,7 +549,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		authMethodRepoFn,
 		1000)
 	require.NoError(t, err)
-	org1, _ := iam.TestScopes(t, iamRepo)
+	org1, p1 := iam.TestScopes(t, iamRepo)
 	org2, _ := iam.TestScopes(t, iamRepo)
 
 	t.Run("Create", func(t *testing.T) {
@@ -591,6 +626,21 @@ func TestGrants_WriteActions(t *testing.T) {
 			{
 				name:     "no grants returns 403 error",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				canCreateInScope: map[string]expectedOutput{
+					globals.GlobalPrefix: {wantErr: handlers.ForbiddenError()},
+					org1.PublicId:        {wantErr: handlers.ForbiddenError()},
+					org2.PublicId:        {wantErr: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "project role can't create auth methods in any scope (403)",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: p1.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				canCreateInScope: map[string]expectedOutput{
 					globals.GlobalPrefix: {wantErr: handlers.ForbiddenError()},
 					org1.PublicId:        {wantErr: handlers.ForbiddenError()},
@@ -725,6 +775,21 @@ func TestGrants_WriteActions(t *testing.T) {
 					org2AmId:   {wantErr: handlers.ForbiddenError()},
 				},
 			},
+			{
+				name: "project role can't update auth methods in any scope (403)",
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeId:  p1.GetPublicId(),
+						GrantStrings: []string{"ids=*;type=*;actions=*"},
+						GrantScopes:  []string{globals.GrantScopeThis},
+					},
+				},
+				canUpdateAuthMethod: map[string]expectedOutput{
+					globalAmId: {wantErr: handlers.ForbiddenError()},
+					org1AmId:   {wantErr: handlers.ForbiddenError()},
+					org2AmId:   {wantErr: handlers.ForbiddenError()},
+				},
+			},
 		}
 
 		for i, tc := range testcases {
@@ -811,6 +876,17 @@ func TestGrants_WriteActions(t *testing.T) {
 				name:     "no grants returns 403 error",
 				am:       password.TestAuthMethod(t, conn, globals.GlobalPrefix),
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+			},
+			{
+				name: "project role can't delete auth methods at any scope (403)",
+				am:   password.TestAuthMethod(t, conn, globals.GlobalPrefix),
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: p1.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 			},
 		}
 
@@ -953,6 +1029,44 @@ func TestGrants_WriteActions(t *testing.T) {
 					GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
 					GrantScopes:  []string{globals.GrantScopeThis},
 				}},
+			},
+			{
+				name:    "project role can not authenticate against global auth methods",
+				scopeId: globals.GlobalPrefix,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeId:  p1.PublicId,
+					GrantStrings: []string{"ids=*;type=*;actions=*"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:    "project role can not authenticate against org auth methods",
+				scopeId: org1.PublicId,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeId:  p1.PublicId,
+					GrantStrings: []string{"ids=*;type=*;actions=*"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
+				wantErr: handlers.ForbiddenError(),
 			},
 		}
 
