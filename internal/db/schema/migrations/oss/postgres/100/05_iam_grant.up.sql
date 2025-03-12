@@ -70,6 +70,19 @@ begin;
   create trigger set_resource before insert on iam_grant
     for each row execute procedure set_resource();
 
+  -- migrate existing canonical_grant values from iam_role_grant to iam_grant
+  insert into iam_grant
+    (canonical_grant)
+  select distinct canonical_grant
+    from iam_role_grant;
+  
+  -- alter iam_grant canonical_grant column to add a check constraint to ensure that the canonical_grant is valid.
+  alter table iam_grant
+    add constraint canonical_grant_is_valid
+      check (
+        canonical_grant ~ '^(?:[^;=]+=[^;=]+)(?:;[^;=]+=[^;=]+)*?$'
+      );
+
   -- Add a foreign key constraint to the iam_role_grant table to ensure that the canonical_grant exists in the iam_grant table.
   -- Alter to add foreign key constraint to the iam_role_grant table defined in 01/06_iam.up.sql
   alter table iam_role_grant

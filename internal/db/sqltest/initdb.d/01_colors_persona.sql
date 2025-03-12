@@ -139,7 +139,7 @@ begin;
   values
     ('r_gg_____buy', 'ids=*;type=*;actions=update',                      'ids=*;type=*;actions=update'),
     ('r_gg____shop', 'ids=*;type=*;actions=read;output_fields=id',       'ids=*;type=*;actions=read;output_fields=id'),
-    ('r_go____name', 'ids=*;type=group;actions=create,update,read,list', 'ids=*;type=group;actions=create,update,read,'),
+    ('r_go____name', 'ids=*;type=group;actions=create,update,read,list', 'ids=*;type=group;actions=create,update,read,list'),
     ('r_gp____spec', 'ids=*;type=group;actions=delete',                  'ids=*;type=group;actions=delete'),
     ('r_oo_____art', 'ids=*;type=group;actions=create',                  'ids=*;type=group;actions=create'),
     ('r_op_bc__art', 'ids=*;type=auth-token;actions=create',             'ids=*;type=auth-token;actions=create'),
