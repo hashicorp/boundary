@@ -6,12 +6,13 @@ package credentialstores_test
 import (
 	"context"
 	"fmt"
+	"slices"
+	"testing"
+
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"github.com/hashicorp/go-uuid"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"slices"
-	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	authdomain "github.com/hashicorp/boundary/internal/auth"
@@ -1121,4 +1122,158 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 		})
 	}
 
+}
+
+func TestOutputFields_ListCredentialStores(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	vaultRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(ctx, rw, rw, kmsCache, scheduler.TestScheduler(t, conn, wrap))
+	}
+	staticRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	credStoreRepoFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
+	}
+	s, err := credentialstores.NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreRepoFn, 1000)
+	require.NoError(t, err)
+
+	org, staticProj := iam.TestScopes(t, iamRepo)
+	staticCredStore := static.TestCredentialStore(t, conn, wrap, staticProj.GetPublicId(), static.WithName("static"), static.WithDescription("static"))
+	vaultProj := iam.TestProject(t, iamRepo, org.GetPublicId())
+	randomId, _ := uuid.GenerateUUID()
+	vaultCredStore := vault.TestCredentialStore(t,
+		conn,
+		wrap,
+		vaultProj.PublicId,
+		fmt.Sprintf("http://vault%s", randomId),
+		randomId,
+		fmt.Sprintf("accessor-%s", randomId),
+		vault.WithName("vault"), vault.WithDescription("desc"))
+
+	testcases := []struct {
+		name                string
+		userFunc            func() (*iam.User, authdomain.Account)
+		input               *pbs.ListCredentialStoresRequest
+		idToOutputFieldsMap map[string][]string // ID is always required in the output_fields
+	}{
+		{
+			name: "global role grants descendant applies output_fields correctly",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope,scope_id,name,description,authorized_actions,authorized_collection_actions"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			input: &pbs.ListCredentialStoresRequest{
+				ScopeId:   globals.GlobalPrefix,
+				Recursive: true,
+			},
+			idToOutputFieldsMap: map[string][]string{
+				staticCredStore.PublicId: {
+					globals.IdField,
+					globals.ScopeField,
+					globals.ScopeIdField,
+					globals.NameField,
+					globals.DescriptionField,
+					globals.AuthorizedActionsField,
+					globals.AuthorizedCollectionActionsField,
+				},
+				vaultCredStore.PublicId: {
+					globals.IdField,
+					globals.ScopeField,
+					globals.ScopeIdField,
+					globals.NameField,
+					globals.DescriptionField,
+					globals.AuthorizedActionsField,
+					globals.AuthorizedCollectionActionsField,
+				},
+			},
+		},
+		{
+			name: "global role grant this returns all created credential stores",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org.PublicId,
+					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,created_time,updated_time,version,authorized_actions,authorized_collection_actions"},
+					GrantScopes: []string{globals.GrantScopeChildren},
+				},
+			}),
+			input: &pbs.ListCredentialStoresRequest{
+				ScopeId:   globals.GlobalPrefix,
+				Recursive: true,
+			},
+			idToOutputFieldsMap: map[string][]string{
+				staticCredStore.PublicId: {
+					globals.IdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
+					globals.VersionField,
+					globals.AuthorizedActionsField,
+					globals.AuthorizedCollectionActionsField,
+				},
+				vaultCredStore.PublicId: {
+					globals.IdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
+					globals.VersionField,
+					globals.AuthorizedActionsField,
+					globals.AuthorizedCollectionActionsField,
+				},
+			},
+		},
+		{
+			name: "global role grant this returns all created credential stores",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: staticProj.PublicId,
+					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,created_time,updated_time,version,authorized_actions,authorized_collection_actions"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			input: &pbs.ListCredentialStoresRequest{
+				ScopeId: staticProj.PublicId,
+			},
+			idToOutputFieldsMap: map[string][]string{
+				staticCredStore.PublicId: {
+					globals.IdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
+					globals.VersionField,
+					globals.AuthorizedActionsField,
+					globals.AuthorizedCollectionActionsField,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, account := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			got, err := s.ListCredentialStores(fullGrantAuthCtx, tc.input)
+			require.NoError(t, err)
+			require.Equalf(t, len(got.Items), len(tc.idToOutputFieldsMap), "returned items do not match the number of expected items")
+			for _, item := range got.Items {
+				fmt.Println(item.AuthorizedCollectionActions)
+				wantFields, ok := tc.idToOutputFieldsMap[item.Id]
+				require.Truef(t, ok, "returned item %s does not exist in expect map", item.GetId())
+				handlers.TestAssertOutputFields(t, item, wantFields)
+			}
+		})
+	}
 }
