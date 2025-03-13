@@ -357,7 +357,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=credential-store;actions=create"},
+					Grants:      []string{"ids=*;type=credential-store;actions=read"},
 					GrantScopes: []string{globals.GrantScopeDescendants},
 				},
 			}),
@@ -392,7 +392,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 				},
 			}),
 			inputErrorMap: map[*pbs.GetCredentialStoreRequest]error{
-				{Id: proj1VaultStore.GetPublicId()}:  nil,
+				{Id: proj1VaultStore.GetPublicId()}:  handlers.ForbiddenError(),
 				{Id: proj2StaticStore.GetPublicId()}: nil,
 				{Id: proj3VaultStore.GetPublicId()}:  nil,
 			},
@@ -1769,8 +1769,6 @@ func TestOutputFields_UpdateCredentialStore(t *testing.T) {
 				globals.NameField,
 				"vault_credential_store_attributes",
 				globals.DescriptionField,
-				globals.AuthorizedActionsField,
-				globals.AuthorizedCollectionActionsField,
 			},
 		},
 		{
