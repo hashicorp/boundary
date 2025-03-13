@@ -10,6 +10,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -24,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/require"
 )
@@ -501,8 +503,118 @@ func TestGrants_ReadActions(t *testing.T) {
 }
 
 func TestGrants_WriteActions(t *testing.T) {
-	// ctx, conn, wrap, rw, kmsCache := helper.TestDbCore(t)
-	// iamRepo := iam.TestRepo(t, conn, wrap)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 
-	//TODO: Implement
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	scheduler := scheduler.TestScheduler(t, conn, wrap)
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kmsCache, scheduler, map[string]plgpb.HostPluginServiceClient{})
+	}
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn, 1000)
+	require.NoError(t, err)
+
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)
+	hc := hcs[0]
+
+	t.Run("Create", func(t *testing.T) {
+		testcases := []struct {
+			name     string
+			userFunc func() (*iam.User, auth.Account)
+			expected expectedOutput
+		}{
+			{
+				name: "global role grant this can't create host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "org role grant this can't create host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "project role grant this can create host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField}},
+			},
+			{
+				name: "global role grant this & descendants can create host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=host-set;actions=create,read,update;output_fields=id,host_catalog_id,scope_id,name,description,created_time,updated_time,version,type,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.HostCatalogIdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField}},
+			},
+			{
+				name: "org role grant this & children can create host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=host-set;actions=create;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+		}
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+				got, err := s.CreateHostSet(fullGrantAuthCtx, &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+					HostCatalogId: hc.GetPublicId(),
+					Name:          &wrappers.StringValue{Value: "test host set - " + tc.name},
+					Description:   &wrappers.StringValue{Value: "test desc"},
+				}})
+				if tc.expected.err != nil {
+					require.ErrorIs(t, err, tc.expected.err)
+					return
+				}
+				// check if the output fields are as expected
+				require.NoError(t, err)
+				handlers.TestAssertOutputFields(t, got.Item, tc.expected.outputFields)
+			})
+		}
+	})
+	t.Run("Update", func(t *testing.T) {})
+	t.Run("Delete", func(t *testing.T) {})
+	t.Run("Add Host Set Hosts", func(t *testing.T) {})
+	t.Run("Remove Host Set Hosts", func(t *testing.T) {})
+	t.Run("Set Host Set Hosts", func(t *testing.T) {})
 }
