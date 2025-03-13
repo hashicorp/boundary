@@ -790,11 +790,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if authResults.RoundTripValue == nil {
 		return nil, stderrors.New("authorize session: expected to get a target back from auth results")
 	}
-	t, ok := authResults.RoundTripValue.(target.Target)
+	roundTripTarget, ok := authResults.RoundTripValue.(target.Target)
 	if !ok {
 		return nil, stderrors.New("authorize session: round tripped auth results value is not a target")
 	}
-	if t == nil {
+	if roundTripTarget == nil {
 		return nil, stderrors.New("authorize session: round tripped target is nil")
 	}
 
@@ -816,7 +816,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, handlers.ForbiddenError()
 	}
 
-	if t.GetDefaultPort() == 0 {
+	if roundTripTarget.GetDefaultPort() == 0 {
 		return nil, handlers.ConflictErrorf("Target does not have default port defined.")
 	}
 
@@ -825,15 +825,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, err = repo.LookupTarget(ctx, t.GetPublicId())
+	t, err := repo.LookupTarget(ctx, roundTripTarget.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
+			return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
 		}
 		return nil, err
 	}
 	if t == nil {
-		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
+		return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
 	}
 	hostSources := t.GetHostSources()
 	credSources := t.GetCredentialSources()
