@@ -288,7 +288,215 @@ func TestGrants_ReadActions(t *testing.T) {
 	})
 
 	t.Run("Get", func(t *testing.T) {
-		// TODO: Implement
+		testcases := []struct {
+			name          string
+			userFunc      func() (*iam.User, auth.Account)
+			canGetHostSet map[string]expectedOutput
+		}{
+			{
+				name: "global role grant this returns 403",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[1].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[2].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[3].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[4].GetPublicId(): {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "org role grant this returns 403",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[1].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[2].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[3].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[4].GetPublicId(): {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "project role grant this returns all host-sets on the project",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {outputFields: []string{globals.IdField}},
+					hsets[1].GetPublicId(): {outputFields: []string{globals.IdField}},
+					hsets[2].GetPublicId(): {outputFields: []string{globals.IdField}},
+					hsets[3].GetPublicId(): {outputFields: []string{globals.IdField}},
+					hsets[4].GetPublicId(): {outputFields: []string{globals.IdField}},
+				},
+			},
+			{
+				name: "global role grant this & children returns 403 because host-sets live on projects",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[1].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[2].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[3].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[4].GetPublicId(): {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "org role grant children returns all host-sets on child projects",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					hsets[1].GetPublicId(): {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					hsets[2].GetPublicId(): {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					hsets[3].GetPublicId(): {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					hsets[4].GetPublicId(): {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+				},
+			},
+			{
+				name: "global role grant this & descendants returns all host-sets on descendant projects",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					hsets[1].GetPublicId(): {outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					hsets[2].GetPublicId(): {outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					hsets[3].GetPublicId(): {outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					hsets[4].GetPublicId(): {outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+				},
+			},
+			{
+				name: "project role grant this returns all host-sets on the project",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,host_catalog_id,scope_id,name,description,created_time,updated_time,version,type,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {outputFields: []string{globals.IdField, globals.HostCatalogIdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField}},
+					hsets[1].GetPublicId(): {outputFields: []string{globals.IdField, globals.HostCatalogIdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField}},
+					hsets[2].GetPublicId(): {outputFields: []string{globals.IdField, globals.HostCatalogIdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField}},
+					hsets[3].GetPublicId(): {outputFields: []string{globals.IdField, globals.HostCatalogIdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField}},
+					hsets[4].GetPublicId(): {outputFields: []string{globals.IdField, globals.HostCatalogIdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField}},
+				},
+			},
+			{
+				name: "incorrect grants returns no host set",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=host-set;actions=list,create,update,delete;output_fields=id,name,description,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[1].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[2].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[3].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[4].GetPublicId(): {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name:     "no grants returns no host sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, nil),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[1].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[2].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[3].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[4].GetPublicId(): {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "project role grant with host-set id, get action, host-set type, and this scope returns the id'd host set",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=" + hsets[0].PublicId + ";actions=read;output_fields=id,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {outputFields: []string{globals.IdField, globals.AuthorizedActionsField}},
+					hsets[1].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[2].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[3].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[4].GetPublicId(): {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "org role grant with host-set id, get action, host-set type, and this & children scope returns the id'd host set",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=" + hsets[4].PublicId + ";actions=read;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				canGetHostSet: map[string]expectedOutput{
+					hsets[0].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[1].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[2].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[3].GetPublicId(): {err: handlers.ForbiddenError()},
+					hsets[4].GetPublicId(): {outputFields: []string{globals.IdField}},
+				},
+			},
+		}
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				for id, expected := range tc.canGetHostSet {
+					input := &pbs.GetHostSetRequest{Id: id}
+					_, err := s.GetHostSet(fullGrantAuthCtx, input)
+					if expected.err != nil {
+						require.ErrorIs(t, err, expected.err)
+						continue
+					}
+					// check if the output fields are as expected
+					if tc.canGetHostSet[id].outputFields != nil {
+						handlers.TestAssertOutputFields(t, input, tc.canGetHostSet[id].outputFields)
+					}
+					require.NoError(t, err)
+				}
+			})
+		}
 	})
 }
 
