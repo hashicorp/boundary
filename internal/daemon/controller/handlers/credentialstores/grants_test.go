@@ -9,11 +9,6 @@ import (
 	"slices"
 	"testing"
 
-	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
-	"github.com/hashicorp/go-uuid"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
 	"github.com/hashicorp/boundary/globals"
 	authdomain "github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -29,7 +24,11 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // TestGrants_ListCredentialStores tests read actions to assert that grants are being applied properly
