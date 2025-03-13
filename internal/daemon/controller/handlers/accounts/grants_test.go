@@ -91,7 +91,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=list,read"},
+						Grants:      []string{"ids=*;type=account;actions=list,read"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				})
@@ -108,7 +108,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=list,read"},
+						Grants:      []string{"ids=*;type=account;actions=list,read"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				})
@@ -142,7 +142,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
-						Grants:      []string{"ids=*;type=*;actions=list,read"},
+						Grants:      []string{"ids=*;type=account;actions=list,read"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				})
@@ -305,7 +305,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=read"},
+						Grants:      []string{"ids=*;type=account;actions=read"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				})
@@ -356,7 +356,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{fmt.Sprintf("id=%s;type=*;actions=read", orgAM.PublicId)},
+						Grants:      []string{fmt.Sprintf("id=%s;type=account;actions=read", orgAM.PublicId)},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				})
@@ -373,7 +373,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{fmt.Sprintf("id=%s;type=*;actions=read", globalPasswordAM.PublicId)},
+						Grants:      []string{fmt.Sprintf("id=%s;type=account;actions=read", globalPasswordAM.PublicId)},
 						GrantScopes: []string{globals.GrantScopeDescendants},
 					},
 				})
@@ -440,7 +440,7 @@ func TestGrants_CreateAccount(t *testing.T) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=*"},
+						Grants:      []string{"ids=*;type=account;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				})
@@ -627,7 +627,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=delete"},
+						Grants:      []string{"ids=*;type=account;actions=delete"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				})
@@ -644,7 +644,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 				return iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=delete"},
+						Grants:      []string{"ids=*;type=account;actions=delete"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				})
@@ -661,7 +661,7 @@ func TestGrants_DeleteAccount(t *testing.T) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=delete"},
+						Grants:      []string{"ids=*;type=account;actions=delete"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				})
@@ -843,7 +843,7 @@ func TestGrants_UpdateAccount(t *testing.T) {
 				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=update"},
+						Grants:      []string{"ids=*;type=account;actions=update"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				})
