@@ -312,7 +312,6 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 			require.ElementsMatch(t, tc.wantIDs, gotIDs)
 		})
 	}
-
 }
 
 func TestGrants_GetCredentialStores(t *testing.T) {
@@ -491,7 +490,6 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_CreateCredentialStores(t *testing.T) {
@@ -703,7 +701,6 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_DeleteCredentialStores(t *testing.T) {
@@ -902,7 +899,6 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_UpdateCredentialStores(t *testing.T) {
@@ -1120,7 +1116,6 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestOutputFields_ListCredentialStores(t *testing.T) {
