@@ -1285,6 +1285,36 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
+			name: "Create a valid Host with IPv6 address",
+			req: &pbs.CreateHostRequest{Item: &pb.Host{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name-ipv6"},
+				Description:   &wrappers.StringValue{Value: "desc-ipv6"},
+				Type:          "static",
+				Attrs: &pb.Host_StaticHostAttributes{
+					StaticHostAttributes: &pb.StaticHostAttributes{
+						Address: wrapperspb.String("2001:BEEF:0000:0000:0000:0000:0000:0001"),
+					},
+				},
+			}},
+			res: &pbs.CreateHostResponse{
+				Uri: fmt.Sprintf("hosts/%s_", globals.StaticHostPrefix),
+				Item: &pb.Host{
+					HostCatalogId: hc.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:          &wrappers.StringValue{Value: "name-ipv6"},
+					Description:   &wrappers.StringValue{Value: "desc-ipv6"},
+					Type:          "static",
+					Attrs: &pb.Host_StaticHostAttributes{
+						StaticHostAttributes: &pb.StaticHostAttributes{
+							Address: wrapperspb.String("2001:beef::1"),
+						},
+					},
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
+				},
+			},
+		},
+		{
 			name: "no-attributes",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
 				HostCatalogId: hc.GetPublicId(),
@@ -1542,6 +1572,41 @@ func TestUpdate_Static(t *testing.T) {
 					Attrs: &pb.Host_StaticHostAttributes{
 						StaticHostAttributes: &pb.StaticHostAttributes{
 							Address: wrapperspb.String("defaultaddress"),
+						},
+					},
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
+					HostSetIds:        []string{s.GetPublicId()},
+				},
+			},
+		},
+		{
+			name: "Update address",
+			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{globals.AttributesAddressField},
+				},
+				Item: &pb.Host{
+					Attrs: &pb.Host_StaticHostAttributes{
+						StaticHostAttributes: &pb.StaticHostAttributes{
+							Address: wrapperspb.String("2001:BEEF:0000:0000:0000:0000:0000:0001"),
+						},
+					},
+					Type: "static",
+				},
+			},
+			res: &pbs.UpdateHostResponse{
+				Item: &pb.Host{
+					HostCatalogId: hc.GetPublicId(),
+					Id:            h.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:          &wrappers.StringValue{Value: "default"},
+					Description:   &wrappers.StringValue{Value: "default"},
+					CreatedTime:   h.GetCreateTime().GetTimestamp(),
+					Type:          "static",
+					Attrs: &pb.Host_StaticHostAttributes{
+						StaticHostAttributes: &pb.StaticHostAttributes{
+							Address: wrapperspb.String("2001:beef::1"),
 						},
 					},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
