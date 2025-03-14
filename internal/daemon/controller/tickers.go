@@ -36,7 +36,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 			return
 
 		case <-timer.C:
-			if err := c.upsertController(cancelCtx); err != nil {
+			if err := c.updateController(cancelCtx); err != nil {
 				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for status update"))
 			}
 			timer.Reset(statusInterval)
@@ -44,8 +44,8 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 	}
 }
 
-func (c *Controller) upsertController(ctx context.Context) error {
-	const op = "controller.(Controller).upsertController"
+func (c *Controller) updateController(ctx context.Context) error {
+	const op = "controller.(Controller).updateController"
 	controller := &store.Controller{
 		PrivateId: c.conf.RawConfig.Controller.Name,
 		Address:   c.conf.RawConfig.Controller.PublicClusterAddr,
@@ -55,7 +55,7 @@ func (c *Controller) upsertController(ctx context.Context) error {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status update"))
 	}
 
-	_, err = repo.UpsertController(ctx, controller)
+	_, err = repo.UpdateController(ctx, controller)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status update"))
 	}
