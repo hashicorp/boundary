@@ -843,6 +843,11 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 	if err != nil {
 		return fmt.Errorf("Error splitting public adddress host/port: %w", err)
 	}
+	if host != "" {
+		if host, err = parseutil.NormalizeAddr(host); err != nil {
+			return fmt.Errorf("Error normalizing worker address")
+		}
+	}
 	if port == "" {
 		port = "9202"
 	}
