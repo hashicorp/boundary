@@ -1211,7 +1211,6 @@ func TestUpdateVault(t *testing.T) {
 
 	v2 := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS), vault.WithClientKey(key))
 	_, token2 := v2.CreateToken(t)
-	_, token2b := v2.CreateToken(t)
 	clientCert2, err := vault.NewClientCertificate(ctx, v2.ClientCert, v2.ClientKey)
 	require.NoError(t, err)
 
