@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -209,7 +210,11 @@ func (am *AuthMethod) convertUrls(ctx context.Context) ([]*Url, error) {
 	}
 	newValObjs := make([]*Url, 0, len(am.Urls))
 	for priority, u := range am.Urls {
-		parsed, err := url.Parse(u)
+		addr, err := parseutil.NormalizeAddr(u)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		parsed, err := url.Parse(addr)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
