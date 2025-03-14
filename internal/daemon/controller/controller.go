@@ -541,7 +541,7 @@ func (c *Controller) Start() error {
 	}
 
 	// Upsert controller before starting tickers and scheduler to ensure the controller exists
-	if err := c.upsertController(c.baseContext); err != nil {
+	if err := c.updateController(c.baseContext); err != nil {
 		return fmt.Errorf("error upserting controller: %w", err)
 	}
 	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
