@@ -309,7 +309,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			ConnectionId:       acResp.GetConnectionId(),
 			ClientTcpAddress:   clientAddr.IP.String(),
 			ClientTcpPort:      uint32(clientAddr.Port),
-			EndpointTcpAddress: endpointAddr.Ip(),
+			EndpointTcpAddress: endpointAddr.Ip(), // endpointAddr.ip is assigned via net.IP and therefore should already be formatted correctly
 			EndpointTcpPort:    endpointAddr.Port(),
 			Type:               endpointUrl.Scheme,
 			UserClientIp:       userClientIp,
