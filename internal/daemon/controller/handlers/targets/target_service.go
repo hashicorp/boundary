@@ -910,9 +910,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			"No host was discovered after checking target address and host sources.")
 	}
 
-	// Ensure we don't have a port from the address
-	_, err = util.ParseAddress(ctx, h)
-	if err != nil {
+	// Ensure we don't have a port from the address and that any ipv6 addresses
+	// are formatted properly
+	if h, err = util.ParseAddress(ctx, h); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoint host address"))
 	}
 
@@ -1817,15 +1817,13 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			}
 		}
 		if address := item.GetAddress(); address != nil {
-			if len(address.GetValue()) < static.MinHostAddressLength ||
-				len(address.GetValue()) > static.MaxHostAddressLength {
-				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			}
-			_, _, err := net.SplitHostPort(address.GetValue())
+			_, err := util.ParseAddress(context.Background(), address.GetValue())
 			switch {
 			case err == nil:
+			case err.Error() == util.InvalidAddressLength:
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			case err.Error() == util.InvalidAddressContainsPort:
 				badFields[globals.AddressField] = "Address does not support a port."
-			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
@@ -1897,15 +1895,13 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			}
 		}
 		if address := item.GetAddress(); address != nil {
-			if len(address.GetValue()) < static.MinHostAddressLength ||
-				len(address.GetValue()) > static.MaxHostAddressLength {
-				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			}
-			_, _, err := net.SplitHostPort(address.GetValue())
+			_, err := util.ParseAddress(context.Background(), address.GetValue())
 			switch {
 			case err == nil:
+			case err.Error() == util.InvalidAddressLength:
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			case err.Error() == util.InvalidAddressContainsPort:
 				badFields[globals.AddressField] = "Address does not support a port."
-			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
