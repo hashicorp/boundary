@@ -6,7 +6,6 @@ package handlers
 import (
 	"context"
 	stderrors "errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -678,7 +677,7 @@ func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session
 	}
 	ok, err := eval.Evaluate(filterInput)
 	if err != nil {
-		return status.Errorf(codes.Internal, fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
+		return status.Errorf(codes.Internal, "Worker filter expression evaluation resulted in error: %s", err)
 	}
 	if !ok {
 		return handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Worker filter expression precludes this worker from serving this session")
@@ -727,7 +726,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ProjectId, sessionInfo.PublicId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal,
-			fmt.Sprintf("Error retrieving session credentials: %s", err))
+			"Error retrieving session credentials: %s", err)
 	}
 	var workerCreds []*pbs.Credential
 	for _, c := range creds {
@@ -735,7 +734,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		err = proto.Unmarshal(c, m)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal,
-				fmt.Sprintf("Error unmarshaling credentials: %s", err))
+				"Error unmarshaling credentials: %s", err)
 		}
 		workerCreds = append(workerCreds, m)
 	}
