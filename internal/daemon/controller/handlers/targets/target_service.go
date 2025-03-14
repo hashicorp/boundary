@@ -48,7 +48,6 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
@@ -1733,14 +1732,7 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 		}
 	}
 	if outputFields.Has(globals.AddressField) {
-		addr := in.GetAddress()
-		if addr != "" {
-			var err error
-			if addr, err = parseutil.NormalizeAddr(in.GetAddress()); err != nil {
-				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to normalize the given target address: %q", in.GetAddress()))
-			}
-		}
-		out.Address = wrapperspb.String(addr)
+		out.Address = wrapperspb.String(in.GetAddress())
 	}
 
 	var brokeredSources, injectedAppSources []*pb.CredentialSource
