@@ -3,8 +3,8 @@ module github.com/hashicorp/boundary/plugins/boundary/mains/aws
 go 1.23.3
 
 require (
-	github.com/hashicorp/boundary-plugin-aws v0.5.0
-	github.com/hashicorp/boundary/sdk v0.0.49
+	github.com/hashicorp/boundary-plugin-aws v0.5.1
+	github.com/hashicorp/boundary/sdk v0.0.51
 )
 
 require (
@@ -42,7 +42,10 @@ require (
 	github.com/hashicorp/go-plugin v1.6.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/awsutil/v2 v2.1.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.7 // indirect
+	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
+	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -54,6 +57,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.34.0 // indirect

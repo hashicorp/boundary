@@ -3,8 +3,8 @@ module github.com/hashicorp/boundary/plugins/boundary/mains/minio
 go 1.23.4
 
 require (
-	github.com/hashicorp/boundary-plugin-minio v0.1.6
-	github.com/hashicorp/boundary/sdk v0.0.49
+	github.com/hashicorp/boundary-plugin-minio v0.1.7
+	github.com/hashicorp/boundary/sdk v0.0.51
 )
 
 require (
@@ -24,7 +24,10 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.6.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.6 // indirect
+	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
+	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
@@ -40,6 +43,7 @@ require (
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
+	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/secure-io/sio-go v0.3.1 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
