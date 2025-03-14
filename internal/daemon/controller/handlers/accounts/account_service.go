@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -693,7 +694,11 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	}
 	attrs := item.GetOidcAccountAttributes()
 	if attrs.GetIssuer() != "" {
-		u, err := url.Parse(attrs.GetIssuer())
+		niss, err := parseutil.NormalizeAddr(attrs.GetIssuer())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to normalize issuer"), errors.WithCode(errors.InvalidParameter))
+		}
+		u, err := url.Parse(niss)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse issuer"), errors.WithCode(errors.InvalidParameter))
 		}
@@ -1323,8 +1328,10 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAccountRequest) e
 					if err != nil {
 						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
-					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-						badFields[issuerField] = "The path segment of the url should be empty."
+					if du != nil {
+						if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+							badFields[issuerField] = "The path segment of the url should be empty."
+						}
 					}
 				}
 				if attrs.GetFullName() != "" {

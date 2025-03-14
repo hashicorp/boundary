@@ -548,7 +548,7 @@ func getDefaultTestOptions(t testing.TB) testOptions {
 		vaultTLS:            TestNoTLS,
 		dockerNetwork:       false,
 		tokenPeriod:         defaultPeriod,
-		serverCertHostNames: []string{"localhost"},
+		serverCertHostNames: []string{"localhost", "127.0.0.1", "::1"},
 	}
 }
 
