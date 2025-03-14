@@ -5,13 +5,34 @@ syntax = "proto3";
 
 package plugin.v1;
 
+import "controller/api/resources/plugins/v1/plugin.proto";
 import "controller/api/resources/storagebuckets/v1/storage_bucket.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/plugin;plugin";
 
 // StoragePluginService describes the service for storage bucket plugins.
 service StoragePluginService {
+  // NormalizeStorageBucketData is a hook that passes attributes to the plugin
+  // and allows those values to be normalized prior to creating or updating
+  // those values within the persisted storage bucket.
+  //
+  // NormalizeStorageBucketData is called before the values of attributes are
+  // persisted. All normalized values will be persisted in Boundary and returned
+  // to all clients.
+  //
+  // NormalizeStorageBucketData could affect other clients. For example, in
+  // Terraform, if data is passed to Boundary and then normalized into a new
+  // data structure, it could cause diffs in Terraform for unchanged values.
+  // This is because, the data structure in Terraform's state will now be
+  // different from the normalized data structure returned from Boundary.
+  //
+  // NormalizeStorageBucketData is called before:
+  // * OnCreateStorageBucket
+  // * OnUpdateStorageBucket
+  rpc NormalizeStorageBucketData(NormalizeStorageBucketDataRequest) returns (NormalizeStorageBucketDataResponse);
+
   // OnCreateStorageBucket is a hook that runs when a
   // storage bucket is created.
   rpc OnCreateStorageBucket(OnCreateStorageBucketRequest) returns (OnCreateStorageBucketResponse);
@@ -41,6 +62,20 @@ service StoragePluginService {
   // DeleteObjects deletes one or many files in an external object store
   // via a provided key prefix.
   rpc DeleteObjects(DeleteObjectsRequest) returns (DeleteObjectsResponse);
+}
+
+message NormalizeStorageBucketDataRequest {
+  // The incoming attributes in the create or update request.
+  google.protobuf.Struct attributes = 10;
+
+  // The plugin information for this request.
+  controller.api.resources.plugins.v1.PluginInfo plugin = 20;
+}
+
+message NormalizeStorageBucketDataResponse {
+  // Outgoing attributes. If nil, no changes will be recorded. If non-nil, the
+  // values here will be used in place of the original set of attributes.
+  google.protobuf.Struct attributes = 10;
 }
 
 message OnCreateStorageBucketRequest {

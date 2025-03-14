@@ -22,20 +22,39 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	StoragePluginService_OnCreateStorageBucket_FullMethodName = "/plugin.v1.StoragePluginService/OnCreateStorageBucket"
-	StoragePluginService_OnUpdateStorageBucket_FullMethodName = "/plugin.v1.StoragePluginService/OnUpdateStorageBucket"
-	StoragePluginService_OnDeleteStorageBucket_FullMethodName = "/plugin.v1.StoragePluginService/OnDeleteStorageBucket"
-	StoragePluginService_ValidatePermissions_FullMethodName   = "/plugin.v1.StoragePluginService/ValidatePermissions"
-	StoragePluginService_HeadObject_FullMethodName            = "/plugin.v1.StoragePluginService/HeadObject"
-	StoragePluginService_GetObject_FullMethodName             = "/plugin.v1.StoragePluginService/GetObject"
-	StoragePluginService_PutObject_FullMethodName             = "/plugin.v1.StoragePluginService/PutObject"
-	StoragePluginService_DeleteObjects_FullMethodName         = "/plugin.v1.StoragePluginService/DeleteObjects"
+	StoragePluginService_NormalizeStorageBucketData_FullMethodName = "/plugin.v1.StoragePluginService/NormalizeStorageBucketData"
+	StoragePluginService_OnCreateStorageBucket_FullMethodName      = "/plugin.v1.StoragePluginService/OnCreateStorageBucket"
+	StoragePluginService_OnUpdateStorageBucket_FullMethodName      = "/plugin.v1.StoragePluginService/OnUpdateStorageBucket"
+	StoragePluginService_OnDeleteStorageBucket_FullMethodName      = "/plugin.v1.StoragePluginService/OnDeleteStorageBucket"
+	StoragePluginService_ValidatePermissions_FullMethodName        = "/plugin.v1.StoragePluginService/ValidatePermissions"
+	StoragePluginService_HeadObject_FullMethodName                 = "/plugin.v1.StoragePluginService/HeadObject"
+	StoragePluginService_GetObject_FullMethodName                  = "/plugin.v1.StoragePluginService/GetObject"
+	StoragePluginService_PutObject_FullMethodName                  = "/plugin.v1.StoragePluginService/PutObject"
+	StoragePluginService_DeleteObjects_FullMethodName              = "/plugin.v1.StoragePluginService/DeleteObjects"
 )
 
 // StoragePluginServiceClient is the client API for StoragePluginService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StoragePluginServiceClient interface {
+	// NormalizeStorageBucketData is a hook that passes attributes to the plugin
+	// and allows those values to be normalized prior to creating or updating
+	// those values within the persisted storage bucket.
+	//
+	// NormalizeStorageBucketData is called before the values of attributes are
+	// persisted. All normalized values will be persisted in Boundary and returned
+	// to all clients.
+	//
+	// NormalizeStorageBucketData could affect other clients. For example, in
+	// Terraform, if data is passed to Boundary and then normalized into a new
+	// data structure, it could cause diffs in Terraform for unchanged values.
+	// This is because, the data structure in Terraform's state will now be
+	// different from the normalized data structure returned from Boundary.
+	//
+	// NormalizeStorageBucketData is called before:
+	// * OnCreateStorageBucket
+	// * OnUpdateStorageBucket
+	NormalizeStorageBucketData(ctx context.Context, in *NormalizeStorageBucketDataRequest, opts ...grpc.CallOption) (*NormalizeStorageBucketDataResponse, error)
 	// OnCreateStorageBucket is a hook that runs when a
 	// storage bucket is created.
 	OnCreateStorageBucket(ctx context.Context, in *OnCreateStorageBucketRequest, opts ...grpc.CallOption) (*OnCreateStorageBucketResponse, error)
@@ -66,6 +85,15 @@ type storagePluginServiceClient struct {
 
 func NewStoragePluginServiceClient(cc grpc.ClientConnInterface) StoragePluginServiceClient {
 	return &storagePluginServiceClient{cc}
+}
+
+func (c *storagePluginServiceClient) NormalizeStorageBucketData(ctx context.Context, in *NormalizeStorageBucketDataRequest, opts ...grpc.CallOption) (*NormalizeStorageBucketDataResponse, error) {
+	out := new(NormalizeStorageBucketDataResponse)
+	err := c.cc.Invoke(ctx, StoragePluginService_NormalizeStorageBucketData_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *storagePluginServiceClient) OnCreateStorageBucket(ctx context.Context, in *OnCreateStorageBucketRequest, opts ...grpc.CallOption) (*OnCreateStorageBucketResponse, error) {
@@ -167,6 +195,24 @@ func (c *storagePluginServiceClient) DeleteObjects(ctx context.Context, in *Dele
 // All implementations must embed UnimplementedStoragePluginServiceServer
 // for forward compatibility
 type StoragePluginServiceServer interface {
+	// NormalizeStorageBucketData is a hook that passes attributes to the plugin
+	// and allows those values to be normalized prior to creating or updating
+	// those values within the persisted storage bucket.
+	//
+	// NormalizeStorageBucketData is called before the values of attributes are
+	// persisted. All normalized values will be persisted in Boundary and returned
+	// to all clients.
+	//
+	// NormalizeStorageBucketData could affect other clients. For example, in
+	// Terraform, if data is passed to Boundary and then normalized into a new
+	// data structure, it could cause diffs in Terraform for unchanged values.
+	// This is because, the data structure in Terraform's state will now be
+	// different from the normalized data structure returned from Boundary.
+	//
+	// NormalizeStorageBucketData is called before:
+	// * OnCreateStorageBucket
+	// * OnUpdateStorageBucket
+	NormalizeStorageBucketData(context.Context, *NormalizeStorageBucketDataRequest) (*NormalizeStorageBucketDataResponse, error)
 	// OnCreateStorageBucket is a hook that runs when a
 	// storage bucket is created.
 	OnCreateStorageBucket(context.Context, *OnCreateStorageBucketRequest) (*OnCreateStorageBucketResponse, error)
@@ -196,6 +242,9 @@ type StoragePluginServiceServer interface {
 type UnimplementedStoragePluginServiceServer struct {
 }
 
+func (UnimplementedStoragePluginServiceServer) NormalizeStorageBucketData(context.Context, *NormalizeStorageBucketDataRequest) (*NormalizeStorageBucketDataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NormalizeStorageBucketData not implemented")
+}
 func (UnimplementedStoragePluginServiceServer) OnCreateStorageBucket(context.Context, *OnCreateStorageBucketRequest) (*OnCreateStorageBucketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnCreateStorageBucket not implemented")
 }
@@ -231,6 +280,24 @@ type UnsafeStoragePluginServiceServer interface {
 
 func RegisterStoragePluginServiceServer(s grpc.ServiceRegistrar, srv StoragePluginServiceServer) {
 	s.RegisterService(&StoragePluginService_ServiceDesc, srv)
+}
+
+func _StoragePluginService_NormalizeStorageBucketData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NormalizeStorageBucketDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoragePluginServiceServer).NormalizeStorageBucketData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StoragePluginService_NormalizeStorageBucketData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoragePluginServiceServer).NormalizeStorageBucketData(ctx, req.(*NormalizeStorageBucketDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _StoragePluginService_OnCreateStorageBucket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -387,6 +454,10 @@ var StoragePluginService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "plugin.v1.StoragePluginService",
 	HandlerType: (*StoragePluginServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "NormalizeStorageBucketData",
+			Handler:    _StoragePluginService_NormalizeStorageBucketData_Handler,
+		},
 		{
 			MethodName: "OnCreateStorageBucket",
 			Handler:    _StoragePluginService_OnCreateStorageBucket_Handler,
