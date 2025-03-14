@@ -12,6 +12,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestCatalog creates a static host catalog to the provided DB
+// with the provided project id.  If any errors are encountered during the creation of
+// the host catalog, the test will fail.
+// Name and description are the only valid options. All other options are
+// ignored.
+func TestCatalog(t testing.TB, conn *db.DB, projectId string, opt ...Option) *HostCatalog {
+	t.Helper()
+	ctx := context.Background()
+	assert := assert.New(t)
+
+	cat, err := NewHostCatalog(ctx, projectId, opt...)
+	assert.NoError(err)
+	assert.NotNil(cat)
+	id, err := newHostCatalogId(ctx)
+	assert.NoError(err)
+	assert.NotEmpty(id)
+	cat.PublicId = id
+
+	w := db.New(conn)
+	err2 := w.Create(ctx, cat)
+	assert.NoError(err2)
+
+	return cat
+}
+
 // TestCatalogs creates count number of static host catalogs to the provided DB
 // with the provided project id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
