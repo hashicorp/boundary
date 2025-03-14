@@ -6,6 +6,7 @@ package parallel
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -53,6 +54,7 @@ func TestUnixListener(t *testing.T) {
 		}
 	}
 
+	fmt.Println("creating controller 1")
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                        conf,
 		Logger:                        logger.Named("c1"),
@@ -75,6 +77,7 @@ func TestUnixListener(t *testing.T) {
 			},
 		},
 	})
+	fmt.Println("controller 1 ok")
 
 	helper.ExpectWorkers(t, c1)
 
@@ -95,6 +98,22 @@ func TestUnixListener(t *testing.T) {
 	helper.ExpectWorkers(t, c1)
 
 	require.NoError(c1.Controller().Shutdown())
+
+	conf, err = config.DevController()
+	require.NoError(err)
+
+	for _, l := range conf.Listeners {
+		switch l.Purpose[0] {
+		case "api":
+			l.Address = path.Join(tempDir, "api")
+			l.Type = "unix"
+
+		case "cluster":
+			l.Address = path.Join(tempDir, "cluster")
+			l.Type = "unix"
+		}
+	}
+
 	c2 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                        conf,
 		Logger:                        logger.Named("c2"),
@@ -117,6 +136,7 @@ func TestUnixListener(t *testing.T) {
 			},
 		},
 	})
+	fmt.Println("controller 2 ok")
 
 	helper.ExpectWorkers(t, c2)
 
