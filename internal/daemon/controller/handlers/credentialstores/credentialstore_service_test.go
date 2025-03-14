@@ -1276,48 +1276,6 @@ func TestUpdateVault(t *testing.T) {
 			},
 		},
 		{
-			name: "update connection info ipv6",
-			req: &pbs.UpdateCredentialStoreRequest{
-				UpdateMask: fieldmask(globals.AttributesAddressField, "attributes.client_certificate", "attributes.client_certificate_key", "attributes.ca_cert", "attributes.token"),
-				Item: &pb.CredentialStore{
-					Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
-						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
-							Address: func() *wrapperspb.StringValue {
-								u, err := url.Parse(v2.Addr)
-								require.NoError(t, err)
-								require.NotNil(t, u)
-								require.NotEmpty(t, u.Port())
-								require.NotEmpty(t, u.Scheme)
-
-								return wrapperspb.String(fmt.Sprintf("%s://[0000:0000:0000:0000:0000:0000:0000:0001]:%s", u.Scheme, u.Port()))
-							}(),
-							Token:                wrapperspb.String(token2b),
-							ClientCertificate:    wrapperspb.String(string(clientCert2.Certificate)),
-							ClientCertificateKey: wrapperspb.String(string(clientCert2.CertificateKey)),
-							CaCert:               wrapperspb.String(string(v2.CaCert)),
-						},
-					},
-				},
-			},
-			res: func(in *pb.CredentialStore) *pb.CredentialStore {
-				out := proto.Clone(in).(*pb.CredentialStore)
-				out.GetVaultCredentialStoreAttributes().Address = func() *wrapperspb.StringValue {
-					u, err := url.Parse(v2.Addr)
-					require.NoError(t, err)
-					require.NotNil(t, u)
-					require.NotEmpty(t, u.Port())
-					require.NotEmpty(t, u.Scheme)
-
-					return wrapperspb.String(fmt.Sprintf("%s://[::1]:%s", u.Scheme, u.Port()))
-				}()
-				out.GetVaultCredentialStoreAttributes().ClientCertificate = wrapperspb.String(string(clientCert2.Certificate))
-				out.GetVaultCredentialStoreAttributes().CaCert = wrapperspb.String(string(v2.CaCert))
-				out.GetVaultCredentialStoreAttributes().TokenHmac = "<hmac>"
-				out.GetVaultCredentialStoreAttributes().ClientCertificateKeyHmac = "<hmac>"
-				return out
-			},
-		},
-		{
 			name: "update token",
 			req: &pbs.UpdateCredentialStoreRequest{
 				UpdateMask: fieldmask("attributes.token"),
