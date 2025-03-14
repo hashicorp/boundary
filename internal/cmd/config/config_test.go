@@ -1607,10 +1607,10 @@ func TestWorkerUpstreams(t *testing.T) {
 			in: `
 			worker {
 				name = "test"
-				initial_upstreams = ["[2001:4860:4860:0:0:0:0:8888]"]
+				initial_upstreams = ["2001:4860:4860:0:0:0:0:8888"]
 			}
 			`,
-			expWorkerUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]"},
+			expWorkerUpstreams: []string{"2001:4860:4860::8888"},
 			expErr:             false,
 		},
 		{
@@ -1618,10 +1618,10 @@ func TestWorkerUpstreams(t *testing.T) {
 			in: `
 			worker {
 				name = "test"
-				initial_upstreams = ["[2001:4860:4860::8888]"]
+				initial_upstreams = ["2001:4860:4860::8888"]
 			}
 			`,
-			expWorkerUpstreams: []string{"[2001:4860:4860::8888]"},
+			expWorkerUpstreams: []string{"2001:4860:4860::8888"},
 			expErr:             false,
 		},
 		{
@@ -2467,13 +2467,13 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 					Listeners: []*listenerutil.ListenerConfig{},
 				},
 				Controller: &Controller{
-					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]",
+					PublicClusterAddr: "2001:4860:4860:0:0:0:0:8888",
 				},
 			},
 			inputFlagValue:          "",
 			expErr:                  false,
 			expErrStr:               "",
-			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:9201",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:9201",
 		},
 		{
 			name: "setting public cluster address directly with ipv6:port",
@@ -2488,7 +2488,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			inputFlagValue:          "",
 			expErr:                  false,
 			expErrStr:               "",
-			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "setting public cluster address directly with abbreviated ipv6",
@@ -2497,7 +2497,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 					Listeners: []*listenerutil.ListenerConfig{},
 				},
 				Controller: &Controller{
-					PublicClusterAddr: "[2001:4860:4860::8888]",
+					PublicClusterAddr: "2001:4860:4860::8888",
 				},
 			},
 			inputFlagValue:          "",
@@ -2707,35 +2707,35 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
-						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860:0:0:0:0:8888]"},
+						{Purpose: []string{"cluster"}, Address: "2001:4860:4860:0:0:0:0:8888"},
 					},
 				},
 				Controller: &Controller{},
 			},
 			expErr:                  false,
 			expErrStr:               "",
-			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:9201",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:9201",
 		},
 		{
 			name: "read address from listeners ipv6:port",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
-						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860:0:0:0:0:8888]:8080"},
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860::8888]:8080"},
 					},
 				},
 				Controller: &Controller{},
 			},
 			expErr:                  false,
 			expErrStr:               "",
-			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "read address from listeners abbreviated ipv6 only",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
-						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860::8888]"},
+						{Purpose: []string{"cluster"}, Address: "2001:4860:4860::8888"},
 					},
 				},
 				Controller: &Controller{},
@@ -2793,9 +2793,9 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 				},
 				Controller: &Controller{},
 			},
-			inputFlagValue:          "abc::123",
+			inputFlagValue:          "abc::123:::",
 			expErr:                  true,
-			expErrStr:               "Error splitting public cluster adddress host/port: address abc::123: too many colons in address",
+			expErrStr:               "Error splitting public cluster adddress host/port: address abc::123:::: too many colons in address",
 			expPublicClusterAddress: "",
 		},
 		{
@@ -2810,6 +2810,18 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expErr:                  true,
 			expErrStr:               "Error parsing IP template on controller public cluster addr: unable to parse address template \"{{ somethingthatdoesntexist }}\": unable to parse template \"{{ somethingthatdoesntexist }}\": template: sockaddr.Parse:1: function \"somethingthatdoesntexist\" not defined",
 			expPublicClusterAddress: "",
+		},
+		{
+			name: "unix listener",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Address: "someaddr", Type: "unix", Purpose: []string{"cluster"}},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expPublicClusterAddress: "someaddr:9201",
 		},
 	}
 

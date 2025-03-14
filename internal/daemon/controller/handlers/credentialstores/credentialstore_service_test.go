@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
@@ -647,6 +648,64 @@ func TestCreateVault(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Create a valid vault CredentialStore IPv6 Address",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				Name:        &wrapperspb.StringValue{Value: "name-ipv6"},
+				Description: &wrapperspb.StringValue{Value: "desc-ipv6"},
+				Type:        vault.Subtype.String(),
+				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
+					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
+						Address: func() *wrapperspb.StringValue {
+							u, err := url.Parse(v.Addr)
+							require.NoError(t, err)
+							require.NotNil(t, u)
+							require.NotEmpty(t, u.Port())
+							require.NotEmpty(t, u.Scheme)
+
+							return wrapperspb.String(fmt.Sprintf("%s://[0000:0000:0000:0000:0000:0000:0000:0001]:%s", u.Scheme, u.Port()))
+						}(),
+						Token:                wrapperspb.String(newToken()),
+						CaCert:               wrapperspb.String(string(v.CaCert)),
+						ClientCertificate:    wrapperspb.String(string(v.ClientCert)),
+						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
+					},
+				},
+			}},
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
+			res: &pbs.CreateCredentialStoreResponse{
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.VaultCredentialStorePrefix),
+				Item: &pb.CredentialStore{
+					ScopeId:     prj.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "name-ipv6"},
+					Description: &wrapperspb.StringValue{Value: "desc-ipv6"},
+					Scope:       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:     1,
+					Type:        vault.Subtype.String(),
+					Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
+						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
+							CaCert: wrapperspb.String(string(v.CaCert)),
+							Address: func() *wrapperspb.StringValue {
+								u, err := url.Parse(v.Addr)
+								require.NoError(t, err)
+								require.NotNil(t, u)
+								require.NotEmpty(t, u.Port())
+								require.NotEmpty(t, u.Scheme)
+
+								return wrapperspb.String(fmt.Sprintf("%s://[::1]:%s", u.Scheme, u.Port()))
+							}(),
+							TokenHmac:                "<hmac>",
+							TokenStatus:              "current",
+							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
+							ClientCertificateKeyHmac: "<hmac>",
+						},
+					},
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: testAuthorizedVaultCollectionActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1152,6 +1211,7 @@ func TestUpdateVault(t *testing.T) {
 
 	v2 := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS), vault.WithClientKey(key))
 	_, token2 := v2.CreateToken(t)
+	_, token2b := v2.CreateToken(t)
 	clientCert2, err := vault.NewClientCertificate(ctx, v2.ClientCert, v2.ClientKey)
 	require.NoError(t, err)
 
@@ -1208,6 +1268,48 @@ func TestUpdateVault(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.GetVaultCredentialStoreAttributes().Address = wrapperspb.String(v2.Addr)
+				out.GetVaultCredentialStoreAttributes().ClientCertificate = wrapperspb.String(string(clientCert2.Certificate))
+				out.GetVaultCredentialStoreAttributes().CaCert = wrapperspb.String(string(v2.CaCert))
+				out.GetVaultCredentialStoreAttributes().TokenHmac = "<hmac>"
+				out.GetVaultCredentialStoreAttributes().ClientCertificateKeyHmac = "<hmac>"
+				return out
+			},
+		},
+		{
+			name: "update connection info ipv6",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask(globals.AttributesAddressField, "attributes.client_certificate", "attributes.client_certificate_key", "attributes.ca_cert", "attributes.token"),
+				Item: &pb.CredentialStore{
+					Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
+						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
+							Address: func() *wrapperspb.StringValue {
+								u, err := url.Parse(v2.Addr)
+								require.NoError(t, err)
+								require.NotNil(t, u)
+								require.NotEmpty(t, u.Port())
+								require.NotEmpty(t, u.Scheme)
+
+								return wrapperspb.String(fmt.Sprintf("%s://[0000:0000:0000:0000:0000:0000:0000:0001]:%s", u.Scheme, u.Port()))
+							}(),
+							Token:                wrapperspb.String(token2b),
+							ClientCertificate:    wrapperspb.String(string(clientCert2.Certificate)),
+							ClientCertificateKey: wrapperspb.String(string(clientCert2.CertificateKey)),
+							CaCert:               wrapperspb.String(string(v2.CaCert)),
+						},
+					},
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.GetVaultCredentialStoreAttributes().Address = func() *wrapperspb.StringValue {
+					u, err := url.Parse(v2.Addr)
+					require.NoError(t, err)
+					require.NotNil(t, u)
+					require.NotEmpty(t, u.Port())
+					require.NotEmpty(t, u.Scheme)
+
+					return wrapperspb.String(fmt.Sprintf("%s://[::1]:%s", u.Scheme, u.Port()))
+				}()
 				out.GetVaultCredentialStoreAttributes().ClientCertificate = wrapperspb.String(string(clientCert2.Certificate))
 				out.GetVaultCredentialStoreAttributes().CaCert = wrapperspb.String(string(v2.CaCert))
 				out.GetVaultCredentialStoreAttributes().TokenHmac = "<hmac>"
