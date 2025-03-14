@@ -975,7 +975,190 @@ func TestGrants_WriteActions(t *testing.T) {
 	})
 
 	t.Run("Remove Host Set Hosts", func(t *testing.T) {
+		hc := static.TestCatalog(t, conn, proj.PublicId, static.WithName("test catalog"), static.WithDescription("test desc"))
+		hcClone := static.TestCatalog(t, conn, proj.PublicId, static.WithName("clone catalog"), static.WithDescription("clone desc"))
 
+		// We need to create a host set with hosts in order to remove hosts.
+		// As a result, each testcase is granted the `add-hosts` action for our test host-catalog.
+		grantAddHostSetHosts := iam.TestRoleGrantsRequest{
+			RoleScopeId: proj.PublicId,
+			Grants:      []string{"ids=" + hc.PublicId + ";type=host-set;actions=add-hosts;output_fields=id"},
+			GrantScopes: []string{globals.GrantScopeThis},
+		}
+		testcases := []struct {
+			name     string
+			userFunc func() (*iam.User, auth.Account)
+			expected expectedOutput
+		}{
+			{
+				name: "global role grant this can't remove hosts from host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "org role grant this can't remove hosts from host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "project role grant this can remove hosts from host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=host-set;actions=remove-hosts;output_fields=id,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+			{
+				name: "global role grant this & descendants can remove hosts from host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=host-set;actions=remove-hosts;output_fields=id,host_catalog_id,scope_id,name,description,created_time,updated_time,version,type,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.HostCatalogIdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField}},
+			},
+			{
+				name: "org role grant this & children can remove hosts from host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=host-set;actions=remove-hosts;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+			{
+				name: "incorrect grants can't remove hosts from host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=host-set;actions=list,create,update;output_fields=id,name,description,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name:     "no grants can't remove hosts from host-sets",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{grantAddHostSetHosts}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "global role grant with host-catalog id, remove-hosts action, host-set type, and this/children scope allows removing hosts from host-sets under the specified host-catalog",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=" + hc.PublicId + ";type=host-set;actions=remove-hosts;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+			{
+				name: "org role grant with host-catalog id, remove-hosts action, host-set type, and this/children scope allows removing hosts from host-sets under the specified host-catalog",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=" + hc.PublicId + ";type=host-set;actions=remove-hosts;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+			{
+				name: "project role grant with host-catalog id, remove-hosts action, host-set type, and this/children scope allows removing hosts from host-sets under the specified host-catalog",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=" + hc.PublicId + ";type=host-set;actions=remove-hosts;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+			{
+				name: "project role grant with an unassociated host-catalog id and remove-hosts action does not allow removing hosts from host-sets under the specified host-catalog",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					grantAddHostSetHosts,
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=" + hcClone.PublicId + ";type=host-set;actions=remove-hosts;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+		}
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				hset := static.TestSet(t, conn, hc.PublicId,
+					static.WithName("test name - "+tc.name),
+					static.WithDescription("test description"),
+				)
+				hosts := static.TestHosts(t, conn, hc.GetPublicId(), 2)
+
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+				// add hosts to the host set
+				_, err = s.AddHostSetHosts(fullGrantAuthCtx, &pbs.AddHostSetHostsRequest{
+					Id: hset.PublicId,
+					HostIds: []string{
+						hosts[0].PublicId,
+						hosts[1].PublicId,
+					},
+					// Version: version,
+					Version: 1,
+				})
+				require.NoError(t, err)
+
+				// remove hosts from the host set
+				got, err := s.RemoveHostSetHosts(fullGrantAuthCtx, &pbs.RemoveHostSetHostsRequest{
+					Id: hset.PublicId,
+					HostIds: []string{
+						hosts[0].PublicId,
+						hosts[1].PublicId,
+					},
+					Version: 2,
+				})
+				if tc.expected.err != nil {
+					require.ErrorIs(t, err, tc.expected.err)
+					return
+				}
+				// check if the output fields are as expected
+				require.NoError(t, err)
+				handlers.TestAssertOutputFields(t, got.Item, tc.expected.outputFields)
+			})
+		}
 	})
 
 	t.Run("Set Host Set Hosts", func(t *testing.T) {})
