@@ -14,7 +14,7 @@ is the fastest way to onboard a target to HCP Boundary.
 ![Setup Wizard](/img/setup-wizard-address-target.png)
 
 The Quick setup wizard creates a default `tcp` target with the port `22` (the default SSH port using TCP).
-The target is created with the address `127.0.0.1`.
+The wizard creates the target with the address `127.0.0.1`.
 When you execute `boundary connect` against this target, Boundary establishes a local, authenticated proxy to the address on the target's default port (`127.0.0.1:22`.)
 
 ![Setup Wizard](/img/quick-start-targets.png)
@@ -28,44 +28,45 @@ To connect to the initial EC2 Instances target:
 1. Open a terminal session. Export the Boundary **Cluster URL** as an environment
    variable.
 
-    ```shell-session
-    $ export BOUNDARY_ADDR=<boundary-cluster-url>
-    ```
+   ```shell-session
+   $ export BOUNDARY_ADDR=<boundary-cluster-url>
+   ```
 
 1. Connect to the target.
 
-    ```shell-session
-    $ boundary connect -target-id ttcp_eTcZMueUYv
-    ```
+   ```shell-session
+   $ boundary connect -target-id ttcp_eTcZMueUYv
+   ```
 
-    The output displays the address and port that your SSH client must use.
-    In the next section the `ssh` connect helper is used to make it easier to connect to the target with a client.
+   The output displays the address and port that your SSH client must use.
+   In the next section uses the `ssh` connect helper to make it easier to connect to the target with a client.
 
 The `boundary connect` command has a number of notable options, such as
 `-listen-port` to choose the port on which the connect command will listen for
 an incoming connection. This is convenient for allowing Boundary to work with
 applications that allow you to select the connection address, but not the port.
-For many applications there are still some extra hurdles that can exist, which
+For some applications there are still some extra hurdles that can exist, which
 is why connect helpers can be useful.
 
-The dev-mode default target allows you to make as many connections as you want
-within the authorized session. When you are finished making connections, simply
-`Ctrl-C/Command-C` the `boundary connect` process to shut down the session.
+The dev-mode default target allows you to make as connections as you want
+within the authorized session. When you finish making connections, a
+`Ctrl-C/Command-C` to the `boundary connect` process to shut down the session.
 
 ## Select targets
 
 When using `boundary connect` you must identify the target used for connecting.
 Convention in this documentation is to use the target ID because it refers to a
-single explicit value, however other flags are supported:
+single explicit value. 
+
+Other flags supported:
 
 - `target-name`: The name of the target
 - `target-scope-id`: The ID of the scope in which the target lives
 - `target-scope-name`: The name of the scope in which the target lives
 
-Note however that these are not uniquely identifying, as names can be reused
-across scopes. As a result, when not using the target ID, you must use the
-target's name in conjunction with the scope name or scope ID so that Boundary
-can correctly identify the desired target.
+Note however that these are not uniquely identifying, as you may reuse names
+across scopes.  You must use the target's name in conjunction with the scope name or scope ID 
+so that Boundary can identify the correct target.
 
 Here is an SSH example in dev-mode:
 
@@ -77,7 +78,7 @@ $ boundary connect ssh -target-name "Generated target" -target-scope-name "Gener
 
 Boundary includes connect helpers that automatically accept host SSH key prompts
 for you.
-These are written as `boundary connect <subcommand>` and are supported for the following connection types:
+These are `boundary connect <subcommand>` and support the following connection types:
 
 - HTTP
 - Kubernetes
@@ -87,11 +88,11 @@ These are written as `boundary connect <subcommand>` and are supported for the f
 
 Refer to the [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) documentation for more information.
 
-## Built-in vs. exec
+## Built-in verses exec
 
 In addition to the built-in connect helpers, `boundary connect`
 can accommodate executing clients even when there is no built-in support
-for a specific client using `-exec`. The `-exec` flag is a very powerful
+for a specific client using `-exec`. The `-exec` flag is a powerful
 tool, allowing you to wrap Boundary TCP sessions in your preferred
 client. You can use this flag to create an authenticated proxy to almost
 anything.
@@ -130,6 +131,6 @@ Refer to the [Connect to your First Target](/boundary/tutorials/hcp-getting-star
 
 ## Next steps
 
-Refer to our [basic administration
+Refer to the [basic administration
 workflows](/boundary/tutorials/hcp-administration) tutorial series
 for in depth discussions on managing scopes, targets, identities, and sessions.
