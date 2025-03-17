@@ -50,12 +50,20 @@ func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 	// Set up a host set
 	hostSetId1, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.GcpHostSetFilter1, "4")
 	require.NoError(t, err)
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, 1)
+	var targetIps1 []string
+	err = json.Unmarshal([]byte(c.GcpHostSetIps1), &targetIps1)
+	expectedHostSetCount1 := 1
+	require.NoError(t, err)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, expectedHostSetCount1)
 
 	// Set up another host set
 	hostSetId2, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.GcpHostSetFilter2, "4")
 	require.NoError(t, err)
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, 1)
+	var targetIps2 []string
+	err = json.Unmarshal([]byte(c.GcpHostSetIps2), &targetIps2)
+	require.NoError(t, err)
+	expectedHostSetCount2 := 1
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, expectedHostSetCount2)
 
 	// Update host set with a different filter
 	t.Log("Updating host set 2 with host set 1's filter...")
@@ -114,7 +122,8 @@ func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	assert.Equal(t, 1, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
+	expectedHostCatalogCount := expectedHostSetCount1 + expectedHostSetCount2
+	assert.Equal(t, expectedHostCatalogCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.GcpTargetPort)
@@ -156,16 +165,13 @@ func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 	t.Log("Successfully connected to the target")
 
 	// Check if connected host exists in the host set
-	var targetIps []string
-	err = json.Unmarshal([]byte(c.GcpHostSetIps), &targetIps)
-	require.NoError(t, err)
 	hostIpInList := false
-	for _, v := range targetIps {
+	for _, v := range targetIps1 {
 		if v == hostIp {
 			hostIpInList = true
 		}
 	}
-	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps))
+	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps1))
 }
 
 // TestApiCreateGcpDynamicHostCatalog uses the Go api to create a host catalog with the GCP plugin.
@@ -248,7 +254,11 @@ func TestApiCreateGCPDynamicHostCatalog(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Log("Successfully found items in the host set")
-	assert.Equal(t, 1, actualHostSetCount, "Numbers of hosts in host set did not match expected amount")
+	var targetIps []string
+	err = json.Unmarshal([]byte(c.GcpHostSetIps1), &targetIps)
+	require.NoError(t, err)
+	expectedHostSetCount := 1
+	assert.Equal(t, expectedHostSetCount, actualHostSetCount, "Numbers of hosts in host set did not match expected amount")
 
 	// Get list of all hosts from host catalog
 	// Retry is needed here since it can take a few tries before hosts start appearing
@@ -277,5 +287,5 @@ func TestApiCreateGCPDynamicHostCatalog(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Log("Successfully found items in the host catalog")
-	assert.Equal(t, 1, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
+	assert.Equal(t, expectedHostSetCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 }
