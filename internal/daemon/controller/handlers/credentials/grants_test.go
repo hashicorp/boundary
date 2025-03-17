@@ -25,6 +25,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// expectedOutput consolidates common output fields for the test cases
+type expectedOutput struct {
+	err          error
+	outputFields []string
+}
+
 // TestGrants_ReadActions tests read actions to assert that grants are being applied properly
 //
 //	 Role - which scope the role is created in
@@ -148,16 +154,16 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope_id,type,created_time,updated_time"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope,type,created_time,updated_time"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
 				wantOutfields: map[string][]string{
-					credIds[0]: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					credIds[1]: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					credIds[2]: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					credIds[3]: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					credIds[4]: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					credIds[0]: {globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					credIds[1]: {globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					credIds[2]: {globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					credIds[3]: {globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					credIds[4]: {globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 				},
 			},
 			{
@@ -276,6 +282,218 @@ func TestGrants_ReadActions(t *testing.T) {
 
 				wantIds := slices.Collect(maps.Keys(tc.wantOutfields))
 				require.ElementsMatch(t, wantIds, gotIds)
+			})
+		}
+	})
+
+	t.Run("Get", func(t *testing.T) {
+		testcases := []struct {
+			name             string
+			userFunc         func() (*iam.User, auth.Account)
+			canGetCredential map[string]expectedOutput
+		}{
+			{
+				name: "global role grant this returns 403",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {err: handlers.ForbiddenError()},
+					credIds[1]: {err: handlers.ForbiddenError()},
+					credIds[2]: {err: handlers.ForbiddenError()},
+					credIds[3]: {err: handlers.ForbiddenError()},
+					credIds[4]: {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "org role grant this returns 403",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {err: handlers.ForbiddenError()},
+					credIds[1]: {err: handlers.ForbiddenError()},
+					credIds[2]: {err: handlers.ForbiddenError()},
+					credIds[3]: {err: handlers.ForbiddenError()},
+					credIds[4]: {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "project role grant this returns all credentials on the project",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {outputFields: []string{globals.IdField}},
+					credIds[1]: {outputFields: []string{globals.IdField}},
+					credIds[2]: {outputFields: []string{globals.IdField}},
+					credIds[3]: {outputFields: []string{globals.IdField}},
+					credIds[4]: {outputFields: []string{globals.IdField}},
+				},
+			},
+			{
+				name: "global role grant this & children returns 403 because credentials live on projects",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {err: handlers.ForbiddenError()},
+					credIds[1]: {err: handlers.ForbiddenError()},
+					credIds[2]: {err: handlers.ForbiddenError()},
+					credIds[3]: {err: handlers.ForbiddenError()},
+					credIds[4]: {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "org role grant children returns all credentials on child projects",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					credIds[1]: {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					credIds[2]: {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					credIds[3]: {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					credIds[4]: {outputFields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+				},
+			},
+			{
+				name: "global role grant this & descendants returns all credentials on descendant projects",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {outputFields: []string{globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					credIds[1]: {outputFields: []string{globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					credIds[2]: {outputFields: []string{globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					credIds[3]: {outputFields: []string{globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					credIds[4]: {outputFields: []string{globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+				},
+			},
+			{
+				name: "project role grant this returns all credentials on the project",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
+					credIds[1]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
+					credIds[2]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
+					credIds[3]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
+					credIds[4]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
+				},
+			},
+			{
+				name: "incorrect grants returns no credential",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=credential;actions=list,create,update,delete;output_fields=id,name,description,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {err: handlers.ForbiddenError()},
+					credIds[1]: {err: handlers.ForbiddenError()},
+					credIds[2]: {err: handlers.ForbiddenError()},
+					credIds[3]: {err: handlers.ForbiddenError()},
+					credIds[4]: {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name:     "no grants returns no credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {err: handlers.ForbiddenError()},
+					credIds[1]: {err: handlers.ForbiddenError()},
+					credIds[2]: {err: handlers.ForbiddenError()},
+					credIds[3]: {err: handlers.ForbiddenError()},
+					credIds[4]: {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "project role grant with credential id, get action, credential type, and this scope returns the id'd credential",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=" + credIds[0] + ";actions=read;output_fields=id,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {outputFields: []string{globals.IdField, globals.AuthorizedActionsField}},
+					credIds[1]: {err: handlers.ForbiddenError()},
+					credIds[2]: {err: handlers.ForbiddenError()},
+					credIds[3]: {err: handlers.ForbiddenError()},
+					credIds[4]: {err: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "org role grant with credential id, get action, credential type, and this & children scope returns the id'd credential",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=" + credIds[4] + ";actions=read;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				canGetCredential: map[string]expectedOutput{
+					credIds[0]: {err: handlers.ForbiddenError()},
+					credIds[1]: {err: handlers.ForbiddenError()},
+					credIds[2]: {err: handlers.ForbiddenError()},
+					credIds[3]: {err: handlers.ForbiddenError()},
+					credIds[4]: {outputFields: []string{globals.IdField}},
+				},
+			},
+		}
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				for id, expected := range tc.canGetCredential {
+					input := &pbs.GetCredentialRequest{Id: id}
+					got, err := s.GetCredential(fullGrantAuthCtx, input)
+					if expected.err != nil {
+						require.ErrorIs(t, err, expected.err)
+						continue
+					}
+					// check if the output fields are as expected
+					if tc.canGetCredential[id].outputFields != nil {
+						handlers.TestAssertOutputFields(t, got.Item, tc.canGetCredential[id].outputFields)
+					}
+					require.NoError(t, err)
+				}
 			})
 		}
 	})
