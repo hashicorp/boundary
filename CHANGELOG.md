@@ -12,7 +12,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug fixes
 
-* Soft-deleted users are now restored on authentication ([PR](https://github.com/hashicorp/boundary/pull/5549)).
+* Fixed a bug that would sometimes make users unable to re-authenticate to the client cache after explicitly logging out of the CLI or Desktop Client. ([PR](https://github.com/hashicorp/boundary/pull/5549)).
 
 ## 0.19.0 (2025/02/10)
 ### New and Improved
