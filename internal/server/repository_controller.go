@@ -108,7 +108,6 @@ func (r *Repository) UpdateController(ctx context.Context, controller *store.Con
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, err
 	}
