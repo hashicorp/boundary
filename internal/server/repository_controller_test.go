@@ -100,3 +100,147 @@ func TestRepository_UpsertController(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_UpdateController(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	testRepo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iam.TestScopes(t, iamRepo)
+
+	tests := []struct {
+		name               string
+		originalController *store.Controller
+		updatedController  *store.Controller
+		wantCount          int
+		wantErr            bool
+	}{
+		{
+			name:    "nil-controller",
+			wantErr: true,
+		},
+		{
+			name: "empty-id",
+			updatedController: &store.Controller{
+				PrivateId: "",
+				Address:   "127.0.0.1",
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty-address",
+			updatedController: &store.Controller{
+				PrivateId: "test-controller",
+				Address:   "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "controller-not-found",
+			updatedController: &store.Controller{
+				PrivateId:   "test-new-ipv4-controller",
+				Address:     "127.0.0.1",
+				Description: "new ipv4 description",
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid-ipv4-controller",
+			originalController: &store.Controller{
+				PrivateId:   "ipv4-controller",
+				Address:     "127.0.0.1",
+				Description: "ipv4 description",
+			},
+			updatedController: &store.Controller{
+				PrivateId:   "ipv4-controller",
+				Address:     "127.0.0.2",
+				Description: "new ipv4 description",
+			},
+			wantCount: 1,
+		},
+		{
+			name: "valid-ipv6-controller",
+			originalController: &store.Controller{
+				PrivateId:   "test-ipv6-controller",
+				Address:     "[2001:4860:4860:0:0:0:0:8888]",
+				Description: "ipv6 description",
+			},
+			updatedController: &store.Controller{
+				PrivateId:   "test-ipv6-controller",
+				Address:     "[2001:4860:4860:0:0:0:0:9999]",
+				Description: "new ipv6 description",
+			},
+			wantCount: 1,
+		},
+		{
+			name: "valid-abbreviated-ipv6-controller",
+			originalController: &store.Controller{
+				PrivateId:   "test-abbreviated-ipv6-controller",
+				Address:     "[2001:4860:4860::8888]",
+				Description: "abbreviated ipv6 description",
+			},
+			updatedController: &store.Controller{
+				PrivateId:   "test-abbreviated-ipv6-controller",
+				Address:     "[2001:4860:4860::9999]",
+				Description: "new abbreviated ipv6 description",
+			},
+			wantCount: 1,
+		},
+		{
+			name: "valid-controller-short-name",
+			originalController: &store.Controller{
+				PrivateId:   "test",
+				Address:     "127.0.0.1",
+				Description: "short name description",
+			},
+			updatedController: &store.Controller{
+				PrivateId:   "test",
+				Address:     "127.0.0.2",
+				Description: "new short name description",
+			},
+			wantCount: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			var originalControllerEntry, updatedControllerEntry *store.Controller
+			// Insert the original controller attributes if they exist
+			if tt.originalController != nil {
+				_, err := testRepo.UpsertController(ctx, tt.originalController)
+				require.NoError(err)
+
+				// Retrieve the original controller in the database
+				controllerList, err := testRepo.ListControllers(ctx, []Option{}...)
+				require.NoError(err)
+				originalControllerEntry = controllerList[len(controllerList)-1]
+			}
+
+			// Update the controller with the updated attributes
+			got, err := testRepo.UpdateController(ctx, tt.updatedController)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Equal(0, got)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCount, got)
+
+			// Retrieve the updated controller in the database and assert updated successfully
+			controllerList, err := testRepo.ListControllers(ctx, []Option{}...)
+			require.NoError(err)
+			updatedControllerEntry = controllerList[len(controllerList)-1]
+
+			assert.Equal(tt.updatedController.PrivateId, updatedControllerEntry.PrivateId)
+			assert.Equal(tt.updatedController.Address, updatedControllerEntry.Address)
+			assert.Equal(tt.updatedController.Description, updatedControllerEntry.Description)
+			assert.True(updatedControllerEntry.UpdateTime.AsTime().After(originalControllerEntry.UpdateTime.AsTime()))
+		})
+	}
+}
