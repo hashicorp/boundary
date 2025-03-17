@@ -44,6 +44,25 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 	}
 }
 
+func (c *Controller) upsertController(ctx context.Context) error {
+	const op = "controller.(Controller).upsertController"
+	controller := &store.Controller{
+		PrivateId: c.conf.RawConfig.Controller.Name,
+		Address:   c.conf.RawConfig.Controller.PublicClusterAddr,
+	}
+	repo, err := c.ServersRepoFn()
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status upsert"))
+	}
+
+	_, err = repo.UpsertController(ctx, controller)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status upsert"))
+	}
+
+	return nil
+}
+
 func (c *Controller) updateController(ctx context.Context) error {
 	const op = "controller.(Controller).updateController"
 	controller := &store.Controller{

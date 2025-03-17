@@ -142,11 +142,6 @@ func TestRepository_UpdateController(t *testing.T) {
 		},
 		{
 			name: "controller-not-found",
-			originalController: &store.Controller{
-				PrivateId:   "test-ipv4-controller",
-				Address:     "127.0.0.1",
-				Description: "ipv4 description",
-			},
 			updatedController: &store.Controller{
 				PrivateId:   "test-new-ipv4-controller",
 				Address:     "127.0.0.1",
