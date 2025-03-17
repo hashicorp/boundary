@@ -10,6 +10,7 @@ import "controller/storage/timestamp/v1/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
+// GlobalRole represents roles created in global scope
 message GlobalRole {
   // public_id is used to access the Role via an API
   // @inject_tag: gorm:"primary_key"
@@ -17,7 +18,7 @@ message GlobalRole {
 
   // scope id for the role
   // @inject_tag: `gorm:"default:null"`
-  string scope_id = 22;
+  string scope_id = 2;
 
   // name is the optional friendly name used to
   // access the Role via an API
@@ -34,36 +35,32 @@ message GlobalRole {
     that: "description"
   }];
 
-  // description of the role
+  // control if this role is granted access to its role scope
   // @inject_tag: `gorm:"default:true"`
   bool grant_this_role_scope = 5;
 
-  // description of the role
+  // control type of grant scope granted to this role ['descendant', 'children', 'individual']
   // @inject_tag: `gorm:"default:null"`
   string grant_scope = 6;
 
-  // description of the role
+  // timestamp when grant_this_role_scope was last updated
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp grant_this_role_scope_update_time = 7;
 
-  // description of the role
+  // timestamp when grant_scope was last updated
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp grant_scope_update_time = 8;
 
-
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 50;
+  timestamp.v1.Timestamp create_time = 9;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 60;
+  timestamp.v1.Timestamp update_time = 10;
 
   // version allows optimistic locking of the role when modifying the role
   // itself and when modifying dependent items like principal roles.
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 70;
-
-  // Previously grant_scope_id
-  reserved 80;
+  uint32 version = 11;
 }
