@@ -125,7 +125,7 @@ resource "google_compute_instance" "boundary_target" {
     "project" : "enos",
     "project_name" : "qti-enos-boundary",
     "environment" : var.environment,
-    "enos_user" : replace(lower(var.enos_user), "/[\\W]+/", ""),
+    "enos_user" : replace(var.enos_user, "/[\\W]+/", ""),
     "filter_label_1" : random_id.filter_label1.hex
     "filter_label_2" : random_id.filter_label2.hex
   })

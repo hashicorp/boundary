@@ -210,10 +210,16 @@ func TestRepository_UpdateController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
+			var originalControllerEntry, updatedControllerEntry *store.Controller
 			// Insert the original controller attributes if they exist
 			if tt.originalController != nil {
 				_, err := testRepo.UpsertController(ctx, tt.originalController)
 				require.NoError(err)
+
+				// Retrieve the original controller in the database
+				controllerList, err := testRepo.ListControllers(ctx, []Option{}...)
+				require.NoError(err)
+				originalControllerEntry = controllerList[len(controllerList)-1]
 			}
 
 			// Update the controller with the updated attributes
@@ -229,11 +235,12 @@ func TestRepository_UpdateController(t *testing.T) {
 			// Retrieve the updated controller in the database and assert updated successfully
 			controllerList, err := testRepo.ListControllers(ctx, []Option{}...)
 			require.NoError(err)
-			updatedControllerEntry := controllerList[len(controllerList)-1]
+			updatedControllerEntry = controllerList[len(controllerList)-1]
 
 			assert.Equal(tt.updatedController.PrivateId, updatedControllerEntry.PrivateId)
 			assert.Equal(tt.updatedController.Address, updatedControllerEntry.Address)
 			assert.Equal(tt.updatedController.Description, updatedControllerEntry.Description)
+			assert.True(updatedControllerEntry.UpdateTime.AsTime().After(originalControllerEntry.UpdateTime.AsTime()))
 		})
 	}
 }
