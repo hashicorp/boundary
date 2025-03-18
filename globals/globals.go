@@ -18,6 +18,7 @@ const (
 	GrantScopeThis        = "this"
 	GrantScopeChildren    = "children"
 	GrantScopeDescendants = "descendants"
+	GrantScopeIndividual  = "individual"
 
 	// CorrelationIdKey defines the http header and grpc metadata key used for specifying a
 	// correlation id. When getting the correlationId (from the http header or grpc metadata)
