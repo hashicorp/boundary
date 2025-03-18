@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -615,6 +616,114 @@ func TestGrants_WriteActions(t *testing.T) {
 						},
 					},
 				}})
+				if tc.expected.err != nil {
+					require.ErrorIs(t, err, tc.expected.err)
+					return
+				}
+				// check if the output fields are as expected
+				require.NoError(t, err)
+				handlers.TestAssertOutputFields(t, got.Item, tc.expected.outputFields)
+			})
+		}
+	})
+
+	t.Run("Update", func(t *testing.T) {
+		testcases := []struct {
+			name     string
+			userFunc func() (*iam.User, auth.Account)
+			expected expectedOutput
+		}{
+			{
+				name: "global role grant this can't update credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "org role grant this can't update credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "project role grant this can update credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField}},
+			},
+			{
+				name: "global role grant this & descendants can update credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=credential;actions=update;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type,authorized_actions,attributes"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField}},
+			},
+			{
+				name: "org role grant this & children can update credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=credential;actions=update;output_fields=id,scope,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+			{
+				name: "incorrect grants can't update credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=credential;actions=list,create,delete;output_fields=id,name,description,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name:     "no grants can't update credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+		}
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				credStore := static.TestCredentialStore(t, conn, wrap, proj.GetPublicId())
+				cred := static.TestUsernamePasswordCredential(t, conn, wrap, "user", "pass", credStore.GetPublicId(), proj.GetPublicId(), static.WithName("cred"), static.WithDescription("desc"))
+
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+				got, err := s.UpdateCredential(fullGrantAuthCtx, &pbs.UpdateCredentialRequest{
+					Id: cred.PublicId,
+					Item: &pb.Credential{
+						Name:        &wrappers.StringValue{Value: "updated credential name (" + tc.name + ")"},
+						Description: &wrappers.StringValue{Value: "test desc"},
+						Version:     1,
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"name", "description"}},
+				})
 				if tc.expected.err != nil {
 					require.ErrorIs(t, err, tc.expected.err)
 					return
