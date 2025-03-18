@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -21,6 +22,7 @@ const (
 
 // Role is a set of granted permissions and assignable to Users and Groups.
 type Role struct {
+	*store.Role
 	PublicId    string
 	ScopeId     string
 	Name        string
@@ -29,6 +31,7 @@ type Role struct {
 	UpdateTime  *timestamp.Timestamp
 	Version     uint32
 	GrantScopes []*RoleGrantScope `gorm:"-"`
+	tableName   string            `gorm:"-"`
 }
 
 type globalRole struct {
@@ -222,6 +225,10 @@ var (
 	_ Resource        = (*projectRole)(nil)
 	_ Cloneable       = (*projectRole)(nil)
 	_ db.VetForWriter = (*projectRole)(nil)
+
+	_ Resource        = (*Role)(nil)
+	_ Cloneable       = (*Role)(nil)
+	_ db.VetForWriter = (*Role)(nil)
 )
 
 // NewRole creates a new in memory role with a scope (project/org)
@@ -233,15 +240,83 @@ func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) 
 	}
 	opts := getOpts(opt...)
 	r := &Role{
-		ScopeId:     scopeId,
-		Name:        opts.withName,
-		Description: opts.withDescription,
+		Role: &store.Role{
+			ScopeId:     scopeId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
+		},
 	}
 	return r, nil
 }
 
+// Clone creates a clone of the Role.
+func (role *Role) Clone() any {
+	cp := proto.Clone(role.Role)
+	ret := &Role{
+		Role: cp.(*store.Role),
+	}
+	for _, grantScope := range role.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
+}
+
+// VetForWrite implements db.VetForWrite() interface.
+func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(Role).VetForWrite"
+	if role.PublicId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	}
+	if err := validateScopeForWrite(ctx, r, role, opType, opt...); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
+}
+
+func (role *Role) validScopeTypes() []scope.Type {
+	return []scope.Type{scope.Global, scope.Org, scope.Project}
+}
+
+// GetScope returns the scope for the Role.
+func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+	return LookupScope(ctx, r, role)
+}
+
+// GetResourceType returns the type of the Role.
+func (*Role) GetResourceType() resource.Type { return resource.Role }
+func (*Role) getResourceType() resource.Type { return resource.Role }
+
+// Actions returns the available actions for Role.
+func (*Role) Actions() map[string]action.Type {
+	ret := CrudlActions()
+	ret[action.AddGrants.String()] = action.AddGrants
+	ret[action.RemoveGrants.String()] = action.RemoveGrants
+	ret[action.SetGrants.String()] = action.SetGrants
+	ret[action.AddPrincipals.String()] = action.AddPrincipals
+	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
+	ret[action.SetPrincipals.String()] = action.SetPrincipals
+	return ret
+}
+
+// TableName returns the tablename to override the default gorm table name.
+func (role *Role) TableName() string {
+	if role.tableName != "" {
+		return role.tableName
+	}
+	return defaultRoleTableName
+}
+
+// SetTableName sets the tablename and satisfies the ReplayableMessage
+// interface. If the caller attempts to set the name to "" the name will be
+// reset to the default name.
+func (role *Role) SetTableName(n string) {
+	role.tableName = n
+}
+
 func allocRole() Role {
-	return Role{}
+	return Role{
+		Role: &store.Role{},
+	}
 }
 
 type deletedRole struct {
