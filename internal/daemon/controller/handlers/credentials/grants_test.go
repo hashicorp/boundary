@@ -734,4 +734,99 @@ func TestGrants_WriteActions(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("Delete", func(t *testing.T) {
+		testcases := []struct {
+			name     string
+			userFunc func() (*iam.User, auth.Account)
+			wantErr  error
+		}{
+			{
+				name: "global role grant this can't delete credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "org role grant this can't delete credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "project role grant this can delete credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+			},
+			{
+				name: "global role grant this & descendants can delete credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=credential;actions=delete"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+			},
+			{
+				name: "org role grant this & children can delete credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=credential;actions=delete"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+			},
+			{
+				name: "incorrect grants can't delete credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=credential;actions=list,create,update"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name:     "no grants can't delete credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				wantErr:  handlers.ForbiddenError(),
+			},
+		}
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				credStore := static.TestCredentialStore(t, conn, wrap, proj.GetPublicId())
+				cred := static.TestUsernamePasswordCredential(t, conn, wrap, "user", "pass", credStore.GetPublicId(), proj.GetPublicId(), static.WithName("cred"), static.WithDescription("desc"))
+
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+				_, err = s.DeleteCredential(fullGrantAuthCtx, &pbs.DeleteCredentialRequest{Id: cred.PublicId})
+				if tc.wantErr != nil {
+					require.ErrorIs(t, err, tc.wantErr)
+					return
+				}
+				require.NoError(t, err)
+			})
+		}
+	})
 }
