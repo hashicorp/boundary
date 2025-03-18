@@ -1576,6 +1576,7 @@ func TestOutputFields_CreateGroup(t *testing.T) {
 		})
 	}
 }
+
 func TestOutputFields_UpdateGroup(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
