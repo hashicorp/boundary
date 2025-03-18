@@ -10,10 +10,12 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static"
 	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -22,7 +24,10 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+)
 
 const (
 	// UsernamePasswordAttributesField is the field name for the UsernamePassword subtype of the `Credential.Attrs` attributes field
@@ -500,6 +505,123 @@ func TestGrants_ReadActions(t *testing.T) {
 					}
 					require.NoError(t, err)
 				}
+			})
+		}
+	})
+}
+
+func TestGrants_WriteActions(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrap)
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	staticRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	s, err := credentials.NewService(ctx, iamRepoFn, staticRepoFn, 1000)
+	require.NoError(t, err)
+
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	t.Run("Create", func(t *testing.T) {
+		credStore := static.TestCredentialStore(t, conn, wrap, proj.GetPublicId())
+
+		testcases := []struct {
+			name     string
+			userFunc func() (*iam.User, auth.Account)
+			expected expectedOutput
+		}{
+			{
+				name: "global role grant this can't create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "org role grant this can't create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "project role grant this can create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField}},
+			},
+			{
+				name: "global role grant this & descendants can create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=credential;actions=create,read,update;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type,authorized_actions,attributes"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField}},
+			},
+			{
+				name: "org role grant this & children can create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=credential;actions=create;output_fields=id,scope,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+		}
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+				got, err := s.CreateCredential(fullGrantAuthCtx, &pbs.CreateCredentialRequest{Item: &pb.Credential{
+					CredentialStoreId: credStore.GetPublicId(),
+					Name:              &wrappers.StringValue{Value: "test credential - " + tc.name},
+					Description:       &wrappers.StringValue{Value: "test desc"},
+					Type:              credential.UsernamePasswordSubtype.String(),
+					Attrs: &pb.Credential_UsernamePasswordAttributes{
+						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
+							Username: wrapperspb.String("static-username"),
+							Password: wrapperspb.String("static-password"),
+						},
+					},
+				}})
+				if tc.expected.err != nil {
+					require.ErrorIs(t, err, tc.expected.err)
+					return
+				}
+				// check if the output fields are as expected
+				require.NoError(t, err)
+				handlers.TestAssertOutputFields(t, got.Item, tc.expected.outputFields)
 			})
 		}
 	})
