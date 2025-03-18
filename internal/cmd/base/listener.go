@@ -140,7 +140,7 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 	}
 
 	host, port, err := util.SplitHostPort(l.Address)
-	if err != nil {
+	if err != nil && !errors.Is(err, util.ErrMissingPort) {
 		return "", nil, fmt.Errorf("error splitting host/port: %w", err)
 	}
 	if port == "" {

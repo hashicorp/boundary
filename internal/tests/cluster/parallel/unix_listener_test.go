@@ -6,7 +6,6 @@ package parallel
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -54,7 +53,6 @@ func TestUnixListener(t *testing.T) {
 		}
 	}
 
-	fmt.Println("creating controller 1")
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                        conf,
 		Logger:                        logger.Named("c1"),
@@ -77,7 +75,6 @@ func TestUnixListener(t *testing.T) {
 			},
 		},
 	})
-	fmt.Println("controller 1 ok")
 
 	helper.ExpectWorkers(t, c1)
 
@@ -136,7 +133,6 @@ func TestUnixListener(t *testing.T) {
 			},
 		},
 	})
-	fmt.Println("controller 2 ok")
 
 	helper.ExpectWorkers(t, c2)
 

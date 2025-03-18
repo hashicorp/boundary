@@ -1820,9 +1820,9 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			_, err := util.ParseAddress(context.Background(), address.GetValue())
 			switch {
 			case err == nil:
-			case err.Error() == util.InvalidAddressLength:
+			case errors.Is(err, util.ErrInvalidAddressLength):
 				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			case err.Error() == util.InvalidAddressContainsPort:
+			case errors.Is(err, util.ErrInvalidAddressContainsPort):
 				badFields[globals.AddressField] = "Address does not support a port."
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
@@ -1898,9 +1898,9 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			_, err := util.ParseAddress(context.Background(), address.GetValue())
 			switch {
 			case err == nil:
-			case err.Error() == util.InvalidAddressLength:
+			case errors.Is(err, util.ErrInvalidAddressLength):
 				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			case err.Error() == util.InvalidAddressContainsPort:
+			case errors.Is(err, util.ErrInvalidAddressContainsPort):
 				badFields[globals.AddressField] = "Address does not support a port."
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)

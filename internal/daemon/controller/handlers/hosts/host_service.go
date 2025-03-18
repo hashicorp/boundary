@@ -772,14 +772,12 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 					len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
 					badFields[globals.AttributesAddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 				} else {
-					host, port, err := util.SplitHostPort(attrs.GetAddress().GetValue())
-					switch {
-					case err == nil && port != "":
-						badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
-					case (host != "" && port == "") || strings.Contains(err.Error(), globals.MissingPortErrStr):
-						// Bare hostname, which we want
-					default:
+					_, port, err := util.SplitHostPort(attrs.GetAddress().GetValue())
+					if err != nil && !errors.Is(err, util.ErrMissingPort) {
 						badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
+					}
+					if port != "" {
+						badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
 					}
 				}
 			}
@@ -809,14 +807,12 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 						len(strings.TrimSpace(attrs.GetAddress().GetValue())) > static.MaxHostAddressLength {
 						badFields[globals.AttributesAddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 					} else {
-						host, port, err := util.SplitHostPort(attrs.GetAddress().GetValue())
-						switch {
-						case err == nil && port != "":
-							badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
-						case (host != "" && port == "") || strings.Contains(err.Error(), globals.MissingPortErrStr):
-							// Bare hostname, which we want
-						default:
+						_, port, err := util.SplitHostPort(attrs.GetAddress().GetValue())
+						if err != nil && !errors.Is(err, util.ErrMissingPort) {
 							badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
+						}
+						if port != "" {
+							badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
 						}
 					}
 				}
