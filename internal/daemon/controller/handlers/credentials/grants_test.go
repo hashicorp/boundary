@@ -23,6 +23,12 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/require"
+
+const (
+	// UsernamePasswordAttributesField is the field name for the UsernamePassword subtype of the `Credential.Attrs` attributes field
+	//
+	// When the "attributes" field is specified as an output_field and can be one of many sub-types, the expected output field must be the corresponding sub-type and not `globals.AttributesField`
+	UsernamePasswordAttributesField = "username_password_attributes"
 )
 
 // expectedOutput consolidates common output fields for the test cases
@@ -137,16 +143,16 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
-						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type,authorized_actions,attributes"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				}),
 				wantOutfields: map[string][]string{
-					credIds[0]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
-					credIds[1]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
-					credIds[2]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
-					credIds[3]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
-					credIds[4]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+					credIds[0]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
+					credIds[1]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
+					credIds[2]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
+					credIds[3]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
+					credIds[4]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
 				},
 			},
 			{
@@ -171,16 +177,16 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
-						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type,authorized_actions,attributes"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
 				wantOutfields: map[string][]string{
-					credIds[0]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
-					credIds[1]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
-					credIds[2]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
-					credIds[3]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
-					credIds[4]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField},
+					credIds[0]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
+					credIds[1]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
+					credIds[2]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
+					credIds[3]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
+					credIds[4]: {globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField},
 				},
 			},
 			{
@@ -399,16 +405,16 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
-						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type"},
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,credential_store_id,scope,name,description,created_time,updated_time,version,type,authorized_actions,attributes"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
 				canGetCredential: map[string]expectedOutput{
-					credIds[0]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
-					credIds[1]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
-					credIds[2]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
-					credIds[3]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
-					credIds[4]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField}},
+					credIds[0]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField}},
+					credIds[1]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField}},
+					credIds[2]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField}},
+					credIds[3]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField}},
+					credIds[4]: {outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.ScopeField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, UsernamePasswordAttributesField}},
 				},
 			},
 			{
