@@ -7,12 +7,12 @@ description: >-
 
 # Configure controllers
 
-Refer to the later sections to configure your Boundary controllers.
+Refer to the following sections to configure your Boundary controllers.
 
 ## Prepare TLS certificates
 
 HashiCorp recommends that the Boundary controller nodes handle TLS via PKI for user connections.
-Further, HashiCorp strongly recommend that you use certificates generated and signed by an appropriate certificate authority (CA).
+Further, HashiCorp strongly recommends that you use certificates that an appropriate certificate authority (CA) generated and signed.
 
 To use TLS, you must have two files on each Boundary controller node.
 You may have to create a new directory to store the certificate material at `/etc/boundary.d/tls`.
@@ -20,7 +20,7 @@ Place the files in the following paths:
 
 - `/etc/boundary.d/tls/boundary-cert.pem`
 
-    This path is for accessing the Boundary controllers and any SANs. Place the Boundary TLS certificate with a Common Name (CN) and Subject Alternate Name (SAN) that matches your planned primary DNS record in this path. 
+    This path is for accessing the Boundary controllers and any SANs. Place the Boundary TLS certificate with a Common Name (CN) and Subject Alternate Name (SAN) that matches your planned primary DNS record in this path.
 - `/etc/boundary.d/tls/boundary-key.pem`
 
     In this path, place the Boundary TLS certificate's private key.
@@ -31,9 +31,9 @@ If you do not generate unique TLS key material for each node, you should securel
 
 Boundary controllers require the two following different cryptographic keys:
 
-- **Root key**: The root KMS key acts as a KEK (Key Encrypting Key) for the scope-specific KEKs (also referred to as the scope's root key).
-At the creation time of a scope, the root KEK and the various DEKs (Data Encryption Keys) are also created.
-Using the scope's KEL, it encrypts the DEKs, and this is in turn encrypted with the KMS key marked for the root purpose.
+- **Root key**: The root KMS key acts as a KEK (Key Encrypting Key) for the scope-specific KEKs, which are also referred to as the scope's root keys.
+When you create a scope, Boundary also creates the root KEK and the various DEKs (Data Encryption Keys).
+It encrypts the DEKs using the scope's KEK, and then encrypts the DEKs with the KMS key marked for the root purpose.
 - **Recovery key**: The recovery KMS key is for rescue or recovery operations, and can authenticate almost any Boundary operation.
 An encrypted payload includes a nonce and creation time, formatted as a token, and sent to the controller.
 The time and nonce ensure that an adversary cannot replay a value, and also to ensure that each operation must be individually authenticated by a client, so that revoking access to the KMS has an immediate result.
@@ -41,7 +41,7 @@ The time and nonce ensure that an adversary cannot replay a value, and also to e
 The following keys are optional:
 
 - **Worker-auth key (Optional)**: The controller and worker share the worker-auth KMS key to authenticate a worker to the controller.
-If a worker uses PKI authentication, this is unnecessary.
+If a worker uses PKI authentication, this key is unnecessary.
 - **BSR key (Optional)**: Session recording requires the BSR KMS key.
 Boundary uses the BSR key for encrypting data and checking the integrity of recordings.
 If you do not add a BSR key to your controller configuration, you receive an error when you try to enable session recording.
