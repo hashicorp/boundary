@@ -5,8 +5,10 @@ package server
 
 import "github.com/hashicorp/boundary/internal/server/store"
 
-// Controllers are a server that provider user auth to a client and contain the permissions and resources.
-// Additionally controllers communicate with external services such as databases, KMS, idp, plugins, etc.
+// Controller is a server that is responsible for understanding configuration,
+// authenticating and authorizing users, and serving user API requests (e.g. to
+// initiate a session). They also assign tasks to workers (session handling,
+// session recording parsing, etc.).
 type Controller struct {
 	*store.Controller
 }
