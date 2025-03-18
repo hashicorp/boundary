@@ -37,6 +37,22 @@ type globalRole struct {
 	tableName   string            `gorm:"-"`
 }
 
+func (g *globalRole) toRole() *Role {
+	ret := &Role{
+		PublicId:    g.PublicId,
+		ScopeId:     g.ScopeId,
+		Name:        g.Name,
+		Description: g.Description,
+		CreateTime:  g.CreateTime,
+		UpdateTime:  g.UpdateTime,
+		Version:     g.Version,
+	}
+	for _, grantScope := range g.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
+}
+
 func (g *globalRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(globalRole).VetForWrite"
 	if g.PublicId == "" {
@@ -80,6 +96,22 @@ type orgRole struct {
 	tableName   string            `gorm:"-"`
 }
 
+func (o *orgRole) toRole() *Role {
+	ret := &Role{
+		PublicId:    o.PublicId,
+		ScopeId:     o.ScopeId,
+		Name:        o.Name,
+		Description: o.Description,
+		CreateTime:  o.CreateTime,
+		UpdateTime:  o.UpdateTime,
+		Version:     o.Version,
+	}
+	for _, grantScope := range o.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
+}
+
 func (o *orgRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(orgRole).VetForWrite"
 	if o.PublicId == "" {
@@ -121,6 +153,22 @@ type projectRole struct {
 	*store.ProjectRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
 	tableName   string            `gorm:"-"`
+}
+
+func (p *projectRole) toRole() *Role {
+	ret := &Role{
+		PublicId:    p.PublicId,
+		ScopeId:     p.ScopeId,
+		Name:        p.Name,
+		Description: p.Description,
+		CreateTime:  p.CreateTime,
+		UpdateTime:  p.UpdateTime,
+		Version:     p.Version,
+	}
+	for _, grantScope := range p.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
 }
 
 func (p *projectRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {

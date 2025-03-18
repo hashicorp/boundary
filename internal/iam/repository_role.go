@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/hashicorp/boundary/internal/iam/store"
 	"strings"
 	"time"
 
@@ -26,8 +27,6 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	switch {
 	case role == nil:
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role")
-	case role.Role == nil:
-		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
 	case role.PublicId != "":
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	case role.ScopeId == "":
@@ -38,10 +37,44 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
-	c := role.Clone().(*Role)
-	c.PublicId = id
 
-	var resource Resource
+	var incomingRole Resource
+	switch {
+	case role.ScopeId == globals.GlobalPrefix:
+		incomingRole = &globalRole{
+			GlobalRole: &store.GlobalRole{
+				PublicId:           id,
+				ScopeId:            role.ScopeId,
+				Name:               role.Name,
+				Description:        role.Description,
+				GrantThisRoleScope: true,
+			},
+		}
+	case strings.HasPrefix(role.ScopeId, "o_"):
+		incomingRole = &orgRole{
+			OrgRole: &store.OrgRole{
+				PublicId:           id,
+				ScopeId:            role.ScopeId,
+				Name:               role.Name,
+				Description:        role.Description,
+				GrantThisRoleScope: true,
+			},
+		}
+	case strings.HasPrefix(role.ScopeId, "p_"):
+		incomingRole = &projectRole{
+			ProjectRole: &store.ProjectRole{
+				PublicId:    id,
+				ScopeId:     role.ScopeId,
+				Name:        role.Name,
+				Description: role.Description,
+			},
+		}
+	default:
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "unexpected scope id")
+	}
+
+	var retRole *Role
+	var createdResource Resource
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var grantScopes []*RoleGrantScope
@@ -50,16 +83,13 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, writer db.Writer) error {
-			resource, err = r.create(ctx, c, WithReaderWriter(reader, writer))
+			createdResource, err = r.create(ctx, incomingRole, WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while creating role"))
 			}
-			_, _, err = r.SetRoleGrantScopes(ctx, id, resource.(*Role).Version, []string{globals.GrantScopeThis}, WithReaderWriter(reader, writer))
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
-			}
+
 			// Do a fresh lookup to get all return values
-			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, resource.(*Role).PublicId, WithReaderWriter(reader, writer))
+			retRole, pr, rg, grantScopes, err = r.LookupRole(ctx, createdResource.GetPublicId(), WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -71,7 +101,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		}
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
 	}
-	return resource.(*Role), pr, rg, grantScopes, nil
+	return retRole, pr, rg, grantScopes, nil
 }
 
 // UpdateRole will update a role in the repository and return the written role.
