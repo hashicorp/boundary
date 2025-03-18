@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/iam/store"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
@@ -50,7 +50,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 				GrantThisRoleScope: true,
 			},
 		}
-	case strings.HasPrefix(role.ScopeId, "o_"):
+	case strings.HasPrefix(role.ScopeId, globals.OrgPrefix):
 		incomingRole = &orgRole{
 			OrgRole: &store.OrgRole{
 				PublicId:           id,
@@ -60,7 +60,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 				GrantThisRoleScope: true,
 			},
 		}
-	case strings.HasPrefix(role.ScopeId, "p_"):
+	case strings.HasPrefix(role.ScopeId, globals.ProjectPrefix):
 		incomingRole = &projectRole{
 			ProjectRole: &store.ProjectRole{
 				PublicId:    id,
@@ -99,7 +99,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		if errors.IsUniqueError(err) {
 			return nil, nil, nil, nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
-		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", createdResource.GetPublicId())))
 	}
 	return retRole, pr, rg, grantScopes, nil
 }
