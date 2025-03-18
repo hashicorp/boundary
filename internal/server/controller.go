@@ -1,0 +1,27 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+package server
+
+import "github.com/hashicorp/boundary/internal/server/store"
+
+// Controllers are a server that provider user auth to a client and contain the permissions and resources.
+// Additionally controllers communicate with external services such as databases, KMS, idp, plugins, etc.
+type Controller struct {
+	*store.Controller
+}
+
+// NewController returns a new controller. Valid options are WithAddress and WithDescription.
+// All other options are ignored.
+func NewController(privateId string, opt ...Option) *Controller {
+	opts := GetOpts(opt...)
+	controller := &Controller{
+		Controller: &store.Controller{
+			PrivateId:   privateId,
+			Address:     opts.withAddress,
+			Description: opts.withDescription,
+		},
+	}
+
+	return controller
+}

@@ -9,17 +9,16 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/server/store"
 )
 
-func (r *Repository) ListControllers(ctx context.Context, opt ...Option) ([]*store.Controller, error) {
+func (r *Repository) ListControllers(ctx context.Context, opt ...Option) ([]*Controller, error) {
 	return r.listControllersWithReader(ctx, r.reader, opt...)
 }
 
 // listControllersWithReader will return a listing of resources and honor the
 // WithLimit option or the repo defaultLimit. It accepts a reader, allowing it
 // to be used within a transaction or without.
-func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*store.Controller, error) {
+func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*Controller, error) {
 	opts := GetOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
@@ -31,7 +30,7 @@ func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Re
 		where = fmt.Sprintf("update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
 	}
 
-	var controllers []*store.Controller
+	var controllers []*Controller
 	if err := reader.SearchWhere(
 		ctx,
 		&controllers,
@@ -45,7 +44,7 @@ func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Re
 	return controllers, nil
 }
 
-func (r *Repository) UpsertController(ctx context.Context, controller *store.Controller) (int, error) {
+func (r *Repository) UpsertController(ctx context.Context, controller *Controller) (int, error) {
 	const op = "server.(Repository).UpsertController"
 
 	if controller == nil {
@@ -78,7 +77,7 @@ func (r *Repository) UpsertController(ctx context.Context, controller *store.Con
 	return int(rowsUpdated), nil
 }
 
-func (r *Repository) UpdateController(ctx context.Context, controller *store.Controller) (int, error) {
+func (r *Repository) UpdateController(ctx context.Context, controller *Controller) (int, error) {
 	const op = "server.(Repository).UpdateController"
 
 	if controller == nil {
