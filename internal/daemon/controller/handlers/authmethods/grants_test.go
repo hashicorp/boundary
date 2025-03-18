@@ -1000,7 +1000,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				wantErr: handlers.ForbiddenError(),
 			},
 			{
-				name:    "org scopes grant anyone permission to authenticate (and list) auth methods by default",
+				name:    "org auth methods, by default, grant anyone permission to authenticate (and list) auth methods",
 				scopeId: org1.PublicId,
 				input: &pbs.AuthenticateRequest{
 					TokenType: "token",
@@ -1011,6 +1011,24 @@ func TestGrants_WriteActions(t *testing.T) {
 						},
 					},
 				},
+			},
+			{
+				name:    "project role can authenticate against org auth methods because by default, org auth methods grant anyone permission to authenticate (and list) auth methods",
+				scopeId: org1.PublicId,
+				input: &pbs.AuthenticateRequest{
+					TokenType: "token",
+					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+							LoginName: testLoginName,
+							Password:  testPassword,
+						},
+					},
+				},
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
+					RoleScopeId:  p1.PublicId,
+					GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes:  []string{globals.GrantScopeThis},
+				}},
 			},
 			{
 				name:    "granting authenticate again at the org scope allows authentication",
@@ -1031,7 +1049,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				}},
 			},
 			{
-				name:    "project role can not authenticate against global auth methods",
+				name:    "project role can't authenticate against global auth methods",
 				scopeId: globals.GlobalPrefix,
 				input: &pbs.AuthenticateRequest{
 					TokenType: "token",
@@ -1044,26 +1062,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
 					RoleScopeId:  p1.PublicId,
-					GrantStrings: []string{"ids=*;type=*;actions=*"},
-					GrantScopes:  []string{globals.GrantScopeThis},
-				}},
-				wantErr: handlers.ForbiddenError(),
-			},
-			{
-				name:    "project role can not authenticate against org auth methods",
-				scopeId: org1.PublicId,
-				input: &pbs.AuthenticateRequest{
-					TokenType: "token",
-					Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-						PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-							LoginName: testLoginName,
-							Password:  testPassword,
-						},
-					},
-				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{{
-					RoleScopeId:  p1.PublicId,
-					GrantStrings: []string{"ids=*;type=*;actions=*"},
+					GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
 					GrantScopes:  []string{globals.GrantScopeThis},
 				}},
 				wantErr: handlers.ForbiddenError(),
@@ -1094,7 +1093,6 @@ func TestGrants_WriteActions(t *testing.T) {
 					role := iam.TestRoleWithGrants(t, conn, roleToCreate.RoleScopeId, roleToCreate.GrantScopes, roleToCreate.GrantStrings)
 					iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
 				}
-				// user, accountID := tc.userFunc()
 
 				// Create auth token for the user
 				tok, err := atRepo.CreateAuthToken(ctx, user, account.PublicId)
