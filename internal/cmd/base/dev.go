@@ -244,7 +244,7 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 				continue
 			}
 			host, _, err = util.SplitHostPort(ln.Config.Address)
-			if err != nil {
+			if err != nil && !errors.Is(err, util.ErrMissingPort) {
 				return fmt.Errorf("error splitting host/port: %w", err)
 			}
 		}
@@ -463,7 +463,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 				continue
 			}
 			b.DevOidcSetup.hostAddr, b.DevOidcSetup.callbackPort, err = util.SplitHostPort(ln.Config.Address)
-			if err != nil {
+			if err != nil && !errors.Is(err, util.ErrMissingPort) {
 				return fmt.Errorf("error splitting host/port: %w", err)
 			}
 			if b.DevOidcSetup.callbackPort == "" {

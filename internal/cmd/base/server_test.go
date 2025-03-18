@@ -847,7 +847,7 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			},
 			inputFlagValue:   "abc::123:::",
 			expErr:           true,
-			expErrStr:        "Error splitting public adddress host/port: address abc::123:::: too many colons in address",
+			expErrStr:        "Error splitting public adddress host/port: too many colons in address",
 			expPublicAddress: "",
 		},
 		{

@@ -840,7 +840,7 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 	}
 
 	host, port, err := util.SplitHostPort(conf.Worker.PublicAddr)
-	if err != nil {
+	if err != nil && !errors.Is(err, util.ErrMissingPort) {
 		return fmt.Errorf("Error splitting public adddress host/port: %w", err)
 	}
 	if host != "" {

@@ -781,98 +781,112 @@ func TestDevWorkerRecordingStoragePath(t *testing.T) {
 	}
 }
 
+// TestDevControllerIpv6 validates that all listeners use an IPv6 address when
+// the WithIPv6Enabled(true) option is passed into DevController. Other dev
+// controller configurations are validated in TestDevController.
 func TestDevControllerIpv6(t *testing.T) {
-	require, assert := require.New(t), assert.New(t)
-	// This test only validates that all listeners are utilizing an IPv6 address.
-	// Other dev controller configurations are validates in TestDevController.
+	require := require.New(t)
+
 	actual, err := DevController(WithIPv6Enabled(true))
 	require.NoError(err)
 
-	// expected an error here because we purposely did not provide a port number
-	// to allow randomly assigned port values
+	// Expected an error here because PublicClusterAddr is not set.
 	_, _, err = net.SplitHostPort(actual.Controller.PublicClusterAddr)
 	require.Error(err)
 
-	// assert the square brackets are removed from the host ipv6 address and that the port value is empty
+	// Same here.
 	publicAddr, port, err := util.SplitHostPort(actual.Controller.PublicClusterAddr)
-	require.NoError(err)
-	assert.Empty(port)
-	assert.Empty(publicAddr)
+	require.ErrorIs(err, util.ErrMissingPort)
+	require.Empty(port)
+	require.Empty(publicAddr)
 
 	require.NotEmpty(actual.Listeners)
 	for _, l := range actual.Listeners {
 		addr, _, err := util.SplitHostPort(l.Address)
-		require.NoError(err)
+		require.ErrorIs(err, util.ErrMissingPort)
+		require.NotEmpty(t, addr)
+
 		ip := net.ParseIP(addr)
-		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
-		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+		require.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		require.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
 	}
 }
 
+// TestDevWorkerIpv6 validates that all listeners use an IPv6 address when the
+// WithIPv6Enabled(true) option is passed into DevWorker. Other dev worker
+// configurations are validated in TestDevWorker.
 func TestDevWorkerIpv6(t *testing.T) {
-	require, assert := require.New(t), assert.New(t)
-	// This test only validates that all listeners are utilizing an IPv6 address.
-	// Other dev worker configurations are validates in TestDevWorker.
+	require := require.New(t)
+
 	actual, err := DevWorker(WithIPv6Enabled(true))
 	require.NoError(err)
 
-	// expected an error here because we purposely did not provide a port number
-	// to allow randomly assigned port values
+	// Expected an error here because PublicAddr does not have a port.
 	_, _, err = net.SplitHostPort(actual.Worker.PublicAddr)
 	require.Error(err)
 
-	// assert the square brackets are removed from the worker ipv6 address and that the port value is empty
+	// util.SplitHostPort, however, can handle it when ports are missing.
 	publicAddr, port, err := util.SplitHostPort(actual.Worker.PublicAddr)
-	require.NoError(err)
-	assert.Empty(port)
+	require.ErrorIs(err, util.ErrMissingPort)
+	require.Empty(port)
+	require.NotEmpty(t, publicAddr)
+
 	ip := net.ParseIP(publicAddr)
-	assert.NotNil(ip, "failed to parse worker public address")
-	assert.NotNil(ip.To16(), "worker public address is not IPv6 %s", actual.Worker.PublicAddr)
+	require.NotNil(ip, "failed to parse worker public address")
+	require.NotNil(ip.To16(), "worker public address is not IPv6 %s", actual.Worker.PublicAddr)
 
 	require.NotEmpty(actual.Listeners)
 	for _, l := range actual.Listeners {
 		addr, _, err := util.SplitHostPort(l.Address)
-		require.NoError(err)
+		require.ErrorIs(err, util.ErrMissingPort)
+		require.NotEmpty(addr)
+
 		ip := net.ParseIP(addr)
-		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
-		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+		require.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		require.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
 	}
 }
 
+// TestDevCombinedIpv6 validates that all listeners use an IPv6 address when the
+// WithIPv6Enabled(true) option is passed into DevCombined.
 func TestDevCombinedIpv6(t *testing.T) {
-	require, assert := require.New(t), assert.New(t)
-	// This test only validates that all listeners are utilizing an IPv6 address.
+	require := require.New(t)
+
 	actual, err := DevCombined(WithIPv6Enabled(true))
 	require.NoError(err)
 
-	// expected an error here because we purposely did not provide a port number
-	// to allow randomly assigned port values for the worker and controller
+	// Expected to fail because PublicAddr does not have a port.
 	_, _, err = net.SplitHostPort(actual.Worker.PublicAddr)
 	require.Error(err)
+	// Expected to fail because PublicClusterAddr is not set.
 	_, _, err = net.SplitHostPort(actual.Controller.PublicClusterAddr)
 	require.Error(err)
 
-	// assert the square brackets are removed from the host ipv6 address and that the port value is empty
+	// util.SplitHostPort, however, can handle it when ports are missing.
 	publicAddr, port, err := util.SplitHostPort(actual.Worker.PublicAddr)
-	require.NoError(err)
-	assert.Empty(port)
-	ip := net.ParseIP(publicAddr)
-	assert.NotNil(ip, "failed to parse worker public address")
-	assert.NotNil(ip.To16(), "worker public address is not IPv6 %s", actual.Worker.PublicAddr)
+	require.ErrorIs(err, util.ErrMissingPort)
+	require.Empty(port)
+	require.NotEmpty(publicAddr)
 
-	// assert the square brackets are removed from the controller ipv6 address and that the port value is empty
+	ip := net.ParseIP(publicAddr)
+	require.NotNil(ip, "failed to parse worker public address")
+	require.NotNil(ip.To16(), "worker public address is not IPv6 %s", actual.Worker.PublicAddr)
+
+	// Expected to fail because PublicClusterAddr is not set.
 	publicAddr, port, err = util.SplitHostPort(actual.Controller.PublicClusterAddr)
-	require.NoError(err)
-	assert.Empty(port)
-	assert.Empty(publicAddr)
+	require.ErrorIs(err, util.ErrMissingPort)
+	require.Empty(port)
+	require.Empty(publicAddr)
 
 	require.NotEmpty(actual.Listeners)
 	for _, l := range actual.Listeners {
 		addr, _, err := util.SplitHostPort(l.Address)
-		require.NoError(err)
+		require.ErrorIs(err, util.ErrMissingPort)
+		require.NotEmpty(addr)
+
 		ip := net.ParseIP(addr)
-		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
-		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+		require.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		require.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
 	}
 }
 
@@ -2795,7 +2809,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			},
 			inputFlagValue:          "abc::123:::",
 			expErr:                  true,
-			expErrStr:               "Error splitting public cluster adddress host/port: address abc::123:::: too many colons in address",
+			expErrStr:               "Error splitting public cluster adddress host/port: too many colons in address",
 			expPublicClusterAddress: "",
 		},
 		{
