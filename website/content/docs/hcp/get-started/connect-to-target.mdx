@@ -13,8 +13,7 @@ is the fastest way to onboard a target to HCP Boundary.
 
 ![Setup Wizard](/img/setup-wizard-address-target.png)
 
-The Quick setup wizard creates a default `tcp` target with the port `22` (the default SSH port using TCP).
-The wizard creates the target with the address `127.0.0.1`.
+The Quick setup wizard creates a default `tcp` target with the address `127.0.0.1` and the port `22` (the default SSH port using TCP).
 When you execute `boundary connect` against this target, Boundary establishes a local, authenticated proxy to the address on the target's default port (`127.0.0.1:22`.)
 
 ![Setup Wizard](/img/quick-start-targets.png)
@@ -39,7 +38,6 @@ To connect to the initial EC2 Instances target:
    ```
 
    The output displays the address and port that your SSH client must use.
-   In the next section uses the `ssh` connect helper to make it easier to connect to the target with a client.
 
 The `boundary connect` command has a number of notable options, such as
 `-listen-port` to choose the port on which the connect command will listen for
@@ -48,25 +46,24 @@ applications that allow you to select the connection address, but not the port.
 For some applications there are still some extra hurdles that can exist, which
 is why connect helpers can be useful.
 
-The dev-mode default target allows you to make as connections as you want
+The dev-mode default target allows you to make as many connections as you want
 within the authorized session. When you finish making connections, a
-`Ctrl-C/Command-C` to the `boundary connect` process will shut down the session.
+`Ctrl-C/Command-C` to the `boundary connect` process shuts down the session.
 
 ## Select targets
 
-When using `boundary connect` you must identify the target used for connecting.
-Convention in this documentation is to use the target ID because it refers to a
-single explicit value. 
+When you use `boundary connect`, you must identify the target used for connecting.
+The convention in this documentation is to use the target ID because it refers to a
+single explicit value.
 
-Other flags supported:
+Other supported flags include:
 
 - `target-name`: The name of the target
 - `target-scope-id`: The ID of the scope in which the target lives
 - `target-scope-name`: The name of the scope in which the target lives
 
-Note however that these are not uniquely identifying, as you may reuse names
-across scopes.  You must use the target's name in conjunction with the scope name or scope ID 
-so that Boundary can identify the correct target.
+Note however that these other flags are not uniquely identifying, as you may reuse names
+across scopes.  Therefore, if you don't use the target ID, you must use the target's name in conjunction with the scope name or scope ID so that Boundary can identify the correct target.
 
 Here is an SSH example in dev-mode:
 
@@ -76,9 +73,9 @@ $ boundary connect ssh -target-name "Generated target" -target-scope-name "Gener
 
 ## Connect helpers
 
-Boundary includes connect helpers that automatically accept host SSH key prompts
-for you.
-These are `boundary connect <subcommand>` and support the following connection types:
+Connect helpers automatically accept host SSH key prompts for you.
+The connect helper format is `boundary connect <subcommand>`.
+Boundary includes connect helpers for the following connection types:
 
 - HTTP
 - Kubernetes
@@ -88,7 +85,7 @@ These are `boundary connect <subcommand>` and support the following connection t
 
 Refer to the [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) documentation for more information.
 
-## Built-in verses exec
+## Exec flag
 
 In addition to the built-in connect helpers, `boundary connect`
 can accommodate executing clients even when there is no built-in support
@@ -109,7 +106,7 @@ Refer to the [SSH ProxyCommand](/boundary/docs/concepts/connection-workflows/wor
 
 ## Desktop client
 
-While using the desktop client, choose the target and connect to retrieve local
+While you use the desktop client, choose the target and connect to retrieve local
 proxy details.
 
 <video
