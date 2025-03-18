@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/internal/server"
 )
 
 // In the future we could make this configurable
@@ -46,10 +46,15 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 
 func (c *Controller) upsertController(ctx context.Context) error {
 	const op = "controller.(Controller).upsertController"
-	controller := &store.Controller{
-		PrivateId: c.conf.RawConfig.Controller.Name,
-		Address:   c.conf.RawConfig.Controller.PublicClusterAddr,
+	var opts []server.Option
+	if c.conf.RawConfig.Controller.Description != "" {
+		opts = append(opts, server.WithDescription(c.conf.RawConfig.Controller.Description))
 	}
+	if c.conf.RawConfig.Controller.PublicClusterAddr != "" {
+		opts = append(opts, server.WithAddress(c.conf.RawConfig.Controller.PublicClusterAddr))
+	}
+
+	controller := server.NewController(c.conf.RawConfig.Controller.Name, opts...)
 	repo, err := c.ServersRepoFn()
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status upsert"))
@@ -65,10 +70,14 @@ func (c *Controller) upsertController(ctx context.Context) error {
 
 func (c *Controller) updateController(ctx context.Context) error {
 	const op = "controller.(Controller).updateController"
-	controller := &store.Controller{
-		PrivateId: c.conf.RawConfig.Controller.Name,
-		Address:   c.conf.RawConfig.Controller.PublicClusterAddr,
+	var opts []server.Option
+	if c.conf.RawConfig.Controller.Description != "" {
+		opts = append(opts, server.WithDescription(c.conf.RawConfig.Controller.Description))
 	}
+	if c.conf.RawConfig.Controller.PublicClusterAddr != "" {
+		opts = append(opts, server.WithAddress(c.conf.RawConfig.Controller.PublicClusterAddr))
+	}
+	controller := server.NewController(c.conf.RawConfig.Controller.Name, opts...)
 	repo, err := c.ServersRepoFn()
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status update"))
