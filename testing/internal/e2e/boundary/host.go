@@ -203,19 +203,30 @@ func AddHostToHostSetCli(t testing.TB, ctx context.Context, hostSetId string, ho
 
 // CreateAwsHostCatalogCli uses the cli to create a new AWS dynamic host catalog.
 // Returns the id of the new host catalog.
-func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, accessKeyId, secretAccessKey, region string) (string, error) {
+func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, accessKeyId, secretAccessKey, region string, dualStack bool) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
+	opts := []e2e.Option{
 		e2e.WithArgs(
 			"host-catalogs", "create", "plugin",
 			"-scope-id", projectId,
 			"-plugin-name", "aws",
 			"-attr", "disable_credential_rotation=true",
 			"-attr", fmt.Sprintf("region=%s", region),
+		),
+	}
+	if dualStack {
+		opts = append(opts,
+			e2e.WithArgs(
+				"-attr", fmt.Sprintf("dual_stack=%t", dualStack),
+			),
+		)
+	}
+	opts = append(opts,
+		e2e.WithArgs(
 			"-secret", "access_key_id=env://E2E_AWS_ACCESS_KEY_ID",
 			"-secret", "secret_access_key=env://E2E_AWS_SECRET_ACCESS_KEY",
 			"-name", fmt.Sprintf("e2e Host Catalog %s", name),
@@ -225,6 +236,7 @@ func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, acces
 		e2e.WithEnv("E2E_AWS_ACCESS_KEY_ID", accessKeyId),
 		e2e.WithEnv("E2E_AWS_SECRET_ACCESS_KEY", secretAccessKey),
 	)
+	output := e2e.RunCommand(ctx, "boundary", opts...)
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
 	}
@@ -240,24 +252,43 @@ func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, acces
 	return hostCatalogId, nil
 }
 
-// CreateAwsHostSetCli uses the cli to create a new host set from an AWS dynamic host catalog.
+// CreatePluginHostSetCli uses the cli to create a new host set from a dynamic host catalog.
 // Returns the id of the new host set.
-func CreateAwsHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string, filter string) (string, error) {
+func CreatePluginHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string, filter string, ipVersion string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
 
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"host-sets", "create", "plugin",
-			"-host-catalog-id", hostCatalogId,
-			"-attr", "filters="+filter,
-			"-name", fmt.Sprintf("e2e Host Set %s", name),
-			"-description", "e2e",
-			"-format", "json",
-		),
-	)
+	var output *e2e.CommandResult
+	switch ipVersion {
+	case "4":
+		output = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"host-sets", "create", "plugin",
+				"-host-catalog-id", hostCatalogId,
+				"-attr", "filters="+filter,
+				"-name", fmt.Sprintf("e2e Host Set %s", name),
+				"-description", "e2e",
+				"-format", "json",
+			),
+		)
+	case "6", "dual":
+		output = e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs(
+				"host-sets", "create", "plugin",
+				"-host-catalog-id", hostCatalogId,
+				"-preferred-endpoint", "cidr:::/0",
+				"-attr", "filters="+filter,
+				"-name", fmt.Sprintf("e2e Host Set %s", name),
+				"-description", "e2e",
+				"-format", "json",
+			),
+		)
+	default:
+		return "", fmt.Errorf("unknown ip version: %q", ipVersion)
+	}
+
 	if output.Err != nil {
 		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
 	}
@@ -358,4 +389,54 @@ func WaitForNumberOfHostsInHostSetCli(t testing.TB, ctx context.Context, hostSet
 		},
 	)
 	require.NoError(t, err)
+}
+
+// CreateGcpHostCatalogCli uses the cli to create a new GCP dynamic host catalog.
+// Returns the id of the new host catalog.
+func CreateGcpHostCatalogCli(
+	t testing.TB,
+	ctx context.Context,
+	projectId string,
+	gcpProjectId string,
+	clientEmail string,
+	privateKeyId string,
+	privateKey string,
+	zone string,
+) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"host-catalogs", "create", "plugin",
+			"-scope-id", projectId,
+			"-plugin-name", "gcp",
+			"-attr", "disable_credential_rotation=true",
+			"-attr", fmt.Sprintf("project_id=%s", gcpProjectId),
+			"-attr", fmt.Sprintf("client_email=%s", clientEmail),
+			"-attr", fmt.Sprintf("zone=%s", zone),
+			"-secret", "private_key_id=env://E2E_GCP_PRIVATE_KEY_ID",
+			"-secret", "private_key=env://E2E_GCP_PRIVATE_KEY",
+			"-name", fmt.Sprintf("e2e Host Catalog %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_GCP_PRIVATE_KEY_ID", privateKeyId),
+		e2e.WithEnv("E2E_GCP_PRIVATE_KEY", privateKey),
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	var createHostCatalogResult hostcatalogs.HostCatalogCreateResult
+	err = json.Unmarshal(output.Stdout, &createHostCatalogResult)
+	if err != nil {
+		return "", err
+	}
+
+	hostCatalogId := createHostCatalogResult.Item.Id
+	t.Logf("Created Host Catalog: %s", hostCatalogId)
+	return hostCatalogId, nil
 }

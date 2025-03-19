@@ -3,6 +3,8 @@
 
 # For this scenario to work, add the following line to /etc/hosts
 # 127.0.0.1 localhost boundary
+# 127.0.0.1 localhost worker
+# 127.0.0.1 localhost vault
 
 scenario "e2e_docker_base_with_vault" {
   terraform_cli = terraform_cli.default
@@ -68,7 +70,7 @@ scenario "e2e_docker_base_with_vault" {
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.license_path
     }
   }
 
@@ -134,8 +136,8 @@ scenario "e2e_docker_base_with_vault" {
       target_address           = step.create_host.address
       target_port              = step.create_host.port
       target_user              = "ubuntu"
-      vault_addr               = step.create_vault.address
-      vault_addr_internal      = step.create_vault.address_internal
+      vault_addr_public        = step.create_vault.address_public
+      vault_addr_private       = step.create_vault.address_private
       vault_root_token         = step.create_vault.token
       vault_port               = step.create_vault.port
       max_page_size            = step.create_boundary.max_page_size

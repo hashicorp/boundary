@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -85,7 +86,7 @@ func init() {
 	action.RegisterResource(resource.Worker, IdActions, CollectionActions)
 }
 
-func emptyDownstreamWorkers(context.Context, string, common.Downstreamers) []string {
+func emptyDownstreamWorkers(context.Context, string, downstream.Graph) []string {
 	return nil
 }
 
@@ -96,14 +97,14 @@ type Service struct {
 	repoFn       common.ServersRepoFactory
 	workerAuthFn common.WorkerAuthRepoStorageFactory
 	iamRepoFn    common.IamRepoFactory
-	downstreams  common.Downstreamers
+	downstreams  downstream.Graph
 }
 
 var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
 func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory,
-	workerAuthFn common.WorkerAuthRepoStorageFactory, ds common.Downstreamers,
+	workerAuthFn common.WorkerAuthRepoStorageFactory, ds downstream.Graph,
 ) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {
@@ -166,6 +167,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 	for _, item := range ul {
 		res.Id = item.GetPublicId()
 		res.ScopeId = item.GetScopeId()
+		res.ParentScopeId = scopeInfoMap[item.GetScopeId()].GetParentScopeId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
@@ -899,21 +901,21 @@ func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers
 		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
 	}
 	if outputFields.Has(globals.ActiveConnectionCountField) {
-		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount()}
+		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount}
 	}
 	if outputFields.Has(globals.ControllerGeneratedActivationToken) && in.ControllerGeneratedActivationToken != "" {
 		out.ControllerGeneratedActivationToken = &wrapperspb.StringValue{Value: in.ControllerGeneratedActivationToken}
 	}
-	if outputFields.Has(globals.ConfigTagsField) && len(in.GetConfigTags()) > 0 {
+	if outputFields.Has(globals.ConfigTagsField) && len(in.ConfigTags) > 0 {
 		var err error
-		out.ConfigTags, err = tagsToMapProto(in.GetConfigTags())
+		out.ConfigTags, err = tagsToMapProto(in.ConfigTags)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
 		}
 	}
-	if outputFields.Has(globals.ApiTagsField) && len(in.GetApiTags()) > 0 {
+	if outputFields.Has(globals.ApiTagsField) && len(in.ApiTags) > 0 {
 		var err error
-		out.ApiTags, err = tagsToMapProto(in.GetApiTags())
+		out.ApiTags, err = tagsToMapProto(in.ApiTags)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing api tags proto"))
 		}

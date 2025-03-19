@@ -19,8 +19,10 @@ import (
 )
 
 type scopeGrant struct {
-	scope  string
-	grants []string
+	roleScope         string
+	roleParentScopeId string
+	grantScope        string
+	grants            []string
 }
 
 func Test_ACLAllowed(t *testing.T) {
@@ -45,7 +47,8 @@ func Test_ACLAllowed(t *testing.T) {
 	// A set of common grants to use in the following tests
 	commonGrants := []scopeGrant{
 		{
-			scope: "o_a",
+			roleScope:  "o_a",
+			grantScope: "o_a",
 			grants: []string{
 				"ids=ampw_bar,ampw_baz;actions=read,update",
 				"ids=ampw_bop;actions=read:self,update",
@@ -55,7 +58,8 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			scope: "o_b",
+			roleScope:  "o_b",
+			grantScope: "o_b",
 			grants: []string{
 				"ids=*;type=host-set;actions=list,create",
 				"ids=hcst_mypin;type=host;actions=*;output_fields=name,description",
@@ -64,7 +68,8 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			scope: "o_d",
+			roleScope:  "o_d",
+			grantScope: "o_d",
 			grants: []string{
 				"ids=*;type=*;actions=create,update",
 				"ids=*;type=session;actions=*",
@@ -74,7 +79,8 @@ func Test_ACLAllowed(t *testing.T) {
 	}
 	templateGrants := []scopeGrant{
 		{
-			scope: "o_c",
+			roleScope:  "o_c",
+			grantScope: "o_c",
 			grants: []string{
 				"ids={{user.id }};actions=read,update",
 				"ids={{ account.id}};actions=change-password",
@@ -104,7 +110,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "top level create with type only",
-			resource:    Resource{ScopeId: "o_a", Type: resource.HostCatalog},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Type: resource.HostCatalog},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Create, authorized: true},
@@ -113,7 +119,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and id no matching action",
-			resource:    Resource{ScopeId: "o_a", Id: "a_foo", Type: resource.Role},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Id: "a_foo", Type: resource.Role},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
@@ -122,7 +128,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and id and matching action first id",
-			resource:    Resource{ScopeId: "o_a", Id: "ampw_bar"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Id: "ampw_bar"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -132,7 +138,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and id and matching action second id",
-			resource:    Resource{ScopeId: "o_a", Id: "ampw_baz"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Id: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -142,7 +148,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and type and all action with valid pin",
-			resource:    Resource{ScopeId: "o_b", Pin: "hcst_mypin", Type: resource.Host},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_b", Pin: "hcst_mypin", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true, outputFields: []string{"description", "id", "name"}},
@@ -152,7 +158,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and type and all action but bad pin",
-			resource:    Resource{ScopeId: "o_b", Pin: "notmypin", Type: resource.Host},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_b", Pin: "notmypin", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, outputFields: []string{"id"}},
@@ -162,7 +168,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and id and some action",
-			resource:    Resource{ScopeId: "o_b", Id: "myhost", Type: resource.HostSet},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_b", Id: "myhost", Type: resource.HostSet},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List, authorized: true, outputFields: []string{"id"}},
@@ -172,7 +178,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and id and all action but bad specifier",
-			resource:    Resource{ScopeId: "o_b", Id: "id_g"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_b", Id: "id_g"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, outputFields: []string{"id"}},
@@ -182,7 +188,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and not matching type",
-			resource:    Resource{ScopeId: "o_a", Type: resource.HostCatalog},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Type: resource.HostCatalog},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
@@ -191,7 +197,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and matching type",
-			resource:    Resource{ScopeId: "o_a", Type: resource.HostSet},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Type: resource.HostSet},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List, authorized: true},
@@ -201,7 +207,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope, type, action, random id and bad pin first id",
-			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_bar"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_bar"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
@@ -211,7 +217,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope, type, action, random id and bad pin second id",
-			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_baz"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
@@ -221,7 +227,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "wrong scope and matching type",
-			resource:    Resource{ScopeId: "o_bad", Type: resource.HostSet},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_bad", Type: resource.HostSet},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
@@ -231,7 +237,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "any id",
-			resource:    Resource{ScopeId: "o_b", Type: resource.AuthMethod},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_b", Type: resource.AuthMethod},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List, outputFields: []string{"id"}},
@@ -241,7 +247,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "bad templated user id",
-			resource:    Resource{ScopeId: "o_c"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_c"},
 			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
@@ -252,7 +258,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "good templated user id",
-			resource:    Resource{ScopeId: "o_c", Id: "u_abcd1234"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_c", Id: "u_abcd1234"},
 			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -262,7 +268,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "bad templated old account id",
-			resource:    Resource{ScopeId: "o_c"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_c"},
 			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
@@ -273,7 +279,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "good templated old account id",
-			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix)},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix)},
 			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.ChangePassword, authorized: true},
@@ -283,7 +289,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "bad templated new account id",
-			resource:    Resource{ScopeId: "o_c"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_c"},
 			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
@@ -294,7 +300,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "good templated new account id",
-			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix)},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix)},
 			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.ChangePassword, authorized: true},
@@ -304,7 +310,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "all type",
-			resource:    Resource{ScopeId: "o_d", Type: resource.Account},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_d", Type: resource.Account},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Create, authorized: true},
@@ -314,7 +320,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "list with top level list",
-			resource:    Resource{ScopeId: "o_a", Type: resource.Target},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Type: resource.Target},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List, authorized: true},
@@ -322,7 +328,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "list sessions with wildcard actions",
-			resource:    Resource{ScopeId: "o_d", Type: resource.Session},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_d", Type: resource.Session},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List, authorized: true},
@@ -330,7 +336,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "read self with top level read first id",
-			resource:    Resource{ScopeId: "o_a", Id: "ampw_bar"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Id: "ampw_bar"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -339,7 +345,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "read self with top level read second id",
-			resource:    Resource{ScopeId: "o_a", Id: "ampw_baz"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Id: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -348,7 +354,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "read self only",
-			resource:    Resource{ScopeId: "o_a", Id: "ampw_bop"},
+			resource:    Resource{ParentScopeId: scope.Global.String(), ScopeId: "o_a", Id: "ampw_bop"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read},
@@ -360,7 +366,8 @@ func Test_ACLAllowed(t *testing.T) {
 			resource: Resource{ScopeId: scope.Global.String(), Type: resource.Worker},
 			scopeGrants: []scopeGrant{
 				{
-					scope: scope.Global.String(),
+					roleScope:  scope.Global.String(),
+					grantScope: scope.Global.String(),
 					grants: []string{
 						"type=worker;actions=create",
 					},
@@ -375,7 +382,8 @@ func Test_ACLAllowed(t *testing.T) {
 			resource: Resource{ScopeId: scope.Global.String(), Type: resource.Worker},
 			scopeGrants: []scopeGrant{
 				{
-					scope: scope.Global.String(),
+					roleScope:  scope.Global.String(),
+					grantScope: scope.Global.String(),
 					grants: []string{
 						"type=worker;actions=create:worker-led",
 					},
@@ -392,7 +400,7 @@ func Test_ACLAllowed(t *testing.T) {
 			var grants []Grant
 			for _, sg := range test.scopeGrants {
 				for _, g := range sg.grants {
-					grant, err := Parse(ctx, sg.scope, g, WithAccountId(test.accountId), WithUserId(test.userId))
+					grant, err := Parse(ctx, GrantTuple{RoleScopeId: sg.roleScope, GrantScopeId: sg.grantScope, Grant: g}, WithAccountId(test.accountId), WithUserId(test.userId))
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}
@@ -429,8 +437,10 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Requested resource mismatch",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=target;actions=list,read"}, // List & Read for all Targets
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=target;actions=list,read"}, // List & Read for all Targets
 				},
 			},
 			resourceType:   resource.Session, // We're requesting sessions.
@@ -441,8 +451,10 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Requested actions not available for the requested scope id",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=delete"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=session;actions=delete"},
 				},
 			},
 			resourceType:   resource.Session,
@@ -453,8 +465,10 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "No specific id or wildcard provided for `id` field",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"type=*;actions=list,read"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"type=*;actions=list,read"},
 				},
 			},
 			resourceType:                resource.Session,
@@ -466,20 +480,24 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Allow all ids",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=update,read"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=session;actions=update,read"},
 				},
 			},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.Read),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -487,20 +505,24 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Allow all ids, :self actions",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=list,read:self"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=session;actions=list,read:self"},
 				},
 			},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    true,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          true,
+					All:               true,
 				},
 			},
 		},
@@ -508,7 +530,9 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Allow specific IDs",
 			aclGrants: []scopeGrant{
 				{
-					scope: "o_1",
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
 					grants: []string{
 						"ids=s_1;type=session;actions=list,read",
 						"ids=s_2,s_3;type=session;actions=list,read",
@@ -519,12 +543,14 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			actionSet:    action.NewActionSet(action.Read),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: []string{"s_1", "s_2", "s_3"},
-					OnlySelf:    false,
-					All:         false,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"s_1", "s_2", "s_3"},
+					OnlySelf:          false,
+					All:               false,
 				},
 			},
 		},
@@ -532,20 +558,24 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "No specific type 1",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=*;actions=list,read:self"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=*;actions=list,read:self"},
 				},
 			},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    true,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          true,
+					All:               true,
 				},
 			},
 		},
@@ -553,20 +583,24 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "List + No-op action with id wildcard",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=list,no-op"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=session;actions=list,no-op"},
 				},
 			},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.NoOp),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -574,8 +608,10 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "List + No-op action with id wildcard, read present",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=list,no-op"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=session;actions=list,no-op"},
 				},
 			},
 			resourceType:   resource.Session,
@@ -586,7 +622,9 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "List + No-op action with specific ids",
 			aclGrants: []scopeGrant{
 				{
-					scope: "o_1",
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
 					grants: []string{
 						"ids=s_1;type=session;actions=list,no-op",
 						"ids=s_2,s_3;type=session;actions=list,no-op",
@@ -597,12 +635,14 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			actionSet:    action.NewActionSet(action.NoOp),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: []string{"s_1", "s_2", "s_3"},
-					OnlySelf:    false,
-					All:         false,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"s_1", "s_2", "s_3"},
+					OnlySelf:          false,
+					All:               false,
 				},
 			},
 		},
@@ -610,20 +650,24 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "No specific type 2",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=*;actions=list,read:self"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=*;actions=list,read:self"},
 				},
 			},
 			resourceType: resource.Host,
 			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Host,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    true,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Host,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          true,
+					All:               true,
 				},
 			},
 		},
@@ -631,7 +675,9 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Grant hierarchy is respected",
 			aclGrants: []scopeGrant{
 				{
-					scope: "o_1",
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
 					grants: []string{
 						"ids=*;type=*;actions=*",
 						"ids=*;type=session;actions=cancel:self,list,read:self",
@@ -642,12 +688,14 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			actionSet:    action.NewActionSet(action.NoOp, action.Read, action.ReadSelf, action.Cancel, action.CancelSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -655,20 +703,24 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Full access 1",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=*;actions=*"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=*;actions=*"},
 				},
 			},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -676,20 +728,24 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Full access 2",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=*;actions=*"},
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants:            []string{"ids=*;type=*;actions=*"},
 				},
 			},
 			resourceType: resource.Host,
 			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Host,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Host,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -697,35 +753,43 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			name: "Multiple scopes",
 			aclGrants: []scopeGrant{
 				{
-					scope: "o_1",
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
 					grants: []string{
 						"ids=s_1;type=session;actions=create,read",
 						"ids=s_2,s_3;type=session;actions=update,read",
 					},
 				},
 				{
-					scope:  "o_2",
-					grants: []string{"ids=*;type=session;actions=read:self"},
+					roleScope:         "o_2",
+					grantScope:        "o_2",
+					roleParentScopeId: scope.Global.String(),
+					grants:            []string{"ids=*;type=session;actions=read:self"},
 				},
 			},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.Read, action.ReadSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: []string{"s_1", "s_2", "s_3"},
-					OnlySelf:    false,
-					All:         false,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"s_1", "s_2", "s_3"},
+					OnlySelf:          false,
+					All:               false,
 				},
 				{
-					ScopeId:     "o_2",
-					Resource:    resource.Session,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: nil,
-					OnlySelf:    true,
-					All:         true,
+					RoleScopeId:       "o_2",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_2",
+					Resource:          resource.Session,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       nil,
+					OnlySelf:          true,
+					All:               true,
 				},
 			},
 		},
@@ -735,7 +799,9 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			actionSet:    action.NewActionSet(action.Read, action.Cancel),
 			aclGrants: []scopeGrant{
 				{
-					scope: "p_1",
+					roleScope:         "p_1",
+					roleParentScopeId: "o_1",
+					grantScope:        "p_1",
 					grants: []string{
 						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
@@ -744,12 +810,287 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			},
 			expPermissions: []Permission{
 				{
-					ScopeId:     "p_1",
-					Resource:    resource.Target,
-					Action:      action.ListResolvableAliases,
-					ResourceIds: []string{"ttcp_1234567890"},
-					All:         false,
-					OnlySelf:    false,
+					RoleScopeId:       "p_1",
+					RoleParentScopeId: "o_1",
+					GrantScopeId:      "p_1",
+					Resource:          resource.Target,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+			},
+		},
+		{
+			name:         "global_no_this_with_descendants",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: globals.GrantScopeDescendants,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: globals.GrantScopeDescendants,
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+			},
+		},
+		{
+			name:         "global_with_this_with_descendants",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: globals.GrantScopeDescendants,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "global",
+					grantScope: "global",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: globals.GrantScopeDescendants,
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: scope.Global.String(),
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+			},
+		},
+		{
+			name:         "global_no_this_with_valid_children",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: globals.GrantScopeChildren,
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+			},
+		},
+		{
+			name:         "org_no_this_with_children_and_direct_grant",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:         "o_2",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_2",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      globals.GrantScopeChildren,
+					Resource:          resource.Target,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+				{
+					RoleScopeId:       "o_2",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_2",
+					Resource:          resource.Target,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+			},
+		},
+		{
+			name:         "org_with_this_with_children_and_direct_grant",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      globals.GrantScopeChildren,
+					Resource:          resource.Target,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+				{
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Target,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+			},
+		},
+		{
+			name:         "org_with_this_with_child_scope_direct_grants",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:         "o_1",
+					roleParentScopeId: scope.Global.String(),
+					grantScope:        "o_1",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:         "p_1a",
+					roleParentScopeId: "o_1",
+					grantScope:        "p_1a",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:         "p_1b",
+					roleParentScopeId: "o_1",
+					grantScope:        "p_1b",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:         "p_2",
+					roleParentScopeId: "o_2",
+					grantScope:        "p_2",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      globals.GrantScopeChildren,
+					Resource:          resource.Target,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+				{
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Target,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+				{
+					RoleScopeId:       "p_2",
+					RoleParentScopeId: "o_2",
+					GrantScopeId:      "p_2",
+					Resource:          resource.Target,
+					Action:            action.ListResolvableAliases,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
 				},
 			},
 		},
@@ -759,15 +1100,18 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var grants []Grant
 			for _, sg := range tt.aclGrants {
+				if sg.roleScope == "" {
+					sg.roleScope = sg.grantScope
+				}
 				for _, g := range sg.grants {
-					grant, err := Parse(ctx, sg.scope, g, WithSkipFinalValidation(tt.skipGrantValidationChecking))
+					grant, err := Parse(ctx, GrantTuple{RoleScopeId: sg.roleScope, RoleParentScopeId: sg.roleParentScopeId, GrantScopeId: sg.grantScope, Grant: g}, WithSkipFinalValidation(tt.skipGrantValidationChecking))
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}
 			}
 
 			acl := NewACL(grants...)
-			perms := acl.ListResolvablePermissions(tt.resourceType, tt.actionSet)
+			perms := acl.ListResolvableAliasesPermissions(tt.resourceType, tt.actionSet)
 			require.ElementsMatch(t, tt.expPermissions, perms)
 		})
 	}
@@ -792,8 +1136,8 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Requested scope(s) not present in ACL scope map",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=list,read"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=session;actions=list,read"},
 				},
 			},
 			scopes: map[string]*scopes.ScopeInfo{
@@ -808,8 +1152,8 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Requested resource mismatch",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=target;actions=list,read"}, // List & Read for all Targets
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=target;actions=list,read"}, // List & Read for all Targets
 				},
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -821,8 +1165,8 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Requested actions not available for the requested scope id",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=delete"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=session;actions=delete"},
 				},
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -834,8 +1178,8 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "No specific id or wildcard provided for `id` field",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"type=*;actions=list,read"},
+					grantScope: "o_1",
+					grants:     []string{"type=*;actions=list,read"},
 				},
 			},
 			scopes:                      map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -848,21 +1192,23 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Allow all ids",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=list,read"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=session;actions=list,read"},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.Read),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -870,21 +1216,23 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Allow all ids, :self actions",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=list,read:self"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=session;actions=list,read:self"},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    true,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          true,
+					All:               true,
 				},
 			},
 		},
@@ -892,24 +1240,26 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Allow specific IDs",
 			aclGrants: []scopeGrant{
 				{
-					scope: "o_1",
+					grantScope: "o_1",
 					grants: []string{
 						"ids=s_1;type=session;actions=list,read",
 						"ids=s_2,s_3;type=session;actions=list,read",
 					},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.Read),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: []string{"s_1", "s_2", "s_3"},
-					OnlySelf:    false,
-					All:         false,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       []string{"s_1", "s_2", "s_3"},
+					OnlySelf:          false,
+					All:               false,
 				},
 			},
 		},
@@ -917,21 +1267,23 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "No specific type 1",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=*;actions=list,read:self"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=*;actions=list,read:self"},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    true,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          true,
+					All:               true,
 				},
 			},
 		},
@@ -939,21 +1291,23 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "List + No-op action with id wildcard",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=list,no-op"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=session;actions=list,no-op"},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.NoOp),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -961,11 +1315,11 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "List + No-op action with id wildcard, read present",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=session;actions=list,no-op"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=session;actions=list,no-op"},
 				},
 			},
-			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:         map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType:   resource.Session,
 			actionSet:      action.NewActionSet(action.Read),
 			expPermissions: []Permission{},
@@ -974,24 +1328,26 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "List + No-op action with specific ids",
 			aclGrants: []scopeGrant{
 				{
-					scope: "o_1",
+					grantScope: "o_1",
 					grants: []string{
 						"ids=s_1;type=session;actions=list,no-op",
 						"ids=s_2,s_3;type=session;actions=list,no-op",
 					},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.NoOp),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: []string{"s_1", "s_2", "s_3"},
-					OnlySelf:    false,
-					All:         false,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       []string{"s_1", "s_2", "s_3"},
+					OnlySelf:          false,
+					All:               false,
 				},
 			},
 		},
@@ -999,21 +1355,23 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "No specific type 2",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=*;actions=list,read:self"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=*;actions=list,read:self"},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Host,
 			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Host,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    true,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Host,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          true,
+					All:               true,
 				},
 			},
 		},
@@ -1021,24 +1379,26 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Grant hierarchy is respected",
 			aclGrants: []scopeGrant{
 				{
-					scope: "o_1",
+					grantScope: "o_1",
 					grants: []string{
 						"ids=*;type=*;actions=*",
 						"ids=*;type=session;actions=cancel:self,list,read:self",
 					},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.NoOp, action.Read, action.ReadSelf, action.Cancel, action.CancelSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -1046,21 +1406,23 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Full access 1",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=*;actions=*"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=*;actions=*"},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -1068,21 +1430,23 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Full access 2",
 			aclGrants: []scopeGrant{
 				{
-					scope:  "o_1",
-					grants: []string{"ids=*;type=*;actions=*"},
+					grantScope: "o_1",
+					grants:     []string{"ids=*;type=*;actions=*"},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Host,
 			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Host,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Host,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
@@ -1090,97 +1454,109 @@ func TestACL_ListPermissions(t *testing.T) {
 			name: "Multiple scopes",
 			aclGrants: []scopeGrant{
 				{
-					scope: "o_1",
+					grantScope: "o_1",
 					grants: []string{
 						"ids=s_1;type=session;actions=list,read",
 						"ids=s_2,s_3;type=session;actions=list,read",
 					},
 				},
 				{
-					scope:  "o_2",
-					grants: []string{"ids=*;type=session;actions=list,read:self"},
+					grantScope: "o_2",
+					grants:     []string{"ids=*;type=session;actions=list,read:self"},
 				},
 			},
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}, "o_2": {Id: "o_2", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.Read, action.ReadSelf),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: []string{"s_1", "s_2", "s_3"},
-					OnlySelf:    false,
-					All:         false,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       []string{"s_1", "s_2", "s_3"},
+					OnlySelf:          false,
+					All:               false,
 				},
 				{
-					ScopeId:     "o_2",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    true,
-					All:         true,
+					RoleScopeId:       "o_2",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_2",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          true,
+					All:               true,
 				},
 			},
 		},
 		{
 			name:         "Allow recovery user full access to sessions",
 			userId:       globals.RecoveryUserId,
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}, "o_2": {Id: "o_2", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Session,
 			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 				{
-					ScopeId:     "o_2",
-					Resource:    resource.Session,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_2",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_2",
+					Resource:          resource.Session,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
 		{
 			name:         "Allow recovery user full access to targets",
 			userId:       globals.RecoveryUserId,
-			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": {Id: "o_1", ParentScopeId: scope.Global.String()}, "o_2": {Id: "o_2", ParentScopeId: scope.Global.String()}},
 			resourceType: resource.Target,
 			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
-					ScopeId:     "o_1",
-					Resource:    resource.Target,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_1",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 				{
-					ScopeId:     "o_2",
-					Resource:    resource.Target,
-					Action:      action.List,
-					ResourceIds: nil,
-					OnlySelf:    false,
-					All:         true,
+					RoleScopeId:       "o_2",
+					RoleParentScopeId: scope.Global.String(),
+					GrantScopeId:      "o_2",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       nil,
+					OnlySelf:          false,
+					All:               true,
 				},
 			},
 		},
 		{
 			name:         "separate_type_id_resource_grants",
-			scopes:       map[string]*scopes.ScopeInfo{"p_1": nil},
+			scopes:       map[string]*scopes.ScopeInfo{"p_1": {Id: "p_1", ParentScopeId: "o_1"}},
 			resourceType: resource.Target,
 			actionSet:    action.NewActionSet(action.Read, action.Cancel),
 			aclGrants: []scopeGrant{
 				{
-					scope: "p_1",
+					grantScope: "p_1",
 					grants: []string{
 						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
@@ -1189,12 +1565,224 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			expPermissions: []Permission{
 				{
-					ScopeId:     "p_1",
-					Resource:    resource.Target,
-					Action:      action.List,
-					ResourceIds: []string{"ttcp_1234567890"},
-					All:         false,
-					OnlySelf:    false,
+					RoleScopeId:       "p_1",
+					RoleParentScopeId: "o_1",
+					GrantScopeId:      "p_1",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+			},
+		},
+		{
+			name:         "global_no_this_with_descendants",
+			scopes:       map[string]*scopes.ScopeInfo{"p_1": {Id: "p_1", ParentScopeId: "o_1"}, "global": {Id: "global", ParentScopeId: ""}},
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: globals.GrantScopeDescendants,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:       "p_1",
+					RoleParentScopeId: "o_1",
+					GrantScopeId:      "p_1",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+			},
+		},
+		{
+			name:         "global_with_this_with_descendants",
+			scopes:       map[string]*scopes.ScopeInfo{"p_1": {Id: "p_1", ParentScopeId: "o_1"}, "global": {Id: "global", ParentScopeId: ""}},
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: globals.GrantScopeDescendants,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "global",
+					grantScope: "global",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:       "p_1",
+					RoleParentScopeId: "o_1",
+					GrantScopeId:      "p_1",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+				{
+					RoleScopeId:  "global",
+					GrantScopeId: "global",
+					Resource:     resource.Target,
+					Action:       action.List,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+			},
+		},
+		{
+			name:         "global_no_this_with_invalid_children",
+			scopes:       map[string]*scopes.ScopeInfo{"p_1": {Id: "p_1", ParentScopeId: "o_1"}, "global": {Id: "global", ParentScopeId: ""}},
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: nil,
+		},
+		{
+			name:         "global_no_this_with_valid_children",
+			scopes:       map[string]*scopes.ScopeInfo{"p_1": {Id: "p_1", ParentScopeId: "o_1"}, "o_2": {Id: "o_2", ParentScopeId: "global"}},
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:       "o_2",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "o_2",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+			},
+		},
+		{
+			name:         "org_no_this_with_children_and_direct_grant",
+			scopes:       map[string]*scopes.ScopeInfo{"p_1": {Id: "p_1", ParentScopeId: "o_1"}, "o_2": {Id: "o_2", ParentScopeId: "global"}},
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "o_1",
+					grantScope: globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "o_2",
+					grantScope: "o_2",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:       "p_1",
+					RoleParentScopeId: "o_1",
+					GrantScopeId:      "p_1",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+				{
+					RoleScopeId:       "o_2",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "o_2",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+			},
+		},
+		{
+			name:         "org_with_this_with_children_and_direct_grant",
+			scopes:       map[string]*scopes.ScopeInfo{"p_1": {Id: "p_1", ParentScopeId: "o_1"}, "o_2": {Id: "o_2", ParentScopeId: "global"}, "o_1": {Id: "o_1", ParentScopeId: "global"}},
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "o_1",
+					grantScope: globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "o_1",
+					grantScope: "o_1",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:       "o_1",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "o_1",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
+				},
+				{
+					RoleScopeId:       "p_1",
+					RoleParentScopeId: "o_1",
+					GrantScopeId:      "p_1",
+					Resource:          resource.Target,
+					Action:            action.List,
+					ResourceIds:       []string{"ttcp_1234567890"},
+					All:               false,
+					OnlySelf:          false,
 				},
 			},
 		},
@@ -1208,8 +1796,11 @@ func TestACL_ListPermissions(t *testing.T) {
 			}
 			var grants []Grant
 			for _, sg := range tt.aclGrants {
+				if sg.roleScope == "" {
+					sg.roleScope = sg.grantScope
+				}
 				for _, g := range sg.grants {
-					grant, err := Parse(ctx, sg.scope, g, WithSkipFinalValidation(tt.skipGrantValidationChecking))
+					grant, err := Parse(ctx, GrantTuple{RoleScopeId: sg.roleScope, GrantScopeId: sg.grantScope, Grant: g}, WithSkipFinalValidation(tt.skipGrantValidationChecking))
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}
@@ -1315,7 +1906,7 @@ func Test_AnonRestrictions(t *testing.T) {
 						grant = fmt.Sprintf(grant, action.Type(j).String())
 					}
 
-					parsedGrant, err := Parse(ctx, scope.Global.String(), grant, WithSkipFinalValidation(true))
+					parsedGrant, err := Parse(ctx, GrantTuple{RoleScopeId: scope.Global.String(), GrantScopeId: scope.Global.String(), Grant: grant}, WithSkipFinalValidation(true))
 					require.NoError(err)
 
 					acl := NewACL(parsedGrant)

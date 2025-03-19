@@ -11,18 +11,22 @@ scenario "e2e_aws" {
   ]
 
   matrix {
-    builder = ["local", "crt"]
+    builder    = ["local", "crt"]
+    ip_version = ["4"]
   }
 
   locals {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     boundary_install_dir     = abspath(var.boundary_install_dir)
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    vault_license_path       = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
+
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
     }
+
     tags = merge({
       "Project Name" : var.project_name
       "Project" : "Enos",
@@ -41,12 +45,12 @@ scenario "e2e_aws" {
     }
   }
 
-  step "read_license" {
+  step "read_boundary_license" {
     skip_step = var.boundary_edition == "oss"
     module    = module.read_license
 
     variables {
-      file_name = local.license_path
+      license_path = local.boundary_license_path
     }
   }
 
@@ -64,7 +68,8 @@ scenario "e2e_aws" {
   }
 
   step "create_base_infra" {
-    module = module.aws_vpc
+    module = matrix.ip_version == "4" ? module.aws_vpc : module.aws_vpc_ipv6
+
     depends_on = [
       step.find_azs,
     ]
@@ -75,30 +80,59 @@ scenario "e2e_aws" {
     }
   }
 
+  step "create_vault_cluster" {
+    module = module.vault
+    depends_on = [
+      step.create_base_infra,
+    ]
+
+    variables {
+      deploy          = matrix.ip_version == "4" ? false : true
+      ami_id          = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      instance_type   = var.vault_instance_type
+      instance_count  = 1
+      kms_key_arn     = step.create_base_infra.kms_key_arn
+      storage_backend = "raft"
+      unseal_method   = "shamir"
+      ip_version      = matrix.ip_version
+      vault_release = {
+        version = var.vault_version
+        edition = "oss"
+      }
+      vpc_id = step.create_base_infra.vpc_id
+    }
+  }
+
   step "create_boundary_cluster" {
     module = module.aws_boundary
     depends_on = [
       step.create_base_infra,
       step.create_db_password,
-      step.build_boundary
+      step.build_boundary,
+      step.create_vault_cluster
     ]
 
     variables {
-      boundary_binary_name     = var.boundary_binary_name
-      boundary_install_dir     = local.boundary_install_dir
-      boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : null
-      common_tags              = local.tags
-      controller_instance_type = var.controller_instance_type
-      controller_count         = var.controller_count
-      db_pass                  = step.create_db_password.string
-      kms_key_arn              = step.create_base_infra.kms_key_arn
-      local_artifact_path      = step.build_boundary.artifact_path
-      ubuntu_ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      vpc_id                   = step.create_base_infra.vpc_id
-      vpc_tag_module           = step.create_base_infra.vpc_tag_module
-      worker_count             = var.worker_count
-      worker_instance_type     = var.worker_instance_type
-      aws_region               = var.aws_region
+      boundary_binary_name        = var.boundary_binary_name
+      boundary_install_dir        = local.boundary_install_dir
+      boundary_license            = var.boundary_edition != "oss" ? step.read_boundary_license.license : null
+      common_tags                 = local.tags
+      controller_instance_type    = var.controller_instance_type
+      controller_count            = var.controller_count
+      db_pass                     = step.create_db_password.string
+      kms_key_arn                 = step.create_base_infra.kms_key_arn
+      local_artifact_path         = step.build_boundary.artifact_path
+      ubuntu_ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      vpc_id                      = step.create_base_infra.vpc_id
+      vpc_tag_module              = step.create_base_infra.vpc_tag_module
+      worker_count                = var.worker_count
+      worker_instance_type        = var.worker_instance_type
+      aws_region                  = var.aws_region
+      ip_version                  = matrix.ip_version
+      controller_config_file_path = matrix.ip_version == "4" ? "templates/controller.hcl" : "templates/controller_vault_kms.hcl"
+      worker_config_file_path     = matrix.ip_version == "4" ? "templates/worker.hcl" : "templates/worker_vault_kms.hcl"
+      vault_address               = matrix.ip_version == "4" ? "" : step.create_vault_cluster.instance_public_ips[0]
+      vault_transit_token         = matrix.ip_version == "4" ? "" : step.create_vault_cluster.vault_transit_token
     }
   }
 
@@ -129,6 +163,9 @@ scenario "e2e_aws" {
       target_count         = var.target_count <= 1 ? 2 : var.target_count
       additional_tags      = step.create_tag1_inputs.tag_map
       subnet_ids           = step.create_boundary_cluster.subnet_ids
+      ingress_cidr         = matrix.ip_version == "4" ? ["10.0.0.0/8"] : []
+      ingress_ipv6_cidr    = step.create_boundary_cluster.worker_ipv6_cidr
+      ip_version           = matrix.ip_version
     }
   }
 
@@ -153,7 +190,7 @@ scenario "e2e_aws" {
   }
 
   locals {
-    egress_tag = "egress"
+    isolated_tag = "isolated"
   }
 
   step "create_isolated_worker" {
@@ -164,13 +201,16 @@ scenario "e2e_aws" {
       availability_zones   = step.create_base_infra.availability_zone_names
       kms_key_arn          = step.create_base_infra.kms_key_arn
       ubuntu_ami_id        = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      vpc_cidr             = step.create_base_infra.vpc_cidr
+      vpc_cidr_ipv6        = matrix.ip_version == "4" ? "" : step.create_base_infra.vpc_cidr_ipv6
       local_artifact_path  = step.build_boundary.artifact_path
       boundary_install_dir = local.boundary_install_dir
       name_prefix          = step.create_boundary_cluster.name_prefix
       cluster_tag          = step.create_boundary_cluster.cluster_tag
       controller_addresses = step.create_boundary_cluster.public_controller_addresses
       controller_sg_id     = step.create_boundary_cluster.controller_aux_sg_id
-      worker_type_tags     = [local.egress_tag]
+      worker_type_tags     = [local.isolated_tag]
+      ip_version           = matrix.ip_version
       config_file_path     = "templates/worker.hcl"
     }
   }
@@ -204,8 +244,10 @@ scenario "e2e_aws" {
       vpc_id               = step.create_base_infra.vpc_id
       target_count         = 1
       subnet_ids           = step.create_isolated_worker.subnet_ids
-      ingress_cidr         = ["10.13.9.0/24"]
+      ingress_cidr         = matrix.ip_version == "4" ? ["10.13.9.0/24"] : []
+      ingress_ipv6_cidr    = step.create_isolated_worker.worker_ipv6_cidr
       additional_tags      = step.create_tag2_inputs.tag_map
+      ip_version           = matrix.ip_version
     }
   }
 
@@ -237,9 +279,10 @@ scenario "e2e_aws" {
       aws_host_set_filter2     = step.create_tag2_inputs.tag_string
       aws_host_set_ips2        = step.create_isolated_target.target_private_ips
       target_address           = step.create_isolated_target.target_private_ips[0]
-      worker_tag_egress        = local.egress_tag
+      worker_tag_isolated      = local.isolated_tag
       max_page_size            = step.create_boundary_cluster.max_page_size
       aws_region               = var.aws_region
+      ip_version               = matrix.ip_version
     }
   }
 

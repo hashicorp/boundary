@@ -6,6 +6,7 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"testing"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/ratelimit"
+	"github.com/hashicorp/boundary/internal/util"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -779,6 +781,101 @@ func TestDevWorkerRecordingStoragePath(t *testing.T) {
 	}
 }
 
+func TestDevControllerIpv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	// This test only validates that all listeners are utilizing an IPv6 address.
+	// Other dev controller configurations are validates in TestDevController.
+	actual, err := DevController(WithIPv6Enabled(true))
+	require.NoError(err)
+
+	// expected an error here because we purposely did not provide a port number
+	// to allow randomly assigned port values
+	_, _, err = net.SplitHostPort(actual.Controller.PublicClusterAddr)
+	require.Error(err)
+
+	// assert the square brackets are removed from the host ipv6 address and that the port value is empty
+	publicAddr, port, err := util.SplitHostPort(actual.Controller.PublicClusterAddr)
+	require.NoError(err)
+	assert.Empty(port)
+	assert.Empty(publicAddr)
+
+	require.NotEmpty(actual.Listeners)
+	for _, l := range actual.Listeners {
+		addr, _, err := util.SplitHostPort(l.Address)
+		require.NoError(err)
+		ip := net.ParseIP(addr)
+		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+	}
+}
+
+func TestDevWorkerIpv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	// This test only validates that all listeners are utilizing an IPv6 address.
+	// Other dev worker configurations are validates in TestDevWorker.
+	actual, err := DevWorker(WithIPv6Enabled(true))
+	require.NoError(err)
+
+	// expected an error here because we purposely did not provide a port number
+	// to allow randomly assigned port values
+	_, _, err = net.SplitHostPort(actual.Worker.PublicAddr)
+	require.Error(err)
+
+	// assert the square brackets are removed from the worker ipv6 address and that the port value is empty
+	publicAddr, port, err := util.SplitHostPort(actual.Worker.PublicAddr)
+	require.NoError(err)
+	assert.Empty(port)
+	ip := net.ParseIP(publicAddr)
+	assert.NotNil(ip, "failed to parse worker public address")
+	assert.NotNil(ip.To16(), "worker public address is not IPv6 %s", actual.Worker.PublicAddr)
+
+	require.NotEmpty(actual.Listeners)
+	for _, l := range actual.Listeners {
+		addr, _, err := util.SplitHostPort(l.Address)
+		require.NoError(err)
+		ip := net.ParseIP(addr)
+		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+	}
+}
+
+func TestDevCombinedIpv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	// This test only validates that all listeners are utilizing an IPv6 address.
+	actual, err := DevCombined(WithIPv6Enabled(true))
+	require.NoError(err)
+
+	// expected an error here because we purposely did not provide a port number
+	// to allow randomly assigned port values for the worker and controller
+	_, _, err = net.SplitHostPort(actual.Worker.PublicAddr)
+	require.Error(err)
+	_, _, err = net.SplitHostPort(actual.Controller.PublicClusterAddr)
+	require.Error(err)
+
+	// assert the square brackets are removed from the host ipv6 address and that the port value is empty
+	publicAddr, port, err := util.SplitHostPort(actual.Worker.PublicAddr)
+	require.NoError(err)
+	assert.Empty(port)
+	ip := net.ParseIP(publicAddr)
+	assert.NotNil(ip, "failed to parse worker public address")
+	assert.NotNil(ip.To16(), "worker public address is not IPv6 %s", actual.Worker.PublicAddr)
+
+	// assert the square brackets are removed from the controller ipv6 address and that the port value is empty
+	publicAddr, port, err = util.SplitHostPort(actual.Controller.PublicClusterAddr)
+	require.NoError(err)
+	assert.Empty(port)
+	assert.Empty(publicAddr)
+
+	require.NotEmpty(actual.Listeners)
+	for _, l := range actual.Listeners {
+		addr, _, err := util.SplitHostPort(l.Address)
+		require.NoError(err)
+		ip := net.ParseIP(addr)
+		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+	}
+}
+
 func TestDevKeyGeneration(t *testing.T) {
 	t.Parallel()
 	dk := DevKeyGeneration()
@@ -1495,7 +1592,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			expErr:             false,
 		},
 		{
-			name: "One Upstream",
+			name: "ipv4 Upstream",
 			in: `
 			worker {
 				name = "test"
@@ -1503,6 +1600,28 @@ func TestWorkerUpstreams(t *testing.T) {
 			}
 			`,
 			expWorkerUpstreams: []string{"127.0.0.1"},
+			expErr:             false,
+		},
+		{
+			name: "ipv6 Upstream",
+			in: `
+			worker {
+				name = "test"
+				initial_upstreams = ["[2001:4860:4860:0:0:0:0:8888]"]
+			}
+			`,
+			expWorkerUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]"},
+			expErr:             false,
+		},
+		{
+			name: "abbreviated ipv6 Upstream",
+			in: `
+			worker {
+				name = "test"
+				initial_upstreams = ["[2001:4860:4860::8888]"]
+			}
+			`,
+			expWorkerUpstreams: []string{"[2001:4860:4860::8888]"},
 			expErr:             false,
 		},
 		{
@@ -1586,40 +1705,6 @@ func TestWorkerUpstreams(t *testing.T) {
 			expWorkerUpstreams: nil,
 			expErr:             true,
 			expErrIs:           parseutil.ErrNotAUrl,
-		},
-		{
-			name: "Worker using deprecated controllers field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
-			}`,
-			expWorkerUpstreams: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
-			expErr:             false,
-		},
-		{
-			name: "Different values in controllers and initial_upstreams field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
-				initial_upstreams = ["127.0.0.1"]
-			}`,
-			expWorkerUpstreams: nil,
-			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
-		},
-		{
-			name: "Identical values in controllers and initial_upstreams field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1"]
-				initial_upstreams = ["127.0.0.1"]
-			}`,
-			expWorkerUpstreams: nil,
-			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
 		},
 	}
 
@@ -2346,7 +2431,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: ":9201",
 		},
 		{
-			name: "setting public cluster address directly with ip",
+			name: "setting public cluster address directly with ipv4",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -2361,7 +2446,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:9201",
 		},
 		{
-			name: "setting public cluster address directly with ip:port",
+			name: "setting public cluster address directly with ipv4:port",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -2374,6 +2459,66 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expErr:                  false,
 			expErrStr:               "",
 			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "setting public cluster address directly with ipv6",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:9201",
+		},
+		{
+			name: "setting public cluster address directly with ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]:8080",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+		},
+		{
+			name: "setting public cluster address directly with abbreviated ipv6",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:9201",
+		},
+		{
+			name: "setting public cluster address directly with abbreviated ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]:8080",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "setting public cluster address to env var",
@@ -2530,7 +2675,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:8080",
 		},
 		{
-			name: "read address from listeners ip only",
+			name: "read address from listeners ipv4 only",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2544,7 +2689,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:9201",
 		},
 		{
-			name: "read address from listeners ip:port",
+			name: "read address from listeners ipv4:port",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2556,6 +2701,62 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expErr:                  false,
 			expErrStr:               "",
 			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "read address from listeners ipv6 only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860:0:0:0:0:8888]"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:9201",
+		},
+		{
+			name: "read address from listeners ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860:0:0:0:0:8888]:8080"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+		},
+		{
+			name: "read address from listeners abbreviated ipv6 only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860::8888]"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:9201",
+		},
+		{
+			name: "read address from listeners abbreviated ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860::8888]:8080"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "read address from listeners is ignored on different purpose",
@@ -2671,7 +2872,7 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expInitialUpstreams: nil,
 		},
 		{
-			name: "PublicClusterAddr",
+			name: "ipv4 PublicClusterAddr",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -2684,6 +2885,36 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expErr:              false,
 			expErrStr:           "",
 			expInitialUpstreams: []string{"192.168.0.4:9201"},
+		},
+		{
+			name: "ipv6 PublicClusterAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]:9201",
+				},
+				Worker: &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]:9201"},
+		},
+		{
+			name: "abbreviated ipv6 PublicClusterAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]:9201",
+				},
+				Worker: &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860::8888]:9201"},
 		},
 		{
 			name: "ListenerNoAddr",
@@ -2703,7 +2934,7 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expInitialUpstreams: []string{"127.0.0.1:9201"},
 		},
 		{
-			name: "ListenerAddr",
+			name: "ipv4 ListenerAddr",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2719,6 +2950,42 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expErr:              false,
 			expErrStr:           "",
 			expInitialUpstreams: []string{"192.168.0.5:9201"},
+		},
+		{
+			name: "ipv6 ListenerAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "[2001:4860:4860:0:0:0:0:8888]:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]:9201"},
+		},
+		{
+			name: "abbreviated ipv6 ListenerAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "[2001:4860:4860::8888]:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860::8888]:9201"},
 		},
 		{
 			name: "ListenerAddrDomain",
@@ -3081,7 +3348,7 @@ func TestMaxPageSize(t *testing.T) {
 			in: `
 			controller {
 				name = "example-controller"
-				max_page_size = "env://ENV_MAX_CONN"
+				max_page_size = "env://ENV_MAX_PAGE_SIZE"
 			}`,
 			expMaxPageSize: 8,
 			envMaxPageSize: "8",
@@ -3092,7 +3359,7 @@ func TestMaxPageSize(t *testing.T) {
 			in: `
 			controller {
 				name = "example-controller"
-				max_page_size = "env://ENV_MAX_CONN"
+				max_page_size = "env://ENV_MAX_PAGE_SIZE"
 			}`,
 			envMaxPageSize: "bogus value",
 			expErr:         true,
@@ -3102,7 +3369,7 @@ func TestMaxPageSize(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("ENV_MAX_CONN", tt.envMaxPageSize)
+			t.Setenv("ENV_MAX_PAGE_SIZE", tt.envMaxPageSize)
 			c, err := Parse(tt.in)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrStr)
@@ -3116,4 +3383,155 @@ func TestMaxPageSize(t *testing.T) {
 			require.Equal(t, tt.expMaxPageSize, c.Controller.MaxPageSize)
 		})
 	}
+}
+
+func TestConcurrentPasswordHashWorkers(t *testing.T) {
+	tests := []struct {
+		name                             string
+		in                               string
+		envConcurrentPasswordHashWorkers string
+		expConcurrentPasswordHashWorkers uint
+		expErr                           bool
+		expErrStr                        string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 5
+			}`,
+			expConcurrentPasswordHashWorkers: 5,
+			expErr:                           false,
+		},
+		{
+			name: "Valid string value",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "5"
+			}`,
+			expConcurrentPasswordHashWorkers: 5,
+			expErr:                           false,
+		},
+		{
+			name: "Invalid value integer",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 0
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers value must be at least 1, was 0",
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "string bad"
+			}`,
+			expErr: true,
+			expErrStr: "Concurrent password hash workers value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value string integer",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "-1"
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers value must be at least 1, was -1",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = false
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "env://ENV_MAX_PW_WORKERS"
+			}`,
+			expConcurrentPasswordHashWorkers: 8,
+			envConcurrentPasswordHashWorkers: "8",
+			expErr:                           false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "env://ENV_MAX_PW_WORKERS"
+			}`,
+			envConcurrentPasswordHashWorkers: "bogus value",
+			expErr:                           true,
+			expErrStr: "Concurrent password hash workers value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_PW_WORKERS", tt.envConcurrentPasswordHashWorkers)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expConcurrentPasswordHashWorkers, c.Controller.ConcurrentPasswordHashWorkers)
+		})
+	}
+
+	t.Run("using environment variable", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "2")
+		in := `
+			controller {
+				name = "example-controller"
+			}`
+		c, err := Parse(in)
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		require.NotNil(t, c.Controller)
+		require.EqualValues(t, 2, c.Controller.ConcurrentPasswordHashWorkers)
+	})
+
+	t.Run("using environment variable with invalid value", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "invalid")
+		in := `
+			controller {
+				name = "example-controller"
+			}`
+		c, err := Parse(in)
+		require.Error(t, err)
+		require.Nil(t, c)
+		require.Contains(t, err.Error(), "BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS value is not an int")
+	})
+
+	t.Run("using environment variable and config value uses config value", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "2")
+		in := `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 3
+			}`
+		c, err := Parse(in)
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		require.NotNil(t, c.Controller)
+		require.EqualValues(t, 3, c.Controller.ConcurrentPasswordHashWorkers)
+	})
 }

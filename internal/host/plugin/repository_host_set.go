@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/util"
+	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -32,19 +33,22 @@ import (
 
 // normalizeCatalogAttributes allows a plugin to normalize set attributes before
 // they are saved
-func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHs *pb.HostSet) error {
+func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHc *hcpb.HostCatalog, plgHs *pb.HostSet) error {
 	const op = "plugin.(Repository).normalizeSetAttributes"
 	switch {
 	case util.IsNil(plgClient):
 		return errors.New(ctx, errors.InvalidParameter, op, "plugin client is nil")
 	case plgHs == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "host set is nil")
+	case plgHc.GetWorkerFilter().GetValue() != "" && plgHc.GetPlugin() == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin data is not available on host catalog with worker filter")
 	case plgHs.GetAttributes() == nil:
 		return nil
 	}
 
 	ret, err := plgClient.NormalizeSetData(ctx, &plgpb.NormalizeSetDataRequest{
 		Attributes: plgHs.GetAttributes(),
+		Plugin:     plgHc.GetPlugin(),
 	})
 	switch {
 	case err == nil:
@@ -115,12 +119,11 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	s.LastSyncTime = timestamp.New(time.Unix(0, 0))
 	s.NeedSync = true
 
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-
-	plgHc, err := toPluginCatalog(ctx, c)
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -129,8 +132,13 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
 	if plgHs.GetAttributes() != nil {
-		if err := normalizeSetAttributes(ctx, plgClient, plgHs); err != nil {
+		if err := normalizeSetAttributes(ctx, plgClient, plgHc, plgHs); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		if s.Attributes, err = proto.Marshal(plgHs.GetAttributes()); err != nil {
@@ -213,10 +221,6 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	// The set now exists in the plugin, sync it immediately.
 	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0, scheduler.WithRunNow(true))
 
-	plg, err := r.getPlugin(ctx, c.GetPluginId())
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
 	return returnedHostSet, plg, nil
 }
 
@@ -359,15 +363,9 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in project id %q", newSet.CatalogId, projectId))
 	}
 
-	// Get the plugin client.
-	plgClient, ok := r.plugins[catalog.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", catalog.GetPluginId()))
-	}
-
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
-	plgHc, err := toPluginCatalog(ctx, catalog)
+	plgHc, err := toPluginCatalog(ctx, catalog, plg)
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -380,9 +378,14 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
 	if updateAttributes {
 		if newPlgSet.GetAttributes() != nil {
-			if err := normalizeSetAttributes(ctx, plgClient, newPlgSet); err != nil {
+			if err := normalizeSetAttributes(ctx, plgClient, plgHc, newPlgSet); err != nil {
 				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			if newSet.Attributes, err = proto.Marshal(newPlgSet.GetAttributes()); err != nil {
@@ -733,11 +736,7 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 		return db.NoRowsAffected, nil
 	}
 
-	plgClient, ok := r.plugins[plg.GetPublicId()]
-	if !ok || plgClient == nil {
-		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
-	}
-	plgHc, err := toPluginCatalog(ctx, c)
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
@@ -745,6 +744,12 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
+
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op)
+	}
+
 	// Even if the plugin returns an error, we ignore it and proceed with
 	// deleting the set, hence we don't check the error here. This is because we
 	// may get errors from the plugin that we can't do anything about (say, it's
@@ -799,6 +804,15 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		limit = opts.WithLimit
 	}
 
+	reader := r.reader
+	writer := r.writer
+	if !util.IsNil(opts.WithReader) {
+		reader = opts.WithReader
+	}
+	if !util.IsNil(opts.WithWriter) {
+		writer = opts.WithWriter
+	}
+
 	args := make([]any, 0, 1)
 	var where string
 
@@ -820,7 +834,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 	}
 
 	var aggHostSets []*hostSetAgg
-	if err := r.reader.SearchWhere(ctx, &aggHostSets, where, args, dbArgs...); err != nil {
+	if err := reader.SearchWhere(ctx, &aggHostSets, where, args, dbArgs...); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", publicId)))
 	}
 
@@ -839,7 +853,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 	}
 	var plg *plugin.Plugin
 	if plgId != "" {
-		plg, err = r.getPlugin(ctx, plgId)
+		plg, err = r.getPlugin(ctx, plgId, WithReaderWriter(reader, writer))
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}

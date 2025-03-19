@@ -1,0 +1,213 @@
+---
+layout: docs
+page_title: Deploy Boundary
+description: >-
+ Deploy a self-managed version of Boundary Enterprise or Community Edition on Ubuntu/Debian, CentOS/RHEL, or Amazon Linux by installing the binary file.
+---
+
+# Deploy Boundary
+
+To deploy a self-managed Boundary environment you should:
+
+1. Deploy and configure Boundary controllers and workers
+2. Install end-user clients
+
+This guide outlines the required steps to manually install and configure a
+single HashiCorp Boundary cluster as defined in the [Recommended
+architecture](/boundary/docs/install-boundary/recommended-architecture) topic.
+It assumes you install Boundary on virtual machines (VMs) or bare-metal servers
+running a Debian or Red Hat-based Linux distribution.
+
+To learn about installing end-user clients, refer to the [Install Boundary clients](/boundary/docs/install-boundary/install-clients) page.
+
+This document includes general guidance as well as specific recommendations for
+popular cloud infrastructure platforms. These recommendations have also been
+encoded into official Terraform reference architectures for
+[AWS](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/aws),
+[Azure](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/azure),
+and
+[GCP](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/gcp).
+
+Pre-built Boundary packages are available from the [HashiCorp Linux
+Repository](https://www.hashicorp.com/blog/announcing-the-hashicorp-linux-repository).
+In addition to installing the Boundary binary, the official package also
+provides a systemd service unit, and a local `boundary` user account under which
+the service runs.
+
+<Note>
+
+You must complete the following steps for each Boundary controller and worker
+node that you want to deploy. The binary operates as either a worker or
+controller, depending on the configuration that you generate for the
+Boundary binary.
+
+</Note>
+
+The steps vary by Linux distribution.
+
+Select your distribution of Boundary, and complete the steps to install the
+binary:
+
+<Tabs>
+<Tab heading="Enterprise">
+
+<Tabs>
+<Tab heading="Ubuntu/Debian">
+
+1. Use the following command to add the HashiCorp GPC key as a trusted
+   package-signing key:
+
+    ```shell-session
+    $ curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+    ```
+1. Add the official HashiCorp Linux repository:
+
+    ```shell-session
+    $ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+    ```
+
+1. Update the package index:
+
+    ```shell-session
+    $ sudo apt update
+    ```
+
+1. Install Boundary Enterprise:
+
+    ```shell-session
+    $ sudo apt install boundary-enterprise
+    ```
+
+</Tab>
+<Tab heading="CentOS/RHEL">
+
+1. Use the following command to install `yum-config-manager` to manage your
+   repositories:
+
+    ```shell-session
+    $ sudo yum install -y yum-utils
+    ```
+
+2. Add the official HashiCorp Linux repository:
+
+    ```shell-session
+    $ sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+    ```
+
+3. Install Boundary Enterprise:
+
+    ```shell-session
+    $ sudo yum -y install boundary-enterprise
+    ```
+
+</Tab>
+<Tab heading="Amazon Linux">
+
+1. Use the following command to install `yum-config-manager` to manage your
+   repositories:
+
+    ```shell-session
+    $ sudo yum install -y yum-utils shadow-utils
+    ```
+
+2. Add the official HashiCorp Linux repository:
+
+    ```shell-session
+    $ sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+    ```
+
+3. Install Boundary Enterprise:
+
+    ```shell-session
+    $ sudo yum -y install boundary-enterprise
+    ```
+
+</Tab>
+</Tabs>
+</Tab>
+<Tab heading="Community Edition">
+<Tabs>
+<Tab heading="Ubuntu/Debian">
+
+1. Use the following command to add the HashiCorp GPC key as a trusted
+   package-signing key:
+
+    ```shell-session
+    $ curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+    ```
+1. Add the official HashiCorp Linux repository:
+
+    ```shell-session
+    $ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+    ```
+
+1. Update the package index:
+
+    ```shell-session
+    $ sudo apt update
+    ```
+
+1. Install Boundary Community Edition:
+
+    ```shell-session
+    $ sudo apt install boundary
+    ```
+
+</Tab>
+<Tab heading="CentOS/RHEL">
+
+1. Use the following command to install `yum-config-manager` to manage your
+   repositories:
+
+    ```shell-session
+    $ sudo yum install -y yum-utils
+    ```
+
+2. Add the official HashiCorp Linux repository:
+
+    ```shell-session
+    $ sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+    ```
+
+3. Install Boundary Community Edition:
+
+    ```shell-session
+    $ sudo yum -y install boundary
+    ```
+
+</Tab>
+
+<Tab heading="Amazon Linux">
+
+1. Use the following command to install `yum-config-manager` to manage your
+   repositories:
+
+    ```shell-session
+    $ sudo yum install -y yum-utils shadow-utils
+    ```
+
+2. Add the official HashiCorp Linux repository:
+
+    ```shell-session
+    $ sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+    ```
+
+3. Install Boundary Community Edition:
+
+    ```shell-session
+    $ sudo yum -y install boundary
+    ```
+
+</Tab>
+</Tabs>
+</Tab>
+</Tabs>
+
+You should install the binary on the controller and worker instances you configure to run in your Boundary environments. 
+
+Next, you should:
+
+- [Configure Boundary controllers](/boundary/docs/install-boundary/configure-controllers)
+- [Configure Boundary workers](/boundary/docs/install-boundary/configure-workers)
+- [Initialize Boundary](/boundary/docs/install-boundary/initialize)
+- [Install the Boundary Clients](/boundary/docs/install-boundary/install-clients)

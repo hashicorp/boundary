@@ -62,6 +62,10 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, e.LatestVersion, tt.expectedVersion, "Version")
 			assert.Equal(t, e.Priority, tt.priority, "Priority")
 			assert.Equal(t, len(e.Migrations), tt.expectedMigrationCount, "Number of migrations")
+			for _, m := range e.Migrations {
+				assert.NotContains(t, string(m.Statements), "begin;")
+				assert.NotContains(t, string(m.Statements), "commit;")
+			}
 		})
 	}
 }

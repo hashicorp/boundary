@@ -10,7 +10,6 @@ import (
 	"crypto/x509"
 	"math/big"
 	"net"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -151,62 +149,28 @@ func TestNewAuthorizedPkiTestWorker(t *testing.T) {
 	assert.Equal(t, "test", w.GetName())
 }
 
-func TestNewTestMultihopWorkers(t *testing.T) {
-	ctx := context.Background()
-	logger := hclog.New(&hclog.LoggerOptions{
-		Level: hclog.Trace,
+func TestWorkerIPv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	w := NewTestWorker(t, &TestWorkerOpts{
+		EnableIPv6: true,
 	})
-	conf, err := config.DevController()
-	require.NoError(t, err)
-	c := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config: conf,
-		Logger: logger.Named("controller"),
-	})
-	pkiTags := map[string][]string{"connected": {"directly"}}
-	childPkiTags := map[string][]string{"connected": {"multihop"}}
-	childKmsTags := map[string][]string{"connected": {"multihop"}}
-
-	enableAuthDebugging := new(atomic.Bool)
-	enableAuthDebugging.Store(true)
-	kmsWorker, pkiWorker, childPkiWorker, childKmsWorker := NewTestMultihopWorkers(t, logger, c.Context(), c.ClusterAddrs(),
-		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, pkiTags, childPkiTags, childKmsTags, enableAuthDebugging)
-
-	srvRepo, err := c.Controller().ServersRepoFn()
-	require.NoError(t, err)
-	workers, err := srvRepo.ListWorkers(ctx, []string{"global"})
-	assert.Len(t, workers, 4)
-	require.NoError(t, err)
-	var kmsW, pkiW, childPkiW, childKmsW *server.Worker
-	for _, w := range workers {
-		switch w.GetAddress() {
-		case kmsWorker.ProxyAddrs()[0]:
-			kmsW = w
-		case pkiWorker.ProxyAddrs()[0]:
-			pkiW = w
-		case childPkiWorker.ProxyAddrs()[0]:
-			childPkiW = w
-		case childKmsWorker.ProxyAddrs()[0]:
-			childKmsW = w
-		}
+	require.NotNil(w)
+	validateIPv6 := func(addr, name string) {
+		host, _, err := net.SplitHostPort(addr)
+		require.NoError(err)
+		require.NotEmpty(host, "missing host")
+		ip := net.ParseIP(host)
+		assert.NotNil(ip, "failed to parse %s", name)
+		assert.NotNil(ip.To16(), "%s is not IPv6 %s", name, addr)
 	}
-	require.NotNil(t, kmsW)
-	require.NotNil(t, pkiW)
-	require.NotNil(t, childPkiW)
-	require.NotNil(t, childKmsW)
-
-	assert.NotZero(t, kmsW.GetLastStatusTime())
-	assert.NotZero(t, pkiW.GetLastStatusTime())
-	assert.NotZero(t, childPkiW.GetLastStatusTime())
-	assert.NotZero(t, childKmsW.GetLastStatusTime())
-
-	assert.Equal(t, pkiTags, pkiW.GetConfigTags())
-	assert.Equal(t, childPkiTags, childPkiW.GetConfigTags())
-	assert.Equal(t, childKmsTags, childKmsW.GetConfigTags())
-
-	require.NoError(t, c.WaitForNextWorkerStatusUpdate(kmsWorker.Name()))
-	require.NoError(t, c.WaitForNextWorkerStatusUpdate(pkiWorker.Name()))
-	require.NoError(t, c.WaitForNextWorkerStatusUpdate(childPkiWorker.Name()))
-	require.NoError(t, c.WaitForNextWorkerStatusUpdate(childKmsWorker.Name()))
+	for _, addr := range w.addrs {
+		validateIPv6(addr, "worker addr")
+	}
+	for _, addr := range w.ProxyAddrs() {
+		validateIPv6(addr, "proxy addr")
+	}
+	require.NotNil(w.Worker().proxyListener)
+	validateIPv6(w.Worker().proxyListener.ProxyListener.Addr().String(), "proxy listener addr")
 }
 
 func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey) {

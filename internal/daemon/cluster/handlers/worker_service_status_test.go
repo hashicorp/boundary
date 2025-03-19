@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
-	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -49,10 +48,8 @@ func TestStatus(t *testing.T) {
 
 	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
-	c := &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "127.0.0.1",
-	}
+
+	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
 	_, err = serverRepo.UpsertController(ctx, c)
 	require.NoError(t, err)
 
@@ -148,7 +145,6 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -228,7 +224,6 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 				JobsRequests: []*pbs.JobChangeRequest{
 					{
@@ -336,7 +331,6 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 				JobsRequests: []*pbs.JobChangeRequest{
 					{
@@ -414,7 +408,6 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -449,7 +442,7 @@ func TestStatus(t *testing.T) {
 			got, err := s.Status(ctx, tc.req)
 			if tc.wantErr {
 				require.Error(err)
-				assert.Equal(got, &pbs.StatusResponse{})
+				assert.Empty(got)
 				assert.Equal(tc.wantErrMsg, err.Error())
 				return
 			}
@@ -468,7 +461,6 @@ func TestStatus(t *testing.T) {
 						pbs.SessionJobInfo{},
 						pbs.MonitorSessionJobInfo{},
 						pbs.Connection{},
-						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -488,10 +480,7 @@ func TestStatusSessionClosed(t *testing.T) {
 
 	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
-	c := &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "127.0.0.1",
-	}
+	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
 	_, err = serverRepo.UpsertController(ctx, c)
 	require.NoError(t, err)
 
@@ -628,7 +617,6 @@ func TestStatusSessionClosed(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -662,7 +650,6 @@ func TestStatusSessionClosed(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
-						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -683,10 +670,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
-	c := &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "127.0.0.1",
-	}
+	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
 	_, err = serverRepo.UpsertController(ctx, c)
 	require.NoError(t, err)
 
@@ -797,7 +781,6 @@ func TestStatusDeadConnection(t *testing.T) {
 			},
 		},
 		WorkerId:                    worker1.PublicId,
-		AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 		AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 	}
 
@@ -816,7 +799,6 @@ func TestStatusDeadConnection(t *testing.T) {
 				pbs.Job_SessionInfo{},
 				pbs.SessionJobInfo{},
 				pbs.Connection{},
-				pbs.AuthorizedWorkerList{},
 				pbs.AuthorizedDownstreamWorkerList{},
 			),
 			cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -840,10 +822,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
-	c := &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "127.0.0.1",
-	}
+	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
 	_, err = serverRepo.UpsertController(ctx, c)
 	require.NoError(t, err)
 
@@ -952,7 +931,6 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -992,7 +970,6 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -1023,7 +1000,6 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
-						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -1046,10 +1022,7 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 	serverRepo, err := server.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
-	c := &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "127.0.0.1",
-	}
+	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
 	_, err = serverRepo.UpsertController(ctx, c)
 	require.NoError(t, err)
 
@@ -1094,7 +1067,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers: []string{},
 			},
 			want: &pbs.StatusResponse{
 				CalculatedUpstreams: []*pbs.UpstreamServer{
@@ -1104,7 +1076,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -1126,7 +1097,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId:                    worker1.PublicId,
-				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
@@ -1139,7 +1109,7 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId, "unknown"},
+				ConnectedUnmappedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId, "unknown"},
 			},
 			want: &pbs.StatusResponse{
 				CalculatedUpstreams: []*pbs.UpstreamServer{
@@ -1149,10 +1119,9 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId: worker1.PublicId,
-				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
-					WorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
+				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{
+					UnmappedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
 				},
-				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
 			},
 		},
 		{
@@ -1164,8 +1133,7 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers:         []string{w1KeyId, w2KeyId, "unknown"},
-				ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "unknown"},
+				ConnectedUnmappedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId, "unknown"},
 				ConnectedWorkerPublicIds:              []string{w1.GetPublicId(), "unknown"},
 			},
 			want: &pbs.StatusResponse{
@@ -1176,11 +1144,8 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId: worker1.PublicId,
-				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
-					WorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
-				},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{
-					UnmappedWorkerKeyIdentifiers: []string{w2KeyId},
+					UnmappedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
 					WorkerPublicIds:              []string{w1.GetPublicId()},
 				},
 			},
@@ -1194,8 +1159,7 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers:         []string{w1KeyId, w2KeyId, "unknown"},
-				ConnectedUnmappedWorkerKeyIdentifiers: []string{"unknown"},
+				ConnectedUnmappedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId, "unknown"},
 				ConnectedWorkerPublicIds:              []string{w1.GetPublicId(), w2.GetPublicId(), "unknown"},
 			},
 			want: &pbs.StatusResponse{
@@ -1206,11 +1170,9 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					},
 				},
 				WorkerId: worker1.PublicId,
-				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
-					WorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
-				},
 				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{
-					WorkerPublicIds: []string{w1.GetPublicId(), w2.GetPublicId()},
+					UnmappedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
+					WorkerPublicIds:              []string{w1.GetPublicId(), w2.GetPublicId()},
 				},
 			},
 		},
@@ -1227,10 +1189,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 				assert.Equal(tc.wantErrMsg, err.Error())
 				return
 			}
-			gotAuthorizedWorkers := got.GetAuthorizedWorkers()
-			sort.Strings(gotAuthorizedWorkers.GetWorkerKeyIdentifiers())
-			wantAuthorizedWorkers := tc.want.GetAuthorizedWorkers()
-			sort.Strings(wantAuthorizedWorkers.GetWorkerKeyIdentifiers())
 			sort.Strings(got.GetAuthorizedDownstreamWorkers().GetWorkerPublicIds())
 			sort.Strings(tc.want.GetAuthorizedDownstreamWorkers().GetWorkerPublicIds())
 			sort.Strings(got.GetAuthorizedDownstreamWorkers().GetUnmappedWorkerKeyIdentifiers())
@@ -1248,7 +1206,6 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
-						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
@@ -1268,10 +1225,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
-	c := &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "127.0.0.1",
-	}
+	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
 	_, err = serverRepo.UpsertController(ctx, c)
 	require.NoError(t, err)
 
@@ -1368,7 +1322,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
-			repoWorker, err := serverRepo.LookupWorkerByName(ctx, worker1.Name)
+			repoWorker, err := server.TestLookupWorkerByName(ctx, t, worker1.Name, serverRepo)
 			require.NoError(err)
 			assert.Equal(tc.wantState, repoWorker.OperationalState)
 		})
@@ -1385,10 +1339,7 @@ func TestWorkerLocalStorageStateStatus(t *testing.T) {
 	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
-	c := &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "127.0.0.1",
-	}
+	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
 	_, err = serverRepo.UpsertController(ctx, c)
 	require.NoError(t, err)
 
@@ -1537,7 +1488,7 @@ func TestWorkerLocalStorageStateStatus(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
-			repoWorker, err := serverRepo.LookupWorkerByName(ctx, worker1.Name)
+			repoWorker, err := server.TestLookupWorkerByName(ctx, t, worker1.Name, serverRepo)
 			require.NoError(err)
 			assert.Equal(tc.wantState, repoWorker.LocalStorageState)
 		})

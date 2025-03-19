@@ -1,8 +1,8 @@
 ---
 layout: docs
-page_title: Configure MinIO
-description: |-
-  How to configure MinIO as a storage provider for Boundary session recording.
+page_title: Configure MinIO storage
+description: >-
+  Configure MinIO as a storage provider for recorded sessions. Understand session recording and MinIO requirements. View an example configuration.
 ---
 
 # Configure MinIO as a storage provider
@@ -29,6 +29,9 @@ When you determine storage requirements for the external bucket, you should cons
 - A MinIO storage bucket
 
    You must associate the Boundary storage bucket with a MinIO storage bucket. A Boundary MinIO storage bucket contains the bucket name, endpoint URL, optional region, optional prefix, and the service account credentials needed to access the bucket. To enable credential rotation, you cannot add a Boundary storage bucket without a MinIO service account. You can disable credential rotation when you create the Boundary storage bucket.
+
+   At the time of the 0.18.0 release, the latest tested and supported MinIO version is `RELEASE.2024-10-02T17-50-4Z`.
+   Newer versions may work as well, but they have not been tested.
 
    <Note>
 

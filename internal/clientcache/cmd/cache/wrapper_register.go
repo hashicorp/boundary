@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/wrapper"
+	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 )
 
@@ -33,28 +34,50 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 	if baseCmd.FlagSkipCacheDaemon {
 		return
 	}
-	if startDaemon(ctx, baseCmd) {
-		addTokenToCache(ctx, baseCmd, token)
+	started, err := startDaemon(ctx, baseCmd)
+	if err != nil {
+		// Failed to start the daemon, but we don't need to tell the user
+		// since the function already did
+		return
 	}
+	if !started {
+		// If we didn't have to start it, check that the version of the cache
+		// is current or newer than the CLI.
+		// We don't care if the cache is newer than the CLI, since we don't
+		// want to kill a cache started by a newer version of the CLI.
+		if !cacheVersionIsCurrentOrNewer(ctx, baseCmd) {
+			// If the cache is older than the current version, restart it
+			// Ignore errors stopping the daemon since it might have been stopped since
+			// we last tried to start the daemon.
+			_ = stopDaemon(ctx, baseCmd)
+			_, err = startDaemon(ctx, baseCmd)
+			if err != nil {
+				return
+			}
+		}
+	}
+
+	// Cache successfully started and version verified, add the token to the cache
+	addTokenToCache(ctx, baseCmd, token)
 }
 
 // startDaemon attempts to start a daemon and returns true if we have attempted to start
 // the daemon and either it was successful or it was already running.
-func startDaemon(ctx context.Context, baseCmd *base.Command) bool {
+func startDaemon(ctx context.Context, baseCmd *base.Command) (started bool, _ error) {
 	// Ignore errors related to checking if the process is already running since
 	// this can fall back to running the process.
 	if dotPath, err := DefaultDotDirectory(ctx); err == nil {
 		pidPath := filepath.Join(dotPath, pidFileName)
 		if running, _ := pidFileInUse(ctx, pidPath); running != nil {
 			// return true since it is already running, no need to run it again.
-			return true
+			return false, nil
 		}
 	}
 
 	cmdName, err := os.Executable()
 	if err != nil {
 		baseCmd.UI.Error(fmt.Sprintf("unable to find boundary binary for cache startup: %s", err.Error()))
-		return false
+		return false, err
 	}
 
 	var stdErr bytes.Buffer
@@ -64,8 +87,41 @@ func startDaemon(ctx context.Context, baseCmd *base.Command) bool {
 	// We use Run here instead of Start because the command spawns off a subprocess and returns.
 	// We do not want to send the request to add a persona to the cache until we know the daemon
 	// has started up.
-	err = cmd.Run()
-	return err == nil || strings.Contains(stdErr.String(), "already running")
+	if err := cmd.Run(); err != nil {
+		baseCmd.UI.Error(fmt.Sprintf("unable to start cache: %s", err.Error()))
+		return false, err
+	}
+	return !strings.Contains(stdErr.String(), "already running"), nil
+}
+
+// stopDaemon makes a best effort attempt at stopping the cache daemon, if it is running
+func stopDaemon(ctx context.Context, baseCmd *base.Command) error {
+	dotPath, err := DefaultDotDirectory(ctx)
+	if err != nil {
+		baseCmd.UI.Error(fmt.Sprintf("cannot find daemon directory: %s", err.Error()))
+		return err
+	}
+	pidPath := filepath.Join(dotPath, pidFileName)
+	running, err := pidFileInUse(ctx, pidPath)
+	if err != nil {
+		baseCmd.UI.Error(fmt.Sprintf("PID file in use: %s", err.Error()))
+		return err
+	}
+	if running == nil {
+		return nil
+	}
+
+	cmdName, err := os.Executable()
+	if err != nil {
+		baseCmd.UI.Error(fmt.Sprintf("unable to find boundary binary for cache startup: %s", err.Error()))
+		return err
+	}
+	cmd := exec.Command(cmdName, "cache", "stop")
+	if err := cmd.Run(); err != nil {
+		baseCmd.UI.Error(fmt.Sprintf("unable to stop cache: %s", err.Error()))
+		return err
+	}
+	return nil
 }
 
 // silentUi should not be used in situations where the UI is expected to be
@@ -106,6 +162,27 @@ func addTokenToCache(ctx context.Context, baseCmd *base.Command, token string) b
 	// the daemon so use the silentUi to toss out anything that shouldn't be used
 	_, apiErr, err := com.Add(ctx, silentUi(), client, keyringType, tokName)
 	return err == nil && apiErr == nil
+}
+
+// cacheVersionIsCurrentOrNewer requests the version of the cache from the
+// daemon, then compares it to the version of the CLI. If the cache version is
+// greater than or equal to the CLI, it returns true. In all other cases, including
+// errors, it returns false.
+func cacheVersionIsCurrentOrNewer(ctx context.Context, baseCmd *base.Command) bool {
+	com := StatusCommand{Command: base.NewCommand(baseCmd.UI)}
+	// We do not want to print errors out from our background interactions with
+	// the daemon so use the silentUi to toss out anything that shouldn't be used
+	_, result, apiErr, err := com.Status(ctx)
+	if err != nil || apiErr != nil {
+		return false
+	}
+	cacheVersion := version.FromVersionString(result.Version)
+	if cacheVersion == nil {
+		return false
+	}
+	cliVersion := version.Get()
+
+	return cacheVersion.Semver().GreaterThanOrEqual(cliVersion.Semver())
 }
 
 // waitForDaemon continually looks for the unix socket until it is found or the

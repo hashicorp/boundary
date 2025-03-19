@@ -8,12 +8,22 @@ output "instance_ids" {
 
 output "instance_public_ips" {
   description = "Public IPs of Vault instances"
-  value       = [for instance in aws_instance.vault_instance : instance.public_ip]
+  value       = var.ip_version == "4" ? [for instance in aws_instance.vault_instance : instance.public_ip] : flatten([for instance in aws_instance.vault_instance : instance.ipv6_addresses])
 }
 
 output "instance_private_ips" {
   description = "Private IPs of Vault instances"
   value       = [for instance in aws_instance.vault_instance : instance.private_ip]
+}
+
+output "instance_addresses" {
+  description = "Addresses of Vault instances"
+  value       = var.ip_version == "4" ? [for instance in aws_instance.vault_instance : "http://${instance.public_ip}:8200"] : flatten([for instance in aws_instance.vault_instance : instance.ipv6_addresses])
+}
+
+output "instance_addresses_private" {
+  description = "Private addresses of Vault instances"
+  value       = [for instance in aws_instance.vault_instance : "http://${instance.private_ip}:8200"]
 }
 
 output "key_id" {
@@ -33,6 +43,10 @@ output "vault_instances" {
 
 output "vault_root_token" {
   value = coalesce(var.vault_root_token, try(enos_vault_init.leader[0].root_token, null), "none")
+}
+
+output "vault_transit_token" {
+  value = try([for token in enos_remote_exec.vault_kms_policy : trimspace(token.stdout)][0], "")
 }
 
 output "vault_unseal_keys_b64" {

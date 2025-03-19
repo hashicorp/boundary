@@ -1,0 +1,235 @@
+---
+layout: docs
+page_title: v0.19.0 release notes
+description: >-
+  Learn more about the new features included in the Boundary 0.19.0 release. Understand any deprecations, changes, and known issues.
+---
+
+# Boundary 0.19.0 release notes
+
+**GA date:** February 10, 2025
+
+@include 'release-notes/intro.mdx'
+
+## Important changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Change</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Role creation
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In a future version Boundary will no longer automatically create roles when new scopes are created. This was implemented prior to multi-scope grants to ensure administrators and users had default permissions in new scopes. Since Boundary 0.15, initial roles created for new clusters provide these permissions by default to all scopes using multi-scope grants.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Docker image no longer contains <code>curl</code>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.17.1 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary. The image now includes <code>wget</code>, which you can alternatively use to check the health endpoint for a worker. If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>.
+    <br /><br />
+    Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
+    </td>
+  </tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Go version 1.23 TLS handshake behavior changes
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new TLS handshake behavior. Some VPN providers struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x and later controllers, workers, or clients being unable to establish connections. As a workaround, you can revert back to the previous TLS handshake behavior.
+    <br /><br />
+    Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
+    </td>
+  </tr>
+
+  </tbody>
+</table>
+
+## New features
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Feature</th>
+      <th style={{verticalAlign: 'middle'}}>Update</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Dynamic host catalogs for GCP
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary now supports dynamic host catalogs for GCP.
+    <br /><br />
+    When you configure dynamic host catalogs, Boundary securely queries infrastructure providers at runtime to discover and configure new services. You can define rules for whether you want Boundary to automatically add any discovered hosts as members of the host set.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/concepts/host-discovery">Host discovery</a> and <a href="/boundary/docs/concepts/host-discovery/gcp">GCP dynamic hosts</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Worker filter generator
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A new filter generator was added to the Admin Console UI, allowing you to more easily create worker filters for targets, credential stores, and storage buckets.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/concepts/filtering/worker-tags">Worker tags</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Vault brokered credentials format change
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Previously, when you brokered credentials from a Vault credential store, the credentials displayed in raw JSON and could contain special characters. It was difficult to consume the credentials in this format. Credentials are now displayed in a format that is easier to cut and paste.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/configuration/credential-management/static-cred-vault">Create a Vault credential store</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Azure Virtual Machine Scale Set support for dynamic host catalogs
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA in version 0.19.1
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The Azure plugin now supports Azure Virtual Machine Scale Sets in both Flexible and Uniform orchestration modes for dynamic host catalogs. It automatically discovers any individual virtual machine instances that are part of the scale sets and adds them as hosts.
+    <br /><br />
+    Learn more:&nbsp;<a href="/boundary/docs/concepts/host-discovery/azure">Azure dynamic host catalogs</a>.
+    </td>
+  </tr>
+
+  </tbody>
+</table>
+
+## Known issues and breaking changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Issue</th>
+      <th style={{verticalAligh: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Rotation of AWS access and secret keys during a session results in stale recordings
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In Boundary version 0.13.0+, when you rotate a storage bucket's secrets, any new sessions use the new credentials. However, previously established sessions continue to use the old credentials.
+    <br /><br />
+    As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+    Otherwise, you may end up with recordings that aren't stored in the remote storage bucket, and are unable to be played back.
+    </td>
+  </tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unsupported recovery workflow during worker failure
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If a worker fails during a recording, there is no way to recover the recording. This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.1+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Docker image no longer contains <code>curl</code>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.17.1 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary.
+    <br /><br />
+    The image now includes <code>wget</code>. You can use <code>wget</code> to check the health endpoint for workers.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/operations/health#check-the-health-endpoint-using-wget">Check the health endpoint using <code>wget</code></a>
+    <br /><br />
+    If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>. Refer to the following commands for examples of using <code>apk</code> to install <code>curl</code>:
+    <br /><br />
+    <code>&lt;CONTAINER-ID&gt; apk add curl</code>
+    <br /><br />
+    or
+    <br /><br />
+    <code>kubectl exec -ti &lt;NAME&gt; -- apk add curl</code>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.18.x+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary version 0.18.x and later CLI is unable to establish connections using the <code>boundary connect</code> command
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary version 0.18.x uses Go version 1.23, which introduced a new TLS handshake behavior. Some VPN providers struggle with the TLS handshake being sent over 2 frames instead of 1, which can lead to Boundary version 0.18.x and later controllers, workers, or clients being unable to establish connections. As a workaround, you can revert back to the previous TLS handshake behavior.
+    <br /><br />
+    To revert back to the previous TLS handshake behavior, add the <code>tlskyber=0</code> parameters to the GODEBUG environment variable before the <code>boundary connect</code> command. For example:
+    <br /><br />
+    <code>GODEBUG=tlskyber=0 boundary connect ssh -target-id &lt;ID&gt;</code>
+    <br /><br />
+    Learn more: <a href="https://github.com/golang/go/issues/70047">Go issue #70047</a> and <a href="https://tip.golang.org/doc/go1.23">Go 1.23 Release Notes</a>
+    <br /><br />
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.19.0
+    <br /><br />
+    (Fixed in 0.19.1)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Soft-deleted users are not properly authenticated
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Version 0.19.0 introduced a soft delete for when a cached user's auth tokens are deleted, but there is a valid refresh token that is less than 20 days old. Boundary considers those users as deleted. But it keeps their user information in the cache so that it can restore the information, if they log in again.
+    <br /><br />
+    However, soft-deleted users were not being properly restored when they logged back in and it affected search capabilities.
+    <br/><br />
+    This issue is resolved in version 0.19.1. Soft-deleted users are now properly restored as active when they log in again if the refresh token is less than 20 days old.
+    </td>
+  </tr>
+
+  </tbody>
+</table>

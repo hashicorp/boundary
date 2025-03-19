@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ import (
 
 func Test_newCloudEventsFormatterFilter(t *testing.T) {
 	t.Parallel()
-	testSource, err := url.Parse("https://localhost:9200")
+	testSource, err := url.Parse("https://[::1]:9200")
 	require.NoError(t, err)
 	tests := []struct {
 		name            string
@@ -35,10 +36,15 @@ func Test_newCloudEventsFormatterFilter(t *testing.T) {
 	}{
 		{
 			// default case should have default deny for filtering ServerCoordinationService/Status for observation events
-			name:     "no-opts",
-			source:   testSource,
-			format:   cloudevents.FormatJSON,
-			wantDeny: []string{`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Status"`},
+			name:   "no-opts",
+			source: testSource,
+			format: cloudevents.FormatJSON,
+			wantDeny: []string{
+				`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Status"`,
+				`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/SessionInfo"`,
+				`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/RoutingInfo"`,
+				`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Statistics"`,
+			},
 		},
 		{
 			name:   "bad-allow-filter",
@@ -152,7 +158,7 @@ func Test_newCloudEventsFormatterFilter(t *testing.T) {
 func TestNode_Process(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	testUrl, err := url.Parse("https://localhost")
+	testUrl, err := url.Parse("https://[::1]")
 	require.NoError(t, err)
 	now := time.Now()
 
@@ -294,12 +300,12 @@ func TestNode_Process(t *testing.T) {
 			},
 			wantText: `{
   "id": "%s",
-  "source": "https://localhost",
+  "source": "https://[::1]",
   "specversion": "1.0",
   "type": "test",
   "data": "test-string",
   "datacontentype": "text/plain",
-  "dataschema": "https://localhost",
+  "dataschema": "https://[::1]",
   "time": %s
 }
 `,
@@ -394,4 +400,37 @@ func Test_cloudEventsFormatter_Rotate(t *testing.T) {
 			assert.NotNil(tt.f.Signer)
 		})
 	}
+}
+
+func Test_cloudEventsFormatter_Race(t *testing.T) {
+	testUrl, err := url.Parse("https://[::1]")
+	require.NoError(t, err)
+
+	testNode, err := newCloudEventsFormatterFilter(testUrl, cloudevents.FormatJSON, WithSchema(testUrl))
+	require.NoError(t, err)
+
+	start := make(chan struct{})
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-start
+		for i := 0; i < 10; i++ {
+			_ = testNode.Rotate(testWrapper(t))
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-start
+		for i := 0; i < 10; i++ {
+			_, _ = testNode.Process(context.Background(), &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: time.Now(),
+				Payload:   "test-data",
+			})
+		}
+	}()
+	close(start)
+	wg.Wait()
 }

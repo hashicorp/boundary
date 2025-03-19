@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/stretchr/testify/assert"
@@ -106,5 +107,18 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
 		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
 		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+	})
+	t.Run("WithWorkerFilter", func(t *testing.T) {
+		opts := getOpts(WithWorkerFilter(`"test" in "/tags/type"`))
+		testOpts := getDefaultOptions()
+		testOpts.withWorkerFilter = `"test" in "/tags/type"`
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithReaderWriter", func(t *testing.T) {
+		reader := &db.Db{}
+		writer := &db.Db{}
+		opts := getOpts(WithReaderWriter(reader, writer))
+		assert.Equal(t, reader, opts.WithReader)
+		assert.Equal(t, writer, opts.withWriter)
 	})
 }

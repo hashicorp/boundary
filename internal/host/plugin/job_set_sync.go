@@ -85,7 +85,7 @@ func (r *SetSyncJob) Status() scheduler.JobStatus {
 // creates a plugin client and syncs each set.  Can not be run in parallel, if
 // Run is invoked while already running an error with code JobAlreadyRunning
 // will be returned.
-func (r *SetSyncJob) Run(ctx context.Context) error {
+func (r *SetSyncJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "plugin.(SetSyncJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -221,10 +221,6 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 				setInfos: make(map[string]*setInfo),
 			}
 		}
-		ci.plg, ok = r.plugins[ag.PluginId]
-		if !ok {
-			return errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", ag.PluginId))
-		}
 
 		s, err := ag.toHostSet(ctx)
 		if err != nil {
@@ -244,7 +240,8 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 		catalogInfos[ag.CatalogId] = ci
 	}
 
-	// Now, look up the catalog persisted (secret) information
+	// Now, look up the catalog persisted (secret) information. Additionally,
+	// find the correct plugin to use.
 	catIds := make([]string, 0, len(catalogInfos))
 	for k := range catalogInfos {
 		catIds = append(catIds, k)
@@ -262,12 +259,17 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 		if !ok {
 			return errors.New(ctx, errors.NotSpecificIntegrity, op, "catalog returned when no set requested it")
 		}
-		plgCat, err := toPluginCatalog(ctx, c)
+		plgCat, err := toPluginCatalog(ctx, c, ca.plugin())
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin catalog conversion"))
 		}
 		ci.plgCat = plgCat
 		ci.storeCat = c
+
+		ci.plg, err = pluginClientFactoryFn(ctx, ci.plgCat, r.plugins)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get plugin client"))
+		}
 
 		per, err := toPluginPersistedData(ctx, r.kms, c.GetProjectId(), s)
 		if err != nil {

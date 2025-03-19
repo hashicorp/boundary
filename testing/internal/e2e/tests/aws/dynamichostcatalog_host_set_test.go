@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
+	"regexp"
 	"testing"
 	"time"
 
@@ -17,11 +17,16 @@ import (
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/api/sessions"
+	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var sessionRegex = regexp.MustCompile("Session ID:\\s+(.+)(?:$|\n)")
 
 // TestCliCreateAwsDynamicHostCatalogWithHostSet uses the boundary cli to create a host catalog with the AWS
 // plugin. The test sets up an AWS dynamic host catalog, creates some host sets, sets up a target to
@@ -43,11 +48,11 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
+	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion, c.IpVersion != "4")
 	require.NoError(t, err)
 
 	// Set up a host set
-	hostSetId1, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter1)
+	hostSetId1, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter1, c.IpVersion)
 	require.NoError(t, err)
 	var targetIps1 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps1)
@@ -56,7 +61,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, expectedHostSetCount1)
 
 	// Set up another host set
-	hostSetId2, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter2)
+	hostSetId2, err := boundary.CreatePluginHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter2, c.IpVersion)
 	require.NoError(t, err)
 	var targetIps2 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps2), &targetIps2)
@@ -112,41 +117,63 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	assert.Equal(t, expectedHostCatalogCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	var targetId string
+	if c.IpVersion == "4" {
+		targetId, err = boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	} else {
+		targetId, err = boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
+			target.WithIngressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagCollocated)),
+		)
+	}
+
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId1)
 	require.NoError(t, err)
 
 	// Connect to target
+	ctxCancel, cancel := context.WithCancel(context.Background())
+	go func() {
+		e2e.RunCommand(ctxCancel, "boundary",
+			e2e.WithArgs(
+				"connect",
+				"-target-id", targetId,
+				"-exec", "/usr/bin/ssh", "--",
+				"-l", c.TargetSshUser,
+				"-i", c.TargetSshKeyPath,
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				"-p", "{{boundary.port}}", // this is provided by boundary
+				"{{boundary.ip}}",
+				"hostname -i; sleep 60",
+			),
+		)
+	}()
+	t.Cleanup(cancel)
+
+	s := boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
+
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"connect",
-			"-target-id", targetId,
-			"-exec", "/usr/bin/ssh", "--",
-			"-l", c.TargetSshUser,
-			"-i", c.TargetSshKeyPath,
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-			"-p", "{{boundary.port}}", // this is provided by boundary
-			"{{boundary.ip}}",
-			"hostname", "-i",
-		),
+		e2e.WithArgs("sessions", "read", "-id", s.Id, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
+	var sessionReadResult sessions.SessionReadResult
+	err = json.Unmarshal(output.Stdout, &sessionReadResult)
+	require.NoError(t, err)
+	s = sessionReadResult.Item
 
-	parts := strings.Fields(string(output.Stdout))
-	hostIp := parts[len(parts)-1]
-	t.Log("Successfully connected to the target")
-
-	// Check if connected host exists in the host set
-	hostIpInList := false
-	for _, v := range targetIps1 {
-		if v == hostIp {
-			hostIpInList = true
-		}
+	require.Greater(t, len(s.Connections), 0)
+	var hostIp string
+	switch c.IpVersion {
+	case "4":
+		hostIp = s.Connections[0].EndpointTcpAddress
+	case "6", "dual":
+		hostIp = fmt.Sprintf("[%s]", s.Connections[0].EndpointTcpAddress)
+	default:
+		require.Fail(t, "unknown ip version", c.IpVersion)
 	}
-	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps1))
+	require.Contains(t, targetIps1, hostIp, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps1))
 }
 
 // TestApiCreateAwsDynamicHostCatalog uses the Go api to create a host catalog with the AWS plugin.

@@ -7,18 +7,32 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-hclog"
 )
 
+// ErrRefreshInProgress is used as an internal error to indicate that a refresh
+// is already in progress, as a signal that the caller may want to handle it a
+// different way.
+var ErrRefreshInProgress error = stderrors.New("cache refresh in progress")
+
 type RefreshService struct {
 	repo *Repository
+
+	// syncSempaphores is used to prevent multiple refreshes from happening at
+	// the same time for a given user ID and resource type. The key is a string
+	// (the user ID + resource type) and the value is an atomic bool we can CAS
+	// with.
+	syncSemaphores sync.Map
 
 	logger hclog.Logger
 	// the amount of time that should have passed since the last refresh for a
@@ -69,8 +83,10 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %v, auth token %q", u, t.Id))
 		}
 		for _, kt := range keyringTokens {
-			at := r.repo.tokenKeyringFn(kt.KeyringType, kt.TokenName)
+			at, err := r.repo.tokenKeyringFn(kt.KeyringType, kt.TokenName)
 			switch {
+			case err != nil && !errors.Is(err, base.ErrNoToken):
+				event.WriteSysEvent(ctx, op, "failed to get token from keyring", "keyring", kt.KeyringType, "token name", kt.TokenName, "error", err)
 			case at == nil, at.Id != kt.AuthTokenId, at.UserId != t.UserId:
 				event.WriteSysEvent(ctx, op, "Removed keyring token since the keyring contents have changed since being cached", "keyring", kt.KeyringType, "token name", kt.TokenName, "old auth token id", kt.AuthTokenId)
 				// delete the keyring token if the auth token in the keyring
@@ -78,17 +94,16 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
 					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
 				}
-			case at != nil:
+			default:
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
-				var apiErr *api.Error
 				switch {
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
 						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
 					}
-					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
+					event.WriteSysEvent(ctx, op, "Removed auth token from db because it was not found to be valid in boundary", "auth token id", at.Id)
 					continue
-				case err != nil && !errors.Is(err, apiErr):
+				case err != nil:
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating keyring stored token against boundary", "auth token id", at.Id))
 					continue
 				}
@@ -98,17 +113,18 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 		if atv, ok := r.repo.idToKeyringlessAuthToken.Load(t.Id); ok {
 			if at, ok := atv.(*authtokens.AuthToken); ok {
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
-				var apiErr *api.Error
 				switch {
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					r.repo.idToKeyringlessAuthToken.Delete(t.Id)
-					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
+					event.WriteSysEvent(ctx, op, "Removed auth token from in memory cache because it was not found to be valid in boundary", "auth token id", at.Id)
+					if err := r.repo.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
+						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
+					}
 					continue
-				case err != nil && !errors.Is(err, apiErr):
+				case err != nil:
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating in memory stored token against boundary", "auth token id", at.Id))
 					continue
 				}
-
 				ret[*t] = at.Token
 			}
 		}
@@ -135,21 +151,25 @@ func (r *RefreshService) cacheSupportedUsers(ctx context.Context, in []*user) ([
 	return ret, nil
 }
 
-// RefreshForSearch refreshes a specific resource type owned by the user associated
-// with the provided auth token id, if it hasn't been refreshed in a certain
-// amount of time. If the resources has been updated recently, or if it is known
-// that the user's boundary instance doesn't support partial refreshing, this
-// method returns without any requests to the boundary controller.
-// While the criteria of whether the user will refresh or not is almost the same
-// as the criteria used in Refresh, RefreshForSearch will not refresh any
-// data if there is not a refresh token stored for the resource. It
-// might make sense to change this in the future, but the reasoning used is
-// that we should not be making an initial load of all resources while blocking
-// a search query, in case we have not yet even attempted to load the resources
-// for this user yet.
-// Note: Currently, if the context timesout we stop refreshing completely and
-// return to the caller.  A possible enhancement in the future would be to return
-// when the context is Done, but allow the refresh to proceed in the background.
+// RefreshForSearch refreshes a specific resource type owned by the user
+// associated with the provided auth token id, if it hasn't been refreshed in a
+// certain amount of time. If the resources has been updated recently, or if it
+// is known that the user's boundary instance doesn't support partial
+// refreshing, this method returns without any requests to the boundary
+// controller. While the criteria of whether the user will refresh or not is
+// almost the same as the criteria used in Refresh, RefreshForSearch will not
+// refresh any data if there is not a refresh token stored for the resource. It
+// might make sense to change this in the future, but the reasoning used is that
+// we should not be making an initial load of all resources while blocking a
+// search query, in case we have not yet even attempted to load the resources
+// for this user yet. Note: Currently, if the context timesout we stop
+// refreshing completely and return to the caller.  A possible enhancement in
+// the future would be to return when the context is Done, but allow the refresh
+// to proceed in the background.
+//
+// If a refresh is already running for that user and resource type we will
+// return ErrRefreshInProgress. If so we will not start another one and we can
+// make it clear in the response that cache filling is ongoing.
 func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid string, resourceType SearchableResource, opt ...Option) error {
 	const op = "cache.(RefreshService).RefreshForSearch"
 	if r.maxSearchRefreshTimeout > 0 {
@@ -191,6 +211,8 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
+	cacheKey := fmt.Sprintf("%s-%s", u.Id, resourceType)
+
 	switch resourceType {
 	case ResolvableAliases:
 		rtv, err := r.repo.lookupRefreshToken(ctx, u, resolvableAliasResourceType)
@@ -198,6 +220,11 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			semaphore, _ := r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+			if !semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+				return ErrRefreshInProgress
+			}
+			defer semaphore.(*atomic.Bool).Store(false)
 			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
@@ -206,6 +233,12 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			if rtv != nil {
 				args = append(args, "alias staleness", time.Since(rtv.UpdateTime))
 			}
+
+			if opts.withTestRefreshWaitChs != nil {
+				close(opts.withTestRefreshWaitChs.firstSempahore)
+				<-opts.withTestRefreshWaitChs.secondSemaphore
+			}
+
 			r.logger.Debug("refreshing aliases before performing search", args...)
 			if err := r.repo.refreshResolvableAliases(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op)
@@ -217,6 +250,12 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			semaphore, _ := r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+			if !semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+				return ErrRefreshInProgress
+			}
+			defer semaphore.(*atomic.Bool).Store(false)
+
 			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
@@ -225,6 +264,12 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			if rtv != nil {
 				args = append(args, "target staleness", time.Since(rtv.UpdateTime))
 			}
+
+			if opts.withTestRefreshWaitChs != nil {
+				close(opts.withTestRefreshWaitChs.firstSempahore)
+				<-opts.withTestRefreshWaitChs.secondSemaphore
+			}
+
 			r.logger.Debug("refreshing targets before performing search", args...)
 			if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
@@ -236,6 +281,12 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			semaphore, _ := r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+			if !semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+				return ErrRefreshInProgress
+			}
+			defer semaphore.(*atomic.Bool).Store(false)
+
 			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
@@ -244,6 +295,12 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			if rtv != nil {
 				args = append(args, "session staleness", time.Since(rtv.UpdateTime))
 			}
+
+			if opts.withTestRefreshWaitChs != nil {
+				close(opts.withTestRefreshWaitChs.firstSempahore)
+				<-opts.withTestRefreshWaitChs.secondSemaphore
+			}
+
 			r.logger.Debug("refreshing sessions before performing search", args...)
 			if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
@@ -262,6 +319,11 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 // cache with the values retrieved there. Refresh accepts the options
 // WithTargetRetrievalFunc and WithSessionRetrievalFunc which overwrites the
 // default functions used to retrieve those resources from boundary.
+//
+// This shares the map of sync semaphores with RefreshForSearch, so if a refresh
+// is already happening via either method, it will be skipped by the other. In
+// the case of this function it won't return ErrRefreshInProgress, but it will
+// log that the refresh is already in progress.
 func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 	const op = "cache.(RefreshService).Refresh"
 	if err := r.repo.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
@@ -290,16 +352,32 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 			continue
 		}
 
-		if err := r.repo.refreshResolvableAliases(ctx, u, tokens, opt...); err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
-		}
-		if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
-		}
-		if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+		cacheKey := fmt.Sprintf("%s-%s", u.Id, ResolvableAliases)
+		semaphore, _ := r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.refreshResolvableAliases(ctx, u, tokens, opt...); err != nil {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			}
+			semaphore.(*atomic.Bool).Store(false)
 		}
 
+		cacheKey = fmt.Sprintf("%s-%s", u.Id, Targets)
+		semaphore, _ = r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			}
+			semaphore.(*atomic.Bool).Store(false)
+		}
+
+		cacheKey = fmt.Sprintf("%s-%s", u.Id, Sessions)
+		semaphore, _ = r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			}
+			semaphore.(*atomic.Bool).Store(false)
+		}
 	}
 	return retErr
 }
@@ -346,28 +424,47 @@ func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Optio
 			continue
 		}
 
-		if err := r.repo.checkCachingTargets(ctx, u, tokens, opt...); err != nil {
-			if err == ErrRefreshNotSupported {
-				// This is expected so no need to propagate the error up
-				continue
+		cacheKey := fmt.Sprintf("%s-%s", u.Id, Targets)
+		semaphore, _ := r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.checkCachingTargets(ctx, u, tokens, opt...); err != nil {
+				if err == ErrRefreshNotSupported {
+					semaphore.(*atomic.Bool).Store(false)
+					// This is expected so no need to propagate the error up
+					continue
+				}
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 			}
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
-		}
-		if err := r.repo.checkCachingSessions(ctx, u, tokens, opt...); err != nil {
-			if err == ErrRefreshNotSupported {
-				// This is expected so no need to propagate the error up
-				continue
-			}
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
-		}
-		if err := r.repo.checkCachingResolvableAliases(ctx, u, tokens, opt...); err != nil {
-			if err == ErrRefreshNotSupported {
-				// This is expected so no need to propagate the error up
-				continue
-			}
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			semaphore.(*atomic.Bool).Store(false)
 		}
 
+		cacheKey = fmt.Sprintf("%s-%s", u.Id, ResolvableAliases)
+		semaphore, _ = r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.checkCachingResolvableAliases(ctx, u, tokens, opt...); err != nil {
+				if err == ErrRefreshNotSupported {
+					// This is expected so no need to propagate the error up
+					semaphore.(*atomic.Bool).Store(false)
+					continue
+				}
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			}
+			semaphore.(*atomic.Bool).Store(false)
+		}
+
+		cacheKey = fmt.Sprintf("%s-%s", u.Id, Sessions)
+		semaphore, _ = r.syncSemaphores.LoadOrStore(cacheKey, new(atomic.Bool))
+		if semaphore.(*atomic.Bool).CompareAndSwap(false, true) {
+			if err := r.repo.checkCachingSessions(ctx, u, tokens, opt...); err != nil {
+				if err == ErrRefreshNotSupported {
+					semaphore.(*atomic.Bool).Store(false)
+					// This is expected so no need to propagate the error up
+					continue
+				}
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+			}
+			semaphore.(*atomic.Bool).Store(false)
+		}
 	}
 	return retErr
 }

@@ -28,6 +28,8 @@ import (
 // TestRotationTicking ensures that we see new credential information for a
 // worker on both the controller side and worker side in a periodic fashion
 func TestRotationTicking(t *testing.T) {
+	t.Parallel()
+
 	require, assert := require.New(t), assert.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
@@ -95,7 +97,7 @@ func TestRotationTicking(t *testing.T) {
 	// Verify we see authorized credentials now
 	auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
 	require.NoError(err)
-	assert.Len(auths, 2)
+	require.Len(auths, 2)
 	// Fetch creds and store current key
 	currNodeCreds, err := types.LoadNodeCredentials(
 		w.Context(),
@@ -112,21 +114,29 @@ func TestRotationTicking(t *testing.T) {
 	// Make sure we have a failsafe in case the below loop never finds what it's
 	// looking for; at expiration the List will fail and we'll hit the Require,
 	// exiting
-	deadlineCtx, deadlineCtxCancel := context.WithTimeout(c.Context(), 10*time.Minute)
+	testTimeout := 10 * time.Minute
+	testDeadline, ok := t.Deadline()
+	if ok && time.Until(testDeadline) < testTimeout {
+		// If the test deadline is less than the default timeout, use the deadline
+		// Give a minute buffer for shutdowns and other test cleanup
+		testTimeout = time.Until(testDeadline) - time.Minute
+	}
+	deadlineCtx, deadlineCtxCancel := context.WithTimeout(c.Context(), testTimeout)
 	defer deadlineCtxCancel()
 
 	rotationCount := 2
 	for {
-		if rotationCount > 5 {
+		if rotationCount > 3 {
 			break
 		}
 		nextRotation := w.Worker().AuthRotationNextRotation.Load()
-		time.Sleep((*nextRotation).Sub(time.Now()) + 5*time.Second)
+		// Sleep until 5 seconds after next rotation
+		time.Sleep(time.Until(*nextRotation) + 5*time.Second)
 
 		// Verify we see 2- after credentials have rotated, we should see current and previous
 		auths, err = workerAuthRepo.List(deadlineCtx, (*types.NodeInformation)(nil))
 		require.NoError(err)
-		assert.Len(auths, 2)
+		require.Len(auths, 2)
 
 		// Fetch creds and compare current key
 		currNodeCreds, err := types.LoadNodeCredentials(

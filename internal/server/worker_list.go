@@ -4,14 +4,20 @@
 package server
 
 import (
+	"context"
+	"crypto/rand"
 	stderrors "errors"
 	"fmt"
+	"math/big"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/event"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
+	gvers "github.com/hashicorp/go-version"
 	"github.com/mitchellh/pointerstructure"
 	"google.golang.org/grpc/codes"
 )
@@ -62,6 +68,31 @@ func (w WorkerList) SupportsFeature(f version.Feature) WorkerList {
 	return ret
 }
 
+// Shuffle returns a randomly-shuffled copy of the caller's Workers (using
+// crypto/rand). If the caller's WorkerList has one element or less, this
+// function is a no-op.
+func (w WorkerList) Shuffle() (WorkerList, error) {
+	if len(w) <= 1 {
+		return w, nil
+	}
+
+	ret := make(WorkerList, len(w))
+	copy(ret, w)
+
+	// This is an adaptation of the Fisher-Yates shuffle used in
+	// math/rand.Shuffle, but using the crypto/rand package instead. The same
+	// caveats as math/rand.Shuffle apply.
+	for i := len(ret) - 1; i > 0; i-- {
+		j, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
+		if err != nil {
+			return nil, err
+		}
+		ret[i], ret[j.Uint64()] = ret[j.Uint64()], ret[i]
+	}
+
+	return ret, nil
+}
+
 // filtered returns a new workerList where all elements contained in it are the
 // ones which from the original workerList that pass the evaluator's evaluation.
 func (w WorkerList) Filtered(eval *bexpr.Evaluator) (WorkerList, error) {
@@ -80,6 +111,51 @@ func (w WorkerList) Filtered(eval *bexpr.Evaluator) (WorkerList, error) {
 		if ok {
 			ret = append(ret, worker)
 		}
+	}
+	return ret, nil
+}
+
+// FilteredWithFeatures returns a new workerList where all elements contained in
+// it are the ones which from the original workerList that pass the evaluator's
+// evaluation and satisfy the features required.
+func (w WorkerList) FilteredWithFeatures(ctx context.Context, eval *bexpr.Evaluator, features []version.Feature) (WorkerList, error) {
+	const op = "server.WorkerList.FilteredWithFeatures"
+	var ret []*Worker
+workerLoop:
+	for _, worker := range w {
+		filterInput := map[string]interface{}{
+			"name": worker.GetName(),
+			"tags": worker.CanonicalTags(),
+		}
+		ok, err := eval.Evaluate(filterInput)
+		if err != nil && !stderrors.Is(err, pointerstructure.ErrNotFound) {
+			// If we find pointerstructure.ErrNotFound, don't error out but
+			// ignore the worker and go to the next.
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+		if len(features) > 0 {
+			versionString := worker.ReleaseVersion
+			idx := strings.Index(versionString, version.BoundaryPrefix)
+			if idx >= 0 {
+				versionString = versionString[idx+len(version.BoundaryPrefix):]
+			}
+			nodeVersion, err := gvers.NewVersion(versionString)
+			if err != nil {
+				// Emit error and continue, as we might still find a different worker
+				event.WriteError(ctx, op, fmt.Errorf("cannot parse worker version %s for worker %s", versionString, worker.Name))
+				continue
+			}
+			for _, f := range features {
+				if !version.SupportsFeature(nodeVersion, f) {
+					continue workerLoop
+				}
+			}
+		}
+
+		ret = append(ret, worker)
 	}
 	return ret, nil
 }

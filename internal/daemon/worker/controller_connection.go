@@ -14,7 +14,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
@@ -43,6 +42,8 @@ var HandleHcpbClusterId func(s string) string
 // StartControllerConnections starts up the resolver and initiates controller
 // connection client creation
 func (w *Worker) StartControllerConnections() error {
+	w.confAddressReceiversLock.Lock()
+	defer w.confAddressReceiversLock.Unlock()
 	const op = "worker.(Worker).StartControllerConnections"
 	initialAddrs := make([]string, 0, len(w.conf.RawConfig.Worker.InitialUpstreams))
 	for _, addr := range w.conf.RawConfig.Worker.InitialUpstreams {
@@ -50,14 +51,14 @@ func (w *Worker) StartControllerConnections() error {
 		case strings.HasPrefix(addr, "/"):
 			initialAddrs = append(initialAddrs, addr)
 		default:
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr) {
-				host, port, err = net.SplitHostPort(net.JoinHostPort(addr, "9201"))
-			}
+			host, port, err := util.SplitHostPort(addr)
 			if err != nil {
 				return fmt.Errorf("error parsing upstream address: %w", err)
 			}
-			initialAddrs = append(initialAddrs, net.JoinHostPort(host, port))
+			if port == "" {
+				port = "9201"
+			}
+			initialAddrs = append(initialAddrs, util.JoinHostPort(host, port))
 		}
 	}
 
@@ -262,10 +263,10 @@ func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 		PublicAddr:       w.conf.RawConfig.Worker.PublicAddr,
 		OperationalState: w.operationalState.Load().(server.OperationalState).String(),
 	}
-	if w.LastStatusSuccess() != nil && len(w.LastStatusSuccess().GetWorkerId()) > 0 {
+	if w.LastRoutingInfoSuccess() != nil && len(w.LastRoutingInfoSuccess().GetWorkerId()) > 0 {
 		// even though we wont have the worker the first time we dial, any
 		// redial attempts should result in the worker id being populated
-		wci.WorkerId = w.LastStatusSuccess().GetWorkerId()
+		wci.WorkerId = w.LastRoutingInfoSuccess().GetWorkerId()
 	}
 	st, err := wci.AsConnectionStateStruct()
 	if err != nil {

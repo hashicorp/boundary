@@ -34,11 +34,11 @@ jobs:
       go-cache-key: ${{ steps.go-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -53,7 +53,7 @@ jobs:
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -76,10 +76,11 @@ jobs:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'e2e_aws builder:crt'
+          - filter: 'e2e_aws builder:crt ip_version:4'
           - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
           - filter: 'e2e_docker_base_plus builder:crt'
+          - filter: 'e2e_docker_base_with_gcp builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
           - filter: 'e2e_docker_base_with_worker builder:crt'
           - filter: 'e2e_docker_worker_registration_controller_led builder:crt'
@@ -101,16 +102,20 @@ jobs:
       ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
       ENOS_VAR_go_version: ${{ inputs.go-version }}
+      ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
+      ENOS_VAR_gcp_client_email: ${{ secrets.GCP_CLIENT_EMAIL_CI }}
+      ENOS_VAR_gcp_private_key_id: ${{ secrets.GCP_PRIVATE_KEY_ID_CI }}
+      ENOS_VAR_gcp_private_key: ${{ secrets.GCP_PRIVATE_KEY_CI }}
     steps:
       - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -128,7 +133,7 @@ jobs:
           terraform_wrapper: false
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4 # v6.1.0
+        uses: crazy-max/ghaction-import-gpg@cb9bde2e2525e640591a934b1fd28eef1dcaf5e5 # v6.2.0
         with:
           gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
@@ -147,6 +152,17 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_CI }}
           role-skip-session-tagging: true
           role-duration-seconds: 3600
+      - name: Configure GCP credentials
+        if: contains(matrix.filter, 'gcp')
+        id: gcp_auth
+        uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f # v2.1.7
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          access_token_lifetime: '3600s'
+          project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
+      - name: 'Set up GCP Cloud SDK'
+        if: contains(matrix.filter, 'gcp')
+        uses: google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a # v2.1.2
       - name: Set up Enos
         uses: hashicorp/action-setup-enos@v1    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
@@ -160,7 +176,7 @@ jobs:
           echo "debug_data_artifact_name=enos-debug-data_$(echo ${{ matrix.filter }} | sed -e 's/ /_/g' | sed -e 's/:/=/g')" >> "$GITHUB_OUTPUT"
       - name: Set up dependency cache
         id: dep-cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: /tmp/test-deps
           key: enos-test-deps-password-store-1.7.4-vault-1.12.2
@@ -218,12 +234,12 @@ jobs:
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
-        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         if: contains(matrix.filter, 'e2e_ui')
         with:
           node-version: '16.x'
       - name: Checkout boundary-ui
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         if: contains(matrix.filter, 'e2e_ui')
         with:
           repository: hashicorp/boundary-ui
@@ -263,10 +279,10 @@ jobs:
       - name: Split matrix filter name
         id: split
         run: |
-          SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1)
+          SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1,3 | sed 's/:/_/g')
           echo fragment="${SCENARIO}" >> "$GITHUB_OUTPUT"
       - name: Upload e2e tests output
-        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: test-${{ steps.split.outputs.fragment }}
           path: enos/*.log
@@ -279,7 +295,7 @@ jobs:
           docker logs database
       - name: Upload e2e UI tests debug info
         if: contains(matrix.filter, 'e2e_ui') && steps.run.outcome == 'failure'
-        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: test-e2e-ui-debug
           path: enos/support/src/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
@@ -292,7 +308,7 @@ jobs:
           enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Upload Debug Data
         if: ${{ always() && steps.run_retry.outcome == 'failure' }}
-        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores and colons replaced by equals.
           name: ${{ steps.prepare_scenario.outputs.debug_data_artifact_name }}
@@ -327,27 +343,24 @@ jobs:
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
       - name: Send Slack message if Run and Retry fails (or if something else went wrong)
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
         # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
         # failure() captures errors before `Run Enos scenario`
         # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
         if: ${{ failure() || (steps.run.outcome == 'failure' && steps.run_retry.outcome == 'failure') }}
         with:
-          channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
           payload: |
-            {
-              "text": ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
+            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+            text: ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
       - name: Send Slack message if Run but Retry passes
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
         if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
         with:
-          channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
           payload: |
-            {
-              "text": ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
+            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+            text: ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
+

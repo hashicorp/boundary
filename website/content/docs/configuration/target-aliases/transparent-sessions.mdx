@@ -1,0 +1,98 @@
+---
+layout: docs
+page_title: Configure transparent sessions
+description: >-
+  Learn how to configure transparent sessions to enhance end-user workflows and simplify target access.
+---
+
+# Configure transparent sessions
+
+@include 'alerts/enterprise-only.mdx'
+
+@include 'alerts/beta.mdx'
+
+## Requirements
+
+Before you configure transparent sessions, you must:
+
+- Ensure that the Boundary CLI and Boundary Desktop are not installed in the environment in which you want to run the transparent sessions beta.
+- Download the appropriate Boundary installer for your Windows or MacOS environment from the [Install Boundary](/boundary/install#installer) page or the [releases](https://releases.hashicorp.com/boundary-installer) page.
+
+## Install the Boundary clients
+
+Complete the following steps to install the Boundary Client Agent, CLI, and Desktop client:
+
+1. Install Boundary using the installer.
+Make sure to select the options **Boundary Client Agent**, **CLI**, and **Desktop**.
+1. Open the CLI and type the following command to confirm that the version is 0.18.0:
+   ```shell-session
+   $ boundary version
+   ```
+1. In the CLI, run the status command to confirm that the Boundary Client Agent has started:
+
+   ```shell-session
+   $ boundary client-agent status
+   ```
+
+## Configure targets
+
+The following section details how to configure targets and test the transparent sessions public beta feature.
+
+<Tip>
+
+  If you use a cluster that was created earlier than release 0.16.0, you must add the grant `list-resolvable-aliases` so that the client agent can populate the local alias cache.
+
+  As an example, you could add the grant:
+   
+  `type=user;actions=list-resolvable-aliases;ids=*`.
+
+</Tip>
+
+Complete the following steps to configure targets and test transparent sessions:
+
+1. Authenticate to Boundary using the CLI or Desktop client.
+1. [Create a new target with an alias](/boundary/docs/concepts/aliases#create-an-alias-during-target-creation) or [create an alias for an existing target](/boundary/docs/concepts/aliases#create-an-alias-for-an-existing-target).
+Ensure that you have authorization to establish a session to the target.
+1. Open the client of your choice and [connect to your target using the alias](/boundary/docs/concepts/aliases#connect-to-a-target-using-an-alias).
+
+   Boundary routes your session using the Boundary Client Agent.
+   You can validate that Boundary routed the session by looking at the **Sessions** page in the Desktop client, by typing `boundary sessions list -recursive` in the CLI, or by looking at sessions managed by the Client Agent using `boundary client-agent sessions`.
+
+   <Note>
+
+   The Client Agent periodically requests an updated list of aliases from the controller, so the alias may not work immediately after you create it.
+   The alias should be updated in the Client Agent within 2 minutes. If you still see connection issues after 2 minutes, follow the troubleshooting steps in [the Client Agent troubleshooting guide](/boundary/docs/api-clients/client-agent#troubleshooting).
+
+   </Note>
+
+When you have validated that transparent sessions work, you can create and establish transparent sessions to other services.
+
+To establish transparent sessions to other services:
+
+1. Make a list of the services you use.
+1. Create workers as needed for network partitions.
+1. Add the services to Boundary as targets.
+1. [Create aliases for the targets](/boundary/docs/configuration/target-aliases/create-target-alias).
+1. Connect to the target using your client of choice.
+
+## Connect using transparent sessions
+
+Without transparent sessions, you must use the [Boundary connect helpers](/boundary/docs/concepts/connection-workflows) to establish a session:
+
+```shell-session
+$ boundary connect ssh -target-name sql-database -target-scope-name -staging
+```
+
+Alternatively, you can use the Boundary Desktop Client to start a session, and connect on a local port supplied by Boundary:
+
+```shell-session
+$ ssh 127.0.0.1 -p 55374
+```
+
+With transparent sessions, you use the target alias as the address to establish a session. If the [client agent is running](#install-the-boundary-clients) and you have authenticated using the CLI or Boundary Desktop Client, you can use the alias to start a session:
+
+```shell-session
+$ ssh my.alias.name
+```
+
+Boundary starts the session as usual, and brokers or injects any credentials you have configured.

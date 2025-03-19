@@ -7,7 +7,9 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -98,4 +100,27 @@ func Test_TestController(t *testing.T) {
 		assert.NotNil(ws.Recovery())
 		assert.NotNil(ws.Bsr())
 	})
+}
+
+func Test_TestControllerIPv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	c := NewTestController(t, &TestControllerOpts{
+		EnableIPv6: true,
+	})
+	require.NotNil(c)
+	validateIPv6 := func(addr, name string) {
+		host, _, err := net.SplitHostPort(addr)
+		require.NoError(err)
+		require.NotEmpty(host, "missing host")
+		ip := net.ParseIP(host)
+		assert.NotNil(ip, "failed to parse %s", name)
+		assert.NotNil(ip.To16(), "%s is not IPv6 %s", name, addr)
+	}
+	for _, addr := range c.ClusterAddrs() {
+		validateIPv6(addr, "cluster addr")
+	}
+	for _, addr := range c.ApiAddrs() {
+		addr = strings.ReplaceAll(addr, "http://", "")
+		validateIPv6(addr, "api addr")
+	}
 }

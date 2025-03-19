@@ -10,6 +10,7 @@ terraform {
 }
 
 data "enos_environment" "current" {}
+data "aws_caller_identity" "current" {}
 
 locals {
   selected_az = data.aws_availability_zones.available.names[random_integer.az.result]
@@ -55,10 +56,13 @@ resource "random_integer" "az" {
 
 # Create a subnet so that the worker doesn't share one with a controller
 resource "aws_subnet" "default" {
-  vpc_id                  = var.vpc_id
-  cidr_block              = "10.13.9.0/24"
-  map_public_ip_on_launch = true
-  availability_zone       = local.selected_az
+  vpc_id          = var.vpc_id
+  cidr_block      = "10.13.9.0/24"
+  ipv6_cidr_block = var.ip_version != "4" ? cidrsubnet(var.vpc_cidr_ipv6, 8, 0) : null
+
+  map_public_ip_on_launch         = true
+  assign_ipv6_address_on_creation = var.ip_version != "4"
+  availability_zone               = local.selected_az
   tags = merge(
     local.common_tags,
     {
@@ -78,22 +82,28 @@ resource "aws_security_group" "default" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = flatten([formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses)])
+    cidr_blocks = var.ip_version == "6" ? [] : flatten([
+      # allow ingress from ipv4 to allow for test setup from ci
+      formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses)
+    ])
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : (data.enos_environment.current.public_ipv6_addresses != null ? [for ip in data.enos_environment.current.public_ipv6_addresses : cidrsubnet("${ip}/64", 0, 0)] : [])
   }
 
   ingress {
-    description = "Communication from Boundary controller to worker"
-    from_port   = 9202
-    to_port     = 9202
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description      = "Communication from Boundary controller to worker"
+    from_port        = 9202
+    to_port          = 9202
+    protocol         = "tcp"
+    cidr_blocks      = var.ip_version == "6" ? [] : ["0.0.0.0/0"]
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : ["::/0"]
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = var.ip_version == "6" ? [] : ["0.0.0.0/0"]
+    ipv6_cidr_blocks = var.ip_version == "4" ? [] : ["::/0"]
   }
 
   tags = merge(
@@ -109,7 +119,8 @@ resource "aws_security_group" "default" {
 resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
   description       = "This rule allows traffic from a worker to controllers over WAN"
   security_group_id = var.controller_sg_id
-  cidr_ipv4         = "${aws_instance.worker.public_ip}/32"
+  cidr_ipv4         = var.ip_version == "4" ? "${aws_instance.worker.public_ip}/32" : null
+  cidr_ipv6         = var.ip_version == "4" ? null : cidrsubnet("${aws_instance.worker.ipv6_addresses[0]}/64", 0, 0)
   from_port         = 9201
   to_port           = 9201
   ip_protocol       = "tcp"
@@ -133,18 +144,21 @@ resource "aws_instance" "worker" {
   iam_instance_profile   = aws_iam_instance_profile.boundary_profile.name
   monitoring             = var.worker_monitoring
 
+  ipv6_address_count = var.ip_version == "4" ? 0 : 1
+
   root_block_device {
     iops        = var.ebs_iops
     volume_size = var.ebs_size
     volume_type = var.ebs_type
     throughput  = var.ebs_throughput
     tags        = local.common_tags
+    encrypted   = true
   }
 
   tags = merge(
     local.common_tags,
     {
-      Name = "${var.name_prefix}-boundary-worker",
+      Name = "${var.name_prefix}-boundary-worker-${split(":", data.aws_caller_identity.current.user_id)[1]}",
     },
   )
 }
@@ -159,7 +173,7 @@ resource "enos_bundle_install" "worker" {
 
   transport = {
     ssh = {
-      host = aws_instance.worker.public_ip
+      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
     }
   }
 }
@@ -175,7 +189,7 @@ resource "enos_remote_exec" "update_path_worker" {
 
   transport = {
     ssh = {
-      host = aws_instance.worker.public_ip
+      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
     }
   }
 }
@@ -192,17 +206,20 @@ resource "enos_file" "worker_config" {
   content = templatefile("${path.module}/${var.config_file_path}", {
     id                     = random_pet.worker.id
     kms_key_id             = data.aws_kms_key.kms_key.id
-    public_addr            = aws_instance.worker.public_ip
+    controller_ips         = var.ip_version == "4" ? jsonencode(var.controller_addresses) : jsonencode(formatlist("[%s]:9201", var.controller_addresses))
+    listener_address       = var.ip_version == "4" ? "0.0.0.0" : "[::]"
+    public_address         = var.ip_version == "6" ? format("[%s]", aws_instance.worker.ipv6_addresses[0]) : aws_instance.worker.public_ip
     type                   = jsonencode(var.worker_type_tags)
     region                 = data.aws_availability_zone.worker_az.region
-    controller_addresses   = jsonencode(var.controller_addresses)
     recording_storage_path = var.recording_storage_path
     audit_log_dir          = local.audit_log_directory
+    vault_address          = var.ip_version == "4" ? var.vault_address : try(format("[%s]", var.vault_address), "")
+    vault_transit_token    = var.vault_transit_token
   })
 
   transport = {
     ssh = {
-      host = aws_instance.worker.public_ip
+      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
     }
   }
 }
@@ -218,7 +235,7 @@ resource "enos_boundary_start" "worker_start" {
   recording_storage_path = var.recording_storage_path != "" ? var.recording_storage_path : null
   transport = {
     ssh = {
-      host = aws_instance.worker.public_ip
+      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
     }
   }
 }
@@ -237,7 +254,7 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = aws_instance.worker.public_ip
+      host = var.ip_version == "6" ? aws_instance.worker.ipv6_addresses[0] : aws_instance.worker.public_ip
     }
   }
 }

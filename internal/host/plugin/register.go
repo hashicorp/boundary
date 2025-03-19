@@ -29,6 +29,7 @@ func (hostHooks) NewCatalog(ctx context.Context, result *host.CatalogListQueryRe
 	s.PluginId = result.PluginId
 	s.SecretsHmac = result.SecretsHmac
 	s.Attributes = result.Attributes
+	s.WorkerFilter = result.WorkerFilter
 
 	return s, nil
 }

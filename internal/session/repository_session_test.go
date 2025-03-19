@@ -5,7 +5,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -54,9 +53,9 @@ func TestRepository_ListSession(t *testing.T) {
 		UserId: composedOf.UserId,
 		Permissions: []perms.Permission{
 			{
-				ScopeId:  composedOf.ProjectId,
-				Resource: resource.Session,
-				Action:   action.List,
+				GrantScopeId: composedOf.ProjectId,
+				Resource:     resource.Session,
+				Action:       action.List,
 			},
 		},
 	}
@@ -109,9 +108,9 @@ func TestRepository_ListSession(t *testing.T) {
 			perms: &perms.UserPermissions{
 				Permissions: []perms.Permission{
 					{
-						ScopeId:  "o_thisIsNotValid",
-						Resource: resource.Session,
-						Action:   action.List,
+						GrantScopeId: "o_thisIsNotValid",
+						Resource:     resource.Session,
+						Action:       action.List,
 					},
 				},
 			},
@@ -126,9 +125,9 @@ func TestRepository_ListSession(t *testing.T) {
 			perms: &perms.UserPermissions{
 				Permissions: []perms.Permission{
 					{
-						ScopeId:  composedOf.ProjectId,
-						Resource: resource.Session,
-						Action:   action.Read,
+						GrantScopeId: composedOf.ProjectId,
+						Resource:     resource.Session,
+						Action:       action.Read,
 					},
 				},
 			},
@@ -200,10 +199,10 @@ func TestRepository_ListSession(t *testing.T) {
 			UserId: s.UserId,
 			Permissions: []perms.Permission{
 				{
-					ScopeId:  s.ProjectId,
-					Resource: resource.Session,
-					Action:   action.List,
-					OnlySelf: true,
+					GrantScopeId: s.ProjectId,
+					Resource:     resource.Session,
+					Action:       action.List,
+					OnlySelf:     true,
 				},
 			},
 		}
@@ -227,9 +226,9 @@ func TestRepository_ListSession(t *testing.T) {
 			UserId: composedOf.UserId,
 			Permissions: []perms.Permission{
 				{
-					ScopeId:  composedOf.ProjectId,
-					Resource: resource.Session,
-					Action:   action.List,
+					GrantScopeId: composedOf.ProjectId,
+					Resource:     resource.Session,
+					Action:       action.List,
 				},
 			},
 		}
@@ -336,9 +335,9 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 	for i := 0; i < numPerScope; i++ {
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 		p = append(p, perms.Permission{
-			ScopeId:  composedOf.ProjectId,
-			Resource: resource.Session,
-			Action:   action.List,
+			GrantScopeId: composedOf.ProjectId,
+			Resource:     resource.Session,
+			Action:       action.List,
 		})
 		s := TestSession(t, conn, wrapper, composedOf)
 		_ = TestState(t, conn, s.PublicId, StatusActive)
@@ -1823,94 +1822,6 @@ func TestRepository_deleteTargetFKey(t *testing.T) {
 			foundSession, _, err := repo.LookupSession(context.Background(), sesh.PublicId)
 			assert.NoError(err)
 			assert.Empty(foundSession.TargetId)
-		})
-	}
-}
-
-func TestRepository_deleteTerminated(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kms)
-	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-
-	cases := []struct {
-		sessionCount   int
-		terminateCount int
-		threshold      time.Duration
-		expected       int
-	}{
-		{
-			0,
-			0,
-			time.Nanosecond,
-			0,
-		},
-		{
-			1,
-			1,
-			time.Nanosecond,
-			1,
-		},
-		{
-			1,
-			1,
-			time.Hour,
-			0,
-		},
-		{
-			10,
-			10,
-			time.Nanosecond,
-			10,
-		},
-		{
-			10,
-			4,
-			time.Nanosecond,
-			4,
-		},
-		{
-			10,
-			0,
-			time.Nanosecond,
-			0,
-		},
-		{
-			10,
-			10,
-			time.Hour,
-			0,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(fmt.Sprintf("%d_%d_%s", tc.sessionCount, tc.terminateCount, tc.threshold), func(t *testing.T) {
-			t.Cleanup(func() {
-				sdb, err := conn.SqlDB(ctx)
-				require.NoError(t, err)
-				_, err = sdb.Exec(`delete from session;`)
-				require.NoError(t, err)
-			})
-
-			for i := 0; i < tc.sessionCount; i++ {
-				s := TestSession(t, conn, wrapper, composedOf)
-				if i < tc.terminateCount {
-					_, err = repo.CancelSession(ctx, s.PublicId, s.Version)
-					require.NoError(t, err)
-				}
-
-			}
-			c, err := repo.TerminateCompletedSessions(ctx)
-			require.NoError(t, err)
-			assert.Equal(t, tc.terminateCount, c)
-
-			c, err = repo.deleteSessionsTerminatedBefore(ctx, tc.threshold)
-			require.NoError(t, err)
-			assert.Equal(t, tc.expected, c)
 		})
 	}
 }

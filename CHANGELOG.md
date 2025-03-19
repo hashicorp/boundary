@@ -4,9 +4,205 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.17.2 (Unreleased)
+### New and Improved 
 
-### Changes
+* Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
+  ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
+
+## 0.19.0 (2025/02/10)
+### New and Improved
+
+* Introduces soft-delete for users within the client cache.
+  ([PR](https://github.com/hashicorp/boundary/pull/5173)).
+* GCP dynamic host catalog: Add dynamic host catalog support for 
+  discovering GCP Compute Engine VM Instances.
+  ([PR](https://github.com/hashicorp/boundary/pull/5229)).
+* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and 
+maintainability of worker queries, and improve DB performance. ([PR](https://github.com/hashicorp/boundary/pull/5338)).
+* Adds support for dual-stack networking for AWS operations.
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52)) 
+  * **Note**: As a consequence of updating AWS SDK dependencies to enable
+    dual-stack support, this Boundary release may consume more memory. From our
+    testing, the increase seems to be around 1.6x, however this
+    may vary depending on your deployment architecture.
+* The worker <-> controller communications have been refactored to improve performance
+  and reliability at large scale. Workers older than v0.19.0 will remain supported
+  until the release of v0.20.0, in accordance with
+  [our worker/controller compatiblity policy](https://developer.hashicorp.com/boundary/docs/enterprise/supported-versions#control-plane-and-worker-compatibility).
+* Add concurrency limit on the password hashing of all password auth methods.
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/5437)).
+
+  This avoids bursty memory and CPU use during concurrent password auth method
+  authentication attempts. The number of concurrent hashing operations
+  can be set with the new `concurrent_password_hash_workers` configuration
+  value in the controller stanza, or the new
+  `BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS` environment variable.
+  The default limit is 1.
+* ui: Improve worker filter workflow for targets, vault credential-stores, and storage-buckets. ([PR](https://github.com/hashicorp/boundary-ui/pull/2614)).
+
+### Bug fixes
+
+* Fix bug in applying BOUNDARY_MAX_RETRIES for boundary cli. Previously
+  setting this environment variable would result in a max retries of 2,
+  regardless of the value set.
+  ([PR](https://github.com/hashicorp/boundary/pull/5385)).
+* Fix bug in parsing IPv6 addresses. Previously setting a target address or the
+  initial upstream address in the config file would result in a malformed value.
+  ([PR](https://github.com/hashicorp/boundary/pull/5221)).
+* Fix an issue where, when starting a session, the connection limit always displays 0.
+  ([PR](https://github.com/hashicorp/boundary/pull/5396)).
+* Fix bug which caused the `children` keyword not to apply the appropriate
+  permissions for a number of resources.
+    ([PR](https://github.com/hashicorp/boundary/pull/5418)).
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5405).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5354)).
+
+## 0.18.3 (2025/02/10) (Enterprise only)
+### Bug fixes
+
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5406).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5365)).
+
+## 0.17.4 (2025/02/10) (Enterprise only)
+### Bug fixes
+
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5528).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5366)).
+
+## 0.18.2 (2024/12/12)
+### Bug fixes
+
+* Fixed an issue where session recordings would fail when large numbers of
+  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
+* Fixed an issue where the controller would incorrectly handle HTTP requests
+  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
+
+## 0.17.3 (2024/12/12)
+### Bug fixes
+
+* Fixed an issue where session recordings would fail when large numbers of
+  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
+* Fixed an issue where the controller would incorrectly handle HTTP requests
+  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
+
+## 0.18.1 (2024/11/21)
+### New and Improved
+
+* Delete terminated sessions in batches to avoid long running jobs.
+  ([PR](https://github.com/hashicorp/boundary/pull/5201))
+
+### Bug fixes
+
+* Fix an issue where users would lose access to managed groups if
+  there are more than 10,000 managed groups in the auth method used.
+  ([PR](https://github.com/hashicorp/boundary/pull/5242))
+* Fix an issue where only the first 10,000 members of a managed group
+  are returned when getting the managed group, and a similar issue where
+  only the first 10,000 managed groups an account is part of is included
+  when getting the account.
+  ([PR](https://github.com/hashicorp/boundary/pull/5245))
+
+## 0.18.0 (2024/10/01)
+### New and Improved
+
+* Add support for dynamic host catalog plugins running in Boundary workers:
+  Boundary plugins that handle dynamic host catalog operations (such as the
+  [AWS](https://github.com/hashicorp/boundary-plugin-aws/tree/main/plugin/service/host)
+  and [Azure](https://github.com/hashicorp/boundary-plugin-azure) plugins) can
+  now run on workers. ([PR](https://github.com/hashicorp/boundary/pull/5137))
+
+* Dynamic host catalogs worker filter support (Enterprise and HCP Boundary
+  only): Operators can now set a worker filter when creating a dynamic host
+  catalog. When set, all of the plugin requests will be sent to the matching
+  worker for processing. ([PR](https://github.com/hashicorp/boundary/pull/5137))
+
+* AWS dynamic host catalogs `AssumeRole` authentication support: Operators can
+  now set-up AWS dynamic host catalogs using Amazon's `AssumeRole`
+  authentication paradigm by providing a valid Role ARN when creating the host
+  catalog. ([PR](https://github.com/hashicorp/boundary/pull/5137) and
+  [PR](https://github.com/hashicorp/boundary-plugin-aws/pull/49))
+
+* Improved MinIO storage plugin compatibility with other services by dropping
+  the checksum headers in `PutObject`.
+  ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/23))
+
+* ui: Add UI support for searching and pagination of aliases.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2498))
+
+* ui: Add UI support for filtering and pagination of session recordings.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2502))
+
+* ui: Improve multi-scope grants select/deselect process.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2435))
+
+### Bug Fixes
+
+* Prevented a data-race in Boundary's event logging system.
+  ([PR](https://github.com/hashicorp/boundary/pull/5139))
+
+* Update Storage Bucket type icon in Target view.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2503))
+
+* Allow user to retry with authentication is pending with OIDC.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2512))
+
+### Deprecations/Changes
+
+* Remove deprecated `controllers` field from the worker config, which was deprecated in 0.9.0 for
+`initial_upstreams`([PR](https://github.com/hashicorp/boundary/pull/5125))
+
+## 0.17.2 (2024/09/25)
+
+### New and Improved
+
+* Improve performance of grants query by reducing the number of rows that need
+  to be returned. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Add several indexes to database tables to improve performance of cascading
+  deletes/updates to session tables.
+  ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Reorder indexes on several join tables to improve performance of grants query.
+  ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Make client cache sqlite database persistent between restarts of the client
+  cache daemon. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Improve client cache performance by adding indexes, limiting results,
+  and insuring only one refresh is running at a time for a given user and
+  resource. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Add pagination support to client API and use pagination when caching
+  resources in client cache.
+  ([PR](https://github.com/hashicorp/boundary/pull/5101) and
+  ([PR](https://github.com/hashicorp/boundary/pull/5107)
+
+### Bug Fixes
 
 * The Go API properly uses the passed in value for `WithRecursive` and
   `WithSkipCurlOutput` instead of always setting to true regardless of the

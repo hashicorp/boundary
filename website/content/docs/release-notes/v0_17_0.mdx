@@ -1,8 +1,8 @@
 ---
 layout: docs
-page_title: v0.17.0
-description: |-
-  Boundary release notes for v0.17.0
+page_title: v0.17.0 release notes
+description: >-
+  Learn more about the new features included in the Boundary 0.17.0 release. Understand any deprecations, changes, and known issues.
 ---
 
 # Boundary 0.17.0 release notes
@@ -184,7 +184,9 @@ description: |-
 
   <tr>
     <td style={{verticalAlign: 'middle'}}>
-    0.17.0 (Fixed in 0.17.1)
+    0.17.0
+    <br /><br />
+    (Fixed in 0.17.1)
     </td>
     <td style={{verticalAlign: 'middle'}}>
     Using an invalid alias results in a 401 message
@@ -202,7 +204,9 @@ description: |-
 
   <tr>
     <td style={{verticalAlign: 'middle'}}>
-    0.17.0 (Fixed in 0.17.1)
+    0.17.0
+    <br /><br />
+    (Fixed in 0.17.1)
     </td>
     <td style={{verticalAlign: 'middle'}}>
     Session recording fails when you use Secure File Copy (SCP)
@@ -217,6 +221,94 @@ description: |-
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
   </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.8.0 - 0.17.2
+    <br /><br />
+    (Fixed in Boundary Community Edition and Boundary Enterprise 0.17.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary controller incorrectly handles HTTP requests and stops prematurely (HCSEC-2024-28)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary Community Edition and Boundary Enterprise incorrectly handle HTTP requests while the Boundary controller is starting up, which may cause the controller to stop prematurely. Boundary is only vulnerable to this flaw during the controller's initialization, which usually occurs in milliseconds during Boundary's startup process.
+    <br /><br />
+    This vulnerability, HCSEC-2024-28, is fixed in Boundary Community Edition and Boundary Enterprise versions 0.16.4, 0.17.3, and 0.18.2.
+    <br /><br />
+    Learn more: <a href="https://discuss.hashicorp.com/t/hcsec-2024-28-boundary-controller-incorrectly-handles-http-requests-on-initialization-which-may-lead-to-a-denial-of-service">HCSEC-2024-28: Boundary controller incorrectly handles http requests on initialization which may lead to a denial of service</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0 - 0.17.3
+    <br /><br />
+    (Fixed in Boundary Enterprise 0.17.4)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Performance is impacted by query
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A query that was added with the aliases feature performed a full table scan of the target table. The scan could negatively impact performance.
+    <br /><br />
+    The scan was replaced with a more efficient method for scanning targets. This issue has been resolved.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0 - 0.17.3
+    <br /><br />
+    (Fixed in Boundary Enterprise 0.17.4)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Performance is impacted by database transactions
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Database transactions were not using the correct reader and writer functions or context. This issue could cause delays and negatively impact system performance.
+    <br /><br />
+    A number of minor fixes were added to improve the way Boundary performs database transactions. This issue has been resolved.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.0 - 0.17.3
+    <br /><br />
+    (Fixed in Boundary Enterprise 0.17.4)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    GO-2024-3333
+    <br /><br />
+    CVE-2024-45338
+    <br /><br />
+    CVE-2024-45337
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The Go dependencies that were used in Boundary release 0.17.x contained security vulnerabilities. Boundary Enterprise 0.17.4 was updated to use new versions of the dependencies. This issue is resolved.
+    <br /><br />
+    Learn more:
+    <br /><br />
+    GO-2024-3333: <a href="https://pkg.go.dev/vuln/GO-2024-3333">An attacker can craft an input to the Parse functions that would be processed non-linearly with respect to its length, resulting in extremely slow parsing. This could cause a denial of service.</a>
+    <br /><br />
+    CVE-2024-45338: <a href="https://www.cve.org/CVERecord?id=CVE-2024-45338">Non-linear parsing of case-insensitive content in golang.org/x/net/html</a>
+    <br /><br />
+    CVE-2024-45337: <a href="https://www.cve.org/CVERecord?id=CVE-2024-45337">Misuse of ServerConfig.PublicKeyCallback may cause authorization bypass in golang.org/x/crypto</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    </td>
+  </tr>
+
 
   </tbody>
 </table>

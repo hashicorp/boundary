@@ -90,7 +90,7 @@
         "title": "Architecture",
         "routes": [
           {
-            "title":"System requirements",
+            "title": "System requirements",
             "path": "install-boundary/architecture/system-requirements"
           },
           {
@@ -108,8 +108,8 @@
         ]
       },
       {
-        "title": "Install Boundary",
-        "path": "install-boundary/install"
+        "title": "Deploy Boundary",
+        "path": "install-boundary/deploy"
       },
       {
         "title": "Configure controllers",
@@ -122,6 +122,10 @@
       {
         "title": "Initialize Boundary",
         "path": "install-boundary/initialize"
+      },
+      {
+        "title": "Install Boundary clients",
+        "path": "install-boundary/install-clients"
       },
       {
         "title": "Systemd install",
@@ -196,6 +200,15 @@
         "path": "concepts/aliases"
       },
       {
+        "title": "Transparent sessions",
+        "badge": {
+          "text": "HCP/ENT BETA",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "concepts/transparent-sessions"
+      },
+      {
         "title": "Auditing",
         "path": "concepts/auditing"
       },
@@ -213,6 +226,10 @@
           {
             "title": "Azure dynamic hosts",
             "path": "concepts/host-discovery/azure"
+          },
+          {
+            "title": "GCP dynamic hosts",
+            "path": "concepts/host-discovery/gcp"
           }
         ]
       },
@@ -571,6 +588,32 @@
           {
             "title": "Update storage policies",
             "path": "configuration/session-recording/update-storage-policy"
+          }
+        ]
+      },
+      {
+        "title": "Aliases and transparent sessions",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/target-aliases"
+          },
+          {
+            "title": "Create a target alias",
+            "path": "configuration/target-aliases/create-target-alias"
+          },
+          {
+            "title": "Connect using a target alias",
+            "path": "configuration/target-aliases/connect-target-alias"
+          },
+          {
+            "title": "Connect using transparent sessions",
+            "badge": {
+              "text": "HCP/ENT BETA",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "configuration/target-aliases/transparent-sessions"
           }
         ]
       },
@@ -1644,6 +1687,15 @@
         ]
       },
       {
+        "title": "Client Agent",
+        "badge": {
+          "text": "HCP/ENT BETA",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "api-clients/client-agent"
+      },
+      {
         "title": "Go SDK",
         "path": "api-clients/go-sdk"
       },
@@ -1701,7 +1753,7 @@
     "routes": [
       {
         "title": "Overview",
-        "path": "oss"
+        "path": "community"
       }
     ]
   },
@@ -1764,6 +1816,14 @@
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.19.0",
+        "path": "release-notes/v0_19_0"
+      },
+      {
+        "title": "v0.18.0",
+        "path": "release-notes/v0_18_0"
       },
       {
         "title": "v0.17.0",

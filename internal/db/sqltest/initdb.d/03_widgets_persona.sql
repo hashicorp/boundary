@@ -289,10 +289,10 @@ begin;
       ('plg___wb-hplg');
 
     insert into host_plugin_catalog
-      (project_id, public_id, plugin_id, name, attributes)
+      (project_id, public_id, plugin_id, name, attributes, worker_filter)
     values
-      ('p____bwidget', 'c___wb-plghcl', 'plg___wb-hplg', 'Big Widget Plugin Catalog', ''),
-      ('p____swidget', 'c___ws-plghcl', 'plg___wb-hplg',  'Small Widget Plugin Catalog', '');
+      ('p____bwidget', 'c___wb-plghcl', 'plg___wb-hplg', 'Big Widget Plugin Catalog', '', '"test" in "/tags/type"'),
+      ('p____swidget', 'c___ws-plghcl', 'plg___wb-hplg',  'Small Widget Plugin Catalog', '', null);
 
     insert into host_plugin_host
       (catalog_id, public_id, external_id)

@@ -4,11 +4,17 @@
 package api
 
 import (
+	"crypto/tls"
 	"math"
+	"net/http"
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/go-cleanhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,9 +29,15 @@ func TestConfigSetAddress(t *testing.T) {
 
 	tests := []test{
 		{
-			"bare",
+			"ipv4",
 			"http://127.0.0.1:9200",
 			"http://127.0.0.1:9200",
+			"",
+		},
+		{
+			"ipv6",
+			"http://[::1]:9200",
+			"http://[::1]:9200",
 			"",
 		},
 		{
@@ -149,5 +161,88 @@ func TestReadEnvironmentMaxRetries(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.expMaxRetries, c.MaxRetries)
 		})
+	}
+}
+
+func TestDefaultConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		envvars map[string]string
+		want    *Config
+	}{
+		{
+			name:    "noEnvVarsSet",
+			envvars: nil,
+			want: &Config{
+				Addr:               "http://127.0.0.1:9200",
+				Token:              "",
+				RecoveryKmsWrapper: nil,
+				HttpClient: func() *http.Client {
+					client := cleanhttp.DefaultPooledClient()
+					client.Transport.(*http.Transport).TLSClientConfig = &tls.Config{
+						MinVersion: tls.VersionTLS12,
+					}
+					return client
+				}(),
+				TLSConfig:        &TLSConfig{},
+				Headers:          map[string][]string{},
+				MaxRetries:       2,
+				Timeout:          time.Second * 60,
+				Backoff:          RateLimitLinearJitterBackoff,
+				CheckRetry:       nil,
+				Limiter:          nil,
+				OutputCurlString: false,
+				SRVLookup:        false,
+			},
+		},
+		{
+			name: "maxRetries",
+			envvars: map[string]string{
+				"BOUNDARY_MAX_RETRIES": "5",
+			},
+			want: &Config{
+				Addr:               "http://127.0.0.1:9200",
+				Token:              "",
+				RecoveryKmsWrapper: nil,
+				HttpClient: func() *http.Client {
+					client := cleanhttp.DefaultPooledClient()
+					client.Transport.(*http.Transport).TLSClientConfig = &tls.Config{
+						MinVersion: tls.VersionTLS12,
+					}
+					return client
+				}(),
+				TLSConfig:        &TLSConfig{},
+				Headers:          map[string][]string{},
+				MaxRetries:       5,
+				Timeout:          time.Second * 60,
+				Backoff:          RateLimitLinearJitterBackoff,
+				CheckRetry:       nil,
+				Limiter:          nil,
+				OutputCurlString: false,
+				SRVLookup:        false,
+			},
+		},
+	}
+	for _, tt := range tests {
+		for k, v := range tt.envvars {
+			os.Setenv(k, v)
+		}
+		t.Cleanup(func() {
+			for k := range tt.envvars {
+				os.Unsetenv(k)
+			}
+		})
+
+		c, err := DefaultConfig()
+		require.NoError(t, err)
+
+		assert.Empty(t,
+			cmp.Diff(tt.want, c,
+				cmpopts.IgnoreUnexported(http.Transport{}, tls.Config{}),
+				// Ignore fields that are functions, since cmp.Diff can't
+				// correctly compare them if they are non-nil.
+				cmpopts.IgnoreFields(Config{}, "Backoff"),
+				cmpopts.IgnoreFields(http.Transport{}, "Proxy", "DialContext"),
+			))
 	}
 }

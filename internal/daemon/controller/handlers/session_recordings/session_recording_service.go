@@ -44,7 +44,7 @@ func init() {
 var NewServiceFn = func(ctx context.Context,
 	iamRepoFn common.IamRepoFactory,
 	serverRepoFn common.ServersRepoFactory,
-	workerStatusGracePeriod *atomic.Int64,
+	workerRPCGracePeriod *atomic.Int64,
 	kms *kms.Kms,
 	maxPageSize uint,
 	controllerExt intglobals.ControllerExtension,

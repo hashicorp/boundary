@@ -181,16 +181,17 @@ func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string)
 
 	t.Log("Waiting for Boundary to finish loading...")
 	err = pool.Retry(func() error {
-		response, err := http.Get(b.UriLocalhost)
+		response, err := http.Get(fmt.Sprintf("%s/health", b.UriLocalhost))
 		if err != nil {
-			t.Logf("Could not access Boundary URL: %s. Retrying...", err.Error())
+			t.Logf("Could not access health endpoint: %s. Retrying...", err.Error())
 			return err
 		}
 
 		if response.StatusCode != http.StatusOK {
-			return fmt.Errorf("Could not connect to %s. Status Code: %d", b.UriLocalhost, response.StatusCode)
+			return fmt.Errorf("Health check returned an error. Status Code: %d", response.StatusCode)
 		}
 
+		response.Body.Close()
 		return nil
 	})
 	require.NoError(t, err)
@@ -240,9 +241,9 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 
 	// Create AWS dynamic host catalog
-	awsHostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
+	awsHostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion, false)
 	require.NoError(t, err)
-	awsHostSetId, err := boundary.CreateAwsHostSetCli(t, ctx, awsHostCatalogId, c.AwsHostSetFilter)
+	awsHostSetId, err := boundary.CreatePluginHostSetCli(t, ctx, awsHostCatalogId, c.AwsHostSetFilter, "4")
 	require.NoError(t, err)
 	boundary.WaitForHostsInHostSetCli(t, ctx, awsHostSetId)
 

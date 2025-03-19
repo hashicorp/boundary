@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -387,7 +388,7 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 
 		var clauses []string
 		clauses = append(clauses, fmt.Sprintf("project_id = @project_id_%d", inClauseCnt))
-		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.ScopeId))
+		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.GrantScopeId))
 
 		if len(p.ResourceIds) > 0 {
 			clauses = append(clauses, fmt.Sprintf("public_id = any(@public_id_%d)", inClauseCnt))
@@ -550,7 +551,11 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 	var address *Address
 	var err error
 	if t.GetAddress() != "" {
-		t.SetAddress(strings.TrimSpace(t.GetAddress()))
+		host, err := util.ParseAddress(ctx, t.GetAddress())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidAddress), errors.WithMsg("invalid address"))
+		}
+		t.SetAddress(host)
 		address, err = NewAddress(ctx, t.GetPublicId(), t.GetAddress())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -650,7 +655,6 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		return nil, db.NoRowsAffected, err
 	}
 
-	var addressEndpoint string
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
@@ -663,8 +667,6 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		case strings.EqualFold("egressworkerfilter", f):
 		case strings.EqualFold("ingressworkerfilter", f):
 		case strings.EqualFold("address", f):
-			target.SetAddress(strings.TrimSpace(target.GetAddress()))
-			addressEndpoint = target.GetAddress()
 		case strings.EqualFold("storagebucketid", f):
 		case strings.EqualFold("enablesessionrecording", f):
 		default:
@@ -698,12 +700,19 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 	// The Address field is not a part of the target schema in the database. It
 	// is a part of a different table called target_address, which is why the
 	// Address field must be filtered out of the dbMask & nullFields slices.
+	var addressEndpoint string
 	var updateAddress, deleteAddress bool
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
 		switch {
 		case strings.EqualFold("Address", f):
 			updateAddress = true
+			address, err := util.ParseAddress(ctx, target.GetAddress())
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidAddress), errors.WithMsg("invalid address"))
+			}
+			target.SetAddress(address)
+			addressEndpoint = target.GetAddress()
 		default:
 			filteredDbMask = append(filteredDbMask, f)
 		}

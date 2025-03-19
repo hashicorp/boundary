@@ -130,7 +130,7 @@ func (r *TokenRenewalJob) Status() scheduler.JobStatus {
 // Run queries the vault credential repo for tokens that need to be renewed, it then creates
 // a vault client and renews each token.  Can not be run in parallel, if Run is invoked while
 // already running an error with code JobAlreadyRunning will be returned.
-func (r *TokenRenewalJob) Run(ctx context.Context) error {
+func (r *TokenRenewalJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(TokenRenewalJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -356,7 +356,7 @@ func (r *TokenRevocationJob) Status() scheduler.JobStatus {
 // Run queries the vault credential repo for tokens that need to be revoked, it then creates
 // a vault client and revokes each token.  Can not be run in parallel, if Run is invoked while
 // already running an error with code JobAlreadyRunning will be returned.
-func (r *TokenRevocationJob) Run(ctx context.Context) error {
+func (r *TokenRevocationJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(TokenRevocationJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -521,7 +521,7 @@ func (r *CredentialRenewalJob) Status() scheduler.JobStatus {
 // Run queries the vault credential repo for credentials that need to be renewed, it then creates
 // a vault client and renews each credential.  Can not be run in parallel, if Run is invoked while
 // already running an error with code JobAlreadyRunning will be returned.
-func (r *CredentialRenewalJob) Run(ctx context.Context) error {
+func (r *CredentialRenewalJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(CredentialRenewalJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -603,6 +603,9 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 	}
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew credential"))
+	}
+	if renewedCred == nil {
+		return errors.New(ctx, errors.Unknown, op, "vault returned empty credential")
 	}
 
 	cred.expiration = time.Duration(renewedCred.LeaseDuration) * time.Second
@@ -693,7 +696,7 @@ func (r *CredentialRevocationJob) Status() scheduler.JobStatus {
 // Run queries the vault credential repo for credentials that need to be revoked, it then creates
 // a vault client and revokes each credential.  Can not be run in parallel, if Run is invoked while
 // already running an error with code JobAlreadyRunning will be returned.
-func (r *CredentialRevocationJob) Run(ctx context.Context) error {
+func (r *CredentialRevocationJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(CredentialRevocationJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -844,7 +847,7 @@ func (r *CredentialStoreCleanupJob) Status() scheduler.JobStatus {
 // Run deletes all vault credential stores in the repo that have been soft deleted.
 // Can not be run in parallel, if Run is invoked while already running an error with code
 // JobAlreadyRunning will be returned.
-func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
+func (r *CredentialStoreCleanupJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(CredentialStoreCleanupJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
@@ -944,7 +947,7 @@ func (r *CredentialCleanupJob) Status() scheduler.JobStatus {
 // Run deletes all Vault credential in the repo that have a null session_id and are not active.
 // Can not be run in parallel, if Run is invoked while already running an error with code
 // JobAlreadyRunning will be returned.
-func (r *CredentialCleanupJob) Run(ctx context.Context) error {
+func (r *CredentialCleanupJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "vault.(CredentialCleanupJob).Run"
 	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")

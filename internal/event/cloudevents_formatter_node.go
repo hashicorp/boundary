@@ -87,13 +87,28 @@ func defaultCloudEventsDenyFilters() ([]*filter, error) {
 	const (
 		op = "event.defaultCloudEventsDenyFilters"
 		// denyWorkStatusEvents is a default filter for worker to controller API status requests
-		denyWorkStatusEvents = `"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Status"`
+		denyWorkStatusEvents      = `"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Status"`
+		denyWorkSessionInfoEvents = `"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/SessionInfo"`
+		denyWorkRoutingInfoEvents = `"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/RoutingInfo"`
+		denyWorkStatisticsEvents  = `"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Statistics"`
 	)
-	f, err := newFilter(denyWorkStatusEvents)
+	statusFilter, err := newFilter(denyWorkStatusEvents)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to create deny filter for worker status events '%s': %w", op, denyWorkStatusEvents, err)
 	}
-	return []*filter{f}, nil
+	sessionInfoFilter, err := newFilter(denyWorkSessionInfoEvents)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to create deny filter for worker session info events '%s': %w", op, denyWorkStatusEvents, err)
+	}
+	routingInfoFilter, err := newFilter(denyWorkRoutingInfoEvents)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to create deny filter for worker routing info events '%s': %w", op, denyWorkStatusEvents, err)
+	}
+	statisticsFilter, err := newFilter(denyWorkStatisticsEvents)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to create deny filter for worker statistics events '%s': %w", op, denyWorkStatusEvents, err)
+	}
+	return []*filter{statusFilter, sessionInfoFilter, routingInfoFilter, statisticsFilter}, nil
 }
 
 // Rotate supports rotating the filter's wrapper. No options are currently
@@ -111,6 +126,15 @@ func (f *cloudEventsFormatterFilter) Rotate(w wrapping.Wrapper, _ ...Option) err
 	}
 	f.Signer = cloudevents.Signer(h)
 	return nil
+}
+
+func (f *cloudEventsFormatterFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
+	// The embedded FormatterFilter's Process function calls the signer, but doesn't know
+	// about the lock, leading to a potential race condition. We take the lock here to ensure
+	// that the signer is only accessed by one goroutine at a time.
+	f.l.RLock()
+	defer f.l.RUnlock()
+	return f.FormatterFilter.Process(ctx, e)
 }
 
 func newPredicate(allow, deny []*filter) func(ctx context.Context, ce any) (bool, error) {

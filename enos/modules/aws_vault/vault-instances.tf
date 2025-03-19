@@ -5,14 +5,15 @@ resource "aws_instance" "vault_instance" {
   for_each               = local.vault_instances
   ami                    = var.ami_id
   instance_type          = var.instance_type
-  vpc_security_group_ids = [aws_security_group.enos_vault_sg.id]
+  vpc_security_group_ids = [aws_security_group.enos_vault_sg[0].id]
   subnet_id              = tolist(data.aws_subnets.infra.ids)[each.key % length(data.aws_subnets.infra.ids)]
   key_name               = var.ssh_aws_keypair
-  iam_instance_profile   = aws_iam_instance_profile.vault_profile.name
+  iam_instance_profile   = aws_iam_instance_profile.vault_profile[0].name
+  ipv6_address_count     = local.network_stack[var.ip_version].ipv6_address_count
   tags = merge(
     var.common_tags,
     {
-      Name = "${local.name_suffix}-vault-${var.vault_node_prefix}-${each.key}"
+      Name = "${local.name_suffix}-vault-${var.vault_node_prefix}-${each.key}-${split(":", data.aws_caller_identity.current.user_id)[1]}"
       Type = local.vault_cluster_tag
     },
   )
@@ -31,7 +32,7 @@ resource "enos_remote_exec" "install_dependencies" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[each.value].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[each.value].ipv6_addresses[0] : aws_instance.vault_instance[each.value].public_ip
     }
   }
 }
@@ -47,7 +48,7 @@ resource "enos_bundle_install" "consul" {
 
   transport = {
     ssh = {
-      host = each.value.public_ip
+      host = var.ip_version == "6" ? each.value.ipv6_addresses[0] : each.value.public_ip
     }
   }
 }
@@ -62,7 +63,7 @@ resource "enos_bundle_install" "vault" {
 
   transport = {
     ssh = {
-      host = each.value.public_ip
+      host = var.ip_version == "6" ? each.value.ipv6_addresses[0] : each.value.public_ip
     }
   }
 }
@@ -88,7 +89,7 @@ resource "enos_consul_start" "consul" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[each.key].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
     }
   }
 }
@@ -104,13 +105,13 @@ resource "enos_vault_start" "leader" {
   config_dir     = var.vault_config_dir
   manage_service = var.manage_service
   config = {
-    api_addr     = "http://${aws_instance.vault_instance[each.key].private_ip}:8200"
-    cluster_addr = "http://${aws_instance.vault_instance[each.key].private_ip}:8201"
+    api_addr     = var.ip_version == "4" ? "http://${aws_instance.vault_instance[each.key].private_ip}:8200" : "http://[${aws_instance.vault_instance[each.key].ipv6_addresses[0]}]:8200"
+    cluster_addr = var.ip_version == "4" ? "http://${aws_instance.vault_instance[each.key].private_ip}:8201" : "http://[${aws_instance.vault_instance[each.key].ipv6_addresses[0]}]:8201"
     cluster_name = local.vault_cluster_tag
     listener = {
       type = "tcp"
       attributes = {
-        address     = "0.0.0.0:8200"
+        address     = var.ip_version == "4" ? "0.0.0.0:8200" : "[::]:8200"
         tls_disable = "true"
       }
     }
@@ -130,7 +131,7 @@ resource "enos_vault_start" "leader" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[each.key].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
     }
   }
 }
@@ -145,14 +146,14 @@ resource "enos_vault_start" "followers" {
   config_dir     = var.vault_config_dir
   manage_service = var.manage_service
   config = {
-    api_addr     = "http://${aws_instance.vault_instance[each.key].private_ip}:8200"
-    cluster_addr = "http://${aws_instance.vault_instance[each.key].private_ip}:8201"
+    api_addr     = var.ip_version == "4" ? "http://${aws_instance.vault_instance[each.key].private_ip}:8200" : "http://[${aws_instance.vault_instance[each.key].ipv6_addresses[0]}]:8200"
+    cluster_addr = var.ip_version == "4" ? "http://${aws_instance.vault_instance[each.key].private_ip}:8201" : "http://[${aws_instance.vault_instance[each.key].ipv6_addresses[0]}]:8201"
     cluster_name = local.vault_cluster_tag
     log_level    = var.vault_log_level
     listener = {
       type = "tcp"
       attributes = {
-        address     = "0.0.0.0:8200"
+        address     = var.ip_version == "4" ? "0.0.0.0:8200" : "[::]:8200"
         tls_disable = "true"
       }
     }
@@ -171,7 +172,7 @@ resource "enos_vault_start" "followers" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[each.key].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
     }
   }
 }
@@ -194,7 +195,7 @@ resource "enos_vault_init" "leader" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[0].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
     }
   }
 }
@@ -212,7 +213,7 @@ resource "enos_vault_unseal" "leader" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[0].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
     }
   }
 }
@@ -237,7 +238,7 @@ resource "enos_remote_exec" "create_audit_log_dir" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[each.value].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[each.value].ipv6_addresses[0] : aws_instance.vault_instance[each.value].public_ip
     }
   }
 }
@@ -254,7 +255,7 @@ resource "enos_remote_exec" "init_audit_device" {
 
   environment = {
     VAULT_TOKEN    = enos_vault_init.leader[each.key].root_token
-    VAULT_ADDR     = "http://127.0.0.1:8200"
+    VAULT_ADDR     = var.ip_version == "4" ? "http://127.0.0.1:8200" : "http://[::1]:8200"
     VAULT_BIN_PATH = local.vault_bin_path
     LOG_FILE_PATH  = local.audit_device_file_path
     SERVICE_USER   = local.vault_service_user
@@ -266,7 +267,7 @@ resource "enos_remote_exec" "init_audit_device" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[each.key].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
     }
   }
 }
@@ -289,7 +290,7 @@ resource "enos_vault_unseal" "followers" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[0].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
     }
   }
 }
@@ -315,13 +316,13 @@ resource "enos_vault_unseal" "when_vault_unseal_when_no_init_is_set" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[each.key].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[each.key].ipv6_addresses[0] : aws_instance.vault_instance[each.key].public_ip
     }
   }
 }
 
 resource "enos_remote_exec" "vault_write_license" {
-  count = var.vault_init ? 1 : 0
+  count = var.deploy && var.vault_init ? 1 : 0
   depends_on = [
     enos_vault_unseal.leader,
     enos_vault_unseal.when_vault_unseal_when_no_init_is_set,
@@ -335,7 +336,26 @@ resource "enos_remote_exec" "vault_write_license" {
 
   transport = {
     ssh = {
-      host = aws_instance.vault_instance[0].public_ip
+      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
+    }
+  }
+}
+
+resource "enos_remote_exec" "vault_kms_policy" {
+  count = var.deploy && var.vault_init ? 1 : 0
+  depends_on = [
+    enos_remote_exec.vault_write_license,
+  ]
+
+  content = templatefile("${path.module}/templates/create-kms-policy.sh", {
+    vault_bin_path   = local.vault_bin_path,
+    vault_root_token = coalesce(var.vault_root_token, try(enos_vault_init.leader[0].root_token, null), "none")
+    policy_path      = "${path.module}/policies/kms-transit.hcl"
+  })
+
+  transport = {
+    ssh = {
+      host = var.ip_version == "6" ? aws_instance.vault_instance[0].ipv6_addresses[0] : aws_instance.vault_instance[0].public_ip
     }
   }
 }

@@ -17,10 +17,13 @@ type options struct {
 	withRecheckSupportInterval             time.Duration
 	testWithIntervalRandomizationFactor    float64
 	testWithIntervalRandomizationFactorSet bool
+	WithReadyToServeNotificationCh         chan struct{}
 	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
 
-	withUrl    string
-	withLogger hclog.Logger
+	withUrl              string
+	withLogger           hclog.Logger
+	withHomeDir          string
+	withForceResetSchema bool
 }
 
 // Option - how options are passed as args
@@ -39,6 +42,14 @@ func getOpts(opt ...Option) (options, error) {
 		}
 	}
 	return opts, nil
+}
+
+// WithHomeDir provides an optional home directory to use.
+func WithHomeDir(_ context.Context, dir string) Option {
+	return func(o *options) error {
+		o.withHomeDir = dir
+		return nil
+	}
 }
 
 // withRefreshInterval provides an optional refresh interval.
@@ -96,6 +107,26 @@ func WithLogger(_ context.Context, logger hclog.Logger) Option {
 func WithBoundaryTokenReaderFunc(_ context.Context, fn cache.BoundaryTokenReaderFn) Option {
 	return func(o *options) error {
 		o.withBoundaryTokenReaderFunc = fn
+		return nil
+	}
+}
+
+// WithForceResetSchema provides an optional way to force resetting the schema,
+// e.g. wiping the cache
+func WithForceResetSchema(_ context.Context, force bool) Option {
+	return func(o *options) error {
+		o.withForceResetSchema = force
+		return nil
+	}
+}
+
+// WithReadyToServeNotificationCh provides an optional channel to notify when
+// the server is ready to serve; mainly used for test timing but exported for
+// availability. The channel will be closed just before the HTTP server is
+// started.
+func WithReadyToServeNotificationCh(_ context.Context, readyCh chan struct{}) Option {
+	return func(o *options) error {
+		o.WithReadyToServeNotificationCh = readyCh
 		return nil
 	}
 }

@@ -7,6 +7,7 @@ package plugin.v1;
 
 import "controller/api/resources/hostcatalogs/v1/host_catalog.proto";
 import "controller/api/resources/hostsets/v1/host_set.proto";
+import "controller/api/resources/plugins/v1/plugin.proto";
 import "google/protobuf/struct.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/plugin;plugin";
@@ -87,6 +88,9 @@ service HostPluginService {
 message NormalizeCatalogDataRequest {
   // The incoming attributes in the create or update request.
   google.protobuf.Struct attributes = 100;
+
+  // The plugin information for this request.
+  controller.api.resources.plugins.v1.PluginInfo plugin = 110;
 }
 
 message NormalizeCatalogDataResponse {
@@ -147,6 +151,9 @@ message OnDeleteCatalogResponse {}
 message NormalizeSetDataRequest {
   // The incoming attributes in the create or update request.
   google.protobuf.Struct attributes = 100;
+
+  // The plugin information for this request.
+  controller.api.resources.plugins.v1.PluginInfo plugin = 110;
 }
 
 message NormalizeSetDataResponse {

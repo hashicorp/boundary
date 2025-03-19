@@ -257,6 +257,7 @@ func TestController_NewPluginsConfig(t *testing.T) {
 	conf.EnabledPlugins = []base.EnabledPlugin{
 		base.EnabledPluginAws,
 		base.EnabledPluginHostAzure,
+		base.EnabledPluginGCP,
 	}
 
 	_, err = New(testCtx, conf)
@@ -265,14 +266,15 @@ func TestController_NewPluginsConfig(t *testing.T) {
 	// Check that both plugins were written to the temp dir
 	files, err := os.ReadDir(tmpDir)
 	require.NoError(err)
-	require.Len(files, 2)
+	require.Len(files, 3)
 	for _, file := range files {
 		name := filepath.Base(file.Name())
 		// Remove random chars and hyphen
 		name = name[0 : len(name)-6]
 		switch name {
 		case boundary_plugin_assets.PluginPrefix + "aws",
-			boundary_plugin_assets.PluginPrefix + "azure":
+			boundary_plugin_assets.PluginPrefix + "azure",
+			boundary_plugin_assets.PluginPrefix + "gcp":
 		default:
 			require.Fail("unexpected name", name)
 		}

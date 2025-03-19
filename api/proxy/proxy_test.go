@@ -169,6 +169,9 @@ func testSessionAuth(t *testing.T) *targets.SessionAuthorizationData {
 			{
 				Address: "localhost:9202",
 			},
+			{
+				Address: "[::1]:9201",
+			},
 		},
 	}
 

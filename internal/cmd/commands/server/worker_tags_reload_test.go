@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/testing/controller"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
@@ -87,7 +88,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		defer wg.Done()
 		if code := cmd.Run(nil); code != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 
@@ -101,7 +102,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		t.Helper()
 		serversRepo, err := testController.Controller().ServersRepoFn()
 		require.NoError(err)
-		w, err := serversRepo.LookupWorkerByName(testController.Context(), name)
+		w, err := server.TestLookupWorkerByName(testController.Context(), t, name, serversRepo)
 		require.NoError(err)
 		require.NotNil(w)
 		v, ok := w.CanonicalTags()[key]

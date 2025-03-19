@@ -24,16 +24,12 @@ import (
 
 func TestWorkerCanonicalTags(t *testing.T) {
 	w := NewWorker(scope.Global.String())
-	w.apiTags = []*Tag{
-		{Key: "key", Value: "apis unique"},
-		{Key: "key", Value: "shared"},
-		{Key: "key2", Value: "apis key2 unique"},
-	}
-	w.configTags = []*Tag{
-		{Key: "key", Value: "configs unique"},
-		{Key: "key", Value: "shared"},
-		{Key: "key3", Value: "configs key3 unique"},
-	}
+	w.ApiTags = make(Tags)
+	w.ApiTags["key"] = []string{"apis unique", "shared"}
+	w.ApiTags["key2"] = []string{"apis key2 unique"}
+	w.ConfigTags = make(Tags)
+	w.ConfigTags["key"] = []string{"configs unique", "shared"}
+	w.ConfigTags["key3"] = []string{"configs key3 unique"}
 
 	got := w.CanonicalTags()
 	assert.Len(t, got, 3, "2 keys expected, 'key' and 'key2'")
@@ -48,12 +44,10 @@ func TestWorkerAggregate(t *testing.T) {
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	getAggWorker := func(id string) *Worker {
-		agg := &workerAggregate{PublicId: id}
-		require.NoError(t, rw.LookupById(ctx, agg))
-		got, err := agg.toWorker(ctx)
-		assert.NoError(t, err)
-		return got
+	getWorker := func(id string) *Worker {
+		ret, err := lookupWorker(ctx, rw, id)
+		require.NoError(t, err)
+		return ret
 	}
 
 	t.Run("kms worker", func(t *testing.T) {
@@ -67,7 +61,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, KmsWorkerType.String(), got.GetType())
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, scope.Global.String(), got.GetScopeId())
@@ -90,7 +84,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
@@ -109,20 +103,21 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 		require.NoError(t, rw.Create(ctx,
-			&store.WorkerTag{
+			&store.ConfigTag{
 				WorkerId: id,
 				Key:      "key",
 				Value:    "val",
-				Source:   ConfigurationTagSource.String(),
 			}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
 		assert.NotNil(t, got.GetReleaseVersion())
-		assert.Empty(t, got.apiTags)
-		assert.Equal(t, got.configTags, []*Tag{{Key: "key", Value: "val"}})
+		assert.Empty(t, got.ApiTags)
+		wantTag := make(Tags)
+		wantTag["key"] = []string{"val"}
+		assert.Equal(t, got.ConfigTags, wantTag)
 	})
 
 	t.Run("Worker with many config tag", func(t *testing.T) {
@@ -134,29 +129,26 @@ func TestWorkerAggregate(t *testing.T) {
 		w.Type = KmsWorkerType.String()
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ConfigTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val",
-			Source:   ConfigurationTagSource.String(),
 		}))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ConfigTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val2",
-			Source:   ConfigurationTagSource.String(),
 		}))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ConfigTag{
 			WorkerId: id,
 			Key:      "key2",
 			Value:    "val2",
-			Source:   ConfigurationTagSource.String(),
 		}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
-		assert.Empty(t, got.apiTags)
-		assert.ElementsMatch(t, got.configTags, []*Tag{
+		assert.Empty(t, got.ApiTags)
+		assert.ElementsMatch(t, got.ConfigTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val"},
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
@@ -173,19 +165,20 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 		require.NoError(t, rw.Create(ctx,
-			&store.WorkerTag{
+			&store.ApiTag{
 				WorkerId: id,
 				Key:      "key",
 				Value:    "val",
-				Source:   ApiTagSource.String(),
 			}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
-		assert.Empty(t, got.GetConfigTags())
-		assert.Equal(t, got.apiTags, []*Tag{{Key: "key", Value: "val"}})
+		assert.Empty(t, got.ConfigTags)
+		wantTag := make(Tags)
+		wantTag["key"] = []string{"val"}
+		assert.Equal(t, got.ApiTags, wantTag)
 	})
 
 	// Worker with mix of tag sources
@@ -198,32 +191,29 @@ func TestWorkerAggregate(t *testing.T) {
 		w.Type = KmsWorkerType.String()
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ConfigTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val",
-			Source:   ConfigurationTagSource.String(),
 		}))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ApiTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val2",
-			Source:   ApiTagSource.String(),
 		}))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ApiTag{
 			WorkerId: id,
 			Key:      "key2",
 			Value:    "val2",
-			Source:   ApiTagSource.String(),
 		}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
-		assert.ElementsMatch(t, got.apiTags, []*Tag{
+		assert.ElementsMatch(t, got.ApiTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
 		})
-		assert.ElementsMatch(t, got.configTags, []*Tag{
+		assert.ElementsMatch(t, got.ConfigTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val"},
 		})
 	})
@@ -239,7 +229,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, UnknownLocalStorageState.String(), got.LocalStorageState)
 	})
 
@@ -255,7 +245,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, AvailableLocalStorageState.String(), got.LocalStorageState)
 	})
 }

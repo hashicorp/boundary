@@ -94,6 +94,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/install-boundary/install',
+    destination: '/boundary/docs/install-boundary/deploy',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/install-boundary/fault-tolerance',
     destination: '/boundary/docs/install-boundary/architecture/fault-tolerance',
     permanent: true,
@@ -151,6 +156,11 @@ module.exports = [
   {
     source: '/boundary/docs/oss/installing/systemd',
     destination: '/boundary/docs/install-boundary/systemd',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss',
+    destination: '/boundary/docs/community',
     permanent: true,
   },
   {

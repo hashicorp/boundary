@@ -1,8 +1,8 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
-variable "file_name" {}
+variable "license_path" {}
 
 output "license" {
-  value = file(var.file_name)
+  value = file(var.license_path)
 }

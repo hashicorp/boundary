@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -193,7 +194,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 	}
 
 	var err error
-	if opts.withReader != nil && opts.withWriter != nil {
+	if !util.IsNil(opts.withReader) && !util.IsNil(opts.withWriter) {
 		if !opts.withWriter.IsTx(ctx) {
 			return nil, nil, nil, nil, errors.New(ctx, errors.Internal, op, "writer is not in transaction")
 		}
@@ -325,7 +326,7 @@ func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []
 			for _, retRole := range retRoles {
 				roleIds = append(roleIds, retRole.PublicId)
 			}
-			retRoleGrantScopes, err = r.ListRoleGrantScopes(ctx, roleIds)
+			retRoleGrantScopes, err = r.ListRoleGrantScopes(ctx, roleIds, WithReaderWriter(rd, w))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query role grant scopes"))
 			}

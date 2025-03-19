@@ -13,8 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
-	"github.com/hashicorp/boundary/internal/server/store"
-	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // In the future we could make this configurable
@@ -38,7 +36,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 			return
 
 		case <-timer.C:
-			if err := c.upsertController(cancelCtx); err != nil {
+			if err := c.updateController(cancelCtx); err != nil {
 				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for status update"))
 			}
 			timer.Reset(statusInterval)
@@ -48,16 +46,44 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 
 func (c *Controller) upsertController(ctx context.Context) error {
 	const op = "controller.(Controller).upsertController"
-	controller := &store.Controller{
-		PrivateId: c.conf.RawConfig.Controller.Name,
-		Address:   c.conf.RawConfig.Controller.PublicClusterAddr,
+	var opts []server.Option
+	if c.conf.RawConfig.Controller.Description != "" {
+		opts = append(opts, server.WithDescription(c.conf.RawConfig.Controller.Description))
 	}
+	if c.conf.RawConfig.Controller.PublicClusterAddr != "" {
+		opts = append(opts, server.WithAddress(c.conf.RawConfig.Controller.PublicClusterAddr))
+	}
+
+	controller := server.NewController(c.conf.RawConfig.Controller.Name, opts...)
+	repo, err := c.ServersRepoFn()
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status upsert"))
+	}
+
+	_, err = repo.UpsertController(ctx, controller)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status upsert"))
+	}
+
+	return nil
+}
+
+func (c *Controller) updateController(ctx context.Context) error {
+	const op = "controller.(Controller).updateController"
+	var opts []server.Option
+	if c.conf.RawConfig.Controller.Description != "" {
+		opts = append(opts, server.WithDescription(c.conf.RawConfig.Controller.Description))
+	}
+	if c.conf.RawConfig.Controller.PublicClusterAddr != "" {
+		opts = append(opts, server.WithAddress(c.conf.RawConfig.Controller.PublicClusterAddr))
+	}
+	controller := server.NewController(c.conf.RawConfig.Controller.Name, opts...)
 	repo, err := c.ServersRepoFn()
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status update"))
 	}
 
-	_, err = repo.UpsertController(ctx, controller)
+	_, err = repo.UpdateController(ctx, controller)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status update"))
 	}
@@ -198,12 +224,12 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching server repository for cluster connection maintenance"))
 						break
 					}
-					knownWorker, err := serverRepo.ListWorkers(cancelCtx, []string{scope.Global.String()}, server.WithWorkerPool(connectionState.WorkerIds()), server.WithLiveness(-1))
+					knownWorkers, err := serverRepo.VerifyKnownWorkers(cancelCtx, connectionState.WorkerIds())
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get known workers from repo"))
 						break
 					}
-					connectionState.DisconnectMissingWorkers(server.WorkerList(knownWorker).PublicIds())
+					connectionState.DisconnectMissingWorkers(knownWorkers)
 				}
 
 				if len(connectionState.UnmappedKeyIds()) > 0 {

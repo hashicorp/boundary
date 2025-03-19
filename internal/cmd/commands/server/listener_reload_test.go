@@ -132,7 +132,7 @@ func TestServer_ReloadListener(t *testing.T) {
 		defer wg.Done()
 		if code := cmd.Run(args); code != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 

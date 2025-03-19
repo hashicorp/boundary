@@ -82,6 +82,18 @@ module "aws_vpc" {
   }
 }
 
+module "aws_vpc_ipv6" {
+  source = "./modules/aws_vpc_ipv6"
+
+  environment = var.environment
+  common_tags = {
+    "Project" : "Enos",
+    "Project Name" : "qti-enos-boundary",
+    "Enos User" : var.enos_user,
+    "Environment" : var.environment
+  }
+}
+
 module "read_license" {
   source = "./modules/read_license"
 }
@@ -177,4 +189,16 @@ module "docker_ldap" {
 
 module "docker_minio" {
   source = "./modules/docker_minio"
+}
+
+module "gcp_iam_setup" {
+  source         = "./modules/gcp_iam_setup"
+  gcp_project_id = var.gcp_project_id
+}
+
+module "gcp_target" {
+  source       = "./modules/gcp_target"
+  target_count = var.target_count
+  environment  = var.environment
+  enos_user    = var.enos_user
 }

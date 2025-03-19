@@ -41,12 +41,12 @@ func TestBuildRegexFromPath(t *testing.T) {
 				"/v1/pathsomething/am_1234567890:authenticate",
 				"/v1/pathsomething/{id}:authenticate",
 				"/v1/pathsomething/{auth_method}:authenticate",
+				"/v1/pathsomething/am_1234567890/:authenticate",
 			},
 			dont: []string{
 				"/v1/pathsomething:authenticate",
 				"/v1/pathsomething:authenticate:authenticate",
 				"/v1/pathsomething/:authenticate:authenticate",
-				"/v1/pathsomething/am_1234567890/:authenticate",
 				"/v1/pathsomething/?whatabout=:authenticate",
 			},
 		},
@@ -129,6 +129,31 @@ func TestPathLabel(t *testing.T) {
 		{
 			in:   "v1/accounts/a_1234567890:set-password",
 			want: "/v1/accounts/{id}:set-password",
+		},
+		{
+			// using target id
+			in:   "/v1/targets/tssh_12345789:authorize-session",
+			want: "/v1/targets/{id=**}:authorize-session",
+		},
+		{
+			// using target name
+			in:   "/v1/targets/foo-target:authorize-session",
+			want: "/v1/targets/{id=**}:authorize-session",
+		},
+		{
+			// using target name with a space
+			in:   "/v1/targets/foo target:authorize-session",
+			want: "/v1/targets/{id=**}:authorize-session",
+		},
+		{
+			// using target name with a slash
+			in:   "/v1/targets/foo/target:authorize-session",
+			want: "/v1/targets/{id=**}:authorize-session",
+		},
+		{
+			// using alias
+			in:   "/v1/targets/foo.test:authorize-session",
+			want: "/v1/targets/{id=**}:authorize-session",
 		},
 		{
 			// mistype the custom action

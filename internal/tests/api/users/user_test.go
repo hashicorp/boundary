@@ -187,7 +187,7 @@ func TestListResolvableAliases(t *testing.T) {
 		tarClient := targets.NewClient(client)
 		resp, err := tarClient.List(tc.Context(), "global", targets.WithRecursive(true))
 		require.NoError(err)
-		assert.Len(resp.Items, 2)
+		require.Len(resp.Items, 2)
 		firstTargetId := resp.Items[0].Id
 		secondTargetId := resp.Items[1].Id
 

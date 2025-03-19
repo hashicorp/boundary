@@ -480,7 +480,7 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 
 // closeConnections is a helper worker function that sends connection close
 // requests to the controller, and sets close times within the worker. It is
-// called during the worker status loop and on connection exit on the proxy.
+// called during the worker session info loop and on connection exit on the proxy.
 //
 // The boolean indicates whether the function was successful, e.g. had any
 // errors. Individual events will be sent for the errors if there are any.
@@ -499,9 +499,9 @@ func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 	var sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData
 	var err error
 
-	// TODO: This, along with the status call to the controller, probably needs a
+	// TODO: This, along with the session info call to the controller, probably needs a
 	// bit of formalization in terms of how we handle timeouts. For now, this
-	// just ensures consistency with the same status call in that it times out
+	// just ensures consistency with the same session info call in that it times out
 	// within an adequate period of time.
 	closeConnCtx, closeConnCancel := context.WithTimeout(ctx, time.Duration(CloseCallTimeout.Load()))
 	defer closeConnCancel()

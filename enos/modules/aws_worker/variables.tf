@@ -31,7 +31,7 @@ variable "ubuntu_ami_id" {
 variable "worker_instance_type" {
   description = "The EC2 Instance type to be used for the worker's node"
   type        = string
-  default     = "t2.micro"
+  default     = "t2.small"
 }
 
 variable "ssh_aws_keypair" {
@@ -139,6 +139,43 @@ variable "recording_storage_path" {
 
 variable "bucket_arn" {
   description = "ARN of the S3 bucket to store recordings"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_cidr" {
+  description = "cidr subnet of the vpc created for the enos scenario"
+  type        = string
+  nullable    = true
+  default     = null
+}
+
+variable "vpc_cidr_ipv6" {
+  description = "ipv6 cidr subnet of the vpc created for the enos scenario"
+  type        = string
+  nullable    = true
+  default     = null
+}
+
+variable "ip_version" {
+  description = "ip version used to setup boundary instance, should be 4, 6, or dual"
+  type        = string
+  default     = "4"
+
+  validation {
+    condition     = contains(["4", "6", "dual"], var.ip_version)
+    error_message = "ip_version must be one of: [4, 6, dual]"
+  }
+}
+
+variable "vault_address" {
+  description = "network address to a vault instance"
+  type        = string
+  default     = "localhost"
+}
+
+variable "vault_transit_token" {
+  description = "vault token used for kms transit in the boundary config"
   type        = string
   default     = ""
 }

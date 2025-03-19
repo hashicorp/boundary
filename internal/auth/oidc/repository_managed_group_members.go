@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // SetManagedGroupMemberships will set the managed groups for the given account
@@ -111,7 +112,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				msgs = append(msgs, &mgOplogMsg)
 			}
 
-			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
+			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader), WithLimit(-1))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current managed group memberships before deletion"))
 			}
@@ -181,7 +182,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				}
 			}
 
-			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
+			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader), WithLimit(-1))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current managed group memberships after set"))
 			}
@@ -207,7 +208,7 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 		limit = opts.withLimit
 	}
 	reader := r.reader
-	if opts.withReader != nil {
+	if !util.IsNil(opts.withReader) {
 		reader = opts.withReader
 	}
 	var mgs []*ManagedGroupMemberAccount
@@ -232,7 +233,7 @@ func (r *Repository) ListManagedGroupMembershipsByGroup(ctx context.Context, wit
 		limit = opts.withLimit
 	}
 	reader := r.reader
-	if opts.withReader != nil {
+	if !util.IsNil(opts.withReader) {
 		reader = opts.withReader
 	}
 	var mgs []*ManagedGroupMemberAccount

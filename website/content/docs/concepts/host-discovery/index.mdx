@@ -1,8 +1,8 @@
 ---
 layout: docs
 page_title: Host discovery
-description: |-
-  An overview of host discovery in Boundary
+description: >-
+  Learn how host discovery workflows let Boundary discover and onboard new resources. Understand how dynamic host catalogs enable automated host discovery.
 ---
 
 # Host discovery
@@ -54,9 +54,12 @@ external resources should be ingested into the catalog by
 with an attributes filter. These filters specify which discovered hosts
 should be members of the host set.
 
-Boundary currently supports dynamic host catalog for AWS and
-Azure and we will continue to grow this ecosystem to support additional providers.
+Boundary currently supports dynamic host catalog for AWS, Azure, and GCP.
+We will continue to grow this ecosystem to support additional providers.
 
-You can get started with dynamic host catalogs for AWS
-[here](/boundary/tutorials/host-management/aws-host-catalogs)
-and for Azure [here](/boundary/tutorials/host-management/azure-host-catalogs).
+## Next steps
+To get started with dynamic host catalogs, refer to the following topics:
+
+- [AWS dynamic host catalogs](/boundary/docs/concepts/host-discovery/aws)
+- [Azure dynamic host catalogs](/boundary/docs/concepts/host-discovery/azure)
+- [GCP dynamic host catalogs](/boundary/docs/concepts/host-discovery/gcp)

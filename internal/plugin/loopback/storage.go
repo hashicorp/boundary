@@ -27,15 +27,23 @@ var _ plgpb.StoragePluginServiceServer = (*TestPluginStorageServer)(nil)
 
 // TestPluginStorageServer provides a storage plugin service server where each method can be overwritten for tests.
 type TestPluginStorageServer struct {
-	OnCreateStorageBucketFn func(context.Context, *plgpb.OnCreateStorageBucketRequest) (*plgpb.OnCreateStorageBucketResponse, error)
-	OnUpdateStorageBucketFn func(context.Context, *plgpb.OnUpdateStorageBucketRequest) (*plgpb.OnUpdateStorageBucketResponse, error)
-	OnDeleteStorageBucketFn func(context.Context, *plgpb.OnDeleteStorageBucketRequest) (*plgpb.OnDeleteStorageBucketResponse, error)
-	ValidatePermissionsFn   func(context.Context, *plgpb.ValidatePermissionsRequest) (*plgpb.ValidatePermissionsResponse, error)
-	HeadObjectFn            func(context.Context, *plgpb.HeadObjectRequest) (*plgpb.HeadObjectResponse, error)
-	GetObjectFn             func(*plgpb.GetObjectRequest, plgpb.StoragePluginService_GetObjectServer) error
-	PutObjectFn             func(context.Context, *plgpb.PutObjectRequest) (*plgpb.PutObjectResponse, error)
-	DeleteObjectsFn         func(context.Context, *plgpb.DeleteObjectsRequest) (*plgpb.DeleteObjectsResponse, error)
+	NormalizeStorageBucketDataFn func(context.Context, *plgpb.NormalizeStorageBucketDataRequest) (*plgpb.NormalizeStorageBucketDataResponse, error)
+	OnCreateStorageBucketFn      func(context.Context, *plgpb.OnCreateStorageBucketRequest) (*plgpb.OnCreateStorageBucketResponse, error)
+	OnUpdateStorageBucketFn      func(context.Context, *plgpb.OnUpdateStorageBucketRequest) (*plgpb.OnUpdateStorageBucketResponse, error)
+	OnDeleteStorageBucketFn      func(context.Context, *plgpb.OnDeleteStorageBucketRequest) (*plgpb.OnDeleteStorageBucketResponse, error)
+	ValidatePermissionsFn        func(context.Context, *plgpb.ValidatePermissionsRequest) (*plgpb.ValidatePermissionsResponse, error)
+	HeadObjectFn                 func(context.Context, *plgpb.HeadObjectRequest) (*plgpb.HeadObjectResponse, error)
+	GetObjectFn                  func(*plgpb.GetObjectRequest, plgpb.StoragePluginService_GetObjectServer) error
+	PutObjectFn                  func(context.Context, *plgpb.PutObjectRequest) (*plgpb.PutObjectResponse, error)
+	DeleteObjectsFn              func(context.Context, *plgpb.DeleteObjectsRequest) (*plgpb.DeleteObjectsResponse, error)
 	plgpb.UnimplementedStoragePluginServiceServer
+}
+
+func (t TestPluginStorageServer) NormalizeStorageBucketData(ctx context.Context, req *plgpb.NormalizeStorageBucketDataRequest) (*plgpb.NormalizeStorageBucketDataResponse, error) {
+	if t.NormalizeStorageBucketDataFn == nil {
+		return t.UnimplementedStoragePluginServiceServer.NormalizeStorageBucketData(ctx, req)
+	}
+	return t.NormalizeStorageBucketDataFn(ctx, req)
 }
 
 func (t TestPluginStorageServer) OnCreateStorageBucket(ctx context.Context, req *plgpb.OnCreateStorageBucketRequest) (*plgpb.OnCreateStorageBucketResponse, error) {
@@ -122,6 +130,33 @@ type LoopbackStorage struct {
 	buckets           map[BucketName]Bucket
 	errs              []PluginMockError
 	putObjectResponse []PluginMockPutObjectResponse
+	normalizations    int
+}
+
+func (l *LoopbackStorage) normalizeStorageBucketData(ctx context.Context, req *plgpb.NormalizeStorageBucketDataRequest) (*plgpb.NormalizeStorageBucketDataResponse, error) {
+	const op = "loopback.(LoopbackStorage).normalizeStorageBucketData"
+	if req == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
+	}
+	if req.GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
+	}
+	l.normalizations++
+	return &plgpb.NormalizeStorageBucketDataResponse{
+		Attributes: req.GetAttributes(),
+	}, nil
+}
+
+// ResetNormalizations sets the number of times that NormalizeStorageBucketData
+// has been called to 0. Useful for unit tests.
+func (l *LoopbackStorage) ResetNormalizations() {
+	l.normalizations = 0
+}
+
+// GetNormalizations returns the number of times that NormalizeStorageBucketData
+// has been called via the loopback plugin. Useful for unit tests.
+func (l *LoopbackStorage) GetNormalizations() int {
+	return l.normalizations
 }
 
 func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.OnCreateStorageBucketRequest) (*plgpb.OnCreateStorageBucketResponse, error) {
@@ -142,7 +177,7 @@ func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.
 	}
 	for _, err := range l.errs {
 		if err.match(req.GetBucket(), "", OnCreateStorageBucket) {
-			return nil, status.Errorf(err.ErrCode, err.ErrMsg)
+			return nil, status.Error(err.ErrCode, err.ErrMsg)
 		}
 	}
 	secrets := &structpb.Struct{

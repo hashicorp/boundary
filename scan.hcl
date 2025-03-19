@@ -15,7 +15,7 @@ repository {
   plugin "semgrep" {
     use_git_ignore = true
     exclude = ["*_test.go", "website/*", "testing/*"]
-    config = ["p/gosec"]
+    config = ["p/gosec", ".semgrep/"]
   }
   
   plugin "codeql" {

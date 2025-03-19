@@ -15,10 +15,12 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	wpbs "github.com/hashicorp/boundary/internal/gen/worker/servers/services"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-hclog"
@@ -170,6 +172,24 @@ func TestWorkerNew(t *testing.T) {
 				assert.Equal(t, w.localStorageState.Load().(server.LocalStorageState).String(), server.UnknownLocalStorageState.String())
 			},
 		},
+		{
+			name: "worker host service server is the unimplemented one by default",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+				},
+				RawConfig: &config.Config{
+					Worker:       &config.Worker{},
+					SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				},
+			},
+			expErr: false,
+			assertions: func(t *testing.T, w *Worker) {
+				assert.Equal(t, wpbs.UnimplementedHostServiceServer{}, w.HostServiceServer)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -185,6 +205,10 @@ func TestWorkerNew(t *testing.T) {
 				tt.in.Eventer = event.SysEventer()
 			}
 
+			currentHostServiceFactory := hostServiceServerFactory
+			hostServiceServerFactory = nil
+			t.Cleanup(func() { hostServiceServerFactory = currentHostServiceFactory })
+
 			w, err := New(context.Background(), tt.in)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
@@ -198,6 +222,98 @@ func TestWorkerNew(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWorkerReload(t *testing.T) {
+	t.Run("default config is the same as the reload config", func(t *testing.T) {
+		require, assert := require.New(t), assert.New(t)
+		cfg := &Config{
+			Server: &base.Server{
+				Logger:  hclog.Default(),
+				Eventer: &event.Eventer{},
+				Listeners: []*base.ServerListener{
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+				},
+			},
+			RawConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				Worker:       &config.Worker{},
+			},
+		}
+		w, err := New(context.Background(), cfg)
+		require.NoError(err)
+
+		assert.Equal(int64(server.DefaultLiveness), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(common.DefaultRoutingInfoTimeout), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultStatisticsTimeout), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultSessionInfoTimeout), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(server.DefaultLiveness), w.getDownstreamWorkersTimeoutDuration.Load())
+
+		w.Reload(context.Background(), cfg.RawConfig)
+
+		assert.Equal(int64(server.DefaultLiveness), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(int64(server.DefaultLiveness), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(common.DefaultRoutingInfoTimeout), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultStatisticsTimeout), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(common.DefaultSessionInfoTimeout), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(server.DefaultLiveness), w.getDownstreamWorkersTimeoutDuration.Load())
+	})
+
+	t.Run("new config is the same as the reload config", func(t *testing.T) {
+		require, assert := require.New(t), assert.New(t)
+		cfg := &Config{
+			Server: &base.Server{
+				Logger:  hclog.Default(),
+				Eventer: &event.Eventer{},
+				Listeners: []*base.ServerListener{
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+				},
+			},
+			RawConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{DisableMlock: true},
+				Worker: &config.Worker{
+					SuccessfulControllerRPCGracePeriodDuration: 5 * time.Second,
+					ControllerRPCCallTimeoutDuration:           10 * time.Second,
+					GetDownstreamWorkersTimeoutDuration:        20 * time.Second,
+				},
+			},
+		}
+		w, err := New(context.Background(), cfg)
+		require.NoError(err)
+
+		assert.Equal(int64(5*time.Second), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(5*time.Second), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(w.successfulRoutingInfoGracePeriod.Load(), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(10*time.Second), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(20*time.Second), w.getDownstreamWorkersTimeoutDuration.Load())
+
+		w.Reload(context.Background(), cfg.RawConfig)
+
+		assert.Equal(int64(5*time.Second), w.successfulRoutingInfoGracePeriod.Load())
+		assert.Equal(int64(5*time.Second), w.successfulSessionInfoGracePeriod.Load())
+		assert.Equal(w.successfulRoutingInfoGracePeriod.Load(), session.CloseCallTimeout.Load())
+
+		assert.Equal(int64(10*time.Second), w.routingInfoCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.statisticsCallTimeoutDuration.Load())
+		assert.Equal(int64(10*time.Second), w.sessionInfoCallTimeoutDuration.Load())
+
+		assert.Equal(int64(20*time.Second), w.getDownstreamWorkersTimeoutDuration.Load())
+	})
 }
 
 func TestSetupWorkerAuthStorage(t *testing.T) {
@@ -348,7 +464,7 @@ func Test_Worker_getSessionTls(t *testing.T) {
 	conf.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
 	w, err := New(context.Background(), conf)
 	require.NoError(t, err)
-	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: &services.StatusResponse{}, StatusTime: time.Now(), LastCalculatedUpstreams: nil})
+	w.lastRoutingInfoSuccess.Store(&LastRoutingInfo{RoutingInfoResponse: &services.RoutingInfoResponse{}, RoutingInfoTime: time.Now(), LastCalculatedUpstreams: nil})
 	w.baseContext = context.Background()
 
 	t.Run("success", func(t *testing.T) {

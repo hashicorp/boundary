@@ -26,7 +26,7 @@ jobs:
       base-product-version: $${{ steps.set-product-version.outputs.base-product-version }}
       prerelease-product-version: ${{ steps.set-product-version.outputs.prerelease-product-version }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set Product version
         id: set-product-version
         uses: hashicorp/actions-set-product-version@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
@@ -39,7 +39,7 @@ jobs:
       product-edition: ${{ steps.get-product-edition.outputs.product-edition }}
       go-version: ${{ steps.get-go-version.outputs.go-version }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
@@ -48,7 +48,7 @@ jobs:
           echo "Building with Go $(cat .go-version)"
           echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
           cache: false
@@ -58,7 +58,7 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -86,7 +86,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     steps:
       - name: 'Checkout directory'
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - run: |
           echo "Product Version - ${{ needs.set-product-version.outputs.product-version }}"
           echo "Product Prerelease - ${{ needs.set-product-version.outputs.prerelease-product-version }}"
@@ -100,7 +100,7 @@ jobs:
       filepath: ${{ steps.generate-metadata-file.outputs.filepath }}
     steps:
       - name: 'Checkout directory'
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Generate metadata file
         id: generate-metadata-file
         uses: hashicorp/actions-generate-metadata@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
@@ -108,7 +108,7 @@ jobs:
           repository: boundary
           version: ${{ needs.set-product-version.outputs.product-version }}
           product: ${{ env.PKG_NAME }}
-      - uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: metadata.json
           path: ${{ steps.generate-metadata-file.outputs.filepath }}
@@ -137,9 +137,9 @@ jobs:
       GOPRIVATE: "github.com/hashicorp"
       GO111MODULE: on
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ matrix.go }}
           cache: false
@@ -149,7 +149,7 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -163,7 +163,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
@@ -205,11 +205,11 @@ jobs:
       GO111MODULE: on
 
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up Git
         run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
       - name: Set up Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ matrix.go }}
           cache: false
@@ -219,7 +219,7 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -231,7 +231,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
@@ -279,12 +279,12 @@ jobs:
           echo "RPM_PACKAGE=$(basename out/*.rpm)" >> "$GITHUB_ENV"
           echo "DEB_PACKAGE=$(basename out/*.deb)" >> "$GITHUB_ENV"
       - name: Upload RPM package
-        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: ${{ env.RPM_PACKAGE }}
           path: out/${{ env.RPM_PACKAGE }}
       - name: Upload DEB package
-        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: ${{ env.DEB_PACKAGE }}
           path: out/${{ env.DEB_PACKAGE }}
@@ -307,9 +307,9 @@ jobs:
       GO111MODULE: on
 
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ matrix.go }}
           cache: false
@@ -319,7 +319,7 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -331,7 +331,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
@@ -371,7 +371,7 @@ jobs:
       version: ${{ needs.set-product-version.outputs.product-version }}
       minor-version: ${{ needs.product-metadata.outputs.product-minor-version }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Docker Build (Action)
         uses: hashicorp/actions-docker-build@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
@@ -380,6 +380,7 @@ jobs:
           arch: ${{ matrix.arch }}
           tags: |
             docker.io/hashicorp/${{ env.repo }}:${{ env.version }}
+            docker.io/hashicorp/${{ env.repo }}:${{ env.version }}_${{ github.sha }}
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.version }}
           # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
           # And MAJOR.MINOR-dev-$COMMITSHA

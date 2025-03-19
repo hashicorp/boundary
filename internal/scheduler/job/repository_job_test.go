@@ -35,7 +35,7 @@ func TestRepository_UpsertJob(t *testing.T) {
 	}
 	tests := []struct {
 		name        string
-		in          args
+		in          *args
 		want        *Job
 		wantErr     bool
 		wantErrCode errors.Code
@@ -44,7 +44,7 @@ func TestRepository_UpsertJob(t *testing.T) {
 		{
 			name:    "missing-name",
 			wantErr: true,
-			in: args{
+			in: &args{
 				description: "description",
 			},
 			wantErrCode: errors.InvalidParameter,
@@ -52,7 +52,7 @@ func TestRepository_UpsertJob(t *testing.T) {
 		},
 		{
 			name: "missing-description",
-			in: args{
+			in: &args{
 				name: "name",
 			},
 			wantErr:     true,
@@ -61,7 +61,7 @@ func TestRepository_UpsertJob(t *testing.T) {
 		},
 		{
 			name: "valid",
-			in: args{
+			in: &args{
 				name:        "name",
 				description: "description",
 			},

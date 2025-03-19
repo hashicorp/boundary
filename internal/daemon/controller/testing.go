@@ -473,8 +473,9 @@ type TestControllerOpts struct {
 	PublicClusterAddr string
 
 	// The amount of time to wait before marking connections as canceling when a
-	// worker has not reported in
-	WorkerStatusGracePeriodDuration time.Duration
+	// worker has not reported in, and whether a worker is considered to be
+	// routable based on the last time it received a routing info report.
+	WorkerRPCGracePeriod time.Duration
 
 	// The period of time after which it will consider other controllers to be
 	// no longer accessible, based on time since their last status update in the
@@ -503,6 +504,8 @@ type TestControllerOpts struct {
 	WorkerAuthDebuggingEnabled *atomic.Bool
 
 	DisableRateLimiting bool
+
+	EnableIPv6 bool
 }
 
 func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
@@ -527,7 +530,6 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 	var err error
 	tc.c, err = New(ctx, conf)
 	if err != nil {
-		tc.Shutdown()
 		t.Fatal(err)
 	}
 
@@ -550,7 +552,6 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 
 	if !opts.DisableAutoStart {
 		if err := tc.c.Start(); err != nil {
-			tc.Shutdown()
 			t.Fatal(err)
 		}
 	}
@@ -587,7 +588,8 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts.Config = cfg
 
 	case opts.Config == nil:
-		opts.Config, err = config.DevController()
+		cfgOpts := append([]config.Option{}, config.WithIPv6Enabled(true))
+		opts.Config, err = config.DevController(cfgOpts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -690,8 +692,8 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		t.Fatal(err)
 	}
 
-	if opts.WorkerStatusGracePeriodDuration != 0 {
-		opts.Config.Controller.WorkerStatusGracePeriodDuration = opts.WorkerStatusGracePeriodDuration
+	if opts.WorkerRPCGracePeriod != 0 {
+		opts.Config.Controller.WorkerRPCGracePeriodDuration = opts.WorkerRPCGracePeriod
 	}
 	if opts.LivenessTimeToStaleDuration != 0 {
 		opts.Config.Controller.LivenessTimeToStaleDuration = opts.LivenessTimeToStaleDuration
@@ -861,7 +863,7 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		DisableAuthMethodCreation:       true,
 		DisableAutoStart:                opts.DisableAutoStart,
 		PublicClusterAddr:               opts.PublicClusterAddr,
-		WorkerStatusGracePeriodDuration: opts.WorkerStatusGracePeriodDuration,
+		WorkerRPCGracePeriod:            opts.WorkerRPCGracePeriod,
 		LivenessTimeToStaleDuration:     opts.LivenessTimeToStaleDuration,
 		WorkerAuthCaCertificateLifetime: tc.c.conf.TestOverrideWorkerAuthCaCertificateLifetime,
 		WorkerAuthDebuggingEnabled:      tc.c.conf.WorkerAuthDebuggingEnabled,
@@ -880,53 +882,45 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 	return NewTestController(t, nextOpts)
 }
 
-// WaitForNextWorkerStatusUpdate waits for the next status check from a worker to
-// come in. If it does not come in within the default status grace
+// WaitForNextWorkerRoutingInfoUpdate waits for the next routing info RPC from a worker to
+// come in. If it does not come in within the default worker RPC grace
 // period, this function returns an error.
-func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string) error {
-	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
-	ctx := context.TODO()
-	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerStatusName)
-	waitStatusStart := time.Now()
-	ctx, cancel := context.WithTimeout(tc.ctx, time.Duration(tc.c.workerStatusGracePeriod.Load()))
+func (tc *TestController) WaitForNextWorkerRoutingInfoUpdate(workerName string) error {
+	const op = "controller.(TestController).WaitForNextWorkerRoutingInfoUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(tc.ctx, time.Duration(tc.c.workerRPCGracePeriod.Load()))
 	defer cancel()
+	event.WriteSysEvent(ctx, op, "waiting for next routing info from worker", "worker", workerName)
 	var err error
 	for {
-		if err = func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-
-			case <-time.After(time.Second):
-				// pass
-			}
-
-			return nil
-		}(); err != nil {
+		select {
+		case <-ctx.Done():
 			break
+		case <-time.After(time.Second):
+			// pass
 		}
 
-		var waitStatusCurrent time.Time
-		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v any) bool {
+		var waitCurrent time.Time
+		tc.Controller().WorkerRoutingInfoUpdateTimes().Range(func(k, v any) bool {
 			if k == nil || v == nil {
 				err = fmt.Errorf("nil key or value on entry: key=%#v value=%#v", k, v)
 				return false
 			}
 
-			workerStatusUpdateId, ok := k.(string)
+			workerUpdateId, ok := k.(string)
 			if !ok {
 				err = fmt.Errorf("unexpected type %T for key: key=%#v value=%#v", k, k, v)
 				return false
 			}
 
-			workerStatusUpdateTime, ok := v.(time.Time)
+			workerUpdateTime, ok := v.(time.Time)
 			if !ok {
 				err = fmt.Errorf("unexpected type %T for value: key=%#v value=%#v", k, k, v)
 				return false
 			}
 
-			if workerStatusUpdateId == workerStatusName {
-				waitStatusCurrent = workerStatusUpdateTime
+			if workerUpdateId == workerName {
+				waitCurrent = workerUpdateTime
 				return false
 			}
 
@@ -937,16 +931,16 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string)
 			break
 		}
 
-		if waitStatusCurrent.After(waitStatusStart) {
+		if waitCurrent.After(waitStart) {
 			break
 		}
 	}
 
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report from worker", "worker", workerStatusName))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next routing info RPC from worker", "worker", workerName))
 		return err
 	}
-	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerStatusName)
+	event.WriteSysEvent(ctx, op, "next routing info RPC from worker received successfully", "worker", workerName)
 	return nil
 }
 

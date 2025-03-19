@@ -22,7 +22,7 @@ jobs:
       id: boundary-team-role
       run: |
         TEAM=boundary
-        ROLE="$(hub api orgs/hashicorp/teams/${TEAM}/memberships/${{ github.actor }} | jq -r '.role | select(.!=null)')"
+        ROLE="$(gh api orgs/hashicorp/teams/${TEAM}/memberships/${{ github.actor }} | jq -r '.role | select(.!=null)')"
         if [[ -n ${ROLE} ]]; then
           echo "Actor ${{ github.actor }} is a ${TEAM} team member, skipping ticket creation"
         else

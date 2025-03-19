@@ -26,10 +26,10 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithUrl", func(t *testing.T) {
-		opts, err := getOpts(WithUrl(ctx, "http://localhost:9200"))
+		opts, err := getOpts(WithUrl(ctx, "http://[::1]:9200"))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
-		testOpts.withUrl = "http://localhost:9200"
+		testOpts.withUrl = "http://[::1]:9200"
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithLogger", func(t *testing.T) {
@@ -100,5 +100,29 @@ func Test_GetOpts(t *testing.T) {
 
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithHomeDir", func(t *testing.T) {
+		opts, err := getOpts(WithHomeDir(ctx, "/tmp"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withHomeDir = "/tmp"
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithForceResetSchema", func(t *testing.T) {
+		opts, err := getOpts(WithForceResetSchema(ctx, true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.False(t, testOpts.withForceResetSchema)
+		testOpts.withForceResetSchema = true
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithReadyToServeNotificationCh", func(t *testing.T) {
+		ch := make(chan struct{})
+		opts, err := getOpts(WithReadyToServeNotificationCh(ctx, ch))
+		require.NoError(t, err)
+		assert.NotNil(t, opts.WithReadyToServeNotificationCh)
+		testOpts := getDefaultOptions()
+		assert.Nil(t, testOpts.WithReadyToServeNotificationCh)
+		testOpts.WithReadyToServeNotificationCh = ch
 	})
 }

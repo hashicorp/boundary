@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -167,4 +168,46 @@ func TestRepository_New(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
+}
+
+func TestPluginClientFactory(t *testing.T) {
+	t.Run("nilHostCatalog", func(t *testing.T) {
+		cl, err := pluginClientFactory(
+			context.Background(),
+			nil,
+			map[string]plgpb.HostPluginServiceClient{},
+		)
+		require.ErrorContains(t, err, "host catalog object not present")
+		require.Nil(t, cl)
+	})
+
+	t.Run("pluginDoesntExist", func(t *testing.T) {
+		cl, err := pluginClientFactory(
+			context.Background(),
+			&hostcatalogs.HostCatalog{PluginId: "not_present"},
+			map[string]plgpb.HostPluginServiceClient{},
+		)
+		require.ErrorContains(t, err, "controller plugin \"not_present\" not available")
+		require.Nil(t, cl)
+	})
+
+	t.Run("pluginNilClient", func(t *testing.T) {
+		cl, err := pluginClientFactory(
+			context.Background(),
+			&hostcatalogs.HostCatalog{PluginId: "present_but_nil"},
+			map[string]plgpb.HostPluginServiceClient{"present_but_nil": nil},
+		)
+		require.ErrorContains(t, err, "controller plugin \"present_but_nil\" not available")
+		require.Nil(t, cl)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		cl, err := pluginClientFactory(
+			context.Background(),
+			&hostcatalogs.HostCatalog{PluginId: "success"},
+			map[string]plgpb.HostPluginServiceClient{"success": plgpb.NewHostPluginServiceClient(nil)},
+		)
+		require.NoError(t, err)
+		require.NotNil(t, cl)
+	})
 }

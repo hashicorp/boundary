@@ -51,7 +51,8 @@ func upsertUserAndAuthToken(ctx context.Context, reader db.Reader, writer db.Wri
 		}
 		onConflict := &db.OnConflict{
 			Target: db.Columns{"id"},
-			Action: db.DoNothing(true),
+			// Unset the deleted_at column if it was set to un-delete the user
+			Action: db.SetColumnValues(map[string]any{"deleted_at": "infinity"}),
 		}
 		if err := writer.Create(ctx, u, db.WithOnConflict(onConflict)); err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -75,7 +76,8 @@ func upsertUserAndAuthToken(ctx context.Context, reader db.Reader, writer db.Wri
 	}
 
 	var users []*user
-	if err := reader.SearchWhere(ctx, &users, "true", []any{}, db.WithLimit(-1)); err != nil {
+	// we only want users that have not been soft deleted
+	if err := reader.SearchWhere(ctx, &users, "true", []any{}, db.WithLimit(-1), db.WithTable(activeUserTableName)); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if len(users) <= usersLimit {
@@ -195,7 +197,10 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is empty", errors.WithoutEvent())
 	}
 	kt := token.clone()
-	keyringStoredAt := r.tokenKeyringFn(kt.KeyringType, kt.TokenName)
+	keyringStoredAt, err := r.tokenKeyringFn(kt.KeyringType, kt.TokenName)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup token in keyring, keyring type: %q, token name: %q", kt.KeyringType, kt.TokenName), errors.WithoutEvent())
+	}
 	if keyringStoredAt == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "unable to find token in the keyring specified", errors.WithoutEvent())
 	}
@@ -223,7 +228,7 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 			at = keyringStoredAt
 		}
 	}
-	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
+	if _, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
 		if err := upsertUserAndAuthToken(ctx, reader, writer, bAddr, at); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
@@ -235,8 +240,7 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -382,6 +386,8 @@ func cleanExpiredOrOrphanedAuthTokens(ctx context.Context, writer db.Writer, idT
 	return nil
 }
 
+const activeUserTableName = "user_active" // users that have not been soft deleted
+
 // lookupUser returns a user if one is present in the repository or nil if not.
 func (r *Repository) lookupUser(ctx context.Context, id string) (*user, error) {
 	const op = "cache.(Repository).lookupUser"
@@ -390,7 +396,8 @@ func (r *Repository) lookupUser(ctx context.Context, id string) (*user, error) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty id")
 	}
 	ret := &user{Id: id}
-	if err := r.rw.LookupById(ctx, ret); err != nil {
+	// we only want users that have NOT been soft deleted
+	if err := r.rw.LookupById(ctx, ret, db.WithTable(activeUserTableName)); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
@@ -403,7 +410,8 @@ func (r *Repository) lookupUser(ctx context.Context, id string) (*user, error) {
 func (r *Repository) listUsers(ctx context.Context) ([]*user, error) {
 	const op = "cache.(Repository).listUsers"
 	var ret []*user
-	if err := r.rw.SearchWhere(ctx, &ret, "true", nil); err != nil {
+	// we only want users that have NOT been soft deleted
+	if err := r.rw.SearchWhere(ctx, &ret, "true", nil, db.WithTable(activeUserTableName)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
@@ -482,16 +490,31 @@ func deleteUser(ctx context.Context, w db.Writer, u *user) (int, error) {
 	case u.Id == "":
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing id")
 	}
-	// TODO(https://github.com/go-gorm/gorm/issues/4879): Use the
-	//   writer.Delete() function once the gorm bug is fixed. Until then
-	//   the gorm driver for sqlite has an error which wont execute a
-	//   delete correctly. as a work around we manually execute the
-	//   query here.
-	n, err := w.Exec(ctx, "delete from user where id = ?", []any{u.Id})
-	if err != nil {
-		err = errors.Wrap(ctx, err, op)
+	const (
+		// delete the user if they don't have any refresh tokens which are
+		// newer than 20 days (the refresh token expiration time)
+		deleteStmt = "delete from user where id = ? and id not in (select user_id from refresh_token where DATETIME('now', '-20 days') < datetime(create_time) )"
+
+		// fallback to soft deleting the user
+		softDeleteStmt = "update user set deleted_at = (strftime('%Y-%m-%d %H:%M:%f','now')) where id = ?"
+	)
+	// see if we should delete the user
+	rowsAffected, err := w.Exec(ctx, deleteStmt, []any{u.Id})
+	switch {
+	case err != nil:
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	case rowsAffected > 0:
+		// if we deleted the user, we're done.
+		return rowsAffected, nil
 	}
-	return n, err
+
+	// fallback to soft delete
+	rowsAffected, err = w.Exec(ctx, softDeleteStmt, []any{u.Id})
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	return rowsAffected, nil
 }
 
 // user is a gorm model for the user table.  It represents a user

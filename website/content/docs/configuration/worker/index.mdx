@@ -1,8 +1,8 @@
 ---
 layout: docs
-page_title: Worker - configuration
-description: |-
-  The worker stanza configures worker-specific parameters.
+page_title: Worker configuration overview
+description: >-
+  Learn about worker configuration for proxies, storage, and tags. Understand how multi-hop configurations let you chain workers together in private networks.
 ---
 
 # Worker stanza
@@ -11,19 +11,19 @@ The `worker` stanza configures Boundary worker-specific parameters.
 
 All workers within Boundary use certificates and encryption keys to identify
 themselves and protect data in transit. However, there are three different
-ways to register them so that registration of workers can fit into any workflow; controller-led, worker-led, and via external KMS. 
+ways to register them so that registration of workers can fit into any workflow: controller-led, worker-led, and via external KMS.
 
 The differences in how they are configured are in the sub-pages linked at the
 bottom of this page.
 
-Workers registered via the worker-led or controller-led methods must be registered in
-the system via an API call, and require storage on disk to store the current set
-of credentials. Workers registering via an external KMS auto-register after successful authentication, making them an easy mechanism to 
+Workers registered using the worker-led or controller-led methods must be registered in
+the system using an API call, and require storage on disk to store the current set
+of credentials. Workers registering using an external KMS auto-register after successful authentication, making them an easy mechanism to
 use for automatic scaling. This also means they are not required to store
 credentials locally; each time they connect the KMS is used to reauthenticate
 them.
 
-~> Prior to version 0.15 of Boundary, there were two different types of workers, PKI & KMS workers. 
+~> Prior to version 0.15 of Boundary, there were two different types of workers, PKI & KMS workers.
 If you are using pre-0.15 workers, with pre-0.15 upstreams please be sure to switch the documentation
 version to `0.13.x` - `0.14.x` for correct information.
 
@@ -62,6 +62,8 @@ worker {
   useful for cloud environments that do not bind a publicly accessible IP to a
   NIC on the host directly, such as an Amazon EIP.
 
+  You should omit this parameter in multi-hop configurations if this self-managed worker connects to an upstream HCP-managed worker.
+
   This value can reference any of the following:
   - a direct address string
   - a file on disk (file://) from which an address will be read
@@ -75,8 +77,8 @@ worker {
   using env or file, their contents must formatted as a JSON array:
   `["127.0.0.1", "192.168.0.1", "10.0.0.1"]`
 
-  HCP Boundary workers require the [`hcp_boundary_cluster_id`](/boundary/docs/configuration/worker/#hcp_boundary_cluster_id) parameter instead of `initial upstreams`.
-  If you configure an HCP worker with `initial_upstreams`, the worker configuration fails.
+  Self-managed workers connecting to HCP Boundary require the [`hcp_boundary_cluster_id`](/boundary/docs/configuration/worker/#hcp_boundary_cluster_id) parameter instead of `initial upstreams`, unless you are configuring an HCP-managed worker as an ingress worker.
+  If you configure a self-managed worker with both `initial_upstreams` and `hcp_boundary_cluster_id`, the worker configuration fails.
 
 - `hcp_boundary_cluster_id` - A string required to configure workers using worker-led or controller-led registration
   to connect to your HCP Boundary cluster rather than specifying
@@ -87,7 +89,7 @@ worker {
    Session recordings are stored in the local storage while they are in progress.
    When the session is complete, Boundary moves the local session recording to remote storage and deletes the local copy.
 
-- `recording_storage_minimum_available_capacity` - A value measured in bytes that defines the worker's local storage state. 
+- `recording_storage_minimum_available_capacity` - A value measured in bytes that defines the worker's local storage state.
    Boundary compares this value with the available local disk space found in the `recording_storage_path` to determine if a worker can be used for session recording operations.
    The supported suffixes are kb, kib, mb, mib, gb, gib, tb, tib, which are not case sensitive. Example: 2GB, 2gb, 2GiB, 2gib.
    The possible storage states based on the `recording_storage_minimum_available_capacity` are:

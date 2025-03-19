@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,6 +52,19 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	// away and comes back" (worker 2).
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 	worker2 := server.TestKmsWorker(t, conn, wrapper)
+
+	updateServer := func(t *testing.T, w *server.Worker) *server.Worker {
+		t.Helper()
+		pubId := w.GetPublicId()
+		w.PublicId = ""
+		wkr, err := server.TestUpsertAndReturnWorker(ctx, t, w, serversRepo, server.WithPublicId(pubId))
+		require.NoError(err)
+		err = serversRepo.UpsertSessionInfo(ctx, pubId)
+		require.NoError(err)
+		return wkr
+	}
+	worker1 = updateServer(t, worker1)
+	worker2 = updateServer(t, worker2)
 
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string
@@ -95,7 +107,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Create the job.
 	job, err := newSessionConnectionCleanupJob(ctx, rw, gracePeriod)
-	job.workerStatusGracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
+	job.workerRPCGracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
 	require.NoError(err)
 
 	// sleep the status grace period.
@@ -103,14 +115,10 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, server.NewWorker(scope.Global.String(),
-		server.WithName(worker1.GetName()),
-		server.WithAddress(worker1.GetAddress())),
-		server.WithPublicId(worker1.GetPublicId()))
-	require.NoError(err)
+	worker1 = updateServer(t, worker1)
 
 	// Run the job.
-	require.NoError(job.Run(ctx))
+	require.NoError(job.Run(ctx, 0))
 
 	// Assert connection state on both workers.
 	assertConnections := func(workerId string, closed bool) {
@@ -278,7 +286,9 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		t.Helper()
 		pubId := w.GetPublicId()
 		w.PublicId = ""
-		wkr, err := serversRepo.UpsertWorkerStatus(ctx, w, server.WithPublicId(pubId))
+		wkr, err := server.TestUpsertAndReturnWorker(ctx, t, w, serversRepo, server.WithPublicId(pubId))
+		require.NoError(err)
+		err = serversRepo.UpsertSessionInfo(ctx, pubId)
 		require.NoError(err)
 		return wkr
 	}
@@ -372,13 +382,11 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		require.NoError(err)
 		// Assert that we have one result with the appropriate ID and
 		// number of connections closed. Due to how things are
-		require.Equal([]closeConnectionsForDeadWorkersResult{
-			{
-				WorkerId:                worker1.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker1.GetLastStatusTime().AsTime()),
-				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
-			},
-		}, result)
+		require.Len(result, 1)
+		require.Equal(worker1.PublicId, result[0].WorkerId)
+		require.Equal(12, result[0].NumberConnectionsClosed)
+		require.WithinDuration(timestampPbAsUTC(t, worker1.GetLastStatusTime().AsTime()), result[0].LastUpdateTime, time.Second)
+
 		// Expect all connections closed on worker1
 		requireConnectionStatus(t, worker1ConnIds, true)
 		// Expect appropriate split connection state on worker2
@@ -396,18 +404,19 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		result, err := job.closeConnectionsForDeadWorkers(ctx, gracePeriod)
 		require.NoError(err)
 		// Assert that we have one result with the appropriate ID and number of connections closed.
-		require.ElementsMatch([]closeConnectionsForDeadWorkersResult{
-			{
-				WorkerId:                worker2.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker2.GetLastStatusTime().AsTime()),
-				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
-			},
-			{
-				WorkerId:                worker3.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker3.GetLastStatusTime().AsTime()),
-				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
-			},
-		}, result)
+		expectedWorkers := map[string]*server.Worker{
+			worker2.PublicId: worker2,
+			worker3.PublicId: worker3,
+		}
+		require.Len(result, len(expectedWorkers))
+		for _, r := range result {
+			expectedWorker, ok := expectedWorkers[r.WorkerId]
+			require.True(ok)
+			require.Equal(expectedWorker.PublicId, r.WorkerId)
+			require.Equal(12, r.NumberConnectionsClosed)
+			require.WithinDuration(timestampPbAsUTC(t, expectedWorker.GetLastStatusTime().AsTime()), r.LastUpdateTime, time.Second)
+		}
+
 		// Expect all connections closed on worker1
 		requireConnectionStatus(t, worker1ConnIds, true)
 		// Expect all connections closed on worker2

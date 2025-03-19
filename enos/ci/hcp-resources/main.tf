@@ -67,7 +67,7 @@ module "find_azs" {
 module "license" {
   source = "../../modules/read_license"
 
-  file_name = abspath(local.license_path)
+  license_path = abspath(local.license_path)
 }
 
 module "iam_user" {

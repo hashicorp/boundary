@@ -77,6 +77,10 @@ resource "docker_container" "openssh_server" {
     internal = 2222
     external = 2222
   }
+  volumes {
+    host_path      = format("%s/%s", abspath(path.module), "/custom-cont-init.d")
+    container_path = "/custom-cont-init.d"
+  }
 }
 
 resource "enos_local_exec" "wait" {

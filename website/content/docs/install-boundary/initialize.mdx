@@ -1,14 +1,16 @@
 ---
 layout: docs
 page_title: Initialize Boundary
-description: |-
-  Creating your first login account
+description: >-
+  Initialize new Boundary self-managed installations. Log in with the recovery KMS to create initial scope, auth method, login account, user, and role resources.
 ---
 
 # Initialize Boundary
 
 This document describes how to access Boundary for the first time and create the necessary resources to log in as a
 user.
+
+You can also initialize and manage Boundary using Terraform. Refer to the [Terraform patterns](/boundary/docs/install-boundary/terraform-patterns) page to learn more.
 
 ## Requirements
 
@@ -460,3 +462,9 @@ resource "boundary_role" "project_admin" {
 boundary authenticate password \
   -auth-method-id <auth_method_id>
 ```
+
+After initializing Boundary, you should:
+
+Next, you should:
+
+- [Install the Boundary Clients](/boundary/docs/install-boundary/install-clients)

@@ -1026,7 +1026,7 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	ctx := context.Background()
 	grantString := "ids=*;type=*;actions=*"
-	g, err := perms.Parse(context.Background(), "global", grantString)
+	g, err := perms.Parse(context.Background(), perms.GrantTuple{RoleScopeId: "global", GrantScopeId: "global", Grant: grantString})
 	require.NoError(t, err)
 	_, actions := g.Actions()
 	grant := &pb.Grant{
@@ -2127,7 +2127,7 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 		return got.GrantStrings[i] < got.GrantStrings[j]
 	})
 	for i, v := range expected {
-		parsed, err := perms.Parse(context.Background(), "o_abc123", v)
+		parsed, err := perms.Parse(context.Background(), perms.GrantTuple{RoleScopeId: "o_abc123", GrantScopeId: "o_abc123", Grant: v})
 		require.NoError(err)
 		assert.Equal(expected[i], got.GrantStrings[i])
 		assert.Equal(expected[i], got.Grants[i].GetRaw())

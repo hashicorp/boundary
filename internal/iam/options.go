@@ -26,22 +26,23 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId                string
-	withName                    string
-	withDescription             string
-	withLimit                   int
-	withGrantScopeIds           []string
-	withSkipVetForWrite         bool
-	withDisassociate            bool
-	withSkipAdminRoleCreation   bool
-	withSkipDefaultRoleCreation bool
-	withUserId                  string
-	withRandomReader            io.Reader
-	withAccountIds              []string
-	withPrimaryAuthMethodId     string
-	withReader                  db.Reader
-	withWriter                  db.Writer
-	withStartPageAfterItem      pagination.Item
+	withPublicId                  string
+	withName                      string
+	withDescription               string
+	withLimit                     int
+	withGrantScopeIds             []string
+	withSkipVetForWrite           bool
+	withDisassociate              bool
+	withSkipAdminRoleCreation     bool
+	withSkipDefaultRoleCreation   bool
+	withUserId                    string
+	withRandomReader              io.Reader
+	withAccountIds                []string
+	withPrimaryAuthMethodId       string
+	withReader                    db.Reader
+	withWriter                    db.Writer
+	withStartPageAfterItem        pagination.Item
+	withTestCacheMultiGrantTuples *[]multiGrantTuple
 }
 
 func getDefaultOptions() options {
@@ -173,5 +174,11 @@ func WithReaderWriter(r db.Reader, w db.Writer) Option {
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) {
 		o.withStartPageAfterItem = item
+	}
+}
+
+func withTestCacheMultiGrantTuples(cache *[]multiGrantTuple) Option {
+	return func(o *options) {
+		o.withTestCacheMultiGrantTuples = cache
 	}
 }

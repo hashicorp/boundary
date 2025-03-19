@@ -80,6 +80,7 @@ begin;
   where ish.history_id = rs.target_project_hst_id;
 
   -- replaces 71/12_session_recording_views.up.sql
+  -- replaced by 92/01_host_plugin_catalog_worker_filter.up.sql
   drop view session_recording_aggregate;  -- this is necessary, throws weird syntax error without
   create view session_recording_aggregate as
     select

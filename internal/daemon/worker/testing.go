@@ -16,7 +16,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -30,6 +29,8 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -70,13 +71,8 @@ func (tw *TestWorker) Name() string {
 }
 
 func (tw *TestWorker) UpstreamAddrs() []string {
-	var addrs []string
-	lastStatus := tw.w.LastStatusSuccess()
-	for _, v := range lastStatus.GetCalculatedUpstreams() {
-		addrs = append(addrs, v.Address)
-	}
-
-	return addrs
+	lastRoutingInfo := tw.w.LastRoutingInfoSuccess()
+	return lastRoutingInfo.GetCalculatedUpstreamAddresses()
 }
 
 func (tw *TestWorker) ProxyAddrs() []string {
@@ -202,6 +198,10 @@ type TestWorkerOpts struct {
 	// The location of the worker's recording storage
 	WorkerRecordingStoragePath string
 
+	// The interval between each respective worker RPC invocation
+	// This sets the interval for SessionInfo, RoutingInfo and Statistics.
+	WorkerRPCInterval time.Duration
+
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
 	Name string
@@ -215,7 +215,7 @@ type TestWorkerOpts struct {
 
 	// The amount of time to wait before marking connections as closed when a
 	// connection cannot be made back to the controller
-	SuccessfulStatusGracePeriodDuration time.Duration
+	SuccessfulControllerRPCGracePeriodDuration time.Duration
 
 	// Overrides worker's nonceFn, for cases where we want to have control
 	// over the nonce we send to the Controller
@@ -235,6 +235,9 @@ type TestWorkerOpts struct {
 
 	// Enable observation events
 	EnableObservationEvents bool
+
+	// Enable IPv6
+	EnableIPv6 bool
 
 	// Enable error events
 	EnableErrorEvents bool
@@ -272,6 +275,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		configOpts = append(configOpts, config.WithAuditEventsEnabled(opts.EnableAuditEvents))
 		configOpts = append(configOpts, config.WithSysEventsEnabled(opts.EnableSysEvents))
 		configOpts = append(configOpts, config.WithObservationsEnabled(opts.EnableObservationEvents))
+		configOpts = append(configOpts, config.WithIPv6Enabled(opts.EnableIPv6))
 		configOpts = append(configOpts, config.TestWithErrorEventsEnabled(t, opts.EnableErrorEvents))
 		opts.Config, err = config.DevWorker(configOpts...)
 		if err != nil {
@@ -279,6 +283,9 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		}
 		if opts.Name != "" {
 			opts.Config.Worker.Name = opts.Name
+		}
+		if opts.WorkerRPCInterval > 0 {
+			opts.Config.Worker.TestWorkerRPCInterval = opts.WorkerRPCInterval
 		}
 	}
 
@@ -311,8 +318,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	tw.b.EnabledPlugins = append(tw.b.EnabledPlugins, base.EnabledPluginLoopback)
 	tw.name = opts.Config.Worker.Name
 
-	if opts.SuccessfulStatusGracePeriodDuration != 0 {
-		opts.Config.Worker.SuccessfulStatusGracePeriodDuration = opts.SuccessfulStatusGracePeriodDuration
+	if opts.SuccessfulControllerRPCGracePeriodDuration != 0 {
+		opts.Config.Worker.SuccessfulControllerRPCGracePeriodDuration = opts.SuccessfulControllerRPCGracePeriodDuration
 	}
 
 	serverName, err := os.Hostname()
@@ -356,7 +363,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	tw.w, err = New(ctx, conf)
 	if err != nil {
-		tw.Shutdown()
 		t.Fatal(err)
 	}
 
@@ -383,7 +389,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	if !opts.DisableAutoStart {
 		if err := tw.w.Start(); err != nil {
-			tw.Shutdown()
 			t.Fatal(err)
 		}
 	}
@@ -397,14 +402,14 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		opts = new(TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
-		WorkerAuthKms:                       tw.w.conf.WorkerAuthKms,
-		DownstreamWorkerAuthKms:             tw.w.conf.DownstreamWorkerAuthKms,
-		WorkerAuthStorageKms:                tw.w.conf.WorkerAuthStorageKms,
-		Name:                                opts.Name,
-		InitialUpstreams:                    tw.UpstreamAddrs(),
-		Logger:                              tw.w.conf.Logger,
-		SuccessfulStatusGracePeriodDuration: opts.SuccessfulStatusGracePeriodDuration,
-		WorkerAuthDebuggingEnabled:          tw.w.conf.WorkerAuthDebuggingEnabled,
+		WorkerAuthKms:           tw.w.conf.WorkerAuthKms,
+		DownstreamWorkerAuthKms: tw.w.conf.DownstreamWorkerAuthKms,
+		WorkerAuthStorageKms:    tw.w.conf.WorkerAuthStorageKms,
+		Name:                    opts.Name,
+		InitialUpstreams:        tw.UpstreamAddrs(),
+		Logger:                  tw.w.conf.Logger,
+		SuccessfulControllerRPCGracePeriodDuration: opts.SuccessfulControllerRPCGracePeriodDuration,
+		WorkerAuthDebuggingEnabled:                 tw.w.conf.WorkerAuthDebuggingEnabled,
 	}
 	if nextOpts.Name == "" {
 		var err error
@@ -418,150 +423,10 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	return NewTestWorker(t, nextOpts)
 }
 
-// NewTestMultihopWorkers creates a PKI-KMS and PKI worker with the controller
-// as an upstream, and two child workers (one PKI, one KMS) as downstreams of
-// the initial workers (child PKI -> upstream PKI-KMS, child PKI-KMS -> upstream
-// PKI). Tags for the PKI and child PKI/KMS workers can be passed in, if
-// desired.
-func NewTestMultihopWorkers(t testing.TB,
-	logger hclog.Logger,
-	controllerContext context.Context,
-	clusterAddrs []string,
-	workerAuthKms wrapping.Wrapper,
-	serversRepoFn common.ServersRepoFactory,
-	pkiTags, childPkiTags, childKmsTags map[string][]string,
-	enableAuthDebugging *atomic.Bool,
-) (kmsWorker, pkiWorker, childPkiWorker, childKmsWorker *TestWorker) {
-	require := require.New(t)
-
-	// Create a few test wrappers for the child KMS worker to use
-	childDownstreamWrapper1 := db.TestWrapper(t)
-	childDownstreamWrapper2 := db.TestWrapper(t)
-	childDownstreamWrapper, err := multi.NewPooledWrapper(context.Background(), childDownstreamWrapper1)
-	require.NoError(err)
-	added, err := childDownstreamWrapper.AddWrapper(context.Background(), childDownstreamWrapper2)
-	require.NoError(err)
-	require.True(added)
-
-	kmsWorker = NewTestWorker(t, &TestWorkerOpts{
-		WorkerAuthKms:              workerAuthKms,
-		InitialUpstreams:           clusterAddrs,
-		Logger:                     logger.Named("kmsWorker"),
-		WorkerAuthDebuggingEnabled: enableAuthDebugging,
-		DownstreamWorkerAuthKms:    childDownstreamWrapper,
-	})
-	t.Cleanup(kmsWorker.Shutdown)
-
-	// Give time for it to be inserted into the database
-	time.Sleep(2 * time.Second)
-
-	// names should not be set when using pki workers
-	pkiWorkerConf, err := config.DevWorker()
-	require.NoError(err)
-	pkiWorkerConf.Worker.Name = ""
-	if pkiTags != nil {
-		pkiWorkerConf.Worker.Tags = pkiTags
-	}
-	pkiWorkerConf.Worker.InitialUpstreams = clusterAddrs
-	pkiWorker = NewTestWorker(t, &TestWorkerOpts{
-		InitialUpstreams:           clusterAddrs,
-		Logger:                     logger.Named("pkiWorker"),
-		Config:                     pkiWorkerConf,
-		DownstreamWorkerAuthKms:    childDownstreamWrapper,
-		WorkerAuthDebuggingEnabled: enableAuthDebugging,
-	})
-	t.Cleanup(pkiWorker.Shutdown)
-
-	// Give time for it to be inserted into the database
-	time.Sleep(2 * time.Second)
-
-	// Get a server repo and worker auth repo
-	serversRepo, err := serversRepoFn()
-	require.NoError(err)
-	// Perform initial authentication of worker to controller
-	reqBytes, err := base58.FastBase58Decoding(pkiWorker.Worker().WorkerAuthRegistrationRequest)
-	require.NoError(err)
-
-	// Decode the proto into the request and create the worker
-	pkiWorkerReq := new(types.FetchNodeCredentialsRequest)
-	require.NoError(proto.Unmarshal(reqBytes, pkiWorkerReq))
-	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
-		Worker: &store.Worker{
-			ScopeId: scope.Global.String(),
-		},
-	}, server.WithFetchNodeCredentialsRequest(pkiWorkerReq))
-	require.NoError(err)
-
-	childPkiWorkerConf, err := config.DevWorker()
-	require.NoError(err)
-	childPkiWorkerConf.Worker.Name = ""
-	if childPkiTags != nil {
-		childPkiWorkerConf.Worker.Tags = childPkiTags
-	}
-	childPkiWorkerConf.Worker.InitialUpstreams = kmsWorker.ProxyAddrs()
-
-	childPkiWorker = NewTestWorker(t, &TestWorkerOpts{
-		InitialUpstreams:           kmsWorker.ProxyAddrs(),
-		Logger:                     logger.Named("childPkiWorker"),
-		Config:                     childPkiWorkerConf,
-		WorkerRecordingStoragePath: t.TempDir(),
-		WorkerAuthDebuggingEnabled: enableAuthDebugging,
-	})
-	t.Cleanup(childPkiWorker.Shutdown)
-
-	// Give time for it to be inserted into the database
-	time.Sleep(2 * time.Second)
-
-	// Perform initial authentication of worker to controller
-	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
-	require.NoError(err)
-
-	// Decode the proto into the request and create the worker
-	childPkiWorkerReq := new(types.FetchNodeCredentialsRequest)
-	require.NoError(proto.Unmarshal(reqBytes, childPkiWorkerReq))
-	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
-		Worker: &store.Worker{
-			ScopeId: scope.Global.String(),
-		},
-	}, server.WithFetchNodeCredentialsRequest(childPkiWorkerReq))
-	require.NoError(err)
-
-	childKmsWorkerConf, err := config.DevWorker()
-	require.NoError(err)
-	childKmsWorkerConf.Worker.Name = "child-kms-worker"
-	childKmsWorkerConf.Worker.Description = "child-kms-worker description"
-	// Set tags the same
-	if childKmsTags != nil {
-		childKmsWorkerConf.Worker.Tags = childKmsTags
-	}
-	childKmsWorkerConf.Worker.InitialUpstreams = kmsWorker.ProxyAddrs()
-
-	childKmsWorker = NewTestWorker(t, &TestWorkerOpts{
-		InitialUpstreams:           pkiWorker.ProxyAddrs(),
-		Logger:                     logger.Named("childKmsWorker"),
-		Config:                     childKmsWorkerConf,
-		WorkerAuthKms:              childDownstreamWrapper2,
-		WorkerAuthDebuggingEnabled: enableAuthDebugging,
-		DisableAutoStart:           true,
-	})
-	childKmsWorker.w.conf.WorkerAuthStorageKms = nil
-
-	err = childKmsWorker.w.Start()
-	t.Cleanup(childKmsWorker.Shutdown)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Sleep so that workers can startup and connect.
-	time.Sleep(12 * time.Second)
-
-	return kmsWorker, pkiWorker, childPkiWorker, childKmsWorker
-}
-
 // NewAuthorizedPkiTestWorker creates a new test worker with the provided upstreams
 // and creates it in the provided repo as an authorized worker. It returns
 // The TestWorker and it's boundary id.
-func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name string, upstreams []string) (*TestWorker, string) {
+func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name string, upstreams []string, opt ...config.Option) (*TestWorker, string) {
 	t.Helper()
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
@@ -592,4 +457,99 @@ func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name stri
 	}, server.WithFetchNodeCredentialsRequest(pkiWorkerReq))
 	require.NoError(t, err)
 	return w, wr.GetPublicId()
+}
+
+// mockServerCoordinationService is meant to stand in for a controller when testing
+// the methods defined by the server coordination service. It allows applying assertions and specifying
+// the return value of grpc methods by overwriting service methods.
+type mockServerCoordinationService struct {
+	pbs.UnimplementedServerCoordinationServiceServer
+	nextReqAssert         func(*pbs.StatusRequest) (*pbs.StatusResponse, error)
+	nextStatisticAssert   func(*pbs.StatisticsRequest) (*pbs.StatisticsResponse, error)
+	nextSessionInfoAssert func(*pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error)
+}
+
+func (m mockServerCoordinationService) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
+	if m.nextReqAssert != nil {
+		return m.nextReqAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "Status not implemented")
+}
+
+func (m mockServerCoordinationService) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	if m.nextStatisticAssert != nil {
+		return m.nextStatisticAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "Statistics not implemented")
+}
+
+func (m mockServerCoordinationService) SessionInfo(ctx context.Context, req *pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error) {
+	if m.nextSessionInfoAssert != nil {
+		return m.nextSessionInfoAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "SessionInfo not implemented")
+}
+
+var _ pbs.ServerCoordinationServiceServer = (*mockServerCoordinationService)(nil)
+
+// TestWaitForNextSuccessfulSessionInfoUpdate waits for the next successful session info. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with the worker's session info grace period.
+func (w *Worker) TestWaitForNextSuccessfulSessionInfoUpdate(t testing.TB) {
+	t.Helper()
+	const op = "worker.(Worker).WaitForNextSuccessfulSessionInfoUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(w.successfulSessionInfoGracePeriod.Load()))
+	defer cancel()
+	t.Log("waiting for next session info report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			t.Error("error waiting for next session info report to controller")
+			return
+		}
+
+		si := w.lastSessionInfoSuccess.Load().(*lastSessionInfo)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	t.Log("next worker session info update sent successfully")
+}
+
+// TestWaitForNextSuccessfulStatisticsUpdate waits for the next successful statistics. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with twice the worker's statistics timeout duration.
+func (w *Worker) TestWaitForNextSuccessfulStatisticsUpdate(t testing.TB) {
+	t.Helper()
+	const op = "worker.(Worker).WaitForNextSuccessfulStatisticsUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(2*w.statisticsCallTimeoutDuration.Load()))
+	defer cancel()
+	t.Log("waiting for next statistics report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			t.Error("error waiting for next statistics report to controller")
+			return
+		}
+
+		si := w.lastStatisticsSuccess.Load().(*lastStatistics)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	t.Log("next worker statistics update sent successfully")
 }

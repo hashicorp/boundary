@@ -33,11 +33,11 @@ func TestCliSearch(t *testing.T) {
 
 	ctx := context.Background()
 
-	// If daemon is already running, stop it so that we can start it with a
+	// If cache is already running, stop it so that we can start it with a
 	// shorter refresh interval
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
 	if output.Err == nil {
-		t.Log("Stopping daemon...")
+		t.Log("Stopping cache...")
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 		require.NoError(t, output.Err, string(output.Stderr))
 	}
@@ -54,8 +54,8 @@ func TestCliSearch(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	// Wait for daemon to be up and running
-	t.Log("Waiting for daemon to start...")
+	// Wait for cache to be up and running
+	t.Log("Waiting for cache to start...")
 	var statusResult clientcache.StatusResult
 	err = backoff.RetryNotify(
 		func() error {
@@ -80,7 +80,7 @@ func TestCliSearch(t *testing.T) {
 	require.Equal(t, statusResult.StatusCode, 200)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
 
-	// Confirm daemon version matches CLI version
+	// Confirm cache version matches CLI version
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("version", "-format", "json"))
 	require.NoError(t, output.Err, string(output.Stderr))
 	var versionResult version.Info
@@ -102,19 +102,59 @@ func TestCliSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get current number of targets
-	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+	// Do a force-refresh first to ensure cache has the latest information
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-force-refresh", "true",
+			"-format", "json",
+		),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	statusResult = clientcache.StatusResult{}
-	err = json.Unmarshal(output.Stdout, &statusResult)
-	require.Len(t, statusResult.Item.Users, 1)
-	idx := slices.IndexFunc(
-		statusResult.Item.Users[0].Resources,
-		func(r clientcache.ResourceStatus) bool {
-			return r.Name == "target"
+
+	var currentCount int
+	err = backoff.RetryNotify(
+		func() error {
+			output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+			if output.Err != nil {
+				return backoff.Permanent(errors.New(string(output.Stderr)))
+			}
+
+			statusResult = clientcache.StatusResult{}
+			err = json.Unmarshal(output.Stdout, &statusResult)
+			if err != nil {
+				return errors.New("Failed to unmarshal status result")
+			}
+
+			if len(statusResult.Item.Users) == 0 {
+				output = e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(output.Stdout))
+				return errors.New("No users are appearing in the status")
+			}
+			idx := slices.IndexFunc(
+				statusResult.Item.Users[0].Resources,
+				func(r clientcache.ResourceStatus) bool {
+					return r.Name == "target"
+				},
+			)
+			if idx == -1 {
+				output = e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(output.Stdout))
+				return errors.New("Targets not found in cache")
+			}
+			currentCount = statusResult.Item.Users[0].Resources[idx].Count
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
 		},
 	)
-	require.NotEqual(t, idx, -1)
-	currentCount := statusResult.Item.Users[0].Resources[idx].Count
+	require.NoError(t, err)
 
 	// Create enough targets to overflow a single page.
 	// Use the API to make creation faster.
@@ -166,6 +206,9 @@ func TestCliSearch(t *testing.T) {
 			}
 
 			if len(statusResult.Item.Users) == 0 {
+				output = e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(output.Stdout))
 				return errors.New("No users are appearing in the status")
 			}
 
@@ -176,6 +219,9 @@ func TestCliSearch(t *testing.T) {
 				},
 			)
 			if idx == -1 {
+				output = e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(output.Stdout))
 				return errors.New("No targets are appearing in the status")
 			}
 
@@ -200,7 +246,7 @@ func TestCliSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Search for targets that contain the target prefix.
-	// This requests data from the client cache daemon.
+	// This requests data from the client cache.
 	t.Log("Searching targets...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -250,4 +296,174 @@ func TestCliSearch(t *testing.T) {
 	err = json.Unmarshal(output.Stdout, &searchResult)
 	require.NoError(t, err)
 	require.Len(t, searchResult.Item.Sessions, 0)
+
+	// Log out and confirm search does not work
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("logout"))
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-format", "json",
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+		),
+	)
+	require.Error(t, output.Err)
+
+	// Log back in and confirm search works
+	boundary.AuthenticateAdminCli(t, ctx)
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"search",
+					"-resource", "targets",
+					"-format", "json",
+					"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+				),
+			)
+			if output.Err != nil {
+				outputStatus := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+				t.Log("Printing cache status...")
+				t.Log(string(outputStatus.Stdout))
+				var statusResult clientcache.StatusResult
+				err = json.Unmarshal(outputStatus.Stdout, &statusResult)
+				if err != nil {
+					return backoff.Permanent(err)
+				}
+
+				outputLog := e2e.RunCommand(ctx, "cat", e2e.WithArgs(statusResult.Item.LogLocation))
+				t.Log("Printing cache log...")
+				t.Log(string(outputLog.Stdout))
+
+				// BUG WORKAROUND: It seems like there's some weird interaction where
+				// occasionally, the cache fails to update after authentication
+				// on Linux environments
+				// https://hashicorp.atlassian.net/browse/ICU-16595
+				boundary.AuthenticateAdminCli(t, ctx)
+
+				return errors.New(string(output.Stderr))
+			}
+
+			searchResult := clientcache.SearchResult{}
+			err := json.Unmarshal(output.Stdout, &searchResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
+			if len(searchResult.Item.Targets) != len(targetIds) {
+				return errors.New(
+					fmt.Sprintf(
+						"Search did not return expected number of targets, EXPECTED: %d, ACTUAL: %d",
+						len(targetIds),
+						len(searchResult.Item.Targets),
+					),
+				)
+			}
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+
+	// Restart cache and confirm search works
+	t.Log("Restarting cache...")
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"cache", "start",
+			"-refresh-interval", "5s",
+			"-background",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+			if output.Err != nil {
+				return errors.New(strings.TrimSpace(string(output.Stderr)))
+			}
+
+			err = json.Unmarshal(output.Stdout, &statusResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, statusResult.StatusCode, 200)
+	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-format", "json",
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	searchResult = clientcache.SearchResult{}
+	err = json.Unmarshal(output.Stdout, &searchResult)
+	require.NoError(t, err)
+	require.Len(t, searchResult.Item.Targets, len(targetIds))
+
+	// Log out and restart cache. Log in and confirm search works
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("logout"))
+	t.Log("Restarting cache...")
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
+	require.NoError(t, output.Err, string(output.Stderr))
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"cache", "start",
+			"-refresh-interval", "5s",
+			"-background",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
+			if output.Err != nil {
+				return errors.New(strings.TrimSpace(string(output.Stderr)))
+			}
+
+			err = json.Unmarshal(output.Stdout, &statusResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, statusResult.StatusCode, 200)
+	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
+	boundary.AuthenticateAdminCli(t, ctx)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-format", "json",
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	searchResult = clientcache.SearchResult{}
+	err = json.Unmarshal(output.Stdout, &searchResult)
+	require.NoError(t, err)
+	require.Len(t, searchResult.Item.Targets, len(targetIds))
 }

@@ -79,6 +79,15 @@ message HostCatalog {
   // Output only. The HMAC of the last secrets supplied via the API, if any.
   string secrets_hmac = 120; // @gotags: `class:"public"`
 
+  // Optional worker filter for plugin-subtype host catalogs. Boundary Enterprise only.
+  google.protobuf.StringValue worker_filter = 130 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "worker_filter"
+      that: "WorkerFilter"
+    }
+  ]; // @gotags: `class:"public"`
+
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 

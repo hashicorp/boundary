@@ -156,3 +156,13 @@ message UnimplementedSetFields {
     that: "sync_interval_seconds"
   }];
 }
+
+// These fields are not implemented yet on the host catalog. They are captured
+// here for the purpose of identifying the mask maps which are on the top level
+// api catalog resource but aren't present in the static host catalog storage.
+message UnimplementedCatalogFields {
+  string worker_filter = 11 [(custom_options.v1.mask_mapping) = {
+    this: "WorkerFilter"
+    that: "worker_filter"
+  }];
+}

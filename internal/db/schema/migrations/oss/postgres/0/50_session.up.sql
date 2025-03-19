@@ -395,6 +395,7 @@ begin;
       references session_state (session_id, end_time)
   );
 
+  -- Replaced in 92/02_session_state_tstzrange.up.sql
   create trigger immutable_columns before update on session_state
     for each row execute procedure immutable_columns('session_id', 'state', 'start_time', 'previous_end_time');
 

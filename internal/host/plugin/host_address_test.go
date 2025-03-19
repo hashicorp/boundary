@@ -211,7 +211,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 			wantDbErr:   true,
 		},
 		{
-			name: "valid",
+			name: "valid-ipv4",
 			args: args{
 				hostId:  host1.GetPublicId(),
 				address: "1.2.3.4",
@@ -222,6 +222,64 @@ func TestHostIpAddress_Create(t *testing.T) {
 					Address: "1.2.3.4",
 				},
 			},
+		},
+		{
+			name: "valid-ipv6",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "2001:4860:4860:0:0:0:0:8888",
+			},
+			want: &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:  host1.GetPublicId(),
+					Address: "2001:4860:4860:0:0:0:0:8888",
+				},
+			},
+		},
+		{
+			name: "valid-abbreviated-ipv6",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "2001:4860:4860::8887",
+			},
+			want: &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:  host1.GetPublicId(),
+					Address: "2001:4860:4860::8887",
+				},
+			},
+		},
+		{
+			name: "invalid-abbreviated-[ipv6]",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "[2001:4860:4860::8886]",
+			},
+			wantNewErr: true,
+		},
+		{
+			name: "invalid-[ipv6]",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "[2001:4860:4860:0:0:0:0:8885]",
+			},
+			wantNewErr: true,
+		},
+		{
+			name: "invalid-abbreviated-[ipv6]:port",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "[2001:4860:4860::8884]:80",
+			},
+			wantNewErr: true,
+		},
+		{
+			name: "invalid-[ipv6]:port",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "[2001:4860:4860:0:0:0:0:8883]:80",
+			},
+			wantNewErr: true,
 		},
 		{
 			name: "duplicate-name",

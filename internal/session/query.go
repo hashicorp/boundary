@@ -90,7 +90,7 @@ active_session as (
 	where
 		ss.session_id in (select * from unexpired_session) and
 		ss.state = 'active' and
-		ss.end_time is null
+		upper(ss.active_time_range) is null
 )
 insert into session_connection (
   	session_id,
@@ -150,7 +150,7 @@ from
       where 
         ss.session_id = @public_id and
         ss.state = 'canceling' and 
-        ss.end_time is null
+        upper(ss.active_time_range) is null
     )
     update session us
       set version = version +1,
@@ -226,7 +226,7 @@ with canceling_session(session_id) as
 		session_state ss
 	where
 		ss.state = 'canceling' and
-		ss.end_time is null
+		upper(ss.active_time_range) is null
 )
 update session us
 	set termination_reason =
@@ -292,16 +292,18 @@ where
 	//
 	// The query returns the set of servers that have had connections closed
 	// along with their last update time and the number of connections closed on
-	// each.  If we do not know the last update time, we use the current time.
+	// each. If the worker has not yet sent a session info update, we use the
+	// worker's last update time as the last update time.
 	closeConnectionsForDeadServersCte = `
    with
    dead_workers (worker_id, last_update_time) as (
-         select
-			w.public_id as worker_id,
-			w.last_status_time as last_update_time
+         select w.public_id as worker_id,
+                coalesce(wsi.last_request_time, w.update_time) as last_update_time
            from server_worker w
-          where
-			w.last_status_time < wt_sub_seconds_from_now(@grace_period_seconds)
+      left join server_worker_session_info_request wsi on wsi.worker_id = w.public_id 
+          where wsi.last_request_time < wt_sub_seconds_from_now(@grace_period_seconds)
+             or (    wsi.last_request_time is null
+                 and w.update_time < wt_sub_seconds_from_now(@grace_period_seconds))
    ),
    closed_connections (connection_id, worker_id) as (
          update session_connection
@@ -329,50 +331,18 @@ where
 		and closed_reason is null
 	returning public_id;
 `
-	orphanedConnectionsCte = `
--- Find connections that are not closed so we can reference those IDs
-with
-  unclosed_connections as (
-    select public_id
-      from session_connection
-    where
-      -- It's not closed
-      upper(connected_time_range) > now() or
-      connected_time_range is null
-      -- It's not in limbo between when it moved into this state and when
-      -- it started being reported by the worker, which is roughly every
-      -- 2-3 seconds
-      and update_time < wt_sub_seconds_from_now(@worker_state_delay_seconds)
-  ),
-  connections_to_close as (
-	select public_id
-	  from session_connection
-	 where
-		   -- Related to the worker that just reported to us
-		   worker_id = @worker_id
-		   -- Only unclosed ones
-		   and public_id in (select public_id from unclosed_connections)
-		   -- These are connection IDs that just got reported to us by the given
-		   -- worker, so they should not be considered closed.
-		   %s
-  )
+	closeOrphanedConnections = `
 update session_connection
-   set
-	  closed_reason = 'system error'
- where
-	public_id in (select public_id from connections_to_close)
+   set closed_reason = 'system error'
+ where worker_id = @worker_id
+   and update_time < wt_sub_seconds_from_now(@worker_state_delay_seconds)
+   and (
+        connected_time_range is null
+        or
+        upper(connected_time_range) > now() 
+       )
+   %s
 returning public_id;
-`
-	deleteTerminated = `
-delete from session
-using session_state
-where
-	session.public_id = session_state.session_id
-and
-	session_state.state = 'terminated'
-and
-	session_state.start_time < wt_sub_seconds_from_now(@threshold_seconds)
-;
 `
 	sessionCredentialRewrapQuery = `
 select distinct
@@ -452,6 +422,16 @@ order by update_time desc, public_id desc;
 	estimateCountSessions = `
     select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
 `
+
+	selectStates = `
+  select session_id,
+         state,
+         lower(active_time_range) as start_time,
+         upper(active_time_range) as end_time
+    from session_state
+   where session_id = ?
+order by active_time_range desc;
+`
 )
 
 const (
@@ -465,6 +445,42 @@ values
 
 	sessionCredentialDynamicBatchInsertReturning = `
   returning session_id, library_id, credential_id, credential_purpose;
+`
+)
+
+// queries for the delete terminated sessions job
+const (
+	getDeleteJobParams = `
+with total (to_delete) as (
+  select count(session_id)
+    from session_state
+   where session_state.state                    = 'terminated'
+     and lower(session_state.active_time_range) < wt_sub_seconds_from_now(@threshold_seconds)
+),
+params (batch_size) as (
+  select batch_size
+    from session_delete_terminated_job
+)
+select total.to_delete                             as total_to_delete,
+       params.batch_size                           as batch_size,
+       wt_sub_seconds_from_now(@threshold_seconds) as window_start_time
+  from total, params;
+`
+	setDeleteJobBatchSize = `
+update session_delete_terminated_job
+   set batch_size = @batch_size;
+`
+	deleteTerminatedInBatch = `
+with batch (session_id) as (
+  select session_id
+    from session_state
+   where state                                  = 'terminated'
+     and lower(session_state.active_time_range) < @terminated_before
+   limit @batch_size
+)
+delete
+  from session
+ where public_id in (select session_id from batch);
 `
 )
 

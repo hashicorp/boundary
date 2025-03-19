@@ -20,6 +20,7 @@ begin;
     create trigger immutable_columns before update on job
       for each row execute procedure immutable_columns('plugin_id', 'name');
 
+    -- updated in 93/01_job_run_clean.up.sql
     create table job_run_status_enm (
       name text not null primary key
         constraint only_predefined_job_status_allowed
@@ -28,6 +29,7 @@ begin;
     comment on table job_run_status_enm is
       'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
 
+    -- updated in 93/01_job_run_clean.up.sql
     insert into job_run_status_enm (name)
       values
       ('running'),
@@ -84,6 +86,7 @@ begin;
     create trigger immutable_columns before update on job_run
       for each row execute procedure immutable_columns('private_id', 'job_plugin_id', 'job_name', 'create_time');
 
+    -- dropped in 93/02_drop_job_jobs_to_run.up.sql
     create view job_jobs_to_run as
       with
       running_jobs (job_plugin_id, job_name) as (

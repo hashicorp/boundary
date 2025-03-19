@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/nodeenrollment/types"
 )
@@ -23,37 +24,48 @@ func GetOpts(opt ...Option) options {
 // Option - how Options are passed as arguments
 type Option func(*options)
 
+// StorageBucketCredentialInfo defines the parameters to pass into the
+// WithFilterWorkersByStorageBucketCredentialState option.
+type StorageBucketCredentialInfo struct {
+	CredentialId string
+	Filters      []FilterStorageBucketCredentialStateFn
+}
+
 // options = how options are represented
 type options struct {
-	withName                               string
-	withPublicId                           string
-	withDescription                        string
-	withAddress                            string
-	withLimit                              int
-	withLiveness                           time.Duration
-	withUpdateTags                         bool
-	withWorkerTags                         []*Tag
-	withWorkerKeyIdentifier                string
-	withWorkerKeys                         WorkerKeys
-	withControllerEncryptionPrivateKey     []byte
-	withKeyId                              string
-	withNonce                              []byte
-	withNewIdFunc                          func(context.Context) (string, error)
-	WithFetchNodeCredentialsRequest        *types.FetchNodeCredentialsRequest
-	withTestPkiWorkerAuthorized            bool
-	withTestPkiWorkerKeyId                 *string
-	withTestUseInputTagsAsApiTags          bool
-	withWorkerType                         WorkerType
-	withRoot                               RootInfo
-	withStopAfter                          uint
-	WithCreateControllerLedActivationToken bool
-	withReleaseVersion                     string
-	withOperationalState                   string
-	withLocalStorageState                  string
-	withActiveWorkers                      bool
-	withFeature                            version.Feature
-	withDirectlyConnected                  bool
-	withWorkerPool                         []string
+	withName                                        string
+	withPublicId                                    string
+	withDescription                                 string
+	withAddress                                     string
+	withLimit                                       int
+	withLiveness                                    time.Duration
+	withUpdateTags                                  bool
+	withWorkerTags                                  []*Tag
+	withWorkerKeyIdentifier                         string
+	withWorkerKeys                                  WorkerKeys
+	withControllerEncryptionPrivateKey              []byte
+	withKeyId                                       string
+	withNonce                                       []byte
+	withNewIdFunc                                   func(context.Context) (string, error)
+	WithFetchNodeCredentialsRequest                 *types.FetchNodeCredentialsRequest
+	withTestPkiWorkerAuthorized                     bool
+	withTestPkiWorkerKeyId                          *string
+	withTestUseInputTagsAsApiTags                   bool
+	withWorkerType                                  WorkerType
+	withRoot                                        RootInfo
+	withStopAfter                                   uint
+	WithCreateControllerLedActivationToken          bool
+	withReleaseVersion                              string
+	withOperationalState                            string
+	withLocalStorageState                           string
+	withActiveWorkers                               bool
+	withFeature                                     version.Feature
+	withDirectlyConnected                           bool
+	withWorkerPool                                  []string
+	withFilterWorkersByStorageBucketCredentialState *StorageBucketCredentialInfo
+	withFilterWorkersByLocalStorageState            bool
+	WithReader                                      db.Reader
+	WithWriter                                      db.Writer
 }
 
 func getDefaultOptions() options {
@@ -274,5 +286,32 @@ func WithWorkerPool(workerIds []string) Option {
 func WithLocalStorageState(state string) Option {
 	return func(o *options) {
 		o.withLocalStorageState = state
+	}
+}
+
+// WithFilterWorkersByStorageBucketCredentialState receives a storage bucket
+// credential id and filters to apply and calls
+// FilterWorkersByStorageBucketCredentialState in supported repository
+// functions.
+func WithFilterWorkersByStorageBucketCredentialState(ci *StorageBucketCredentialInfo) Option {
+	return func(o *options) {
+		o.withFilterWorkersByStorageBucketCredentialState = ci
+	}
+}
+
+// WithFilterWorkersByLocalStorageState controls whether
+// FilterWorkersByLocalStorageState is called in supported repository functions.
+func WithFilterWorkersByLocalStorageState(filter bool) Option {
+	return func(o *options) {
+		o.withFilterWorkersByLocalStorageState = filter
+	}
+}
+
+// WithReaderWriter is used to share the same database reader
+// and writer when executing sql within a transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.WithReader = r
+		o.WithWriter = w
 	}
 }

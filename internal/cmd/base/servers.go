@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -836,16 +835,15 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		}
 	}
 
-	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
+	host, port, err := util.SplitHostPort(conf.Worker.PublicAddr)
 	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9202"
-			host = conf.Worker.PublicAddr
-		} else {
-			return fmt.Errorf("Error splitting public adddress host/port: %w", err)
-		}
+		return fmt.Errorf("Error splitting public adddress host/port: %w", err)
 	}
-	conf.Worker.PublicAddr = net.JoinHostPort(host, port)
+	if port == "" {
+		port = "9202"
+	}
+	conf.Worker.PublicAddr = util.JoinHostPort(host, port)
+
 	return nil
 }
 

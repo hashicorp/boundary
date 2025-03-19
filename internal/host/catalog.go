@@ -38,6 +38,8 @@ type CatalogListQueryResult struct {
 	Attributes []byte
 	// The subtype of the host catalog.
 	Subtype string
+	// Optional worker filter of a plugin-subtype host catalog.
+	WorkerFilter string
 }
 
 func (s *CatalogListQueryResult) toCatalog(ctx context.Context) (Catalog, error) {

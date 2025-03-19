@@ -35,12 +35,12 @@ func TestSchedulerWorkflow(t *testing.T) {
 	})
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
 	require.NoError(err)
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second))
 
 	job1Ch := make(chan error)
 	job1Ready := make(chan struct{})
 	testDone := make(chan struct{})
-	fn1 := func(_ context.Context) error {
+	fn1 := func(_ context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -54,7 +54,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 
 	job2Ch := make(chan error)
 	job2Ready := make(chan struct{})
-	fn2 := func(_ context.Context) error {
+	fn2 := func(_ context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -118,7 +118,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerCancelCtx", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second))
 
 	fn, jobReady, jobDone := testJobFn()
 	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
@@ -168,7 +168,7 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerInterruptedCancelCtx", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	fn, job1Ready, job1Done := testJobFn()
 	tj1 := testJob{name: "name1", description: "desc", fn: fn, nextRunIn: time.Hour}
@@ -270,11 +270,11 @@ func TestSchedulerJobProgress(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerJobProgress", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	jobReady := make(chan struct{})
 	done := make(chan struct{})
-	fn := func(ctx context.Context) error {
+	fn := func(ctx context.Context, _ time.Duration) error {
 		select {
 		case <-done:
 			return nil
@@ -317,7 +317,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	<-statusRequest
 
 	// Send progress to monitor loop to persist
-	jobStatus <- JobStatus{Total: 10, Completed: 0}
+	jobStatus <- JobStatus{Total: 10, Completed: 0, Retries: 1}
 
 	// Wait for scheduler to query for job status before verifying previous results
 	<-statusRequest
@@ -329,6 +329,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	assert.Equal(string(job.Running), run.Status)
 	assert.Equal(uint32(10), run.TotalCount)
 	assert.Equal(uint32(0), run.CompletedCount)
+	assert.Equal(uint32(1), run.RetriesCount)
 
 	// Send progress to monitor loop to persist
 	jobStatus <- JobStatus{Total: 20, Completed: 10}
@@ -379,12 +380,12 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerMonitorLoop", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	jobReady := make(chan struct{})
 	jobDone := make(chan struct{})
 	testDone := make(chan struct{})
-	fn := func(ctx context.Context) error {
+	fn := func(ctx context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -445,12 +446,12 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerFinalStatusUpdate", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Second))
 
 	jobReady := make(chan struct{})
 	jobErr := make(chan error)
 	testDone := make(chan struct{})
-	fn := func(_ context.Context) error {
+	fn := func(_ context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -488,7 +489,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
-	run := waitForRunStatus(t, repo, runId, string(job.Failed))
+	run := waitForRunStatus(t, repo, runId, job.Failed)
 	assert.Equal(uint32(10), run.TotalCount)
 	assert.Equal(uint32(10), run.CompletedCount)
 
@@ -501,17 +502,9 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	runId = runJob.(*runningJob).runId
 
 	// Complete job without error so CompleteRun is called
+	completeFn := waitForRunComplete(t, sched, repo, runId, tj.name)
 	jobErr <- nil
-
-	// Report status
-	jobStatus <- JobStatus{Total: 20, Completed: 20}
-
-	repo, err = job.NewRepository(ctx, rw, rw, kmsCache)
-	require.NoError(err)
-
-	run = waitForRunStatus(t, repo, runId, string(job.Completed))
-	assert.Equal(uint32(20), run.TotalCount)
-	assert.Equal(uint32(20), run.CompletedCount)
+	completeFn()
 
 	baseCnl()
 	close(testDone)
@@ -537,12 +530,12 @@ func TestSchedulerRunNow(t *testing.T) {
 	require.NoError(err)
 
 	// Create test scheduler that only runs jobs every hour
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Hour))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsInterval(time.Hour))
 
 	jobCh := make(chan struct{})
 	jobReady := make(chan struct{})
 	testDone := make(chan struct{})
-	fn := func(_ context.Context) error {
+	fn := func(_ context.Context, _ time.Duration) error {
 		select {
 		case <-testDone:
 			return nil
@@ -569,12 +562,13 @@ func TestSchedulerRunNow(t *testing.T) {
 	require.True(ok)
 	runId := runJob.(*runningJob).runId
 
-	// Complete job
-	jobCh <- struct{}{}
-
 	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
-	waitForRunStatus(t, repo, runId, string(job.Completed))
+
+	// Complete job
+	completeFn := waitForRunComplete(t, sched, repo, runId, tj.name)
+	jobCh <- struct{}{}
+	completeFn()
 
 	// Update job to run immediately once scheduling loop is called
 	err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 0)
@@ -599,9 +593,9 @@ func TestSchedulerRunNow(t *testing.T) {
 	runId = runJob.(*runningJob).runId
 
 	// Complete job
+	completeFn = waitForRunComplete(t, sched, repo, runId, tj.name)
 	jobCh <- struct{}{}
-
-	waitForRunStatus(t, repo, runId, string(job.Completed))
+	completeFn()
 
 	// Update job to run again with RunNow option
 	err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 0, WithRunNow(true))
@@ -619,7 +613,34 @@ func TestSchedulerRunNow(t *testing.T) {
 	close(jobCh)
 }
 
-func waitForRunStatus(t *testing.T, repo *job.Repository, runId, status string) *job.Run {
+func waitForRunComplete(t *testing.T, sched *Scheduler, repo *job.Repository, runId, jobName string) func() {
+	r, err := repo.LookupRun(context.Background(), runId)
+	require.NoError(t, err)
+	require.EqualValues(t, job.Running, r.Status)
+
+	return func() {
+		timeout := time.NewTimer(5 * time.Second)
+		for {
+			select {
+			case <-timeout.C:
+				t.Fatal(fmt.Errorf("timed out waiting for job run %q to be completed", runId))
+			case <-time.After(100 * time.Millisecond):
+			}
+
+			// A run is complete when we don't find it in the scheduler's
+			// running jobs list and also not in the job_run table.
+			_, ok := sched.runningJobs.Load(jobName)
+			if !ok {
+				r, err = repo.LookupRun(context.Background(), runId)
+				require.Nil(t, r)
+				require.Nil(t, err)
+				break
+			}
+		}
+	}
+}
+
+func waitForRunStatus(t *testing.T, repo *job.Repository, runId string, status job.Status) *job.Run {
 	t.Helper()
 	var run *job.Run
 
@@ -635,7 +656,7 @@ func waitForRunStatus(t *testing.T, repo *job.Repository, runId, status string) 
 		var err error
 		run, err = repo.LookupRun(context.Background(), runId)
 		require.NoError(t, err)
-		if run.Status == status {
+		if run.Status == string(status) {
 			break
 		}
 	}

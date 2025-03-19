@@ -39,7 +39,8 @@ plugin_catalogs as (
          update_time,
          version,
          attributes,
-         secrets_hmac
+         secrets_hmac,
+         worker_filter
     from host_plugin_catalog
    where public_id in (select public_id from catalogs)
 ),
@@ -65,6 +66,7 @@ final as (
          plugin_id,
          attributes,
          secrets_hmac,
+         worker_filter,
          'plugin' as subtype
     from plugin_catalogs
    union
@@ -78,6 +80,7 @@ final as (
          null as plugin_id,   -- Add to make union uniform
          null as attributes,  -- Add to make union uniform
          null as secrets_hmac, -- Add to make union uniform
+         null as worker_filter, -- Add to make union uniform
          'static' as subtype
     from static_catalogs
 )
@@ -105,7 +108,8 @@ plugin_catalogs as (
          update_time,
          version,
          attributes,
-         secrets_hmac
+         secrets_hmac,
+         worker_filter
     from host_plugin_catalog
    where public_id in (select public_id from catalogs)
 ),
@@ -131,6 +135,7 @@ final as (
          plugin_id,
          attributes,
          secrets_hmac,
+         worker_filter,
          'plugin' as subtype
     from plugin_catalogs
    union
@@ -144,6 +149,7 @@ final as (
          null as plugin_id,   -- Add to make union uniform
          null as attributes,  -- Add to make union uniform
          null as secrets_hmac, -- Add to make union uniform
+         null as worker_filter, -- Add to make union uniform
          'static' as subtype
     from static_catalogs
 )
@@ -171,7 +177,8 @@ plugin_catalogs as (
          update_time,
          version,
          attributes,
-         secrets_hmac
+         secrets_hmac,
+         worker_filter
     from host_plugin_catalog
    where public_id in (select public_id from catalogs)
 ),
@@ -197,6 +204,7 @@ final as (
          plugin_id,
          attributes,
          secrets_hmac,
+         worker_filter,
          'plugin' as subtype
     from plugin_catalogs
    union
@@ -210,6 +218,7 @@ final as (
          null as plugin_id,   -- Add to make union uniform
          null as attributes,  -- Add to make union uniform
          null as secrets_hmac, -- Add to make union uniform
+         null as worker_filter, -- Add to make union uniform
          'static' as subtype
     from static_catalogs
 )
@@ -238,7 +247,8 @@ plugin_catalogs as (
          update_time,
          version,
          attributes,
-         secrets_hmac
+         secrets_hmac,
+         worker_filter
     from host_plugin_catalog
    where public_id in (select public_id from catalogs)
 ),
@@ -264,6 +274,7 @@ final as (
          plugin_id,
          attributes,
          secrets_hmac,
+         worker_filter,
          'plugin' as subtype
     from plugin_catalogs
    union
@@ -277,6 +288,7 @@ final as (
          null as plugin_id,   -- Add to make union uniform
          null as attributes,  -- Add to make union uniform
          null as secrets_hmac, -- Add to make union uniform
+         null as worker_filter, -- Add to make union uniform
          'static' as subtype
     from static_catalogs
 )

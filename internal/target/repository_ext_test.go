@@ -155,16 +155,16 @@ func TestRepository_ListTargets(t *testing.T) {
 	repo, err := target.NewRepository(ctx, rw, rw, testKms,
 		target.WithPermissions([]perms.Permission{
 			{
-				ScopeId:  proj1.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj1.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 			{
-				ScopeId:  proj2.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj2.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 		}),
 	)
@@ -327,16 +327,16 @@ func TestRepository_ListTargets_Multiple_Scopes(t *testing.T) {
 	repo, err := target.NewRepository(ctx, rw, rw, testKms,
 		target.WithPermissions([]perms.Permission{
 			{
-				ScopeId:  proj1.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj1.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 			{
-				ScopeId:  proj2.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj2.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 		}),
 	)
@@ -371,10 +371,10 @@ func TestRepository_ListRoles_Above_Default_Count(t *testing.T) {
 	repo, err := target.NewRepository(ctx, rw, rw, testKms,
 		target.WithPermissions([]perms.Permission{
 			{
-				ScopeId:  proj.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
+				GrantScopeId: proj.PublicId,
+				Resource:     resource.Target,
+				Action:       action.List,
+				All:          true,
 			},
 		}))
 	require.NoError(t, err)

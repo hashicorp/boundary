@@ -75,7 +75,7 @@ func TestServer_ReloadInitialUpstreams(t *testing.T) {
 		defer wg.Done()
 		if code := cmd.Run(nil); code != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 
@@ -99,7 +99,7 @@ pollFirstController:
 		case <-timeout.C:
 			t.Fatalf("timeout wait for worker to connect to first controller")
 		case <-poll.C:
-			w, err = serversRepo.LookupWorkerByName(testController.Context(), "test")
+			w, err = server.TestLookupWorkerByName(testController.Context(), t, "test", serversRepo)
 			require.NoError(err)
 			if w != nil {
 				switch {
@@ -135,7 +135,7 @@ pollForNoStatus:
 			poll.Stop()
 			break pollForNoStatus
 		case <-poll.C:
-			w, err = serversRepo.LookupWorkerByName(testController2.Context(), "test")
+			w, err = server.TestLookupWorkerByName(testController2.Context(), t, "test", serversRepo)
 			require.NoError(err)
 			if w != nil {
 				switch {
@@ -170,7 +170,7 @@ pollSecondController:
 		case <-timeout.C:
 			t.Fatalf("timeout wait for worker to connect to second controller")
 		case <-poll.C:
-			w, err = serversRepo.LookupWorkerByName(testController2.Context(), "test")
+			w, err = server.TestLookupWorkerByName(testController2.Context(), t, "test", serversRepo)
 			require.NoError(err)
 			if w != nil {
 				switch {

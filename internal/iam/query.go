@@ -129,15 +129,21 @@ const (
         from auth_account
        where iam_user_id in (select id from users)
     ),
-    user_managed_groups (id) as (
+    user_oidc_managed_groups (id) as (
       select managed_group_id
-        from auth_managed_group_member_account
+        from auth_oidc_managed_group_member_account
+       where member_id in (select id from user_accounts)
+    ),
+    user_ldap_managed_groups (id) as (
+      select managed_group_id
+        from auth_ldap_managed_group_member_account
        where member_id in (select id from user_accounts)
     ),
     managed_group_roles (role_id) as (
-      select role_id
+      select distinct role_id
         from iam_managed_group_role
-       where principal_id in (select id from user_managed_groups)
+       where principal_id in (select id from user_oidc_managed_groups)
+          or principal_id in (select id from user_ldap_managed_groups)
     ),
     group_roles (role_id) as (
       select role_id
@@ -159,83 +165,45 @@ const (
       select role_id
         from managed_group_roles
     ),
-    roles (role_id, role_scope_id) as (
+    -- Now that we have the role IDs, expand the information to include scope
+    roles (role_id, role_scope_id, role_parent_scope_id) as (
       select iam_role.public_id,
-             iam_role.scope_id
+             iam_role.scope_id,
+             iam_scope.parent_id
         from iam_role
-       where public_id in (select role_id from user_group_roles)
-    ),
-    role_grant_scopes (role_id, role_scope_id, grant_scope_id) as (
-        select roles.role_id,
-               roles.role_scope_id,
-               iam_role_grant_scope.scope_id_or_special
-          from roles
-    inner join iam_role_grant_scope
-            on roles.role_id = iam_role_grant_scope.role_id
-    ),
-    -- For all role_ids with a special scope_id of 'descendants', we want to
-    -- perform a cartesian product to pair the role_id with all non-global scopes.
-    descendant_grant_scopes (role_id, grant_scope_id) as (
-      select role_grant_scopes.role_id as role_id,
-             iam_scope.public_id       as grant_scope_id
-        from role_grant_scopes,
-             iam_scope
-       where iam_scope.public_id              != 'global'
-         and role_grant_scopes.grant_scope_id  = 'descendants'
-    ),
-    children_grant_scopes (role_id, grant_scope_id) as (
-      select role_grant_scopes.role_id as role_id,
-             iam_scope.public_id       as grant_scope_id
-        from role_grant_scopes
         join iam_scope
-          on iam_scope.parent_id              = role_grant_scopes.role_scope_id
-       where role_grant_scopes.grant_scope_id = 'children'
+          on iam_scope.public_id = iam_role.scope_id
+       where iam_role.public_id in (select role_id from user_group_roles)
     ),
-    this_grant_scopes (role_id, grant_scope_id) as (
-      select role_grant_scopes.role_id       as role_id,
-             role_grant_scopes.role_scope_id as grant_scope_id
-        from role_grant_scopes
-       where role_grant_scopes.grant_scope_id = 'this'
+    grant_scopes (role_id, grant_scope_ids) as (
+        select roles.role_id,
+               string_agg(iam_role_grant_scope.scope_id_or_special, '^') as grant_scope_ids
+          from roles
+          join iam_role_grant_scope
+            on iam_role_grant_scope.role_id = roles.role_id
+      group by roles.role_id
     ),
-    direct_grant_scopes (role_id, grant_scope_id) as (
-      select role_grant_scopes.role_id        as role_id,
-             role_grant_scopes.grant_scope_id as grant_scope_id
-        from role_grant_scopes
-       where role_grant_scopes.grant_scope_id not in ('descendants', 'children', 'this')
-    ),
-    grant_scopes (role_id, grant_scope_id) as (
-      select
-            role_id        as role_id,
-            grant_scope_id as grant_scope_id
-       from descendant_grant_scopes
-      union
-      select
-            role_id        as role_id,
-            grant_scope_id as grant_scope_id
-       from children_grant_scopes
-      union
-      select
-            role_id        as role_id,
-            grant_scope_id as grant_scope_id
-       from this_grant_scopes
-      union
-      select
-            role_id        as role_id,
-            grant_scope_id as grant_scope_id
-       from direct_grant_scopes
-    ),
-    final (role_id, grant_scope_id, canonical_grant) as (
-      select grant_scopes.role_id,
-             grant_scopes.grant_scope_id,
-             iam_role_grant.canonical_grant
-        from grant_scopes
-        join iam_role_grant
-          on grant_scopes.role_id = iam_role_grant.role_id
+    grants (role_id, grants) as (
+        select roles.role_id,
+               string_agg(iam_role_grant.canonical_grant, '^') as grants
+          from roles
+          join iam_role_grant
+            on iam_role_grant.role_id = roles.role_id
+      group by roles.role_id
     )
-    select role_id         as role_id,
-           grant_scope_id  as scope_id,
-           canonical_grant as grant
-      from final;
+    -- Finally, take the resulting roles and pull grant scope IDs and canonical grants.
+    -- We will split these out in application logic to keep the result set size low. 
+     select
+           roles.role_id as role_id,
+           roles.role_scope_id as role_scope_id,
+           roles.role_parent_scope_id as role_parent_scope_id,
+           grant_scopes.grant_scope_ids as grant_scope_ids,
+           grants.grants as grants
+      from roles
+      join grant_scopes
+        on grant_scopes.role_id = roles.role_id
+      join grants
+        on grants.role_id = roles.role_id;
     `
 
 	estimateCountRoles = `

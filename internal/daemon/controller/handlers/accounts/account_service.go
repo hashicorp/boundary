@@ -606,7 +606,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 			}
 			return nil, nil, err
 		}
-		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId())
+		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId(), oidc.WithLimit(-1))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -629,7 +629,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 			}
 			return nil, nil, err
 		}
-		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId())
+		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId(), ldap.WithLimit(ctx, -1))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1488,9 +1488,10 @@ func validateSetPasswordRequest(ctx context.Context, req *pbs.SetPasswordRequest
 
 func newOutputOpts(ctx context.Context, item auth.Account, authMethodId string, authResults requestauth.VerifyResults) ([]handlers.Option, bool) {
 	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Account,
-		Pin:     authMethodId,
+		ScopeId:       authResults.Scope.Id,
+		ParentScopeId: authResults.Scope.ParentScopeId,
+		Type:          resource.Account,
+		Pin:           authMethodId,
 	}
 	res.Id = item.GetPublicId()
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()

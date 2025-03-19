@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/plugin"
+	plgstore "github.com/hashicorp/boundary/internal/plugin/store"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/protobuf/proto"
@@ -31,7 +33,8 @@ type HostCatalog struct {
 }
 
 // NewHostCatalog creates a new in memory HostCatalog assigned to a projectId
-// and pluginId. Name and description are the only valid options. All other
+// and pluginId. WithName, WithDescription, WithSecretsHmac, WithAttributes,
+// WithSecrets and WithWorkerFilter are the only valid options. All other
 // options are ignored.
 func NewHostCatalog(ctx context.Context, projectId, pluginId string, opt ...Option) (*HostCatalog, error) {
 	const op = "plugin.NewHostCatalog"
@@ -44,12 +47,13 @@ func NewHostCatalog(ctx context.Context, projectId, pluginId string, opt ...Opti
 
 	hc := &HostCatalog{
 		HostCatalog: &store.HostCatalog{
-			ProjectId:   projectId,
-			PluginId:    pluginId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			Attributes:  attrs,
-			SecretsHmac: opts.withSecretsHmac,
+			ProjectId:    projectId,
+			PluginId:     pluginId,
+			Name:         opts.withName,
+			Description:  opts.withDescription,
+			Attributes:   attrs,
+			SecretsHmac:  opts.withSecretsHmac,
+			WorkerFilter: opts.withWorkerFilter,
 		},
 		Secrets: opts.withSecrets,
 	}
@@ -140,6 +144,8 @@ func (c *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
+// TODO: Refactor repository (catalogAgg + getPlugin) uses to just use
+// catalogAgg + catalogAgg.plugin().
 type catalogAgg struct {
 	PublicId            string `gorm:"primary_key"`
 	ProjectId           string
@@ -151,10 +157,17 @@ type catalogAgg struct {
 	Version             uint32
 	SecretsHmac         []byte
 	Attributes          []byte
+	WorkerFilter        string
 	Secret              []byte
 	KeyId               string
 	PersistedCreateTime *timestamp.Timestamp
 	PersistedUpdateTime *timestamp.Timestamp
+	PluginScopeId       string
+	PluginName          string
+	PluginDescription   string
+	PluginCreateTime    *timestamp.Timestamp
+	PluginUpdateTime    *timestamp.Timestamp
+	PluginVersion       uint32
 }
 
 func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret) {
@@ -172,6 +185,7 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 	c.Version = agg.Version
 	c.SecretsHmac = agg.SecretsHmac
 	c.Attributes = agg.Attributes
+	c.WorkerFilter = agg.WorkerFilter
 
 	var s *HostCatalogSecret
 	if len(agg.Secret) > 0 {
@@ -183,6 +197,20 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 		s.UpdateTime = agg.PersistedUpdateTime
 	}
 	return c, s
+}
+
+func (agg *catalogAgg) plugin() *plugin.Plugin {
+	return &plugin.Plugin{
+		Plugin: &plgstore.Plugin{
+			PublicId:    agg.PluginId,
+			ScopeId:     agg.PluginScopeId,
+			Name:        agg.PluginName,
+			Description: agg.PluginDescription,
+			CreateTime:  agg.PluginCreateTime,
+			UpdateTime:  agg.PluginUpdateTime,
+			Version:     agg.PluginVersion,
+		},
+	}
 }
 
 // TableName returns the table name for gorm

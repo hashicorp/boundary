@@ -119,6 +119,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "ec2:RevokeSecurityGroupIngress",
       "ec2:RunInstances",
       "ec2:TerminateInstances",
+      "ec2:UnassignIpv6Addresses",
       "elasticloadbalancing:AddTags",
       "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
       "elasticloadbalancing:AttachLoadBalancerToSubnets",
@@ -132,6 +133,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "elasticloadbalancing:DeleteRule",
       "elasticloadbalancing:DeleteTargetGroup",
       "elasticloadbalancing:DeregisterTargets",
+      "elasticloadbalancing:DescribeListenerAttributes",
       "elasticloadbalancing:DescribeListeners",
       "elasticloadbalancing:DescribeLoadBalancerAttributes",
       "elasticloadbalancing:DescribeLoadBalancers",
@@ -141,6 +143,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "elasticloadbalancing:DescribeTargetGroups",
       "elasticloadbalancing:DescribeTargetHealth",
       "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:ModifyListenerAttributes",
       "elasticloadbalancing:ModifyLoadBalancerAttributes",
       "elasticloadbalancing:ModifyRule",
       "elasticloadbalancing:ModifyTargetGroup",
@@ -226,6 +229,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "s3:HeadBucket",
       "s3:PutBucket*",
       "s3:ListBucket",
+      "s3:PutLifecycleConfiguration",
     ]
 
     resources = ["*"]

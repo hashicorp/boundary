@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package host_catalogs_test
+package host_catalogs
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
@@ -187,7 +186,7 @@ func TestGet_Static(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(ctx, staticRepoFn, pluginHostRepoFn, pluginRepoFn, iamRepoFn, catalogServiceFn, 1000)
+			s, err := NewService(ctx, staticRepoFn, pluginHostRepoFn, pluginRepoFn, iamRepoFn, catalogServiceFn, 1000)
 			require.NoError(err, "Couldn't create a new host catalog service.")
 
 			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -296,7 +295,7 @@ func TestGet_Plugin(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+			s, err := NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 			require.NoError(err, "Couldn't create a new host catalog service.")
 
 			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -483,7 +482,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := host_catalogs.NewService(ctx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+			s, err := NewService(ctx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// Test with non-anon user
@@ -578,7 +577,7 @@ func TestListPagination(t *testing.T) {
 	gr := iam.TestRole(t, conn, "global")
 	_ = iam.TestUserRole(t, conn, gr.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, gr.GetPublicId(), "ids=*;type=*;actions=*")
-	s, err := host_catalogs.NewService(ctx, staticRepoFn, pluginHostRepoFn, pluginRepoFn, iamRepoFn, catalogServiceFn, 1000)
+	s, err := NewService(ctx, staticRepoFn, pluginHostRepoFn, pluginRepoFn, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(t, err)
 
 	var allCatalogs []*pb.HostCatalog
@@ -937,7 +936,7 @@ func TestDelete_Static(t *testing.T) {
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+	s, err := NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(t, err, "Couldn't create a new host catalog service.")
 
 	cases := []struct {
@@ -1012,7 +1011,7 @@ func TestDelete_Plugin(t *testing.T) {
 	plg := plugin.TestPlugin(t, conn, "test")
 	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
-	s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+	s, err := NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(t, err, "Couldn't create a new host catalog service.")
 
 	cases := []struct {
@@ -1087,7 +1086,7 @@ func TestDelete_twice(t *testing.T) {
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	s, err := host_catalogs.NewService(testCtx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+	s, err := NewService(testCtx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(err, "Couldn't create a new host catalog service.")
 	req := &pbs.DeleteHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -1224,7 +1223,7 @@ func TestCreate_Static(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+			s, err := NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 			require.NoError(err, "Failed to create a new host catalog service.")
 
 			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -1267,7 +1266,6 @@ func TestCreate_Static(t *testing.T) {
 }
 
 func TestCreate_Plugin(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1288,6 +1286,12 @@ func TestCreate_Plugin(t *testing.T) {
 	catalogServiceFn := func() (*host.CatalogRepository, error) {
 		return host.NewCatalogRepository(ctx, rw, rw)
 	}
+
+	currentValidateWorkerFilterFn := validateWorkerFilterFn
+	validateWorkerFilterFn = validateWorkerFilterUnsupported
+	t.Cleanup(func() {
+		validateWorkerFilterFn = currentValidateWorkerFilterFn
+	})
 
 	name := "test"
 	plg := plugin.TestPlugin(t, conn, name)
@@ -1406,6 +1410,17 @@ func TestCreate_Plugin(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Unsupported worker filter field",
+			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+				ScopeId:      proj.GetPublicId(),
+				Type:         hostplugin.Subtype.String(),
+				PluginId:     plg.GetPublicId(),
+				WorkerFilter: wrapperspb.String(`"dev" in "/tags/type"`),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1413,7 +1428,7 @@ func TestCreate_Plugin(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+			s, err := NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 			require.NoError(err, "Failed to create a new host catalog service.")
 
 			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -1482,7 +1497,7 @@ func TestUpdate_Static(t *testing.T) {
 	catalogServiceFn := func() (*host.CatalogRepository, error) {
 		return host.NewCatalogRepository(ctx, rw, rw)
 	}
-	tested, err := host_catalogs.NewService(ctx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+	tested, err := NewService(ctx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(t, err, "Failed to create a new host catalog service.")
 
 	hc, err := static.NewHostCatalog(ctx, proj.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
@@ -1840,7 +1855,6 @@ func TestUpdate_Static(t *testing.T) {
 }
 
 func TestUpdate_Plugin(t *testing.T) {
-	t.Parallel()
 	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1873,7 +1887,14 @@ func TestUpdate_Plugin(t *testing.T) {
 	catalogServiceFn := func() (*host.CatalogRepository, error) {
 		return host.NewCatalogRepository(testCtx, rw, rw)
 	}
-	tested, err := host_catalogs.NewService(testCtx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
+
+	currentValidateWorkerFilterFn := validateWorkerFilterFn
+	validateWorkerFilterFn = validateWorkerFilterUnsupported
+	t.Cleanup(func() {
+		validateWorkerFilterFn = currentValidateWorkerFilterFn
+	})
+
+	tested, err := NewService(testCtx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(t, err, "Failed to create a new host catalog service.")
 
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
@@ -1933,6 +1954,12 @@ func TestUpdate_Plugin(t *testing.T) {
 	updateSecrets := func(i *structpb.Struct) updateFn {
 		return func(c *pb.HostCatalog) {
 			c.Secrets = i
+		}
+	}
+
+	updateWorkerFilter := func(i *wrappers.StringValue) updateFn {
+		return func(c *pb.HostCatalog) {
+			c.WorkerFilter = i
 		}
 	}
 
@@ -2055,6 +2082,15 @@ func TestUpdate_Plugin(t *testing.T) {
 				clearReadOnlyFields(),
 				updateName(wrapperspb.String("new")),
 				updateDesc(wrapperspb.String("desc")),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:  "Add worker filter",
+			masks: []string{"worker_filter"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateWorkerFilter(wrapperspb.String(`"dev" in "/tags/type"`)),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

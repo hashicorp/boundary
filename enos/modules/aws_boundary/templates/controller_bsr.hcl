@@ -18,7 +18,7 @@ controller {
 # API listener configuration block
 listener "tcp" {
   # Should be the address of the NIC that the controller server will be reached on
-  address = "${local_ipv4}:${api_port}"
+  address = "${listener_address}:${api_port}"
   # The purpose of this listener block
   purpose = "api"
   tls_disable = true
@@ -31,7 +31,7 @@ listener "tcp" {
 
 # API listener configuration block
 listener "tcp" {
-  address = "${local_ipv4}:${ops_port}"
+  address = "${listener_address}:${ops_port}"
   purpose = "ops"
   tls_disable = true
 }
@@ -39,7 +39,7 @@ listener "tcp" {
 # Data-plane listener configuration block (used for worker coordination)
 listener "tcp" {
   # Should be the IP of the NIC that the worker will connect on
-  address = "${local_ipv4}:${cluster_port}"
+  address = "${cluster_address}:${cluster_port}"
   # The purpose of this listener
   purpose = "cluster"
 }

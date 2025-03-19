@@ -37,6 +37,11 @@ variable "vault_port" {
   type        = string
   default     = "8300"
 }
+variable "vault_port_internal" {
+  description = "Internal Port to use"
+  type        = string
+  default     = "8300"
+}
 
 resource "docker_image" "vault" {
   name         = var.image_name
@@ -48,7 +53,7 @@ resource "docker_container" "vault" {
   name    = var.container_name
   command = ["vault", "server", "-config", "/vault/config.d/config.json"]
   ports {
-    internal = 8200
+    internal = var.vault_port_internal
     external = var.vault_port
   }
   mounts {
@@ -127,12 +132,12 @@ resource "enos_local_exec" "check_health" {
   inline = ["timeout 10s bash -c 'until vault status; do sleep 2; done'"]
 }
 
-output "address" {
-  value = "0.0.0.0"
+output "address_public" {
+  value = "http://${var.container_name}:${var.vault_port}"
 }
 
-output "address_internal" {
-  value = var.container_name
+output "address_private" {
+  value = "http://${var.container_name}:${var.vault_port_internal}"
 }
 
 output "token" {

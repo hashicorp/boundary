@@ -157,7 +157,7 @@ func TestCreate(t *testing.T) {
 			a.PublicId, err = db.NewPublicId(ctx, globals.TargetAliasPrefix)
 			require.NoError(t, err)
 
-			start := time.Now().UTC()
+			start := time.Now().UTC().Round(time.Second)
 
 			err = rw.Create(ctx, a)
 			if c.errContains != "" {
@@ -169,8 +169,8 @@ func TestCreate(t *testing.T) {
 				assert.Equal(t, a.Version, uint32(1))
 				assert.Equal(t, a.ScopeId, c.scope)
 				assert.Equal(t, a.Value, c.value)
-				assert.GreaterOrEqual(t, a.CreateTime.AsTime(), start)
-				assert.GreaterOrEqual(t, a.UpdateTime.AsTime(), start)
+				assert.GreaterOrEqual(t, a.CreateTime.AsTime().Round(time.Second), start)
+				assert.GreaterOrEqual(t, a.UpdateTime.AsTime().Round(time.Second), start)
 				if c.validate != nil {
 					c.validate(t, a)
 				}

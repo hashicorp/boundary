@@ -33,7 +33,7 @@ func TestSession_Create(t *testing.T) {
 	composedOf := testSessionCredentialParams(t, conn, wrapper, iamRepo)
 	exp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 
-	defaultAddresses := []string{"1.2.3.4", "a.b.c.d"}
+	defaultAddresses := []string{"1.2.3.4", "a.b.c.d", "[2001:4860:4860::8888]", "[2001:4860:4860:0:0:0:0:8888]"}
 	type args struct {
 		composedOf ComposedOf
 		addresses  []string
@@ -50,7 +50,7 @@ func TestSession_Create(t *testing.T) {
 		wantCreateErr bool
 	}{
 		{
-			name: "valid-hostset-host",
+			name: "valid-hostset-host-ipv4",
 			args: args{
 				composedOf: composedOf,
 				opt:        []Option{WithExpirationTime(exp)},
@@ -64,6 +64,33 @@ func TestSession_Create(t *testing.T) {
 				AuthTokenId:        composedOf.AuthTokenId,
 				ProjectId:          composedOf.ProjectId,
 				Endpoint:           "tcp://127.0.0.1:22",
+				ExpirationTime:     composedOf.ExpirationTime,
+				ConnectionLimit:    composedOf.ConnectionLimit,
+				DynamicCredentials: composedOf.DynamicCredentials,
+				StaticCredentials:  composedOf.StaticCredentials,
+				CorrelationId:      composedOf.CorrelationId,
+			},
+			create: true,
+		},
+		{
+			name: "valid-hostset-host-ipv6",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.Endpoint = "tcp://[::1]:22"
+					return c
+				}(),
+				opt:       []Option{WithExpirationTime(exp)},
+				addresses: defaultAddresses,
+			},
+			want: &Session{
+				UserId:             composedOf.UserId,
+				HostId:             composedOf.HostId,
+				TargetId:           composedOf.TargetId,
+				HostSetId:          composedOf.HostSetId,
+				AuthTokenId:        composedOf.AuthTokenId,
+				ProjectId:          composedOf.ProjectId,
+				Endpoint:           "tcp://[::1]:22",
 				ExpirationTime:     composedOf.ExpirationTime,
 				ConnectionLimit:    composedOf.ConnectionLimit,
 				DynamicCredentials: composedOf.DynamicCredentials,

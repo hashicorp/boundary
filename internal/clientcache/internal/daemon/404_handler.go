@@ -9,7 +9,7 @@ import (
 )
 
 // new404Func creates a handler that returns a custom 404 error message.
-func new404Func(ctx context.Context) http.HandlerFunc {
+func new404Func(_ context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "Not found", http.StatusNotFound)
 	}

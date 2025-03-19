@@ -675,7 +675,8 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	repoFn := func() (*Repository, error) {
-		return NewRepository(ctx, rw, rw, kmsCache)
+		// Set a low limit to test that the managed group listing overrides the limit
+		return NewRepository(ctx, rw, rw, kmsCache, WithLimit(1))
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
@@ -819,7 +820,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			tp.SetExpectedState(state)
 
 			// Set the filters on the MGs for this test. First we need to get the current versions.
-			currMgs, ttime, err := repo.ListManagedGroups(ctx, testAuthMethod.PublicId)
+			currMgs, ttime, err := repo.ListManagedGroups(ctx, testAuthMethod.PublicId, WithLimit(-1))
 			require.NoError(err)
 			// Transaction timestamp should be within ~10 seconds of now
 			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
@@ -860,7 +861,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
 			}
 			// Ensure that we get the expected groups
-			memberships, err := repo.ListManagedGroupMembershipsByMember(ctx, account.PublicId)
+			memberships, err := repo.ListManagedGroupMembershipsByMember(ctx, account.PublicId, WithLimit(-1))
 			require.NoError(err)
 			assert.Equal(len(tt.matchingMgs), len(memberships))
 			var matchingIds []string

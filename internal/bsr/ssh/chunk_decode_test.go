@@ -642,6 +642,171 @@ func TestDecodeChunk(t *testing.T) {
 				},
 			},
 		},
+		{
+			&bsr.BaseChunk{
+				Protocol: ssh.Protocol,
+				Type:     ssh.CancelTCPIPForwardReqChunkType,
+			},
+			func() []byte {
+				msg := &pssh.CancelTCPIPForwardRequest{
+					RequestType:   ssh.CancelTCPIPForwardRequestType,
+					WantReply:     false,
+					AddressToBind: "::1",
+					PortToBind:    87565,
+				}
+				data, err := proto.Marshal(msg)
+				require.NoError(t, err)
+				return data
+			}(),
+			&ssh.CancelTCPIPForwardRequest{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol: ssh.Protocol,
+					Type:     ssh.CancelTCPIPForwardReqChunkType,
+				},
+				CancelTCPIPForwardRequest: &pssh.CancelTCPIPForwardRequest{
+					RequestType:   ssh.CancelTCPIPForwardRequestType,
+					WantReply:     false,
+					AddressToBind: "::1",
+					PortToBind:    87565,
+				},
+			},
+		},
+		{
+			&bsr.BaseChunk{
+				Protocol: ssh.Protocol,
+				Type:     ssh.DirectTCPIPReqChunkType,
+			},
+			func() []byte {
+				msg := &pssh.DirectTCPIPRequest{
+					RequestType:         ssh.DirectTCPIPRequestType,
+					SenderChannel:       5,
+					InitialWindowSize:   60,
+					MaximumPacketSize:   512,
+					Host:                "::1",
+					Port:                87654,
+					OriginatorIpAddress: "10.0.0.1",
+					OriginatorPort:      22,
+				}
+				data, err := proto.Marshal(msg)
+				require.NoError(t, err)
+				return data
+			}(),
+			&ssh.DirectTCPIPRequest{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol: ssh.Protocol,
+					Type:     ssh.DirectTCPIPReqChunkType,
+				},
+				DirectTCPIPRequest: &pssh.DirectTCPIPRequest{
+					RequestType:         ssh.DirectTCPIPRequestType,
+					SenderChannel:       5,
+					InitialWindowSize:   60,
+					MaximumPacketSize:   512,
+					Host:                "::1",
+					Port:                87654,
+					OriginatorIpAddress: "10.0.0.1",
+					OriginatorPort:      22,
+				},
+			},
+		},
+		{
+			&bsr.BaseChunk{
+				Protocol: ssh.Protocol,
+				Type:     ssh.ForwardedTCPIPReqChunkType,
+			},
+			func() []byte {
+				msg := &pssh.ForwardedTCPIPRequest{
+					RequestType:         ssh.ForwardedTCPIPRequestType,
+					SenderChannel:       5,
+					InitialWindowSize:   70,
+					MaximumPacketSize:   1024,
+					Address:             "10.0.0.45",
+					Port:                2222,
+					OriginatorIpAddress: "::1",
+					OriginatorPort:      8765,
+				}
+				data, err := proto.Marshal(msg)
+				require.NoError(t, err)
+				return data
+			}(),
+			&ssh.ForwardedTCPIPRequest{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol: ssh.Protocol,
+					Type:     ssh.ForwardedTCPIPReqChunkType,
+				},
+				ForwardedTCPIPRequest: &pssh.ForwardedTCPIPRequest{
+					RequestType:         ssh.ForwardedTCPIPRequestType,
+					SenderChannel:       5,
+					InitialWindowSize:   70,
+					MaximumPacketSize:   1024,
+					Address:             "10.0.0.45",
+					Port:                2222,
+					OriginatorIpAddress: "::1",
+					OriginatorPort:      8765,
+				},
+			},
+		},
+		{
+			&bsr.BaseChunk{
+				Protocol: ssh.Protocol,
+				Type:     ssh.TCPIPForwardReqChunkType,
+			},
+			func() []byte {
+				msg := &pssh.TCPIPForwardRequest{
+					RequestType:   ssh.TCPIPForwardRequestType,
+					WantReply:     false,
+					AddressToBind: "::1",
+					PortToBind:    2222,
+				}
+				data, err := proto.Marshal(msg)
+				require.NoError(t, err)
+				return data
+			}(),
+			&ssh.TCPIPForwardRequest{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol: ssh.Protocol,
+					Type:     ssh.TCPIPForwardReqChunkType,
+				},
+				TCPIPForwardRequest: &pssh.TCPIPForwardRequest{
+					RequestType:   ssh.TCPIPForwardRequestType,
+					WantReply:     false,
+					AddressToBind: "::1",
+					PortToBind:    2222,
+				},
+			},
+		},
+		{
+			&bsr.BaseChunk{
+				Protocol: ssh.Protocol,
+				Type:     ssh.X11ReqChunkType,
+			},
+			func() []byte {
+				msg := &pssh.X11Request{
+					RequestType:       ssh.X11RequestType,
+					SenderChannel:     6,
+					InitialWindowSize: 40,
+					MaximumPacketSize: 512,
+					OriginatorAddress: "::1",
+					OriginatorPort:    2222,
+				}
+				data, err := proto.Marshal(msg)
+				require.NoError(t, err)
+				return data
+			}(),
+			&ssh.X11Request{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol: ssh.Protocol,
+					Type:     ssh.X11ReqChunkType,
+				},
+				X11Request: &pssh.X11Request{
+					RequestType:       ssh.X11RequestType,
+					SenderChannel:     6,
+					InitialWindowSize: 40,
+					MaximumPacketSize: 512,
+					OriginatorAddress: "::1",
+					OriginatorPort:    2222,
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {

@@ -1,8 +1,8 @@
 ---
 layout: docs
 page_title: Common error messages
-description: |-
-  Common error messages for Boundary
+description: >-
+  View common Boundary error messages and learn how to troubleshoot them.
 ---
 
 # Common error messages
@@ -89,3 +89,15 @@ Error information:
 ```
 
 You may experience this error when deploying multiple Boundary controllers in high availability (HA) mode if you have not assigned a unique name to each controller. Ensure each controller has a [unique name](/boundary/docs/configuration/controller#name) in the controller stanza.
+
+## Error from worker when attempting to run worker in docker container on AWS: Error issuing command
+
+```
+Error: error creating storage bucket: {"kind":"Internal","message":"storage_buckets.(EntService).createInRepo: unable to create storage bucket: plugin.(Repository).CreateStorageBucket: in scope: global: db.DoTx: plugin.(Repository).CreateStorageBucket: storage.(ProxyClient).OnCreateStorageBucket: routing.(CommandClientProducer).IssueCommand: unknown,
+ unknown: error #0: rpc error: code = InvalidArgument desc = from worker w_xxx: from worker w_xxx: Error issuing command: storage_bucket.(storageService).OnCreateStorageBucket: plugin error,
+ external system issue: error #3001: rpc error: code = InvalidArgument desc = error getting S3 client: failed to retrieve credentials: failed to refresh cached credentials, no EC2 IMDS role found, operation error ec2imds: GetMetadata, canceled, context deadline exceeded\n"}
+```
+
+You may experience this error when deploying Boundary controllers in Docker when enabling IMDSv2. The fix is to extend the `http-put-response-hop-limit` option key to a value of 2 or greater.
+
+For more information, refer to [Boundary Client in Docker Additional Configuration When Using IMDSv2](https://support.hashicorp.com/hc/en-us/articles/36515134051859-Boundary-Client-in-Docker-Additional-Configuration-When-Using-IMDSv2).```

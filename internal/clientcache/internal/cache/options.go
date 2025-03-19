@@ -4,8 +4,15 @@
 package cache
 
 import (
+	stderrors "errors"
+
 	"github.com/hashicorp/go-dbw"
 )
+
+type testRefreshWaitChs struct {
+	firstSempahore  chan struct{}
+	secondSemaphore chan struct{}
+}
 
 type options struct {
 	withUpdateLastAccessedTime       bool
@@ -16,6 +23,9 @@ type options struct {
 	withTargetRetrievalFunc          TargetRetrievalFunc
 	withSessionRetrievalFunc         SessionRetrievalFunc
 	withIgnoreSearchStaleness        bool
+	withMaxResultSetSize             int
+	withTestRefreshWaitChs           *testRefreshWaitChs
+	withUseNonPagedListing           bool
 }
 
 // Option - how options are passed as args
@@ -23,7 +33,8 @@ type Option func(*options) error
 
 func getDefaultOptions() options {
 	return options{
-		withDbType: dbw.Sqlite,
+		withDbType:           dbw.Sqlite,
+		withMaxResultSetSize: defaultLimitedResultSetSize,
 	}
 }
 
@@ -91,6 +102,40 @@ func WithSessionRetrievalFunc(fn SessionRetrievalFunc) Option {
 func WithIgnoreSearchStaleness(b bool) Option {
 	return func(o *options) error {
 		o.withIgnoreSearchStaleness = b
+		return nil
+	}
+}
+
+// WithMaxResultSetSize provides an option for limiting the result set, e.g.
+// when no filter is provided on a list. A 0 does nothing (keeps the default).
+func WithMaxResultSetSize(with int) Option {
+	return func(o *options) error {
+		switch {
+		case with == 0:
+			return nil
+		case with < -1:
+			return stderrors.New("max result set size must be -1 or greater")
+		}
+		o.withMaxResultSetSize = with
+		return nil
+	}
+}
+
+// WithTestRefreshWaitChs provides an option for specifying channels to wait on
+// before proceeding. This allows testing the logic that ensures only one is
+// running at a time.
+func WithTestRefreshWaitChs(with *testRefreshWaitChs) Option {
+	return func(o *options) error {
+		o.withTestRefreshWaitChs = with
+		return nil
+	}
+}
+
+// WithUseNonPagedListing provides an option for ignoring the resource
+// staleness when performing a search.
+func WithUseNonPagedListing(b bool) Option {
+	return func(o *options) error {
+		o.withUseNonPagedListing = b
 		return nil
 	}
 }

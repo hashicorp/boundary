@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/cmd/ops"
@@ -26,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -340,9 +342,6 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
 			return base.CommandUserError
 		}
-		if c.Config.Worker.ControllersRaw != nil {
-			c.UI.Warn("The \"controllers\" field for worker config is deprecated. Please use \"initial_upstreams\" instead.")
-		}
 
 		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
 			c.UI.Error(err.Error())
@@ -358,14 +357,10 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 		for _, upstream := range c.Config.Worker.InitialUpstreams {
-			host, _, err := net.SplitHostPort(upstream)
+			host, _, err := util.SplitHostPort(upstream)
 			if err != nil {
-				if strings.Contains(err.Error(), globals.MissingPortErrStr) {
-					host = upstream
-				} else {
-					c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
-					return base.CommandUserError
-				}
+				c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
+				return base.CommandUserError
 			}
 			ip := net.ParseIP(host)
 			if ip != nil {
@@ -416,14 +411,10 @@ func (c *Command) Run(args []string) int {
 				if purpose != "cluster" {
 					continue
 				}
-				host, _, err := net.SplitHostPort(ln.Address)
+				host, _, err := util.SplitHostPort(ln.Address)
 				if err != nil {
-					if strings.Contains(err.Error(), globals.MissingPortErrStr) {
-						host = ln.Address
-					} else {
-						c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
-						return base.CommandUserError
-					}
+					c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
+					return base.CommandUserError
 				}
 				ip := net.ParseIP(host)
 				if ip != nil {
@@ -502,14 +493,12 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	// append storage-enabled plugins
-	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws)
+	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure, base.EnabledPluginGCP)
 	if base.MinioEnabled {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginMinio)
 	}
+
 	if c.Config.Controller != nil {
-		// append host-only plugins
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
@@ -880,6 +869,10 @@ func (c *Command) Reload(newConf *config.Config) error {
 		if workerReloadErr != nil {
 			reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
 		}
+	}
+
+	if newConf != nil && newConf.Controller != nil && newConf.Controller.ConcurrentPasswordHashWorkers > 0 {
+		reloadErrors = stderrors.Join(reloadErrors, password.SetHashingPermits(int(newConf.Controller.ConcurrentPasswordHashWorkers)))
 	}
 
 	// Send a message that we reloaded. This prevents "guessing" sleep times

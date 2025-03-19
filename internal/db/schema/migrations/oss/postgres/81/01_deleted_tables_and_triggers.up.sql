@@ -308,6 +308,7 @@ begin;
     'affected by the trigger and the current timestamp. It is used to populate rows '
     'of the deleted tables.';
 
+  -- Removed in 91/05_deletion_tables_view and replaced with a view.
   create function get_deletion_tables() returns setof name
   as $$
     select c.relname

@@ -37,6 +37,30 @@ func TestCatalogs(t testing.TB, conn *db.DB, projectId string, count int) []*Hos
 	return cats
 }
 
+// TestHost creates a static host to the provided DB with the provided catalog id.
+// The catalog must have been created previously. If any errors are encountered
+// during the creation of the host, the test will fail.
+func TestHost(t testing.TB, conn *db.DB, catalogId string, opt ...Option) *Host {
+	t.Helper()
+	ctx := context.Background()
+	assert := assert.New(t)
+
+	host, err := NewHost(ctx, catalogId, opt...)
+	assert.NoError(err)
+	assert.NotNil(host)
+
+	id, err := newHostId(ctx)
+	assert.NoError(err)
+	assert.NotEmpty(id)
+	host.PublicId = id
+
+	w := db.New(conn)
+	err2 := w.Create(ctx, host)
+	assert.NoError(err2)
+
+	return host
+}
+
 // TestHosts creates count number of static hosts to the provided DB
 // with the provided catalog id.  The catalog must have been created previously.
 // If any errors are encountered during the creation of the host, the test will fail.

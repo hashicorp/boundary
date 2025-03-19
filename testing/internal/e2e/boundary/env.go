@@ -3,7 +3,12 @@
 
 package boundary
 
-import "github.com/kelseyhightower/envconfig"
+import (
+	"testing"
+
+	"github.com/kelseyhightower/envconfig"
+	"github.com/stretchr/testify/require"
+)
 
 type Config struct {
 	Address            string `envconfig:"BOUNDARY_ADDR" required:"true"`               // e.g. http://127.0.0.1:9200
@@ -20,4 +25,10 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &c, nil
+}
+
+func GetAddr(t *testing.T) string {
+	c, err := LoadConfig()
+	require.NoError(t, err)
+	return c.Address
 }

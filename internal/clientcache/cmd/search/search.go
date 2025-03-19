@@ -7,6 +7,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cachecmd "github.com/hashicorp/boundary/internal/clientcache/cmd/cache"
@@ -33,6 +35,7 @@ var (
 		"resolvable-aliases",
 		"targets",
 		"sessions",
+		"implicit-scopes",
 	}
 
 	errCacheNotRunning = stderrors.New("The cache process is not running.")
@@ -40,9 +43,10 @@ var (
 
 type SearchCommand struct {
 	*base.Command
-	flagQuery        string
-	flagResource     string
-	flagForceRefresh bool
+	flagQuery            string
+	flagResource         string
+	flagForceRefresh     bool
+	flagMaxResultSetSize int64
 }
 
 func (c *SearchCommand) Synopsis() string {
@@ -112,6 +116,12 @@ func (c *SearchCommand) Flags() *base.FlagSets {
 		Usage:      `Specifies the resource type to search over`,
 		Completion: complete.PredictSet(supportedResourceTypes...),
 	})
+	f.Int64Var(&base.Int64Var{
+		Name:       "max-result-set-size",
+		Target:     &c.flagMaxResultSetSize,
+		Usage:      `Specifies an override to the default maximum result set size. Set to -1 to disable the limit. 0 will use the default.`,
+		Completion: complete.PredictNothing,
+	})
 	f.BoolVar(&base.BoolVar{
 		Name:   "force-refresh",
 		Target: &c.flagForceRefresh,
@@ -148,6 +158,15 @@ func (c *SearchCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
+	switch {
+	case c.flagMaxResultSetSize < -1:
+		c.PrintCliError(stderrors.New("Max result set size must be greater than or equal to -1"))
+		return base.CommandUserError
+	case c.flagMaxResultSetSize > math.MaxInt:
+		c.PrintCliError(stderrors.New(fmt.Sprintf("Max result set size must be less than or equal to the %v", math.MaxInt)))
+		return base.CommandUserError
+	}
+
 	resp, result, apiErr, err := c.Search(ctx)
 	if err != nil {
 		c.PrintCliError(err)
@@ -171,8 +190,16 @@ func (c *SearchCommand) Run(args []string) int {
 			c.UI.Output(printTargetListTable(result.Targets))
 		case len(result.Sessions) > 0:
 			c.UI.Output(printSessionListTable(result.Sessions))
+		case len(result.ImplicitScopes) > 0:
+			c.UI.Output(printImplicitScopesListTable(result.ImplicitScopes))
 		default:
 			c.UI.Output("No items found")
+		}
+
+		// Put this at the end or people may not see it as they may not scroll
+		// all the way up.
+		if result.Incomplete {
+			c.UI.Warn("The maximum result set size was reached and the search results are incomplete. Please narrow your search or adjust the -max-result-set-size parameter.")
 		}
 	}
 	return base.CommandSuccess
@@ -198,6 +225,9 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.Sear
 		resource:     c.flagResource,
 		authTokenId:  strings.Join(tSlice[:2], "_"),
 		forceRefresh: c.flagForceRefresh,
+	}
+	if c.flagMaxResultSetSize != 0 {
+		tf.maxResultSetSize = int(c.flagMaxResultSetSize)
 	}
 	var opts []client.Option
 	if c.FlagOutputCurlString {
@@ -229,6 +259,9 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 	q.Add("filter", fb.flagFilter)
 	if fb.forceRefresh {
 		q.Add("force_refresh", "true")
+	}
+	if fb.maxResultSetSize != 0 {
+		q.Add("max_result_set_size", fmt.Sprintf("%d", fb.maxResultSetSize))
 	}
 	resp, err := c.Get(ctx, "/v1/search", q, opt...)
 	if err != nil {
@@ -423,10 +456,38 @@ func printSessionListTable(items []*sessions.Session) string {
 	return base.WrapForHelpText(output)
 }
 
+func printImplicitScopesListTable(items []*scopes.Scope) string {
+	if len(items) == 0 {
+		return "No implicit scopes found"
+	}
+	var output []string
+	output = []string{
+		"",
+		"Scope information:",
+	}
+	for i, item := range items {
+		if i > 0 {
+			output = append(output, "")
+		}
+		if item.Id != "" {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
+			)
+		}
+	}
+
+	return base.WrapForHelpText(output)
+}
+
 type filterBy struct {
-	flagFilter   string
-	flagQuery    string
-	authTokenId  string
-	resource     string
-	forceRefresh bool
+	flagFilter       string
+	flagQuery        string
+	authTokenId      string
+	resource         string
+	forceRefresh     bool
+	maxResultSetSize int
 }

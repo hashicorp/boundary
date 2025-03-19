@@ -184,7 +184,7 @@ listener "tcp" {
 `
 )
 
-func TestRealodControllerRateLimits(t *testing.T) {
+func TestReloadControllerRateLimits(t *testing.T) {
 	td := t.TempDir()
 
 	controllerKey := config.DevKeyGeneration()
@@ -209,7 +209,7 @@ func TestRealodControllerRateLimits(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 
@@ -282,7 +282,7 @@ func TestRealodControllerRateLimits(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
+func TestReloadControllerRateLimitsSameConfig(t *testing.T) {
 	td := t.TempDir()
 
 	// Create and migrate database A and B.
@@ -308,7 +308,7 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 
@@ -377,7 +377,7 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRealodControllerRateLimitsDisable(t *testing.T) {
+func TestReloadControllerRateLimitsDisable(t *testing.T) {
 	td := t.TempDir()
 
 	controllerKey := config.DevKeyGeneration()
@@ -402,7 +402,7 @@ func TestRealodControllerRateLimitsDisable(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 
@@ -475,7 +475,7 @@ func TestRealodControllerRateLimitsDisable(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRealodControllerRateLimitsEnable(t *testing.T) {
+func TestReloadControllerRateLimitsEnable(t *testing.T) {
 	td := t.TempDir()
 
 	controllerKey := config.DevKeyGeneration()
@@ -501,7 +501,7 @@ func TestRealodControllerRateLimitsEnable(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 

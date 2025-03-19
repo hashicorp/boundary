@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -44,9 +45,10 @@ func (r *Repository) CreateHost(ctx context.Context, projectId string, h *Host, 
 	if projectId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
-	h.Address = strings.TrimSpace(h.Address)
-	if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-		return nil, errors.New(ctx, errors.InvalidAddress, op, "invalid address")
+	var err error
+	h.Address, err = util.ParseAddress(ctx, h.Address)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidAddress), errors.WithMsg("invalid address"))
 	}
 	h = h.clone()
 
@@ -138,9 +140,10 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
 		case strings.EqualFold("Address", f):
-			h.Address = strings.TrimSpace(h.Address)
-			if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-				return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidAddress, op, "invalid address")
+			var err error
+			h.Address, err = util.ParseAddress(ctx, h.Address)
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidAddress), errors.WithMsg("invalid address"))
 			}
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
@@ -168,7 +171,7 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 	var rowsUpdated int
 	var returnedHost *Host
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(r db.Reader, w db.Writer) error {
 			returnedHost = h.clone()
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedHost, dbMask, nullFields,
@@ -183,7 +186,7 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 			ha := &hostAgg{
 				PublicId: h.PublicId,
 			}
-			if err := r.reader.LookupByPublicId(ctx, ha); err != nil {
+			if err := r.LookupByPublicId(ctx, ha); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup host after update"))
 			}
 			returnedHost.SetIds = ha.getSetIds()
