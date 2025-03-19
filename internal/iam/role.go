@@ -22,9 +22,9 @@ import (
 
 const (
 	defaultRoleTableName        = "iam_role"
-	defaultGlobalRoleTableName  = "iam_global_role"
-	defaultOrgRoleTableName     = "iam_org_role"
-	defaultProjectRoleTableName = "iam_project_role"
+	defaultGlobalRoleTableName  = "iam_role_global"
+	defaultOrgRoleTableName     = "iam_role_org"
+	defaultProjectRoleTableName = "iam_role_project"
 )
 
 // Role is a set of granted permissions and assignable to Users and Groups.
@@ -51,7 +51,7 @@ func (g *globalRole) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
-	return defaultRoleTableName
+	return defaultGlobalRoleTableName
 }
 
 func (g *globalRole) SetTableName(n string) {
@@ -143,7 +143,7 @@ func (o *orgRole) TableName() string {
 	if o.tableName != "" {
 		return o.tableName
 	}
-	return defaultRoleTableName
+	return defaultOrgRoleTableName
 }
 
 func (o *orgRole) SetTableName(n string) {
@@ -200,8 +200,8 @@ func (o *orgRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 
 func (o *orgRole) Clone() any {
 	cp := proto.Clone(o.OrgRole)
-	ret := &globalRole{
-		GlobalRole: cp.(*store.GlobalRole),
+	ret := &orgRole{
+		OrgRole: cp.(*store.OrgRole),
 	}
 	for _, grantScope := range o.GrantScopes {
 		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
@@ -241,7 +241,7 @@ func (p *projectRole) TableName() string {
 	if p.tableName != "" {
 		return p.tableName
 	}
-	return defaultRoleTableName
+	return defaultProjectRoleTableName
 }
 
 func (p *projectRole) SetTableName(n string) {
@@ -298,8 +298,8 @@ func (p *projectRole) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 
 func (p *projectRole) Clone() any {
 	cp := proto.Clone(p.ProjectRole)
-	ret := &globalRole{
-		GlobalRole: cp.(*store.GlobalRole),
+	ret := &projectRole{
+		ProjectRole: cp.(*store.ProjectRole),
 	}
 	for _, grantScope := range p.GrantScopes {
 		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
@@ -360,11 +360,9 @@ func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) 
 	}
 	opts := getOpts(opt...)
 	r := &Role{
-		Role: &store.Role{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-		},
+		ScopeId:     scopeId,
+		Name:        opts.withName,
+		Description: opts.withDescription,
 	}
 	return r, nil
 }
