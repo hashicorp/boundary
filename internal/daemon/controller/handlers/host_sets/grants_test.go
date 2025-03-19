@@ -818,8 +818,8 @@ func TestGrants_WriteActions(t *testing.T) {
 	})
 
 	t.Run("Add Host Set Hosts", func(t *testing.T) {
-		hc := static.TestCatalog(t, conn, proj.PublicId, static.WithName("test catalog"), static.WithDescription("test desc"))
-		hcClone := static.TestCatalog(t, conn, proj.PublicId, static.WithName("clone catalog"), static.WithDescription("clone desc"))
+		hc := static.TestCatalog(t, conn, proj.PublicId, static.WithName("test add host set hosts catalog"), static.WithDescription("test desc"))
+		hcClone := static.TestCatalog(t, conn, proj.PublicId, static.WithName("clone add host set hosts catalog"), static.WithDescription("clone desc"))
 
 		testcases := []struct {
 			name     string
@@ -975,8 +975,8 @@ func TestGrants_WriteActions(t *testing.T) {
 	})
 
 	t.Run("Remove Host Set Hosts", func(t *testing.T) {
-		hc := static.TestCatalog(t, conn, proj.PublicId, static.WithName("test catalog"), static.WithDescription("test desc"))
-		hcClone := static.TestCatalog(t, conn, proj.PublicId, static.WithName("clone catalog"), static.WithDescription("clone desc"))
+		hc := static.TestCatalog(t, conn, proj.PublicId, static.WithName("test remove host set hosts catalog"), static.WithDescription("test desc"))
+		hcClone := static.TestCatalog(t, conn, proj.PublicId, static.WithName("clone remove host set hosts catalog"), static.WithDescription("clone desc"))
 
 		// We need to create a host set with hosts in order to remove hosts.
 		// As a result, each testcase is granted the `add-hosts` action for our test host-catalog.
@@ -1162,8 +1162,8 @@ func TestGrants_WriteActions(t *testing.T) {
 	})
 
 	t.Run("Set Host Set Hosts", func(t *testing.T) {
-		hc := static.TestCatalog(t, conn, proj.PublicId, static.WithName("test catalog"), static.WithDescription("test desc"))
-		hcClone := static.TestCatalog(t, conn, proj.PublicId, static.WithName("clone catalog"), static.WithDescription("clone desc"))
+		hc := static.TestCatalog(t, conn, proj.PublicId, static.WithName("test set host set hosts catalog"), static.WithDescription("test desc"))
+		hcClone := static.TestCatalog(t, conn, proj.PublicId, static.WithName("clone set host set hosts catalog"), static.WithDescription("clone desc"))
 
 		testcases := []struct {
 			name     string
