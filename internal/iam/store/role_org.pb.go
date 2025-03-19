@@ -30,39 +30,39 @@ type OrgRole struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// public_id is used to access the Role via an API
 	// @inject_tag: gorm:"primary_key"
-	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// scope id for the role
 	// @inject_tag: `gorm:"default:null"`
-	ScopeId string `protobuf:"bytes,2,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,2,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"default:null"`
 	// name is the optional friendly name used to
 	// access the Role via an API
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// description of the role
 	// @inject_tag: `gorm:"default:null"`
-	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// control if this role is granted access to its role scope
 	// @inject_tag: `gorm:"default:true"`
-	GrantThisRoleScope bool `protobuf:"varint,5,opt,name=grant_this_role_scope,json=grantThisRoleScope,proto3" json:"grant_this_role_scope,omitempty"`
+	GrantThisRoleScope bool `protobuf:"varint,5,opt,name=grant_this_role_scope,json=grantThisRoleScope,proto3" json:"grant_this_role_scope,omitempty" gorm:"default:true"`
 	// control type of grant scope granted to this role ['descendant', 'children', 'individual']
 	// @inject_tag: `gorm:"default:null"`
-	GrantScope string `protobuf:"bytes,6,opt,name=grant_scope,json=grantScope,proto3" json:"grant_scope,omitempty"`
+	GrantScope string `protobuf:"bytes,6,opt,name=grant_scope,json=grantScope,proto3" json:"grant_scope,omitempty" gorm:"default:null"`
 	// timestamp when grant_this_role_scope was last updated
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	GrantThisRoleScopeUpdateTime *timestamp.Timestamp `protobuf:"bytes,7,opt,name=grant_this_role_scope_update_time,json=grantThisRoleScopeUpdateTime,proto3" json:"grant_this_role_scope_update_time,omitempty"`
+	GrantThisRoleScopeUpdateTime *timestamp.Timestamp `protobuf:"bytes,7,opt,name=grant_this_role_scope_update_time,json=grantThisRoleScopeUpdateTime,proto3" json:"grant_this_role_scope_update_time,omitempty" gorm:"default:current_timestamp"`
 	// timestamp when grant_scope was last updated
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	GrantScopeUpdateTime *timestamp.Timestamp `protobuf:"bytes,8,opt,name=grant_scope_update_time,json=grantScopeUpdateTime,proto3" json:"grant_scope_update_time,omitempty"`
+	GrantScopeUpdateTime *timestamp.Timestamp `protobuf:"bytes,8,opt,name=grant_scope_update_time,json=grantScopeUpdateTime,proto3" json:"grant_scope_update_time,omitempty" gorm:"default:current_timestamp"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,9,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,9,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// version allows optimistic locking of the role when modifying the role
 	// itself and when modifying dependent items like principal roles.
 	// @inject_tag: `gorm:"default:null"`
-	Version       uint32 `protobuf:"varint,11,opt,name=version,proto3" json:"version,omitempty"`
+	Version       uint32 `protobuf:"varint,11,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

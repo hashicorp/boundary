@@ -5,9 +5,10 @@ package iam
 
 import (
 	"context"
+	"strings"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -109,6 +110,7 @@ func (g *globalRole) Clone() any {
 	}
 	return ret
 }
+
 func (g *globalRole) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, g)
 }
@@ -124,6 +126,7 @@ func (g *globalRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+
 func allocGlobalRole() globalRole {
 	return globalRole{
 		GlobalRole: &store.GlobalRole{},
@@ -167,6 +170,7 @@ func newOrgRole(ctx context.Context, orgId string, opt ...Option) (*orgRole, err
 	}
 	return r, nil
 }
+
 func (o *orgRole) toRole() *Role {
 	ret := &Role{
 		PublicId:    o.PublicId,
@@ -204,6 +208,7 @@ func (o *orgRole) Clone() any {
 	}
 	return ret
 }
+
 func (o *orgRole) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, o)
 }
@@ -219,6 +224,7 @@ func (o *orgRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+
 func allocOrgRole() orgRole {
 	return orgRole{
 		OrgRole: &store.OrgRole{},
@@ -316,6 +322,7 @@ func (p *projectRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+
 func allocProjectRole() projectRole {
 	return projectRole{
 		ProjectRole: &store.ProjectRole{},
