@@ -62,6 +62,8 @@ worker {
   useful for cloud environments that do not bind a publicly accessible IP to a
   NIC on the host directly, such as an Amazon EIP.
 
+  You should omit this parameter in multi-hop configurations if this self-managed worker connects to an upstream HCP-managed worker.
+
   This value can reference any of the following:
   - a direct address string
   - a file on disk (file://) from which an address will be read
@@ -75,8 +77,8 @@ worker {
   using env or file, their contents must formatted as a JSON array:
   `["127.0.0.1", "192.168.0.1", "10.0.0.1"]`
 
-  HCP Boundary workers require the [`hcp_boundary_cluster_id`](/boundary/docs/configuration/worker/#hcp_boundary_cluster_id) parameter instead of `initial upstreams`.
-  If you configure an HCP worker with `initial_upstreams`, the worker configuration fails.
+  Self-managed workers connecting to HCP Boundary require the [`hcp_boundary_cluster_id`](/boundary/docs/configuration/worker/#hcp_boundary_cluster_id) parameter instead of `initial upstreams`, unless you are configuring an HCP-managed worker as an ingress worker.
+  If you configure a self-managed worker with both `initial_upstreams` and `hcp_boundary_cluster_id`, the worker configuration fails.
 
 - `hcp_boundary_cluster_id` - A string required to configure workers using worker-led or controller-led registration
   to connect to your HCP Boundary cluster rather than specifying
