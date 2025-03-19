@@ -18,7 +18,9 @@ begin;
     description text,
     version wt_version,
     create_time wt_timestamp,
-    update_time wt_timestamp
+    update_time wt_timestamp,
+    constraint iam_role_project_name_scope_id_uq
+        unique(name, scope_id)
   );
   comment on table iam_role_project is
     'iam_role_project is a subtype table of the iam_role table. It is used to store roles that are scoped to a project.';
