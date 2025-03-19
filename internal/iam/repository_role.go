@@ -194,16 +194,41 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	opts := getOpts(opt...)
-	role := allocRole()
-	role.PublicId = withPublicId
+
+	var retRole *Role
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var rgs []*RoleGrantScope
 
 	lookupFunc := func(read db.Reader, w db.Writer) error {
+		role := allocRole()
+		role.PublicId = withPublicId
 		if err := read.LookupByPublicId(ctx, &role); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+		switch {
+		case role.ScopeId == globals.GlobalPrefix:
+			gRole := globalRole{GlobalRole: &store.GlobalRole{PublicId: withPublicId}}
+			if err := read.LookupByPublicId(ctx, &gRole); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			retRole = gRole.toRole()
+		case strings.HasPrefix(role.ScopeId, globals.OrgPrefix):
+			oRole := orgRole{OrgRole: &store.OrgRole{PublicId: withPublicId}}
+			if err := read.LookupByPublicId(ctx, &oRole); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			retRole = oRole.toRole()
+		case strings.HasPrefix(role.ScopeId, globals.ProjectPrefix):
+			pRole := projectRole{ProjectRole: &store.ProjectRole{PublicId: withPublicId}}
+			if err := read.LookupByPublicId(ctx, &pRole); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			retRole = pRole.toRole()
+		default:
+			return errors.Wrap(ctx, fmt.Errorf("improper format scoped ID %s", role.ScopeId), op)
+		}
+
 		repo, err := NewRepository(ctx, read, w, r.kms)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -243,7 +268,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		}
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
-	return &role, pr, rg, rgs, nil
+	return retRole, pr, rg, rgs, nil
 }
 
 // DeleteRole will delete a role from the repository.

@@ -107,18 +107,44 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		_ = adminRole
 
 	default:
-		adminRole, err = NewRole(ctx, scopePublicId)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new admin role"))
-		}
 		adminRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new admin role"))
 		}
-		adminRole.PublicId = adminRolePublicId
-		adminRole.Name = "Administration"
-		adminRole.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
-		adminRoleRaw = adminRole
+		switch s.Type {
+		case scope.Global.String():
+			gRole, err := newGlobalRole(ctx)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
+			}
+			gRole.PublicId = adminRolePublicId
+			gRole.Name = "Administration"
+			gRole.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
+			adminRole = gRole.toRole()
+			adminRoleRaw = gRole
+		case scope.Org.String():
+			oRole, err := newOrgRole(ctx, scopePublicId)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
+			}
+			oRole.PublicId = adminRolePublicId
+			oRole.Name = "Administration"
+			oRole.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
+			adminRole = oRole.toRole()
+			adminRoleRaw = oRole
+		case scope.Project.String():
+			pRole, err := newProjectRole(ctx, scopePublicId)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
+			}
+			pRole.PublicId = adminRolePublicId
+			pRole.Name = "Administration"
+			pRole.Description = fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId)
+			adminRole = pRole.toRole()
+			adminRoleRaw = pRole
+		default:
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("invalid scope type"))
+		}
 		adminRoleMetadata = oplog.Metadata{
 			"resource-public-id": []string{adminRolePublicId},
 			"scope-id":           []string{scopePublicId},
@@ -133,24 +159,44 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var defaultRole *Role
 	var defaultRoleRaw any
 	if !opts.withSkipDefaultRoleCreation {
-		defaultRole, err = NewRole(ctx, scopePublicId)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
-		}
 		defaultRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new default role"))
 		}
-		defaultRole.PublicId = defaultRolePublicId
 		switch s.Type {
+		case scope.Global.String():
+			gRole, err := newGlobalRole(ctx)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
+			}
+			gRole.PublicId = defaultRolePublicId
+			gRole.Name = "Login and Default Grants"
+			gRole.Description = fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", scopePublicId)
+			defaultRole = gRole.toRole()
+			defaultRoleRaw = gRole
+		case scope.Org.String():
+			oRole, err := newOrgRole(ctx, scopePublicId)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
+			}
+			oRole.PublicId = defaultRolePublicId
+			oRole.Name = "Login and Default Grants"
+			oRole.Description = fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", scopePublicId)
+			defaultRole = oRole.toRole()
+			defaultRoleRaw = oRole
 		case scope.Project.String():
-			defaultRole.Name = "Default Grants"
-			defaultRole.Description = fmt.Sprintf("Role created to provide default grants to users of scope %s at its creation time", scopePublicId)
+			pRole, err := newProjectRole(ctx, scopePublicId)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
+			}
+			pRole.PublicId = defaultRolePublicId
+			pRole.Name = "Default Grants"
+			pRole.Description = fmt.Sprintf("Role created to provide default grants to users of scope %s at its creation time", scopePublicId)
+			defaultRole = pRole.toRole()
+			defaultRoleRaw = pRole
 		default:
-			defaultRole.Name = "Login and Default Grants"
-			defaultRole.Description = fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", scopePublicId)
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("invalid scope type"))
 		}
-		defaultRoleRaw = defaultRole
 		defaultRoleMetadata = oplog.Metadata{
 			"resource-public-id": []string{defaultRolePublicId},
 			"scope-id":           []string{scopePublicId},
@@ -204,7 +250,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					adminRoleRaw,
 					db.WithOplog(childOplogWrapper, adminRoleMetadata),
 				); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating role"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating admin role"))
 				}
 
 				adminRole = adminRoleRaw.(*Role)
@@ -277,7 +323,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					defaultRoleRaw,
 					db.WithOplog(childOplogWrapper, defaultRoleMetadata),
 				); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating role"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating default role"))
 				}
 
 				defaultRole = defaultRoleRaw.(*Role)

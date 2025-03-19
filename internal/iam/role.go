@@ -5,6 +5,9 @@ package iam
 
 import (
 	"context"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -17,7 +20,10 @@ import (
 )
 
 const (
-	defaultRoleTableName = "iam_role"
+	defaultRoleTableName        = "iam_role"
+	defaultGlobalRoleTableName  = "iam_global_role"
+	defaultOrgRoleTableName     = "iam_org_role"
+	defaultProjectRoleTableName = "iam_project_role"
 )
 
 // Role is a set of granted permissions and assignable to Users and Groups.
@@ -38,6 +44,32 @@ type globalRole struct {
 	*store.GlobalRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
 	tableName   string            `gorm:"-"`
+}
+
+func (g *globalRole) TableName() string {
+	if g.tableName != "" {
+		return g.tableName
+	}
+	return defaultRoleTableName
+}
+
+func (g *globalRole) SetTableName(n string) {
+	g.tableName = n
+}
+
+// newGlobalRole creates a new in memory role in the global scope
+// allowed options include: WithDescription, WithName.
+func newGlobalRole(ctx context.Context, opt ...Option) (*globalRole, error) {
+	const op = "iam.newGlobalRole"
+	opts := getOpts(opt...)
+	r := &globalRole{
+		GlobalRole: &store.GlobalRole{
+			ScopeId:     globals.GlobalPrefix,
+			Name:        opts.withName,
+			Description: opts.withDescription,
+		},
+	}
+	return r, nil
 }
 
 func (g *globalRole) toRole() *Role {
@@ -92,6 +124,11 @@ func (g *globalRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+func allocGlobalRole() globalRole {
+	return globalRole{
+		GlobalRole: &store.GlobalRole{},
+	}
+}
 
 type orgRole struct {
 	*store.OrgRole
@@ -99,6 +136,37 @@ type orgRole struct {
 	tableName   string            `gorm:"-"`
 }
 
+func (o *orgRole) TableName() string {
+	if o.tableName != "" {
+		return o.tableName
+	}
+	return defaultRoleTableName
+}
+
+func (o *orgRole) SetTableName(n string) {
+	o.tableName = n
+}
+
+// newOrgRole creates a new in memory role in a org scope
+// allowed options include: WithDescription, WithName.
+func newOrgRole(ctx context.Context, orgId string, opt ...Option) (*orgRole, error) {
+	const op = "iam.newOrgRole"
+	if orgId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if !strings.HasPrefix(orgId, globals.OrgPrefix) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope must be an org")
+	}
+	opts := getOpts(opt...)
+	r := &orgRole{
+		OrgRole: &store.OrgRole{
+			ScopeId:     orgId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
+		},
+	}
+	return r, nil
+}
 func (o *orgRole) toRole() *Role {
 	ret := &Role{
 		PublicId:    o.PublicId,
@@ -151,11 +219,48 @@ func (o *orgRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+func allocOrgRole() orgRole {
+	return orgRole{
+		OrgRole: &store.OrgRole{},
+	}
+}
 
 type projectRole struct {
 	*store.ProjectRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
 	tableName   string            `gorm:"-"`
+}
+
+func (p *projectRole) TableName() string {
+	if p.tableName != "" {
+		return p.tableName
+	}
+	return defaultRoleTableName
+}
+
+func (p *projectRole) SetTableName(n string) {
+	p.tableName = n
+}
+
+// newProjectRole creates a new in memory role in a project scope
+// allowed options include: WithDescription, WithName.
+func newProjectRole(ctx context.Context, projectId string, opt ...Option) (*projectRole, error) {
+	const op = "iam.newProjectRole"
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if !strings.HasPrefix(projectId, globals.ProjectPrefix) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope must be a project")
+	}
+	opts := getOpts(opt...)
+	r := &projectRole{
+		ProjectRole: &store.ProjectRole{
+			ScopeId:     projectId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
+		},
+	}
+	return r, nil
 }
 
 func (p *projectRole) toRole() *Role {
@@ -211,20 +316,28 @@ func (p *projectRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+func allocProjectRole() projectRole {
+	return projectRole{
+		ProjectRole: &store.ProjectRole{},
+	}
+}
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
 var (
-	_ Resource        = (*globalRole)(nil)
-	_ Cloneable       = (*globalRole)(nil)
-	_ db.VetForWriter = (*globalRole)(nil)
+	_ Resource                = (*globalRole)(nil)
+	_ Cloneable               = (*globalRole)(nil)
+	_ oplog.ReplayableMessage = (*globalRole)(nil)
+	_ db.VetForWriter         = (*globalRole)(nil)
 
-	_ Resource        = (*orgRole)(nil)
-	_ Cloneable       = (*orgRole)(nil)
-	_ db.VetForWriter = (*orgRole)(nil)
+	_ Resource                = (*orgRole)(nil)
+	_ Cloneable               = (*orgRole)(nil)
+	_ oplog.ReplayableMessage = (*orgRole)(nil)
+	_ db.VetForWriter         = (*orgRole)(nil)
 
-	_ Resource        = (*projectRole)(nil)
-	_ Cloneable       = (*projectRole)(nil)
-	_ db.VetForWriter = (*projectRole)(nil)
+	_ Resource                = (*projectRole)(nil)
+	_ Cloneable               = (*projectRole)(nil)
+	_ oplog.ReplayableMessage = (*projectRole)(nil)
+	_ db.VetForWriter         = (*projectRole)(nil)
 
 	_ Resource        = (*Role)(nil)
 	_ Cloneable       = (*Role)(nil)
