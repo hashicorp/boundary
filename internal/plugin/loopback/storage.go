@@ -17,6 +17,7 @@ import (
 
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -141,9 +142,15 @@ func (l *LoopbackStorage) normalizeStorageBucketData(ctx context.Context, req *p
 	if req.GetAttributes() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
 	}
+	attrs := req.GetAttributes()
+	if endpoint, ok := attrs.GetFields()["endpoint_url"]; ok {
+		if endpoint, err := parseutil.NormalizeAddr(endpoint.GetStringValue()); err == nil {
+			attrs.Fields["endpoint_url"] = structpb.NewStringValue(endpoint)
+		}
+	}
 	l.normalizations++
 	return &plgpb.NormalizeStorageBucketDataResponse{
-		Attributes: req.GetAttributes(),
+		Attributes: attrs,
 	}, nil
 }
 
