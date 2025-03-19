@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,6 @@ import (
 )
 
 func TestRepository_CreateRole(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -34,16 +34,26 @@ func TestRepository_CreateRole(t *testing.T) {
 
 	type args struct {
 		role *Role
-		opt  []Option
 	}
 	tests := []struct {
 		name        string
 		args        args
-		wantDup     bool
+		setupDupe   func(t *testing.T)
 		wantErr     bool
 		wantErrMsg  string
 		wantIsError errors.Code
 	}{
+		{
+			name: "valid-global",
+			args: args{
+				role: func() *Role {
+					r, err := NewRole(ctx, "global", WithName("valid-global"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return r
+				}(),
+			},
+			wantErr: false,
+		},
 		{
 			name: "valid-org",
 			args: args{
@@ -90,23 +100,25 @@ func TestRepository_CreateRole(t *testing.T) {
 			wantIsError: errors.InvalidParameter,
 		},
 		{
-			name: "nil-store",
+			name: "bad-scope-id-format",
 			args: args{
 				role: func() *Role {
-					return &Role{
-						Role: nil,
-					}
+					r, err := NewRole(ctx, "scope-id")
+					assert.NoError(t, err)
+					return r
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "iam.(Repository).CreateRole: missing role store: parameter violation: error #100",
+			wantErrMsg:  "iam.(Repository).CreateRole: invalid scope id format",
 			wantIsError: errors.InvalidParameter,
 		},
 		{
-			name: "bad-scope-id",
+			name: "scope-id-does-not-exist",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(ctx, id)
+					notExistID, err := newScopeId(ctx, scope.Org)
+					assert.NoError(t, err)
+					r, err := NewRole(ctx, notExistID)
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -116,16 +128,58 @@ func TestRepository_CreateRole(t *testing.T) {
 			wantIsError: errors.RecordNotFound,
 		},
 		{
-			name: "dup-name",
+			name: "dup-name-global",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(ctx, org.PublicId, WithName("dup-name"+id), WithDescription(id))
+					r, err := NewRole(ctx, "global", WithName("global-dup-name"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
-				opt: []Option{WithName("dup-name" + id)},
 			},
-			wantDup:     true,
+			setupDupe: func(t *testing.T) {
+				r, err := NewRole(ctx, "global", WithName("global-dup-name"+id), WithDescription(id))
+				assert.NoError(t, err)
+				_, _, _, _, err = repo.CreateRole(context.Background(), r)
+				assert.NoError(t, err)
+			},
+			wantErr:     true,
+			wantErrMsg:  "already exists in scope ",
+			wantIsError: errors.NotUnique,
+		},
+		{
+			name: "dup-name-org",
+			args: args{
+				role: func() *Role {
+					r, err := NewRole(ctx, org.PublicId, WithName("org-dup-name"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return r
+				}(),
+			},
+			setupDupe: func(t *testing.T) {
+				r, err := NewRole(ctx, org.PublicId, WithName("org-dup-name"+id), WithDescription(id))
+				assert.NoError(t, err)
+				_, _, _, _, err = repo.CreateRole(context.Background(), r)
+				assert.NoError(t, err)
+			},
+			wantErr:     true,
+			wantErrMsg:  "already exists in scope ",
+			wantIsError: errors.NotUnique,
+		},
+		{
+			name: "dup-name-project",
+			args: args{
+				role: func() *Role {
+					r, err := NewRole(ctx, proj.PublicId, WithName("proj-dup-name"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return r
+				}(),
+			},
+			setupDupe: func(t *testing.T) {
+				r, err := NewRole(ctx, proj.PublicId, WithName("proj-dup-name"+id), WithDescription(id))
+				assert.NoError(t, err)
+				_, _, _, _, err = repo.CreateRole(context.Background(), r)
+				assert.NoError(t, err)
+			},
 			wantErr:     true,
 			wantErrMsg:  "already exists in scope ",
 			wantIsError: errors.NotUnique,
@@ -138,24 +192,24 @@ func TestRepository_CreateRole(t *testing.T) {
 					assert.NoError(t, err)
 					return r
 				}(),
-				opt: []Option{WithName("dup-name-but-diff-scope" + id)},
 			},
-			wantDup: true,
+			setupDupe: func(t *testing.T) {
+				r, err := NewRole(ctx, org.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
+				assert.NoError(t, err)
+				_, _, _, _, err = repo.CreateRole(context.Background(), r)
+				assert.NoError(t, err)
+			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-
-			if tt.wantDup {
-				dup, err := NewRole(ctx, org.PublicId, tt.args.opt...)
-				assert.NoError(err)
-				dup, _, _, _, err = repo.CreateRole(context.Background(), dup, tt.args.opt...)
-				assert.NoError(err)
-				assert.NotNil(dup)
+			if tt.setupDupe != nil {
+				tt.setupDupe(t)
 			}
-			grp, _, _, _, err := repo.CreateRole(context.Background(), tt.args.role, tt.args.opt...)
+
+			grp, _, _, _, err := repo.CreateRole(context.Background(), tt.args.role)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(grp)
