@@ -21,15 +21,18 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
+	hstpl "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -72,15 +75,30 @@ func TestGrants_ReadActions(t *testing.T) {
 	catalogServiceFn := func() (*host.CatalogRepository, error) {
 		return host.NewCatalogRepository(ctx, rw, rw)
 	}
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&plgpb.UnimplementedHostPluginServiceServer{}),
+	}
 	s, err := host_catalogs.NewService(ctx, staticRepoFn, pluginHostRepoFn, pluginRepoFn, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(t, err)
 
 	org, proj := iam.TestScopes(t, iamRepo)
 
-	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 5)
-	var wantHcs []string
-	for _, h := range hcs {
-		wantHcs = append(wantHcs, h.GetPublicId())
+	var allHcs []string
+	for range 5 {
+		hc := hstpl.TestCatalog(
+			t,
+			conn,
+			proj.GetPublicId(),
+			plg.GetPublicId(),
+			hostplugin.WithAttributes(&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}}),
+			hostplugin.WithWorkerFilter(`"test" in "/tags/type"`),
+			hostplugin.WithSecrets(&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}}),
+			hostplugin.WithSecretsHmac([]byte("foobar")),
+		)
+		allHcs = append(allHcs, hc.GetPublicId())
+
+		_ = hstpl.TestSet(t, conn, kmsCache, sche, hc, plgm)
 	}
 
 	t.Run("List", func(t *testing.T) {
@@ -90,7 +108,7 @@ func TestGrants_ReadActions(t *testing.T) {
 			userFunc        func() (user *iam.User, account auth.Account)
 			wantErr         error
 			wantIDs         []string
-			expectOutfields map[string][]string
+			expectOutfields []string
 		}{
 			{
 				name: "direct association - global role with host-catalog type, list, read actions, grant scope: this and descendants returns all created host catalogs",
@@ -105,15 +123,9 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
-				wantErr: nil,
-				wantIDs: wantHcs,
-				expectOutfields: map[string][]string{
-					hcs[0].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					hcs[1].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					hcs[2].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					hcs[3].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					hcs[4].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-				},
+				wantErr:         nil,
+				wantIDs:         allHcs,
+				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 			},
 			{
 				name: "group association - global role with host-catalog type, list, read actions, grant scope: this and descendants returns all created host catalogs",
@@ -128,14 +140,8 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
-				wantIDs: wantHcs,
-				expectOutfields: map[string][]string{
-					hcs[0].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField},
-					hcs[1].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField},
-					hcs[2].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField},
-					hcs[3].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField},
-					hcs[4].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField},
-				},
+				wantIDs:         allHcs,
+				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField},
 			},
 			{
 				name: "managed group association - global role with host-catalog type, list, read actions, grant scope: this and descendants returns all created host catalogs",
@@ -146,40 +152,28 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id"},
+						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,attributes"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
-				wantIDs: wantHcs,
-				expectOutfields: map[string][]string{
-					hcs[0].GetPublicId(): {globals.IdField},
-					hcs[1].GetPublicId(): {globals.IdField},
-					hcs[2].GetPublicId(): {globals.IdField},
-					hcs[3].GetPublicId(): {globals.IdField},
-					hcs[4].GetPublicId(): {globals.IdField},
-				},
+				wantIDs:         allHcs,
+				expectOutfields: []string{globals.IdField, globals.AttributesField},
 			},
 			{
 				name: "org role with host-catalog type, list, read actions, grant scope: this and children returns all created host catalogs",
 				input: &pbs.ListHostCatalogsRequest{
-					ScopeId:   proj.GetPublicId(),
+					ScopeId:   org.GetPublicId(),
 					Recursive: true,
 				},
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
-						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,created_time,updated_time"},
+						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,authorized_actions,secrets_hmac,created_time,updated_time"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
-				wantIDs: wantHcs,
-				expectOutfields: map[string][]string{
-					hcs[0].GetPublicId(): {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					hcs[1].GetPublicId(): {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					hcs[2].GetPublicId(): {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					hcs[3].GetPublicId(): {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					hcs[4].GetPublicId(): {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
-				},
+				wantIDs:         allHcs,
+				expectOutfields: []string{globals.IdField, globals.AuthorizedActionsField, globals.SecretsHmacField, globals.CreatedTimeField, globals.UpdatedTimeField},
 			},
 			{
 				name: "org role with host-catalog type, list, read actions, grant scope children returns all created host catalogs",
@@ -194,14 +188,8 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				}),
-				wantIDs: wantHcs,
-				expectOutfields: map[string][]string{
-					hcs[0].GetPublicId(): {globals.IdField, globals.TypeField},
-					hcs[1].GetPublicId(): {globals.IdField, globals.TypeField},
-					hcs[2].GetPublicId(): {globals.IdField, globals.TypeField},
-					hcs[3].GetPublicId(): {globals.IdField, globals.TypeField},
-					hcs[4].GetPublicId(): {globals.IdField, globals.TypeField},
-				},
+				wantIDs:         allHcs,
+				expectOutfields: []string{globals.IdField, globals.TypeField},
 			},
 			{
 				name: "project role with host-catalog type, list, read actions, grant scope: this returns all created host catalogs",
@@ -216,17 +204,11 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
-				wantIDs: wantHcs,
-				expectOutfields: map[string][]string{
-					hcs[0].GetPublicId(): {globals.IdField, globals.TypeField},
-					hcs[1].GetPublicId(): {globals.IdField, globals.TypeField},
-					hcs[2].GetPublicId(): {globals.IdField, globals.TypeField},
-					hcs[3].GetPublicId(): {globals.IdField, globals.TypeField},
-					hcs[4].GetPublicId(): {globals.IdField, globals.TypeField},
-				},
+				wantIDs:         allHcs,
+				expectOutfields: []string{globals.IdField, globals.TypeField},
 			},
 			{
-				name: "project role with host-catalog type, list action, grant scope: this returns all created host catalogs",
+				name: "project role with host-catalog type, list action, grant scope: does not return any host catalogs",
 				input: &pbs.ListHostCatalogsRequest{
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
@@ -253,14 +235,8 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
-				wantIDs: wantHcs,
-				expectOutfields: map[string][]string{
-					hcs[0].GetPublicId(): {globals.IdField},
-					hcs[1].GetPublicId(): {globals.IdField},
-					hcs[2].GetPublicId(): {globals.IdField},
-					hcs[3].GetPublicId(): {globals.IdField},
-					hcs[4].GetPublicId(): {globals.IdField},
-				},
+				wantIDs:         allHcs,
+				expectOutfields: []string{globals.IdField},
 			},
 			{
 				name: "project role with non-applicable type, list and no-op actions, grant scope: this returns forbidden error",
@@ -307,6 +283,15 @@ func TestGrants_ReadActions(t *testing.T) {
 				}),
 				wantIDs: nil,
 			},
+			{
+				name: "role with no grant",
+				input: &pbs.ListHostCatalogsRequest{
+					ScopeId:   proj.GetPublicId(),
+					Recursive: true,
+				},
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{}),
+				wantErr:  handlers.ForbiddenError(),
+			},
 		}
 
 		for _, tc := range testcases {
@@ -327,7 +312,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				}
 				require.ElementsMatch(t, tc.wantIDs, gotIDs)
 				for _, item := range got.Items {
-					handlers.TestAssertOutputFields(t, item, tc.expectOutfields[item.Id])
+					handlers.TestAssertOutputFields(t, item, tc.expectOutfields)
 				}
 			})
 		}
@@ -346,16 +331,16 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
-						Grants:      []string{"ids=" + hcs[2].GetPublicId() + ";type=host-catalog;actions=read;output_fields=id,scope_id,type,created_time,updated_time"},
+						Grants:      []string{"ids=" + allHcs[2] + ";type=host-catalog;actions=read;output_fields=id,scope_id,type,created_time,updated_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
 				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
-					{Id: hcs[0].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[1].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[2].GetPublicId()}: nil,
-					{Id: hcs[3].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[4].GetPublicId()}: handlers.ForbiddenError(),
+					{Id: allHcs[0]}: handlers.ForbiddenError(),
+					{Id: allHcs[1]}: handlers.ForbiddenError(),
+					{Id: allHcs[2]}: nil,
+					{Id: allHcs[3]}: handlers.ForbiddenError(),
+					{Id: allHcs[4]}: handlers.ForbiddenError(),
 				},
 				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 			},
@@ -364,16 +349,16 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=" + hcs[0].GetPublicId() + ";type=host-catalog;actions=read;output_fields=id,scope_id,type"},
+						Grants:      []string{"ids=" + allHcs[0] + ";type=host-catalog;actions=read;output_fields=id,scope_id,type"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
 				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
-					{Id: hcs[0].GetPublicId()}: nil,
-					{Id: hcs[1].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[2].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[3].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[4].GetPublicId()}: handlers.ForbiddenError(),
+					{Id: allHcs[0]}: nil,
+					{Id: allHcs[1]}: handlers.ForbiddenError(),
+					{Id: allHcs[2]}: handlers.ForbiddenError(),
+					{Id: allHcs[3]}: handlers.ForbiddenError(),
+					{Id: allHcs[4]}: handlers.ForbiddenError(),
 				},
 				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField},
 			},
@@ -387,11 +372,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
-					{Id: hcs[0].GetPublicId()}: nil,
-					{Id: hcs[1].GetPublicId()}: nil,
-					{Id: hcs[2].GetPublicId()}: nil,
-					{Id: hcs[3].GetPublicId()}: nil,
-					{Id: hcs[4].GetPublicId()}: nil,
+					{Id: allHcs[0]}: nil,
+					{Id: allHcs[1]}: nil,
+					{Id: allHcs[2]}: nil,
+					{Id: allHcs[3]}: nil,
+					{Id: allHcs[4]}: nil,
 				},
 				expectOutfields: []string{globals.IdField, globals.TypeField},
 			},
@@ -405,11 +390,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
-					{Id: hcs[0].GetPublicId()}: nil,
-					{Id: hcs[1].GetPublicId()}: nil,
-					{Id: hcs[2].GetPublicId()}: nil,
-					{Id: hcs[3].GetPublicId()}: nil,
-					{Id: hcs[4].GetPublicId()}: nil,
+					{Id: allHcs[0]}: nil,
+					{Id: allHcs[1]}: nil,
+					{Id: allHcs[2]}: nil,
+					{Id: allHcs[3]}: nil,
+					{Id: allHcs[4]}: nil,
 				},
 				expectOutfields: []string{globals.IdField},
 			},
@@ -423,11 +408,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
-					{Id: hcs[0].GetPublicId()}: nil,
-					{Id: hcs[1].GetPublicId()}: nil,
-					{Id: hcs[2].GetPublicId()}: nil,
-					{Id: hcs[3].GetPublicId()}: nil,
-					{Id: hcs[4].GetPublicId()}: nil,
+					{Id: allHcs[0]}: nil,
+					{Id: allHcs[1]}: nil,
+					{Id: allHcs[2]}: nil,
+					{Id: allHcs[3]}: nil,
+					{Id: allHcs[4]}: nil,
 				},
 				expectOutfields: []string{globals.IdField},
 			},
@@ -441,11 +426,11 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
-					{Id: hcs[0].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[1].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[2].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[3].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[4].GetPublicId()}: handlers.ForbiddenError(),
+					{Id: allHcs[0]}: handlers.ForbiddenError(),
+					{Id: allHcs[1]}: handlers.ForbiddenError(),
+					{Id: allHcs[2]}: handlers.ForbiddenError(),
+					{Id: allHcs[3]}: handlers.ForbiddenError(),
+					{Id: allHcs[4]}: handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -453,41 +438,41 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
-						Grants:      []string{"ids=" + hcs[0].GetPublicId() + ";type=host-catalog;actions=read;output_fields=id,created_time,updated_time"},
+						Grants:      []string{"ids=" + allHcs[0] + ";type=host-catalog;actions=read;output_fields=id,created_time,updated_time"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
 						RoleScopeId: proj.PublicId,
-						Grants:      []string{"ids=" + hcs[0].GetPublicId() + ";type=host-catalog;actions=read;output_fields=scope_id,type"},
+						Grants:      []string{"ids=" + allHcs[0] + ";type=host-catalog;actions=read;output_fields=scope_id,type"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=" + hcs[2].GetPublicId() + ";type=host-catalog;actions=read;output_fields=id,created_time,updated_time"},
+						Grants:      []string{"ids=" + allHcs[2] + ";type=host-catalog;actions=read;output_fields=id,created_time,updated_time"},
 						GrantScopes: []string{globals.GrantScopeDescendants},
 					},
 					{
 						RoleScopeId: org.PublicId,
-						Grants:      []string{"ids=" + hcs[2].GetPublicId() + ";type=host-catalog;actions=read;output_fields=scope_id,type"},
+						Grants:      []string{"ids=" + allHcs[2] + ";type=host-catalog;actions=read;output_fields=scope_id,type"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 					{
 						RoleScopeId: org.PublicId,
-						Grants:      []string{"ids=" + hcs[3].GetPublicId() + ";type=host-catalog;actions=read;output_fields=id,created_time,updated_time"},
+						Grants:      []string{"ids=" + allHcs[3] + ";type=host-catalog;actions=read;output_fields=id,created_time,updated_time"},
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 					{
 						RoleScopeId: proj.PublicId,
-						Grants:      []string{"ids=" + hcs[3].GetPublicId() + ";type=host-catalog;actions=read;output_fields=scope_id,type"},
+						Grants:      []string{"ids=" + allHcs[3] + ";type=host-catalog;actions=read;output_fields=scope_id,type"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
 				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
-					{Id: hcs[0].GetPublicId()}: nil,
-					{Id: hcs[1].GetPublicId()}: handlers.ForbiddenError(),
-					{Id: hcs[2].GetPublicId()}: nil,
-					{Id: hcs[3].GetPublicId()}: nil,
-					{Id: hcs[4].GetPublicId()}: handlers.ForbiddenError(),
+					{Id: allHcs[0]}: nil,
+					{Id: allHcs[1]}: handlers.ForbiddenError(),
+					{Id: allHcs[2]}: nil,
+					{Id: allHcs[3]}: nil,
+					{Id: allHcs[4]}: handlers.ForbiddenError(),
 				},
 				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 			},
@@ -543,6 +528,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		require.NoError(t, err)
 
 		org, proj := iam.TestScopes(t, iamRepo)
+		_ = iam.TestProject(t, iamRepo, org.GetPublicId())
 
 		testcases := []struct {
 			name              string
