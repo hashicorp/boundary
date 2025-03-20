@@ -38,30 +38,32 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 
-	var incomingRole Resource
+	var newRole Resource
 	switch {
 	case role.ScopeId == globals.GlobalPrefix:
-		incomingRole = &globalRole{
+		newRole = &globalRole{
 			GlobalRole: &store.GlobalRole{
 				PublicId:           id,
 				ScopeId:            role.ScopeId,
 				Name:               role.Name,
 				Description:        role.Description,
+				GrantScope:         "individual",
 				GrantThisRoleScope: true,
 			},
 		}
 	case strings.HasPrefix(role.ScopeId, globals.OrgPrefix):
-		incomingRole = &orgRole{
+		newRole = &orgRole{
 			OrgRole: &store.OrgRole{
 				PublicId:           id,
 				ScopeId:            role.ScopeId,
 				Name:               role.Name,
 				Description:        role.Description,
+				GrantScope:         "individual",
 				GrantThisRoleScope: true,
 			},
 		}
 	case strings.HasPrefix(role.ScopeId, globals.ProjectPrefix):
-		incomingRole = &projectRole{
+		newRole = &projectRole{
 			ProjectRole: &store.ProjectRole{
 				PublicId:    id,
 				ScopeId:     role.ScopeId,
@@ -70,7 +72,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 			},
 		}
 	default:
-		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "unexpected scope id")
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "invalid scope id format")
 	}
 
 	var retRole *Role
@@ -83,7 +85,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, writer db.Writer) error {
-			createdResource, err = r.create(ctx, incomingRole, WithReaderWriter(reader, writer))
+			createdResource, err = r.create(ctx, newRole, WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while creating role"))
 			}
@@ -99,7 +101,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		if errors.IsUniqueError(err) {
 			return nil, nil, nil, nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
-		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", createdResource.GetPublicId())))
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", newRole.GetPublicId())))
 	}
 	return retRole, pr, rg, grantScopes, nil
 }
@@ -202,7 +204,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 
 	lookupFunc := func(read db.Reader, w db.Writer) error {
 		role := allocRole()
-		role.PublicId = withPublicId
+		role.Role.PublicId = withPublicId
 		if err := read.LookupByPublicId(ctx, &role); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
