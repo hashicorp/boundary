@@ -498,7 +498,6 @@ func TestGrants_ReadActions(t *testing.T) {
 }
 
 func TestGrants_WriteActions(t *testing.T) {
-
 	t.Run("create", func(t *testing.T) {
 		ctx := context.Background()
 		conn, _ := db.TestSetup(t, "postgres")
