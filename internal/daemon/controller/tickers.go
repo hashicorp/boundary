@@ -36,7 +36,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 			return
 
 		case <-timer.C:
-			if err := c.updateController(cancelCtx); err != nil {
+			if err := c.upsertController(cancelCtx); err != nil {
 				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for status update"))
 			}
 			timer.Reset(statusInterval)
@@ -57,33 +57,10 @@ func (c *Controller) upsertController(ctx context.Context) error {
 	controller := server.NewController(c.conf.RawConfig.Controller.Name, opts...)
 	repo, err := c.ServersRepoFn()
 	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status upsert"))
-	}
-
-	_, err = repo.UpsertController(ctx, controller)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status upsert"))
-	}
-
-	return nil
-}
-
-func (c *Controller) updateController(ctx context.Context) error {
-	const op = "controller.(Controller).updateController"
-	var opts []server.Option
-	if c.conf.RawConfig.Controller.Description != "" {
-		opts = append(opts, server.WithDescription(c.conf.RawConfig.Controller.Description))
-	}
-	if c.conf.RawConfig.Controller.PublicClusterAddr != "" {
-		opts = append(opts, server.WithAddress(c.conf.RawConfig.Controller.PublicClusterAddr))
-	}
-	controller := server.NewController(c.conf.RawConfig.Controller.Name, opts...)
-	repo, err := c.ServersRepoFn()
-	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status update"))
 	}
 
-	_, err = repo.UpdateController(ctx, controller)
+	_, err = repo.UpsertController(ctx, controller)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status update"))
 	}
