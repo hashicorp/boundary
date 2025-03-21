@@ -1485,7 +1485,7 @@ func (c *Config) SetupWorkerInitialUpstreams() error {
 		}
 		// Best effort see if it's a domain name and if not assume it must match
 		host, _, err := util.SplitHostPort(c.Worker.InitialUpstreams[0])
-		if err == nil && !errors.Is(err, util.ErrMissingPort) {
+		if err == nil || errors.Is(err, util.ErrMissingPort) {
 			ip := net.ParseIP(host)
 			if ip == nil {
 				// Assume it's a domain name
