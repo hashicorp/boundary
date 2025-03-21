@@ -12,7 +12,7 @@ Refer to the following sections to configure your Boundary controllers.
 ## Prepare TLS certificates
 
 HashiCorp recommends that the Boundary controller nodes handle TLS via PKI for user connections.
-Further, HashiCorp strongly recommends that you use certificates that an appropriate certificate authority (CA) generated and signed.
+Further, we strongly recommend that you use certificates that an appropriate certificate authority (CA) generated and signed.
 
 To use TLS, you must have two files on each Boundary controller node.
 You may have to create a new directory to store the certificate material at `/etc/boundary.d/tls`.
@@ -20,10 +20,11 @@ Place the files in the following paths:
 
 - `/etc/boundary.d/tls/boundary-cert.pem`
 
-    This path is for accessing the Boundary controllers and any SANs. Place the Boundary TLS certificate with a Common Name (CN) and Subject Alternate Name (SAN) that matches your planned primary DNS record in this path.
+    Place the Boundary TLS certificate with a Common Name (CN) and Subject Alternate Name (SAN) that matches your planned primary DNS record in this path so that the Boundary controllers and any SANs can access it.
+
 - `/etc/boundary.d/tls/boundary-key.pem`
 
-    In this path, place the Boundary TLS certificate's private key.
+    Place the Boundary TLS certificate's private key in this path.
 
 If you do not generate unique TLS key material for each node, you should securely distribute the key material to each of the Boundary controller nodes.
 
@@ -33,10 +34,11 @@ Boundary controllers require the two following different cryptographic keys:
 
 - **Root key**: The root KMS key acts as a KEK (Key Encrypting Key) for the scope-specific KEKs, which are also referred to as the scope's root keys.
 When you create a scope, Boundary also creates the root KEK and the various DEKs (Data Encryption Keys).
-It encrypts the DEKs using the scope's KEK, and then encrypts the DEKs with the KMS key marked for the root purpose.
-- **Recovery key**: The recovery KMS key is for rescue or recovery operations, and can authenticate almost any Boundary operation.
-An encrypted payload includes a nonce and creation time, formatted as a token, and sent to the controller.
-The time and nonce ensure that an adversary cannot replay a value, and also to ensure that each operation must be individually authenticated by a client, so that revoking access to the KMS has an immediate result.
+It encrypts the DEKs using the scope's KEK, and then encrypts the KEK with the KMS key marked for the root purpose.
+- **Recovery key**: You use the recovery KMS key to authenticate Boundary client rescue and recovery operation workflows.
+The recovery key includes a nonce and creation time as an encrypted payload.
+Boundary formats the payload as a token and sends it to the controller.
+The time and nonce ensure that an adversary cannot replay a value, and also ensure that a client must individually authenticate each operation, so that revoking access to the KMS has an immediate result.
 
 The following keys are optional:
 
@@ -52,7 +54,7 @@ Refer to [Data security in Boundary](/boundary/docs/concepts/security/data-encry
 
 <Note>
 There are two types of Boundary workers, distinguished by the method by which they authenticate with the Boundary controllers.
-One worker uses a PKI exchange to authenticate with the controllers. The other uses a KMS key used for authentication by both the worker and the controller.
+One worker uses a PKI exchange to authenticate with the controllers. The other uses a KMS key for authentication by both the worker and the controller.
 You use the Worker-auth key listed above to enable KMS worker authentication.
 </Note>
 
@@ -96,7 +98,7 @@ Run the following commands to rename the example configuration files:
 1. `sudo mv worker.hcl worker.hcl.old`
 
 HashiCorp recommends that you use either the `env://` or `file://` notation in the configuration files to securely provide secret configuration components to the Boundary controller binaries.
-In the following controller configuration example, declare the PostgreSQL connect strings with `env://` as well as secure the AWS KMS configuration items.
+The following controller configuration example uses `env://` to declare the PostgreSQL connect strings as well as secure the AWS KMS configuration items.
 
 When you install the Boundary binary using a package manager, it includes a unit file that configures an environment file at `/etc/boundary.d/boundary.env`.
 You can use this file to set the sensitive values used to configure the Boundary controllers and workers.
@@ -264,8 +266,8 @@ Refer to the list below for explanations of the parameters used in the example a
 
 - `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory swap to the disk.
 This is fine for local development and testing.
-However, it is not recommended for production unless the systems running Boundary use encrypted swap or do not use swap at all.
-Boundary supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
+However, HashiCorp does not recommend using it for production unless the systems running Boundary use encrypted swap or do not use swap at all.
+Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
 
    On Linux, to give the Boundary executable the ability to use `mlock` syscall without running the process as root, run the following command:
 
@@ -299,7 +301,7 @@ Refer to the documentation for additional [top-level configuration options](/bou
 ## Initialize the database
 
 Before you can start Boundary, you must initialize the database from one Boundary controller.
-Initialisation must run once; it will execute the required database migrations for the Boundary cluster to operate.
+Initialization is a one-time operation that executes the required database migrations for the Boundary cluster to operate.
 
 ```shell-session
 boundary database init -config /etc/boundary.d/controller.hcl
@@ -317,7 +319,7 @@ boundary database init \
    -config /etc/boundary.d/controller.hcl
 ```
 
-Use the following command to view the help for options:
+Use the following command to view the help for additional initialization options:
 
 ```shell-session
 boundary database init -h
