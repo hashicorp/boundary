@@ -199,7 +199,7 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { r := allocBaseRole(); return &r }(), "1=1")
 			role := TestRole(t, conn, tt.createGrantScopeId)
 			roleGrants := make([]string, 0, tt.createCnt)
 			for i := 0; i < tt.createCnt; i++ {

@@ -117,10 +117,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	if role == nil {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role")
 	}
-	if role.Role == nil {
-		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
-	}
-	if role.PublicId == "" {
+	if role.GetPublicId() == "" {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 
@@ -158,7 +155,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			var err error
-			c := role.Clone().(*Role)
+			c := role.toBaseRole()
 			resource = c // If we don't have dbMask or nullFields, we'll return this
 			if len(dbMask) > 0 || len(nullFields) > 0 {
 				resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields, WithReaderWriter(read, w))
@@ -203,7 +200,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 	var rgs []*RoleGrantScope
 
 	lookupFunc := func(read db.Reader, w db.Writer) error {
-		role := allocRole()
+		role := allocBaseRole()
 		role.Role.PublicId = withPublicId
 		if err := read.LookupByPublicId(ctx, &role); err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -279,7 +276,7 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &role); err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))

@@ -61,7 +61,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		newManagedGrpRoles = append(newManagedGrpRoles, managedGrpRole)
 	}
 
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
@@ -84,7 +84,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedRole := allocRole()
+			updatedRole := allocBaseRole()
 			updatedRole.PublicId = roleId
 			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
@@ -160,7 +160,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if roleVersion == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 
 	// it's "safe" to do this lookup outside the DoTx transaction because we
@@ -203,7 +203,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket for role"))
 			}
-			updatedRole := allocRole()
+			updatedRole := allocBaseRole()
 			updatedRole.PublicId = roleId
 			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
@@ -335,7 +335,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	if roleVersion == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 
 	deleteUserRoles := make([]*UserRole, 0, len(userIds))
@@ -383,7 +383,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedRole := allocRole()
+			updatedRole := allocBaseRole()
 			updatedRole.PublicId = roleId
 			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message

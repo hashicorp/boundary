@@ -29,7 +29,6 @@ const (
 
 // Role is a set of granted permissions and assignable to Users and Groups.
 type Role struct {
-	*store.Role
 	PublicId    string
 	ScopeId     string
 	Name        string
@@ -37,8 +36,72 @@ type Role struct {
 	CreateTime  *timestamp.Timestamp
 	UpdateTime  *timestamp.Timestamp
 	Version     uint32
-	GrantScopes []*RoleGrantScope `gorm:"-"`
-	tableName   string            `gorm:"-"`
+	GrantScopes []*RoleGrantScope
+}
+
+func (r *Role) GetPublicId() string {
+	if r == nil {
+		return ""
+	}
+	return r.PublicId
+}
+func (r *Role) GetScopeId() string {
+	if r == nil {
+		return ""
+	}
+	return r.ScopeId
+}
+func (r *Role) GetName() string {
+	if r == nil {
+		return ""
+	}
+	return r.Name
+}
+func (r *Role) GetDescription() string {
+	if r == nil {
+		return ""
+	}
+	return r.Description
+}
+func (r *Role) GetCreateTime() *timestamp.Timestamp {
+	if r == nil {
+		return nil
+	}
+	return r.CreateTime
+}
+func (r *Role) GetUpdateTime() *timestamp.Timestamp {
+	if r == nil {
+		return nil
+	}
+	return r.UpdateTime
+}
+func (r *Role) GetVersion() uint32 {
+	if r == nil {
+		return 0
+	}
+	return r.Version
+}
+func (r *Role) GetGrantScopes() []*RoleGrantScope {
+	if r == nil {
+		return nil
+	}
+	return r.GrantScopes
+}
+
+func (r *Role) toBaseRole() *baseRole {
+	return &baseRole{
+		Role: &store.Role{
+			PublicId:    r.GetPublicId(),
+			ScopeId:     r.GetScopeId(),
+			Name:        r.GetName(),
+			Description: r.GetDescription(),
+			CreateTime:  r.GetCreateTime(),
+			UpdateTime:  r.GetUpdateTime(),
+			Version:     r.GetVersion(),
+		},
+		GrantScopes: r.GetGrantScopes(),
+		tableName:   defaultRoleTableName,
+	}
 }
 
 type globalRole struct {
@@ -346,10 +409,17 @@ var (
 	_ oplog.ReplayableMessage = (*projectRole)(nil)
 	_ db.VetForWriter         = (*projectRole)(nil)
 
-	_ Resource        = (*Role)(nil)
-	_ Cloneable       = (*Role)(nil)
-	_ db.VetForWriter = (*Role)(nil)
+	_ Resource        = (*baseRole)(nil)
+	_ Cloneable       = (*baseRole)(nil)
+	_ db.VetForWriter = (*baseRole)(nil)
 )
+
+// baseRole is a set of granted permissions and assignable to Users and Groups.
+type baseRole struct {
+	*store.Role
+	GrantScopes []*RoleGrantScope `gorm:"-"`
+	tableName   string            `gorm:"-"`
+}
 
 // NewRole creates a new in memory role with a scope (project/org)
 // allowed options include: withDescription, WithName.
@@ -368,9 +438,9 @@ func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) 
 }
 
 // Clone creates a clone of the Role.
-func (role *Role) Clone() any {
+func (role *baseRole) Clone() any {
 	cp := proto.Clone(role.Role)
-	ret := &Role{
+	ret := &baseRole{
 		Role: cp.(*store.Role),
 	}
 	for _, grantScope := range role.GrantScopes {
@@ -380,8 +450,8 @@ func (role *Role) Clone() any {
 }
 
 // VetForWrite implements db.VetForWrite() interface.
-func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	const op = "iam.(Role).VetForWrite"
+func (role *baseRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(baseRole).VetForWrite"
 	if role.PublicId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
@@ -391,21 +461,21 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	return nil
 }
 
-func (role *Role) validScopeTypes() []scope.Type {
+func (role *baseRole) validScopeTypes() []scope.Type {
 	return []scope.Type{scope.Global, scope.Org, scope.Project}
 }
 
 // GetScope returns the scope for the Role.
-func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+func (role *baseRole) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, role)
 }
 
 // GetResourceType returns the type of the Role.
-func (*Role) GetResourceType() resource.Type { return resource.Role }
-func (*Role) getResourceType() resource.Type { return resource.Role }
+func (*baseRole) GetResourceType() resource.Type { return resource.Role }
+func (*baseRole) getResourceType() resource.Type { return resource.Role }
 
 // Actions returns the available actions for Role.
-func (*Role) Actions() map[string]action.Type {
+func (*baseRole) Actions() map[string]action.Type {
 	ret := CrudlActions()
 	ret[action.AddGrants.String()] = action.AddGrants
 	ret[action.RemoveGrants.String()] = action.RemoveGrants
@@ -417,7 +487,7 @@ func (*Role) Actions() map[string]action.Type {
 }
 
 // TableName returns the tablename to override the default gorm table name.
-func (role *Role) TableName() string {
+func (role *baseRole) TableName() string {
 	if role.tableName != "" {
 		return role.tableName
 	}
@@ -427,13 +497,26 @@ func (role *Role) TableName() string {
 // SetTableName sets the tablename and satisfies the ReplayableMessage
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
-func (role *Role) SetTableName(n string) {
+func (role *baseRole) SetTableName(n string) {
 	role.tableName = n
 }
 
-func allocRole() Role {
-	return Role{
+func allocBaseRole() baseRole {
+	return baseRole{
 		Role: &store.Role{},
+	}
+}
+
+func (role *baseRole) toRole() *Role {
+	return &Role{
+		PublicId:    role.GetPublicId(),
+		ScopeId:     role.GetDescription(),
+		Name:        role.GetName(),
+		Description: role.GetDescription(),
+		CreateTime:  role.GetCreateTime(),
+		UpdateTime:  role.GetUpdateTime(),
+		Version:     role.GetVersion(),
+		GrantScopes: role.GrantScopes,
 	}
 }
 

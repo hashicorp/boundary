@@ -202,7 +202,7 @@ func Test_RoleCreate(t *testing.T) {
 			assert.NoError(err)
 			assert.NotEmpty(tt.args.role.PublicId)
 
-			foundGrp := allocRole()
+			foundGrp := allocBaseRole()
 			foundGrp.PublicId = tt.args.role.PublicId
 			err = w.LookupByPublicId(ctx, &foundGrp)
 			require.NoError(err)
@@ -340,7 +340,7 @@ func Test_RoleUpdate(t *testing.T) {
 			}
 			role := TestRole(t, conn, scopeId, WithDescription(id), WithName(id))
 
-			updateRole := allocRole()
+			updateRole := allocBaseRole()
 			updateRole.PublicId = role.PublicId
 			updateRole.ScopeId = tt.args.scopeId
 			if tt.args.scopeIdOverride != "" {
@@ -362,7 +362,7 @@ func Test_RoleUpdate(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(role.UpdateTime, updateRole.UpdateTime)
-			foundRole := allocRole()
+			foundRole := allocBaseRole()
 			foundRole.PublicId = role.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundRole)
 			require.NoError(err)
@@ -386,7 +386,7 @@ func Test_RoleUpdate(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 
-		foundRole := allocRole()
+		foundRole := allocBaseRole()
 		foundRole.PublicId = projRole.GetPublicId()
 		err = rw.LookupByPublicId(context.Background(), &foundRole)
 		require.NoError(err)
@@ -395,7 +395,7 @@ func Test_RoleUpdate(t *testing.T) {
 	t.Run("attempt scope id update", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		role := TestRole(t, conn, org.PublicId, WithDescription(id), WithName(id))
-		updateRole := allocRole()
+		updateRole := allocBaseRole()
 		updateRole.PublicId = role.PublicId
 		updateRole.ScopeId = proj.PublicId
 		updatedRows, err := rw.Update(context.Background(), &updateRole, []string{"ScopeId"}, nil, db.WithSkipVetForWrite(true))
@@ -429,7 +429,7 @@ func Test_RoleDelete(t *testing.T) {
 		},
 		{
 			name:            "bad-id",
-			role:            func() *Role { r := allocRole(); r.PublicId = id; return &r }(),
+			role:            func() *Role { r := allocBaseRole(); r.PublicId = id; return &r }(),
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
@@ -437,7 +437,7 @@ func Test_RoleDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteRole := allocRole()
+			deleteRole := allocBaseRole()
 			deleteRole.PublicId = tt.role.GetPublicId()
 			deletedRows, err := rw.Delete(context.Background(), &deleteRole)
 			if tt.wantErr {
@@ -450,7 +450,7 @@ func Test_RoleDelete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole := allocRole()
+			foundRole := allocBaseRole()
 			foundRole.PublicId = tt.role.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundRole)
 			require.Error(err)
@@ -552,7 +552,7 @@ func TestRole_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := allocRole()
+			def := allocBaseRole()
 			require.Equal(defaultTableName, def.TableName())
 			s := &Role{
 				Role:      &store.Role{},

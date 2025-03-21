@@ -472,7 +472,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			}
 			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
-			updateRole := allocRole()
+			updateRole := allocBaseRole()
 			updateRole.PublicId = r.PublicId
 			if tt.args.PublicId != nil {
 				updateRole.PublicId = *tt.args.PublicId
@@ -688,7 +688,7 @@ func TestRepository_listRoles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			t.Cleanup(func() {
-				db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
+				db.TestDeleteWhere(t, conn, func() any { r := allocBaseRole(); return &r }(), "1=1")
 			})
 			testRoles := []*Role{}
 			for i := 0; i < tt.createCnt; i++ {
@@ -804,7 +804,7 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	db.TestDeleteWhere(t, conn, func() any { i := allocRole(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := allocBaseRole(); return &i }(), "1=1")
 
 	const numPerScope = 10
 	var total int

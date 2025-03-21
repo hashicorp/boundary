@@ -31,7 +31,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	if roleVersion == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 
 	newRoleGrants := make([]*RoleGrant, 0, len(grants))
@@ -64,7 +64,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 			}
 
 			// We need to update the role version as that's the aggregate
-			updatedRole := allocRole()
+			updatedRole := allocBaseRole()
 			updatedRole.PublicId = roleId
 			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
@@ -116,7 +116,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 	if roleVersion == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 
 	scope, err := role.GetScope(ctx, r.reader)
@@ -139,7 +139,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedRole := allocRole()
+			updatedRole := allocBaseRole()
 			updatedRole.PublicId = roleId
 			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
@@ -234,7 +234,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing grants")
 	}
 
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 
 	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
@@ -313,7 +313,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedRole := allocRole()
+			updatedRole := allocBaseRole()
 			updatedRole.PublicId = roleId
 			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message

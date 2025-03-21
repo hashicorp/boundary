@@ -29,7 +29,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 
 	scope, err := role.GetScope(ctx, r.reader)
@@ -83,7 +83,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 			}
 
 			// We need to update the role version as that's the aggregate
-			updatedRole := allocRole()
+			updatedRole := allocBaseRole()
 			updatedRole.PublicId = role.GetPublicId()
 			updatedRole.Version = uint32(roleVersion + 1)
 			var roleOplogMsg oplog.Message
@@ -135,7 +135,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 
 	scope, err := role.GetScope(ctx, r.reader)
@@ -162,7 +162,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 			}
 
 			// We need to update the role version as that's the aggregate
-			updatedRole := allocRole()
+			updatedRole := allocBaseRole()
 			updatedRole.PublicId = role.GetPublicId()
 			updatedRole.Version = uint32(roleVersion + 1)
 			var roleOplogMsg oplog.Message
@@ -242,7 +242,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		needFreshReaderWriter = false
 	}
 
-	role := allocRole()
+	role := allocBaseRole()
 	role.PublicId = roleId
 
 	// NOTE: Set calculation can safely take place out of the transaction since
