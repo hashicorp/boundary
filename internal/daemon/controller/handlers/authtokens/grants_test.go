@@ -69,7 +69,7 @@ func TestGrants_List(t *testing.T) {
 		userFunc        func() (user *iam.User, account auth.Account)
 		wantErr         error
 		wantIDs         []string
-		expectOutfields map[string][]string
+		expectOutfields []string
 	}{
 		{
 			name: "direct user - global grant with auth-token type with list,read actions returns all auth-tokens",
@@ -84,12 +84,8 @@ func TestGrants_List(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			wantIDs: []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-				org1AT.PublicId:   {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-				org2AT.PublicId:   {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-			},
+			wantIDs:         []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
+			expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
 		},
 		{
 			name: "group user - global grant with auth-token type with list,read actions returns all auth-tokens",
@@ -104,12 +100,8 @@ func TestGrants_List(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			wantIDs: []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.AuthorizedActionsField, globals.AccountIdField},
-				org1AT.PublicId:   {globals.IdField, globals.AuthorizedActionsField, globals.AccountIdField},
-				org2AT.PublicId:   {globals.IdField, globals.AuthorizedActionsField, globals.AccountIdField},
-			},
+			wantIDs:         []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
+			expectOutfields: []string{globals.IdField, globals.AuthorizedActionsField, globals.AccountIdField},
 		},
 		{
 			name: "ldap user - global grant with auth-token type with list,read actions returns all auth-tokens",
@@ -124,12 +116,8 @@ func TestGrants_List(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			wantIDs: []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.ApproximateLastUsedTimeField},
-				org1AT.PublicId:   {globals.IdField, globals.ApproximateLastUsedTimeField},
-				org2AT.PublicId:   {globals.IdField, globals.ApproximateLastUsedTimeField},
-			},
+			wantIDs:         []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
+			expectOutfields: []string{globals.IdField, globals.ApproximateLastUsedTimeField},
 		},
 		{
 			name: "oidc user - global grant with auth-token type with list,read actions returns all auth-tokens",
@@ -144,12 +132,8 @@ func TestGrants_List(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			wantIDs: []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField},
-				org1AT.PublicId:   {globals.IdField},
-				org2AT.PublicId:   {globals.IdField},
-			},
+			wantIDs:         []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
+			expectOutfields: []string{globals.IdField},
 		},
 		{
 			name: "org grant with this grant scope, auth-token type with list,read actions returns all auth-tokens",
@@ -164,10 +148,8 @@ func TestGrants_List(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis},
 				},
 			}),
-			wantIDs: []string{org1AT.PublicId},
-			expectOutfields: map[string][]string{
-				org1AT.PublicId: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-			},
+			wantIDs:         []string{org1AT.PublicId},
+			expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
 		},
 		{
 			name: "global grant with this grant scope, auth-token type with list,read actions returns all auth-tokens",
@@ -182,10 +164,8 @@ func TestGrants_List(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis},
 				},
 			}),
-			wantIDs: []string{globalAT.PublicId},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
-			},
+			wantIDs:         []string{globalAT.PublicId},
+			expectOutfields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
 		},
 		{
 			name: "global grant with this grant scope, auth-token type with list,no-op actions returns all auth-tokens",
@@ -200,10 +180,8 @@ func TestGrants_List(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis},
 				},
 			}),
-			wantIDs: []string{globalAT.PublicId},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-			},
+			wantIDs:         []string{globalAT.PublicId},
+			expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
 		},
 		{
 			name: "global grant with this+children grant scope, with wildcard returns all auth-tokens",
@@ -218,12 +196,8 @@ func TestGrants_List(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			wantIDs: []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.ScopeIdField},
-				org1AT.PublicId:   {globals.IdField, globals.ScopeIdField},
-				org2AT.PublicId:   {globals.IdField, globals.ScopeIdField},
-			},
+			wantIDs:         []string{globalAT.PublicId, org1AT.PublicId, org2AT.PublicId},
+			expectOutfields: []string{globals.IdField, globals.ScopeIdField},
 		},
 		{
 			name: "global grant with children grant scope, auth-token type with list,no-op actions returns empty list",
@@ -286,7 +260,7 @@ func TestGrants_List(t *testing.T) {
 			for _, item := range got.Items {
 				// we want to skip the token we created
 				if item.GetId() != tok.GetPublicId() {
-					handlers.TestAssertOutputFields(t, item, tc.expectOutfields[item.GetId()])
+					handlers.TestAssertOutputFields(t, item, tc.expectOutfields)
 				}
 			}
 		})
@@ -324,8 +298,36 @@ func TestGrants_Read(t *testing.T) {
 		name            string
 		userFunc        func() (user *iam.User, account auth.Account)
 		inputWantErrMap map[*pbs.GetAuthTokenRequest]error
-		expectOutfields map[string][]string
+		expectOutfields []string
 	}{
+		{
+			name: "direct user - global grant with auth-token type with read action, all output fields can read all auth-tokens",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=auth-token;actions=read;output_fields=*"},
+					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+				},
+			}),
+			inputWantErrMap: map[*pbs.GetAuthTokenRequest]error{
+				{Id: globalAT.PublicId}: nil,
+				{Id: org1AT.PublicId}:   nil,
+				{Id: org2AT.PublicId}:   nil,
+			},
+			expectOutfields: []string{
+				globals.IdField,
+				globals.ScopeIdField,
+				globals.ScopeField,
+				globals.UserIdField,
+				globals.AuthMethodIdField,
+				globals.AccountIdField,
+				globals.CreatedTimeField,
+				globals.UpdatedTimeField,
+				globals.ApproximateLastUsedTimeField,
+				globals.ExpirationTimeField,
+				globals.AuthorizedActionsField,
+			},
+		},
 		{
 			name: "direct user - global grant with auth-token type with read action can read all auth-tokens",
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
@@ -340,11 +342,7 @@ func TestGrants_Read(t *testing.T) {
 				{Id: org1AT.PublicId}:   nil,
 				{Id: org2AT.PublicId}:   nil,
 			},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-				org1AT.PublicId:   {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-				org2AT.PublicId:   {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-			},
+			expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
 		},
 		{
 			name: "group user - global grant with auth-token type with read action can read all auth-tokens",
@@ -360,11 +358,7 @@ func TestGrants_Read(t *testing.T) {
 				{Id: org1AT.PublicId}:   nil,
 				{Id: org2AT.PublicId}:   nil,
 			},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.AuthorizedActionsField, globals.AccountIdField},
-				org1AT.PublicId:   {globals.IdField, globals.AuthorizedActionsField, globals.AccountIdField},
-				org2AT.PublicId:   {globals.IdField, globals.AuthorizedActionsField, globals.AccountIdField},
-			},
+			expectOutfields: []string{globals.IdField, globals.AuthorizedActionsField, globals.AccountIdField},
 		},
 		{
 			name: "ldap user - global grant with auth-token type with read action can read all auth-tokens",
@@ -380,11 +374,7 @@ func TestGrants_Read(t *testing.T) {
 				{Id: org1AT.PublicId}:   nil,
 				{Id: org2AT.PublicId}:   nil,
 			},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.ApproximateLastUsedTimeField},
-				org1AT.PublicId:   {globals.IdField, globals.ApproximateLastUsedTimeField},
-				org2AT.PublicId:   {globals.IdField, globals.ApproximateLastUsedTimeField},
-			},
+			expectOutfields: []string{globals.IdField, globals.ApproximateLastUsedTimeField},
 		},
 		{
 			name: "oidc user - global grant with auth-token type with read action can read all auth-tokens",
@@ -400,11 +390,7 @@ func TestGrants_Read(t *testing.T) {
 				{Id: org1AT.PublicId}:   nil,
 				{Id: org2AT.PublicId}:   nil,
 			},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField},
-				org1AT.PublicId:   {globals.IdField},
-				org2AT.PublicId:   {globals.IdField},
-			},
+			expectOutfields: []string{globals.IdField},
 		},
 		{
 			name: "org grant with this grant scope, auth-token type with read action returns all auth-tokens",
@@ -420,9 +406,7 @@ func TestGrants_Read(t *testing.T) {
 				{Id: org1AT.PublicId}:   nil,
 				{Id: org2AT.PublicId}:   handlers.ForbiddenError(),
 			},
-			expectOutfields: map[string][]string{
-				org1AT.PublicId: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-			},
+			expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
 		},
 		{
 			name: "global grant with this grant scope, auth-token type with read action can read all auth-tokens",
@@ -438,9 +422,7 @@ func TestGrants_Read(t *testing.T) {
 				{Id: org1AT.PublicId}:   handlers.ForbiddenError(),
 				{Id: org2AT.PublicId}:   handlers.ForbiddenError(),
 			},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
-			},
+			expectOutfields: []string{globals.IdField, globals.CreatedTimeField, globals.UpdatedTimeField},
 		},
 		{
 			name: "global grant with this grant scope, auth-token type with read actions returns all auth-tokens",
@@ -456,9 +438,7 @@ func TestGrants_Read(t *testing.T) {
 				{Id: org1AT.PublicId}:   handlers.ForbiddenError(),
 				{Id: org2AT.PublicId}:   handlers.ForbiddenError(),
 			},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
-			},
+			expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.AuthTokenIdField, globals.UserIdField},
 		},
 		{
 			name: "global grant with this+children grant scope, with wildcard can read all auth-tokens",
@@ -474,11 +454,7 @@ func TestGrants_Read(t *testing.T) {
 				{Id: org1AT.PublicId}:   nil,
 				{Id: org2AT.PublicId}:   nil,
 			},
-			expectOutfields: map[string][]string{
-				globalAT.PublicId: {globals.IdField, globals.ScopeIdField},
-				org1AT.PublicId:   {globals.IdField, globals.ScopeIdField},
-				org2AT.PublicId:   {globals.IdField, globals.ScopeIdField},
-			},
+			expectOutfields: []string{globals.IdField, globals.ScopeIdField},
 		},
 		{
 			name: "org grant with children grant scope, auth-token type with read action cannot read auth-tokens",
@@ -544,7 +520,7 @@ func TestGrants_Read(t *testing.T) {
 				item := got.GetItem()
 				if item.GetId() != tok.GetPublicId() {
 					if item.GetId() != tok.GetPublicId() {
-						handlers.TestAssertOutputFields(t, item, tc.expectOutfields[item.GetId()])
+						handlers.TestAssertOutputFields(t, item, tc.expectOutfields)
 					}
 				}
 			}
