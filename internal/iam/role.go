@@ -5,6 +5,7 @@ package iam
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -37,6 +38,72 @@ type Role struct {
 	UpdateTime  *timestamp.Timestamp
 	Version     uint32
 	GrantScopes []*RoleGrantScope
+}
+
+func (r *Role) GetResourceType() resource.Type {
+	return resource.Role
+}
+
+func allocRole() Role {
+	return Role{}
+}
+
+// toResource converts exported Role to a domain Resource scope-specific type
+// this function ignores fields that are present in globalRole and orgRole but not projectRole
+// such as GrantThisScope
+func (r *Role) toResource() (Resource, error) {
+	if r == nil {
+		return nil, fmt.Errorf("role cannot be nil")
+	}
+	if r.ScopeId == "" {
+		return nil, fmt.Errorf("scope id cannot be empty")
+	}
+
+	switch {
+	case strings.HasPrefix(r.ScopeId, globals.GlobalPrefix):
+		return &globalRole{
+			GlobalRole: &store.GlobalRole{
+				PublicId:    r.GetPublicId(),
+				ScopeId:     r.GetScopeId(),
+				Name:        r.GetName(),
+				Description: r.GetDescription(),
+				CreateTime:  r.GetCreateTime(),
+				UpdateTime:  r.GetUpdateTime(),
+				Version:     r.GetVersion(),
+				GrantScope:  "individual",
+			},
+			GrantScopes: r.GetGrantScopes(),
+		}, nil
+	case strings.HasPrefix(r.ScopeId, globals.OrgPrefix):
+		return &orgRole{
+			OrgRole: &store.OrgRole{
+				PublicId:    r.GetPublicId(),
+				ScopeId:     r.GetScopeId(),
+				Name:        r.GetName(),
+				Description: r.GetDescription(),
+				CreateTime:  r.GetCreateTime(),
+				UpdateTime:  r.GetUpdateTime(),
+				Version:     r.GetVersion(),
+				GrantScope:  "individual",
+			},
+			GrantScopes: r.GetGrantScopes(),
+		}, nil
+	case strings.HasPrefix(r.ScopeId, globals.ProjectPrefix):
+		return &projectRole{
+			ProjectRole: &store.ProjectRole{
+				PublicId:    r.GetPublicId(),
+				ScopeId:     r.GetScopeId(),
+				Name:        r.GetName(),
+				Description: r.GetDescription(),
+				CreateTime:  r.GetCreateTime(),
+				UpdateTime:  r.GetUpdateTime(),
+				Version:     r.GetVersion(),
+			},
+			GrantScopes: r.GetGrantScopes(),
+		}, nil
+	default:
+		return nil, fmt.Errorf("invalid role scope")
+	}
 }
 
 func (r *Role) GetPublicId() string {

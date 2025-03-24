@@ -160,8 +160,8 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if roleVersion == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocBaseRole()
-	role.PublicId = roleId
+	base := allocBaseRole()
+	base.PublicId = roleId
 
 	// it's "safe" to do this lookup outside the DoTx transaction because we
 	// have a roleVersion so the principals can’t change without the version
@@ -170,7 +170,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	toSet, err := r.PrincipalsToSet(ctx, &role, userIds, groupIds, managedGroupIds)
+	toSet, err := r.PrincipalsToSet(ctx, base.toRole(), userIds, groupIds, managedGroupIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -180,7 +180,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		return toSet.UnchangedPrincipalRoles, db.NoRowsAffected, nil
 	}
 
-	scope, err := role.GetScope(ctx, r.reader)
+	scope, err := base.GetScope(ctx, r.reader)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
 	}
@@ -199,7 +199,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			// we need a roleTicket, which won't be redeemed until all the other
 			// writes are successful.  We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds
-			roleTicket, err := w.GetTicket(ctx, &role)
+			roleTicket, err := w.GetTicket(ctx, &base)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket for role"))
 			}

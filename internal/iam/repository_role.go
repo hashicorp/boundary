@@ -144,8 +144,8 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.E(ctx, errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
 
-	var resource Resource
-	var rowsUpdated int
+	var retRole *Role
+	var retRowsUpdated int
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var grantScopes []*RoleGrantScope
@@ -155,19 +155,25 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			var err error
-			c := role.toBaseRole()
-			resource = c // If we don't have dbMask or nullFields, we'll return this
+			origRole, _, _, _, err := r.LookupRole(ctx, role.PublicId, WithReaderWriter(read, w))
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup role before updating"))
+			}
+			origResource, err := origRole.toResource()
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to convert role to resource"))
+			}
 			if len(dbMask) > 0 || len(nullFields) > 0 {
-				resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields, WithReaderWriter(read, w))
+				_, rowUpdated, err := r.update(ctx, origResource, version, dbMask, nullFields, WithReaderWriter(read, w))
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				version = resource.(*Role).Version
+				retRowsUpdated = rowUpdated
 			}
 
 			// Do a fresh lookup since version may have gone up by 1 or 2 based
 			// on grant scope id
-			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, role.PublicId, WithReaderWriter(read, w))
+			retRole, pr, rg, grantScopes, err = r.LookupRole(ctx, role.PublicId, WithReaderWriter(read, w))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -180,7 +186,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		}
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
 	}
-	return resource.(*Role), pr, rg, grantScopes, rowsUpdated, nil
+	return retRole, pr, rg, grantScopes, retRowsUpdated, nil
 }
 
 // LookupRole will look up a role in the repository.  If the role is not

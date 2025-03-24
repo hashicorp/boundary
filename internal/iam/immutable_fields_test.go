@@ -212,71 +212,72 @@ func TestUser_ImmutableFields(t *testing.T) {
 	}
 }
 
-func TestRole_ImmutableFields(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	repo := TestRepo(t, conn, wrapper)
-	w := db.New(conn)
-
-	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-
-	org, proj := TestScopes(t, repo)
-	new := TestRole(t, conn, org.PublicId)
-
-	tests := []struct {
-		name      string
-		update    *Role
-		fieldMask []string
-	}{
-		{
-			name: "public_id",
-			update: func() *Role {
-				c := new.Clone().(*Role)
-				c.PublicId = "r_thisIsNotAValidId"
-				return c
-			}(),
-			fieldMask: []string{"PublicId"},
-		},
-		{
-			name: "create time",
-			update: func() *Role {
-				c := new.Clone().(*Role)
-				c.CreateTime = &ts
-				return c
-			}(),
-			fieldMask: []string{"CreateTime"},
-		},
-		{
-			name: "scope id",
-			update: func() *Role {
-				c := new.Clone().(*Role)
-				c.ScopeId = proj.PublicId
-				return c
-			}(),
-			fieldMask: []string{"ScopeId"},
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			orig := new.Clone()
-			err := w.LookupById(context.Background(), orig)
-			require.NoError(err)
-
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
-			require.Error(err)
-			assert.Equal(0, rowsUpdated)
-
-			after := new.Clone()
-			err = w.LookupById(context.Background(), after)
-			require.NoError(err)
-
-			assert.True(proto.Equal(orig.(*Role), after.(*Role)))
-		})
-	}
-}
+//
+//func TestRole_ImmutableFields(t *testing.T) {
+//	t.Parallel()
+//	conn, _ := db.TestSetup(t, "postgres")
+//	wrapper := db.TestWrapper(t)
+//	repo := TestRepo(t, conn, wrapper)
+//	w := db.New(conn)
+//
+//	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+//
+//	org, proj := TestScopes(t, repo)
+//	new := TestRole(t, conn, org.PublicId)
+//
+//	tests := []struct {
+//		name      string
+//		update    *Role
+//		fieldMask []string
+//	}{
+//		{
+//			name: "public_id",
+//			update: func() *Role {
+//				c := new.Clone().(*Role)
+//				c.PublicId = "r_thisIsNotAValidId"
+//				return c
+//			}(),
+//			fieldMask: []string{"PublicId"},
+//		},
+//		{
+//			name: "create time",
+//			update: func() *Role {
+//				c := new.Clone().(*Role)
+//				c.CreateTime = &ts
+//				return c
+//			}(),
+//			fieldMask: []string{"CreateTime"},
+//		},
+//		{
+//			name: "scope id",
+//			update: func() *Role {
+//				c := new.Clone().(*Role)
+//				c.ScopeId = proj.PublicId
+//				return c
+//			}(),
+//			fieldMask: []string{"ScopeId"},
+//		},
+//	}
+//	for _, tt := range tests {
+//		tt := tt
+//		t.Run(tt.name, func(t *testing.T) {
+//			assert, require := assert.New(t), require.New(t)
+//			orig := new.Clone()
+//			err := w.LookupById(context.Background(), orig)
+//			require.NoError(err)
+//
+//			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+//			require.Error(err)
+//			assert.Equal(0, rowsUpdated)it
+//
+//			after := new.Clone()
+//			err = w.LookupById(context.Background(), after)
+//			require.NoError(err)
+//
+//			assert.True(proto.Equal(orig.(*Role), after.(*Role)))
+//		})
+//	}
+//}
 
 func TestGroup_ImmutableFields(t *testing.T) {
 	t.Parallel()

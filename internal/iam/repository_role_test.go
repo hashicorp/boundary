@@ -6,6 +6,8 @@ package iam
 import (
 	"context"
 	"fmt"
+	"google.golang.org/protobuf/proto"
+	sort "sort"
 	"testing"
 	"time"
 
@@ -19,7 +21,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestRepository_CreateRole(t *testing.T) {
@@ -223,8 +224,7 @@ func TestRepository_CreateRole(t *testing.T) {
 
 			foundGrp, _, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
 			assert.NoError(err)
-			assert.True(proto.Equal(foundGrp, grp))
-
+			assertRolesEqual(t, foundGrp, grp)
 			err = db.TestVerifyOplog(t, rw, grp.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})
@@ -472,7 +472,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			}
 			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
-			updateRole := allocBaseRole()
+			updateRole := allocRole()
 			updateRole.PublicId = r.PublicId
 			if tt.args.PublicId != nil {
 				updateRole.PublicId = *tt.args.PublicId
@@ -506,7 +506,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			}
 			foundRole, _, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
-			assert.True(proto.Equal(roleAfterUpdate, foundRole))
+			assertRolesEqual(t, roleAfterUpdate, foundRole)
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
@@ -688,7 +688,7 @@ func TestRepository_listRoles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			t.Cleanup(func() {
-				db.TestDeleteWhere(t, conn, func() any { r := allocBaseRole(); return &r }(), "1=1")
+				db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
 			})
 			testRoles := []*Role{}
 			for i := 0; i < tt.createCnt; i++ {
@@ -906,4 +906,29 @@ func Test_estimatedRoleCount(t *testing.T) {
 	numItems, err = repo.estimatedRoleCount(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, numItems)
+}
+
+func assertRolesEqual(t *testing.T, expected *Role, actual *Role) {
+	require.Equal(t, expected.PublicId, actual.PublicId)
+	require.Equal(t, expected.ScopeId, actual.ScopeId)
+	require.Equal(t, expected.Version, actual.Version)
+	require.Equal(t, expected.Name, actual.Name)
+	require.Equal(t, expected.Description, actual.Description)
+	require.Equal(t, expected.CreateTime.String(), actual.CreateTime.String())
+	require.Equal(t, expected.UpdateTime.String(), actual.UpdateTime.String())
+	expectGrantScopes := make([]*RoleGrantScope, len(expected.GrantScopes))
+	copy(expectGrantScopes, expected.GrantScopes)
+	actualGrantScopes := make([]*RoleGrantScope, len(actual.GrantScopes))
+	copy(actualGrantScopes, actual.GrantScopes)
+	require.Equal(t, len(expectGrantScopes), len(actualGrantScopes))
+	sort.Slice(expectGrantScopes, func(i, j int) bool {
+		return expectGrantScopes[i].ScopeIdOrSpecial < expectGrantScopes[j].ScopeIdOrSpecial
+	})
+	sort.Slice(actualGrantScopes, func(i, j int) bool {
+		return actualGrantScopes[i].ScopeIdOrSpecial < actualGrantScopes[j].ScopeIdOrSpecial
+	})
+
+	for i := 0; i < len(expectGrantScopes); i++ {
+		require.True(t, proto.Equal(expectGrantScopes[i], actualGrantScopes[i]))
+	}
 }
