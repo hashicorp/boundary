@@ -5,9 +5,6 @@ package iam
 
 import (
 	"context"
-	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/types/scope"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -37,10 +34,6 @@ var (
 	_ Resource        = (*Role)(nil)
 	_ Cloneable       = (*Role)(nil)
 	_ db.VetForWriter = (*Role)(nil)
-
-	_ Resource        = (*baseRole)(nil)
-	_ Cloneable       = (*baseRole)(nil)
-	_ db.VetForWriter = (*baseRole)(nil)
 
 	_ Resource        = (*globalRole)(nil)
 	_ Cloneable       = (*globalRole)(nil)
@@ -142,82 +135,6 @@ func (role *Role) SetTableName(n string) {
 	role.tableName = n
 }
 
-type baseRole struct {
-	*store.Role
-	GrantScopes []*RoleGrantScope `gorm:"-"`
-	tableName   string            `gorm:"-"`
-}
-
-// Clone creates a clone of the Role.
-func (role *baseRole) Clone() any {
-	cp := proto.Clone(role.Role)
-	ret := &baseRole{
-		Role: cp.(*store.Role),
-	}
-	for _, grantScope := range role.GrantScopes {
-		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-	}
-	return ret
-}
-
-// VetForWrite implements db.VetForWrite() interface.
-func (role *baseRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	const op = "iam.(baseRole).VetForWrite"
-	if role.PublicId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
-	}
-	if err := validateScopeForWrite(ctx, r, role, opType, opt...); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	return nil
-}
-
-func (role *baseRole) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Global, scope.Org, scope.Project}
-}
-
-// GetScope returns the scope for the Role.
-func (role *baseRole) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupScope(ctx, r, role)
-}
-
-// GetResourceType returns the type of the Role.
-func (*baseRole) GetResourceType() resource.Type { return resource.Role }
-func (*baseRole) getResourceType() resource.Type { return resource.Role }
-
-// Actions returns the available actions for Role.
-func (*baseRole) Actions() map[string]action.Type {
-	ret := CrudlActions()
-	ret[action.AddGrants.String()] = action.AddGrants
-	ret[action.RemoveGrants.String()] = action.RemoveGrants
-	ret[action.SetGrants.String()] = action.SetGrants
-	ret[action.AddPrincipals.String()] = action.AddPrincipals
-	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
-	ret[action.SetPrincipals.String()] = action.SetPrincipals
-	return ret
-}
-
-func allocBaseRole() baseRole {
-	return baseRole{
-		Role: &store.Role{},
-	}
-}
-
-// TableName returns the tablename to override the default gorm table name.
-func (role *baseRole) TableName() string {
-	if role.tableName != "" {
-		return role.tableName
-	}
-	return defaultRoleTableName
-}
-
-// SetTableName sets the tablename and satisfies the ReplayableMessage
-// interface. If the caller attempts to set the name to "" the name will be
-// reset to the default name.
-func (role *baseRole) SetTableName(n string) {
-	role.tableName = n
-}
-
 type deletedRole struct {
 	PublicId   string `gorm:"primary_key"`
 	DeleteTime *timestamp.Timestamp
@@ -243,21 +160,6 @@ func (g *globalRole) TableName() string {
 
 func (g *globalRole) SetTableName(n string) {
 	g.tableName = n
-}
-
-// newGlobalRole creates a new in memory role in the global scope
-// allowed options include: WithDescription, WithName.
-func newGlobalRole(ctx context.Context, opt ...Option) (*globalRole, error) {
-	const op = "iam.newGlobalRole"
-	opts := getOpts(opt...)
-	r := &globalRole{
-		GlobalRole: &store.GlobalRole{
-			ScopeId:     globals.GlobalPrefix,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-		},
-	}
-	return r, nil
 }
 
 func (g *globalRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
@@ -298,12 +200,6 @@ func (g *globalRole) Actions() map[string]action.Type {
 	return ret
 }
 
-func allocGlobalRole() globalRole {
-	return globalRole{
-		GlobalRole: &store.GlobalRole{},
-	}
-}
-
 type orgRole struct {
 	*store.OrgRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
@@ -319,27 +215,6 @@ func (o *orgRole) TableName() string {
 
 func (o *orgRole) SetTableName(n string) {
 	o.tableName = n
-}
-
-// newOrgRole creates a new in memory role in a org scope
-// allowed options include: WithDescription, WithName.
-func newOrgRole(ctx context.Context, orgId string, opt ...Option) (*orgRole, error) {
-	const op = "iam.newOrgRole"
-	if orgId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
-	}
-	if !strings.HasPrefix(orgId, globals.OrgPrefix) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope must be an org")
-	}
-	opts := getOpts(opt...)
-	r := &orgRole{
-		OrgRole: &store.OrgRole{
-			ScopeId:     orgId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-		},
-	}
-	return r, nil
 }
 
 func (o *orgRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
@@ -380,12 +255,6 @@ func (o *orgRole) Actions() map[string]action.Type {
 	return ret
 }
 
-func allocOrgRole() orgRole {
-	return orgRole{
-		OrgRole: &store.OrgRole{},
-	}
-}
-
 type projectRole struct {
 	*store.ProjectRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
@@ -401,27 +270,6 @@ func (p *projectRole) TableName() string {
 
 func (p *projectRole) SetTableName(n string) {
 	p.tableName = n
-}
-
-// newProjectRole creates a new in memory role in a project scope
-// allowed options include: WithDescription, WithName.
-func newProjectRole(ctx context.Context, projectId string, opt ...Option) (*projectRole, error) {
-	const op = "iam.newProjectRole"
-	if projectId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
-	}
-	if !strings.HasPrefix(projectId, globals.ProjectPrefix) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope must be a project")
-	}
-	opts := getOpts(opt...)
-	r := &projectRole{
-		ProjectRole: &store.ProjectRole{
-			ScopeId:     projectId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-		},
-	}
-	return r, nil
 }
 
 func (p *projectRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
@@ -460,10 +308,4 @@ func (p *projectRole) Actions() map[string]action.Type {
 	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
-}
-
-func allocProjectRole() projectRole {
-	return projectRole{
-		ProjectRole: &store.ProjectRole{},
-	}
 }
