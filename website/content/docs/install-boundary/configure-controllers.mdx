@@ -7,12 +7,12 @@ description: >-
 
 # Configure controllers
 
-Refer to the sections below to configure your Boundary controllers.
+Refer to the following sections to configure your Boundary controllers.
 
 ## Prepare TLS certificates
 
-HashiCorp recommends that the Boundary controller nodes handle TLS via PKI for user connections.
-Further, we strongly recommend that you use certificates that are generated and signed by an appropriate certificate authority (CA).
+HashiCorp recommends that the Boundary controller nodes handle TLS using PKI for user connections.
+Further, we strongly recommend that you use certificates that an appropriate certificate authority (CA) generated and signed.
 
 To use TLS, you must have two files on each Boundary controller node.
 You may have to create a new directory to store the certificate material at `/etc/boundary.d/tls`.
@@ -20,10 +20,11 @@ Place the files in the following paths:
 
 - `/etc/boundary.d/tls/boundary-cert.pem`
 
-    In this path, place the Boundary TLS certificate with a Common Name (CN) and Subject Alternate Name (SAN) that matches your planned primary DNS record for accessing the Boundary controllers and any additional SANs as necessary.
+    Place the Boundary TLS certificate with a Common Name (CN) and Subject Alternate Name (SAN) that matches your planned primary DNS record in this path so that the Boundary controllers and any SANs can access it.
+
 - `/etc/boundary.d/tls/boundary-key.pem`
 
-    In this path, place the Boundary TLS certificate's private key.
+    Place the Boundary TLS certificate's private key in this path.
 
 If you do not generate unique TLS key material for each node, you should securely distribute the key material to each of the Boundary controller nodes.
 
@@ -31,20 +32,21 @@ If you do not generate unique TLS key material for each node, you should securel
 
 Boundary controllers require the two following different cryptographic keys:
 
-- **Root key**: The root KMS key acts as a KEK (Key Encrypting Key) for the scope-specific KEKs (also referred to as the scope's root key).
-The scope's root KEK and the various DEKs (Data Encryption Keys) are created when a scope is created.
-The DEKs are encrypted with the scope's root KEK, and this is in turn encrypted with the KMS key marked for the root purpose.
-- **Recovery key**: The recovery KMS key is used for rescue or recovery operations that can be used by a client to authenticate almost any Boundary operation.
-A nonce and creation time are included as an encrypted payload, formatted as a token, and sent to the controller.
-The time and nonce are used to ensure that a value cannot be replayed by an adversary, and also to ensure that each operation must be individually authenticated by a client, so that revoking access to the KMS has an immediate result.
+- **Root key**: The root KMS key acts as a KEK (Key Encrypting Key) for the scope-specific KEKs, which are also referred to as the scope's root keys.
+When you create a scope, Boundary also creates the root KEK and the various DEKs (Data Encryption Keys).
+It encrypts the DEKs using the scope's KEK, and then encrypts the KEK with the KMS key marked for the root purpose.
+- **Recovery key**: You use the recovery KMS key to authenticate Boundary client rescue and recovery operation workflows.
+The recovery key includes a nonce and creation time as an encrypted payload.
+Boundary formats the payload as a token and sends it to the controller.
+The time and nonce ensure that an adversary cannot replay a value, and also ensure that a client must individually authenticate each operation, so that revoking access to the KMS has an immediate result.
 
 The following keys are optional:
 
-- **Worker-auth key (Optional)**: The worker-auth KMS key is shared by the controller and worker to authenticate a worker to the controller.
-If a worker is used with PKI authentication, this is unnecessary.
-- **BSR key (Optional)**: The BSR KMS key is required for session recording.
+- **Worker-auth key (Optional)**: The controller and worker share the worker-auth KMS key to authenticate a worker to the controller.
+If a worker uses PKI authentication, this key is unnecessary.
+- **BSR key (Optional)**: Session recording requires the BSR KMS key.
 Boundary uses the BSR key for encrypting data and checking the integrity of recordings.
-If you do not add a BSR key to your controller configuration, you receive an error when you attempt to enable session recording.
+If you do not add a BSR key to your controller configuration, you receive an error when you try to enable session recording.
 
 There are other optional KMS keys that you can configure for different encryption scenarios.
 These scenarios include Boundary worker PKI auth encryption and Boundary worker or controller configuration encryption.
@@ -52,7 +54,7 @@ Refer to [Data security in Boundary](/boundary/docs/concepts/security/data-encry
 
 <Note>
 There are two types of Boundary workers, distinguished by the method by which they authenticate with the Boundary controllers.
-One worker uses a PKI exchange to authenticate with the controllers, and the other uses a KMS key that can be used for authentication by both the worker and the controller.
+One worker uses a PKI exchange to authenticate with the controllers. The other uses a KMS key for authentication by both the worker and the controller.
 You use the Worker-auth key listed above to enable KMS worker authentication.
 </Note>
 
@@ -95,12 +97,12 @@ Run the following commands to rename the example configuration files:
 1. `sudo mv controller.hcl controller.hcl.old`
 1. `sudo mv worker.hcl worker.hcl.old`
 
-We recommend that you use either the `env://` or `file://` notation in the configuration files to securely provide secret configuration components to the Boundary controller binaries.
-In the following controller configuration example, we use `env://` to declare the PostgreSQL connection string, as well as secure the AWS KMS configuration items.
+HashiCorp recommends that you use either the `env://` or `file://` notation in the configuration files to securely provide secret configuration components to the Boundary controller binaries.
+The following controller configuration example uses `env://` to declare the PostgreSQL connect strings as well as secure the AWS KMS configuration items.
 
 When you install the Boundary binary using a package manager, it includes a unit file that configures an environment file at `/etc/boundary.d/boundary.env`.
-You can use this file to set the sensitive values that are used to configure the Boundary controllers and workers.
-The following is an example of how this environment file could be configured:
+You can use this file to set the sensitive values used to configure the Boundary controllers and workers.
+The following is an example of a configuration using this environment file:
 
 <CodeBlockConfig lineNumbers filename="/etc/boundary.d/boundary.env">
 
@@ -262,9 +264,9 @@ kms "awskms" {
 
 Refer to the list below for explanations of the parameters used in the example above:
 
-- `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
-This is fine for local development and testing.
-However, it is not recommended for production unless the systems running Boundary use only encrypted swap or do not use swap at all.
+- `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory swap to the disk.
+Preventing memory swap is fine for local development and testing.
+However, HashiCorp does not recommend using it for production unless the systems running Boundary use encrypted swap or do not use swap at all.
 Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
 
    On Linux, to give the Boundary executable the ability to use `mlock` syscall without running the process as root, run the following command:
@@ -299,14 +301,13 @@ Refer to the documentation for additional [top-level configuration options](/bou
 ## Initialize the database
 
 Before you can start Boundary, you must initialize the database from one Boundary controller.
-This operation is only required once; it will execute the required database migrations for the Boundary cluster to operate.
+Initialization is a one-time operation that executes the required database migrations for the Boundary cluster to operate.
 
 ```shell-session
 boundary database init -config /etc/boundary.d/controller.hcl
 ```
 
-Boundary automatically generates a number of resources to make getting started easier. Default scopes, auth methods,
-user, account, and targets are some of the resources Boundary automatically generates unless you configure it not to. These
+Unless you configure it not to, Boundary automatically generates a number of resources to make getting started easier. It automatically generates default scopes, auth methods, user, account, and targets. These
 resources, however, are not required. You can add the following flags to skip creating these initial resources:
 
 ```shell-session
@@ -318,7 +319,7 @@ boundary database init \
    -config /etc/boundary.d/controller.hcl
 ```
 
-Use the following command to view the help for additional options:
+Use the following command to view the help for additional initialization options:
 
 ```shell-session
 boundary database init -h
@@ -335,7 +336,7 @@ Run the following commands to start the service:
 ## Authenticate and manage resources
 
 Upon logging in to Boundary for the first time, HashiCorp recommends creating an admin user for the global and project level scopes to manage Boundary.
-This allows you to configure targets within those scopes and manage them.
+Creating an admin user allows you to configure targets within those scopes and manage them.
 
 HashiCorp recommends that you use the [KMS recovery workflow](/boundary/docs/install-boundary/initialize#log-in-with-recovery-kms) to log in to Boundary for the first time.
 Refer to [Creating your first login account](/boundary/docs/install-boundary/initialize#create-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.
