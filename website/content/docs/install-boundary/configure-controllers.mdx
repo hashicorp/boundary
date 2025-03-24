@@ -11,7 +11,7 @@ Refer to the following sections to configure your Boundary controllers.
 
 ## Prepare TLS certificates
 
-HashiCorp recommends that the Boundary controller nodes handle TLS via PKI for user connections.
+HashiCorp recommends that the Boundary controller nodes handle TLS using PKI for user connections.
 Further, we strongly recommend that you use certificates that an appropriate certificate authority (CA) generated and signed.
 
 To use TLS, you must have two files on each Boundary controller node.
@@ -265,7 +265,7 @@ kms "awskms" {
 Refer to the list below for explanations of the parameters used in the example above:
 
 - `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory swap to the disk.
-This is fine for local development and testing.
+Preventing memory swap is fine for local development and testing.
 However, HashiCorp does not recommend using it for production unless the systems running Boundary use encrypted swap or do not use swap at all.
 Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
 
@@ -336,7 +336,7 @@ Run the following commands to start the service:
 ## Authenticate and manage resources
 
 Upon logging in to Boundary for the first time, HashiCorp recommends creating an admin user for the global and project level scopes to manage Boundary.
-This allows you to configure targets within those scopes and manage them.
+Creating an admin user allows you to configure targets within those scopes and manage them.
 
 HashiCorp recommends that you use the [KMS recovery workflow](/boundary/docs/install-boundary/initialize#log-in-with-recovery-kms) to log in to Boundary for the first time.
 Refer to [Creating your first login account](/boundary/docs/install-boundary/initialize#create-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.
