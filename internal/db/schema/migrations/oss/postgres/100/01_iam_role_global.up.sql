@@ -102,7 +102,9 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     constraint iam_role_global_grant_scope_public_id_uq
-      unique(grant_scope, public_id)
+      unique(grant_scope, public_id),
+    constraint iam_role_global_name_scope_id_uq
+      unique(name, scope_id)
   );
   comment on table iam_role_global is
     'iam_role_global is the subtype table for the global role. grant_this_role_scope_update_time and grant_scope_update_time are used to track the last time the grant_this_role_scope and grant_scope columns were updated.';
