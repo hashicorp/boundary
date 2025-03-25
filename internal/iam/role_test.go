@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -557,6 +560,415 @@ func TestRole_SetTableName(t *testing.T) {
 			s := &Role{
 				Role:      &store.Role{},
 				tableName: tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}
+
+func Test_globalRole_GetScope(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	ctx := context.Background()
+	rw := db.New(conn)
+	role := globalRole{
+		GlobalRole: &store.GlobalRole{
+			ScopeId:            globals.GlobalPrefix,
+			Name:               "test-role",
+			Description:        "description",
+			GrantThisRoleScope: false,
+			GrantScope:         globals.GrantScopeIndividual,
+		},
+	}
+	id, err := newRoleId(ctx)
+	require.NoError(t, err)
+	role.PublicId = id
+	require.NoError(t, rw.Create(ctx, role))
+	require.NotEmpty(t, role.PublicId)
+	scope, err := role.GetScope(context.Background(), rw)
+	require.NoError(t, err)
+	require.Equal(t, scope.GetPublicId(), role.GetScopeId())
+}
+
+func Test_globalRole_Clone(t *testing.T) {
+	t.Parallel()
+	role1 := &globalRole{
+		GlobalRole: &store.GlobalRole{
+			PublicId:                     "r_123456",
+			ScopeId:                      "global",
+			Name:                         "test-role",
+			Description:                  "description",
+			GrantThisRoleScope:           true,
+			GrantScope:                   globals.GrantScopeChildren,
+			GrantThisRoleScopeUpdateTime: timestamp.New(time.Date(2025, 2, 12, 3, 15, 15, 30, time.UTC)),
+			GrantScopeUpdateTime:         timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
+			CreateTime:                   timestamp.New(time.Date(2025, 4, 12, 3, 15, 15, 30, time.UTC)),
+			UpdateTime:                   timestamp.New(time.Date(2025, 5, 12, 3, 15, 15, 30, time.UTC)),
+			Version:                      1,
+		},
+		GrantScopes: []*RoleGrantScope{
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_123456",
+					ScopeIdOrSpecial: "children",
+				},
+			},
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2025, 1, 14, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_123456",
+					ScopeIdOrSpecial: "p_123456",
+				},
+			},
+		},
+	}
+	role2 := &globalRole{
+		GlobalRole: &store.GlobalRole{
+			PublicId:                     "r_abcdef",
+			ScopeId:                      "o_123456",
+			Name:                         "another-role",
+			Description:                  "different description",
+			GrantThisRoleScope:           true,
+			GrantScope:                   globals.GrantScopeChildren,
+			GrantThisRoleScopeUpdateTime: timestamp.New(time.Date(2024, 2, 12, 3, 15, 15, 30, time.UTC)),
+			GrantScopeUpdateTime:         timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
+			CreateTime:                   timestamp.New(time.Date(2024, 4, 12, 3, 15, 15, 30, time.UTC)),
+			UpdateTime:                   timestamp.New(time.Date(2024, 5, 12, 3, 15, 15, 30, time.UTC)),
+			Version:                      1,
+		},
+		GrantScopes: []*RoleGrantScope{
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_abcdef",
+					ScopeIdOrSpecial: "children",
+				},
+			},
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_abcdef",
+					ScopeIdOrSpecial: "p_abcdef",
+				},
+			},
+		},
+	}
+	require.NotEqual(t, role1, role2)
+
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		clone := role1.Clone()
+		assert.True(proto.Equal(clone.(*globalRole).GlobalRole, role1.GlobalRole))
+		assert.Equal(clone.(*globalRole).GrantScopes, role1.GrantScopes)
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		role1Clone := role1.Clone()
+		assert.True(!proto.Equal(role1Clone.(*globalRole).GlobalRole, role2.GlobalRole))
+		assert.NotEqual(role1Clone.(*globalRole).GrantScopes, role2.GrantScopes)
+	})
+}
+
+func Test_globalRole_SetTableName(t *testing.T) {
+	defaultTableName := defaultGlobalRoleTableName
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := globalRole{}
+			require.Equal(defaultTableName, def.TableName())
+			s := &globalRole{
+				GlobalRole: &store.GlobalRole{},
+				tableName:  tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}
+
+func Test_orgRole_GetScope(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	ctx := context.Background()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org := TestOrg(t, repo)
+	role := orgRole{
+		OrgRole: &store.OrgRole{
+			ScopeId:            org.PublicId,
+			Name:               "test-role",
+			Description:        "description",
+			GrantThisRoleScope: false,
+			GrantScope:         globals.GrantScopeIndividual,
+		},
+	}
+	id, err := newRoleId(ctx)
+	require.NoError(t, err)
+	role.PublicId = id
+	require.NoError(t, rw.Create(ctx, role))
+	require.NotEmpty(t, role.PublicId)
+	scope, err := role.GetScope(context.Background(), rw)
+	require.NoError(t, err)
+	require.True(t, proto.Equal(org, scope))
+}
+
+func Test_orgRole_Clone(t *testing.T) {
+	t.Parallel()
+	role1 := &orgRole{
+		OrgRole: &store.OrgRole{
+			PublicId:                     "r_123456",
+			ScopeId:                      "o_123456",
+			Name:                         "test-role",
+			Description:                  "description",
+			GrantThisRoleScope:           true,
+			GrantScope:                   globals.GrantScopeChildren,
+			GrantThisRoleScopeUpdateTime: timestamp.New(time.Date(2025, 2, 12, 3, 15, 15, 30, time.UTC)),
+			GrantScopeUpdateTime:         timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
+			CreateTime:                   timestamp.New(time.Date(2025, 4, 12, 3, 15, 15, 30, time.UTC)),
+			UpdateTime:                   timestamp.New(time.Date(2025, 5, 12, 3, 15, 15, 30, time.UTC)),
+			Version:                      1,
+		},
+		GrantScopes: []*RoleGrantScope{
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_123456",
+					ScopeIdOrSpecial: "children",
+				},
+			},
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2025, 1, 14, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_123456",
+					ScopeIdOrSpecial: "p_123456",
+				},
+			},
+		},
+	}
+	role2 := &orgRole{
+		OrgRole: &store.OrgRole{
+			PublicId:                     "r_abcdef",
+			ScopeId:                      "o_abcdef",
+			Name:                         "another-role",
+			Description:                  "different description",
+			GrantThisRoleScope:           true,
+			GrantScope:                   globals.GrantScopeChildren,
+			GrantThisRoleScopeUpdateTime: timestamp.New(time.Date(2024, 2, 12, 3, 15, 15, 30, time.UTC)),
+			GrantScopeUpdateTime:         timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
+			CreateTime:                   timestamp.New(time.Date(2024, 4, 12, 3, 15, 15, 30, time.UTC)),
+			UpdateTime:                   timestamp.New(time.Date(2024, 5, 12, 3, 15, 15, 30, time.UTC)),
+			Version:                      1,
+		},
+		GrantScopes: []*RoleGrantScope{
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_abcdef",
+					ScopeIdOrSpecial: "children",
+				},
+			},
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_abcdef",
+					ScopeIdOrSpecial: "p_abcdef",
+				},
+			},
+		},
+	}
+	require.NotEqual(t, role1, role2)
+
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		clone := role1.Clone()
+		assert.True(proto.Equal(clone.(*orgRole).OrgRole, role1.OrgRole))
+		assert.Equal(clone.(*orgRole).GrantScopes, role1.GrantScopes)
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		role1Clone := role1.Clone()
+		assert.True(!proto.Equal(role1Clone.(*orgRole).OrgRole, role2.OrgRole))
+		assert.NotEqual(role1Clone.(*orgRole).GrantScopes, role2.GrantScopes)
+	})
+}
+
+func Test_orgRole_SetTableName(t *testing.T) {
+	defaultTableName := defaultOrgRoleTableName
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := orgRole{}
+			require.Equal(defaultTableName, def.TableName())
+			s := &orgRole{
+				OrgRole:   &store.OrgRole{},
+				tableName: tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}
+
+func Test_projectRole_GetScope(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	ctx := context.Background()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	_, proj := TestScopes(t, repo)
+	role := projectRole{
+		ProjectRole: &store.ProjectRole{
+			ScopeId:     proj.PublicId,
+			Name:        "test-role",
+			Description: "description",
+		},
+	}
+	id, err := newRoleId(ctx)
+	require.NoError(t, err)
+	role.PublicId = id
+	require.NoError(t, rw.Create(ctx, role))
+	require.NotEmpty(t, role.PublicId)
+	scope, err := role.GetScope(context.Background(), rw)
+	require.NoError(t, err)
+	require.True(t, proto.Equal(proj, scope))
+}
+
+func Test_projectRole_Clone(t *testing.T) {
+	t.Parallel()
+	role1 := &projectRole{
+		ProjectRole: &store.ProjectRole{
+			PublicId:    "r_123456",
+			ScopeId:     "p_123456",
+			Name:        "test-role",
+			Description: "description",
+			CreateTime:  timestamp.New(time.Date(2025, 4, 12, 3, 15, 15, 30, time.UTC)),
+			UpdateTime:  timestamp.New(time.Date(2025, 5, 12, 3, 15, 15, 30, time.UTC)),
+			Version:     1,
+		},
+		GrantScopes: []*RoleGrantScope{
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_123456",
+					ScopeIdOrSpecial: "this",
+				},
+			},
+		},
+	}
+	role2 := &projectRole{
+		ProjectRole: &store.ProjectRole{
+			PublicId:    "r_abcdef",
+			ScopeId:     "o_123456",
+			Name:        "another-role",
+			Description: "different description",
+			CreateTime:  timestamp.New(time.Date(2024, 4, 12, 3, 15, 15, 30, time.UTC)),
+			UpdateTime:  timestamp.New(time.Date(2024, 5, 12, 3, 15, 15, 30, time.UTC)),
+			Version:     1,
+		},
+		GrantScopes: []*RoleGrantScope{
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_abcdef",
+					ScopeIdOrSpecial: "children",
+				},
+			},
+			{
+				RoleGrantScope: &store.RoleGrantScope{
+					CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
+					RoleId:           "r_abcdef",
+					ScopeIdOrSpecial: "p_abcdef",
+				},
+			},
+		},
+	}
+	require.NotEqual(t, role1, role2)
+
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		clone := role1.Clone()
+		assert.True(proto.Equal(clone.(*projectRole).ProjectRole, role1.ProjectRole))
+		assert.Equal(clone.(*projectRole).GrantScopes, role1.GrantScopes)
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		role1Clone := role1.Clone()
+		assert.True(!proto.Equal(role1Clone.(*projectRole).ProjectRole, role2.ProjectRole))
+		assert.NotEqual(role1Clone.(*projectRole).GrantScopes, role2.GrantScopes)
+	})
+}
+
+func Test_projectRole_SetTableName(t *testing.T) {
+	defaultTableName := defaultProjectRoleTableName
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := projectRole{}
+			require.Equal(defaultTableName, def.TableName())
+			s := &projectRole{
+				ProjectRole: &store.ProjectRole{},
+				tableName:   tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
