@@ -173,6 +173,12 @@ func (g *globalRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpT
 	return nil
 }
 
+func allocGlobalRole() globalRole {
+	return globalRole{
+		GlobalRole: &store.GlobalRole{},
+	}
+}
+
 func (g *globalRole) Clone() any {
 	cp := proto.Clone(g.GlobalRole)
 	ret := &globalRole{
@@ -228,6 +234,12 @@ func (o *orgRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	return nil
 }
 
+func allocOrgRole() orgRole {
+	return orgRole{
+		OrgRole: &store.OrgRole{},
+	}
+}
+
 func (o *orgRole) Clone() any {
 	cp := proto.Clone(o.OrgRole)
 	ret := &orgRole{
@@ -281,6 +293,12 @@ func (p *projectRole) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
+}
+
+func allocProjectRole() projectRole {
+	return projectRole{
+		ProjectRole: &store.ProjectRole{},
+	}
 }
 
 func (p *projectRole) Clone() any {
