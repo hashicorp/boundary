@@ -567,6 +567,28 @@ func TestRole_SetTableName(t *testing.T) {
 	}
 }
 
+func Test_globalRole_Actions(t *testing.T) {
+	r := &globalRole{}
+	a := r.Actions()
+	assert.Equal(t, a[action.Create.String()], action.Create)
+	assert.Equal(t, a[action.Update.String()], action.Update)
+	assert.Equal(t, a[action.Read.String()], action.Read)
+	assert.Equal(t, a[action.Delete.String()], action.Delete)
+	assert.Equal(t, a[action.AddGrants.String()], action.AddGrants)
+	assert.Equal(t, a[action.RemoveGrants.String()], action.RemoveGrants)
+	assert.Equal(t, a[action.SetGrants.String()], action.SetGrants)
+	assert.Equal(t, a[action.AddPrincipals.String()], action.AddPrincipals)
+	assert.Equal(t, a[action.RemovePrincipals.String()], action.RemovePrincipals)
+	assert.Equal(t, a[action.SetPrincipals.String()], action.SetPrincipals)
+}
+
+func Test_globalRole_ResourceType(t *testing.T) {
+	t.Parallel()
+	role := globalRole{}
+	result := role.GetResourceType()
+	assert.Equal(t, result, resource.Role)
+}
+
 func Test_globalRole_GetScope(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -658,16 +680,14 @@ func Test_globalRole_Clone(t *testing.T) {
 	require.NotEqual(t, role1, role2)
 
 	t.Run("valid", func(t *testing.T) {
-		assert := assert.New(t)
 		clone := role1.Clone()
-		assert.True(proto.Equal(clone.(*globalRole).GlobalRole, role1.GlobalRole))
-		assert.Equal(clone.(*globalRole).GrantScopes, role1.GrantScopes)
+		assert.True(t, proto.Equal(clone.(*globalRole).GlobalRole, role1.GlobalRole))
+		assert.Equal(t, clone.(*globalRole).GrantScopes, role1.GrantScopes)
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		assert := assert.New(t)
 		role1Clone := role1.Clone()
-		assert.True(!proto.Equal(role1Clone.(*globalRole).GlobalRole, role2.GlobalRole))
-		assert.NotEqual(role1Clone.(*globalRole).GrantScopes, role2.GrantScopes)
+		assert.True(t, !proto.Equal(role1Clone.(*globalRole).GlobalRole, role2.GlobalRole))
+		assert.NotEqual(t, role1Clone.(*globalRole).GrantScopes, role2.GrantScopes)
 	})
 }
 
@@ -694,17 +714,38 @@ func Test_globalRole_SetTableName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
 			def := globalRole{}
-			require.Equal(defaultTableName, def.TableName())
+			require.Equal(t, defaultTableName, def.TableName())
 			s := &globalRole{
 				GlobalRole: &store.GlobalRole{},
 				tableName:  tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)
-			assert.Equal(tt.want, s.TableName())
+			assert.Equal(t, tt.want, s.TableName())
 		})
 	}
+}
+
+func Test_orgRole_Actions(t *testing.T) {
+	r := &orgRole{}
+	a := r.Actions()
+	assert.Equal(t, a[action.Create.String()], action.Create)
+	assert.Equal(t, a[action.Update.String()], action.Update)
+	assert.Equal(t, a[action.Read.String()], action.Read)
+	assert.Equal(t, a[action.Delete.String()], action.Delete)
+	assert.Equal(t, a[action.AddGrants.String()], action.AddGrants)
+	assert.Equal(t, a[action.RemoveGrants.String()], action.RemoveGrants)
+	assert.Equal(t, a[action.SetGrants.String()], action.SetGrants)
+	assert.Equal(t, a[action.AddPrincipals.String()], action.AddPrincipals)
+	assert.Equal(t, a[action.RemovePrincipals.String()], action.RemovePrincipals)
+	assert.Equal(t, a[action.SetPrincipals.String()], action.SetPrincipals)
+}
+
+func Test_orgRole_ResourceType(t *testing.T) {
+	t.Parallel()
+	role := orgRole{}
+	result := role.GetResourceType()
+	assert.Equal(t, result, resource.Role)
 }
 
 func Test_orgRole_GetScope(t *testing.T) {
@@ -801,16 +842,14 @@ func Test_orgRole_Clone(t *testing.T) {
 	require.NotEqual(t, role1, role2)
 
 	t.Run("valid", func(t *testing.T) {
-		assert := assert.New(t)
 		clone := role1.Clone()
-		assert.True(proto.Equal(clone.(*orgRole).OrgRole, role1.OrgRole))
-		assert.Equal(clone.(*orgRole).GrantScopes, role1.GrantScopes)
+		assert.True(t, proto.Equal(clone.(*orgRole).OrgRole, role1.OrgRole))
+		assert.Equal(t, clone.(*orgRole).GrantScopes, role1.GrantScopes)
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		assert := assert.New(t)
 		role1Clone := role1.Clone()
-		assert.True(!proto.Equal(role1Clone.(*orgRole).OrgRole, role2.OrgRole))
-		assert.NotEqual(role1Clone.(*orgRole).GrantScopes, role2.GrantScopes)
+		assert.True(t, !proto.Equal(role1Clone.(*orgRole).OrgRole, role2.OrgRole))
+		assert.NotEqual(t, role1Clone.(*orgRole).GrantScopes, role2.GrantScopes)
 	})
 }
 
@@ -837,17 +876,38 @@ func Test_orgRole_SetTableName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
 			def := orgRole{}
-			require.Equal(defaultTableName, def.TableName())
+			require.Equal(t, defaultTableName, def.TableName())
 			s := &orgRole{
 				OrgRole:   &store.OrgRole{},
 				tableName: tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)
-			assert.Equal(tt.want, s.TableName())
+			assert.Equal(t, tt.want, s.TableName())
 		})
 	}
+}
+
+func Test_projectRole_Actions(t *testing.T) {
+	r := &projectRole{}
+	a := r.Actions()
+	assert.Equal(t, a[action.Create.String()], action.Create)
+	assert.Equal(t, a[action.Update.String()], action.Update)
+	assert.Equal(t, a[action.Read.String()], action.Read)
+	assert.Equal(t, a[action.Delete.String()], action.Delete)
+	assert.Equal(t, a[action.AddGrants.String()], action.AddGrants)
+	assert.Equal(t, a[action.RemoveGrants.String()], action.RemoveGrants)
+	assert.Equal(t, a[action.SetGrants.String()], action.SetGrants)
+	assert.Equal(t, a[action.AddPrincipals.String()], action.AddPrincipals)
+	assert.Equal(t, a[action.RemovePrincipals.String()], action.RemovePrincipals)
+	assert.Equal(t, a[action.SetPrincipals.String()], action.SetPrincipals)
+}
+
+func Test_projectRole_ResourceType(t *testing.T) {
+	t.Parallel()
+	role := projectRole{}
+	result := role.GetResourceType()
+	assert.Equal(t, result, resource.Role)
 }
 
 func Test_projectRole_GetScope(t *testing.T) {
@@ -927,16 +987,14 @@ func Test_projectRole_Clone(t *testing.T) {
 	require.NotEqual(t, role1, role2)
 
 	t.Run("valid", func(t *testing.T) {
-		assert := assert.New(t)
 		clone := role1.Clone()
-		assert.True(proto.Equal(clone.(*projectRole).ProjectRole, role1.ProjectRole))
-		assert.Equal(clone.(*projectRole).GrantScopes, role1.GrantScopes)
+		assert.True(t, proto.Equal(clone.(*projectRole).ProjectRole, role1.ProjectRole))
+		assert.Equal(t, clone.(*projectRole).GrantScopes, role1.GrantScopes)
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		assert := assert.New(t)
 		role1Clone := role1.Clone()
-		assert.True(!proto.Equal(role1Clone.(*projectRole).ProjectRole, role2.ProjectRole))
-		assert.NotEqual(role1Clone.(*projectRole).GrantScopes, role2.GrantScopes)
+		assert.True(t, !proto.Equal(role1Clone.(*projectRole).ProjectRole, role2.ProjectRole))
+		assert.NotEqual(t, role1Clone.(*projectRole).GrantScopes, role2.GrantScopes)
 	})
 }
 
@@ -963,15 +1021,14 @@ func Test_projectRole_SetTableName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
 			def := projectRole{}
-			require.Equal(defaultTableName, def.TableName())
+			require.Equal(t, defaultTableName, def.TableName())
 			s := &projectRole{
 				ProjectRole: &store.ProjectRole{},
 				tableName:   tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)
-			assert.Equal(tt.want, s.TableName())
+			assert.Equal(t, tt.want, s.TableName())
 		})
 	}
 }
