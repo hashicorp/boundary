@@ -23,7 +23,6 @@ begin;
     ('children'),
     ('individual');       
 
-
   create table iam_role_org (
     public_id wt_role_id primary key
       constraint iam_role_fkey
@@ -71,11 +70,8 @@ begin;
   create trigger update_iam_role_org_grant_this_role_scope_update_time before update on iam_role_org
     for each row execute procedure insert_grant_this_role_scope_update_time();
 
-  create trigger update_iam_role_org_base_table_update_time after update on iam_role_org
-    for each row execute procedure update_iam_role_table_update_time();
-
-  create trigger delete_base_iam_role after delete on iam_role_org
-    for each row execute procedure delete_base_iam_role();
+  create trigger delete_iam_role_after_delete_iam_role_org after delete on iam_role_org
+    for each row execute procedure delete_associated_iam_role_entry();
 
   create trigger default_create_time_column before insert on iam_role_org
     for each row execute procedure default_create_time();
@@ -87,7 +83,7 @@ begin;
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on iam_role_org
-    for each row execute procedure immutable_columns('scope_id', 'create_time', 'grant_scope');
+    for each row execute procedure immutable_columns('scope_id', 'create_time');
 
   create table iam_role_org_individual_grant_scope (
     role_id wt_role_id
