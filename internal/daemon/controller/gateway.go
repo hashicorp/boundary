@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -28,6 +29,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 )
+
+var allowedUserAgentVersionRegexes = []*regexp.Regexp{
+	regexp.MustCompile(`^Boundary-client-agent/(\d+\.\d+\.\d+)$`),
+}
 
 const gatewayTarget = ""
 
@@ -58,6 +63,7 @@ func (noDelimiterStreamingMarshaler) Delimiter() []byte {
 func newGrpcGatewayMux() *runtime.ServeMux {
 	return runtime.NewServeMux(
 		runtime.WithMetadata(correlationIdAnnotator),
+		runtime.WithMetadata(userAgentHeadersAnnotator),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &noDelimiterStreamingMarshaler{
 			&runtime.HTTPBodyMarshaler{
 				Marshaler: handlers.JSONMarshaler(),
@@ -91,6 +97,28 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 	return metadata.New(map[string]string{
 		globals.CorrelationIdKey: correlationId,
 	})
+}
+
+func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD {
+	var userAgent string
+	for k, v := range req.Header {
+		if strings.EqualFold(k, globals.UserAgentKey) && len(v) > 0 {
+			userAgent = v[0]
+			break
+		}
+	}
+	for _, regex := range allowedUserAgentVersionRegexes {
+		if regex.MatchString(userAgent) {
+			matches := regex.FindStringSubmatch(userAgent)
+			agentName := strings.Split(matches[0], "/")[0]
+			agentVersion := matches[1]
+			return metadata.New(map[string]string{
+				globals.UserAgentProductKey:        agentName,
+				globals.UserAgentProductVersionKey: agentVersion,
+			})
+		}
+	}
+	return metadata.MD{}
 }
 
 // newGrpcServerListener will create an in-memory listener for the gRPC server.

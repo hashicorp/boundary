@@ -23,6 +23,10 @@ const (
 	// correlation id. When getting the correlationId (from the http header or grpc metadata)
 	// ensure the comparison is case-insensitive.
 	CorrelationIdKey = "x-correlation-id"
+
+	UserAgentKey               = "user-agent"
+	UserAgentProductKey        = "user_agent_product"
+	UserAgentProductVersionKey = "user_agent_product_version"
 )
 
 type (

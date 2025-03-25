@@ -95,6 +95,55 @@ func Test_correlationIdAnnotator(t *testing.T) {
 	assert.Equal(t, corId, corIds[0])
 }
 
+func Test_clientAgentHeadersAnnotator(t *testing.T) {
+	req := &http.Request{
+		Header: map[string][]string{
+			globals.UserAgentKey: {"Boundary-client-agent/0.1.4"},
+		},
+	}
+
+	md := userAgentHeadersAnnotator(context.Background(), req)
+	require.NotNil(t, md)
+	assert.Equal(t, "Boundary-client-agent", md.Get(globals.UserAgentProductKey)[0])
+	assert.Equal(t, "0.1.4", md.Get(globals.UserAgentProductVersionKey)[0])
+
+	// Test with no user-agent header
+	req = &http.Request{Header: map[string][]string{}}
+	md = userAgentHeadersAnnotator(context.Background(), req)
+	require.NotNil(t, md)
+	assert.Empty(t, md)
+
+	// Test with invalid user-agent formats
+	invalidTestCases := []string{
+		"invalid-user-agent",
+		"Boundary-client-agent/0.1",
+		"Boundary-client-agent/0.1.4-alpha",
+		"  Boundary-client-agent/0.1.4  ",
+	}
+
+	for _, userAgent := range invalidTestCases {
+		req = &http.Request{
+			Header: map[string][]string{
+				globals.UserAgentKey: {userAgent},
+			},
+		}
+		md = userAgentHeadersAnnotator(context.Background(), req)
+		require.NotNil(t, md)
+		assert.Empty(t, md)
+	}
+
+	// Test case-insensitive handling
+	req = &http.Request{
+		Header: map[string][]string{
+			"User-Agent": {"Boundary-client-agent/0.1.4"},
+		},
+	}
+	md = userAgentHeadersAnnotator(context.Background(), req)
+	require.NotNil(t, md)
+	assert.Equal(t, "Boundary-client-agent", md.Get(globals.UserAgentProductKey)[0])
+	assert.Equal(t, "0.1.4", md.Get(globals.UserAgentProductVersionKey)[0])
+}
+
 func Test_WithDisablePathLengthFallback(t *testing.T) {
 	ctx := context.Background()
 	reqPath := "/v1/example"
