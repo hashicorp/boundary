@@ -65,6 +65,19 @@ begin;
     'insert_grant_this_role_scope_update_time is used to automatically update the grant_scope_update_time '
     'of the subtype table whenever the grant_this_role_scope column is updated';
 
+  create function delete_associated_iam_role_entry() returns trigger
+  as $$
+  begin
+    delete from iam_role
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+    $$ language plpgsql;
+    comment on function delete_associated_iam_role_entry() is
+      'delete_associated_iam_role_entry is used to automatically delete associated iam_role entry'
+      'since domain implementation performs deletion on the child table which does not cleanup the base iam_role table ';
+
+
   -- global iam_role must have a scope_id of global.
   --
   -- grant_this_role_scope indicates if the role can apply its grants to the scope.
@@ -124,13 +137,16 @@ begin;
   create trigger update_iam_role_global_grant_this_role_scope_update_time before update on iam_role_global
     for each row execute procedure insert_grant_this_role_scope_update_time();
 
+  create trigger delete_iam_role_after_delete_iam_role_global after delete on iam_role_global
+    for each row execute procedure delete_associated_iam_role_entry();
+
   create trigger default_create_time_column before insert on iam_role_global
     for each row execute procedure default_create_time();
 
   create trigger update_time_column before update on iam_role_global
     for each row execute procedure update_time_column();
 
-  create trigger update_version_column after update on iam_role_global 
+  create trigger update_version_column after update on iam_role_global
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on iam_role_global

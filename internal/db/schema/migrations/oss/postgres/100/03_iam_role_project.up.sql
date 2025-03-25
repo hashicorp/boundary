@@ -37,6 +37,9 @@ begin;
   create trigger update_version_column after update on iam_role_project
     for each row execute procedure update_version_column();
 
+  create trigger delete_iam_role_after_delete_iam_role_project after delete on iam_role_project
+    for each row execute procedure delete_associated_iam_role_entry();
+
   create trigger immutable_columns before update on iam_role_project
     for each row execute procedure immutable_columns('scope_id', 'create_time');
 
