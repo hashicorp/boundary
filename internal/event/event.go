@@ -52,6 +52,7 @@ type Request struct {
 	Endpoint               string           `json:"endpoint,omitempty" class:"public"`  // std audit field
 	Details                proto.Message    `json:"details,omitempty"`                  // boundary field
 	DetailsUpstreamMessage *UpstreamMessage `json:"details_upstream_message,omitempty"` // boundary field
+	UserAgent              *UserAgent       `json:"user_agent,omitempty"`               // boundary field
 }
 
 type Response struct {
@@ -63,4 +64,9 @@ type Response struct {
 type UpstreamMessage struct {
 	Type    string        `json:"type,omitempty" class:"public"` // boundary field
 	Message proto.Message `json:"message,omitempty"`             // boundary field
+}
+
+type UserAgent struct {
+	Product        string `json:"product,omitempty"`
+	ProductVersion string `json:"product_version,omitempty"`
 }

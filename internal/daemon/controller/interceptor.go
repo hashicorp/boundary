@@ -448,14 +448,29 @@ func eventsRequestInterceptor(
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (any, error,
 	) {
+		var userAgent event.UserAgent
+		if md, ok := metadata.FromIncomingContext(interceptorCtx); ok {
+			if values := md.Get(globals.UserAgentProductKey); len(values) > 0 {
+				userAgent.Product = values[0]
+			}
+			if values := md.Get(globals.UserAgentProductVersionKey); len(values) > 0 {
+				userAgent.ProductVersion = values[0]
+			}
+		}
 		if msg, ok := req.(proto.Message); ok {
 			// Clone the request before writing it to the audit log,
 			// in case downstream interceptors modify it.
 			clonedMsg := proto.Clone(msg)
+			request := &event.Request{
+				Details: clonedMsg,
+			}
+			if userAgent.Product != "" || userAgent.ProductVersion != "" {
+				request.UserAgent = &userAgent
+			}
 			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg audit: %s", err)
 			}
-			if err := event.WriteObservation(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
+			if err := event.WriteObservation(interceptorCtx, op, event.WithRequest(request)); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg observation: %s", err)
 			}
 		}
