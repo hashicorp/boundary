@@ -77,6 +77,18 @@ begin;
       'delete_associated_iam_role_entry is used to automatically delete associated iam_role entry'
       'since domain implementation performs deletion on the child table which does not cleanup the base iam_role table ';
 
+-- Add trigger to update the new update_time column on every iam_role subtype update.
+  create function update_iam_role_table_update_time() returns trigger
+  as $$
+  begin
+    update iam_role set update_time = now() where public_id = new.public_id;
+    return new;
+  end;
+    $$ language plpgsql;
+    comment on function update_iam_role_table_update_time() is
+      'update_iam_role_table_update_time is used to automatically update the update_time '
+      'of the base table whenever one of the subtype iam_role tables are updated';
+
 
   -- global iam_role must have a scope_id of global.
   --
@@ -136,6 +148,9 @@ begin;
 
   create trigger update_iam_role_global_grant_this_role_scope_update_time before update on iam_role_global
     for each row execute procedure insert_grant_this_role_scope_update_time();
+
+  create trigger update_iam_role_table_update_time before update on iam_role_global
+    for each row execute procedure update_iam_role_table_update_time();
 
   create trigger delete_iam_role_after_delete_iam_role_global after delete on iam_role_global
     for each row execute procedure delete_associated_iam_role_entry();

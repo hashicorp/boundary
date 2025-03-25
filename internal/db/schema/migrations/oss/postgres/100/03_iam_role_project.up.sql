@@ -34,6 +34,9 @@ begin;
   create trigger update_time_column before update on iam_role_project
     for each row execute procedure update_time_column();
 
+  create trigger update_iam_role_table_update_time before update on iam_role_project
+    for each row execute procedure update_iam_role_table_update_time();
+
   create trigger update_version_column after update on iam_role_project
     for each row execute procedure update_version_column();
 
