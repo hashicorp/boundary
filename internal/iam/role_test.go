@@ -567,8 +567,313 @@ func TestRole_SetTableName(t *testing.T) {
 	}
 }
 
+func Test_globalRole_Create(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	type args struct {
+		role *globalRole
+	}
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+	rw := db.New(conn)
+	tests := []struct {
+		name       string
+		args       args
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			name: "can create valid role in global grants scope individual",
+			args: args{
+				role: func() *globalRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &globalRole{
+						GlobalRole: &store.GlobalRole{
+							PublicId:           grpId,
+							ScopeId:            globals.GlobalPrefix,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: false,
+							GrantScope:         globals.GrantScopeIndividual,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "can create valid role in global grants scope children",
+			args: args{
+				role: func() *globalRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &globalRole{
+						GlobalRole: &store.GlobalRole{
+							PublicId:           grpId,
+							ScopeId:            globals.GlobalPrefix,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeDescendants,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "can create valid role in global grants scope this",
+			args: args{
+				role: func() *globalRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &globalRole{
+						GlobalRole: &store.GlobalRole{
+							PublicId:           grpId,
+							ScopeId:            globals.GlobalPrefix,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeChildren,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "cannot create role in org",
+			args: args{
+				role: func() *globalRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &globalRole{
+						GlobalRole: &store.GlobalRole{
+							PublicId:           grpId,
+							ScopeId:            org.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeDescendants,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_global" violates foreign key constraint "iam_scope_global_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "cannot create role in project",
+			args: args{
+				role: func() *globalRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &globalRole{
+						GlobalRole: &store.GlobalRole{
+							PublicId:           grpId,
+							ScopeId:            proj.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeDescendants,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_global" violates foreign key constraint "iam_scope_global_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "invalid grants scope",
+			args: args{
+				role: func() *globalRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &globalRole{
+						GlobalRole: &store.GlobalRole{
+							PublicId:           grpId,
+							ScopeId:            globals.GlobalPrefix,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         "invalid-scope",
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_global" violates foreign key constraint "iam_role_global_grant_scope_enm_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "duplicate name not allowed",
+			args: args{
+				role: func() *globalRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					// create a role then return the cloned role with different name
+					r := &globalRole{
+						GlobalRole: &store.GlobalRole{
+							PublicId:           grpId,
+							ScopeId:            globals.GlobalPrefix,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeDescendants,
+						},
+					}
+
+					require.NoError(t, rw.Create(ctx, r))
+					newId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					dupeName := r.Clone().(*globalRole)
+					dupeName.PublicId = newId
+					dupeName.GrantThisRoleScope = false
+					dupeName.PublicId = newId
+					dupeName.GrantScope = globals.GrantScopeChildren
+					return dupeName
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: duplicate key value violates unique constraint "iam_role_global_name_scope_id_uq": unique constraint violation: integrity violation: error #1002`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := tt.args.role.Clone().(*globalRole)
+			err := rw.Create(ctx, r)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, tt.args.role.PublicId)
+
+			foundGrp := allocGlobalRole()
+			foundGrp.PublicId = tt.args.role.PublicId
+			err = rw.LookupByPublicId(ctx, &foundGrp)
+			require.NoError(t, err)
+			require.Empty(t, cmp.Diff(r, &foundGrp, protocmp.Transform()))
+
+			require.NotEmpty(t, foundGrp.GrantScopeUpdateTime)
+			require.NotEmpty(t, foundGrp.GrantThisRoleScopeUpdateTime)
+			require.NotEmpty(t, foundGrp.CreateTime)
+			require.NotEmpty(t, foundGrp.UpdateTime)
+
+			baseRole := allocRole()
+			baseRole.PublicId = tt.args.role.PublicId
+			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.Equal(t, foundGrp.CreateTime.AsTime(), baseRole.CreateTime.AsTime())
+			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
+		})
+	}
+}
+
+func Test_globalRole_Delete(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	tests := []struct {
+		name            string
+		setupRole       func(ctx context.Context, t *testing.T) *globalRole
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			setupRole: func(ctx context.Context, t *testing.T) *globalRole {
+				role := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						ScopeId:            globals.GlobalPrefix,
+						Name:               "test-role",
+						Description:        "description",
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				id, err := newRoleId(ctx)
+				require.NoError(t, err)
+				role.PublicId = id
+				require.NoError(t, rw.Create(ctx, role))
+				require.NotEmpty(t, role.PublicId)
+				return role
+			},
+			wantErr:         false,
+			wantRowsDeleted: 1,
+		},
+		{
+			name: "role-does-not-exist",
+			setupRole: func(ctx context.Context, t *testing.T) *globalRole {
+				id, err := newRoleId(ctx)
+				require.NoError(t, err)
+				role := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						PublicId:           id,
+						ScopeId:            globals.GlobalPrefix,
+						Name:               "test-role",
+						Description:        "description",
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				return role
+			},
+			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			createdRole := tc.setupRole(context.Background(), t)
+			deletedRows, err := rw.Delete(context.Background(), &globalRole{
+				GlobalRole: &store.GlobalRole{
+					PublicId: createdRole.PublicId,
+				},
+			})
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tc.wantRowsDeleted == 0 {
+				require.Equal(t, tc.wantRowsDeleted, deletedRows)
+				return
+			}
+			require.Equal(t, tc.wantRowsDeleted, deletedRows)
+			foundRole := &globalRole{GlobalRole: &store.GlobalRole{PublicId: createdRole.PublicId}}
+			err = rw.LookupByPublicId(context.Background(), foundRole)
+			require.Error(t, err)
+			require.True(t, errors.IsNotFoundError(err))
+
+			// also check that base table was deleted
+			baseRole := &Role{Role: &store.Role{PublicId: createdRole.PublicId}}
+			err = rw.LookupByPublicId(context.Background(), baseRole)
+			require.Error(t, err)
+			require.True(t, errors.IsNotFoundError(err))
+		})
+	}
+}
+
 func Test_globalRole_Actions(t *testing.T) {
-	r := &globalRole{}
+	r := allocGlobalRole()
 	a := r.Actions()
 	assert.Equal(t, a[action.Create.String()], action.Create)
 	assert.Equal(t, a[action.Update.String()], action.Update)
@@ -584,7 +889,7 @@ func Test_globalRole_Actions(t *testing.T) {
 
 func Test_globalRole_ResourceType(t *testing.T) {
 	t.Parallel()
-	role := globalRole{}
+	role := allocGlobalRole()
 	result := role.GetResourceType()
 	assert.Equal(t, result, resource.Role)
 }
@@ -714,7 +1019,7 @@ func Test_globalRole_SetTableName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			def := globalRole{}
+			def := allocGlobalRole()
 			require.Equal(t, defaultTableName, def.TableName())
 			s := &globalRole{
 				GlobalRole: &store.GlobalRole{},
