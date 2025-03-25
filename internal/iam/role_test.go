@@ -607,7 +607,7 @@ func Test_globalRole_Create(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "can create valid role in global grants scope children",
+			name: "can create valid role in global grants scope descendants",
 			args: args{
 				role: func() *globalRole {
 					randomUuid := testId(t)
@@ -629,7 +629,7 @@ func Test_globalRole_Create(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "can create valid role in global grants scope this",
+			name: "can create valid role in global grants scope children",
 			args: args{
 				role: func() *globalRole {
 					randomUuid := testId(t)
@@ -744,7 +744,6 @@ func Test_globalRole_Create(t *testing.T) {
 					dupeName := r.Clone().(*globalRole)
 					dupeName.PublicId = newId
 					dupeName.GrantThisRoleScope = false
-					dupeName.PublicId = newId
 					dupeName.GrantScope = globals.GrantScopeChildren
 					return dupeName
 				}(),
@@ -774,8 +773,8 @@ func Test_globalRole_Create(t *testing.T) {
 
 			require.NotEmpty(t, foundGrp.GrantScopeUpdateTime)
 			require.NotEmpty(t, foundGrp.GrantThisRoleScopeUpdateTime)
-			require.NotEmpty(t, foundGrp.CreateTime)
-			require.NotEmpty(t, foundGrp.UpdateTime)
+			require.NotZero(t, foundGrp.CreateTime.AsTime())
+			require.NotZero(t, foundGrp.UpdateTime.AsTime())
 
 			baseRole := allocRole()
 			baseRole.PublicId = tt.args.role.PublicId
@@ -1031,6 +1030,370 @@ func Test_globalRole_SetTableName(t *testing.T) {
 	}
 }
 
+func Test_orgRole_Create(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	type args struct {
+		role *orgRole
+	}
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+	org2 := TestOrg(t, repo)
+	rw := db.New(conn)
+	tests := []struct {
+		name       string
+		args       args
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			name: "can create valid role in org grants scope individual",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            org.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: false,
+							GrantScope:         globals.GrantScopeIndividual,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "can create valid role in org grants scope children",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            org.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeChildren,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "duplicate name different scope allowed",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					// create a role then return the cloned role with different name
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            org.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeChildren,
+						},
+					}
+
+					require.NoError(t, rw.Create(ctx, r))
+					newId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					dupeName := r.Clone().(*orgRole)
+					dupeName.PublicId = newId
+					dupeName.ScopeId = org2.PublicId
+					dupeName.GrantThisRoleScope = false
+					dupeName.GrantScope = globals.GrantScopeChildren
+					return dupeName
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "cannot create valid role in org grants scope descendants",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            org.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeDescendants,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_org" violates foreign key constraint "iam_role_org_grant_scope_enm_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "cannot create role in org with descendants grants",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            org.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeDescendants,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_org" violates foreign key constraint "iam_role_org_grant_scope_enm_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "cannot create role in global",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            globals.GlobalPrefix,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeChildren,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_org" violates foreign key constraint "iam_scope_org_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "cannot create role in project",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            proj.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeDescendants,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_org" violates foreign key constraint "iam_scope_org_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "invalid grants scope",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            org.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         "invalid-scope",
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_org" violates foreign key constraint "iam_role_org_grant_scope_enm_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "duplicate name not allowed",
+			args: args{
+				role: func() *orgRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					// create a role then return the cloned role with different name
+					r := &orgRole{
+						OrgRole: &store.OrgRole{
+							PublicId:           grpId,
+							ScopeId:            org.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
+							GrantThisRoleScope: true,
+							GrantScope:         globals.GrantScopeChildren,
+						},
+					}
+
+					require.NoError(t, rw.Create(ctx, r))
+					newId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					dupeName := r.Clone().(*orgRole)
+					dupeName.PublicId = newId
+					dupeName.GrantThisRoleScope = false
+					dupeName.GrantScope = globals.GrantScopeChildren
+					return dupeName
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: duplicate key value violates unique constraint "iam_role_org_name_scope_id_uq": unique constraint violation: integrity violation: error #1002`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := tt.args.role.Clone().(*orgRole)
+			err := rw.Create(ctx, r)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, tt.args.role.PublicId)
+
+			foundGrp := allocOrgRole()
+			foundGrp.PublicId = tt.args.role.PublicId
+			err = rw.LookupByPublicId(ctx, &foundGrp)
+			require.NoError(t, err)
+			require.Empty(t, cmp.Diff(r, &foundGrp, protocmp.Transform()))
+
+			require.NotEmpty(t, foundGrp.GrantScopeUpdateTime)
+			require.NotEmpty(t, foundGrp.GrantThisRoleScopeUpdateTime)
+			require.NotZero(t, foundGrp.CreateTime.AsTime())
+			require.NotZero(t, foundGrp.UpdateTime.AsTime())
+
+			baseRole := allocRole()
+			baseRole.PublicId = tt.args.role.PublicId
+			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.Equal(t, foundGrp.CreateTime.AsTime(), baseRole.CreateTime.AsTime())
+			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
+		})
+	}
+}
+
+func Test_orgRole_Delete(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org := TestOrg(t, repo)
+	tests := []struct {
+		name            string
+		setupRole       func(ctx context.Context, t *testing.T) *orgRole
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			setupRole: func(ctx context.Context, t *testing.T) *orgRole {
+				role := &orgRole{
+					OrgRole: &store.OrgRole{
+						ScopeId:            org.PublicId,
+						Name:               "test-role",
+						Description:        "description",
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				id, err := newRoleId(ctx)
+				require.NoError(t, err)
+				role.PublicId = id
+				require.NoError(t, rw.Create(ctx, role))
+				require.NotEmpty(t, role.PublicId)
+				return role
+			},
+			wantErr:         false,
+			wantRowsDeleted: 1,
+		},
+		{
+			name: "role-does-not-exist",
+			setupRole: func(ctx context.Context, t *testing.T) *orgRole {
+				id, err := newRoleId(ctx)
+				require.NoError(t, err)
+				role := &orgRole{
+					OrgRole: &store.OrgRole{
+						PublicId:           id,
+						ScopeId:            org.PublicId,
+						Name:               "test-role",
+						Description:        "description",
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				return role
+			},
+			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			createdRole := tc.setupRole(context.Background(), t)
+			deletedRows, err := rw.Delete(context.Background(), &orgRole{
+				OrgRole: &store.OrgRole{
+					PublicId: createdRole.PublicId,
+				},
+			})
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tc.wantRowsDeleted == 0 {
+				require.Equal(t, tc.wantRowsDeleted, deletedRows)
+				return
+			}
+			require.Equal(t, tc.wantRowsDeleted, deletedRows)
+			foundRole := &orgRole{OrgRole: &store.OrgRole{PublicId: createdRole.PublicId}}
+			err = rw.LookupByPublicId(context.Background(), foundRole)
+			require.Error(t, err)
+			require.True(t, errors.IsNotFoundError(err))
+
+			// also check that base table was deleted
+			baseRole := &Role{Role: &store.Role{PublicId: createdRole.PublicId}}
+			err = rw.LookupByPublicId(context.Background(), baseRole)
+			require.Error(t, err)
+			require.True(t, errors.IsNotFoundError(err))
+		})
+	}
+}
+
 func Test_orgRole_Actions(t *testing.T) {
 	r := &orgRole{}
 	a := r.Actions()
@@ -1189,6 +1552,257 @@ func Test_orgRole_SetTableName(t *testing.T) {
 			}
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(t, tt.want, s.TableName())
+		})
+	}
+}
+
+func Test_projectRole_Create(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	type args struct {
+		role *projectRole
+	}
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+	proj2 := TestProject(t, repo, org.PublicId)
+	rw := db.New(conn)
+	tests := []struct {
+		name       string
+		args       args
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			name: "can create valid role in project",
+			args: args{
+				role: func() *projectRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &projectRole{
+						ProjectRole: &store.ProjectRole{
+							PublicId:    grpId,
+							ScopeId:     proj.PublicId,
+							Name:        "name" + randomUuid,
+							Description: "desc" + randomUuid,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "duplicate name different scope allowed",
+			args: args{
+				role: func() *projectRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					// create a role then return the cloned role with different name
+					r := &projectRole{
+						ProjectRole: &store.ProjectRole{
+							PublicId:    grpId,
+							ScopeId:     proj.PublicId,
+							Name:        "name" + randomUuid,
+							Description: "desc" + randomUuid,
+						},
+					}
+
+					require.NoError(t, rw.Create(ctx, r))
+					newId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					dupeName := r.Clone().(*projectRole)
+					dupeName.PublicId = newId
+					dupeName.ScopeId = proj2.PublicId
+					return dupeName
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "cannot create role in global",
+			args: args{
+				role: func() *projectRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &projectRole{
+						ProjectRole: &store.ProjectRole{
+							PublicId:    grpId,
+							ScopeId:     globals.GlobalPrefix,
+							Name:        "name" + randomUuid,
+							Description: "desc" + randomUuid,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_project" violates foreign key constraint "iam_scope_project_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "cannot create role in org",
+			args: args{
+				role: func() *projectRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					r := &projectRole{
+						ProjectRole: &store.ProjectRole{
+							PublicId:    grpId,
+							ScopeId:     org.PublicId,
+							Name:        "name" + randomUuid,
+							Description: "desc" + randomUuid,
+						},
+					}
+					return r
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_project" violates foreign key constraint "iam_scope_project_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "duplicate name same scope not allowed",
+			args: args{
+				role: func() *projectRole {
+					randomUuid := testId(t)
+					grpId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					// create a role then return the cloned role with different name
+					r := &projectRole{
+						ProjectRole: &store.ProjectRole{
+							PublicId:    grpId,
+							ScopeId:     proj.PublicId,
+							Name:        "name" + randomUuid,
+							Description: "desc" + randomUuid,
+						},
+					}
+
+					require.NoError(t, rw.Create(ctx, r))
+					newId, err := newRoleId(ctx)
+					require.NoError(t, err)
+					dupeName := r.Clone().(*projectRole)
+					dupeName.PublicId = newId
+					return dupeName
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: duplicate key value violates unique constraint "iam_role_project_name_scope_id_uq": unique constraint violation: integrity violation: error #1002`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := tt.args.role.Clone().(*projectRole)
+			err := rw.Create(ctx, r)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, tt.args.role.PublicId)
+
+			foundGrp := allocProjectRole()
+			foundGrp.PublicId = tt.args.role.PublicId
+			err = rw.LookupByPublicId(ctx, &foundGrp)
+			require.NoError(t, err)
+			require.Empty(t, cmp.Diff(r, &foundGrp, protocmp.Transform()))
+			require.NotZero(t, foundGrp.CreateTime.AsTime())
+			require.NotZero(t, foundGrp.UpdateTime.AsTime())
+			baseRole := allocRole()
+			baseRole.PublicId = tt.args.role.PublicId
+			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.Equal(t, foundGrp.CreateTime.AsTime(), baseRole.CreateTime.AsTime())
+			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
+		})
+	}
+}
+
+func Test_projectRole_Delete(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	_, proj := TestScopes(t, repo)
+	tests := []struct {
+		name            string
+		setupRole       func(ctx context.Context, t *testing.T) *projectRole
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			setupRole: func(ctx context.Context, t *testing.T) *projectRole {
+				role := &projectRole{
+					ProjectRole: &store.ProjectRole{
+						ScopeId:     proj.PublicId,
+						Name:        "test-role",
+						Description: "description",
+					},
+				}
+				id, err := newRoleId(ctx)
+				require.NoError(t, err)
+				role.PublicId = id
+				require.NoError(t, rw.Create(ctx, role))
+				require.NotEmpty(t, role.PublicId)
+				return role
+			},
+			wantErr:         false,
+			wantRowsDeleted: 1,
+		},
+		{
+			name: "role-does-not-exist",
+			setupRole: func(ctx context.Context, t *testing.T) *projectRole {
+				id, err := newRoleId(ctx)
+				require.NoError(t, err)
+				role := &projectRole{
+					ProjectRole: &store.ProjectRole{
+						PublicId:    id,
+						ScopeId:     proj.PublicId,
+						Name:        "test-role",
+						Description: "description",
+					},
+				}
+				return role
+			},
+			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			createdRole := tc.setupRole(context.Background(), t)
+			deletedRows, err := rw.Delete(context.Background(), &projectRole{
+				ProjectRole: &store.ProjectRole{
+					PublicId: createdRole.PublicId,
+				},
+			})
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tc.wantRowsDeleted == 0 {
+				require.Equal(t, tc.wantRowsDeleted, deletedRows)
+				return
+			}
+			require.Equal(t, tc.wantRowsDeleted, deletedRows)
+			foundRole := &projectRole{ProjectRole: &store.ProjectRole{PublicId: createdRole.PublicId}}
+			err = rw.LookupByPublicId(context.Background(), foundRole)
+			require.Error(t, err)
+			require.True(t, errors.IsNotFoundError(err))
+
+			// also check that base table was deleted
+			baseRole := &Role{Role: &store.Role{PublicId: createdRole.PublicId}}
+			err = rw.LookupByPublicId(context.Background(), baseRole)
+			require.Error(t, err)
+			require.True(t, errors.IsNotFoundError(err))
 		})
 	}
 }
