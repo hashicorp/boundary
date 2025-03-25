@@ -785,6 +785,192 @@ func Test_globalRole_Create(t *testing.T) {
 	}
 }
 
+func Test_globalRole_Update(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	type arg struct {
+		updateRole *globalRole
+		fieldMask  []string
+		nullPath   []string
+		opts       []db.Option
+	}
+	tests := []struct {
+		name           string
+		setupOriginal  func(t *testing.T) *globalRole
+		createInput    func(t *testing.T, original *globalRole) arg
+		wantErr        bool
+		wantRowsUpdate int
+		wantErrMsg     string
+	}{
+		{
+			name: "can update name and description",
+			setupOriginal: func(t *testing.T) *globalRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						PublicId:           roleId,
+						ScopeId:            globals.GlobalPrefix,
+						Name:               testId(t),
+						Description:        testId(t),
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *globalRole) arg {
+				updated := original.Clone().(*globalRole)
+				updated.Name = testId(t)
+				updated.Description = testId(t)
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"name", "description"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+		{
+			name: "can update grant_scope",
+			setupOriginal: func(t *testing.T) *globalRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						PublicId:           roleId,
+						ScopeId:            globals.GlobalPrefix,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *globalRole) arg {
+				updated := original.Clone().(*globalRole)
+				updated.GrantScope = globals.GrantScopeChildren
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"GrantScope"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+		{
+			name: "can set name and description null",
+			setupOriginal: func(t *testing.T) *globalRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						PublicId:           roleId,
+						ScopeId:            globals.GlobalPrefix,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *globalRole) arg {
+				updated := original.Clone().(*globalRole)
+				updated.Name = ""
+				updated.Description = ""
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{},
+					nullPath:   []string{"name", "description"},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+		{
+			name: "can update grant_this_role_scope",
+			setupOriginal: func(t *testing.T) *globalRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						PublicId:           roleId,
+						ScopeId:            globals.GlobalPrefix,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: true,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *globalRole) arg {
+				updated := original.Clone().(*globalRole)
+				updated.GrantThisRoleScope = false
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"GrantThisRoleScope"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			original := tt.setupOriginal(t)
+			args := tt.createInput(t, original)
+			updatedRows, err := rw.Update(context.Background(), args.updateRole, args.fieldMask, args.nullPath, args.opts...)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, args.updateRole.PublicId)
+			if tt.wantRowsUpdate == 0 {
+				require.Zero(t, updatedRows)
+				return
+			}
+			require.Equal(t, tt.wantRowsUpdate, updatedRows)
+
+			foundGrp := allocGlobalRole()
+			foundGrp.PublicId = original.PublicId
+			err = rw.LookupByPublicId(ctx, &foundGrp)
+			require.NoError(t, err)
+			require.Empty(t, cmp.Diff(args.updateRole, &foundGrp, protocmp.Transform()))
+			baseRole := allocRole()
+			baseRole.PublicId = original.PublicId
+			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
+
+			// assert other update time as necessary
+			if original.GrantThisRoleScope != args.updateRole.GrantThisRoleScope {
+				require.Greater(t, foundGrp.GrantThisRoleScopeUpdateTime.AsTime(), original.GrantThisRoleScopeUpdateTime.AsTime())
+			}
+			if original.GrantScope != args.updateRole.GrantScope {
+				require.Greater(t, foundGrp.GrantScopeUpdateTime.AsTime(), original.GrantScopeUpdateTime.AsTime())
+			}
+		})
+	}
+}
+
 func Test_globalRole_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -1305,6 +1491,195 @@ func Test_orgRole_Create(t *testing.T) {
 	}
 }
 
+func Test_orgRole_Update(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org := TestOrg(t, repo)
+	type arg struct {
+		updateRole *orgRole
+		fieldMask  []string
+		nullPath   []string
+		opts       []db.Option
+	}
+	tests := []struct {
+		name           string
+		setupOriginal  func(t *testing.T) *orgRole
+		createInput    func(t *testing.T, original *orgRole) arg
+		wantErr        bool
+		wantRowsUpdate int
+		wantErrMsg     string
+	}{
+		{
+			name: "can update name and description",
+			setupOriginal: func(t *testing.T) *orgRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &orgRole{
+					OrgRole: &store.OrgRole{
+						PublicId:           roleId,
+						ScopeId:            org.PublicId,
+						Name:               testId(t),
+						Description:        testId(t),
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *orgRole) arg {
+				updated := original.Clone().(*orgRole)
+				updated.Name = testId(t)
+				updated.Description = testId(t)
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"name", "description"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+		{
+			name: "can update grant_scope",
+			setupOriginal: func(t *testing.T) *orgRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &orgRole{
+					OrgRole: &store.OrgRole{
+						PublicId:           roleId,
+						ScopeId:            org.PublicId,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *orgRole) arg {
+				updated := original.Clone().(*orgRole)
+				updated.GrantScope = globals.GrantScopeChildren
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"GrantScope"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+		{
+			name: "can set name and description null",
+			setupOriginal: func(t *testing.T) *orgRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &orgRole{
+					OrgRole: &store.OrgRole{
+						PublicId:           roleId,
+						ScopeId:            org.PublicId,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: false,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *orgRole) arg {
+				updated := original.Clone().(*orgRole)
+				updated.Name = ""
+				updated.Description = ""
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{},
+					nullPath:   []string{"name", "description"},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+		{
+			name: "can update grant_this_role_scope",
+			setupOriginal: func(t *testing.T) *orgRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &orgRole{
+					OrgRole: &store.OrgRole{
+						PublicId:           roleId,
+						ScopeId:            org.PublicId,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: true,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *orgRole) arg {
+				updated := original.Clone().(*orgRole)
+				updated.GrantThisRoleScope = false
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"GrantThisRoleScope"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			original := tt.setupOriginal(t)
+			args := tt.createInput(t, original)
+			updatedRows, err := rw.Update(context.Background(), args.updateRole, args.fieldMask, args.nullPath, args.opts...)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, args.updateRole.PublicId)
+			if tt.wantRowsUpdate == 0 {
+				require.Zero(t, updatedRows)
+				return
+			}
+			require.Equal(t, tt.wantRowsUpdate, updatedRows)
+
+			foundGrp := allocOrgRole()
+			foundGrp.PublicId = original.PublicId
+			err = rw.LookupByPublicId(ctx, &foundGrp)
+			require.NoError(t, err)
+			require.Empty(t, cmp.Diff(args.updateRole, &foundGrp, protocmp.Transform()))
+			baseRole := allocRole()
+			baseRole.PublicId = original.PublicId
+			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
+
+			// assert other update time as necessary
+			if original.GrantThisRoleScope != args.updateRole.GrantThisRoleScope {
+				require.Greater(t, foundGrp.GrantThisRoleScopeUpdateTime.AsTime(), original.GrantThisRoleScopeUpdateTime.AsTime())
+			}
+			if original.GrantScope != args.updateRole.GrantScope {
+				require.Greater(t, foundGrp.GrantScopeUpdateTime.AsTime(), original.GrantScopeUpdateTime.AsTime())
+			}
+		})
+	}
+}
+
 func Test_orgRole_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -1717,6 +2092,121 @@ func Test_projectRole_Create(t *testing.T) {
 			baseRole.PublicId = tt.args.role.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.Equal(t, foundGrp.CreateTime.AsTime(), baseRole.CreateTime.AsTime())
+			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
+		})
+	}
+}
+
+func Test_projectRole_Update(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	_, proj := TestScopes(t, repo)
+	type arg struct {
+		updateRole *projectRole
+		fieldMask  []string
+		nullPath   []string
+		opts       []db.Option
+	}
+	tests := []struct {
+		name           string
+		setupOriginal  func(t *testing.T) *projectRole
+		createInput    func(t *testing.T, original *projectRole) arg
+		wantErr        bool
+		wantRowsUpdate int
+		wantErrMsg     string
+	}{
+		{
+			name: "can update name and description",
+			setupOriginal: func(t *testing.T) *projectRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &projectRole{
+					ProjectRole: &store.ProjectRole{
+						PublicId:    roleId,
+						ScopeId:     proj.PublicId,
+						Name:        testId(t),
+						Description: testId(t),
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *projectRole) arg {
+				updated := original.Clone().(*projectRole)
+				updated.Name = testId(t)
+				updated.Description = testId(t)
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"name", "description"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+		{
+			name: "can set name and description null",
+			setupOriginal: func(t *testing.T) *projectRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &projectRole{
+					ProjectRole: &store.ProjectRole{
+						PublicId:    roleId,
+						ScopeId:     proj.PublicId,
+						Name:        testId(t),
+						Description: "desc",
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *projectRole) arg {
+				updated := original.Clone().(*projectRole)
+				updated.Name = ""
+				updated.Description = ""
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{},
+					nullPath:   []string{"name", "description"},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			original := tt.setupOriginal(t)
+			args := tt.createInput(t, original)
+			updatedRows, err := rw.Update(context.Background(), args.updateRole, args.fieldMask, args.nullPath, args.opts...)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, args.updateRole.PublicId)
+			if tt.wantRowsUpdate == 0 {
+				require.Zero(t, updatedRows)
+				return
+			}
+			require.Equal(t, tt.wantRowsUpdate, updatedRows)
+
+			foundGrp := allocProjectRole()
+			foundGrp.PublicId = original.PublicId
+			err = rw.LookupByPublicId(ctx, &foundGrp)
+			require.NoError(t, err)
+			require.Empty(t, cmp.Diff(args.updateRole, &foundGrp, protocmp.Transform()))
+			baseRole := allocRole()
+			baseRole.PublicId = original.PublicId
+			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 		})
 	}
