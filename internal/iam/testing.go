@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -637,6 +638,118 @@ func TestManagedGroupRole(t testing.TB, conn *db.DB, roleId, managedGrpId string
 	err = rw.Create(context.Background(), r)
 	require.NoError(err)
 	return r
+}
+
+type TestRoleGrantsRequest struct {
+	RoleScopeId string
+	GrantScopes []string
+	Grants      []string
+}
+
+// TestUserManagedGroupGrantsFunc returns a function that creates a user which has been given
+// the request grants through managed group.
+// Note: This method is not responsible for associating the user to the managed group. That action needs to be done
+// by the caller
+// This function returns iam.User and the AccountID from the account setup func
+func TestUserManagedGroupGrantsFunc(
+	t *testing.T,
+	conn *db.DB,
+	kmsCache *kms.Kms,
+	scopeId string,
+	managedGroupAccountSetupFunc auth.TestAuthMethodWithAccountInManagedGroup,
+	testRoleGrants []TestRoleGrantsRequest,
+) func() (*User, auth.Account) {
+	return func() (*User, auth.Account) {
+		t.Helper()
+		ctx := context.Background()
+		rw := db.New(conn)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		_, account, mg := managedGroupAccountSetupFunc(t, conn, kmsCache, scopeId)
+		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
+		for _, trg := range testRoleGrants {
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
+			_ = TestManagedGroupRole(t, conn, role.PublicId, mg.GetPublicId())
+		}
+		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.Len(t, acctIDs, 1)
+		return user, account
+	}
+}
+
+// TestUserDirectGrantsFunc returns a function that creates and returns user which has been given
+// the request grants via direct association.
+// This function returns iam.User and the AccountID from the account setup func
+func TestUserDirectGrantsFunc(
+	t *testing.T,
+	conn *db.DB,
+	kmsCache *kms.Kms,
+	scopeId string,
+	setupFunc auth.TestAuthMethodWithAccountFunc,
+	testRoleGrants []TestRoleGrantsRequest,
+) func() (*User, auth.Account) {
+	return func() (*User, auth.Account) {
+		t.Helper()
+		_, account := setupFunc(t, conn)
+		ctx := context.Background()
+		rw := db.New(conn)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
+		require.NoError(t, err)
+		for _, trg := range testRoleGrants {
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
+			_ = TestUserRole(t, conn, role.PublicId, user.PublicId)
+		}
+		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.Len(t, acctIDs, 1)
+		return user, account
+	}
+}
+
+// TestUserGroupGrantsFunc returns a function that creates a user which has been given
+// the request grants by being a part of a group.
+// Group is created as a part of this method
+// This function returns iam.User and the AccountID from the account setup func
+func TestUserGroupGrantsFunc(
+	t *testing.T,
+	conn *db.DB,
+	kmsCache *kms.Kms,
+	scopeId string,
+	setupFunc auth.TestAuthMethodWithAccountFunc,
+	testRoleGrants []TestRoleGrantsRequest,
+) func() (*User, auth.Account) {
+	return func() (*User, auth.Account) {
+		t.Helper()
+		_, account := setupFunc(t, conn)
+		ctx := context.Background()
+		rw := db.New(conn)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		role, err := NewRole(ctx, scopeId)
+		require.NoError(t, err)
+		id, err := newRoleId(ctx)
+		require.NoError(t, err)
+		role.PublicId = id
+		require.NoError(t, rw.Create(ctx, role))
+		require.NotEmpty(t, role.PublicId)
+		require.NoError(t, err)
+		group := TestGroup(t, conn, scopeId)
+		require.NoError(t, err)
+		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
+		for _, trg := range testRoleGrants {
+			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
+			_ = TestGroupRole(t, conn, role.PublicId, group.PublicId)
+		}
+		_, err = repo.AddGroupMembers(ctx, group.PublicId, group.Version, []string{user.PublicId})
+		require.NoError(t, err)
+		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
+		require.NoError(t, err)
+		require.Len(t, acctIDs, 1)
+		return user, account
+	}
 }
 
 // testAccount is a temporary test function.  TODO - replace with an auth

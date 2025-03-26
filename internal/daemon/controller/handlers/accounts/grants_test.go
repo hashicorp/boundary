@@ -59,7 +59,7 @@ func TestListPassword_Grants(t *testing.T) {
 			},
 			roleRequest: []authtoken.TestRoleGrantsForToken{
 				{
-					RoleScopeID:  globals.GlobalPrefix,
+					RoleScopeId:  globals.GlobalPrefix,
 					GrantStrings: []string{"ids=*;type=*;actions=list,read"},
 					GrantScopes:  []string{globals.GrantScopeChildren},
 				},
