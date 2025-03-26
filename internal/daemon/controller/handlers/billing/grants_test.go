@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/billing"
-	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	cauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	billingservice "github.com/hashicorp/boundary/internal/daemon/controller/handlers/billing"
 	"github.com/hashicorp/boundary/internal/db"
@@ -55,15 +56,15 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 		testcases := []struct {
 			name                  string
 			input                 *pbs.MonthlyActiveUsersRequest
-			userFunc              func() (user *iam.User, accountId string)
+			userFunc              func() (*iam.User, auth.Account)
 			wantErr               error
 			expectedItemsReturned int
 		}{
 			{
 				name: "global role with wildcard returns monthly active users",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -76,9 +77,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role + direct association with type billing returns monthly active users",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=billing;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -91,19 +92,19 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role + direct association with multiple roles returns monthly active users",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=group;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=billing;actions=no-op"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=billing;actions=monthly-active-users"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -116,9 +117,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role + group association with type billing returns monthly active users",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=billing;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -131,9 +132,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role + managed group association with type billing returns monthly active users",
-				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAccountFunc(t, conn, kmsCache, globals.GlobalPrefix), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=billing;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -146,9 +147,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role with type billing and actions monthly-active-users returns monthly active users",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=billing;actions=monthly-active-users"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -161,9 +162,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role with non-applicable type returns an error",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=group;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -176,9 +177,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role with billing type and non-applicable actions returns an error",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=billing;actions=no-op"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -191,9 +192,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role grant this with a non-applicable type returns a permission error",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=group;actions=list,read"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -206,9 +207,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role grant descendant returns no monthly active users",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: globals.GlobalPrefix,
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=billing;actions=*"},
 						GrantScopes: []string{globals.GrantScopeDescendants},
 					},
@@ -221,9 +222,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 			},
 			{
 				name: "global role grant descendant returns no monthly active users",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAccountFunc(t, conn), []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeID: org.PublicId,
+						RoleScopeId: org.PublicId,
 						Grants:      []string{"ids=*;type=billing;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -239,9 +240,9 @@ func TestGrants_MonthlyActiveUsers(t *testing.T) {
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				user, accountID := tc.userFunc()
-				tok, err := atRepo.CreateAuthToken(ctx, user, accountID)
+				tok, err := atRepo.CreateAuthToken(ctx, user, accountID.GetPublicId())
 				require.NoError(t, err)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, finalErr := s.MonthlyActiveUsers(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
