@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/hashicorp/boundary/internal/iam/store"
 	"strings"
 	"time"
 
@@ -38,8 +39,43 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
-	c := role.Clone().(*Role)
-	c.PublicId = id
+
+	var roleToCreate Resource
+	switch {
+	case strings.HasPrefix(role.GetScopeId(), globals.GlobalPrefix):
+		roleToCreate = &globalRole{
+			GlobalRole: &store.GlobalRole{
+				PublicId:           id,
+				ScopeId:            role.GetScopeId(),
+				Name:               role.GetName(),
+				Description:        role.GetDescription(),
+				GrantThisRoleScope: false,
+				GrantScope:         globals.GrantScopeIndividual,
+			},
+		}
+	case strings.HasPrefix(role.GetScopeId(), globals.OrgPrefix):
+		roleToCreate = &orgRole{
+			OrgRole: &store.OrgRole{
+				PublicId:           id,
+				ScopeId:            role.GetScopeId(),
+				Name:               role.GetName(),
+				Description:        role.GetDescription(),
+				GrantThisRoleScope: false,
+				GrantScope:         globals.GrantScopeIndividual,
+			},
+		}
+	case strings.HasPrefix(role.GetScopeId(), globals.ProjectPrefix):
+		roleToCreate = &projectRole{
+			ProjectRole: &store.ProjectRole{
+				PublicId:    id,
+				ScopeId:     role.GetScopeId(),
+				Name:        role.GetName(),
+				Description: role.GetDescription(),
+			},
+		}
+	default:
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
+	}
 
 	var resource Resource
 	var pr []*PrincipalRole
@@ -50,7 +86,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, writer db.Writer) error {
-			resource, err = r.create(ctx, c, WithReaderWriter(reader, writer))
+			resource, err = r.create(ctx, roleToCreate, WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while creating role"))
 			}
@@ -71,6 +107,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		}
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
 	}
+	switch {
+	case strings.HasPrefix(role.GetScopeId(), globals.GlobalPrefix):
+	case strings.HasPrefix(role.GetScopeId(), globals.OrgPrefix):
+	case strings.HasPrefix(role.GetScopeId(), globals.ProjectPrefix):
+	}
+
 	return resource.(*Role), pr, rg, grantScopes, nil
 }
 
