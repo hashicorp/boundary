@@ -21,7 +21,6 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
-	hstpl "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -86,7 +85,7 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	var allHcs []string
 	for range 5 {
-		hc := hstpl.TestCatalog(
+		hc := hostplugin.TestCatalog(
 			t,
 			conn,
 			proj.GetPublicId(),
@@ -98,7 +97,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		)
 		allHcs = append(allHcs, hc.GetPublicId())
 
-		_ = hstpl.TestSet(t, conn, kmsCache, sche, hc, plgm)
+		_ = hostplugin.TestSet(t, conn, kmsCache, sche, hc, plgm)
 	}
 
 	t.Run("List", func(t *testing.T) {
