@@ -1,13 +1,32 @@
 ---
 layout: docs
 page_title: Controller/worker - events
-description: |-
-  The events stanza configures events-specific parameters.
+description: >-
+  Learn about using the events stanza to configure events-specific parameters.
 ---
 
 # `events` stanza
 
+You can log system information in a well-defined, structured format that give you visibility into emitted events.
+You configure emitted events and sinks in the configuration file for any [controller](/boundary/docs/configuration/controller) or [worker](/boundary/docs/configuration/worker) server.
 The `events` stanza configures Boundary events-specific parameters.
+
+You can specify what types of events Boundary should emit:
+
+- `audit_enabled` - Specifies if Boundary emits audit events.
+- `observations_enabled` - Specifies if Boundary emits observation events.
+- `sysevents_enabled` - Specifies if Boundary should emit system events.
+- `telemetry_enabled` - Specifies if Boundary should emit telemetry events.
+To receive telemetry events, you must also set `observations_enabled` to `true`.
+
+Event sinks provide a location for Boundary to write events to.
+You can configure sinks to allow or deny specific event types using filter syntax:
+
+- `sink` - Specifies the configuration of an event sink.
+Currently, two types of sinks are supported: [file](/boundary/docs/configuration/events/file) and [stderr](/boundary/docs/configuration/events/stderr).
+
+You can repeat the `sink` stanza more than once to send events to multiple sinks, but each file sink must have a unique path and file name.
+If no sinks are configured, then all events will be sent to a default [stderr](/boundary/docs/configuration/events/stderr) sink.
 
 Example:
 
@@ -35,20 +54,6 @@ events {
 }
 ```
 
-- `audit_enabled` - Specifies if audit events should be emitted.
-
-- `observations_enabled` - Specifies if observation events should be emitted.
-
-- `sysevents_enabled` - Specifies if system events should be emitted.
-
-- `telemetry_enabled` - Specifies if telemetry events should be emitted.
-To receive telemetry events, you must also set `observations_enabled` to `true`.
-
-- `sink` - Specifies the configuration of an event sink. Currently, two types of
-  sink are supported: [file](/boundary/docs/configuration/events/file) and [stderr](/boundary/docs/configuration/events/stderr). If no sinks are configured then all
-  events will be sent to a default [stderr](/boundary/docs/configuration/events/stderr) sink. Events may be sent to multiple
-  sinks.
-
 ## Default events stanza
 
 If no event stanza is specified then the following default is used:
@@ -66,3 +71,13 @@ events {
   }
 }
 ```
+
+## Next steps
+
+Refer to [Configure event logging](/boundary/docs/configuration/events/configure-events) to configure a controller or worker server to emit events.
+
+Refer to [Telemetry data](/boundary/docs/configuration/events/telemetry-data) for a list of the events and data you can track by enabling telemetry events.
+
+## Tutorial
+
+Refer to the [Event filtering and sink configuration](/boundary/tutorials/self-managed-deployment/event-logging) tutorial to learn how to define an event sink and configure logging.
