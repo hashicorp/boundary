@@ -145,6 +145,8 @@ func (s *deletedRole) TableName() string {
 	return "iam_role_deleted"
 }
 
+// globalRole is a type embedding store.GlobalRole used to interact with iam_role_global table which contains
+// all iam_role entries that are created in global-level scopes through gorm.
 type globalRole struct {
 	*store.GlobalRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
@@ -206,6 +208,8 @@ func (g *globalRole) Actions() map[string]action.Type {
 	return ret
 }
 
+// orgRole is a type embedding store.OrgRole used to interact with iam_role_org table which contains
+// all iam_role entries that are created in org-level scopes through gorm.
 type orgRole struct {
 	*store.OrgRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
@@ -267,6 +271,8 @@ func (o *orgRole) Actions() map[string]action.Type {
 	return ret
 }
 
+// projectRole is a type embedding store.ProjectRole used to interact with iam_role_project table which contains
+// all iam_role entries that are created in project-level scopes through gorm.
 type projectRole struct {
 	*store.ProjectRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
