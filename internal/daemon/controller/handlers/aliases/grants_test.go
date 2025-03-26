@@ -61,7 +61,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=alias;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
@@ -77,7 +77,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=group;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},

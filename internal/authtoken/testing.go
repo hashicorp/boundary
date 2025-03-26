@@ -51,7 +51,7 @@ func TestAuthToken(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId string, opt 
 // TestRoleGrantsForToken contains information used by TestAuthTokenWithRoles to create
 // roles and their associated grants (with grant scopes)
 type TestRoleGrantsForToken struct {
-	RoleScopeID  string
+	RoleScopeId  string
 	GrantStrings []string
 	GrantScopes  []string
 }
@@ -75,7 +75,7 @@ func TestAuthTokenWithRoles(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId str
 	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), loginName)
 	user := iam.TestUser(t, iamRepo, scopeId, iam.WithAccountIds(acct.GetPublicId()))
 	for _, r := range roles {
-		role := iam.TestRoleWithGrants(t, conn, r.RoleScopeID, r.GrantScopes, r.GrantStrings)
+		role := iam.TestRoleWithGrants(t, conn, r.RoleScopeId, r.GrantScopes, r.GrantStrings)
 		_ = iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
 	}
 	fullGrantToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
