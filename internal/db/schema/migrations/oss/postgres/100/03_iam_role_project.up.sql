@@ -34,14 +34,14 @@ begin;
   create trigger update_time_column before update on iam_role_project
     for each row execute procedure update_time_column();
 
-  create trigger update_iam_role_table_update_time before update on iam_role_project
+  create trigger update_iam_role_table_update_time after update on iam_role_project
     for each row execute procedure update_iam_role_table_update_time();
 
   create trigger update_version_column after update on iam_role_project
     for each row execute procedure update_version_column();
 
-  create trigger delete_iam_role_after_delete_iam_role_project after delete on iam_role_project
-    for each row execute procedure delete_associated_iam_role_entry();
+  create trigger delete_iam_role_subtype after delete on iam_role_project
+    for each row execute procedure delete_iam_role_subtype();
 
   create trigger immutable_columns before update on iam_role_project
     for each row execute procedure immutable_columns('scope_id', 'create_time');
