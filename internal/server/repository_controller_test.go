@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	removeControllerSql = `DELETE FROM server_controller WHERE private_id = $1`
+	removeControllerSql = `delete from server_controller where private_id = $1`
 )
 
 func TestRepository_UpsertController(t *testing.T) {
@@ -83,7 +83,7 @@ func TestRepository_UpsertController(t *testing.T) {
 	}
 }
 
-func TestRepository_UpdateController(t *testing.T) {
+func TestRepository_UpdateControllerStatus(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -200,7 +200,7 @@ func TestRepository_UpdateController(t *testing.T) {
 				originalControllerEntry = controllerList[0]
 			}
 
-			got, err := testRepo.UpdateController(ctx, tt.updatedController)
+			got, err := testRepo.UpdateControllerStatus(ctx, tt.updatedController)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, got)

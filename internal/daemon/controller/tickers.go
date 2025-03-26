@@ -83,7 +83,7 @@ func (c *Controller) updateController(ctx context.Context) error {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status update"))
 	}
 
-	_, err = repo.UpdateController(ctx, controller)
+	_, err = repo.UpdateControllerStatus(ctx, controller)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status update"))
 	}

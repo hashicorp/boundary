@@ -225,10 +225,10 @@ const (
 `
 
 	updateController = `
-		update server_controller
-		set address = @controller_address,
-			description = @controller_description,
-			update_time = now()
-		where private_id = @controller_private_id;
+		update server_controller  
+           set address     = @controller_address,  
+               description = @controller_description,  
+               update_time = now()  
+         where private_id = @controller_private_id;  
 `
 )

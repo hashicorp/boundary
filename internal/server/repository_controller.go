@@ -71,8 +71,12 @@ func (r *Repository) UpsertController(ctx context.Context, controller *Controlle
 	return int(rowsUpdated), nil
 }
 
-func (r *Repository) UpdateController(ctx context.Context, controller *Controller) (int, error) {
-	const op = "server.(Repository).UpdateController"
+// UpdateControllerStatus updates the controller's status in the repository.
+// This includes updating the address or description of the controller as well
+// as updating the update_time attribute, which is required for liveness checks
+// as part of a controller's status ticking.
+func (r *Repository) UpdateControllerStatus(ctx context.Context, controller *Controller) (int, error) {
+	const op = "server.(Repository).UpdateControllerStatus"
 
 	if controller == nil {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "controller is nil")
