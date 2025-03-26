@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -32,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -190,6 +192,25 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, subject string, opt 
 
 	require.NoError(rw.Create(ctx, a))
 	return a
+}
+
+// TestAuthMethodWithAccountInManagedGroup creates an authMethod, and an account within that authmethod, an
+// OIDC managed group, and add the newly created account as a member of the OIDC managed group.
+func TestAuthMethodWithAccountInManagedGroup(t *testing.T, conn *db.DB, kmsCache *kms.Kms, scopeId string) (auth.AuthMethod, auth.Account, auth.ManagedGroup) {
+	t.Helper()
+	uuid, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scopeId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, scopeId, ActivePublicState,
+		"alice-rp", "fido",
+		WithIssuer(TestConvertToUrls(t, fmt.Sprintf("https://%s.com", uuid))[0]),
+		WithSigningAlgs(Alg(oidc.RS256)),
+		WithApiUrl(TestConvertToUrls(t, fmt.Sprintf("https://%s.com/callback", uuid))[0]))
+	account := TestAccount(t, conn, testAuthMethod, "testacct")
+	managedGroup := TestManagedGroup(t, conn, testAuthMethod, `"/token/sub" matches ".*"`)
+	TestManagedGroupMember(t, conn, managedGroup.PublicId, account.PublicId)
+	return testAuthMethod, account, managedGroup
 }
 
 // TestManagedGroup creates a test oidc managed group.

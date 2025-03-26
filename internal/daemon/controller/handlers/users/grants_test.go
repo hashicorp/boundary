@@ -78,7 +78,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
@@ -104,7 +104,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				includeTestUsers: false,
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  org2.PublicId,
+						RoleScopeId:  org2.PublicId,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
@@ -124,7 +124,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				includeTestUsers: false,
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeChildren},
 					},
@@ -144,7 +144,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				includeTestUsers: false,
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeChildren},
 					},
@@ -165,7 +165,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				includeTestUsers: false,
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  org1.PublicId,
+						RoleScopeId:  org1.PublicId,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
@@ -184,12 +184,12 @@ func TestGrants_ReadActions(t *testing.T) {
 				includeTestUsers: false,
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  org1.PublicId,
+						RoleScopeId:  org1.PublicId,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
 					{
-						RoleScopeID:  org2.PublicId,
+						RoleScopeId:  org2.PublicId,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
@@ -210,7 +210,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				includeTestUsers: false,
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
@@ -227,7 +227,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				includeTestUsers: true,
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeThis},
 					},
@@ -248,7 +248,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  globals.GlobalPrefix,
+						RoleScopeId:  globals.GlobalPrefix,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeChildren},
 					},
@@ -264,7 +264,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				rolesToCreate: []authtoken.TestRoleGrantsForToken{
 					{
-						RoleScopeID:  org2.PublicId,
+						RoleScopeId:  org2.PublicId,
 						GrantStrings: []string{"ids=*;type=user;actions=list,read"},
 						GrantScopes:  []string{globals.GrantScopeChildren},
 					},
