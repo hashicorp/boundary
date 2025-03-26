@@ -475,6 +475,17 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 			},
+			{
+				name:     "no grants can't read host catalogs",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
+					{Id: allHcs[0]}: handlers.ForbiddenError(),
+					{Id: allHcs[1]}: handlers.ForbiddenError(),
+					{Id: allHcs[2]}: handlers.ForbiddenError(),
+					{Id: allHcs[3]}: handlers.ForbiddenError(),
+					{Id: allHcs[4]}: handlers.ForbiddenError(),
+				},
+			},
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -658,6 +669,13 @@ func TestGrants_WriteActions(t *testing.T) {
 					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: handlers.ForbiddenError(),
 				},
 			},
+			{
+				name:     "no grants can't create in any scope",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: handlers.ForbiddenError(),
+				},
+			},
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -779,6 +797,14 @@ func TestGrants_WriteActions(t *testing.T) {
 							GrantScopes: []string{globals.GrantScopeChildren},
 						},
 					})
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "no grants returns forbidden error",
+				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (userId *iam.User, account auth.Account)) {
+					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
+					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil)
 				},
 				wantErr: handlers.ForbiddenError(),
 			},
@@ -972,6 +998,14 @@ func TestGrants_WriteActions(t *testing.T) {
 							GrantScopes: []string{globals.GrantScopeThis},
 						},
 					})
+				},
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
+				name: "no grants returns forbidden error",
+				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
+					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
+					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil)
 				},
 				wantErr: handlers.ForbiddenError(),
 			},
