@@ -365,7 +365,7 @@ func TestGrants_GetAccounts(t *testing.T) {
 			wantErr:       nil,
 		},
 		{
-			name: "grant specific id but not scope global.This cannot read global account",
+			name: "grant specific id but not grant this at global cannot read global account",
 			input: &pbs.GetAccountRequest{
 				Id: globalPWAccount.PublicId,
 			},
@@ -375,6 +375,23 @@ func TestGrants_GetAccounts(t *testing.T) {
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{fmt.Sprintf("id=%s;type=account;actions=read", globalPasswordAM.PublicId)},
 						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				})
+			},
+			wantAccountID: "",
+			wantErr:       handlers.ForbiddenError(),
+		},
+		{
+			name: "grant specific id but not grant this at global cannot read global account",
+			input: &pbs.GetAccountRequest{
+				Id: globalPWAccount.PublicId,
+			},
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=account;actions=list"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				})
 			},
