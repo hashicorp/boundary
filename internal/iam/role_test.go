@@ -779,6 +779,7 @@ func Test_globalRole_Create(t *testing.T) {
 			baseRole := allocRole()
 			baseRole.PublicId = tt.args.role.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.NoError(t, err)
 			require.Equal(t, foundGrp.CreateTime.AsTime(), baseRole.CreateTime.AsTime())
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 		})
@@ -958,8 +959,8 @@ func Test_globalRole_Update(t *testing.T) {
 			baseRole := allocRole()
 			baseRole.PublicId = original.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.NoError(t, err)
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
-
 			// assert other update time as necessary
 			if original.GrantThisRoleScope != args.updateRole.GrantThisRoleScope {
 				require.Greater(t, foundGrp.GrantThisRoleScopeUpdateTime.AsTime(), original.GrantThisRoleScopeUpdateTime.AsTime())
@@ -1485,6 +1486,7 @@ func Test_orgRole_Create(t *testing.T) {
 			baseRole := allocRole()
 			baseRole.PublicId = tt.args.role.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.NoError(t, err)
 			require.Equal(t, foundGrp.CreateTime.AsTime(), baseRole.CreateTime.AsTime())
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 		})
@@ -1667,6 +1669,7 @@ func Test_orgRole_Update(t *testing.T) {
 			baseRole := allocRole()
 			baseRole.PublicId = original.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.NoError(t, err)
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 
 			// assert other update time as necessary
@@ -2091,6 +2094,7 @@ func Test_projectRole_Create(t *testing.T) {
 			baseRole := allocRole()
 			baseRole.PublicId = tt.args.role.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.NoError(t, err)
 			require.Equal(t, foundGrp.CreateTime.AsTime(), baseRole.CreateTime.AsTime())
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 		})
@@ -2207,6 +2211,7 @@ func Test_projectRole_Update(t *testing.T) {
 			baseRole := allocRole()
 			baseRole.PublicId = original.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
+			require.NoError(t, err)
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 		})
 	}
