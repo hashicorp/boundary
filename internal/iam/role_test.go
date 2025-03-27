@@ -2541,3 +2541,132 @@ func Test_projectRole_SetTableName(t *testing.T) {
 		})
 	}
 }
+
+func Test_getRoleScopeId(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	ctx := context.Background()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+	type arg struct {
+		roleId   string
+		dbReader db.Reader
+	}
+	testcases := []struct {
+		name        string
+		inputRoleId func(t *testing.T) arg
+		expect      string
+		wantErr     bool
+		wantErrMsg  string
+	}{
+		{
+			name: "valid role global scope",
+			inputRoleId: func(t *testing.T) arg {
+				grpId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				r := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						PublicId:           grpId,
+						ScopeId:            globals.GlobalPrefix,
+						GrantThisRoleScope: true,
+						GrantScope:         globals.GrantScopeDescendants,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, r))
+				return arg{
+					roleId:   r.PublicId,
+					dbReader: rw,
+				}
+			},
+			expect: globals.GlobalPrefix,
+		},
+		{
+			name: "valid role org scope",
+			inputRoleId: func(t *testing.T) arg {
+				grpId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				r := &orgRole{
+					OrgRole: &store.OrgRole{
+						PublicId:           grpId,
+						ScopeId:            org.PublicId,
+						GrantThisRoleScope: true,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, r))
+				return arg{
+					roleId:   r.PublicId,
+					dbReader: rw,
+				}
+			},
+			expect: org.PublicId,
+		},
+		{
+			name: "valid role project scope",
+			inputRoleId: func(t *testing.T) arg {
+				grpId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				r := &projectRole{
+					ProjectRole: &store.ProjectRole{
+						PublicId: grpId,
+						ScopeId:  proj.PublicId,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, r))
+				return arg{
+					roleId:   r.PublicId,
+					dbReader: rw,
+				}
+			},
+			expect: proj.PublicId,
+		},
+		{
+			name: "role does not exist returns error",
+			inputRoleId: func(t *testing.T) arg {
+				return arg{
+					roleId:   "r_123456",
+					dbReader: rw,
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `iam.getRoleScopeId: role not found: state violation: error #404`,
+		},
+		{
+			name: "missing role id returns error",
+			inputRoleId: func(t *testing.T) arg {
+				return arg{
+					roleId:   "",
+					dbReader: rw,
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `iam.getRoleScopeId: missing role ID: parameter violation: error #100`,
+		},
+		{
+			name: "missing db.Reader returns error",
+			inputRoleId: func(t *testing.T) arg {
+				return arg{
+					roleId:   "r_123456",
+					dbReader: nil,
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `iam.getRoleScopeId: missing db.Reader: parameter violation: error #100`,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := tc.inputRoleId(t)
+			got, err := getRoleScopeId(ctx, args.dbReader, args.roleId)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Equal(t, tc.wantErrMsg, err.Error())
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expect, got)
+		})
+	}
+}
