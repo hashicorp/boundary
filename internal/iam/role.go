@@ -347,18 +347,18 @@ func getRoleScopeId(ctx context.Context, r db.Reader, roleId string) (string, er
 	}
 	rows, err := r.Query(ctx, scopeIdFromRoleIdQuery, []any{roleId})
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup role scope"))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup role scope for :%s", roleId)))
 	}
 	var scopeId string
 	cnt := 0
 	for rows.Next() {
 		cnt++
 		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
-			return "", errors.Wrap(ctx, err, op, errors.WithMsg("failed scan results from querying role scope"))
+			return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for :%s", roleId)))
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unexpected error scanning results from querying role scope"))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
 	}
 	if cnt == 0 {
 		return "", errors.New(ctx, errors.NotFound, op, fmt.Sprintf("role %s not found", roleId))
