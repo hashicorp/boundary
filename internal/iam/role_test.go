@@ -931,6 +931,38 @@ func Test_globalRole_Update(t *testing.T) {
 			wantRowsUpdate: 1,
 			wantErr:        false,
 		},
+		{
+			name: "can update version",
+			setupOriginal: func(t *testing.T) *globalRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						PublicId:           roleId,
+						ScopeId:            globals.GlobalPrefix,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: true,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *globalRole) arg {
+				updated := original.Clone().(*globalRole)
+				// version will be overridden by trigger
+				updated.Version = 123456
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"version"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -950,7 +982,6 @@ func Test_globalRole_Update(t *testing.T) {
 				return
 			}
 			require.Equal(t, tt.wantRowsUpdate, updatedRows)
-
 			foundGrp := allocGlobalRole()
 			foundGrp.PublicId = original.PublicId
 			err = rw.LookupByPublicId(ctx, &foundGrp)
@@ -960,6 +991,7 @@ func Test_globalRole_Update(t *testing.T) {
 			baseRole.PublicId = original.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.NoError(t, err)
+			require.Equal(t, original.Version+1, foundGrp.Version)
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 			// assert other update time as necessary
 			if original.GrantThisRoleScope != args.updateRole.GrantThisRoleScope {
@@ -1641,6 +1673,37 @@ func Test_orgRole_Update(t *testing.T) {
 			wantRowsUpdate: 1,
 			wantErr:        false,
 		},
+		{
+			name: "can update version",
+			setupOriginal: func(t *testing.T) *orgRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &orgRole{
+					OrgRole: &store.OrgRole{
+						PublicId:           roleId,
+						ScopeId:            org.PublicId,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: true,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *orgRole) arg {
+				updated := original.Clone().(*orgRole)
+				updated.Version = uint32(15)
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"version"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1671,7 +1734,8 @@ func Test_orgRole_Update(t *testing.T) {
 			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.NoError(t, err)
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
-
+			require.Equal(t, original.Version+1, foundGrp.Version)
+			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 			// assert other update time as necessary
 			if original.GrantThisRoleScope != args.updateRole.GrantThisRoleScope {
 				require.Greater(t, foundGrp.GrantThisRoleScopeUpdateTime.AsTime(), original.GrantThisRoleScopeUpdateTime.AsTime())
@@ -2183,6 +2247,35 @@ func Test_projectRole_Update(t *testing.T) {
 			wantRowsUpdate: 1,
 			wantErr:        false,
 		},
+		{
+			name: "can update version",
+			setupOriginal: func(t *testing.T) *projectRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &projectRole{
+					ProjectRole: &store.ProjectRole{
+						PublicId:    roleId,
+						ScopeId:     proj.PublicId,
+						Name:        testId(t),
+						Description: "desc",
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *projectRole) arg {
+				updated := original.Clone().(*projectRole)
+				updated.Version = uint32(15)
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"version"},
+					nullPath:   []string{},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -2212,6 +2305,8 @@ func Test_projectRole_Update(t *testing.T) {
 			baseRole.PublicId = original.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.NoError(t, err)
+			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
+			require.Equal(t, original.Version+1, foundGrp.Version)
 			require.Equal(t, foundGrp.UpdateTime.AsTime(), baseRole.UpdateTime.AsTime())
 		})
 	}
