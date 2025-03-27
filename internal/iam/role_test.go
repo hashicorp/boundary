@@ -2536,7 +2536,7 @@ func Test_getRoleScopeId(t *testing.T) {
 				}
 			},
 			wantErr:    true,
-			wantErrMsg: `iam.getRoleScopeId: role not found: state violation: error #404`,
+			wantErrMsg: `iam.getRoleScopeId: role r_123456 not found: state violation: error #404`,
 		},
 		{
 			name: "missing role id returns error",
@@ -2547,7 +2547,7 @@ func Test_getRoleScopeId(t *testing.T) {
 				}
 			},
 			wantErr:    true,
-			wantErrMsg: `iam.getRoleScopeId: missing role ID: parameter violation: error #100`,
+			wantErrMsg: `iam.getRoleScopeId: missing role id: parameter violation: error #100`,
 		},
 		{
 			name: "missing db.Reader returns error",
