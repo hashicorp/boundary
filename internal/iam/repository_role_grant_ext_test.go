@@ -414,7 +414,7 @@ func TestGrantsForUser(t *testing.T) {
 	repo := iam.TestRepo(t, conn, wrap)
 
 	// Test against each resource
-	for _, r := range []resource.Type{resource.Group} {
+	for _, r := range []resource.Type{resource.Group, resource.Account} {
 		t.Run(fmt.Sprintf("[Resource: %s] [User Association]", r), func(t *testing.T) {
 			// Create a couple users to test direct associations
 			user := iam.TestUser(t, repo, "global")
