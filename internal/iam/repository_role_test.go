@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestRepository_CreateRole(t *testing.T) {
@@ -90,19 +89,6 @@ func TestRepository_CreateRole(t *testing.T) {
 			wantIsError: errors.InvalidParameter,
 		},
 		{
-			name: "nil-store",
-			args: args{
-				role: func() *Role {
-					return &Role{
-						Role: nil,
-					}
-				}(),
-			},
-			wantErr:     true,
-			wantErrMsg:  "iam.(Repository).CreateRole: missing role store: parameter violation: error #100",
-			wantIsError: errors.InvalidParameter,
-		},
-		{
 			name: "bad-scope-id",
 			args: args{
 				role: func() *Role {
@@ -169,7 +155,7 @@ func TestRepository_CreateRole(t *testing.T) {
 
 			foundGrp, _, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
 			assert.NoError(err)
-			assert.True(proto.Equal(foundGrp, grp))
+			assert.Equal(foundGrp, grp)
 
 			err = db.TestVerifyOplog(t, rw, grp.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
@@ -418,7 +404,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			}
 			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
-			updateRole := allocRole()
+			updateRole := Role{}
 			updateRole.PublicId = r.PublicId
 			if tt.args.PublicId != nil {
 				updateRole.PublicId = *tt.args.PublicId
@@ -452,7 +438,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			}
 			foundRole, _, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
-			assert.True(proto.Equal(roleAfterUpdate, foundRole))
+			assert.Equal(roleAfterUpdate, foundRole)
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
@@ -505,7 +491,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			name: "no-public-id",
 			args: args{
 				role: func() *Role {
-					r := allocRole()
+					r := Role{}
 					return &r
 				}(),
 			},
@@ -634,7 +620,9 @@ func TestRepository_listRoles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			t.Cleanup(func() {
-				db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
+				db.TestDeleteWhere(t, conn, func() any { i := allocGlobalRole(); return &i }(), "1=1")
+				db.TestDeleteWhere(t, conn, func() any { i := allocOrgRole(); return &i }(), "1=1")
+				db.TestDeleteWhere(t, conn, func() any { i := allocProjectRole(); return &i }(), "1=1")
 			})
 			testRoles := []*Role{}
 			for i := 0; i < tt.createCnt; i++ {
@@ -750,7 +738,9 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	db.TestDeleteWhere(t, conn, func() any { i := allocRole(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := allocGlobalRole(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := allocOrgRole(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := allocProjectRole(); return &i }(), "1=1")
 
 	const numPerScope = 10
 	var total int
