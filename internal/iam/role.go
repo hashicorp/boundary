@@ -24,17 +24,66 @@ const (
 
 // Roles are granted permissions and assignable to Users and Groups.
 type Role struct {
-	*store.Role
+	PublicId    string
+	ScopeId     string
+	Name        string
+	Description string
+	CreateTime  *timestamp.Timestamp
+	UpdateTime  *timestamp.Timestamp
+	Version     uint32
 	GrantScopes []*RoleGrantScope `gorm:"-"`
-	tableName   string            `gorm:"-"`
+}
+
+func (role *Role) GetPublicId() string {
+	if role == nil {
+		return ""
+	}
+	return role.PublicId
+}
+
+func (role *Role) GetScopeId() string {
+	if role == nil {
+		return ""
+	}
+	return role.ScopeId
+}
+func (role *Role) GetName() string {
+	if role == nil {
+		return ""
+	}
+	return role.Name
+}
+
+func (role *Role) GetDescription() string {
+	if role == nil {
+		return ""
+	}
+	return role.Description
+}
+
+func (role *Role) GetCreateTime() *timestamp.Timestamp {
+	if role == nil {
+		return nil
+	}
+	return role.CreateTime
+}
+
+func (role *Role) GetUpdateTime() *timestamp.Timestamp {
+	if role == nil {
+		return nil
+	}
+	return role.UpdateTime
+}
+
+func (role *Role) GetVersion() uint32 {
+	if role == nil {
+		return 0
+	}
+	return role.Version
 }
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
 var (
-	_ Resource        = (*Role)(nil)
-	_ Cloneable       = (*Role)(nil)
-	_ db.VetForWriter = (*Role)(nil)
-
 	_ Resource        = (*globalRole)(nil)
 	_ Cloneable       = (*globalRole)(nil)
 	_ db.VetForWriter = (*globalRole)(nil)
@@ -57,31 +106,11 @@ func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) 
 	}
 	opts := getOpts(opt...)
 	r := &Role{
-		Role: &store.Role{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-		},
+		ScopeId:     scopeId,
+		Name:        opts.withName,
+		Description: opts.withDescription,
 	}
 	return r, nil
-}
-
-func allocRole() Role {
-	return Role{
-		Role: &store.Role{},
-	}
-}
-
-// Clone creates a clone of the Role.
-func (role *Role) Clone() any {
-	cp := proto.Clone(role.Role)
-	ret := &Role{
-		Role: cp.(*store.Role),
-	}
-	for _, grantScope := range role.GrantScopes {
-		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-	}
-	return ret
 }
 
 // VetForWrite implements db.VetForWrite() interface.
@@ -118,21 +147,6 @@ func (*Role) Actions() map[string]action.Type {
 	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
-}
-
-// TableName returns the tablename to override the default gorm table name.
-func (role *Role) TableName() string {
-	if role.tableName != "" {
-		return role.tableName
-	}
-	return defaultRoleTableName
-}
-
-// SetTableName sets the tablename and satisfies the ReplayableMessage
-// interface. If the caller attempts to set the name to "" the name will be
-// reset to the default name.
-func (role *Role) SetTableName(n string) {
-	role.tableName = n
 }
 
 type deletedRole struct {
