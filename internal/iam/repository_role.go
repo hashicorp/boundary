@@ -27,8 +27,6 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	switch {
 	case role == nil:
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role")
-	case role.Role == nil:
-		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
 	case role.PublicId != "":
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	case role.ScopeId == "":
@@ -46,9 +44,9 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		roleToCreate = &globalRole{
 			GlobalRole: &store.GlobalRole{
 				PublicId:           id,
-				ScopeId:            role.GetScopeId(),
-				Name:               role.GetName(),
-				Description:        role.GetDescription(),
+				ScopeId:            role.ScopeId,
+				Name:               role.Name,
+				Description:        role.Description,
 				GrantThisRoleScope: false,
 				GrantScope:         globals.GrantScopeIndividual,
 			},
@@ -57,9 +55,9 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		roleToCreate = &orgRole{
 			OrgRole: &store.OrgRole{
 				PublicId:           id,
-				ScopeId:            role.GetScopeId(),
-				Name:               role.GetName(),
-				Description:        role.GetDescription(),
+				ScopeId:            role.ScopeId,
+				Name:               role.Name,
+				Description:        role.Description,
 				GrantThisRoleScope: false,
 				GrantScope:         globals.GrantScopeIndividual,
 			},
@@ -68,9 +66,9 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		roleToCreate = &projectRole{
 			ProjectRole: &store.ProjectRole{
 				PublicId:    id,
-				ScopeId:     role.GetScopeId(),
-				Name:        role.GetName(),
-				Description: role.GetDescription(),
+				ScopeId:     role.ScopeId,
+				Name:        role.Name,
+				Description: role.Description,
 			},
 		}
 	default:
@@ -95,7 +93,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
 			}
 			// Do a fresh lookup to get all return values
-			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, resource.(*Role).PublicId, WithReaderWriter(reader, writer))
+			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, resource.GetPublicId(), WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -105,15 +103,57 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		if errors.IsUniqueError(err) {
 			return nil, nil, nil, nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
-		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", resource.GetPublicId())))
 	}
-	switch {
-	case strings.HasPrefix(role.GetScopeId(), globals.GlobalPrefix):
-	case strings.HasPrefix(role.GetScopeId(), globals.OrgPrefix):
-	case strings.HasPrefix(role.GetScopeId(), globals.ProjectPrefix):
+	var finalRole *Role
+	switch resource.(type) {
+	case *globalRole:
+		global := resource.(*globalRole)
+		finalRole = &Role{
+			PublicId:    global.GetPublicId(),
+			ScopeId:     global.GetScopeId(),
+			Name:        global.GetName(),
+			Description: global.GetDescription(),
+			CreateTime:  global.GetCreateTime(),
+			UpdateTime:  global.GetUpdateTime(),
+			Version:     global.GetVersion(),
+			GrantScopes: global.GrantScopes,
+		}
+		for _, grantScope := range global.GrantScopes {
+			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+		}
+	case *orgRole:
+		org := resource.(*orgRole)
+		finalRole = &Role{
+			PublicId:    org.GetPublicId(),
+			ScopeId:     org.GetScopeId(),
+			Name:        org.GetName(),
+			Description: org.GetDescription(),
+			CreateTime:  org.GetCreateTime(),
+			UpdateTime:  org.GetUpdateTime(),
+			Version:     org.GetVersion(),
+		}
+		for _, grantScope := range org.GrantScopes {
+			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+		}
+	case *projectRole:
+		proj := resource.(*projectRole)
+		finalRole = &Role{
+			PublicId:    proj.GetPublicId(),
+			ScopeId:     proj.GetScopeId(),
+			Name:        proj.GetName(),
+			Description: proj.GetDescription(),
+			CreateTime:  proj.GetCreateTime(),
+			UpdateTime:  proj.GetUpdateTime(),
+			Version:     proj.GetVersion(),
+		}
+		for _, grantScope := range proj.GrantScopes {
+			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+		}
+	default:
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unknown role type %T", resource)))
 	}
-
-	return resource.(*Role), pr, rg, grantScopes, nil
+	return finalRole, pr, rg, grantScopes, nil
 }
 
 // UpdateRole will update a role in the repository and return the written role.
@@ -126,9 +166,6 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	const op = "iam.(Repository).UpdateRole"
 	if role == nil {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role")
-	}
-	if role.Role == nil {
-		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
 	}
 	if role.PublicId == "" {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
@@ -168,10 +205,37 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			var err error
-			c := role.Clone().(*Role)
-			resource = c // If we don't have dbMask or nullFields, we'll return this
+			var res Resource
+			switch {
+			case strings.HasPrefix(role.PublicId, globals.GlobalPrefix):
+				res = &globalRole{GlobalRole: &store.GlobalRole{
+					PublicId:    role.GetPublicId(),
+					ScopeId:     role.GetScopeId(),
+					Name:        role.GetName(),
+					Description: role.GetDescription(),
+					Version:     role.GetVersion(),
+				}}
+			case strings.HasPrefix(role.PublicId, globals.OrgPrefix):
+				res = &orgRole{OrgRole: &store.OrgRole{
+					PublicId:    role.GetPublicId(),
+					ScopeId:     role.GetScopeId(),
+					Name:        role.GetName(),
+					Description: role.GetDescription(),
+					Version:     role.GetVersion(),
+				}}
+			case strings.HasPrefix(role.PublicId, globals.ProjectPrefix):
+				res = &projectRole{ProjectRole: &store.ProjectRole{
+					PublicId:    role.GetPublicId(),
+					ScopeId:     role.GetScopeId(),
+					Name:        role.GetName(),
+					Description: role.GetDescription(),
+					Version:     role.GetVersion(),
+				}}
+			}
+
+			resource = res // If we don't have dbMask or nullFields, we'll return this
 			if len(dbMask) > 0 || len(nullFields) > 0 {
-				resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields, WithReaderWriter(read, w))
+				resource, rowsUpdated, err = r.update(ctx, res, version, dbMask, nullFields, WithReaderWriter(read, w))
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
@@ -193,6 +257,55 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		}
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
 	}
+	var finalRole *Role
+	switch resource.(type) {
+	case *globalRole:
+		global := resource.(*globalRole)
+		finalRole = &Role{
+			PublicId:    global.GetPublicId(),
+			ScopeId:     global.GetScopeId(),
+			Name:        global.GetName(),
+			Description: global.GetDescription(),
+			CreateTime:  global.GetCreateTime(),
+			UpdateTime:  global.GetUpdateTime(),
+			Version:     global.GetVersion(),
+			GrantScopes: global.GrantScopes,
+		}
+		for _, grantScope := range global.GrantScopes {
+			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+		}
+	case *orgRole:
+		org := resource.(*orgRole)
+		finalRole = &Role{
+			PublicId:    org.GetPublicId(),
+			ScopeId:     org.GetScopeId(),
+			Name:        org.GetName(),
+			Description: org.GetDescription(),
+			CreateTime:  org.GetCreateTime(),
+			UpdateTime:  org.GetUpdateTime(),
+			Version:     org.GetVersion(),
+		}
+		for _, grantScope := range org.GrantScopes {
+			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+		}
+	case *projectRole:
+		proj := resource.(*projectRole)
+		finalRole = &Role{
+			PublicId:    proj.GetPublicId(),
+			ScopeId:     proj.GetScopeId(),
+			Name:        proj.GetName(),
+			Description: proj.GetDescription(),
+			CreateTime:  proj.GetCreateTime(),
+			UpdateTime:  proj.GetUpdateTime(),
+			Version:     proj.GetVersion(),
+		}
+		for _, grantScope := range proj.GrantScopes {
+			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+		}
+	default:
+		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unknown role type %T", resource)))
+	}
+
 	return resource.(*Role), pr, rg, grantScopes, rowsUpdated, nil
 }
 
@@ -206,16 +319,78 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	opts := getOpts(opt...)
-	role := allocRole()
-	role.PublicId = withPublicId
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var rgs []*RoleGrantScope
+	var role Role
 
 	lookupFunc := func(read db.Reader, w db.Writer) error {
-		if err := read.LookupByPublicId(ctx, &role); err != nil {
+		roleScopeId, err := getRoleScopeId(ctx, r.reader, withPublicId)
+		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+		var res Resource
+		switch {
+		case strings.HasPrefix(roleScopeId, globals.GlobalPrefix):
+			res = &globalRole{GlobalRole: &store.GlobalRole{PublicId: roleScopeId}}
+		case strings.HasPrefix(roleScopeId, globals.OrgPrefix):
+			res = &orgRole{OrgRole: &store.OrgRole{PublicId: roleScopeId}}
+		case strings.HasPrefix(roleScopeId, globals.ProjectPrefix):
+			res = &projectRole{ProjectRole: &store.ProjectRole{PublicId: roleScopeId}}
+		}
+
+		if err := read.LookupByPublicId(ctx, res); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		switch res.(type) {
+		case *globalRole:
+			global := res.(*globalRole)
+			role = Role{
+				PublicId:    global.GetPublicId(),
+				ScopeId:     global.GetScopeId(),
+				Name:        global.GetName(),
+				Description: global.GetDescription(),
+				CreateTime:  global.GetCreateTime(),
+				UpdateTime:  global.GetUpdateTime(),
+				Version:     global.GetVersion(),
+				GrantScopes: global.GrantScopes,
+			}
+			for _, grantScope := range global.GrantScopes {
+				role.GrantScopes = append(role.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+			}
+		case *orgRole:
+			org := res.(*orgRole)
+			role = Role{
+				PublicId:    org.GetPublicId(),
+				ScopeId:     org.GetScopeId(),
+				Name:        org.GetName(),
+				Description: org.GetDescription(),
+				CreateTime:  org.GetCreateTime(),
+				UpdateTime:  org.GetUpdateTime(),
+				Version:     org.GetVersion(),
+			}
+			for _, grantScope := range org.GrantScopes {
+				role.GrantScopes = append(role.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+			}
+		case *projectRole:
+			proj := res.(*projectRole)
+			role = Role{
+				PublicId:    proj.GetPublicId(),
+				ScopeId:     proj.GetScopeId(),
+				Name:        proj.GetName(),
+				Description: proj.GetDescription(),
+				CreateTime:  proj.GetCreateTime(),
+				UpdateTime:  proj.GetUpdateTime(),
+				Version:     proj.GetVersion(),
+			}
+			for _, grantScope := range proj.GrantScopes {
+				role.GrantScopes = append(role.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+			}
+		default:
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unknown role type %T", res)))
+		}
+
 		repo, err := NewRepository(ctx, read, w, r.kms)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -264,12 +439,21 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
-	role := allocRole()
-	role.PublicId = withPublicId
-	if err := r.reader.LookupByPublicId(ctx, &role); err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+	roleScopeId, err := getRoleScopeId(ctx, r.reader, withPublicId)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	rowsDeleted, err := r.delete(ctx, &role)
+
+	var res Resource
+	switch {
+	case strings.HasPrefix(roleScopeId, globals.GlobalPrefix):
+		res = &globalRole{GlobalRole: &store.GlobalRole{PublicId: roleScopeId}}
+	case strings.HasPrefix(roleScopeId, globals.OrgPrefix):
+		res = &orgRole{OrgRole: &store.OrgRole{PublicId: roleScopeId}}
+	case strings.HasPrefix(roleScopeId, globals.ProjectPrefix):
+		res = &projectRole{ProjectRole: &store.ProjectRole{PublicId: roleScopeId}}
+	}
+	rowsDeleted, err := r.delete(ctx, res)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
