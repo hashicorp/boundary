@@ -333,3 +333,37 @@ func (p *projectRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+
+// getRoleScopeId returns scopeID for the Role from the base type iam_role table
+// use this to get scope ID to determine which of the role subtype tables to operate on
+func getRoleScopeId(ctx context.Context, r db.Reader, roleId string) (string, error) {
+	const (
+		op    = "iam.getRoleScopeId"
+		query = `select scope_id from iam_role where public_id = ?`
+	)
+	if roleId == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing role ID")
+	}
+	if r == nil {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+	}
+	rows, err := r.Query(ctx, query, []any{roleId})
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup role scope ID"))
+	}
+	var scopeId string
+	cnt := 0
+	for rows.Next() {
+		cnt++
+		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
+			return "", errors.Wrap(ctx, err, op, errors.WithMsg("failed scan results from querying role scope ID"))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unexpected error scanning results from querying role scope ID"))
+	}
+	if cnt == 0 {
+		return "", errors.New(ctx, errors.NotFound, op, "role not found")
+	}
+	return scopeId, nil
+}
