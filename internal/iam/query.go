@@ -221,4 +221,9 @@ const (
 	estimateCountScopes = `
 		select reltuples::bigint as estimate from pg_class where oid in ('iam_scope'::regclass)
 	`
+
+	scopeIdFromRoleIdQuery = `
+	   select scope_id
+		 from iam_role
+		where public_id = $1;`
 )
