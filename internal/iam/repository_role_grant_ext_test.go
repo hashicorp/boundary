@@ -454,7 +454,7 @@ func TestGrantsForUser(t *testing.T) {
 	oidc.TestManagedGroupMember(t, conn, oidcManagedGroup2.GetPublicId(), oidcAcct2.GetPublicId())
 
 	// Test against each resource
-	for _, r := range []resource.Type{resource.Group} {
+	for _, r := range []resource.Type{resource.Group, resource.Account} {
 		t.Run(fmt.Sprintf("[Resource: %s] [User Association]", r), func(t *testing.T) {
 			var (
 				p1              = principal{principalId: user.PublicId, userId: user.PublicId}
