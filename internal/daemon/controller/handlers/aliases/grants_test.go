@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -25,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -638,6 +638,11 @@ func TestGrants_WriteActions(t *testing.T) {
 }
 
 func TestOutputFields(t *testing.T) {
+	genUuid := func(t *testing.T) string {
+		id, err := uuid.GenerateUUID()
+		require.NoError(t, err)
+		return id
+	}
 	t.Run("ListAlias", func(t *testing.T) {
 		ctx := context.Background()
 		conn, _ := db.TestSetup(t, "postgres")
@@ -918,8 +923,8 @@ func TestOutputFields(t *testing.T) {
 				name: "grant with output_fields only returns: name and description",
 				input: &pbs.CreateAliasRequest{
 					Item: &pb.Alias{
-						Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:        &wrapperspb.StringValue{Value: genUuid(t)},
+						Description: &wrapperspb.StringValue{Value: genUuid(t)},
 						ScopeId:     globals.GlobalPrefix,
 						Type:        "target",
 						Value:       "valid.alias.one",
@@ -938,8 +943,8 @@ func TestOutputFields(t *testing.T) {
 				name: "grant with output_fields only returns: scope_id and value",
 				input: &pbs.CreateAliasRequest{
 					Item: &pb.Alias{
-						Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:        &wrapperspb.StringValue{Value: genUuid(t)},
+						Description: &wrapperspb.StringValue{Value: genUuid(t)},
 						ScopeId:     globals.GlobalPrefix,
 						Type:        "target",
 						Value:       "valid.alias.two",
@@ -958,8 +963,8 @@ func TestOutputFields(t *testing.T) {
 				name: "grant with output_fields only returns: update_time and create_time",
 				input: &pbs.CreateAliasRequest{
 					Item: &pb.Alias{
-						Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:        &wrapperspb.StringValue{Value: genUuid(t)},
+						Description: &wrapperspb.StringValue{Value: genUuid(t)},
 						ScopeId:     globals.GlobalPrefix,
 						Type:        "target",
 						Value:       "valid.alias.three",
@@ -978,8 +983,8 @@ func TestOutputFields(t *testing.T) {
 				name: "grant with output_fields only returns: id, destination_id, value, version",
 				input: &pbs.CreateAliasRequest{
 					Item: &pb.Alias{
-						Name:          &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description:   &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:          &wrapperspb.StringValue{Value: genUuid(t)},
+						Description:   &wrapperspb.StringValue{Value: genUuid(t)},
 						ScopeId:       globals.GlobalPrefix,
 						Type:          "target",
 						Value:         "valid.alias.four",
@@ -999,8 +1004,8 @@ func TestOutputFields(t *testing.T) {
 				name: "composite grants all fields",
 				input: &pbs.CreateAliasRequest{
 					Item: &pb.Alias{
-						Name:          &wrapperspb.StringValue{Value: uuid.NewString()},
-						Description:   &wrapperspb.StringValue{Value: uuid.NewString()},
+						Name:          &wrapperspb.StringValue{Value: genUuid(t)},
+						Description:   &wrapperspb.StringValue{Value: genUuid(t)},
 						ScopeId:       globals.GlobalPrefix,
 						Type:          "target",
 						Value:         "valid.alias.five",
@@ -1106,7 +1111,7 @@ func TestOutputFields(t *testing.T) {
 
 		// this can be used across test cases because we're only testing for output fields, not the update behaviors
 		inputFunc := func(t *testing.T) *pbs.UpdateAliasRequest {
-			alias1 := "test.alias." + uuid.NewString()
+			alias1 := "test.alias." + genUuid(t)
 			globalAlias1 := target.TestAlias(
 				t,
 				rw,
@@ -1119,8 +1124,8 @@ func TestOutputFields(t *testing.T) {
 			return &pbs.UpdateAliasRequest{
 				Id: globalAlias1.PublicId,
 				Item: &pb.Alias{
-					Name:        &wrapperspb.StringValue{Value: uuid.NewString()},
-					Description: &wrapperspb.StringValue{Value: uuid.NewString()},
+					Name:        &wrapperspb.StringValue{Value: genUuid(t)},
+					Description: &wrapperspb.StringValue{Value: genUuid(t)},
 					Version:     globalAlias1.Version,
 				},
 				UpdateMask: &fieldmaskpb.FieldMask{
