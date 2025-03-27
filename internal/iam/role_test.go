@@ -205,7 +205,7 @@ func Test_RoleCreate(t *testing.T) {
 			assert.NoError(err)
 			assert.NotEmpty(tt.args.role.PublicId)
 
-			foundGrp := allocRole()
+			foundGrp := allocBaseRole()
 			foundGrp.PublicId = tt.args.role.PublicId
 			err = w.LookupByPublicId(ctx, &foundGrp)
 			require.NoError(err)
@@ -440,7 +440,7 @@ func Test_RoleDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteRole := allocRole()
+			deleteRole := allocBaseRole()
 			deleteRole.PublicId = tt.role.GetPublicId()
 			deletedRows, err := rw.Delete(context.Background(), &deleteRole)
 			if tt.wantErr {
@@ -453,7 +453,7 @@ func Test_RoleDelete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole := allocRole()
+			foundRole := allocBaseRole()
 			foundRole.PublicId = tt.role.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundRole)
 			require.Error(err)
@@ -1515,7 +1515,7 @@ func Test_orgRole_Create(t *testing.T) {
 			require.NotZero(t, foundGrp.CreateTime.AsTime())
 			require.NotZero(t, foundGrp.UpdateTime.AsTime())
 
-			baseRole := allocRole()
+			baseRole := allocBaseRole()
 			baseRole.PublicId = tt.args.role.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.NoError(t, err)
@@ -1729,7 +1729,7 @@ func Test_orgRole_Update(t *testing.T) {
 			err = rw.LookupByPublicId(ctx, &foundGrp)
 			require.NoError(t, err)
 			require.Empty(t, cmp.Diff(args.updateRole, &foundGrp, protocmp.Transform()))
-			baseRole := allocRole()
+			baseRole := allocBaseRole()
 			baseRole.PublicId = original.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.NoError(t, err)
@@ -2155,7 +2155,7 @@ func Test_projectRole_Create(t *testing.T) {
 			require.Empty(t, cmp.Diff(r, &foundGrp, protocmp.Transform()))
 			require.NotZero(t, foundGrp.CreateTime.AsTime())
 			require.NotZero(t, foundGrp.UpdateTime.AsTime())
-			baseRole := allocRole()
+			baseRole := allocBaseRole()
 			baseRole.PublicId = tt.args.role.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.NoError(t, err)
@@ -2301,7 +2301,7 @@ func Test_projectRole_Update(t *testing.T) {
 			err = rw.LookupByPublicId(ctx, &foundGrp)
 			require.NoError(t, err)
 			require.Empty(t, cmp.Diff(args.updateRole, &foundGrp, protocmp.Transform()))
-			baseRole := allocRole()
+			baseRole := allocBaseRole()
 			baseRole.PublicId = original.PublicId
 			err = rw.LookupByPublicId(ctx, &baseRole)
 			require.NoError(t, err)
