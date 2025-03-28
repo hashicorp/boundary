@@ -407,7 +407,7 @@ func (p *projectRole) toRole() *Role {
 func getRoleScopeId(ctx context.Context, r db.Reader, roleId string) (string, error) {
 	const (
 		op    = "iam.getRoleScopeId"
-		query = `select scope_id from iam_role where public_id = ?`
+		query = `select scope_id from iam_role where public_id = $1`
 	)
 	if roleId == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing role ID")
