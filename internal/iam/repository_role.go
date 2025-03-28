@@ -75,7 +75,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
 	}
 
-	var resource Resource
+	var createdRole *Role
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var grantScopes []*RoleGrantScope
@@ -84,16 +84,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, writer db.Writer) error {
-			resource, err = r.create(ctx, roleToCreate, WithReaderWriter(reader, writer))
+			res, err := r.create(ctx, roleToCreate, WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while creating role"))
 			}
-			_, _, err = r.SetRoleGrantScopes(ctx, id, resource.(*Role).Version, []string{globals.GrantScopeThis}, WithReaderWriter(reader, writer))
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
-			}
 			// Do a fresh lookup to get all return values
-			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, resource.GetPublicId(), WithReaderWriter(reader, writer))
+			createdRole, pr, rg, grantScopes, err = r.LookupRole(ctx, res.GetPublicId(), WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -103,57 +99,9 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		if errors.IsUniqueError(err) {
 			return nil, nil, nil, nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
-		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", resource.GetPublicId())))
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", roleToCreate.GetPublicId())))
 	}
-	var finalRole *Role
-	switch resource.(type) {
-	case *globalRole:
-		global := resource.(*globalRole)
-		finalRole = &Role{
-			PublicId:    global.GetPublicId(),
-			ScopeId:     global.GetScopeId(),
-			Name:        global.GetName(),
-			Description: global.GetDescription(),
-			CreateTime:  global.GetCreateTime(),
-			UpdateTime:  global.GetUpdateTime(),
-			Version:     global.GetVersion(),
-			GrantScopes: global.GrantScopes,
-		}
-		for _, grantScope := range global.GrantScopes {
-			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-		}
-	case *orgRole:
-		org := resource.(*orgRole)
-		finalRole = &Role{
-			PublicId:    org.GetPublicId(),
-			ScopeId:     org.GetScopeId(),
-			Name:        org.GetName(),
-			Description: org.GetDescription(),
-			CreateTime:  org.GetCreateTime(),
-			UpdateTime:  org.GetUpdateTime(),
-			Version:     org.GetVersion(),
-		}
-		for _, grantScope := range org.GrantScopes {
-			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-		}
-	case *projectRole:
-		proj := resource.(*projectRole)
-		finalRole = &Role{
-			PublicId:    proj.GetPublicId(),
-			ScopeId:     proj.GetScopeId(),
-			Name:        proj.GetName(),
-			Description: proj.GetDescription(),
-			CreateTime:  proj.GetCreateTime(),
-			UpdateTime:  proj.GetUpdateTime(),
-			Version:     proj.GetVersion(),
-		}
-		for _, grantScope := range proj.GrantScopes {
-			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-		}
-	default:
-		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unknown role type %T", resource)))
-	}
-	return finalRole, pr, rg, grantScopes, nil
+	return createdRole, pr, rg, grantScopes, nil
 }
 
 // UpdateRole will update a role in the repository and return the written role.
@@ -322,21 +270,21 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var rgs []*RoleGrantScope
-	var role Role
+	var role *Role
 
 	lookupFunc := func(read db.Reader, w db.Writer) error {
-		roleScopeId, err := getRoleScopeId(ctx, r.reader, withPublicId)
+		roleScopeId, err := getRoleScopeId(ctx, read, withPublicId)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		var res Resource
 		switch {
 		case strings.HasPrefix(roleScopeId, globals.GlobalPrefix):
-			res = &globalRole{GlobalRole: &store.GlobalRole{PublicId: roleScopeId}}
+			res = &globalRole{GlobalRole: &store.GlobalRole{PublicId: withPublicId}}
 		case strings.HasPrefix(roleScopeId, globals.OrgPrefix):
-			res = &orgRole{OrgRole: &store.OrgRole{PublicId: roleScopeId}}
+			res = &orgRole{OrgRole: &store.OrgRole{PublicId: withPublicId}}
 		case strings.HasPrefix(roleScopeId, globals.ProjectPrefix):
-			res = &projectRole{ProjectRole: &store.ProjectRole{PublicId: roleScopeId}}
+			res = &projectRole{ProjectRole: &store.ProjectRole{PublicId: withPublicId}}
 		}
 
 		if err := read.LookupByPublicId(ctx, res); err != nil {
@@ -345,48 +293,11 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 
 		switch res.(type) {
 		case *globalRole:
-			global := res.(*globalRole)
-			role = Role{
-				PublicId:    global.GetPublicId(),
-				ScopeId:     global.GetScopeId(),
-				Name:        global.GetName(),
-				Description: global.GetDescription(),
-				CreateTime:  global.GetCreateTime(),
-				UpdateTime:  global.GetUpdateTime(),
-				Version:     global.GetVersion(),
-				GrantScopes: global.GrantScopes,
-			}
-			for _, grantScope := range global.GrantScopes {
-				role.GrantScopes = append(role.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-			}
+			role = res.(*globalRole).toRole()
 		case *orgRole:
-			org := res.(*orgRole)
-			role = Role{
-				PublicId:    org.GetPublicId(),
-				ScopeId:     org.GetScopeId(),
-				Name:        org.GetName(),
-				Description: org.GetDescription(),
-				CreateTime:  org.GetCreateTime(),
-				UpdateTime:  org.GetUpdateTime(),
-				Version:     org.GetVersion(),
-			}
-			for _, grantScope := range org.GrantScopes {
-				role.GrantScopes = append(role.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-			}
+			role = res.(*orgRole).toRole()
 		case *projectRole:
-			proj := res.(*projectRole)
-			role = Role{
-				PublicId:    proj.GetPublicId(),
-				ScopeId:     proj.GetScopeId(),
-				Name:        proj.GetName(),
-				Description: proj.GetDescription(),
-				CreateTime:  proj.GetCreateTime(),
-				UpdateTime:  proj.GetUpdateTime(),
-				Version:     proj.GetVersion(),
-			}
-			for _, grantScope := range proj.GrantScopes {
-				role.GrantScopes = append(role.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-			}
+			role = res.(*projectRole).toRole()
 		default:
 			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unknown role type %T", res)))
 		}
@@ -430,7 +341,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		}
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
-	return &role, pr, rg, rgs, nil
+	return role, pr, rg, rgs, nil
 }
 
 // DeleteRole will delete a role from the repository.

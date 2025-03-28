@@ -31,6 +31,7 @@ func TestRepository_CreateRole(t *testing.T) {
 	id := testId(t)
 
 	org, proj := TestScopes(t, repo)
+	dupeOrg, dupeProj := TestScopes(t, repo)
 
 	type args struct {
 		role *Role
@@ -39,7 +40,7 @@ func TestRepository_CreateRole(t *testing.T) {
 	tests := []struct {
 		name        string
 		args        args
-		wantDup     bool
+		dupeSetup   func(*testing.T) *Role
 		wantErr     bool
 		wantErrMsg  string
 		wantIsError errors.Code
@@ -110,49 +111,123 @@ func TestRepository_CreateRole(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantErrMsg:  "iam.(Repository).create: error getting metadata: iam.(Repository).stdMetadata: unable to get scope: iam.LookupScope: db.LookupWhere: record not found, search issue: error #1100",
-			wantIsError: errors.RecordNotFound,
+			wantErrMsg:  "iam.(Repository).CreateRole: invalid scope type: parameter violation: error #100",
+			wantIsError: errors.InvalidParameter,
 		},
 		{
-			name: "dup-name",
+			name: "global-dup-name",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(ctx, org.PublicId, WithName("dup-name"+id), WithDescription(id))
+					r, err := NewRole(ctx, globals.GlobalPrefix, WithName("global-dup-name"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
 				opt: []Option{WithName("dup-name" + id)},
 			},
-			wantDup:     true,
+			dupeSetup: func(t *testing.T) *Role {
+				r, err := NewRole(ctx, globals.GlobalPrefix, WithName("global-dup-name"+id), WithDescription(id))
+				require.NoError(t, err)
+				dup, _, _, _, err := repo.CreateRole(context.Background(), r)
+				require.NoError(t, err)
+				require.NotNil(t, dup)
+				return r
+			},
 			wantErr:     true,
 			wantErrMsg:  "already exists in scope ",
 			wantIsError: errors.NotUnique,
 		},
 		{
-			name: "dup-name-but-diff-scope",
+			name: "org-dup-name",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(ctx, proj.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
+					r, err := NewRole(ctx, org.PublicId, WithName("org-dup-name"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return r
+				}(),
+				opt: []Option{WithName("org-dup-name" + id)},
+			},
+			dupeSetup: func(t *testing.T) *Role {
+				r, err := NewRole(ctx, org.PublicId, WithName("org-dup-name"+id), WithDescription(id))
+				require.NoError(t, err)
+				dup, _, _, _, err := repo.CreateRole(context.Background(), r)
+				require.NoError(t, err)
+				require.NotNil(t, dup)
+				return r
+			},
+			wantErr:     true,
+			wantErrMsg:  "already exists in scope ",
+			wantIsError: errors.NotUnique,
+		},
+		{
+			name: "proj-dup-name",
+			args: args{
+				role: func() *Role {
+					r, err := NewRole(ctx, proj.PublicId, WithName("proj-dup-name"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return r
+				}(),
+				opt: []Option{WithName("proj-dup-name" + id)},
+			},
+			dupeSetup: func(t *testing.T) *Role {
+				r, err := NewRole(ctx, proj.PublicId, WithName("proj-dup-name"+id), WithDescription(id))
+				require.NoError(t, err)
+				dup, _, _, _, err := repo.CreateRole(context.Background(), r)
+				require.NoError(t, err)
+				require.NotNil(t, dup)
+				return r
+			},
+			wantErr:     true,
+			wantErrMsg:  "already exists in scope ",
+			wantIsError: errors.NotUnique,
+		},
+		{
+			name: "dup-name-but-diff-org",
+			args: args{
+				role: func() *Role {
+					r, err := NewRole(ctx, org.PublicId, WithName("dup-name-but-diff-org"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
 				opt: []Option{WithName("dup-name-but-diff-scope" + id)},
 			},
-			wantDup: true,
+			dupeSetup: func(t *testing.T) *Role {
+				r, err := NewRole(ctx, dupeOrg.PublicId, WithName("dup-name-but-diff-org"+id), WithDescription(id))
+				require.NoError(t, err)
+				dup, _, _, _, err := repo.CreateRole(context.Background(), r)
+				require.NoError(t, err)
+				require.NotNil(t, dup)
+				return r
+			},
+			wantErr: false,
+		},
+		{
+			name: "dup-name-but-diff-proj",
+			args: args{
+				role: func() *Role {
+					r, err := NewRole(ctx, proj.PublicId, WithName("dup-name-but-diff-proj"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return r
+				}(),
+				opt: []Option{WithName("dup-name-but-diff-scope" + id)},
+			},
+			dupeSetup: func(t *testing.T) *Role {
+				r, err := NewRole(ctx, dupeProj.PublicId, WithName("dup-name-but-diff-proj"+id), WithDescription(id))
+				require.NoError(t, err)
+				dup, _, _, _, err := repo.CreateRole(context.Background(), r)
+				require.NoError(t, err)
+				require.NotNil(t, dup)
+				return r
+			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-
-			if tt.wantDup {
-				dup, err := NewRole(ctx, org.PublicId, tt.args.opt...)
-				assert.NoError(err)
-				dup, _, _, _, err = repo.CreateRole(context.Background(), dup, tt.args.opt...)
-				assert.NoError(err)
-				assert.NotNil(dup)
+			if tt.dupeSetup != nil {
+				_ = tt.dupeSetup(t)
 			}
+
 			grp, _, _, _, err := repo.CreateRole(context.Background(), tt.args.role, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
