@@ -452,7 +452,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
-				name: "project role grant with credential id, get action, credential type, and this scope returns the id'd credential",
+				name: "project role grant with credential id, get action, and this scope returns the id'd credential",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
@@ -469,7 +469,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
-				name: "org role grant with credential id, get action, credential type, and this & children scope returns the id'd credential",
+				name: "org role grant with credential id, get action, and this & children scope returns the id'd credential",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
@@ -595,6 +595,50 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				expected: expectedOutput{outputFields: []string{globals.IdField, globals.ScopeField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+			},
+			{
+				name: "global role grant pinned to credential-store id, credential type, and descendant scope can create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=" + credStore.PublicId + ";type=credential;actions=create;output_fields=id,credential_store_id,name,scope,description,created_time,updated_time,version"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.NameField, globals.ScopeField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField}},
+			},
+			{
+				name: "global role grant pinned to credential-store id, credential type, and children scope cannot create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=" + credStore.PublicId + ";type=credential;actions=create;output_fields=id,credential_store_id,name,scope,description,created_time,updated_time,version"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
+				expected: expectedOutput{err: handlers.ForbiddenError()},
+			},
+			{
+				name: "org role grant pinned to credential-store id, credential type, and children scope can create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=" + credStore.PublicId + ";type=credential;actions=create;output_fields=id,credential_store_id,name,scope,description,created_time,updated_time,version"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.NameField, globals.ScopeField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField}},
+			},
+			{
+				name: "project role grant pinned to credential-store id, credential type, and this scope can create credentials",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=" + credStore.PublicId + ";type=credential;actions=create;output_fields=id,credential_store_id,name,scope,description,created_time,updated_time,version"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				expected: expectedOutput{outputFields: []string{globals.IdField, globals.CredentialStoreIdField, globals.NameField, globals.ScopeField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField}},
 			},
 		}
 		for _, tc := range testcases {
