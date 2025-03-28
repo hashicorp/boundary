@@ -609,7 +609,7 @@ func Parse(ctx context.Context, tuple GrantTuple, opt ...Option) (Grant, error) 
 				default:
 					// Specified resource type, verify it's a child
 					if grant.typ.Parent() != idType {
-						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified id", grant.CanonicalString(), grant.typ.String(), idType.String()))
+						return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified id", grant.CanonicalString(), grant.typ.String(), grant.typ.Parent()))
 					}
 				}
 			default: // no specified id
