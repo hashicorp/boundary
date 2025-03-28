@@ -201,7 +201,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 			Hosts: []*plgpb.ListHostsResponseHost{
 				{
 					ExternalId:  "first",
-					IpAddresses: []string{fmt.Sprintf("10.0.0.%d", *counter), testGetIpv6Address(t)},
+					IpAddresses: []string{fmt.Sprintf("10.0.0.%d", *counter), testGetIpv6Address(t), "2001:BEEF:0000:0000:0000:0000:0000:0001"},
 					DnsNames:    []string{"foo.com"},
 					SetIds:      setIds,
 				},
@@ -228,13 +228,14 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.Len(hosts, 1)
 	for _, host := range hosts {
 		assert.Equal(uint32(1), host.Version)
-		require.Len(host.IpAddresses, 2)
+		require.Len(host.IpAddresses, 3)
 		ipv4 := net.ParseIP(host.IpAddresses[0])
 		require.NotNil(ipv4)
 		require.NotNil(ipv4.To4())
 		ipv6 := net.ParseIP(host.IpAddresses[1])
 		require.NotNil(ipv6)
 		require.NotNil(ipv6.To16())
+		require.Contains(host.IpAddresses, "2001:beef::1")
 	}
 
 	require.NoError(rw.LookupByPublicId(ctx, hsa))
