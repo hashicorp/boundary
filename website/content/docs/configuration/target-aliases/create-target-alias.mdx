@@ -95,7 +95,8 @@ Complete the following steps to create a new target and new alias at the same ti
    Alternatively, you can configure host catalogs and host sets.
    - **Default Port**: (Optional) Enter an optional default port for the target to use for connections.
    - **Default Client Port**: (Optional) Enter an optional local proxy port on which to listen when a session is started on a client.
-   - **Maximum Duration**: (Optional) Enter an optional maximum duration for sessions on this target, in seconds.
+   - **Maximum Duration**: (Required) Enter a maximum duration for sessions on this target, in seconds.
+   If you do not enter a value, Boundary uses the default of 8 hours (28,800 seconds).
    - **Maximum Connection**: (Optional) Enter the maximum number of connections allowed per session on this target.
    For unlimited connections, enter `-1`.
    - **Workers**: (Optional) Select whether you want the worker to function as an ingress and/or egress worker.
@@ -216,7 +217,7 @@ Target aliases point directly to the target they are associated with. You can as
 
 You assign [direct target addresses](/boundary/docs/concepts/domain-model/targets#address) directly to the target. They refer to a specific network resource, like an IP address. Boundary only connects to the direct target address when it establishes a connection to the associated target.
 
-When you create a target alias, you can also assign it to a specific host. Assigning an alias to a specific host is useful if you want to avoid creating multiple targets for specific hosts using direct target addresses. 
+When you create a target alias, you can also assign it to a specific host. Assigning an alias to a specific host is useful if you want to avoid creating multiple targets for specific hosts using direct target addresses.
 
 For example, you could create two aliases for the same target that has been assigned a host set. One alias could refer to the target itself, and would allow Boundary to randomly select a host to connect to for a session. Another alias could point to the same target, but you could assign a host ID that Boundary should use for a session.
 
@@ -298,9 +299,9 @@ Create the `linux-dev-servers` target.
    ```
 
    Example output:
-   
+
    <CodeBlockConfig hideClipboard>
-   
+
    ```shell-session
    $ boundary targets create ssh \
        -description 'linux-dev.app-servers.eng target' \
@@ -309,7 +310,7 @@ Create the `linux-dev-servers` target.
        -default-port 22 \
        -with-alias-scope-id global \
        -with-alias-value linux-dev.app-servers.eng
-    
+
     Target information:
       Created Time:               Thu, 14 Nov 2024 13:39:36 MST
       Description:                linux-dev.app-servers.eng target
@@ -320,13 +321,13 @@ Create the `linux-dev-servers` target.
       Type:                       ssh
       Updated Time:               Thu, 14 Nov 2024 13:39:36 MST
       Version:                    1
-    
+
       Scope:
         ID:                       p_3ECODJDbXV
         Name:                     app-servers
         Parent Scope ID:          o_2drCWvp3Oc
         Type:                     project
-    
+
       Authorized Actions:
         remove-host-sources
         remove-credential-sources
@@ -339,16 +340,16 @@ Create the `linux-dev-servers` target.
         add-host-sources
         set-host-sources
         add-credential-sources
-    
+
       Aliases:
         ID:                       alt_CkC6wGKLWW
         Value:                    linux-dev.app-servers.eng
-    
+
       Attributes:
         Default Port:             22
         Enable Session Recording: false
    ```
-   
+
    </CodeBlockConfig>
 
 Then add the `linux-dev-servers` host set (ID `hsst_56oiL0WaKu`) to the new `linux-dev-servers` target (ID `tssh_lhH5pa425G`).
@@ -396,9 +397,9 @@ Create the `dev-040.linux-dev.app-servers.eng` alias for the host `dev-040`:
   ```
 
   Example output:
-  
+
   <CodeBlockConfig hideClipboard>
-  
+
   ```shell-session
   $ boundary aliases create target \
         -description 'Target alias for dev-040.linux-dev.app-servers.eng' \
@@ -407,7 +408,7 @@ Create the `dev-040.linux-dev.app-servers.eng` alias for the host `dev-040`:
         -scope-id global \
         -value dev-040.linux-dev.app-servers.eng \
         -authorize-session-host-id hst_7wGXkF8e0Q
-  
+
   Alias information:
     Created Time:        Thu, 14 Nov 2024 13:55:41 MST
     Description:         Target alias for dev-040.linux-dev.app-servers.eng
@@ -418,25 +419,25 @@ Create the `dev-040.linux-dev.app-servers.eng` alias for the host `dev-040`:
     Updated Time:        Thu, 14 Nov 2024 13:55:41 MST
     Value:               dev-040.linux-dev.app-servers.eng
     Version:             1
-  
+
     Scope:
       ID:                global
       Name:              global
       Type:              global
-  
+
     Authorized Actions:
       no-op
       read
       update
       delete
-  
+
     Attributes:
       authorize_session_arguments:
       {
       "host_id": "hst_7wGXkF8e0Q"
       }
   ```
-  
+
   </CodeBlockConfig>
 
 </Tab>
@@ -476,9 +477,9 @@ Then create the `dev-041.linux-dev.app-servers.eng` alias for the host `dev-041`
   ```
 
   Example output:
-  
+
   <CodeBlockConfig hideClipboard>
-  
+
   ```shell-session
   $ boundary aliases create target \
           -description 'Target alias for dev-041.linux-dev.app-servers.eng' \
@@ -487,7 +488,7 @@ Then create the `dev-041.linux-dev.app-servers.eng` alias for the host `dev-041`
           -scope-id global \
           -value dev-041.linux-dev.app-servers.eng \
           -authorize-session-host-id hst_zlRwMMPKwp
-    
+
     Alias information:
       Created Time:        Thu, 14 Nov 2024 14:00:13 MST
       Description:         Target alias for dev-040.linux-dev.app-servers.eng
@@ -498,25 +499,25 @@ Then create the `dev-041.linux-dev.app-servers.eng` alias for the host `dev-041`
       Updated Time:        Thu, 14 Nov 2024 14:00:13 MST
       Value:               dev-041.linux-dev.app-servers.eng
       Version:             1
-    
+
       Scope:
         ID:                global
         Name:              global
         Type:              global
-    
+
       Authorized Actions:
         no-op
         read
         update
         delete
-    
+
       Attributes:
         authorize_session_arguments:
         {
         "host_id": "hst_zlRwMMPKwp"
-        }                                                                                                             
+        }
   ```
-  
+
   </CodeBlockConfig>
 
 </Tab>
