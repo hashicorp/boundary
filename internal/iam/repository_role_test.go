@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/boundary/globals"
 	"testing"
 	"time"
 
@@ -43,6 +44,17 @@ func TestRepository_CreateRole(t *testing.T) {
 		wantErrMsg  string
 		wantIsError errors.Code
 	}{
+		{
+			name: "valid-global",
+			args: args{
+				role: func() *Role {
+					r, err := NewRole(ctx, globals.GlobalPrefix, WithName("valid-global"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return r
+				}(),
+			},
+			wantErr: false,
+		},
 		{
 			name: "valid-org",
 			args: args{
