@@ -20,7 +20,10 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/session"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"nhooyr.io/websocket"
@@ -495,4 +498,23 @@ func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worke
 		}()
 	}
 	wg.Wait()
+}
+
+// TestDbCore returns the core database components required to run tests.
+// It initializes the context, root wrapper, database connection, database reader/writer,
+// KMS cache, and an IAM repository.
+func TestDbCore(t *testing.T) (
+	ctx context.Context,
+	conn *db.DB,
+	rootWrapper wrapping.Wrapper,
+	rw *db.Db,
+	kmsCache *kms.Kms,
+) {
+	t.Helper()
+	ctx = context.Background()
+	conn, _ = db.TestSetup(t, "postgres")
+	rootWrapper = db.TestWrapper(t)
+	rw = db.New(conn)
+	kmsCache = kms.TestKms(t, conn, rootWrapper)
+	return
 }
