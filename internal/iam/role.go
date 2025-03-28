@@ -219,6 +219,24 @@ func (g *globalRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+func (g *globalRole) toRole() *Role {
+	if g == nil {
+		return nil
+	}
+	ret := &Role{
+		PublicId:    g.GetPublicId(),
+		ScopeId:     g.GetScopeId(),
+		Name:        g.GetName(),
+		Description: g.GetDescription(),
+		CreateTime:  g.GetCreateTime(),
+		UpdateTime:  g.GetUpdateTime(),
+		Version:     g.GetVersion(),
+	}
+	for _, grantScope := range g.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
+}
 
 type orgRole struct {
 	*store.OrgRole
@@ -280,6 +298,24 @@ func (o *orgRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+func (o *orgRole) toRole() *Role {
+	if o == nil {
+		return nil
+	}
+	ret := &Role{
+		PublicId:    o.GetPublicId(),
+		ScopeId:     o.GetScopeId(),
+		Name:        o.GetName(),
+		Description: o.GetDescription(),
+		CreateTime:  o.GetCreateTime(),
+		UpdateTime:  o.GetUpdateTime(),
+		Version:     o.GetVersion(),
+	}
+	for _, grantScope := range o.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
+}
 
 type projectRole struct {
 	*store.ProjectRole
@@ -339,6 +375,24 @@ func (p *projectRole) Actions() map[string]action.Type {
 	ret[action.AddPrincipals.String()] = action.AddPrincipals
 	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
+	return ret
+}
+func (p *projectRole) toRole() *Role {
+	if p == nil {
+		return nil
+	}
+	ret := &Role{
+		PublicId:    p.GetPublicId(),
+		ScopeId:     p.GetScopeId(),
+		Name:        p.GetName(),
+		Description: p.GetDescription(),
+		CreateTime:  p.GetCreateTime(),
+		UpdateTime:  p.GetUpdateTime(),
+		Version:     p.GetVersion(),
+	}
+	for _, grantScope := range p.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
 	return ret
 }
 
