@@ -352,17 +352,26 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	}
 	roleScopeId, err := getRoleScopeId(ctx, r.reader, withPublicId)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("cannot find scope for role %s", withPublicId))
 	}
 
 	var res Resource
 	switch {
 	case strings.HasPrefix(roleScopeId, globals.GlobalPrefix):
-		res = &globalRole{GlobalRole: &store.GlobalRole{PublicId: roleScopeId}}
+		res = &globalRole{GlobalRole: &store.GlobalRole{
+			PublicId: withPublicId,
+			ScopeId:  roleScopeId,
+		}}
 	case strings.HasPrefix(roleScopeId, globals.OrgPrefix):
-		res = &orgRole{OrgRole: &store.OrgRole{PublicId: roleScopeId}}
+		res = &orgRole{OrgRole: &store.OrgRole{
+			PublicId: withPublicId,
+			ScopeId:  roleScopeId,
+		}}
 	case strings.HasPrefix(roleScopeId, globals.ProjectPrefix):
-		res = &projectRole{ProjectRole: &store.ProjectRole{PublicId: roleScopeId}}
+		res = &projectRole{ProjectRole: &store.ProjectRole{
+			PublicId: withPublicId,
+			ScopeId:  roleScopeId,
+		}}
 	}
 	rowsDeleted, err := r.delete(ctx, res)
 	if err != nil {
