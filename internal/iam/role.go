@@ -5,6 +5,7 @@ package iam
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -425,7 +426,7 @@ func getRoleScopeId(ctx context.Context, r db.Reader, roleId string) (string, er
 		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unexpected error scanning results from querying role scope ID"))
 	}
 	if cnt == 0 {
-		return "", errors.New(ctx, errors.NotFound, op, "role not found")
+		return "", errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("role %s not found", roleId))
 	}
 	return scopeId, nil
 }
