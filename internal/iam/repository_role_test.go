@@ -550,7 +550,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
-	org, _ := TestScopes(t, repo)
+	org, proj := TestScopes(t, repo)
 
 	roleId, err := newRoleId(ctx)
 	require.NoError(t, err)
@@ -567,9 +567,25 @@ func TestRepository_DeleteRole(t *testing.T) {
 		wantErrMsg      string
 	}{
 		{
-			name: "valid",
+			name: "valid global",
+			args: args{
+				role: TestRole(t, conn, globals.GlobalPrefix),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "valid org",
 			args: args{
 				role: TestRole(t, conn, org.PublicId),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "valid project",
+			args: args{
+				role: TestRole(t, conn, proj.PublicId),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -599,7 +615,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "iam.(Repository).DeleteRole: failed for " + roleId + ": db.LookupById: record not found, search issue: error #1100",
+			wantErrMsg:      fmt.Sprintf("iam.(Repository).DeleteRole: cannot find scope for role %s: iam.getRoleScopeId: role %s not found: search issue: error #1100", roleId, roleId),
 		},
 	}
 	for _, tt := range tests {
