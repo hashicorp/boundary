@@ -48,10 +48,6 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
 	}
-	role := Role{
-		PublicId: roleId,
-		ScopeId:  scopeId,
-	}
 	switch {
 	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
 		roleResource = &globalRole{GlobalRole: &store.GlobalRole{
@@ -97,7 +93,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(ctx, &role)
+			roleTicket, err := w.GetTicket(ctx, roleResource)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -123,7 +119,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown role resource type %T", roleResource))
 			}
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -177,10 +173,6 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
 	}
-	role := Role{
-		PublicId: roleId,
-		ScopeId:  scopeId,
-	}
 	switch {
 	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
 		roleResource = &globalRole{GlobalRole: &store.GlobalRole{
@@ -227,7 +219,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(ctx, &role)
+			roleTicket, err := w.GetTicket(ctx, roleResource)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -252,7 +244,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown role resource type %T", roleResource))
 			}
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
