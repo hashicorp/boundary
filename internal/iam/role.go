@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
@@ -85,17 +86,20 @@ func (role *Role) GetVersion() uint32 {
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
 var (
-	_ Resource        = (*globalRole)(nil)
-	_ Cloneable       = (*globalRole)(nil)
-	_ db.VetForWriter = (*globalRole)(nil)
+	_ Resource                = (*globalRole)(nil)
+	_ Cloneable               = (*globalRole)(nil)
+	_ db.VetForWriter         = (*globalRole)(nil)
+	_ oplog.ReplayableMessage = (*globalRole)(nil)
 
-	_ Resource        = (*orgRole)(nil)
-	_ Cloneable       = (*orgRole)(nil)
-	_ db.VetForWriter = (*orgRole)(nil)
+	_ Resource                = (*orgRole)(nil)
+	_ Cloneable               = (*orgRole)(nil)
+	_ db.VetForWriter         = (*orgRole)(nil)
+	_ oplog.ReplayableMessage = (*orgRole)(nil)
 
-	_ Resource        = (*projectRole)(nil)
-	_ Cloneable       = (*projectRole)(nil)
-	_ db.VetForWriter = (*projectRole)(nil)
+	_ Resource                = (*projectRole)(nil)
+	_ Cloneable               = (*projectRole)(nil)
+	_ db.VetForWriter         = (*projectRole)(nil)
+	_ oplog.ReplayableMessage = (*projectRole)(nil)
 )
 
 // NewRole creates a new in memory role with a scope (project/org)
