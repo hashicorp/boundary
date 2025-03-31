@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/iam/store"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
@@ -152,10 +152,13 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			var err error
+			scopeId, err := getRoleScopeId(ctx, read, role.PublicId)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
 			var res Resource
 			switch {
-			case strings.HasPrefix(role.PublicId, globals.GlobalPrefix):
+			case strings.HasPrefix(scopeId, globals.GlobalPrefix):
 				res = &globalRole{GlobalRole: &store.GlobalRole{
 					PublicId:    role.GetPublicId(),
 					ScopeId:     role.GetScopeId(),
@@ -163,7 +166,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 					Description: role.GetDescription(),
 					Version:     role.GetVersion(),
 				}}
-			case strings.HasPrefix(role.PublicId, globals.OrgPrefix):
+			case strings.HasPrefix(scopeId, globals.OrgPrefix):
 				res = &orgRole{OrgRole: &store.OrgRole{
 					PublicId:    role.GetPublicId(),
 					ScopeId:     role.GetScopeId(),
@@ -171,7 +174,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 					Description: role.GetDescription(),
 					Version:     role.GetVersion(),
 				}}
-			case strings.HasPrefix(role.PublicId, globals.ProjectPrefix):
+			case strings.HasPrefix(scopeId, globals.ProjectPrefix):
 				res = &projectRole{ProjectRole: &store.ProjectRole{
 					PublicId:    role.GetPublicId(),
 					ScopeId:     role.GetScopeId(),
@@ -187,7 +190,6 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				version = resource.(*Role).Version
 			}
 
 			// Do a fresh lookup since version may have gone up by 1 or 2 based
@@ -204,54 +206,6 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in org %s", role.Name, role.ScopeId))
 		}
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
-	}
-	var finalRole *Role
-	switch resource.(type) {
-	case *globalRole:
-		global := resource.(*globalRole)
-		finalRole = &Role{
-			PublicId:    global.GetPublicId(),
-			ScopeId:     global.GetScopeId(),
-			Name:        global.GetName(),
-			Description: global.GetDescription(),
-			CreateTime:  global.GetCreateTime(),
-			UpdateTime:  global.GetUpdateTime(),
-			Version:     global.GetVersion(),
-			GrantScopes: global.GrantScopes,
-		}
-		for _, grantScope := range global.GrantScopes {
-			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-		}
-	case *orgRole:
-		org := resource.(*orgRole)
-		finalRole = &Role{
-			PublicId:    org.GetPublicId(),
-			ScopeId:     org.GetScopeId(),
-			Name:        org.GetName(),
-			Description: org.GetDescription(),
-			CreateTime:  org.GetCreateTime(),
-			UpdateTime:  org.GetUpdateTime(),
-			Version:     org.GetVersion(),
-		}
-		for _, grantScope := range org.GrantScopes {
-			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-		}
-	case *projectRole:
-		proj := resource.(*projectRole)
-		finalRole = &Role{
-			PublicId:    proj.GetPublicId(),
-			ScopeId:     proj.GetScopeId(),
-			Name:        proj.GetName(),
-			Description: proj.GetDescription(),
-			CreateTime:  proj.GetCreateTime(),
-			UpdateTime:  proj.GetUpdateTime(),
-			Version:     proj.GetVersion(),
-		}
-		for _, grantScope := range proj.GrantScopes {
-			finalRole.GrantScopes = append(finalRole.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-		}
-	default:
-		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unknown role type %T", resource)))
 	}
 
 	return resource.(*Role), pr, rg, grantScopes, rowsUpdated, nil
