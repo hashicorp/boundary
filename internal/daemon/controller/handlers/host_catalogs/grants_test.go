@@ -535,7 +535,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		require.NoError(t, err)
 
 		org, proj := iam.TestScopes(t, iamRepo)
-		_ = iam.TestProject(t, iamRepo, org.GetPublicId())
+		proj2 := iam.TestProject(t, iamRepo, org.GetPublicId())
 
 		testcases := []struct {
 			name              string
@@ -553,7 +553,8 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-direct-test-1"}}}: nil,
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-direct-test-1"}}}:  nil,
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-direct-test-2"}}}: handlers.ForbiddenError(),
 				},
 				expectOutfields: []string{globals.IdField, globals.NameField},
 			},
@@ -561,13 +562,14 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "groups grant with wildcard can create host catalog in project",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId: proj.PublicId,
+						RoleScopeId: proj2.PublicId,
 						Grants:      []string{"id=*;type=*;actions=*;output_fields=id,name"},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-group-test-1"}}}: nil,
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-group-test-1"}}}:  handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-group-test-2"}}}: nil,
 				},
 				expectOutfields: []string{globals.IdField, globals.NameField},
 			},
@@ -581,26 +583,13 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-ldap-test-1"}}}: nil,
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-ldap-test-1"}}}:  nil,
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-ldap-test-2"}}}: handlers.ForbiddenError(),
 				},
 				expectOutfields: []string{globals.IdField, globals.NameField},
 			},
 			{
-				name: "ldap grant with wildcard can create host catalog in project",
-				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-					{
-						RoleScopeId: proj.PublicId,
-						Grants:      []string{"id=*;type=*;actions=*;output_fields=id,name"},
-						GrantScopes: []string{globals.GrantScopeThis},
-					},
-				}),
-				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-ldap-test-1"}}}: nil,
-				},
-				expectOutfields: []string{globals.IdField, globals.NameField},
-			},
-			{
-				name: "global role - direct grant with host-catalog type can create host catalog in project",
+				name: "global role - descendant grant with host-catalog type can create host catalog in project",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
@@ -609,12 +598,28 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: nil,
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}:  nil,
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static"}}: nil,
 				},
 				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 			},
 			{
-				name: "org role - direct grant with host-catalog type can create host catalog in project",
+				name: "global role - individual project id grant with host-catalog type can create host catalog in the specified project only",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=host-catalog;actions=*;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{proj2.PublicId},
+					},
+				}),
+				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}:  handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static"}}: nil,
+				},
+				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+			},
+			{
+				name: "org role - children grant with host-catalog type can create host catalog in all its child projects",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
@@ -623,7 +628,23 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: nil,
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}:  nil,
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static"}}: nil,
+				},
+				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField},
+			},
+			{
+				name: "org role - individual project id grant with host-catalog type can create host catalog in the specified project only",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"id=*;type=host-catalog;actions=*;output_fields=id,scope_id,type"},
+						GrantScopes: []string{proj2.PublicId},
+					},
+				}),
+				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}:  handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static"}}: nil,
 				},
 				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField},
 			},
@@ -637,7 +658,8 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: nil,
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}:  nil,
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static"}}: handlers.ForbiddenError(),
 				},
 				expectOutfields: []string{globals.IdField},
 			},
@@ -651,7 +673,8 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}:  handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static"}}: handlers.ForbiddenError(),
 				},
 			},
 			{
@@ -664,14 +687,16 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}:  handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static"}}: handlers.ForbiddenError(),
 				},
 			},
 			{
 				name:     "no grants can't create in any scope",
 				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, nil),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}:  handlers.ForbiddenError(),
+					{Item: &pb.HostCatalog{ScopeId: proj2.PublicId, Type: "static"}}: handlers.ForbiddenError(),
 				},
 			},
 		}
