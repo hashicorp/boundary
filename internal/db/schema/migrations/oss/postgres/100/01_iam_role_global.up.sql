@@ -197,7 +197,7 @@ begin;
     primary key(role_id, scope_id)
   );
   comment on table iam_role_global_individual_org_grant_scope is
-    'iam_role_global_individual_org_grant_scope is a list of individually granted org scope to global roles with grant_scope of individual.';
+    'iam_role_global_individual_org_grant_scope is a list of individually granted org scope to global roles with grant_scope individual.';
 
   create trigger default_create_time_column before insert on iam_role_global_individual_org_grant_scope
     for each row execute procedure default_create_time();
@@ -238,7 +238,7 @@ begin;
     primary key(role_id, scope_id)
   );
   comment on table iam_role_global_individual_project_grant_scope is
-    'iam_role_global_individual_project_grant_scope is a list of individually granted project scope table to global role with grant_scope of individual or children.';
+    'iam_role_global_individual_project_grant_scope is a list of individually granted project scope table to global role with grant_scope individual or children.';
 
   create trigger default_create_time_column before insert on iam_role_global_individual_project_grant_scope
     for each row execute procedure default_create_time();
