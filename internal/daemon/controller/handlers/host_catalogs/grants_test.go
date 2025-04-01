@@ -11,8 +11,6 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	cauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -115,7 +113,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,scope_id,type,created_time,updated_time"},
@@ -132,7 +130,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,scope_id,type"},
@@ -148,7 +146,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,attributes"},
@@ -164,7 +162,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   org.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,authorized_actions,secrets_hmac,created_time,updated_time"},
@@ -180,7 +178,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,type"},
@@ -196,7 +194,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=list,read;output_fields=id,type"},
@@ -212,7 +210,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=list"},
@@ -227,7 +225,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=no-op,list;output_fields=id"},
@@ -243,7 +241,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=*;type=host;actions=no-op,list"},
@@ -258,7 +256,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=host-catalog;actions=no-op,list"},
@@ -273,7 +271,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=no-op,list"},
@@ -288,7 +286,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   proj.GetPublicId(),
 					Recursive: true,
 				},
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{}),
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, nil),
 				wantErr:  handlers.ForbiddenError(),
 			},
 		}
@@ -327,7 +325,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		}{
 			{
 				name: "direct association - project role with id, host-catalog type, read action, grant scope: this returns host catalog",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=" + allHcs[2] + ";type=host-catalog;actions=read;output_fields=id,scope_id,type,created_time,updated_time"},
@@ -345,7 +343,7 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "group association - global role with id, host-catalog type, read action, grant scope: this and descendants returns host catalog",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=" + allHcs[0] + ";type=host-catalog;actions=read;output_fields=id,scope_id,type"},
@@ -363,7 +361,7 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "direct association - global role with host-catalog type, read action, grant scope: descendants returns host catalog",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=host-catalog;actions=read;output_fields=id,type"},
@@ -381,7 +379,7 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "org role with host-catalog type, read action, grant scope: children returns host catalog",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=read;output_fields=id"},
@@ -399,7 +397,7 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "project role with host-catalog type, read action, grant scope: this returns host catalog",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=read;output_fields=id"},
@@ -417,7 +415,7 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "project role with host-catalog type, update action, grant scope: this returns forbidden error",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=*;type=host-catalog;actions=update"},
@@ -434,7 +432,7 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name: "union multiple grants returns a subset of all host catalogs",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"ids=" + allHcs[0] + ";type=host-catalog;actions=read;output_fields=id,created_time,updated_time"},
@@ -477,7 +475,7 @@ func TestGrants_ReadActions(t *testing.T) {
 			},
 			{
 				name:     "no grants can't read host catalogs",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, nil),
 				inputWantErrMap: map[*pbs.GetHostCatalogRequest]error{
 					{Id: allHcs[0]}: handlers.ForbiddenError(),
 					{Id: allHcs[1]}: handlers.ForbiddenError(),
@@ -547,7 +545,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		}{
 			{
 				name: "direct grant with wildcard can create host catalog in project",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"id=*;type=*;actions=*;output_fields=id,name"},
@@ -561,7 +559,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "groups grant with wildcard can create host catalog in project",
-				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"id=*;type=*;actions=*;output_fields=id,name"},
@@ -588,8 +586,8 @@ func TestGrants_WriteActions(t *testing.T) {
 				expectOutfields: []string{globals.IdField, globals.NameField},
 			},
 			{
-				name: "oidc grant with wildcard can create host catalog in project",
-				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				name: "ldap grant with wildcard can create host catalog in project",
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"id=*;type=*;actions=*;output_fields=id,name"},
@@ -597,13 +595,13 @@ func TestGrants_WriteActions(t *testing.T) {
 					},
 				}),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
-					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-oidc-test-1"}}}: nil,
+					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static", Name: &wrapperspb.StringValue{Value: "hc-ldap-test-1"}}}: nil,
 				},
 				expectOutfields: []string{globals.IdField, globals.NameField},
 			},
 			{
 				name: "global role - direct grant with host-catalog type can create host catalog in project",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=host-catalog;actions=*;output_fields=id,scope_id,type,created_time,updated_time"},
@@ -617,7 +615,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "org role - direct grant with host-catalog type can create host catalog in project",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org.PublicId,
 						Grants:      []string{"id=*;type=host-catalog;actions=*;output_fields=id,scope_id,type"},
@@ -631,7 +629,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "direct grant with host-catalog type, create action, grant scope: this can create host catalog in project",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"id=*;type=host-catalog;actions=create;output_fields=id"},
@@ -645,7 +643,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "direct grant with host-catalog type, update action, grant scope: this can create host catalog in project",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: proj.PublicId,
 						Grants:      []string{"id=*;type=host-catalog;actions=update"},
@@ -658,7 +656,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "grant children can only create in orgs",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"id=*;type=host-catalog;actions=*"},
@@ -671,7 +669,7 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name:     "no grants can't create in any scope",
-				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil),
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, nil),
 				canCreateInScopes: map[*pbs.CreateHostCatalogRequest]error{
 					{Item: &pb.HostCatalog{ScopeId: proj.PublicId, Type: "static"}}: handlers.ForbiddenError(),
 				},
@@ -736,7 +734,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with wildcard can update host catalog in project",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (userId *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: proj.PublicId,
 							Grants:      []string{"id=*;type=*;actions=*;output_fields=id,name,updated_time,version"},
@@ -751,7 +749,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "global role - direct grant with grant_scope project can update host catalog in project",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (userId *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: globals.GlobalPrefix,
 							Grants:      []string{"ids=*;type=host-catalog;actions=*;output_fields=id,name,description,updated_time,version"},
@@ -766,7 +764,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "grant with specific resource and scope can update host catalog in project",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (userId *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: org.PublicId,
 							Grants:      []string{fmt.Sprintf("ids=%s;types=host-catalog;actions=*;output_fields=id,scope_id,type,name,description,created_time,updated_time,version", hc.PublicId)},
@@ -790,7 +788,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "non applicable grant returns forbidden error",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (userId *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: globals.GlobalPrefix,
 							Grants:      []string{"id=*;type=*;actions=*"},
@@ -804,7 +802,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "no grants returns forbidden error",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (userId *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil)
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, nil)
 				},
 				wantErr: handlers.ForbiddenError(),
 			},
@@ -879,7 +877,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with wildcard can delete host catalog in project",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: proj.PublicId,
 							Grants:      []string{"id=*;type=*;actions=*"},
@@ -893,7 +891,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with type: host-catalog can delete host catalog in project",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: proj.PublicId,
 							Grants:      []string{"id=*;type=host-catalog;actions=*"},
@@ -907,7 +905,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with type: host-catalog, update action can delete host catalog in project",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: proj.PublicId,
 							Grants:      []string{"id=*;type=host-catalog;actions=delete"},
@@ -921,7 +919,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with global scope, descendants grants scope, host-catalog type, delete action can delete host catalog in project",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: globals.GlobalPrefix,
 							Grants:      []string{"id=*;type=host-catalog;actions=delete"},
@@ -935,7 +933,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with org scope, children grants scope, host-catalog type, delete action can delete host catalog in project",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: org.PublicId,
 							Grants:      []string{"id=*;type=host-catalog;actions=delete"},
@@ -949,7 +947,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with non-applicable grant scope returns forbidden error",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: proj.PublicId,
 							Grants:      []string{"id=*;type=host-catalog;actions=update"},
@@ -963,7 +961,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with non-applicable type returns forbidden error",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: proj.PublicId,
 							Grants:      []string{"id=*;type=group;actions=*"},
@@ -977,7 +975,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with global scope and children grant scope returns forbidden error",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: globals.GlobalPrefix,
 							Grants:      []string{"id=*;type=*;actions=*"},
@@ -991,7 +989,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "direct grant with org scope and this grant scope returns forbidden error",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 						{
 							RoleScopeId: org.PublicId,
 							Grants:      []string{"id=*;type=host-catalog;actions=*"},
@@ -1005,7 +1003,7 @@ func TestGrants_WriteActions(t *testing.T) {
 				name: "no grants returns forbidden error",
 				setupScopesResourcesAndUser: func(t *testing.T, conn *db.DB, iamRepo *iam.Repository, kmsCache *kms.Kms) (*static.HostCatalog, func() (user *iam.User, account auth.Account)) {
 					hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-					return hc, iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, nil)
+					return hc, iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, nil)
 				},
 				wantErr: handlers.ForbiddenError(),
 			},
