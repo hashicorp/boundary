@@ -3,7 +3,7 @@
     "title": "Introduction",
     "routes": [
       {
-        "title": "What is Boundary?",
+        "title": "What is Boundary",
         "path": "overview/what-is-boundary"
       },
       {
