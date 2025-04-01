@@ -203,7 +203,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in org %s", role.Name, role.ScopeId))
+			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
 	}
