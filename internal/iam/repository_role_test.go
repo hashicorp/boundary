@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/boundary/globals"
+	"strings"
 	"testing"
 	"time"
 
@@ -261,6 +262,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 	require.NoError(t, err)
 
 	org, proj := TestScopes(t, repo)
+	dupeOrg, dupeProj := TestScopes(t, repo)
 	u := TestUser(t, repo, org.GetPublicId())
 
 	pubId := func(s string) *string { return &s }
@@ -273,11 +275,24 @@ func TestRepository_UpdateRole(t *testing.T) {
 		ScopeId        string
 		PublicId       *string
 	}
+
+	// used to create a role during setup
+	type newRoleArg struct {
+		ScopeId     string
+		Name        string
+		Description string
+	}
+
 	tests := []struct {
-		name           string
-		newScopeId     string
-		newRoleOpts    []Option
-		args           args
+		name string
+		args args
+		// REQUIRED: newRoleArgs is used to create a role to be updated
+		// the result roleId from this create call will be passed to the update call
+		// unless args.PublicId is set
+		newRoleArgs *newRoleArg
+		// OPTIONAL:  dupeArgs is used to create a role for before role in `newRoleArgs` role is created
+		// used for testing duplicate names
+		dupeArgs       *newRoleArg
 		wantRowsUpdate int
 		wantErr        bool
 		wantErrMsg     string
@@ -285,127 +300,293 @@ func TestRepository_UpdateRole(t *testing.T) {
 		wantDup        bool
 	}{
 		{
-			name: "valid",
+			name: "valid global",
 			args: args{
-				name:           "valid" + id,
+				name:           "valid global" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				ScopeId:        globals.GlobalPrefix,
 			},
-			newScopeId:     org.PublicId,
+			newRoleArgs: &newRoleArg{
+				ScopeId: globals.GlobalPrefix,
+			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "valid-no-op",
+			name: "valid org",
 			args: args{
-				name:           "valid-no-op" + id,
+				name:           "valid org" + id,
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
-			newScopeId:     org.PublicId,
-			newRoleOpts:    []Option{WithName("valid-no-op" + id)},
+			newRoleArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "not-found",
+			name: "valid project",
 			args: args{
-				name:           "not-found" + id,
+				name:           "valid project" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: proj.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+
+		{
+			name: "valid global no-op",
+			args: args{
+				name:           "valid-global-no-op" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        globals.GlobalPrefix,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: globals.GlobalPrefix,
+				Name:    "valid-global-no-op" + id,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "valid org no-op",
+			args: args{
+				name:           "valid-org-no-op" + id,
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+				Name:    "valid-org-no-op" + id,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "valid project no-op",
+			args: args{
+				name:           "valid-project-no-op" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: proj.PublicId,
+				Name:    "valid-project-no-op" + id,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "not-found-global",
+			args: args{
+				name:           "global-not-found" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        globals.GlobalPrefix,
 				PublicId:       func() *string { s := "1"; return &s }(),
 			},
-			newScopeId:     org.PublicId,
+			newRoleArgs: &newRoleArg{
+				ScopeId: globals.GlobalPrefix,
+			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "error #1100",
 			wantIsError:    errors.RecordNotFound,
 		},
 		{
-			name: "null-name",
+			name: "not-found-org",
+			args: args{
+				name:           "org-not-found" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+				PublicId:       func() *string { s := "1"; return &s }(),
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "error #1100",
+			wantIsError:    errors.RecordNotFound,
+		},
+		{
+			name: "not-found-project",
+			args: args{
+				name:           "proj-not-found" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+				PublicId:       func() *string { s := "1"; return &s }(),
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: proj.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "error #1100",
+			wantIsError:    errors.RecordNotFound,
+		},
+		{
+			name: "global-null-name",
+			args: args{
+				name:           "",
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        globals.GlobalPrefix,
+			},
+			newRoleArgs: &newRoleArg{
+				Name:    "global-null-name" + id,
+				ScopeId: globals.GlobalPrefix,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "org-null-name",
 			args: args{
 				name:           "",
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
-			newScopeId:     org.PublicId,
-			newRoleOpts:    []Option{WithName("null-name" + id)},
+			newRoleArgs: &newRoleArg{
+				Name:    "org-null-name" + id,
+				ScopeId: org.PublicId,
+			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "null-description",
+			name: "proj-null-name",
 			args: args{
 				name:           "",
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+			},
+			newRoleArgs: &newRoleArg{
+				Name:    "proj-null-name" + id,
+				ScopeId: proj.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "global-null-description",
+			args: args{
+				description:    "",
+				fieldMaskPaths: []string{"Description"},
+				ScopeId:        globals.GlobalPrefix,
+			},
+			newRoleArgs: &newRoleArg{
+				Description: "hello",
+				ScopeId:     globals.GlobalPrefix,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "org-null-description",
+			args: args{
+				description:    "",
 				fieldMaskPaths: []string{"Description"},
 				ScopeId:        org.PublicId,
 			},
-			newScopeId:     org.PublicId,
-			newRoleOpts:    []Option{WithDescription("null-description" + id)},
+			newRoleArgs: &newRoleArg{
+				Description: "hello",
+				ScopeId:     org.PublicId,
+			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "empty-field-mask",
+			name: "project-null-description",
 			args: args{
-				name:           "valid" + id,
-				fieldMaskPaths: []string{},
-				ScopeId:        org.PublicId,
+				description:    "",
+				fieldMaskPaths: []string{"Description"},
+				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newRoleArgs: &newRoleArg{
+				Description: "hello",
+				ScopeId:     proj.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "input-validation-empty-field-mask",
+			args: args{
+				name:           "valid-global" + id,
+				fieldMaskPaths: []string{},
+				ScopeId:        globals.GlobalPrefix,
+			},
+			newRoleArgs: &newRoleArg{
+				Name:    "valid-global" + id,
+				ScopeId: globals.GlobalPrefix,
+			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "iam.(Repository).UpdateRole: empty field mask, parameter violation: error #104",
 			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
-			name: "nil-fieldmask",
+			name: "input-validation-nil-fieldmask",
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: nil,
 				ScopeId:        org.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newRoleArgs: &newRoleArg{
+				Name:    "valid" + id,
+				ScopeId: globals.GlobalPrefix,
+			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "iam.(Repository).UpdateRole: empty field mask, parameter violation: error #104",
 			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
-			name: "read-only-fields",
+			name: "input-validation-read-only-fields",
 			args: args{
-				name:           "valid" + id,
+				name:           "read-only-fields" + id,
 				fieldMaskPaths: []string{"CreateTime"},
 				ScopeId:        org.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newRoleArgs: &newRoleArg{
+				Name:    "read-only-fields" + id,
+				ScopeId: globals.GlobalPrefix,
+			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "iam.(Repository).UpdateRole: invalid field mask: CreateTime: parameter violation: error #103",
 			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
-			name: "unknown-fields",
+			name: "input-validation-unknown-fields",
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Alice"},
 				ScopeId:        org.PublicId,
 			},
-			newScopeId:     org.PublicId,
+			newRoleArgs: &newRoleArg{
+				ScopeId: globals.GlobalPrefix,
+			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "iam.(Repository).UpdateRole: invalid field mask: Alice: parameter violation: error #103",
 			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
-			name: "no-public-id",
+			name: "input-validation-no-public-id",
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 				PublicId:       pubId(""),
 			},
-			newScopeId:     org.PublicId,
+			newRoleArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+			},
 			wantErr:        true,
 			wantErrMsg:     "iam.(Repository).UpdateRole: missing public id: parameter violation: error #100",
 			wantIsError:    errors.InvalidParameter,
@@ -417,7 +598,9 @@ func TestRepository_UpdateRole(t *testing.T) {
 				name:    "proj-scope-id" + id,
 				ScopeId: proj.PublicId,
 			},
-			newScopeId:  org.PublicId,
+			newRoleArgs: &newRoleArg{
+				ScopeId: proj.PublicId,
+			},
 			wantErr:     true,
 			wantErrMsg:  "iam.(Repository).UpdateRole: empty field mask, parameter violation: error #104",
 			wantIsError: errors.EmptyFieldMask,
@@ -429,51 +612,153 @@ func TestRepository_UpdateRole(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        "",
 			},
-			newScopeId:     org.PublicId,
+			newRoleArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "dup-name-in-diff-scope",
+			name: "global-dup-name",
 			args: args{
-				name:           "dup-name-in-diff-scope" + id,
+				name:           "global-dup-name" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        globals.GlobalPrefix,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: globals.GlobalPrefix,
+			},
+			dupeArgs: &newRoleArg{
+				ScopeId: globals.GlobalPrefix,
+				Name:    "global-dup-name" + id,
+			},
+			wantErr:     true,
+			wantDup:     true,
+			wantErrMsg:  " already exists in scope " + globals.GlobalPrefix,
+			wantIsError: errors.NotUnique,
+		},
+		{
+			name: "org-dup-name",
+			args: args{
+				name:           "org-dup-name" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+			},
+			dupeArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+				Name:    "org-dup-name" + id,
+			},
+			wantErr:     true,
+			wantDup:     true,
+			wantErrMsg:  " already exists in scope " + org.PublicId,
+			wantIsError: errors.NotUnique,
+		},
+		{
+			name: "proj-dup-name",
+			args: args{
+				name:           "proj-dup-name" + id,
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
-			newRoleOpts:    []Option{WithName("dup-name-in-diff-scope-pre-update" + id)},
+			newRoleArgs: &newRoleArg{
+				ScopeId: proj.PublicId,
+			},
+			dupeArgs: &newRoleArg{
+				ScopeId: proj.PublicId,
+				Name:    "proj-dup-name" + id,
+			},
+			wantErr:     true,
+			wantDup:     true,
+			wantErrMsg:  " already exists in scope " + proj.PublicId,
+			wantIsError: errors.NotUnique,
+		},
+		{
+			name: "global-org-dup-name-in-diff-scope",
+			args: args{
+				name:           "global-org-dup-name-in-diff-scope" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        globals.GlobalPrefix,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: globals.GlobalPrefix,
+			},
+			dupeArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+				Name:    "global-org-dup-name-in-diff-scope" + id,
+			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 			wantDup:        true,
 		},
 		{
-			name: "dup-name",
+			name: "org-proj-dup-name-in-diff-scope",
 			args: args{
-				name:           "dup-name" + id,
+				name:           "org-proj-dup-name-in-diff-scope" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: proj.PublicId,
+			},
+			dupeArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+				Name:    "org-proj-dup-name-in-diff-scope" + id,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+			wantDup:        true,
+		},
+		{
+			name: "org-dup-name-in-diff-scope",
+			args: args{
+				name:           "org-dup-name-in-diff-scope" + id,
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
-			newScopeId:  org.PublicId,
-			wantErr:     true,
-			wantDup:     true,
-			wantErrMsg:  " already exists in org " + org.PublicId,
-			wantIsError: errors.NotUnique,
+			newRoleArgs: &newRoleArg{
+				ScopeId: org.PublicId,
+			},
+			dupeArgs: &newRoleArg{
+				ScopeId: dupeOrg.PublicId,
+				Name:    "org-dup-name-in-diff-scope" + id,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+			wantDup:        true,
+		},
+		{
+			name: "project-dup-name-in-diff-scope",
+			args: args{
+				name:           "project-dup-name-in-diff-scope" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+			},
+			newRoleArgs: &newRoleArg{
+				ScopeId: proj.PublicId,
+			},
+			dupeArgs: &newRoleArg{
+				ScopeId: dupeProj.PublicId,
+				Name:    "project-dup-name-in-diff-scope" + id,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+			wantDup:        true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			if tt.wantDup {
-				r := TestRole(t, conn, org.PublicId)
-				_ = TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
-				_ = TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
-				r.Name = tt.args.name
-				_, _, _, _, _, err := repo.UpdateRole(context.Background(), r, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
-				assert.NoError(err)
+			if tt.dupeArgs != nil {
+				dupedRole := TestRole(t, conn, tt.dupeArgs.ScopeId, WithName(tt.dupeArgs.Name), WithDescription(tt.dupeArgs.Description))
+				_ = TestUserRole(t, conn, dupedRole.GetPublicId(), u.GetPublicId())
+				_ = TestRoleGrant(t, conn, dupedRole.GetPublicId(), "ids=*;type=*;actions=*")
 			}
 
-			r := TestRole(t, conn, tt.newScopeId, tt.newRoleOpts...)
-			ur := TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
+			testRole := TestRole(t, conn, tt.newRoleArgs.ScopeId, WithName(tt.newRoleArgs.Name), WithDescription(tt.newRoleArgs.Description))
+			ur := TestUserRole(t, conn, testRole.GetPublicId(), u.GetPublicId())
 			princRole := &PrincipalRole{PrincipalRoleView: &store.PrincipalRoleView{
 				Type:              UserRoleType.String(),
 				CreateTime:        ur.CreateTime,
@@ -483,31 +768,33 @@ func TestRepository_UpdateRole(t *testing.T) {
 				ScopedPrincipalId: ur.PrincipalId,
 				RoleScopeId:       org.GetPublicId(),
 			}}
-			if tt.newScopeId != org.GetPublicId() {
+			if tt.newRoleArgs.ScopeId != u.ScopeId {
 				// If the project is in a different scope from the created user we need to update the
 				// scope specific fields.
-				princRole.RoleScopeId = tt.newScopeId
-				princRole.ScopedPrincipalId = fmt.Sprintf("%s:%s", org.PublicId, ur.PrincipalId)
+				princRole.RoleScopeId = tt.newRoleArgs.ScopeId
+				princRole.ScopedPrincipalId = fmt.Sprintf("%s:%s", u.ScopeId, ur.PrincipalId)
 			}
-			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
+
+			rGrant := TestRoleGrant(t, conn, testRole.GetPublicId(), "ids=*;type=*;actions=*")
 
 			updateRole := Role{}
-			updateRole.PublicId = r.PublicId
-			if tt.args.PublicId != nil {
-				updateRole.PublicId = *tt.args.PublicId
-			}
+			updateRole.PublicId = testRole.PublicId
 			updateRole.ScopeId = tt.args.ScopeId
 			updateRole.Name = tt.args.name
 			updateRole.Description = tt.args.description
 
-			roleAfterUpdate, principals, grants, _, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
+			if tt.args.PublicId != nil {
+				updateRole.PublicId = *tt.args.PublicId
+			}
+
+			roleAfterUpdate, principals, grants, _, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, testRole.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				assert.Nil(roleAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
-				err = db.TestVerifyOplog(t, rw, r.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				err = db.TestVerifyOplog(t, rw, testRole.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.True(errors.IsNotFoundError(err))
 				return
@@ -517,27 +804,47 @@ func TestRepository_UpdateRole(t *testing.T) {
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.Equal([]*PrincipalRole{princRole}, principals)
 			assert.Equal([]*RoleGrant{rGrant}, grants)
-			switch tt.name {
-			case "valid-no-op":
-				assert.Equal(r.UpdateTime, roleAfterUpdate.UpdateTime)
+			switch {
+			case strings.Contains(tt.name, "no-op"):
+				assert.Equal(testRole.UpdateTime, roleAfterUpdate.UpdateTime)
 			default:
-				assert.NotEqual(r.UpdateTime, roleAfterUpdate.UpdateTime)
+				assert.NotEqual(testRole.UpdateTime, roleAfterUpdate.UpdateTime)
 			}
-			foundRole, _, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
+			foundRole, _, _, _, err := repo.LookupRole(context.Background(), testRole.PublicId)
 			assert.NoError(err)
 			assert.Equal(roleAfterUpdate, foundRole)
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
+
+			var dbRole any
+			switch {
+			case strings.HasPrefix(foundRole.ScopeId, globals.GlobalPrefix):
+				g := allocGlobalRole()
+				g.PublicId = foundRole.PublicId
+				require.NoError(rw.LookupByPublicId(ctx, &g))
+				dbRole = &g
+			case strings.HasPrefix(foundRole.ScopeId, globals.OrgPrefix):
+				o := allocOrgRole()
+				o.PublicId = foundRole.PublicId
+				require.NoError(rw.LookupByPublicId(ctx, &o))
+				dbRole = &o
+			case strings.HasPrefix(foundRole.ScopeId, globals.ProjectPrefix):
+				p := allocProjectRole()
+				p.PublicId = foundRole.PublicId
+				require.NoError(rw.LookupByPublicId(ctx, &p))
+				dbRole = &p
+			}
 			if tt.args.name == "" {
-				assert.Equal(foundRole.Name, "")
-				dbassert.IsNull(foundRole, "name")
+
+				assert.Equal("", foundRole.Name)
+				dbassert.IsNull(dbRole, "name")
 			}
 			if tt.args.description == "" {
-				assert.Equal(foundRole.Description, "")
-				dbassert.IsNull(foundRole, "description")
+				assert.Equal("", foundRole.Description)
+				dbassert.IsNull(dbRole, "description")
 			}
-			err = db.TestVerifyOplog(t, rw, r.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, testRole.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})
 	}
