@@ -203,7 +203,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on iam_role_global_individual_org_grant_scope
-    for each row execute procedure immutable_columns('role_id', 'grant_scope', 'scope_id', 'create_time');
+    for each row execute procedure immutable_columns('role_id', 'scope_id', 'create_time');
 
   create table iam_role_global_individual_project_grant_scope (
     role_id wt_role_id
@@ -244,7 +244,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on iam_role_global_individual_project_grant_scope
-    for each row execute procedure immutable_columns('role_id', 'grant_scope', 'scope_id', 'create_time');
+    for each row execute procedure immutable_columns('role_id', 'scope_id', 'create_time');
 
 
 commit;
