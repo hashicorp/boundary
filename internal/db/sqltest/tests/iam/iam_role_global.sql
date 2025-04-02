@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(34);
+  select plan(46);
   select wtt_load('widgets', 'iam');
 
   --------------------------------------------------------------------------------
@@ -359,6 +359,83 @@ begin;
   -- check that the update cascaded to iam_role_global_individual_project_grant_scope
   -- and that the grant_scope is now individual
   select is(count(*), 1::bigint) from iam_role_global_individual_project_grant_scope where role_id = 'r_5555555555' and grant_scope = 'individual';
+
+
+  -- 4k) update to iam_role_global.grant_scope from children to individual cascades to iam_role_global_individual_project_grant_scope.grant_scope
+  -- r_6666666666 is a global role with grant_scope=individual and is granted individual org and project 
+  prepare insert_valid_global_role_individual_grants as
+    insert into iam_role_global 
+        (public_id, scope_id, grant_this_role_scope, grant_scope)
+    values
+        ('r_6666666666', 'global', true, 'individual');
+  select lives_ok('insert_valid_global_role_individual_grants');
+
+  -- create a row in iam_role_global_individual_org_grant_scope with grant_scope=individual
+  prepare insert_valid_org_scope_to_individual_grants as
+    insert into iam_role_global_individual_org_grant_scope
+        (role_id, grant_scope, scope_id)
+    values
+        ('r_6666666666', 'individual', 'o_____widget');
+  select lives_ok('insert_valid_org_scope_to_individual_grants');
+
+
+  -- create a row in iam_role_global_individual_project_grant_scope with grant_scope=individual
+  prepare insert_valid_project_scope_to_individual_grants as
+    insert into iam_role_global_individual_project_grant_scope
+        (role_id, grant_scope, scope_id)
+    values
+        ('r_6666666666', 'individual', 'p____bwidget');
+  select lives_ok('insert_valid_project_scope_to_individual_grants');
+
+  -- take away children grants by updating to iam_role_global to children
+  prepare update_grant_scope_to_children as
+    update iam_role_global
+        set grant_scope = 'children'
+      where public_id = 'r_6666666666';
+    select lives_ok('update_grant_scope_to_children');
+  
+  -- check that the update cascaded to iam_role_global_individual_project_grant_scope
+  -- and that the grant_scope is now children
+  select is(count(*), 0::bigint) from iam_role_global_individual_org_grant_scope where role_id = 'r_6666666666';
+  select is(count(*), 1::bigint) from iam_role_global_individual_project_grant_scope where role_id = 'r_6666666666' and scope_id = 'p____bwidget' and grant_scope = 'children';
+
+
+  -- 4l) update to iam_role_global.grant_scope from individual to descendants cascades also
+  -- deletes all individual grant scopes in iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope
+  prepare insert_r7_valid_global_role_individual_grants as
+    insert into iam_role_global 
+        (public_id, scope_id, grant_this_role_scope, grant_scope)
+    values
+        ('r_7777777777', 'global', true, 'individual');
+  select lives_ok('insert_r7_valid_global_role_individual_grants');
+
+  -- create a row in iam_role_global_individual_org_grant_scope with grant_scope=individual
+  prepare insert_valid_org_scope_to_individual_grants_for_r7 as
+    insert into iam_role_global_individual_org_grant_scope
+        (role_id, grant_scope, scope_id)
+    values
+        ('r_7777777777', 'individual', 'o_____widget');
+  select lives_ok('insert_valid_org_scope_to_individual_grants_for_r7');
+
+
+  -- create a row in iam_role_global_individual_project_grant_scope with grant_scope=individual
+  prepare insert_valid_project_scope_to_individual_grants_for_r7 as
+    insert into iam_role_global_individual_project_grant_scope
+        (role_id, grant_scope, scope_id)
+    values
+        ('r_7777777777', 'individual', 'p____bwidget');
+  select lives_ok('insert_valid_project_scope_to_individual_grants_for_r7');
+
+  -- take away children grants by updating to iam_role_global to individual
+  prepare update_grant_scope_to_descendants as
+    update iam_role_global
+        set grant_scope = 'descendants'
+      where public_id = 'r_7777777777';
+    select lives_ok('update_grant_scope_to_descendants');
+  
+  -- check that the update deletes all individual grant scopes in iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope
+  select is(count(*), 0::bigint) from iam_role_global_individual_org_grant_scope where role_id = 'r_7777777777';
+  select is(count(*), 0::bigint) from iam_role_global_individual_project_grant_scope where role_id = 'r_7777777777';
 
   select * from finish();
 rollback;

@@ -65,6 +65,28 @@ begin;
     'insert_grant_this_role_scope_update_time is used to automatically update the grant_scope_update_time '
     'of the subtype table whenever the grant_this_role_scope column is updated';
 
+
+  create function delete_individual_role_grant_scope() returns trigger
+  as $$
+  begin
+    if new.grant_scope = 'children' then
+      delete from iam_role_global_individual_org_grant_scope
+        where role_id = new.public_id;
+    elsif new.grant_scope = 'descendants' then
+      delete from iam_role_global_individual_org_grant_scope
+        where role_id = new.public_id;
+      delete from iam_role_global_individual_project_grant_scope
+        where role_id = new.public_id;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function delete_individual_role_grant_scope() is
+    'delete_individual_role_grant_scope deletes individual role grants from '
+    'iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope to remove '
+    'redundant grants';
+
+
   -- global iam_role must have a scope_id of global.
   --
   -- grant_this_role_scope indicates if the role can apply its grants to the scope.
@@ -136,6 +158,10 @@ begin;
   create trigger immutable_columns before update on iam_role_global
     for each row execute procedure immutable_columns('scope_id', 'create_time');
 
+  create trigger delete_individual_grant_scopes before update on iam_role_global
+    for each row execute procedure delete_individual_role_grant_scope('scope_id', 'create_time');
+
+
   create table iam_role_global_individual_org_grant_scope (
     role_id wt_role_id
       constraint iam_role_global_fkey
@@ -172,7 +198,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on iam_role_global_individual_org_grant_scope
-    for each row execute procedure immutable_columns('role_id', 'scope_id', 'create_time');
+    for each row execute procedure immutable_columns('role_id', 'scope_id', 'grant_scope', 'create_time');
 
   create table iam_role_global_individual_project_grant_scope (
     role_id wt_role_id
