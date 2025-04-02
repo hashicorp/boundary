@@ -66,7 +66,7 @@ begin;
     'of the subtype table whenever the grant_this_role_scope column is updated';
 
 
-  create function delete_individual_role_grant_scope() returns trigger
+  create function delete_global_role_individual_role_grant_scope() returns trigger
   as $$
   begin
     if new.grant_scope = 'children' then
@@ -81,8 +81,8 @@ begin;
     return new;
   end;
   $$ language plpgsql;
-  comment on function delete_individual_role_grant_scope() is
-    'delete_individual_role_grant_scope deletes individual role grants from '
+  comment on function delete_global_role_individual_role_grant_scope() is
+    'delete_global_role_individual_role_grant_scope deletes individual role grants from '
     'iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope to remove '
     'redundant grants';
 
@@ -158,8 +158,8 @@ begin;
   create trigger immutable_columns before update on iam_role_global
     for each row execute procedure immutable_columns('scope_id', 'create_time');
 
-  create trigger delete_individual_grant_scopes before update on iam_role_global
-    for each row execute procedure delete_individual_role_grant_scope('scope_id', 'create_time');
+  create trigger delete_global_role_individual_grant_scopes before update on iam_role_global
+    for each row execute procedure delete_global_role_individual_role_grant_scope();
 
 
   create table iam_role_global_individual_org_grant_scope (
