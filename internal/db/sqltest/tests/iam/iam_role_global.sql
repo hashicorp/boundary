@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(51);
+  select plan(54);
   select wtt_load('widgets', 'iam');
 
   --------------------------------------------------------------------------------
@@ -394,7 +394,9 @@ begin;
       where public_id = 'r_6666666666';
     select lives_ok('update_grant_scope_to_children');
   
-  -- check that the update cascaded to iam_role_global_individual_project_grant_scope
+  -- verify that iam_role_global.grant_scope is updated to children
+  select is(count(*), 1::bigint) from iam_role_global where public_id = 'r_6666666666' and grant_scope = 'children';
+    -- check that the update cascaded to iam_role_global_individual_project_grant_scope
   -- and that the grant_scope is now children
   select is(count(*), 0::bigint) from iam_role_global_individual_org_grant_scope where role_id = 'r_6666666666';
   select is(count(*), 1::bigint) from iam_role_global_individual_project_grant_scope where role_id = 'r_6666666666' and scope_id = 'p____bwidget' and grant_scope = 'children';
@@ -432,7 +434,9 @@ begin;
         set grant_scope = 'descendants'
       where public_id = 'r_7777777777';
     select lives_ok('update_grant_scope_to_descendants');
-  
+
+  -- verify that iam_role_global.grant_scope is updated to descendants
+  select is(count(*), 1::bigint) from iam_role_global where public_id = 'r_7777777777' and grant_scope = 'descendants';
   -- check that the update deletes all individual grant scopes in iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope
   select is(count(*), 0::bigint) from iam_role_global_individual_org_grant_scope where role_id = 'r_7777777777';
   select is(count(*), 0::bigint) from iam_role_global_individual_project_grant_scope where role_id = 'r_7777777777';
@@ -462,6 +466,8 @@ begin;
       where public_id = 'r_8888888888';
     select lives_ok('update_r8_grant_scope_to_individual');
   
+  -- verify that iam_role_global.grant_scope is updated to individual
+  select is(count(*), 1::bigint) from iam_role_global where public_id = 'r_8888888888' and grant_scope = 'individual';
   -- check that the update deletes all individual grant scopes in iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope
   select is(count(*), 0::bigint) from iam_role_global_individual_org_grant_scope where role_id = 'r_8888888888';
   select is(count(*), 1::bigint) from iam_role_global_individual_project_grant_scope where role_id = 'r_8888888888' and grant_scope = 'individual' and scope_id = 'p____bwidget';
