@@ -45,8 +45,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const domain = "auth"
-
 var (
 	pwAuthorizedActions = []string{
 		action.NoOp.String(),

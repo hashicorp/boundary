@@ -158,10 +158,6 @@ order by ccu.table_name,pgc.conname `
 	rw := dbw.New(db)
 	rows, err := rw.Query(testCtx, constraintSql, []any{tableName})
 	require.NoError(err)
-	type result struct {
-		Name      string
-		TableName string
-	}
 	results := []constraintResults{}
 	for rows.Next() {
 		var r constraintResults
