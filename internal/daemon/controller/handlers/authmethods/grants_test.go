@@ -483,6 +483,37 @@ func TestGrants_ReadActions(t *testing.T) {
 					ldapOrg2.PublicId:   {wantErr: handlers.ForbiddenError()},
 				},
 			},
+			{
+				name: "global and org roles with id-only grants return only the granted resources",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=" + pwGlobal.PublicId + ";actions=read;output_fields=id,name,description"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=" + oidcOrg2.PublicId + ";actions=read;output_fields=id,name,description"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=" + ldapOrg1.PublicId + ";actions=read;output_fields=id,name,description"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				canGetAuthMethod: map[string]expectedOutput{
+					pwGlobal.PublicId:   {wantOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField}},
+					pwOrg1.PublicId:     {wantErr: handlers.ForbiddenError()},
+					pwOrg2.PublicId:     {wantErr: handlers.ForbiddenError()},
+					oidcGlobal.PublicId: {wantErr: handlers.ForbiddenError()},
+					oidcOrg1.PublicId:   {wantErr: handlers.ForbiddenError()},
+					oidcOrg2.PublicId:   {wantOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField}},
+					ldapGlobal.PublicId: {wantErr: handlers.ForbiddenError()},
+					ldapOrg1.PublicId:   {wantOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField}},
+					ldapOrg2.PublicId:   {wantErr: handlers.ForbiddenError()},
+				},
+			},
 		}
 
 		for _, tc := range testcases {
@@ -744,6 +775,21 @@ func TestGrants_WriteActions(t *testing.T) {
 					globalAmId: {wantErr: handlers.ForbiddenError()},
 					org1AmId:   {wantOutfields: []string{globals.IdField, globals.VersionField, globals.CreatedTimeField, globals.UpdatedTimeField}},
 					org2AmId:   {wantErr: handlers.ForbiddenError()},
+				},
+			},
+			{
+				name: "global role grant children of global auth method's id can only update children auth methods",
+				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+					{
+						RoleScopeId:  globals.GlobalPrefix,
+						GrantStrings: []string{"ids=" + globalAmId + ";type=auth-method;actions=update;output_fields=id"},
+						GrantScopes:  []string{globals.GrantScopeChildren},
+					},
+				},
+				canUpdateAuthMethod: map[string]expectedOutput{
+					globalAmId: {wantErr: handlers.ForbiddenError()},
+					org1AmId:   {wantOutfields: []string{globals.IdField}},
+					org2AmId:   {wantOutfields: []string{globals.IdField}},
 				},
 			},
 			{
