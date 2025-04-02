@@ -171,7 +171,7 @@ begin;
         'foreign key also enforces matching grant_scope=individual in iam_role_global'
   );
 
-  -- 3f) insert into iam_role_global_individual_org_grant_scope when role grant_scope is descendants is not allowed
+  -- 3g) insert into iam_role_global_individual_org_grant_scope when role grant_scope is descendants is not allowed
   -- r_1111111111 is a global role with grant_scope=descendants
   prepare iam_role_global_individual_org_grant_scope_role_descendants as
     insert into iam_role_global_individual_org_grant_scope
@@ -185,7 +185,7 @@ begin;
   );
 
 
-  -- 3g) insert into iam_role_global_individual_org_grant_scope when role grant_scope is children is not allowed
+  -- 3h) insert into iam_role_global_individual_org_grant_scope when role grant_scope is children is not allowed
   -- r_2222222222 is a global role with grant_scope=children
   prepare iam_role_global_individual_org_grant_scope_role_children as
     insert into iam_role_global_individual_org_grant_scope
@@ -199,7 +199,7 @@ begin;
   );
 
 
-  --3g) insert entry with role_id that does not exist in iam_role_global
+  --3i) insert entry with role_id that does not exist in iam_role_global
   prepare insert_invalid_role_id as
     insert into iam_role_global_individual_org_grant_scope
         (role_id, grant_scope, scope_id)
@@ -211,7 +211,7 @@ begin;
     'foreign key enforces that role exists in iam_role_global'
   );
 
-  -- 3h) insert into iam_role_global_individual_org_grant_scope when role grant_scope is 'individual'
+  -- 3j) insert into iam_role_global_individual_org_grant_scope when role grant_scope is 'individual'
   -- r_3333333333 is a global role with grant_scope=individual
   prepare insert_valid_individual_org_scope as
     insert into iam_role_global_individual_org_grant_scope
