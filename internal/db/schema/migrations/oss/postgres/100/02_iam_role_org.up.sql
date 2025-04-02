@@ -23,6 +23,24 @@ begin;
     ('children'),
     ('individual');       
 
+
+  create function delete_org_role_individual_role_grant_scope() returns trigger
+  as $$
+  begin
+    if new.grant_scope = 'children' then
+      delete from iam_role_org_individual_grant_scope
+        where role_id = new.public_id;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function delete_org_role_individual_role_grant_scope() is
+    'delete_org_role_individual_role_grant_scope deletes individual role grants from '
+    'iam_role_org_individual_grant_scope to remove redundant grants';
+
+
+
+
   create table iam_role_org (
     public_id wt_role_id primary key
       constraint iam_role_fkey
@@ -87,6 +105,9 @@ begin;
 
   create trigger immutable_columns before update on iam_role_org
     for each row execute procedure immutable_columns('scope_id', 'create_time');
+
+  create trigger delete_org_role_individual_grant_scopes before update on iam_role_org
+    for each row execute procedure delete_org_role_individual_role_grant_scope();
 
   create table iam_role_org_individual_grant_scope (
     role_id wt_role_id
