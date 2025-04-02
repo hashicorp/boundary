@@ -127,13 +127,13 @@ func TestRepository_CreateTarget(t *testing.T) {
 						target.WithName("with-abbreviated-ipv6-address"),
 						target.WithDescription("with-abbreviated-ipv6-address"),
 						target.WithDefaultPort(80),
-						target.WithAddress("2001:4860:4860::8888"))
+						target.WithAddress("2001:BEEF:4860::8888"))
 					require.NoError(t, err)
 					return target
 				}(),
 			},
 			wantErr:     false,
-			wantAddress: "2001:4860:4860::8888",
+			wantAddress: "2001:beef:4860::8888",
 		},
 		{
 			name: "with-ipv6-address",
@@ -143,13 +143,13 @@ func TestRepository_CreateTarget(t *testing.T) {
 						target.WithName("with-ipv6-address"),
 						target.WithDescription("with-ipv6-address"),
 						target.WithDefaultPort(80),
-						target.WithAddress("2001:4860:4860:0:0:0:0:8888"))
+						target.WithAddress("2001:BEEF:4860:0:0:0:0:8888"))
 					require.NoError(t, err)
 					return target
 				}(),
 			},
 			wantErr:     false,
-			wantAddress: "2001:4860:4860::8888",
+			wantAddress: "2001:beef:4860::8888",
 		},
 		{
 			name: "with-abbreviated-[ipv6]-address",
@@ -164,8 +164,8 @@ func TestRepository_CreateTarget(t *testing.T) {
 					return target
 				}(),
 			},
-			wantErr:     false,
-			wantAddress: "2001:4860:4860::8888",
+			wantErr:     true,
+			wantIsError: errors.InvalidAddress,
 		},
 		{
 			name: "with-invalid-abbreviated-[ipv6]-address-with-port",
@@ -196,8 +196,8 @@ func TestRepository_CreateTarget(t *testing.T) {
 					return target
 				}(),
 			},
-			wantErr:     false,
-			wantAddress: "2001:4860:4860:0:0:0:0:8888",
+			wantErr:     true,
+			wantIsError: errors.InvalidAddress,
 		},
 		{
 			name: "with-invalid-[ipv6]-address-with-port",
@@ -521,13 +521,13 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				name:           "valid-abbreviated-ipv6-address" + id,
 				fieldMaskPaths: []string{"Name", "Address"},
 				ProjectId:      proj.PublicId,
-				address:        "2001:4860:4860::8888",
+				address:        "2001:BEEF:4860::8888",
 			},
 			newProjectId:    proj.PublicId,
 			wantErr:         false,
 			wantRowsUpdate:  1,
 			wantHostSources: false,
-			wantAddress:     "2001:4860:4860::8888",
+			wantAddress:     "2001:beef:4860::8888",
 		},
 		{
 			name: "valid-ipv6-address",
@@ -535,13 +535,13 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				name:           "valid-ipv6-address" + id,
 				fieldMaskPaths: []string{"Name", "Address"},
 				ProjectId:      proj.PublicId,
-				address:        "2001:4860:4860:0:0:0:0:8888",
+				address:        "2001:BEEF:4860:0:0:0:0:8888",
 			},
 			newProjectId:    proj.PublicId,
 			wantErr:         false,
 			wantRowsUpdate:  1,
 			wantHostSources: false,
-			wantAddress:     "2001:4860:4860::8888",
+			wantAddress:     "2001:beef:4860::8888",
 		},
 		{
 			name: "valid-abbreviated-[ipv6]-address",
@@ -551,11 +551,10 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				ProjectId:      proj.PublicId,
 				address:        "[2001:4860:4860::8888]",
 			},
-			newProjectId:    proj.PublicId,
-			wantErr:         false,
-			wantRowsUpdate:  1,
-			wantHostSources: false,
-			wantAddress:     "2001:4860:4860::8888",
+			newProjectId: proj.PublicId,
+			wantErr:      true,
+			wantIsError:  errors.InvalidAddress,
+			wantErrMsg:   "invalid address",
 		},
 		{
 			name: "invalid-abbreviated-[ipv6]-address-with-port",
@@ -578,11 +577,10 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				ProjectId:      proj.PublicId,
 				address:        "[2001:4860:4860:0:0:0:0:8888]",
 			},
-			newProjectId:    proj.PublicId,
-			wantErr:         false,
-			wantRowsUpdate:  1,
-			wantHostSources: false,
-			wantAddress:     "2001:4860:4860:0:0:0:0:8888",
+			newProjectId: proj.PublicId,
+			wantErr:      true,
+			wantIsError:  errors.InvalidAddress,
+			wantErrMsg:   "invalid address",
 		},
 		{
 			name: "invalid-[ipv6]-address-with-port",
