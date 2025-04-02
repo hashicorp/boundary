@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(30);
+  select plan(34);
   select wtt_load('widgets', 'iam');
 
   --------------------------------------------------------------------------------
