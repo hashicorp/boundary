@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(46);
+  select plan(51);
   select wtt_load('widgets', 'iam');
 
   --------------------------------------------------------------------------------
@@ -436,6 +436,35 @@ begin;
   -- check that the update deletes all individual grant scopes in iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope
   select is(count(*), 0::bigint) from iam_role_global_individual_org_grant_scope where role_id = 'r_7777777777';
   select is(count(*), 0::bigint) from iam_role_global_individual_project_grant_scope where role_id = 'r_7777777777';
+
+
+  -- 4m) update to iam_role_global.grant_scope from children to individual sets
+  -- individually granted project scope in iam_role_global_individual_project_grant_scope grant_scope to children
+  prepare insert_r8_valid_global_scope_to_individual_grants as
+    insert into iam_role_global 
+        (public_id, scope_id, grant_this_role_scope, grant_scope)
+    values
+        ('r_8888888888', 'global', true, 'children');
+  select lives_ok('insert_r8_valid_global_scope_to_individual_grants');
+
+  -- create a row in iam_role_global_individual_project_grant_scope with grant_scope=children
+  prepare insert_r8_valid_project_scope_to_children_grants as
+    insert into iam_role_global_individual_project_grant_scope
+        (role_id, grant_scope, scope_id)
+    values
+        ('r_8888888888', 'children', 'p____bwidget');
+  select lives_ok('insert_r8_valid_project_scope_to_children_grants');
+
+  -- take away children grants by updating to iam_role_global to individual
+  prepare update_r8_grant_scope_to_individual as
+    update iam_role_global
+        set grant_scope = 'individual'
+      where public_id = 'r_8888888888';
+    select lives_ok('update_r8_grant_scope_to_individual');
+  
+  -- check that the update deletes all individual grant scopes in iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope
+  select is(count(*), 0::bigint) from iam_role_global_individual_org_grant_scope where role_id = 'r_8888888888';
+  select is(count(*), 1::bigint) from iam_role_global_individual_project_grant_scope where role_id = 'r_8888888888' and grant_scope = 'individual' and scope_id = 'p____bwidget';
 
   select * from finish();
 rollback;
