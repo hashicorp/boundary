@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -219,62 +220,52 @@ func TestStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Len(t, got.Users, 2)
-		assert.Equal(t, Map(got.Users, func(i UserStatus) string {
+		assert.Equal(t, util.Map(got.Users, func(i UserStatus) string {
 			return i.Id
 		}), []string{"u1", "u2"})
 
 		// User 1 status
-		assert.Equal(t, Map(got.Users[0].AuthTokens, func(i AuthTokenStatus) string {
+		assert.Equal(t, util.Map(got.Users[0].AuthTokens, func(i AuthTokenStatus) string {
 			return i.Id
 		}), []string{"at_1a", "at_1b"})
 
-		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) string {
+		assert.Equal(t, util.Map(got.Users[0].Resources, func(i ResourceStatus) string {
 			return i.Name
 		}), []string{string(resolvableAliasResourceType), string(targetResourceType), string(sessionResourceType)})
 
-		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) int {
+		assert.Equal(t, util.Map(got.Users[0].Resources, func(i ResourceStatus) int {
 			return i.Count
 		}), []int{3, 4, 3})
 
-		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) bool {
+		assert.Equal(t, util.Map(got.Users[0].Resources, func(i ResourceStatus) bool {
 			return i.LastError == nil
 		}), []bool{true, false, true}, "expected an error for target resource and none for other resources")
 
-		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) bool {
+		assert.Equal(t, util.Map(got.Users[0].Resources, func(i ResourceStatus) bool {
 			return i.RefreshToken == nil
 		}), []bool{false, false, false})
 
 		// User 2 status
-		assert.Equal(t, Map(got.Users[1].AuthTokens, func(i AuthTokenStatus) string {
+		assert.Equal(t, util.Map(got.Users[1].AuthTokens, func(i AuthTokenStatus) string {
 			return i.Id
 		}), []string{"at_2"})
 
-		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) string {
+		assert.Equal(t, util.Map(got.Users[1].Resources, func(i ResourceStatus) string {
 			return i.Name
 		}), []string{string(resolvableAliasResourceType), string(targetResourceType), string(sessionResourceType)})
 
-		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) int {
+		assert.Equal(t, util.Map(got.Users[1].Resources, func(i ResourceStatus) int {
 			return i.Count
 		}), []int{0, 2, 0})
 
-		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) bool {
+		assert.Equal(t, util.Map(got.Users[1].Resources, func(i ResourceStatus) bool {
 			return i.LastError == nil
 		}), []bool{true, true, true})
 
-		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) bool {
+		assert.Equal(t, util.Map(got.Users[1].Resources, func(i ResourceStatus) bool {
 			return i.RefreshToken == nil
 		}), []bool{true, false, true}, "targets expected to have a refresh token and others aren't")
 	})
-}
-
-// Map maps a slice of one type into a slice of another using the provided map
-// function
-func Map[T, U any](in []T, f func(T) U) []U {
-	var ret []U
-	for _, t := range in {
-		ret = append(ret, f(t))
-	}
-	return ret
 }
 
 func TestStatus_unsupported(t *testing.T) {
