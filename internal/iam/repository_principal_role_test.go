@@ -260,7 +260,9 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { i := allocGlobalRole(); return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { i := allocOrgRole(); return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { i := allocProjectRole(); return &i }(), "1=1")
 			role := TestRole(t, conn, tt.createScopeId)
 			userRoles := make([]string, 0, tt.createCnt)
 			groupRoles := make([]string, 0, tt.createCnt)
