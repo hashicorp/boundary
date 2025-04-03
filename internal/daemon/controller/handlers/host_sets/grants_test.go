@@ -72,14 +72,24 @@ func TestGrants_ReadActions(t *testing.T) {
 	s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn, 1000)
 	require.NoError(t, err)
 
-	org, proj := iam.TestScopes(t, iamRepo) // TODO: Add a second org/proj scopes? To enforce independent behavior (e.g. grants in org1/proj1 shouldn't be returned when querying org2/proj2)
+	org, proj := iam.TestScopes(t, iamRepo)
+	proj2 := iam.TestProject(t, iamRepo, org.GetPublicId(), iam.WithName("project #2"))
 
 	// Create five test Host Sets under a test Host Catalog
-	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)
-	hc := hcs[0]
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hsets := make([]*static.HostSet, 5)
 	for i := range cap(hsets) {
 		hsets[i] = static.TestSet(t, conn, hc.PublicId,
+			static.WithName(fmt.Sprintf("test name %d", i)),
+			static.WithDescription(fmt.Sprintf("test description %d", i)),
+		)
+	}
+
+	// do it again for the second project
+	hc2 := static.TestCatalogs(t, conn, proj2.GetPublicId(), 1)[0]
+	hsets2 := make([]*static.HostSet, 3)
+	for i := range cap(hsets2) {
+		hsets2[i] = static.TestSet(t, conn, hc2.PublicId,
 			static.WithName(fmt.Sprintf("test name %d", i)),
 			static.WithDescription(fmt.Sprintf("test description %d", i)),
 		)
@@ -215,8 +225,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					hsets[4].GetPublicId(): {globals.IdField, globals.HostCatalogIdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField},
 				},
 			},
+			// The next two cases share identical setup, but test ListHostSets in different projects/host-catalogs:
 			{
-				name: "org role grant with host-catalog id, list action, host-set type, and children scope returns all host sets",
+				name: "org role grant with pinned host-catalog id, list action, host-set type, and children scope can list all host sets in the pinned host-catalog",
 				input: &pbs.ListHostSetsRequest{
 					HostCatalogId: hc.GetPublicId(),
 				},
@@ -234,6 +245,20 @@ func TestGrants_ReadActions(t *testing.T) {
 					hsets[3].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 					hsets[4].GetPublicId(): {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 				},
+			},
+			{
+				name: "org role grant with pinned host-catalog id, list action, host-set type, and children scope can not list host sets in a different host-catalog",
+				input: &pbs.ListHostSetsRequest{
+					HostCatalogId: hc2.GetPublicId(),
+				},
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=" + hc.PublicId + ";type=host-set;actions=list,no-op;output_fields=id,scope_id,type,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
 			},
 			{
 				name: "project role grant with host-catalog id, list action, host-set type, and this scope returns all host sets",
