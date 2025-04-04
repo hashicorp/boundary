@@ -2496,8 +2496,8 @@ func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
       (parent_id,      type,      public_id,      name)
     values
       ('global',       'org',     'o_____colors', 'Colors R Us'),
-	  ('o_____colors', 'project', 'p____bcolors', 'Blue Color Mill'),
       ('o_____colors', 'project', 'p____rcolors', 'Red Color Mill'),
+	  ('o_____colors', 'project', 'p____bcolors', 'Blue Color Mill'),
       ('o_____colors', 'project', 'p____gcolors', 'Green Color Mill');
 	`
 	_, err := rw.Exec(ctx, insertScopes, nil)
@@ -2515,13 +2515,22 @@ func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
 	_, err = rw.Exec(ctx, insertGlobalRoles, nil)
 	require.NoError(err)
 
-	insertIndividualGlobalRoles := `
-	insert into iam_role_global_individual_grant_scope
+	insertIndividualOrgScopeGlobalRoles := `
+	insert into iam_role_global_individual_org_grant_scope
 	  (role_id,        scope_id,   grant_scope)
 	values
 	  ('r_go____name', 'o_____colors', 'individual');
 	`
-	_, err = rw.Exec(ctx, insertIndividualGlobalRoles, nil)
+	_, err = rw.Exec(ctx, insertIndividualOrgScopeGlobalRoles, nil)
+	require.NoError(err)
+
+	insertIndividualProjScopeGlobalRoles := `
+	insert into iam_role_global_individual_project_grant_scope
+	  (role_id,        scope_id,   grant_scope)
+	values
+	  ('r_gp____spec', 'p____gcolors', 'individual');
+	`
+	_, err = rw.Exec(ctx, insertIndividualProjScopeGlobalRoles, nil)
 	require.NoError(err)
 
 	insertRoleGrants := `

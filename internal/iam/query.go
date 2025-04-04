@@ -259,6 +259,13 @@ const (
       select role_id
         from managed_group_roles
     ),
+    individual_grant_scopes (role_id, scope_id) as (
+      select role_id, scope_id
+        from iam_role_global_individual_org_grant_scope
+      union
+      select role_id, scope_id
+        from iam_role_global_individual_project_grant_scope
+    ),
     roles_with_grants (role_id, canonical_grant) as (
       select iam_role_grant.role_id,
         iam_role_grant.canonical_grant
@@ -282,7 +289,7 @@ const (
       from iam_role_global
       join roles_with_grants
         on roles_with_grants.role_id = iam_role_global.public_id
-      left join iam_role_global_individual_grant_scope individual
+      left join individual_grant_scopes individual
         on roles_with_grants.role_id = individual.role_id
       join iam_scope
         on iam_scope.public_id = iam_role_global.scope_id
