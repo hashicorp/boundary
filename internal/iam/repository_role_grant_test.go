@@ -2469,7 +2469,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 				RoleId:            "r_gg_____buy",
 				RoleScopeId:       "global",
 				RoleParentScopeId: "global",
-				GrantScopeId:      "global",
+				GrantScopeId:      "descendants",
 				Grant:             "ids=*;type=*;actions=update",
 			},
 			{
@@ -2497,7 +2497,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 				RoleId:            "r_gg_____buy",
 				RoleScopeId:       "global",
 				RoleParentScopeId: "global",
-				GrantScopeId:      "global",
+				GrantScopeId:      "descendants",
 				Grant:             "ids=*;type=*;actions=update",
 			},
 		})

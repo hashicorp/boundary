@@ -621,7 +621,7 @@ func (r *Repository) grantsForUserGlobalResources(
 					RoleId:            grant.roleId,
 					RoleScopeId:       grant.roleScopeId,
 					RoleParentScopeId: grant.roleParentScopeId,
-					GrantScopeId:      reqScope.GetPublicId(),
+					GrantScopeId:      grant.grantScope,
 					Grant:             canonicalGrant,
 				}
 				if grant.grantThisRoleScope || gt.GrantScopeId == "" {
