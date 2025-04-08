@@ -259,13 +259,6 @@ const (
       select role_id
         from managed_group_roles
     ),
-    individual_grant_scopes (role_id, scope_id) as (
-      select role_id, scope_id
-        from iam_role_global_individual_org_grant_scope
-      union
-      select role_id, scope_id
-        from iam_role_global_individual_project_grant_scope
-    ),
     roles_with_grants (role_id, canonical_grant) as (
       select iam_role_grant.role_id,
         iam_role_grant.canonical_grant
@@ -284,13 +277,10 @@ const (
              'global'                              as role_parent_scope_id, -- manually set to global because we are only looking at global roles and the parent scope is always global
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
-             individual.scope_id                   as individual_grant_scope,
              roles_with_grants.canonical_grant     as canonical_grant
       from iam_role_global
       join roles_with_grants
         on roles_with_grants.role_id = iam_role_global.public_id
-      left join individual_grant_scopes individual
-        on roles_with_grants.role_id = individual.role_id
       join iam_scope
         on iam_scope.public_id = iam_role_global.scope_id
    )
@@ -299,9 +289,10 @@ const (
           grant_scope,
 		      role_parent_scope_id,
           grant_this_role_scope,
-          array_agg(distinct(individual_grant_scope)) filter (where individual_grant_scope is not null) as individual_grant_scopes, -- only include individual grant scopes if they are not null
-          array_agg(distinct(canonical_grant)) filter (where canonical_grant is not null)               as canonical_grants -- only include canonical grants if they are not null
-    from global_roles
+          NULL as individual_grant_scopes, -- there can be no individual grants for global roles
+          array_agg(distinct(canonical_grant)) filter (where canonical_grant is not null) as canonical_grants -- only include canonical grants if they are not null
+   from global_roles
+   where global_roles.grant_this_role_scope = true
    group by (
           role_id,
           role_scope_id,

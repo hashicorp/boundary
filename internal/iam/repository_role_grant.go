@@ -543,7 +543,6 @@ func (r *Repository) grantsForUserGlobalResources(
 	ctx context.Context,
 	userId string,
 	res resource.Type,
-	reqScope Scope,
 	opt ...Option,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUserGlobalResources"
