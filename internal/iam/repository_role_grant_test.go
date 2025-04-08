@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -2445,33 +2444,10 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	globalScope := Scope{Scope: &store.Scope{Type: scope.Global.String(), PublicId: "global"}}
-
 	t.Run("Alias", func(t *testing.T) {
-		got, err := repo.grantsForUserGlobalResources(ctx, user.PublicId, resource.Alias, globalScope)
+		got, err := repo.grantsForUserGlobalResources(ctx, user.PublicId, resource.Alias)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
-			{
-				RoleId:            "r_go____name",
-				RoleScopeId:       "global",
-				RoleParentScopeId: "global",
-				GrantScopeId:      "o_____colors",
-				Grant:             "ids=*;type=alias;actions=create,update,read,list",
-			},
-			{
-				RoleId:            "r_go____name",
-				RoleScopeId:       "global",
-				RoleParentScopeId: "global",
-				GrantScopeId:      "o_____colors",
-				Grant:             "ids=*;type=alias;actions=delete",
-			},
-			{
-				RoleId:            "r_gg_____buy",
-				RoleScopeId:       "global",
-				RoleParentScopeId: "global",
-				GrantScopeId:      "descendants",
-				Grant:             "ids=*;type=*;actions=update",
-			},
 			{
 				RoleId:            "r_gp____spec",
 				RoleScopeId:       "global",
@@ -2482,8 +2458,22 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 		})
 	})
 
+	t.Run("Account", func(t *testing.T) {
+		got, err := repo.grantsForUserGlobalResources(ctx, user.PublicId, resource.Account)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, got, []perms.GrantTuple{
+			{
+				RoleId:            "r_gg____shop",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "global",
+				Grant:             "ids=*;type=account;actions=create,update",
+			},
+		})
+	})
+
 	t.Run("Group", func(t *testing.T) {
-		got, err := repo.grantsForUserGlobalResources(ctx, user.PublicId, resource.Group, globalScope)
+		got, err := repo.grantsForUserGlobalResources(ctx, user.PublicId, resource.Group)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
 			{
@@ -2492,13 +2482,6 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 				RoleParentScopeId: "global",
 				GrantScopeId:      "global",
 				Grant:             "ids=*;type=group;actions=read;output_fields=id",
-			},
-			{
-				RoleId:            "r_gg_____buy",
-				RoleScopeId:       "global",
-				RoleParentScopeId: "global",
-				GrantScopeId:      "descendants",
-				Grant:             "ids=*;type=*;actions=update",
 			},
 		})
 	})
@@ -2564,7 +2547,8 @@ func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
       ('r_gg____shop', 'ids=*;type=group;actions=read;output_fields=id',   'ids=*;type=group;actions=read;output_fields=id'),
       ('r_go____name', 'ids=*;type=alias;actions=create,update,read,list', 'ids=*;type=alias;actions=create,update,read,list'),
       ('r_go____name', 'ids=*;type=alias;actions=delete',                  'ids=*;type=alias;actions=delete'),
-      ('r_gp____spec', 'ids=*;type=alias;actions=delete',                  'ids=*;type=alias;actions=delete');
+      ('r_gp____spec', 'ids=*;type=alias;actions=delete',                  'ids=*;type=alias;actions=delete'),
+      ('r_gg____shop', 'ids=*;type=account;actions=create,update',         'ids=*;type=account;actions=create,update');
 	`
 	_, err = rw.Exec(ctx, insertRoleGrants, nil)
 	require.NoError(err)
