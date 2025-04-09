@@ -5,6 +5,7 @@ package iam
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sort"
 	"strings"
@@ -550,21 +551,17 @@ func (r *Repository) grantsForUserGlobalResources(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 
-	const (
-		anonUser = `where public_id in (?)`
-		authUser = `where public_id in ('u_anon', 'u_auth', ?)`
-	)
-
-	var query string
+	var args []any
 	switch userId {
 	case globals.AnonymousUserId:
-		query = fmt.Sprintf(grantsForUserGlobalResourcesQuery, anonUser, res.String())
+		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ %s }", userId)))
 	default:
-		query = fmt.Sprintf(grantsForUserGlobalResourcesQuery, authUser, res.String())
+		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ u_anon, u_auth, %s }", userId)))
 	}
+	args = append(args, sql.Named("resources", fmt.Sprintf("{ %s, unknown, * }", res.String())))
 
 	var grants []grantsForUserResults
-	rows, err := r.reader.Query(ctx, query, []any{userId})
+	rows, err := r.reader.Query(ctx, grantsForUserGlobalResourcesQuery, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

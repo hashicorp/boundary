@@ -211,7 +211,7 @@ const (
     users (id) as (
       select public_id
         from iam_user
-      %s -- anonUser || authUser
+      where public_id = any(@user_ids)
     ),
     user_groups (id) as (
       select group_id
@@ -268,7 +268,7 @@ const (
       join iam_grant
         on iam_grant.canonical_grant        = iam_role_grant.canonical_grant
       where iam_role.public_id in (select role_id from user_group_roles)
-        and iam_grant.resource              = any('{"%s", "unknown", "*"}')
+        and iam_grant.resource              = any(@resources)
    ),
    global_roles as (
       select iam_role_global.public_id             as role_id,
