@@ -546,7 +546,7 @@ func (r *Repository) grantsForUserGlobalResources(
 	res resource.Type,
 	opt ...Option,
 ) (perms.GrantTuples, error) {
-	const op = "iam.(Repository).GrantsForUserGlobalResources"
+	const op = "iam.(Repository).grantsForUserGlobalResources"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
