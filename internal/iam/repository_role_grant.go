@@ -5,6 +5,7 @@ package iam
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sort"
 	"strings"
@@ -15,6 +16,8 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/lib/pq"
 )
 
 // AddRoleGrant will add role grants associated with the role ID in the
@@ -420,6 +423,29 @@ type MultiGrantTuple struct {
 	Grants            string
 }
 
+type grantsForUserResults struct {
+	// roleId is the public ID of the role.
+	roleId string
+	// roleScopeId is the scope ID of the role.
+	roleScopeId string
+	// roleParentScopeId is the parent scope ID of the role.
+	roleParentScopeId string
+	// grantScope is the grant scope of the role.
+	// The valid values are: "individual", "children" and "descendants".
+	grantScope string
+	// grantThisRoleScope is a boolean that indicates if the role has a grant
+	// for itself aka "this" or "individual" scope.
+	grantThisRoleScope bool
+	// individualGrantScopes represents the individual grant scopes for the role.
+	// This is a slice of strings that may be NULL values if the role does
+	// not have individual grants.
+	individualGrantScopes []string
+	// canonicalGrants represents the canonical grants for the role.
+	// This is a slice of strings that may be NULL if the role does
+	// not have canonical grants associated with it.
+	canonicalGrants []string
+}
+
 func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
@@ -493,4 +519,97 @@ func (m *MultiGrantTuple) TestStableSort() {
 	gts := strings.Split(m.Grants, "^")
 	sort.Strings(gts)
 	m.Grants = strings.Join(gts, "^")
+}
+
+// grantsForUserGlobalResources returns the grants for the user for resources that can
+// only be globally scoped.
+func (r *Repository) grantsForUserGlobalResources(
+	ctx context.Context,
+	userId string,
+	res resource.Type,
+	opt ...Option,
+) (perms.GrantTuples, error) {
+	const op = "iam.(Repository).grantsForUserGlobalResources"
+	if userId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+	}
+
+	var args []any
+	switch userId {
+	case globals.AnonymousUserId:
+		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ %s }", userId)))
+	default:
+		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ u_anon, u_auth, %s }", userId)))
+	}
+	args = append(args, sql.Named("resources", fmt.Sprintf("{ %s, unknown, * }", res.String())))
+
+	var grants []grantsForUserResults
+	rows, err := r.reader.Query(ctx, grantsForUserGlobalResourcesQuery, args)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var g grantsForUserResults
+		if err := rows.Scan(
+			&g.roleId,
+			&g.roleScopeId,
+			&g.grantScope,
+			&g.roleParentScopeId,
+			&g.grantThisRoleScope,
+			pq.Array(&g.individualGrantScopes),
+			pq.Array(&g.canonicalGrants),
+		); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		grants = append(grants, g)
+
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	ret := make(perms.GrantTuples, 0, len(grants)*3)
+	for _, grant := range grants {
+		// If the role has grant scope set to "individual" then we need to
+		// iterate over the individual grant scopes and create a grant tuple
+		// for each one.
+		if grant.grantScope == globals.GrantScopeIndividual && len(grant.individualGrantScopes) > 0 {
+			for _, grantScope := range grant.individualGrantScopes {
+				for _, canonicalGrant := range grant.canonicalGrants {
+					gt := perms.GrantTuple{
+						RoleId:            grant.roleId,
+						RoleScopeId:       grant.roleScopeId,
+						RoleParentScopeId: grant.roleParentScopeId,
+						GrantScopeId:      grantScope,
+						Grant:             canonicalGrant,
+					}
+					if grant.grantThisRoleScope || gt.GrantScopeId == "" {
+						gt.GrantScopeId = grant.roleScopeId
+					}
+					ret = append(ret, gt)
+				}
+			}
+		}
+
+		// If the role does not have any individual grant scopes,
+		// then we need to create a grant tuple for each canonical grant.
+		if grant.grantScope != globals.GrantScopeIndividual || len(grant.individualGrantScopes) == 0 {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.grantScope,
+					Grant:             canonicalGrant,
+				}
+				if grant.grantThisRoleScope || gt.GrantScopeId == "" {
+					gt.GrantScopeId = grant.roleScopeId
+				}
+				ret = append(ret, gt)
+			}
+		}
+	}
+
+	return ret, nil
 }
