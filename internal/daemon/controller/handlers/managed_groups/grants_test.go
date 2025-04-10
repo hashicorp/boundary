@@ -12,6 +12,7 @@ import (
 	a "github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -114,7 +115,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		testcases := []struct {
 			name            string
 			input           *pbs.ListManagedGroupsRequest
-			userFunc        func(t *testing.T) func() (*iam.User, a.Account)
+			userFunc        func() (*iam.User, a.Account)
 			wantErr         error
 			wantIDs         []string
 			expectOutfields []string
@@ -125,101 +126,91 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalOidcAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,name,description"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,name,description"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				wantErr:         nil,
 				wantIDs:         []string{globalMg1.PublicId, globalMg2.PublicId},
-				expectOutfields: []string{"id", "name", "description"},
+				expectOutfields: []string{globals.IdField, globals.NameField, globals.DescriptionField},
 			},
 			{
 				name: "global role grant this and children only returns global oidc managed groups",
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalOidcAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,scope,created_time,updated_time"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,scope,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr:         nil,
 				wantIDs:         []string{globalMg1.PublicId, globalMg2.PublicId},
-				expectOutfields: []string{"id", "scope", "created_time", "updated_time"},
+				expectOutfields: []string{globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 			},
 			{
 				name: "global role grant this and descendents only returns global oidc managed groups",
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalOidcAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,version,type,auth_method_id"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,version,type,auth_method_id"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				wantErr:         nil,
 				wantIDs:         []string{globalMg1.PublicId, globalMg2.PublicId},
-				expectOutfields: []string{"id", "version", "type", "auth_method_id"},
+				expectOutfields: []string{globals.IdField, globals.VersionField, globals.TypeField, globals.AuthMethodIdField},
 			},
 			{
 				name: "global role grant this everything only returns global oidc managed groups",
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalOidcAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,attrs,authorized_actions"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,attrs,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr:         nil,
 				wantIDs:         []string{globalMg1.PublicId, globalMg2.PublicId},
-				expectOutfields: []string{"id", "attrs", "authorized_actions"},
+				expectOutfields: []string{globals.IdField, "attrs", globals.AuthorizedActionsField},
 			},
 			{
 				name: "global role grant this pinned id returns specific global oidc managed group",
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalOidcAm2.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=*", globalOidcAm2.PublicId)},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=*", globalOidcAm2.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 				wantIDs: []string{globalMg3.PublicId},
 				expectOutfields: []string{
-					"id",
-					"scope",
-					"name",
-					"description",
-					"version",
-					"type",
-					"auth_method_id",
-					"created_time",
-					"updated_time",
+					globals.IdField,
+					globals.ScopeField,
+					globals.NameField,
+					globals.DescriptionField,
+					globals.VersionField,
+					globals.TypeField,
+					globals.AuthMethodIdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
 					"attrs",
-					"authorized_actions",
+					globals.AuthorizedActionsField,
 					"oidc_managed_group_attributes",
 				},
 			},
@@ -228,29 +219,27 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: orgOidcAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: org.PublicId,
-							Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 				wantIDs: []string{orgOidcMg.PublicId},
 				expectOutfields: []string{
-					"id",
-					"scope",
-					"name",
-					"description",
-					"version",
-					"type",
-					"auth_method_id",
-					"created_time",
-					"updated_time",
+					globals.IdField,
+					globals.ScopeField,
+					globals.NameField,
+					globals.DescriptionField,
+					globals.VersionField,
+					globals.TypeField,
+					globals.AuthMethodIdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
 					"attrs",
-					"authorized_actions",
+					globals.AuthorizedActionsField,
 					"oidc_managed_group_attributes",
 				},
 			},
@@ -259,15 +248,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: orgOidcAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: org.PublicId,
-							Grants:      []string{"ids=*;type=managed-group;actions=read"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=managed-group;actions=read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr:         handlers.ForbiddenError(),
 				wantIDs:         nil,
 				expectOutfields: nil,
@@ -277,15 +264,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: orgOidcAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: org.PublicId,
-							Grants:      []string{"ids=*;type=target;actions=list,read"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=target;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr:         handlers.ForbiddenError(),
 				wantIDs:         nil,
 				expectOutfields: nil,
@@ -296,111 +281,101 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalLdapAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,name,description"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,name,description"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 				wantIDs: []string{
 					globalLdapMg.PublicId,
 				},
-				expectOutfields: []string{"id", "name", "description"},
+				expectOutfields: []string{globals.IdField, globals.NameField, globals.DescriptionField},
 			},
 			{
 				name: "global role grant this pinned id returns global created ldap managed group",
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalLdapAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=list,read;output_fields=id,scope,created_time,updated_time", globalLdapAm.PublicId)},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=list,read;output_fields=id,scope,created_time,updated_time", globalLdapAm.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 				wantIDs: []string{
 					globalLdapMg.PublicId,
 				},
-				expectOutfields: []string{"id", "scope", "created_time", "updated_time"},
+				expectOutfields: []string{globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 			},
 			{
 				name: "global role grant this and children returns global created ldap managed group",
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalLdapAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,version,type,auth_method_id"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,version,type,auth_method_id"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr: nil,
 				wantIDs: []string{
 					globalLdapMg.PublicId,
 				},
-				expectOutfields: []string{"id", "version", "type", "auth_method_id"},
+				expectOutfields: []string{globals.IdField, globals.VersionField, globals.TypeField, globals.AuthMethodIdField},
 			},
 			{
 				name: "global role grant this and descendants returns global created ldap managed group",
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: globalLdapAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,attrs,authorized_actions"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,attrs,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				wantErr: nil,
 				wantIDs: []string{
 					globalLdapMg.PublicId,
 				},
-				expectOutfields: []string{"id", "attrs", "authorized_actions"},
+				expectOutfields: []string{globals.IdField, "attrs", globals.AuthorizedActionsField},
 			},
 			{
 				name: "org role grant this returns all org ldap managed groups",
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: orgLdapAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: org.PublicId,
-							Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr: nil,
 				wantIDs: []string{
 					orgLdapMg.PublicId,
 				},
 				expectOutfields: []string{
-					"id",
-					"scope",
-					"name",
-					"description",
-					"version",
-					"type",
-					"auth_method_id",
-					"created_time",
-					"updated_time",
+					globals.IdField,
+					globals.ScopeField,
+					globals.NameField,
+					globals.DescriptionField,
+					globals.VersionField,
+					globals.TypeField,
+					globals.AuthMethodIdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
 					"attrs",
-					"authorized_actions",
+					globals.AuthorizedActionsField,
 					"ldap_managed_group_attributes",
 				},
 			},
@@ -409,15 +384,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: orgOidcAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: org.PublicId,
-							Grants:      []string{"ids=*;type=managed-group;actions=read"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=managed-group;actions=read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr:         handlers.ForbiddenError(),
 				wantIDs:         nil,
 				expectOutfields: nil,
@@ -427,15 +400,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListManagedGroupsRequest{
 					AuthMethodId: orgLdapAm.PublicId,
 				},
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: org.PublicId,
-							Grants:      []string{"ids=*;type=target;actions=list,read"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=target;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr:         handlers.ForbiddenError(),
 				wantIDs:         nil,
 				expectOutfields: nil,
@@ -444,7 +415,7 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, acct := tc.userFunc(t)()
+				user, acct := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
@@ -523,21 +494,19 @@ func TestGrants_WriteActions(t *testing.T) {
 	t.Run("create oidc", func(t *testing.T) {
 		testcases := []struct {
 			name                     string
-			userFunc                 func(t *testing.T) func() (*iam.User, a.Account)
+			userFunc                 func() (*iam.User, a.Account)
 			authmethodIdExpectErrMap map[string]error
 		}{
 			// oidc
 			{
 				name: "oidc global role grant this and children can create managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalOidcAm.PublicId: nil,
 					orgOidcAm1.PublicId:   nil,
@@ -546,15 +515,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "oidc global role grant this and descendants can create managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalOidcAm.PublicId: nil,
 					orgOidcAm1.PublicId:   nil,
@@ -563,15 +530,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "oidc global role grant this only global can create managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalOidcAm.PublicId: nil,
 					orgOidcAm1.PublicId:   handlers.ForbiddenError(),
@@ -580,15 +545,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "oidc children at global can create accounts in org",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalOidcAm.PublicId: handlers.ForbiddenError(),
 					orgOidcAm1.PublicId:   nil,
@@ -597,15 +560,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "oidc descendant at global can create accounts in org",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalOidcAm.PublicId: handlers.ForbiddenError(),
 					orgOidcAm1.PublicId:   nil,
@@ -614,15 +575,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "oidc pinned org1 grant can only create accounts in org1",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=create", orgOidcAm1.PublicId)},
-							GrantScopes: []string{globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=create", orgOidcAm1.PublicId)},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalOidcAm.PublicId: handlers.ForbiddenError(),
 					orgOidcAm1.PublicId:   nil,
@@ -631,15 +590,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "oidc target type does not allow create managed group",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=target;actions=*"},
-							GrantScopes: []string{globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=target;actions=*"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalOidcAm.PublicId: handlers.ForbiddenError(),
 					orgOidcAm1.PublicId:   handlers.ForbiddenError(),
@@ -649,7 +606,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, acct := tc.userFunc(t)()
+				user, acct := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
@@ -683,20 +640,18 @@ func TestGrants_WriteActions(t *testing.T) {
 	t.Run("create ldap", func(t *testing.T) {
 		testcases := []struct {
 			name                     string
-			userFunc                 func(t *testing.T) func() (*iam.User, a.Account)
+			userFunc                 func() (*iam.User, a.Account)
 			authmethodIdExpectErrMap map[string]error
 		}{
 			{
 				name: "ldap global role grant this and children can create managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalLdapAm.PublicId: nil,
 					orgLdapAm1.PublicId:   nil,
@@ -705,15 +660,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "ldap global role grant this and descendants can create managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalLdapAm.PublicId: nil,
 					orgLdapAm1.PublicId:   nil,
@@ -722,15 +675,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "ldap global role grant this only global can create managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalLdapAm.PublicId: nil,
 					orgLdapAm1.PublicId:   handlers.ForbiddenError(),
@@ -739,15 +690,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "ldap children at global can create accounts in org",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalLdapAm.PublicId: handlers.ForbiddenError(),
 					orgLdapAm1.PublicId:   nil,
@@ -756,15 +705,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "ldap descendant at global can create accounts in org",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalLdapAm.PublicId: handlers.ForbiddenError(),
 					orgLdapAm1.PublicId:   nil,
@@ -773,15 +720,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "ldap pinned org1 grant can only create accounts in org1",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=create", orgLdapAm1.PublicId)},
-							GrantScopes: []string{globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=create", orgLdapAm1.PublicId)},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalLdapAm.PublicId: handlers.ForbiddenError(),
 					orgLdapAm1.PublicId:   nil,
@@ -790,15 +735,13 @@ func TestGrants_WriteActions(t *testing.T) {
 			},
 			{
 				name: "ldap target type does not allow create managed group",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=target;actions=*"},
-							GrantScopes: []string{globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=target;actions=*"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
 				authmethodIdExpectErrMap: map[string]error{
 					globalLdapAm.PublicId: handlers.ForbiddenError(),
 					orgLdapAm1.PublicId:   handlers.ForbiddenError(),
@@ -808,7 +751,7 @@ func TestGrants_WriteActions(t *testing.T) {
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, acct := tc.userFunc(t)()
+				user, acct := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
@@ -842,79 +785,69 @@ func TestGrants_WriteActions(t *testing.T) {
 	t.Run("update oidc", func(t *testing.T) {
 		testcases := []struct {
 			name     string
-			userFunc func(t *testing.T) func() (*iam.User, a.Account)
+			userFunc func() (*iam.User, a.Account)
 			wantErr  error
 		}{
 			{
 				name: "oidc global role grant this can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "oidc global role grant this and children can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "oidc global role grant this and descendants can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=update"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=update"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "oidc global role pinned id grant this can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=*", globalOidcAm.PublicId)},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=*", globalOidcAm.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "oidc global role grant this cannot update managed groups in org scope",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{org.PublicId},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{org.PublicId},
+					},
+				}),
 				wantErr: handlers.ForbiddenError(),
 			},
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				mg := oidc.TestManagedGroup(t, conn, globalOidcAm, oidc.TestFakeManagedGroupFilter, oidc.WithName("default"), oidc.WithDescription("default"))
-				user, acct := tc.userFunc(t)()
+				user, acct := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
@@ -945,92 +878,80 @@ func TestGrants_WriteActions(t *testing.T) {
 	t.Run("update ldap", func(t *testing.T) {
 		testcases := []struct {
 			name     string
-			userFunc func(t *testing.T) func() (*iam.User, a.Account)
+			userFunc func() (*iam.User, a.Account)
 			wantErr  error
 		}{
 			{
 				name: "ldap global role grant this can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "ldap global role grant this and chlidren can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "ldap global role grant this and descendants can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "ldap global role pinned id grant this specific can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=*", globalLdapAm.PublicId)},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=*", globalLdapAm.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "ldap global role grant this specific can update managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=update"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=update"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 			},
 			{
 				name: "ldap global role grant this cannot update managed groups in org scope",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{org.PublicId},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{org.PublicId},
+					},
+				}),
 				wantErr: handlers.ForbiddenError(),
 			},
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				mg := ldap.TestManagedGroup(t, conn, globalLdapAm, []string{"admin", "users"}, ldap.WithName(ctx, "default"), ldap.WithDescription(ctx, "default"))
-				user, acct := tc.userFunc(t)()
+				user, acct := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
@@ -1061,147 +982,127 @@ func TestGrants_WriteActions(t *testing.T) {
 	t.Run("delete", func(t *testing.T) {
 		testcases := []struct {
 			name     string
-			userFunc func(t *testing.T) func() (*iam.User, a.Account)
+			userFunc func() (*iam.User, a.Account)
 			wantErr  error
 			mg       a.ManagedGroup
 		}{
 			{
 				name: "oidc global role grant this can delete managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=delete"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=delete"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 				mg:      oidc.TestManagedGroup(t, conn, globalOidcAm, oidc.TestFakeManagedGroupFilter),
 			},
 			{
 				name: "oidc global role grant this and children can delete managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=delete"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=delete"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr: nil,
 				mg:      oidc.TestManagedGroup(t, conn, globalOidcAm, oidc.TestFakeManagedGroupFilter),
 			},
 			{
 				name: "oidc global role grant this and descendants can delete managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=delete"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=delete"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				wantErr: nil,
 				mg:      oidc.TestManagedGroup(t, conn, globalOidcAm, oidc.TestFakeManagedGroupFilter),
 			},
 			{
 				name: "oidc org role grant this can delete managed groups in org scope",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: org.PublicId,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{org.PublicId},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{org.PublicId},
+					},
+				}),
 				wantErr: nil,
 				mg:      oidc.TestManagedGroup(t, conn, orgOidcAm1, oidc.TestFakeManagedGroupFilter),
 			},
 			{
 				name: "oidc global role grant this cannot delete managed groups in org scope",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{org.PublicId},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{org.PublicId},
+					},
+				}),
 				wantErr: handlers.ForbiddenError(),
 				mg:      oidc.TestManagedGroup(t, conn, globalOidcAm, oidc.TestFakeManagedGroupFilter),
 			},
 			{
 				name: "ldap global role grant this can delete managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=delete"},
-							GrantScopes: []string{globals.GrantScopeThis},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=delete"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
 				wantErr: nil,
 				mg:      ldap.TestManagedGroup(t, conn, globalLdapAm, []string{"admin", "users"}),
 			},
 			{
 				name: "ldap global role grant this and children can delete managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=*"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
 				wantErr: nil,
 				mg:      ldap.TestManagedGroup(t, conn, globalLdapAm, []string{"admin", "users"}),
 			},
 			{
 				name: "ldap global role grant this and descendants can delete managed groups everywhere",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=managed-group;actions=delete"},
-							GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=delete"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
 				wantErr: nil,
 				mg:      ldap.TestManagedGroup(t, conn, globalLdapAm, []string{"admin", "users"}),
 			},
 			{
 				name: "ldap global role grant this cannot delete wrong type",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=target;actions=delete"},
-							GrantScopes: []string{org.PublicId},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=target;actions=delete"},
+						GrantScopes: []string{org.PublicId},
+					},
+				}),
 				wantErr: handlers.ForbiddenError(),
 				mg:      ldap.TestManagedGroup(t, conn, globalLdapAm, []string{"admin", "users"}),
 			},
 			{
 				name: "ldap global role grant this cannot delete managed groups in org scope",
-				userFunc: func(t *testing.T) func() (*iam.User, a.Account) {
-					return iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
-						{
-							RoleScopeId: globals.GlobalPrefix,
-							Grants:      []string{"ids=*;type=*;actions=*"},
-							GrantScopes: []string{org.PublicId},
-						},
-					})
-				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{org.PublicId},
+					},
+				}),
 				wantErr: handlers.ForbiddenError(),
 				mg:      ldap.TestManagedGroup(t, conn, globalLdapAm, []string{"admin", "users"}),
 			},
@@ -1209,7 +1110,7 @@ func TestGrants_WriteActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				user, acct := tc.userFunc(t)()
+				user, acct := tc.userFunc()
 				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
