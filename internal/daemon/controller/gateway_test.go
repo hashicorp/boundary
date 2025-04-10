@@ -127,7 +127,6 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 		}
 
 		for _, userAgent := range invalidTestCases {
-			userAgent := userAgent // capture loop variable
 			t.Run(fmt.Sprintf("Invalid user-agent: %q", userAgent), func(t *testing.T) {
 				t.Parallel()
 				req := &http.Request{
