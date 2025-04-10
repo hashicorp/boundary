@@ -96,7 +96,7 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 }
 
 func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD {
-	userAgent := req.Header.Get(userAgentKey)
+	userAgent := req.Header.Get("User-Agent")
 	agentName, agentVersion, ok := strings.Cut(userAgent, "/")
 	if !ok {
 		// Invalid user agent

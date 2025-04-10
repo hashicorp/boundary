@@ -101,7 +101,7 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 		t.Parallel()
 		req := &http.Request{
 			Header: map[string][]string{
-				userAgentKey: {"Boundary-client-agent/0.1.4"},
+				"User-Agent": {"Boundary-client-agent/0.1.4"},
 			},
 		}
 
@@ -131,7 +131,7 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 				t.Parallel()
 				req := &http.Request{
 					Header: map[string][]string{
-						userAgentKey: {userAgent},
+						"User-Agent": {userAgent},
 					},
 				}
 				md := userAgentHeadersAnnotator(context.Background(), req)
