@@ -450,10 +450,10 @@ func eventsRequestInterceptor(
 	) {
 		var userAgent event.UserAgent
 		if md, ok := metadata.FromIncomingContext(interceptorCtx); ok {
-			if values := md.Get(globals.UserAgentProductKey); len(values) > 0 {
+			if values := md.Get(userAgentProductKey); len(values) > 0 {
 				userAgent.Product = values[0]
 			}
-			if values := md.Get(globals.UserAgentProductVersionKey); len(values) > 0 {
+			if values := md.Get(userAgentProductVersionKey); len(values) > 0 {
 				userAgent.ProductVersion = values[0]
 			}
 		}
@@ -464,7 +464,7 @@ func eventsRequestInterceptor(
 			request := &event.Request{
 				Details: clonedMsg,
 			}
-			if userAgent.Product != "" || userAgent.ProductVersion != "" {
+			if userAgent.Product != "" && userAgent.ProductVersion != "" {
 				request.UserAgent = &userAgent
 			}
 			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {

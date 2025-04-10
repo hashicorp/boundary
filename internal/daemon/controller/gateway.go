@@ -9,7 +9,6 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"regexp"
 	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -24,15 +23,12 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/go-version"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 )
-
-var allowedUserAgentVersionRegexes = []*regexp.Regexp{
-	regexp.MustCompile(`^Boundary-client-agent/(\d+\.\d+\.\d+)$`),
-}
 
 const gatewayTarget = ""
 
@@ -100,25 +96,24 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 }
 
 func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD {
-	var userAgent string
-	for k, v := range req.Header {
-		if strings.EqualFold(k, globals.UserAgentKey) && len(v) > 0 {
-			userAgent = v[0]
-			break
-		}
+	userAgent := req.Header.Get(userAgentKey)
+	agentName, agentVersion, ok := strings.Cut(userAgent, "/")
+	if !ok {
+		// Invalid user agent
+		return metadata.MD{}
 	}
-	for _, regex := range allowedUserAgentVersionRegexes {
-		if regex.MatchString(userAgent) {
-			matches := regex.FindStringSubmatch(userAgent)
-			agentName := strings.Split(matches[0], "/")[0]
-			agentVersion := matches[1]
-			return metadata.New(map[string]string{
-				globals.UserAgentProductKey:        agentName,
-				globals.UserAgentProductVersionKey: agentVersion,
-			})
-		}
+	if strings.HasPrefix(agentVersion, "v") {
+		// Invalid version format (starting with 'v')
+		return metadata.MD{}
 	}
-	return metadata.MD{}
+	if _, err := version.NewSemver(agentVersion); err != nil {
+		// Invalid version
+		return metadata.MD{}
+	}
+	return metadata.New(map[string]string{
+		userAgentProductKey:        agentName,
+		userAgentProductVersionKey: agentVersion,
+	})
 }
 
 // newGrpcServerListener will create an in-memory listener for the gRPC server.

@@ -66,7 +66,8 @@ type UpstreamMessage struct {
 	Message proto.Message `json:"message,omitempty"`             // boundary field
 }
 
+// UserAgent defines the fields parsed from a request's User-Agent header.
 type UserAgent struct {
-	Product        string `json:"product,omitempty"`
-	ProductVersion string `json:"product_version,omitempty"`
+	Product        string `json:"product,omitempty"`         // product identifier
+	ProductVersion string `json:"product_version,omitempty"` // version number of the product
 }
