@@ -331,7 +331,8 @@ func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIds
 	id, err := newRoleId(ctx)
 	require.NoError(err)
 	role.PublicId = id
-	require.NoError(rw.Create(ctx, role))
+	err = rw.Create(ctx, role)
+	require.NoError(err)
 	require.NotEmpty(role.PublicId)
 
 	for _, gsi := range grantScopeIds {
