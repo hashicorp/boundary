@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -97,22 +98,58 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 
 func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD {
 	userAgent := req.Header.Get("User-Agent")
-	agentName, agentVersion, ok := strings.Cut(userAgent, "/")
-	if !ok {
-		// Invalid user agent
+	if userAgent == "" {
 		return metadata.MD{}
 	}
-	if strings.HasPrefix(agentVersion, "v") {
-		// Invalid version format (starting with 'v')
+	// Regular expression to parse product, version, and comments
+	re := regexp.MustCompile(`(?P<product>[^\s/()]+)/(?P<version>[^\s()]+)(?: \((?P<comments>[^)]+)\))?`)
+	matches := re.FindAllStringSubmatch(userAgent, -1)
+
+	var userAgents []map[string]interface{}
+	for _, match := range matches {
+		product := strings.TrimSpace(match[1])
+		agentVersion := strings.TrimSpace(match[2])
+
+		if strings.HasPrefix(agentVersion, "v") {
+			// Invalid version format (starting with 'v')
+			continue
+		}
+		if _, err := version.NewSemver(agentVersion); err != nil {
+			// Invalid version
+			continue
+		}
+
+		agentData := map[string]interface{}{
+			"product":         product,
+			"product_version": agentVersion,
+		}
+
+		if len(match) > 3 && match[3] != "" {
+			// Clean up and split comments
+			commentsRaw := strings.Split(match[3], ";")
+			var comments []string
+			for _, c := range commentsRaw {
+				if trimmed := strings.TrimSpace(c); trimmed != "" {
+					comments = append(comments, trimmed)
+				}
+			}
+			if len(comments) > 0 {
+				agentData["comments"] = comments
+			}
+		}
+
+		userAgents = append(userAgents, agentData)
+	}
+
+	if len(userAgents) == 0 {
 		return metadata.MD{}
 	}
-	if _, err := version.NewSemver(agentVersion); err != nil {
-		// Invalid version
+	userAgentJSON, err := handlers.JSONMarshaler().Marshal(userAgents)
+	if err != nil {
 		return metadata.MD{}
 	}
 	return metadata.New(map[string]string{
-		userAgentProductKey:        agentName,
-		userAgentProductVersionKey: agentVersion,
+		"userAgents": string(userAgentJSON),
 	})
 }
 

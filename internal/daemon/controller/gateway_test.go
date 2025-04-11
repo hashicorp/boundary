@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/target"
@@ -97,7 +98,7 @@ func Test_correlationIdAnnotator(t *testing.T) {
 
 func Test_clientAgentHeadersAnnotator(t *testing.T) {
 	t.Parallel()
-	t.Run("Valid user-agent", func(t *testing.T) {
+	t.Run("Valid single user-agent", func(t *testing.T) {
 		t.Parallel()
 		req := &http.Request{
 			Header: map[string][]string{
@@ -107,8 +108,42 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 
 		md := userAgentHeadersAnnotator(context.Background(), req)
 		require.NotNil(t, md)
-		assert.Equal(t, "Boundary-client-agent", md.Get(userAgentProductKey)[0])
-		assert.Equal(t, "0.1.4", md.Get(userAgentProductVersionKey)[0])
+		values := md.Get("userAgents")
+		require.Len(t, values, 1)
+
+		var parsed []map[string]interface{}
+		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
+		require.NoError(t, err)
+		require.Len(t, parsed, 1)
+		assert.Equal(t, "Boundary-client-agent", parsed[0]["product"])
+		assert.Equal(t, "0.1.4", parsed[0]["product_version"])
+	})
+
+	t.Run("Multiple valid agents with comments", func(t *testing.T) {
+		t.Parallel()
+		req := &http.Request{
+			Header: map[string][]string{
+				"User-Agent": {"Boundary-client-agent/0.1.4 (foo; bar); AnotherApp/2.0.0 (baz)"},
+			},
+		}
+
+		md := userAgentHeadersAnnotator(context.Background(), req)
+		require.NotNil(t, md)
+		values := md.Get("userAgents")
+		require.Len(t, values, 1)
+
+		var parsed []map[string]interface{}
+		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
+		require.NoError(t, err)
+		require.Len(t, parsed, 2)
+
+		assert.Equal(t, "Boundary-client-agent", parsed[0]["product"])
+		assert.Equal(t, "0.1.4", parsed[0]["product_version"])
+		assert.ElementsMatch(t, []string{"foo", "bar"}, parsed[0]["comments"].([]interface{}))
+
+		assert.Equal(t, "AnotherApp", parsed[1]["product"])
+		assert.Equal(t, "2.0.0", parsed[1]["product_version"])
+		assert.ElementsMatch(t, []string{"baz"}, parsed[1]["comments"].([]interface{}))
 	})
 
 	t.Run("No user-agent header", func(t *testing.T) {
@@ -121,24 +156,48 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 
 	t.Run("Invalid user-agent formats", func(t *testing.T) {
 		invalidTestCases := []string{
-			"invalid-user-agent",
-			"Boundary-client-agent/0.1.x",
-			"Boundary-client-agent/v0.1.4",
+			"Boundary-client-agent",                 // No version
+			"/0.1.4",                                // No product
+			"Boundary-client-agent/v0.1.4",          // Starts with 'v'
+			"Boundary-client-agent/invalid.version", // Invalid version
+			"Boundary-client-agent/0.1.x",           // Invalid version
+			"Boundary-client-agent//1.0.0",          // Double slash
 		}
 
-		for _, userAgent := range invalidTestCases {
-			t.Run(fmt.Sprintf("Invalid user-agent: %q", userAgent), func(t *testing.T) {
+		for _, hdr := range invalidTestCases {
+			t.Run(fmt.Sprintf("Invalid: %q", hdr), func(t *testing.T) {
 				t.Parallel()
 				req := &http.Request{
 					Header: map[string][]string{
-						"User-Agent": {userAgent},
+						"User-Agent": {hdr},
 					},
 				}
 				md := userAgentHeadersAnnotator(context.Background(), req)
-				require.NotNil(t, md)
 				assert.Empty(t, md)
 			})
 		}
+	})
+
+	t.Run("Mixed valid and invalid agents", func(t *testing.T) {
+		t.Parallel()
+		req := &http.Request{
+			Header: map[string][]string{
+				"User-Agent": {"Boundary-client-agent/0.1.4 BadApp/v0.1.4 (foo) Another/xyz"},
+			},
+		}
+
+		md := userAgentHeadersAnnotator(context.Background(), req)
+		require.NotNil(t, md)
+		values := md.Get("userAgents")
+		require.Len(t, values, 1)
+
+		var parsed []map[string]interface{}
+		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
+		require.NoError(t, err)
+		require.Len(t, parsed, 1)
+
+		assert.Equal(t, "Boundary-client-agent", parsed[0]["product"])
+		assert.Equal(t, "0.1.4", parsed[0]["product_version"])
 	})
 }
 
