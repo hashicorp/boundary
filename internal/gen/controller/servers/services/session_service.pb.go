@@ -714,7 +714,7 @@ type CloseConnectionRequestData struct {
 	ConnectionId  string                 `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	BytesUp       int64                  `protobuf:"varint,20,opt,name=bytes_up,json=bytesUp,proto3" json:"bytes_up,omitempty" class:"public"`               // @gotags: `class:"public"`
 	BytesDown     int64                  `protobuf:"varint,30,opt,name=bytes_down,json=bytesDown,proto3" json:"bytes_down,omitempty" class:"public"`         // @gotags: `class:"public"`
-	Reason        string                 `protobuf:"bytes,40,opt,name=reason,proto3" json:"reason,omitempty" class:"public"`                                 // @gotags: `class:"public"`
+	Reason        string                 `protobuf:"bytes,40,opt,name=reason,proto3" json:"reason,omitempty" class:"public" eventstream:"observation"`                                 // @gotags: `class:"public" eventstream:"observation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

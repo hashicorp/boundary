@@ -126,7 +126,7 @@ message CloseConnectionRequestData {
   string connection_id = 10; // @gotags: `class:"public" eventstream:"observation"`
   int64 bytes_up = 20; // @gotags: `class:"public"`
   int64 bytes_down = 30; // @gotags: `class:"public"`
-  string reason = 40; // @gotags: `class:"public"`
+  string reason = 40; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message CloseConnectionRequest {

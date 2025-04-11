@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -23,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/go-version"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -58,6 +60,7 @@ func (noDelimiterStreamingMarshaler) Delimiter() []byte {
 func newGrpcGatewayMux() *runtime.ServeMux {
 	return runtime.NewServeMux(
 		runtime.WithMetadata(correlationIdAnnotator),
+		runtime.WithMetadata(userAgentHeadersAnnotator),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &noDelimiterStreamingMarshaler{
 			&runtime.HTTPBodyMarshaler{
 				Marshaler: handlers.JSONMarshaler(),
@@ -90,6 +93,63 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 
 	return metadata.New(map[string]string{
 		globals.CorrelationIdKey: correlationId,
+	})
+}
+
+func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD {
+	userAgent := req.Header.Get("User-Agent")
+	if userAgent == "" {
+		return metadata.MD{}
+	}
+	// Regular expression to parse product, version, and comments
+	re := regexp.MustCompile(`(?P<product>[^\s/()]+)/(?P<version>[^\s()]+)(?: \((?P<comments>[^)]+)\))?`)
+	matches := re.FindAllStringSubmatch(userAgent, -1)
+
+	var userAgents []map[string]interface{}
+	for _, match := range matches {
+		product := strings.TrimSpace(match[1])
+		agentVersion := strings.TrimSpace(match[2])
+
+		if strings.HasPrefix(agentVersion, "v") {
+			// Invalid version format (starting with 'v')
+			continue
+		}
+		if _, err := version.NewSemver(agentVersion); err != nil {
+			// Invalid version
+			continue
+		}
+
+		agentData := map[string]interface{}{
+			"product":         product,
+			"product_version": agentVersion,
+		}
+
+		if len(match) > 3 && match[3] != "" {
+			// Clean up and split comments
+			commentsRaw := strings.Split(match[3], ";")
+			var comments []string
+			for _, c := range commentsRaw {
+				if trimmed := strings.TrimSpace(c); trimmed != "" {
+					comments = append(comments, trimmed)
+				}
+			}
+			if len(comments) > 0 {
+				agentData["comments"] = comments
+			}
+		}
+
+		userAgents = append(userAgents, agentData)
+	}
+
+	if len(userAgents) == 0 {
+		return metadata.MD{}
+	}
+	userAgentJSON, err := handlers.JSONMarshaler().Marshal(userAgents)
+	if err != nil {
+		return metadata.MD{}
+	}
+	return metadata.New(map[string]string{
+		"userAgents": string(userAgentJSON),
 	})
 }
 

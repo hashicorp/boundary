@@ -448,14 +448,35 @@ func eventsRequestInterceptor(
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (any, error,
 	) {
+		var userAgents []*event.UserAgent
+		if md, ok := metadata.FromIncomingContext(interceptorCtx); ok {
+			if values := md.Get("userAgents"); len(values) > 0 {
+				rawHeader := values[0]
+
+				if err := handlers.JSONMarshaler().Unmarshal([]byte(rawHeader), &userAgents); err == nil {
+					// Filter out any agents missing required fields
+					var filteredAgents []*event.UserAgent
+					for _, ua := range userAgents {
+						if ua.Product != "" && ua.ProductVersion != "" {
+							filteredAgents = append(filteredAgents, ua)
+						}
+					}
+					userAgents = filteredAgents
+				}
+			}
+		}
 		if msg, ok := req.(proto.Message); ok {
 			// Clone the request before writing it to the audit log,
 			// in case downstream interceptors modify it.
 			clonedMsg := proto.Clone(msg)
+			request := &event.Request{
+				Details:    clonedMsg,
+				UserAgents: userAgents,
+			}
 			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg audit: %s", err)
 			}
-			if err := event.WriteObservation(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
+			if err := event.WriteObservation(interceptorCtx, op, event.WithRequest(request)); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg observation: %s", err)
 			}
 		}
@@ -463,7 +484,6 @@ func eventsRequestInterceptor(
 		return handler(interceptorCtx, req)
 	}
 }
-
 func eventsResponseInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
