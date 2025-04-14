@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
@@ -388,4 +389,45 @@ func (r *Repository) estimatedRoleCount(ctx context.Context) (int, error) {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total roles"))
 	}
 	return count, nil
+}
+
+// getRoleScopeId returns scopeID for the Role from the base type iam_role table
+// use this to get scope ID to determine which of the role subtype tables to operate on
+func getRoleScopeId(ctx context.Context, r db.Reader, roleId string) (scope.Type, error) {
+	const op = "iam.getRoleScopeId"
+	if roleId == "" {
+		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	if r == nil {
+		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+	}
+	rows, err := r.Query(ctx, scopeIdFromRoleIdQuery, []any{sql.Named("public_id", roleId)})
+	if err != nil {
+		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup role scope for :%s", roleId)))
+	}
+	var scopeId string
+	cnt := 0
+	for rows.Next() {
+		cnt++
+		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
+			return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for :%s", roleId)))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
+	}
+	if cnt == 0 {
+		return scope.Unknown, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("role %s not found", roleId))
+	}
+
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		return scope.Global, nil
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		return scope.Org, nil
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		return scope.Project, nil
+	default:
+		return scope.Unknown, fmt.Errorf("unknown scope type for role %s", roleId)
+	}
 }
