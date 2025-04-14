@@ -70,6 +70,9 @@ begin;
   create trigger set_resource before insert on iam_grant
     for each row execute procedure set_resource();
 
+  -- TODO (Bo 04/14/2025): this constraint cannot be applied as some canonical grants may not exist during the first migration to the new schema
+  -- need to move canonical grants onto `iam_grants` table to make this constraint work
+
   -- Add a foreign key constraint to the iam_role_grant table to ensure that the canonical_grant exists in the iam_grant table.
   -- Alter to add foreign key constraint to the iam_role_grant table defined in 01/06_iam.up.sql
   alter table iam_role_grant
