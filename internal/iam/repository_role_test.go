@@ -945,7 +945,7 @@ func Test_getRoleScopeId(t *testing.T) {
 				}
 			},
 			wantErr:    true,
-			wantErrMsg: `iam.getRoleScopeId: role r_123456 not found: state violation: error #404`,
+			wantErrMsg: `iam.getRoleScopeType: role r_123456 not found: state violation: error #404`,
 		},
 		{
 			name: "missing role id returns error",
@@ -956,7 +956,7 @@ func Test_getRoleScopeId(t *testing.T) {
 				}
 			},
 			wantErr:    true,
-			wantErrMsg: `iam.getRoleScopeId: missing role id: parameter violation: error #100`,
+			wantErrMsg: `iam.getRoleScopeType: missing role id: parameter violation: error #100`,
 		},
 		{
 			name: "missing db.Reader returns error",
@@ -967,13 +967,13 @@ func Test_getRoleScopeId(t *testing.T) {
 				}
 			},
 			wantErr:    true,
-			wantErrMsg: `iam.getRoleScopeId: missing db.Reader: parameter violation: error #100`,
+			wantErrMsg: `iam.getRoleScopeType: missing db.Reader: parameter violation: error #100`,
 		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			args := tc.inputRoleId(t)
-			got, err := getRoleScopeId(ctx, args.dbReader, args.roleId)
+			got, err := getRoleScopeType(ctx, args.dbReader, args.roleId)
 			if tc.wantErr {
 				require.Error(t, err)
 				require.Equal(t, tc.wantErrMsg, err.Error())
