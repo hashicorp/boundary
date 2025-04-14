@@ -99,7 +99,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 				ScopeId:   globals.GlobalPrefix,
 				Recursive: true,
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
@@ -115,7 +115,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 				ScopeId:   globals.GlobalPrefix,
 				Recursive: true,
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
@@ -131,7 +131,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 				ScopeId:   org1.GetPublicId(),
 				Recursive: true,
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
@@ -147,7 +147,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 				ScopeId:   globals.GlobalPrefix,
 				Recursive: true,
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org2.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
@@ -163,7 +163,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 				ScopeId:   org1.GetPublicId(),
 				Recursive: true,
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org2.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
@@ -178,7 +178,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 			input: &pbs.ListCredentialStoresRequest{
 				ScopeId: proj1.GetPublicId(),
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=list,read"},
@@ -193,7 +193,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 			input: &pbs.ListCredentialStoresRequest{
 				ScopeId: proj1.GetPublicId(),
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=read"},
@@ -208,7 +208,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 			input: &pbs.ListCredentialStoresRequest{
 				ScopeId: proj1.GetPublicId(),
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=read"},
@@ -224,7 +224,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 				ScopeId:   globals.GlobalPrefix,
 				Recursive: true,
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=list,no-op"},
@@ -240,7 +240,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 				ScopeId:   globals.GlobalPrefix,
 				Recursive: true,
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=list"},
@@ -266,7 +266,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 				ScopeId:   globals.GlobalPrefix,
 				Recursive: true,
 			},
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=list"},
@@ -354,7 +354,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 	}{
 		{
 			name: "global role grant descendant can read all created credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=read"},
@@ -369,7 +369,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global role grant this and children cannot get any credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=read"},
@@ -384,7 +384,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 		},
 		{
 			name: "org role grant children can read all credential stores under granted org",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org2.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=read"},
@@ -399,7 +399,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 		},
 		{
 			name: "project role can only read credential stores in this project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=read"},
@@ -414,7 +414,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can read all credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=read"},
@@ -439,7 +439,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global grants individual resources can only read resources that are granted access",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{fmt.Sprintf("ids=%s,%s;type=credential-store;actions=read", proj1VaultStore.GetPublicId(), proj3VaultStore.GetPublicId())},
@@ -454,7 +454,7 @@ func TestGrants_GetCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global grants not granting read permission cannot read credentials store",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=list,create,delete"},
@@ -555,7 +555,7 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 	}{
 		{
 			name: "global role grant descendant can list all created credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=create"},
@@ -570,7 +570,7 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global role grant this and children cannot create credential store in any project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=create"},
@@ -585,7 +585,7 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "org role grant children can create credential stores under granted org",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org2.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=create"},
@@ -600,7 +600,7 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "project role can only read credential stores in this project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=create"},
@@ -615,7 +615,7 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can create in granted project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=create"},
@@ -640,7 +640,7 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can create credential stores where granted",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=create"},
@@ -665,7 +665,7 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global grants not granting create permission cannot create credentials store",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
@@ -753,7 +753,7 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 	}{
 		{
 			name: "global role grant descendant can delete credential stores everywhere",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
@@ -768,7 +768,7 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global role grant this and children cannot delete credential store in any project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
@@ -783,7 +783,7 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 		},
 		{
 			name: "org role grant children can delete credential stores under granted org",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org2.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
@@ -798,7 +798,7 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 		},
 		{
 			name: "project role can only delete credential stores in this project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
@@ -813,7 +813,7 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can delete in granted project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
@@ -838,7 +838,7 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can delete credential stores where granted",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
@@ -863,7 +863,7 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global grants not granting create permission cannot delete credentials store",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=list"},
@@ -970,7 +970,7 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 	}{
 		{
 			name: "global role grant descendant can update credential stores everywhere",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=update"},
@@ -985,7 +985,7 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global role grant this and children cannot update credential store in any project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=update"},
@@ -1000,7 +1000,7 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "org role grant children can update credential stores under granted org",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org2.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=update"},
@@ -1015,7 +1015,7 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "project role can only update credential stores in this project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=update"},
@@ -1030,7 +1030,7 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can update in granted project",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=update"},
@@ -1055,7 +1055,7 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can update credential stores where granted",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=update"},
@@ -1080,7 +1080,7 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global grants not granting create permission cannot update credentials store",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=create"},
@@ -1164,7 +1164,7 @@ func TestOutputFields_ListCredentialStores(t *testing.T) {
 	}{
 		{
 			name: "global role grants descendant applies output_fields correctly when recursively listing credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope,scope_id,name,description,authorized_actions,authorized_collection_actions"},
@@ -1198,7 +1198,7 @@ func TestOutputFields_ListCredentialStores(t *testing.T) {
 		},
 		{
 			name: "org role grants children applies output_fields correctly when recursively listing credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org.GetPublicId(),
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,created_time,updated_time,version,authorized_actions,authorized_collection_actions"},
@@ -1230,7 +1230,7 @@ func TestOutputFields_ListCredentialStores(t *testing.T) {
 		},
 		{
 			name: "project role grants this applies output_fields correctly when listing credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: staticProj.GetPublicId(),
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,created_time,updated_time,version,authorized_actions,authorized_collection_actions"},
@@ -1253,7 +1253,7 @@ func TestOutputFields_ListCredentialStores(t *testing.T) {
 		},
 		{
 			name: "multiple role grants this applies output_fields correctly when listing credential stores across multiple scopes",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=credential-store;actions=list"},
@@ -1300,7 +1300,7 @@ func TestOutputFields_ListCredentialStores(t *testing.T) {
 		},
 		{
 			name: "global role grants descendant applies attributes output_fields correctly for each given type",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants: []string{
@@ -1396,7 +1396,7 @@ func TestOutputFields_GetCredentialStore(t *testing.T) {
 	}{
 		{
 			name: "global role grants descendant applies output_fields correctly when reading credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope,scope_id,name,description,authorized_actions,authorized_collection_actions"},
@@ -1418,7 +1418,7 @@ func TestOutputFields_GetCredentialStore(t *testing.T) {
 		},
 		{
 			name: "org role grants descendant applies output_fields correctly when reading credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org.PublicId,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,version,attributes,authorized_actions,authorized_collection_actions"},
@@ -1438,7 +1438,7 @@ func TestOutputFields_GetCredentialStore(t *testing.T) {
 		},
 		{
 			name: "id specific grants descendant applies output_fields correctly",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants: []string{
@@ -1459,7 +1459,7 @@ func TestOutputFields_GetCredentialStore(t *testing.T) {
 		},
 		{
 			name: "id specific with composite grants pinned that allows collection actions applies output_fields correctly for credential library child resource",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants: []string{
@@ -1480,7 +1480,7 @@ func TestOutputFields_GetCredentialStore(t *testing.T) {
 		},
 		{
 			name: "id specific grants descendant applies output_fields correctly",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: vaultProj.PublicId,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=*"},
@@ -1579,7 +1579,7 @@ func TestOutputFields_CreateCredentialStore(t *testing.T) {
 	}{
 		{
 			name: "global role grants descendant applies output_fields correctly when reading credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope,scope_id,name,description,authorized_actions,authorized_collection_actions"},
@@ -1598,7 +1598,7 @@ func TestOutputFields_CreateCredentialStore(t *testing.T) {
 		},
 		{
 			name: "org role grants descendant applies output_fields correctly when reading credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org.PublicId,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,version,attributes,authorized_actions,authorized_collection_actions"},
@@ -1615,7 +1615,7 @@ func TestOutputFields_CreateCredentialStore(t *testing.T) {
 		},
 		{
 			name: "org role grants descendant applies output_fields correctly when reading credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org.PublicId,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,version,attributes,authorized_actions,authorized_collection_actions"},
@@ -1632,7 +1632,7 @@ func TestOutputFields_CreateCredentialStore(t *testing.T) {
 		},
 		{
 			name: "not granting credential-library access does not return authorized_collection_actions",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org.PublicId,
 					Grants:      []string{"ids=*;type=credential-store;actions=*;output_fields=id,version,attributes,authorized_actions,authorized_collection_actions"},
@@ -1648,7 +1648,7 @@ func TestOutputFields_CreateCredentialStore(t *testing.T) {
 		},
 		{
 			name: "composite specific grants with credential-library access return authorized_collection_actions",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org.PublicId,
 					Grants: []string{
@@ -1668,7 +1668,7 @@ func TestOutputFields_CreateCredentialStore(t *testing.T) {
 		},
 		{
 			name: "id specific grants descendant applies output_fields correctly",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj.PublicId,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=*"},
@@ -1755,7 +1755,7 @@ func TestOutputFields_UpdateCredentialStore(t *testing.T) {
 	}{
 		{
 			name: "global role grants descendant applies output_fields correctly when reading credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope,scope_id,name,description,attributes"},
@@ -1773,7 +1773,7 @@ func TestOutputFields_UpdateCredentialStore(t *testing.T) {
 		},
 		{
 			name: "org role grants descendant applies output_fields correctly when reading credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org.PublicId,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=version,type,created_time,updated_time,authorized_actions,authorized_collection_actions"},
@@ -1791,7 +1791,7 @@ func TestOutputFields_UpdateCredentialStore(t *testing.T) {
 		},
 		{
 			name: "org role grants descendant applies output_fields correctly when reading credential stores",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org.PublicId,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,version,attributes,authorized_actions,authorized_collection_actions"},
@@ -1808,7 +1808,7 @@ func TestOutputFields_UpdateCredentialStore(t *testing.T) {
 		},
 		{
 			name: "id specific grants descendant applies output_fields correctly",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj.PublicId,
 					Grants:      []string{"ids=*;type=*;actions=*;output_fields=*"},
