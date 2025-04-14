@@ -341,7 +341,7 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 	if withAccountId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing account id")
 	}
-	rows, err := r.reader.Query(ctx, whereUserAccount, []any{withAccountId})
+	rows, err := r.reader.Query(ctx, whereUserAccount, []any{sql.Named("public_id", withAccountId)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to query account %s", withAccountId)))
 	}
