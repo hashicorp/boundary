@@ -5,7 +5,6 @@ package iam
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -333,35 +332,4 @@ func (p *projectRole) Actions() map[string]action.Type {
 	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
-}
-
-// getRoleScopeId returns scopeID for the Role from the base type iam_role table
-// use this to get scope ID to determine which of the role subtype tables to operate on
-func getRoleScopeId(ctx context.Context, r db.Reader, roleId string) (string, error) {
-	const op = "iam.getRoleScopeId"
-	if roleId == "" {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "missing role id")
-	}
-	if r == nil {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
-	}
-	rows, err := r.Query(ctx, scopeIdFromRoleIdQuery, []any{roleId})
-	if err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup role scope for :%s", roleId)))
-	}
-	var scopeId string
-	cnt := 0
-	for rows.Next() {
-		cnt++
-		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
-			return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for :%s", roleId)))
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
-	}
-	if cnt == 0 {
-		return "", errors.New(ctx, errors.NotFound, op, fmt.Sprintf("role %s not found", roleId))
-	}
-	return scopeId, nil
 }
