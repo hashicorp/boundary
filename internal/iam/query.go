@@ -15,7 +15,7 @@ const (
 		on iam_user_acct_info.public_id = auth_account.iam_user_id
 	where 
 		iam_user_acct_info.scope_id = auth_account.scope_id and
-		auth_account.public_id = @public_id`
+		auth_account.public_id = ?`
 
 	// whereValidAuthMethod - determine if an auth method public_id within a scope_id
 	// is valid by returning a count of matching rows.
@@ -221,9 +221,4 @@ const (
 	estimateCountScopes = `
 		select reltuples::bigint as estimate from pg_class where oid in ('iam_scope'::regclass)
 	`
-
-	scopeIdFromRoleIdQuery = `
-	   select scope_id
-		 from iam_role
-		where public_id = $1;`
 )
