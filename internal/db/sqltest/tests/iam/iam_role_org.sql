@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(21);
+  select plan(16);
   select wtt_load('widgets', 'iam');
 
   ------------------------------------------------------------------------------
@@ -166,35 +166,6 @@ begin;
     'project scope_id invalid_project not found in org',
     'ensure_project_belongs_to_role_org trigger enforces matching org'
   );
-
-  -- 3f) switch from individual to children deletes redundant grants scope in iam_role_org_individual_grant_scope
-  prepare insert_r4_valid_org_scope_role as
-    insert into iam_role_org 
-        (public_id, scope_id, grant_this_role_scope, grant_scope)
-    values
-        ('r_4444444444', 'o_____widget', true, 'individual');
-  select lives_ok('insert_r4_valid_org_scope_role');
-
-  -- create a row in iam_role_org_individual_grant_scope with grant_scope=individual
-  prepare insert_r4_valid_project_scope as
-    insert into iam_role_org_individual_grant_scope
-        (role_id, grant_scope, scope_id)
-    values
-        ('r_4444444444', 'individual', 'p____bwidget');
-  select lives_ok('insert_r4_valid_project_scope');
-
-  -- change grannt_scope from individual to children
-  prepare update_r4_grant_scope_to_children as
-    update iam_role_org
-        set grant_scope = 'children'
-      where public_id = 'r_4444444444';
-    select lives_ok('update_r4_grant_scope_to_children');
-  
-  -- check that the iam_role_org.grant_scope is updated to children
-  select is(count(*), 1::bigint) from iam_role_org where public_id = 'r_4444444444' and grant_scope = 'children';
-  -- check that the update deletes all individual grant scopes in iam_role_org_individual_grant_scope
-  select is(count(*), 0::bigint) from iam_role_org_individual_grant_scope where role_id = 'r_4444444444';
-
 
   select * from finish();
 rollback;

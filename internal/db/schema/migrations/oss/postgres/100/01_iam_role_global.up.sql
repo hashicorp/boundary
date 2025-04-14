@@ -66,26 +66,29 @@ begin;
     'of the subtype table whenever the grant_this_role_scope column is updated';
 
 
-  create function delete_global_role_individual_role_grant_scope() returns trigger
+-- Add trigger to update the new update_time column on every iam_role subtype update.
+  create function update_iam_role_table_update_time() returns trigger
   as $$
   begin
-    if new.grant_scope = 'children' then
-      delete from iam_role_global_individual_org_grant_scope
-        where role_id = new.public_id;
-    elsif new.grant_scope = 'descendants' then
-      delete from iam_role_global_individual_org_grant_scope
-        where role_id = new.public_id;
-      delete from iam_role_global_individual_project_grant_scope
-        where role_id = new.public_id;
-    end if;
+    update iam_role set update_time = new.update_time where public_id = new.public_id;
     return new;
   end;
-  $$ language plpgsql;
-  comment on function delete_global_role_individual_role_grant_scope() is
-    'delete_global_role_individual_role_grant_scope deletes individual role grants from '
-    'iam_role_global_individual_org_grant_scope and iam_role_global_individual_project_grant_scope to remove '
-    'redundant grants';
+    $$ language plpgsql;
+    comment on function update_iam_role_table_update_time() is
+      'update_iam_role_table_update_time is used to automatically update the update_time '
+      'of the base table whenever one of the subtype iam_role tables are updated';
 
+  create function delete_base_iam_role() returns trigger
+  as $$
+  begin
+    delete from iam_role
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+    $$ language plpgsql;
+    comment on function delete_base_iam_role() is
+      'delete_base_iam_role is used to automatically delete associated iam_role entry'
+      'since domain implementation performs deletion on the child table which does not cleanup the base iam_role table ';
 
   -- global iam_role must have a scope_id of global.
   --
@@ -146,6 +149,12 @@ begin;
   create trigger update_iam_role_global_grant_this_role_scope_update_time before update on iam_role_global
     for each row execute procedure insert_grant_this_role_scope_update_time();
 
+  create trigger update_iam_role_global_base_table_update_time after update on iam_role_global
+    for each row execute procedure update_iam_role_table_update_time();
+
+  create trigger delete_base_iam_role after delete on iam_role_global
+    for each row execute procedure delete_base_iam_role();
+
   create trigger default_create_time_column before insert on iam_role_global
     for each row execute procedure default_create_time();
 
@@ -157,9 +166,6 @@ begin;
 
   create trigger immutable_columns before update on iam_role_global
     for each row execute procedure immutable_columns('scope_id', 'create_time');
-
-  create trigger delete_global_role_individual_grant_scopes before update on iam_role_global
-    for each row execute procedure delete_global_role_individual_role_grant_scope();
 
 
   create table iam_role_global_individual_org_grant_scope (
