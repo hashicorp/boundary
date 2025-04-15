@@ -485,6 +485,7 @@ func eventsRequestInterceptor(
 		return handler(interceptorCtx, req)
 	}
 }
+
 func eventsResponseInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
