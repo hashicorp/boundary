@@ -580,51 +580,22 @@ func (r *Repository) grantsForUserGlobalResources(
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		grants = append(grants, g)
-
 	}
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	ret := make(perms.GrantTuples, 0, len(grants)*3)
+	ret := make(perms.GrantTuples, 0)
 	for _, grant := range grants {
-		// If the role has grant scope set to "individual" then we need to
-		// iterate over the individual grant scopes and create a grant tuple
-		// for each one.
-		if grant.grantScope == globals.GrantScopeIndividual && len(grant.individualGrantScopes) > 0 {
-			for _, grantScope := range grant.individualGrantScopes {
-				for _, canonicalGrant := range grant.canonicalGrants {
-					gt := perms.GrantTuple{
-						RoleId:            grant.roleId,
-						RoleScopeId:       grant.roleScopeId,
-						RoleParentScopeId: grant.roleParentScopeId,
-						GrantScopeId:      grantScope,
-						Grant:             canonicalGrant,
-					}
-					if grant.grantThisRoleScope || gt.GrantScopeId == "" {
-						gt.GrantScopeId = grant.roleScopeId
-					}
-					ret = append(ret, gt)
-				}
+		for _, canonicalGrant := range grant.canonicalGrants {
+			gt := perms.GrantTuple{
+				RoleId:            grant.roleId,
+				RoleScopeId:       grant.roleScopeId,
+				RoleParentScopeId: grant.roleParentScopeId,
+				GrantScopeId:      grant.roleScopeId, // use "global" for all global grants
+				Grant:             canonicalGrant,
 			}
-		}
-
-		// If the role does not have any individual grant scopes,
-		// then we need to create a grant tuple for each canonical grant.
-		if grant.grantScope != globals.GrantScopeIndividual || len(grant.individualGrantScopes) == 0 {
-			for _, canonicalGrant := range grant.canonicalGrants {
-				gt := perms.GrantTuple{
-					RoleId:            grant.roleId,
-					RoleScopeId:       grant.roleScopeId,
-					RoleParentScopeId: grant.roleParentScopeId,
-					GrantScopeId:      grant.grantScope,
-					Grant:             canonicalGrant,
-				}
-				if grant.grantThisRoleScope || gt.GrantScopeId == "" {
-					gt.GrantScopeId = grant.roleScopeId
-				}
-				ret = append(ret, gt)
-			}
+			ret = append(ret, gt)
 		}
 	}
 
