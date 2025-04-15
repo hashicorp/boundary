@@ -51,6 +51,7 @@ const (
 )
 
 // Regular expression to parse user-agent product, version, and comments
+// Follows the structure defined in RFC 9110: https://datatracker.ietf.org/doc/html/rfc9110#name-user-agent
 var userAgentRegex = regexp.MustCompile(`(?P<product>[^\s/()]+)/(?P<version>[^\s()]+)(?: \((?P<comments>[^)]+)\))?`)
 
 // customContextServerStream wraps the grpc.ServerStream interface and lets us

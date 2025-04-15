@@ -908,6 +908,35 @@ func Test_parseUserAgents(t *testing.T) {
 			},
 		},
 		{
+			name:         "complex but valid user agents",
+			rawUserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 surveyon/2.9.5 (iPhone; CPU iPhone OS 12_5_7 like Mac OS X)",
+			expected: []*event.UserAgent{
+				{
+					Product:        "Mozilla",
+					ProductVersion: "5.0",
+					Comments:       []string{"Macintosh", "Intel Mac OS X 10_15_7"},
+				},
+				{
+					Product:        "AppleWebKit",
+					ProductVersion: "537.36",
+					Comments:       []string{"KHTML, like Gecko"},
+				},
+				{
+					Product:        "Chrome",
+					ProductVersion: "87.0.4280.88",
+				},
+				{
+					Product:        "Safari",
+					ProductVersion: "537.36",
+				},
+				{
+					Product:        "surveyon",
+					ProductVersion: "2.9.5",
+					Comments:       []string{"iPhone", "CPU iPhone OS 12_5_7 like Mac OS X"},
+				},
+			},
+		},
+		{
 			name:         "invalid client-agent version format (starts with 'v')",
 			rawUserAgent: "Boundary-client-agent/v0.1.4",
 			expected:     nil,
