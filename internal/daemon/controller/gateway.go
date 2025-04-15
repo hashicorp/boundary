@@ -32,7 +32,7 @@ import (
 const (
 	gatewayTarget = ""
 
-	// userAgentsKey defines the user-agent header key for the gRPC gateway
+	// userAgentsKey defines the gRPC metadata key used to forward the User-Agent header to the gRPC server.
 	userAgentsKey = "userAgents"
 )
 
