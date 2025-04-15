@@ -31,7 +31,15 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 )
 
-const gatewayTarget = ""
+const (
+	gatewayTarget = ""
+
+	// userAgentsKey defines the user-agent header key for the gRPC gateway
+	userAgentsKey = "userAgents"
+)
+
+// Regular expression to parse user-agent product, version, and comments
+var userAgentRegex = regexp.MustCompile(`(?P<product>[^\s/()]+)/(?P<version>[^\s()]+)(?: \((?P<comments>[^)]+)\))?`)
 
 type grpcServerListener interface {
 	net.Listener
@@ -101,11 +109,9 @@ func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD
 	if userAgent == "" {
 		return metadata.MD{}
 	}
-	// Regular expression to parse product, version, and comments
-	re := regexp.MustCompile(`(?P<product>[^\s/()]+)/(?P<version>[^\s()]+)(?: \((?P<comments>[^)]+)\))?`)
-	matches := re.FindAllStringSubmatch(userAgent, -1)
+	matches := userAgentRegex.FindAllStringSubmatch(userAgent, -1)
 
-	var userAgents []map[string]interface{}
+	var userAgents []*event.UserAgent
 	for _, match := range matches {
 		product := strings.TrimSpace(match[1])
 		agentVersion := strings.TrimSpace(match[2])
@@ -119,9 +125,9 @@ func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD
 			continue
 		}
 
-		agentData := map[string]interface{}{
-			"product":         product,
-			"product_version": agentVersion,
+		agentData := &event.UserAgent{
+			Product:        product,
+			ProductVersion: agentVersion,
 		}
 
 		if len(match) > 3 && match[3] != "" {
@@ -134,7 +140,7 @@ func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD
 				}
 			}
 			if len(comments) > 0 {
-				agentData["comments"] = comments
+				agentData.Comments = comments
 			}
 		}
 
@@ -149,7 +155,7 @@ func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD
 		return metadata.MD{}
 	}
 	return metadata.New(map[string]string{
-		"userAgents": string(userAgentJSON),
+		userAgentsKey: string(userAgentJSON),
 	})
 }
 

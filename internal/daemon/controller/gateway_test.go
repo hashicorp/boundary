@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -111,12 +112,17 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 		values := md.Get("userAgents")
 		require.Len(t, values, 1)
 
-		var parsed []map[string]interface{}
+		var parsed []*event.UserAgent
 		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
 		require.NoError(t, err)
 		require.Len(t, parsed, 1)
-		assert.Equal(t, "Boundary-client-agent", parsed[0]["product"])
-		assert.Equal(t, "0.1.4", parsed[0]["product_version"])
+		expected := []*event.UserAgent{
+			{
+				Product:        "Boundary-client-agent",
+				ProductVersion: "0.1.4",
+			},
+		}
+		assert.Equal(t, expected, parsed)
 	})
 
 	t.Run("Multiple valid agents with comments", func(t *testing.T) {
@@ -132,18 +138,23 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 		values := md.Get("userAgents")
 		require.Len(t, values, 1)
 
-		var parsed []map[string]interface{}
+		var parsed []*event.UserAgent
 		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
 		require.NoError(t, err)
 		require.Len(t, parsed, 2)
-
-		assert.Equal(t, "Boundary-client-agent", parsed[0]["product"])
-		assert.Equal(t, "0.1.4", parsed[0]["product_version"])
-		assert.ElementsMatch(t, []string{"foo", "bar"}, parsed[0]["comments"].([]interface{}))
-
-		assert.Equal(t, "AnotherApp", parsed[1]["product"])
-		assert.Equal(t, "2.0.0", parsed[1]["product_version"])
-		assert.ElementsMatch(t, []string{"baz"}, parsed[1]["comments"].([]interface{}))
+		expected := []*event.UserAgent{
+			{
+				Product:        "Boundary-client-agent",
+				ProductVersion: "0.1.4",
+				Comments:       []string{"foo", "bar"},
+			},
+			{
+				Product:        "AnotherApp",
+				ProductVersion: "2.0.0",
+				Comments:       []string{"baz"},
+			},
+		}
+		assert.Equal(t, expected, parsed)
 	})
 
 	t.Run("No user-agent header", func(t *testing.T) {
@@ -155,6 +166,7 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 	})
 
 	t.Run("Invalid user-agent formats", func(t *testing.T) {
+		t.Parallel()
 		invalidTestCases := []string{
 			"Boundary-client-agent",                 // No version
 			"/0.1.4",                                // No product
@@ -191,13 +203,17 @@ func Test_clientAgentHeadersAnnotator(t *testing.T) {
 		values := md.Get("userAgents")
 		require.Len(t, values, 1)
 
-		var parsed []map[string]interface{}
+		var parsed []*event.UserAgent
 		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
 		require.NoError(t, err)
 		require.Len(t, parsed, 1)
-
-		assert.Equal(t, "Boundary-client-agent", parsed[0]["product"])
-		assert.Equal(t, "0.1.4", parsed[0]["product_version"])
+		expected := []*event.UserAgent{
+			{
+				Product:        "Boundary-client-agent",
+				ProductVersion: "0.1.4",
+			},
+		}
+		assert.Equal(t, expected, parsed)
 	})
 }
 

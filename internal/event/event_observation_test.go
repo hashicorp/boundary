@@ -514,10 +514,10 @@ func Test_composeFromTelemetryFiltering(t *testing.T) {
 					Operation: "op",
 					Endpoint:  "/auth-tokens/<id>",
 					Details:   testWorkerStatus(t),
-					UserAgent: &UserAgent{
+					UserAgents: []*UserAgent{{
 						Product:        "Boundary-client-agent",
 						ProductVersion: "0.1.4",
-					},
+					}},
 				}),
 				WithTelemetry(),
 			},
@@ -531,20 +531,20 @@ func Test_composeFromTelemetryFiltering(t *testing.T) {
 					Operation: "op",
 					Endpoint:  "/auth-tokens/<id>",
 					Details:   testWorkerStatus(t),
-					UserAgent: &UserAgent{
+					UserAgents: []*UserAgent{{
 						Product:        "Boundary-client-agent",
 						ProductVersion: "0.1.4",
-					},
+					}},
 				},
 			},
 			wantFilteredRequest: &Request{
 				Operation: "op",
 				Endpoint:  "/auth-tokens/<id>",
 				Details:   testWorkerStatusObservable(t),
-				UserAgent: &UserAgent{
+				UserAgents: []*UserAgent{{
 					Product:        "Boundary-client-agent",
 					ProductVersion: "0.1.4",
-				},
+				}},
 			},
 		},
 	}

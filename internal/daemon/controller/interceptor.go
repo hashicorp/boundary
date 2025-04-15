@@ -450,19 +450,20 @@ func eventsRequestInterceptor(
 	) {
 		var userAgents []*event.UserAgent
 		if md, ok := metadata.FromIncomingContext(interceptorCtx); ok {
-			if values := md.Get("userAgents"); len(values) > 0 {
+			if values := md.Get(userAgentsKey); len(values) > 0 {
 				rawHeader := values[0]
 
-				if err := handlers.JSONMarshaler().Unmarshal([]byte(rawHeader), &userAgents); err == nil {
-					// Filter out any agents missing required fields
-					var filteredAgents []*event.UserAgent
-					for _, ua := range userAgents {
-						if ua.Product != "" && ua.ProductVersion != "" {
-							filteredAgents = append(filteredAgents, ua)
-						}
-					}
-					userAgents = filteredAgents
+				if err := handlers.JSONMarshaler().Unmarshal([]byte(rawHeader), &userAgents); err != nil {
+					return nil, status.Errorf(codes.InvalidArgument, "invalid user agent metadata: %v", err)
 				}
+				// Filter out any agents missing required fields
+				var filteredAgents []*event.UserAgent
+				for _, ua := range userAgents {
+					if ua.Product != "" && ua.ProductVersion != "" {
+						filteredAgents = append(filteredAgents, ua)
+					}
+				}
+				userAgents = filteredAgents
 			}
 		}
 		if msg, ok := req.(proto.Message); ok {
