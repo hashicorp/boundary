@@ -11,12 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1252,4 +1254,133 @@ func Test_estimatedRoleCount(t *testing.T) {
 	numItems, err = repo.estimatedRoleCount(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, numItems)
+}
+
+func Test_getRoleScopeType(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	ctx := context.Background()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+	type arg struct {
+		roleId   string
+		dbReader db.Reader
+	}
+	testcases := []struct {
+		name        string
+		inputRoleId func(t *testing.T) arg
+		expect      scope.Type
+		wantErr     bool
+		wantErrMsg  string
+	}{
+		{
+			name: "valid role global scope",
+			inputRoleId: func(t *testing.T) arg {
+				grpId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				r := &globalRole{
+					GlobalRole: &store.GlobalRole{
+						PublicId:           grpId,
+						ScopeId:            globals.GlobalPrefix,
+						GrantThisRoleScope: true,
+						GrantScope:         globals.GrantScopeDescendants,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, r))
+				return arg{
+					roleId:   r.PublicId,
+					dbReader: rw,
+				}
+			},
+			expect: scope.Global,
+		},
+		{
+			name: "valid role org scope",
+			inputRoleId: func(t *testing.T) arg {
+				grpId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				r := &orgRole{
+					OrgRole: &store.OrgRole{
+						PublicId:           grpId,
+						ScopeId:            org.PublicId,
+						GrantThisRoleScope: true,
+						GrantScope:         globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, r))
+				return arg{
+					roleId:   r.PublicId,
+					dbReader: rw,
+				}
+			},
+			expect: scope.Org,
+		},
+		{
+			name: "valid role project scope",
+			inputRoleId: func(t *testing.T) arg {
+				grpId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				r := &projectRole{
+					ProjectRole: &store.ProjectRole{
+						PublicId: grpId,
+						ScopeId:  proj.PublicId,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, r))
+				return arg{
+					roleId:   r.PublicId,
+					dbReader: rw,
+				}
+			},
+			expect: scope.Project,
+		},
+		{
+			name: "role does not exist returns error",
+			inputRoleId: func(t *testing.T) arg {
+				return arg{
+					roleId:   "r_123456",
+					dbReader: rw,
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `iam.getRoleScopeType: role r_123456 not found: search issue: error #1100`,
+		},
+		{
+			name: "missing role id returns error",
+			inputRoleId: func(t *testing.T) arg {
+				return arg{
+					roleId:   "",
+					dbReader: rw,
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `iam.getRoleScopeType: missing role id: parameter violation: error #100`,
+		},
+		{
+			name: "missing db.Reader returns error",
+			inputRoleId: func(t *testing.T) arg {
+				return arg{
+					roleId:   "r_123456",
+					dbReader: nil,
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `iam.getRoleScopeType: missing db.Reader: parameter violation: error #100`,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := tc.inputRoleId(t)
+			got, err := getRoleScopeType(ctx, args.dbReader, args.roleId)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Equal(t, tc.wantErrMsg, err.Error())
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expect, got)
+		})
+	}
 }
