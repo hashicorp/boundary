@@ -9,7 +9,6 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"regexp"
 	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -24,7 +23,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/go-version"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -37,9 +35,6 @@ const (
 	// userAgentsKey defines the user-agent header key for the gRPC gateway
 	userAgentsKey = "userAgents"
 )
-
-// Regular expression to parse user-agent product, version, and comments
-var userAgentRegex = regexp.MustCompile(`(?P<product>[^\s/()]+)/(?P<version>[^\s()]+)(?: \((?P<comments>[^)]+)\))?`)
 
 type grpcServerListener interface {
 	net.Listener
@@ -109,53 +104,8 @@ func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD
 	if userAgent == "" {
 		return metadata.MD{}
 	}
-	matches := userAgentRegex.FindAllStringSubmatch(userAgent, -1)
-
-	var userAgents []*event.UserAgent
-	for _, match := range matches {
-		product := strings.TrimSpace(match[1])
-		agentVersion := strings.TrimSpace(match[2])
-
-		if strings.HasPrefix(agentVersion, "v") {
-			// Invalid version format (starting with 'v')
-			continue
-		}
-		if _, err := version.NewSemver(agentVersion); err != nil {
-			// Invalid version
-			continue
-		}
-
-		agentData := &event.UserAgent{
-			Product:        product,
-			ProductVersion: agentVersion,
-		}
-
-		if len(match) > 3 && match[3] != "" {
-			// Clean up and split comments
-			commentsRaw := strings.Split(match[3], ";")
-			var comments []string
-			for _, c := range commentsRaw {
-				if trimmed := strings.TrimSpace(c); trimmed != "" {
-					comments = append(comments, trimmed)
-				}
-			}
-			if len(comments) > 0 {
-				agentData.Comments = comments
-			}
-		}
-
-		userAgents = append(userAgents, agentData)
-	}
-
-	if len(userAgents) == 0 {
-		return metadata.MD{}
-	}
-	userAgentJSON, err := handlers.JSONMarshaler().Marshal(userAgents)
-	if err != nil {
-		return metadata.MD{}
-	}
 	return metadata.New(map[string]string{
-		userAgentsKey: string(userAgentJSON),
+		userAgentsKey: userAgent,
 	})
 }
 

@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"regexp"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
@@ -27,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/go-version"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -46,6 +49,9 @@ const (
 	// grpc server.
 	apiErrHeader = "x-api-err"
 )
+
+// Regular expression to parse user-agent product, version, and comments
+var userAgentRegex = regexp.MustCompile(`(?P<product>[^\s/()]+)/(?P<version>[^\s()]+)(?: \((?P<comments>[^)]+)\))?`)
 
 // customContextServerStream wraps the grpc.ServerStream interface and lets us
 // set a custom context
@@ -451,19 +457,7 @@ func eventsRequestInterceptor(
 		var userAgents []*event.UserAgent
 		if md, ok := metadata.FromIncomingContext(interceptorCtx); ok {
 			if values := md.Get(userAgentsKey); len(values) > 0 {
-				rawHeader := values[0]
-
-				if err := handlers.JSONMarshaler().Unmarshal([]byte(rawHeader), &userAgents); err != nil {
-					return nil, status.Errorf(codes.InvalidArgument, "invalid user agent metadata: %v", err)
-				}
-				// Filter out any agents missing required fields
-				var filteredAgents []*event.UserAgent
-				for _, ua := range userAgents {
-					if ua.Product != "" && ua.ProductVersion != "" {
-						filteredAgents = append(filteredAgents, ua)
-					}
-				}
-				userAgents = filteredAgents
+				userAgents = parseUserAgents(values[0])
 			}
 		}
 		if msg, ok := req.(proto.Message); ok {
@@ -484,6 +478,52 @@ func eventsRequestInterceptor(
 
 		return handler(interceptorCtx, req)
 	}
+}
+
+// parseUserAgents extracts structured UserAgent data from a raw User-Agent header string.
+// It filters out entries with invalid or non-semver versions (e.g., versions starting with 'v'),
+// and normalizes comments into a slice of strings.
+func parseUserAgents(rawUserAgent string) []*event.UserAgent {
+	var userAgents []*event.UserAgent
+	matches := userAgentRegex.FindAllStringSubmatch(rawUserAgent, -1)
+
+	for _, match := range matches {
+		product := strings.TrimSpace(match[1])
+		agentVersion := strings.TrimSpace(match[2])
+
+		// Only apply version validation for Boundary-client-agent
+		if product == "Boundary-client-agent" {
+			if strings.HasPrefix(agentVersion, "v") {
+				// Invalid version format (starting with 'v')
+				continue
+			}
+			if _, err := version.NewSemver(agentVersion); err != nil {
+				// Invalid version
+				continue
+			}
+		}
+
+		agentData := &event.UserAgent{
+			Product:        product,
+			ProductVersion: agentVersion,
+		}
+
+		if len(match) > 3 && match[3] != "" {
+			// Clean up and split comments
+			commentsRaw := strings.Split(match[3], ";")
+			var comments []string
+			for _, c := range commentsRaw {
+				if trimmed := strings.TrimSpace(c); trimmed != "" {
+					comments = append(comments, trimmed)
+				}
+			}
+			if len(comments) > 0 {
+				agentData.Comments = comments
+			}
+		}
+		userAgents = append(userAgents, agentData)
+	}
+	return userAgents
 }
 
 func eventsResponseInterceptor(

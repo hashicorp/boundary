@@ -14,9 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
-	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -99,121 +97,23 @@ func Test_correlationIdAnnotator(t *testing.T) {
 
 func Test_clientAgentHeadersAnnotator(t *testing.T) {
 	t.Parallel()
-	t.Run("Valid single user-agent", func(t *testing.T) {
+	t.Run("returns metadata with user-agent", func(t *testing.T) {
 		t.Parallel()
 		req := &http.Request{
 			Header: map[string][]string{
 				"User-Agent": {"Boundary-client-agent/0.1.4"},
 			},
 		}
-
 		md := userAgentHeadersAnnotator(context.Background(), req)
 		require.NotNil(t, md)
-		values := md.Get("userAgents")
-		require.Len(t, values, 1)
-
-		var parsed []*event.UserAgent
-		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
-		require.NoError(t, err)
-		require.Len(t, parsed, 1)
-		expected := []*event.UserAgent{
-			{
-				Product:        "Boundary-client-agent",
-				ProductVersion: "0.1.4",
-			},
-		}
-		assert.Equal(t, expected, parsed)
+		assert.Equal(t, []string{"Boundary-client-agent/0.1.4"}, md.Get("userAgents"))
 	})
 
-	t.Run("Multiple valid agents with comments", func(t *testing.T) {
-		t.Parallel()
-		req := &http.Request{
-			Header: map[string][]string{
-				"User-Agent": {"Boundary-client-agent/0.1.4 (foo; bar); AnotherApp/2.0.0 (baz)"},
-			},
-		}
-
-		md := userAgentHeadersAnnotator(context.Background(), req)
-		require.NotNil(t, md)
-		values := md.Get("userAgents")
-		require.Len(t, values, 1)
-
-		var parsed []*event.UserAgent
-		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
-		require.NoError(t, err)
-		require.Len(t, parsed, 2)
-		expected := []*event.UserAgent{
-			{
-				Product:        "Boundary-client-agent",
-				ProductVersion: "0.1.4",
-				Comments:       []string{"foo", "bar"},
-			},
-			{
-				Product:        "AnotherApp",
-				ProductVersion: "2.0.0",
-				Comments:       []string{"baz"},
-			},
-		}
-		assert.Equal(t, expected, parsed)
-	})
-
-	t.Run("No user-agent header", func(t *testing.T) {
+	t.Run("returns empty metadata if no user-agent header", func(t *testing.T) {
 		t.Parallel()
 		req := &http.Request{Header: map[string][]string{}}
 		md := userAgentHeadersAnnotator(context.Background(), req)
-		require.NotNil(t, md)
 		assert.Empty(t, md)
-	})
-
-	t.Run("Invalid user-agent formats", func(t *testing.T) {
-		t.Parallel()
-		invalidTestCases := []string{
-			"Boundary-client-agent",                 // No version
-			"/0.1.4",                                // No product
-			"Boundary-client-agent/v0.1.4",          // Starts with 'v'
-			"Boundary-client-agent/invalid.version", // Invalid version
-			"Boundary-client-agent/0.1.x",           // Invalid version
-			"Boundary-client-agent//1.0.0",          // Double slash
-		}
-
-		for _, hdr := range invalidTestCases {
-			t.Run(fmt.Sprintf("Invalid: %q", hdr), func(t *testing.T) {
-				t.Parallel()
-				req := &http.Request{
-					Header: map[string][]string{
-						"User-Agent": {hdr},
-					},
-				}
-				md := userAgentHeadersAnnotator(context.Background(), req)
-				assert.Empty(t, md)
-			})
-		}
-	})
-
-	t.Run("Mixed valid and invalid agents", func(t *testing.T) {
-		t.Parallel()
-		req := &http.Request{
-			Header: map[string][]string{
-				"User-Agent": {"Boundary-client-agent/0.1.4 BadApp/v0.1.4 (foo) Another/xyz"},
-			},
-		}
-
-		md := userAgentHeadersAnnotator(context.Background(), req)
-		require.NotNil(t, md)
-		values := md.Get("userAgents")
-		require.Len(t, values, 1)
-
-		var parsed []*event.UserAgent
-		err := handlers.JSONMarshaler().Unmarshal([]byte(values[0]), &parsed)
-		require.NoError(t, err)
-		require.Len(t, parsed, 1)
-		expected := []*event.UserAgent{
-			{
-				Product:        "Boundary-client-agent",
-				ProductVersion: "0.1.4",
-			},
-		}
-		assert.Equal(t, expected, parsed)
 	})
 }
 
