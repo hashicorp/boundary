@@ -6,7 +6,6 @@ package iam
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/boundary/globals"
 	"strings"
 	"testing"
 	"time"

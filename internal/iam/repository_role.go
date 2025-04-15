@@ -153,13 +153,13 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			scopeId, err := getRoleScopeId(ctx, read, role.PublicId)
+			scopeType, err := getRoleScopeType(ctx, read, role.PublicId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			var res Resource
-			switch {
-			case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+			switch scopeType {
+			case scope.Global:
 				res = &globalRole{GlobalRole: &store.GlobalRole{
 					PublicId:    role.GetPublicId(),
 					ScopeId:     role.GetScopeId(),
@@ -167,7 +167,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 					Description: role.GetDescription(),
 					Version:     role.GetVersion(),
 				}}
-			case strings.HasPrefix(scopeId, globals.OrgPrefix):
+			case scope.Org:
 				res = &orgRole{OrgRole: &store.OrgRole{
 					PublicId:    role.GetPublicId(),
 					ScopeId:     role.GetScopeId(),
@@ -175,7 +175,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 					Description: role.GetDescription(),
 					Version:     role.GetVersion(),
 				}}
-			case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+			case scope.Project:
 				res = &projectRole{ProjectRole: &store.ProjectRole{
 					PublicId:    role.GetPublicId(),
 					ScopeId:     role.GetScopeId(),
@@ -183,6 +183,8 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 					Description: role.GetDescription(),
 					Version:     role.GetVersion(),
 				}}
+			case scope.Unknown:
+				return errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for role: %s", role.PublicId))
 			}
 
 			resource = res // If we don't have dbMask or nullFields, we'll return this
@@ -228,18 +230,20 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 	var role *Role
 
 	lookupFunc := func(read db.Reader, w db.Writer) error {
-		roleScopeId, err := getRoleScopeId(ctx, read, withPublicId)
+		scopeType, err := getRoleScopeType(ctx, read, withPublicId)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		var res Resource
-		switch {
-		case strings.HasPrefix(roleScopeId, globals.GlobalPrefix):
+		switch scopeType {
+		case scope.Global:
 			res = &globalRole{GlobalRole: &store.GlobalRole{PublicId: withPublicId}}
-		case strings.HasPrefix(roleScopeId, globals.OrgPrefix):
+		case scope.Org:
 			res = &orgRole{OrgRole: &store.OrgRole{PublicId: withPublicId}}
-		case strings.HasPrefix(roleScopeId, globals.ProjectPrefix):
+		case scope.Project:
 			res = &projectRole{ProjectRole: &store.ProjectRole{PublicId: withPublicId}}
+		case scope.Unknown:
+			return errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for role: %s", role.PublicId))
 		}
 
 		if err := read.LookupByPublicId(ctx, res); err != nil {
@@ -305,28 +309,27 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
-	roleScopeId, err := getRoleScopeId(ctx, r.reader, withPublicId)
+	scopeType, err := getRoleScopeType(ctx, r.reader, withPublicId)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("cannot find scope for role %s", withPublicId))
 	}
 
 	var res Resource
-	switch {
-	case strings.HasPrefix(roleScopeId, globals.GlobalPrefix):
+	switch scopeType {
+	case scope.Global:
 		res = &globalRole{GlobalRole: &store.GlobalRole{
 			PublicId: withPublicId,
-			ScopeId:  roleScopeId,
 		}}
-	case strings.HasPrefix(roleScopeId, globals.OrgPrefix):
+	case scope.Org:
 		res = &orgRole{OrgRole: &store.OrgRole{
 			PublicId: withPublicId,
-			ScopeId:  roleScopeId,
 		}}
-	case strings.HasPrefix(roleScopeId, globals.ProjectPrefix):
+	case scope.Project:
 		res = &projectRole{ProjectRole: &store.ProjectRole{
 			PublicId: withPublicId,
-			ScopeId:  roleScopeId,
 		}}
+	default:
+		return db.NoRowsAffected, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for role: %s", withPublicId))
 	}
 	rowsDeleted, err := r.delete(ctx, res)
 	if err != nil {

@@ -6,8 +6,10 @@ package iam
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/iam/store"
 	"strings"
+
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -61,49 +63,46 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		}
 		newManagedGrpRoles = append(newManagedGrpRoles, managedGrpRole)
 	}
-	scopeId, err := getRoleScopeId(ctx, r.reader, roleId)
+	scopeType, err := getRoleScopeType(ctx, r.reader, roleId)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
 	}
 
-	var scope *Scope
+	var scp *Scope
 	var roleResource Resource
-	switch {
-	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+	switch scopeType {
+	case scope.Global:
 		roleResource = &globalRole{GlobalRole: &store.GlobalRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s global scope for", roleId)))
 		}
-		scope = s
-	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		scp = s
+	case scope.Org:
 		roleResource = &orgRole{OrgRole: &store.OrgRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s org scope for", roleId)))
 		}
-		scope = s
-	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		scp = s
+	case scope.Project:
 		roleResource = &projectRole{ProjectRole: &store.ProjectRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s project scope for", roleId)))
 		}
-		scope = s
+		scp = s
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -172,8 +171,8 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -213,47 +212,43 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if roleVersion == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	scopeId, err := getRoleScopeId(ctx, r.reader, roleId)
+	scopeType, err := getRoleScopeType(ctx, r.reader, roleId)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
 	}
-	var scope *Scope
+	var scp *Scope
 	var roleResource Resource
 	role := Role{
 		PublicId: roleId,
-		ScopeId:  scopeId,
 	}
-	switch {
-	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+	switch scopeType {
+	case scope.Global:
 		roleResource = &globalRole{GlobalRole: &store.GlobalRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s global scope for", roleId)))
 		}
-		scope = s
-	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		scp = s
+	case scope.Org:
 		roleResource = &orgRole{OrgRole: &store.OrgRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s org scope for", roleId)))
 		}
-		scope = s
-	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		scp = s
+	case scope.Project:
 		roleResource = &projectRole{ProjectRole: &store.ProjectRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s project scope for", roleId)))
 		}
-		scope = s
+		scp = s
 	default:
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
 	}
@@ -274,7 +269,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		return toSet.UnchangedPrincipalRoles, db.NoRowsAffected, nil
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -324,8 +319,8 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			msgs := make([]*oplog.Message, 0, 5)
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			msgs = append(msgs, &roleOplogMsg)
@@ -443,47 +438,43 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
-	var scope *Scope
+	var scp *Scope
 	var roleResource Resource
-	scopeId, err := getRoleScopeId(ctx, r.reader, roleId)
+	scopeType, err := getRoleScopeType(ctx, r.reader, roleId)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
 	}
 	role := Role{
 		PublicId: roleId,
-		ScopeId:  scopeId,
 	}
-	switch {
-	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+	switch scopeType {
+	case scope.Global:
 		roleResource = &globalRole{GlobalRole: &store.GlobalRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s global scope for", roleId)))
 		}
-		scope = s
-	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		scp = s
+	case scope.Org:
 		roleResource = &orgRole{OrgRole: &store.OrgRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s org scope for", roleId)))
 		}
-		scope = s
-	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		scp = s
+	case scope.Project:
 		roleResource = &projectRole{ProjectRole: &store.ProjectRole{
 			PublicId: roleId,
-			ScopeId:  scopeId,
 		}}
 		s, err := roleResource.GetScope(ctx, r.reader)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s project scope for", roleId)))
 		}
-		scope = s
+		scp = s
 	default:
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
 	}
@@ -513,7 +504,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		deleteManagedGrpRoles = append(deleteManagedGrpRoles, managedGrpRole)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -596,8 +587,8 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
