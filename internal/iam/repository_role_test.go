@@ -945,7 +945,7 @@ func Test_getRoleScopeType(t *testing.T) {
 				}
 			},
 			wantErr:    true,
-			wantErrMsg: `iam.getRoleScopeType: role r_123456 not found: state violation: error #404`,
+			wantErrMsg: `iam.getRoleScopeType: role r_123456 not found: search issue: error #1100`,
 		},
 		{
 			name: "missing role id returns error",
