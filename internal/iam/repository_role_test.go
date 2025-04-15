@@ -856,7 +856,7 @@ func Test_estimatedRoleCount(t *testing.T) {
 	assert.Equal(t, 0, numItems)
 }
 
-func Test_getRoleScopeId(t *testing.T) {
+func Test_getRoleScopeType(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	ctx := context.Background()
