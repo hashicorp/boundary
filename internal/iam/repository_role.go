@@ -417,7 +417,7 @@ func getRoleScopeType(ctx context.Context, r db.Reader, roleId string) (scope.Ty
 		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
 	}
 	if cnt == 0 {
-		return scope.Unknown, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("role %s not found", roleId))
+		return scope.Unknown, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("role %s not found", roleId))
 	}
 
 	switch {
