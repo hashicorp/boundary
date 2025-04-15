@@ -330,7 +330,7 @@ func (s Service) GetCredentialStore(ctx context.Context, req *pbs.GetCredentialS
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, cs.GetPublicId())
+		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, authResults.Scope, cs.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -375,7 +375,7 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, cs.GetPublicId())
+		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, authResults.Scope, cs.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -423,7 +423,7 @@ func (s Service) UpdateCredentialStore(ctx context.Context, req *pbs.UpdateCrede
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, cs.GetPublicId())
+		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, authResults.Scope, cs.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -703,7 +703,7 @@ func newOutputOpts(
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, item.GetPublicId())
+		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, authzScopes[item.GetProjectId()], item.GetPublicId())
 		if err != nil {
 			return nil, false, err
 		}
@@ -1006,15 +1006,15 @@ func validateListRequest(ctx context.Context, req *pbs.ListCredentialStoresReque
 	return nil
 }
 
-func calculateAuthorizedCollectionActions(ctx context.Context, authResults auth.VerifyResults, id string) (map[string]*structpb.ListValue, error) {
+func calculateAuthorizedCollectionActions(ctx context.Context, authResults auth.VerifyResults, itemScopeInfo *scopes.ScopeInfo, itemId string) (map[string]*structpb.ListValue, error) {
 	var collectionActions map[string]*structpb.ListValue
 	var err error
-	switch globals.ResourceInfoFromPrefix(id).Subtype {
+	switch globals.ResourceInfoFromPrefix(itemId).Subtype {
 	case vault.Subtype:
-		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, vaultCollectionTypeMap, authResults.Scope, id)
+		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, vaultCollectionTypeMap, itemScopeInfo, itemId)
 
 	case static.Subtype:
-		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, staticCollectionTypeMap, authResults.Scope, id)
+		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, staticCollectionTypeMap, itemScopeInfo, itemId)
 	}
 	if err != nil {
 		return nil, err
