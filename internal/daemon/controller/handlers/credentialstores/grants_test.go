@@ -639,31 +639,6 @@ func TestGrants_CreateCredentialStores(t *testing.T) {
 			},
 		},
 		{
-			name: "composite grants individually grant each project roles can create credential stores where granted",
-			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: proj1.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=create"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: proj2.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=create"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: proj3.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=create"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-			}),
-			inputErrorMap: map[*pbs.CreateCredentialStoreRequest]error{
-				vaultCredStoreInput(proj1.PublicId): nil,
-				vaultCredStoreInput(proj2.PublicId): nil,
-				vaultCredStoreInput(proj3.PublicId): nil,
-			},
-		},
-		{
 			name: "global grants not granting create permission cannot create credentials store",
 			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
@@ -813,31 +788,6 @@ func TestGrants_DeleteCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can delete in granted project",
-			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: proj1.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: proj2.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: proj3.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=delete"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-			}),
-			inputErrorMap: map[*pbs.DeleteCredentialStoreRequest]error{
-				vaultCredStoreInput(proj1.PublicId): nil,
-				vaultCredStoreInput(proj2.PublicId): nil,
-				vaultCredStoreInput(proj3.PublicId): nil,
-			},
-		},
-		{
-			name: "composite grants individually grant each project roles can delete credential stores where granted",
 			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
@@ -1030,31 +980,6 @@ func TestGrants_UpdateCredentialStores(t *testing.T) {
 		},
 		{
 			name: "composite grants individually grant each project roles can update in granted project",
-			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: proj1.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=update"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: proj2.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=update"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: proj3.PublicId,
-					Grants:      []string{"ids=*;type=credential-store;actions=update"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-			}),
-			inputErrorMap: map[*pbs.UpdateCredentialStoreRequest]error{
-				vaultCredStoreInput(proj1.PublicId): nil,
-				vaultCredStoreInput(proj2.PublicId): nil,
-				vaultCredStoreInput(proj3.PublicId): nil,
-			},
-		},
-		{
-			name: "composite grants individually grant each project roles can update credential stores where granted",
 			userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: proj1.PublicId,
