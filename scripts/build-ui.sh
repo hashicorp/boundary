@@ -37,10 +37,11 @@ if which gh &> /dev/null;  then
     echo "Found gh cli, attempting to download ui assets"
 
     artifact_id=$(gh api "repos/hashicorp/${REPO_NAME}/actions/artifacts" --paginate | \
-        jq ".artifacts[] | select(.workflow_run.head_sha == \"${UI_COMMITISH}\" and .name == \"admin-ui-${UI_EDITION}\")" | \
+        jq ".artifacts[] | select(.workflow_run.head_sha == \"${UI_COMMITISH}f\" and .name == \"admin-ui-${UI_EDITION}\")" | \
+        jq --slurp '.[0]' | \
         jq -r '.id')
 
-    if [[ ${artifact_id} ]]; then
+    if [[ "${artifact_id}" != "null" ]]; then
         echo "Downloading artifact: ${artifact_id} for admin-ui-${UI_EDITION} ${UI_COMMITISH}"
         tmp_dir=$(mktemp -d)
         gh api "repos/hashicorp/${REPO_NAME}/actions/artifacts/${artifact_id}/zip" > "${tmp_dir}/boundary-ui.zip"
