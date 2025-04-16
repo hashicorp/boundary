@@ -130,7 +130,7 @@ func TestGrants_ReadActions(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=managed-group;actions=list,read;output_fields=id,name,description"},
-						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
 				wantErr:         nil,
@@ -433,6 +433,214 @@ func TestGrants_ReadActions(t *testing.T) {
 				for _, item := range got.Items {
 					handlers.TestAssertOutputFields(t, item, tc.expectOutfields)
 				}
+			})
+		}
+	})
+	t.Run("Get", func(t *testing.T) {
+		testcases := []struct {
+			name     string
+			input    *pbs.GetManagedGroupRequest
+			userFunc func() (*iam.User, a.Account)
+			wantErr  error
+			wantID   string
+		}{
+			// oidc
+			{
+				name: "global role grant this returns specific global oidc managed group",
+				input: &pbs.GetManagedGroupRequest{
+					Id: globalMg1.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: nil,
+				wantID:  globalMg1.PublicId,
+			},
+			{
+				name: "global role grant pinned id returns specific global oidc managed group",
+				input: &pbs.GetManagedGroupRequest{
+					Id: globalMg2.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=read", globalOidcAm.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: nil,
+				wantID:  globalMg2.PublicId,
+			},
+			{
+				name: "global role grant wrong pinned id returns error",
+				input: &pbs.GetManagedGroupRequest{
+					Id: globalMg2.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=list,read", globalOidcAm2.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+				wantID:  "",
+			},
+			{
+				name: "org role grant this only returns error",
+				input: &pbs.GetManagedGroupRequest{
+					Id: orgOidcMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+				wantID:  "",
+			},
+			{
+				name: "org role grant this and children returns org",
+				input: &pbs.GetManagedGroupRequest{
+					Id: orgOidcMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				wantErr: nil,
+				wantID:  orgOidcMg.PublicId,
+			},
+			{
+				name: "org role grant this and descendants returns org",
+				input: &pbs.GetManagedGroupRequest{
+					Id: orgOidcMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				wantErr: nil,
+				wantID:  orgOidcMg.PublicId,
+			},
+			// ldap
+			{
+				name: "global role grant this returns specific global ldap managed group",
+				input: &pbs.GetManagedGroupRequest{
+					Id: globalLdapMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: nil,
+				wantID:  globalLdapMg.PublicId,
+			},
+			{
+				name: "global role grant pinned id returns specific global ldap managed group",
+				input: &pbs.GetManagedGroupRequest{
+					Id: globalLdapMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=read", globalLdapAm.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: nil,
+				wantID:  globalLdapMg.PublicId,
+			},
+			{
+				name: "global role grant wrong pinned id returns error",
+				input: &pbs.GetManagedGroupRequest{
+					Id: globalLdapMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=managed-group;actions=list,read", globalOidcAm2.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+				wantID:  "",
+			},
+			{
+				name: "org role grant this only returns error",
+				input: &pbs.GetManagedGroupRequest{
+					Id: orgLdapMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+				wantID:  "",
+			},
+			{
+				name: "org role grant this and children returns org",
+				input: &pbs.GetManagedGroupRequest{
+					Id: orgLdapMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				wantErr: nil,
+				wantID:  orgLdapMg.PublicId,
+			},
+			{
+				name: "org role grant this and descendants returns org",
+				input: &pbs.GetManagedGroupRequest{
+					Id: orgLdapMg.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=managed-group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				wantErr: nil,
+				wantID:  orgLdapMg.PublicId,
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				user, acct := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				got, finalErr := s.GetManagedGroup(fullGrantAuthCtx, tc.input)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, finalErr, tc.wantErr)
+					return
+				}
+				require.NoError(t, finalErr)
+				require.Equal(t, tc.wantID, got.Item.Id)
 			})
 		}
 	})
