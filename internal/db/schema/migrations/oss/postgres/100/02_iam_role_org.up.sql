@@ -74,8 +74,8 @@ begin;
   create trigger update_iam_role_org_base_table_update_time after update on iam_role_org
     for each row execute procedure update_iam_role_table_update_time();
 
-  create trigger delete_base_iam_role after delete on iam_role_org
-    for each row execute procedure delete_base_iam_role();
+  create trigger delete_iam_role_subtype after delete on iam_role_org
+    for each row execute procedure delete_iam_role_subtype();
 
   create trigger default_create_time_column before insert on iam_role_org
     for each row execute procedure default_create_time();

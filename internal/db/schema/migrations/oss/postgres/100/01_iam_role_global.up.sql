@@ -78,7 +78,7 @@ begin;
       'update_iam_role_table_update_time is used to automatically update the update_time '
       'of the base table whenever one of the subtype iam_role tables are updated';
 
-  create function delete_base_iam_role() returns trigger
+  create function delete_iam_role_subtype() returns trigger
   as $$
   begin
     delete from iam_role
@@ -86,8 +86,8 @@ begin;
     return null; -- result is ignored since this is an after trigger
   end;
     $$ language plpgsql;
-    comment on function delete_base_iam_role() is
-      'delete_base_iam_role is used to automatically delete associated iam_role entry'
+    comment on function delete_iam_role_subtype() is
+      'delete_iam_role_subtype is used to automatically delete associated iam_role entry'
       'since domain implementation performs deletion on the child table which does not cleanup the base iam_role table ';
 
   -- global iam_role must have a scope_id of global.
@@ -138,10 +138,10 @@ begin;
     for each row execute procedure insert_role_subtype();
 
   create trigger insert_grant_scope_update_time before insert on iam_role_global
-    for each row execute procedure insert_grant_scope_update_time();  
+    for each row execute procedure insert_grant_scope_update_time();
 
   create trigger insert_grant_this_role_scope_update_time before insert on iam_role_global
-    for each row execute procedure insert_grant_this_role_scope_update_time();  
+    for each row execute procedure insert_grant_this_role_scope_update_time();
 
   create trigger update_iam_role_global_grant_scope_update_time before update on iam_role_global
     for each row execute procedure insert_grant_scope_update_time();
@@ -152,8 +152,8 @@ begin;
   create trigger update_iam_role_global_base_table_update_time after update on iam_role_global
     for each row execute procedure update_iam_role_table_update_time();
 
-  create trigger delete_base_iam_role after delete on iam_role_global
-    for each row execute procedure delete_base_iam_role();
+  create trigger delete_iam_role_subtype after delete on iam_role_global
+    for each row execute procedure delete_iam_role_subtype();
 
   create trigger default_create_time_column before insert on iam_role_global
     for each row execute procedure default_create_time();
@@ -161,7 +161,7 @@ begin;
   create trigger update_time_column before update on iam_role_global
     for each row execute procedure update_time_column();
 
-  create trigger update_version_column after update on iam_role_global 
+  create trigger update_version_column after update on iam_role_global
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on iam_role_global
