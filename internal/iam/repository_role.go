@@ -534,3 +534,40 @@ func getRoleScopeType(ctx context.Context, r db.Reader, roleId string) (scope.Ty
 		return scope.Unknown, fmt.Errorf("unknown scope type for role %s", roleId)
 	}
 }
+
+// getRoleScope returns scope of the role
+func getRoleScope(ctx context.Context, r db.Reader, roleId string) (*Scope, error) {
+	const op = "iam.getRoleScope"
+	if roleId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	if r == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+	}
+	rows, err := r.Query(ctx, scopeIdFromRoleIdQuery, []any{sql.Named("public_id", roleId)})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup role scope for :%s", roleId)))
+	}
+	var scopeId string
+	cnt := 0
+	for rows.Next() {
+		cnt++
+		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for :%s", roleId)))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
+	}
+	if cnt == 0 {
+		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("role %s not found", roleId))
+	}
+
+	scp := AllocScope()
+	scp.PublicId = scopeId
+	err = r.LookupByPublicId(ctx, &scp)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup role scope"))
+	}
+	return &scp, nil
+}
