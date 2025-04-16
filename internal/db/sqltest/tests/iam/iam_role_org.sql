@@ -121,7 +121,7 @@ begin;
   );
 
   select is(
-    (select grant_this_role_scope_update_time > NOW() - INTERVAL '1 minute'
+    (select grant_this_role_scope_update_time = now()
        from iam_role_org
       where public_id = 'r_org_2222222222'),
     true,
@@ -152,7 +152,7 @@ begin;
   );
 
   select is(
-    (select grant_scope_update_time > NOW() - INTERVAL '1 minute'
+    (select grant_scope_update_time = now()
        from iam_role_org
       where public_id = 'r_org_2222222222'),
     true,

@@ -81,7 +81,8 @@ begin;
   create function delete_iam_role_subtype() returns trigger
   as $$
   begin
-    delete from iam_role
+    delete
+      from iam_role
     where public_id = old.public_id;
     return null; -- result is ignored since this is an after trigger
   end;
