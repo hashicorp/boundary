@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 	staticOrg, staticProj := TestScopes(t, repo)
+	globalRole := TestRole(t, conn, globals.GlobalPrefix)
 	orgRole := TestRole(t, conn, staticOrg.PublicId)
 	projRole := TestRole(t, conn, staticProj.PublicId)
 	createScopesFn := func() (orgs []string, projects []string) {
@@ -134,7 +136,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			orgs, projects := createScopesFn()
 			var userIds, groupIds []string
 
-			for _, roleId := range []string{orgRole.PublicId, projRole.PublicId} {
+			for _, roleId := range []string{globalRole.PublicId, orgRole.PublicId, projRole.PublicId} {
 				origRole, _, _, _, err := repo.LookupRole(context.Background(), roleId)
 				require.NoError(err)
 
@@ -301,7 +303,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
-	org, _ := TestScopes(t, repo)
+	org, proj := TestScopes(t, repo)
 
 	type args struct {
 		role                *Role
@@ -321,9 +323,33 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 		wantIsErr       errors.Code
 	}{
 		{
-			name: "valid",
+			name: "valid-global",
+			args: args{
+				role:           TestRole(t, conn, globals.GlobalPrefix),
+				createUserCnt:  5,
+				createGroupCnt: 5,
+				deleteUserCnt:  5,
+				deleteGroupCnt: 5,
+			},
+			wantRowsDeleted: 10,
+			wantErr:         false,
+		},
+		{
+			name: "valid-org",
 			args: args{
 				role:           TestRole(t, conn, org.PublicId),
+				createUserCnt:  5,
+				createGroupCnt: 5,
+				deleteUserCnt:  5,
+				deleteGroupCnt: 5,
+			},
+			wantRowsDeleted: 10,
+			wantErr:         false,
+		},
+		{
+			name: "valid-proj",
+			args: args{
+				role:           TestRole(t, conn, proj.PublicId),
 				createUserCnt:  5,
 				createGroupCnt: 5,
 				deleteUserCnt:  5,
@@ -560,7 +586,31 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name:  "clear",
+			name:  "clear-global",
+			setup: setupFn,
+			args: args{
+				role:        TestRole(t, conn, globals.GlobalPrefix),
+				roleVersion: 2, // yep, since setupFn will increment it to 2
+				userIds:     []string{},
+				groupIds:    []string{},
+			},
+			wantErr:          false,
+			wantAffectedRows: 12,
+		},
+		{
+			name:  "clear-org",
+			setup: setupFn,
+			args: args{
+				role:        TestRole(t, conn, org.PublicId),
+				roleVersion: 2, // yep, since setupFn will increment it to 2
+				userIds:     []string{},
+				groupIds:    []string{},
+			},
+			wantErr:          false,
+			wantAffectedRows: 12,
+		},
+		{
+			name:  "clear-proj",
 			setup: setupFn,
 			args: args{
 				role:        TestRole(t, conn, proj.PublicId),
@@ -572,7 +622,35 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			wantAffectedRows: 12,
 		},
 		{
-			name:  "no change",
+			name:  "global no change",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, globals.GlobalPrefix),
+				roleVersion:    2, // yep, since setupFn will increment it to 2
+				userIds:        []string{},
+				groupIds:       []string{},
+				addToOrigUsers: true,
+				addToOrigGrps:  true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 0,
+		},
+		{
+			name:  "org no change",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				roleVersion:    2, // yep, since setupFn will increment it to 2
+				userIds:        []string{},
+				groupIds:       []string{},
+				addToOrigUsers: true,
+				addToOrigGrps:  true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 0,
+		},
+		{
+			name:  "proj no change",
 			setup: setupFn,
 			args: args{
 				role:           TestRole(t, conn, proj.PublicId),
@@ -586,7 +664,35 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			wantAffectedRows: 0,
 		},
 		{
-			name:  "add users and grps",
+			name:  "global add users and grps",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, globals.GlobalPrefix),
+				roleVersion:    2, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				groupIds:       []string{testGrp.PublicId},
+				addToOrigUsers: true,
+				addToOrigGrps:  true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 2,
+		},
+		{
+			name:  "org add users and grps",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				roleVersion:    2, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				groupIds:       []string{testGrp.PublicId},
+				addToOrigUsers: true,
+				addToOrigGrps:  true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 2,
+		},
+		{
+			name:  "proj add users and grps",
 			setup: setupFn,
 			args: args{
 				role:           TestRole(t, conn, proj.PublicId),
@@ -600,7 +706,33 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			wantAffectedRows: 2,
 		},
 		{
-			name:  "add users and grps with zero version",
+			name:  "global add users and grps with zero version",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, globals.GlobalPrefix),
+				roleVersion:    0, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				groupIds:       []string{testGrp.PublicId},
+				addToOrigUsers: true,
+				addToOrigGrps:  true,
+			},
+			wantErr: true,
+		},
+		{
+			name:  "org add users and grps with zero version",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				roleVersion:    0, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				groupIds:       []string{testGrp.PublicId},
+				addToOrigUsers: true,
+				addToOrigGrps:  true,
+			},
+			wantErr: true,
+		},
+		{
+			name:  "proj add users and grps with zero version",
 			setup: setupFn,
 			args: args{
 				role:           TestRole(t, conn, proj.PublicId),
@@ -613,7 +745,35 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:  "remove existing and add users and grps",
+			name:  "global remove existing and add users and grps",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, globals.GlobalPrefix),
+				roleVersion:    2, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				groupIds:       []string{testGrp.PublicId},
+				addToOrigUsers: false,
+				addToOrigGrps:  false,
+			},
+			wantErr:          false,
+			wantAffectedRows: 14,
+		},
+		{
+			name:  "org remove existing and add users and grps",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				roleVersion:    2, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				groupIds:       []string{testGrp.PublicId},
+				addToOrigUsers: false,
+				addToOrigGrps:  false,
+			},
+			wantErr:          false,
+			wantAffectedRows: 14,
+		},
+		{
+			name:  "proj remove existing and add users and grps",
 			setup: setupFn,
 			args: args{
 				role:           TestRole(t, conn, proj.PublicId),
@@ -667,7 +827,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 
 			r, _, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			require.NoError(err)
-			if tt.name != "no change" {
+			if !strings.Contains(tt.name, "no change") {
 				assert.Equalf(tt.args.roleVersion+1, r.Version, "%s unexpected version: %d/%d", tt.name, tt.args.roleVersion+1, r.Version)
 				assert.Equalf(origRole.Version, r.Version-1, "%s unexpected version: %d/%d", tt.name, origRole.Version, r.Version-1)
 			}
