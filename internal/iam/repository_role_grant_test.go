@@ -2434,10 +2434,27 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrap)
 	user := TestUser(t, repo, "global")
-	createdRoles := setupDB_IamRoles(t, conn)
+
+	// Create scopes
+	org1 := TestOrg(t, repo)
+	org2 := TestOrg(t, repo)
+
+	// Create roles
+	role1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1.PublicId}))
+	role2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2.PublicId}))
+	role3 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
+	role4 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+
+	// Grant roles
+	TestRoleGrant(t, conn, role1.PublicId, "ids=*;type=alias;actions=create,update,read,list")
+	TestRoleGrant(t, conn, role1.PublicId, "ids=*;type=alias;actions=delete")
+	TestRoleGrant(t, conn, role2.PublicId, "ids=*;type=alias;actions=delete")
+	TestRoleGrant(t, conn, role3.PublicId, "ids=*;type=*;actions=update")
+	TestRoleGrant(t, conn, role4.PublicId, "ids=*;type=account;actions=create,update")
+	TestRoleGrant(t, conn, role4.PublicId, "ids=*;type=group;actions=read;output_fields=id")
 
 	// Add user to created roles
-	for _, roleId := range createdRoles {
+	for _, roleId := range []string{role1.PublicId, role2.PublicId, role3.PublicId, role4.PublicId} {
 		_, err := repo.AddPrincipalRoles(ctx, roleId, 1, []string{user.PublicId})
 		require.NoError(t, err)
 	}
@@ -2447,7 +2464,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
 			{
-				RoleId:            "r_gp____spec",
+				RoleId:            role2.PublicId,
 				RoleScopeId:       "global",
 				RoleParentScopeId: "global",
 				GrantScopeId:      "global",
@@ -2461,7 +2478,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
 			{
-				RoleId:            "r_gg____shop",
+				RoleId:            role4.PublicId,
 				RoleScopeId:       "global",
 				RoleParentScopeId: "global",
 				GrantScopeId:      "global",
@@ -2475,7 +2492,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
 			{
-				RoleId:            "r_gg____shop",
+				RoleId:            role4.PublicId,
 				RoleScopeId:       "global",
 				RoleParentScopeId: "global",
 				GrantScopeId:      "global",
@@ -2497,12 +2514,12 @@ func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
 
 	insertScopes := `
 	insert into iam_scope
-      (parent_id,      type,      public_id,      name)
-    values
-      ('global',       'org',     'o_____colors', 'Colors R Us'),
-      ('o_____colors', 'project', 'p____rcolors', 'Red Color Mill'),
+	  (parent_id,      type,      public_id,      name)
+	values
+	  ('global',       'org',     'o_____colors', 'Colors R Us'),
+	  ('o_____colors', 'project', 'p____rcolors', 'Red Color Mill'),
 	  ('o_____colors', 'project', 'p____bcolors', 'Blue Color Mill'),
-      ('o_____colors', 'project', 'p____gcolors', 'Green Color Mill');
+	  ('o_____colors', 'project', 'p____gcolors', 'Green Color Mill');
 	`
 	_, err := rw.Exec(ctx, insertScopes, nil)
 	require.NoError(err)
