@@ -237,11 +237,17 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		var res Resource
 		switch scopeType {
 		case scope.Global:
-			res = &globalRole{GlobalRole: &store.GlobalRole{PublicId: withPublicId}}
+			gRole := allocGlobalRole()
+			gRole.PublicId = withPublicId
+			res = &gRole
 		case scope.Org:
-			res = &orgRole{OrgRole: &store.OrgRole{PublicId: withPublicId}}
+			oRole := allocOrgRole()
+			oRole.PublicId = withPublicId
+			res = &oRole
 		case scope.Project:
-			res = &projectRole{ProjectRole: &store.ProjectRole{PublicId: withPublicId}}
+			pRole := allocProjectRole()
+			pRole.PublicId = withPublicId
+			res = &pRole
 		case scope.Unknown:
 			return errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for role: %s", role.PublicId))
 		}
@@ -317,17 +323,17 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	var res Resource
 	switch scopeType {
 	case scope.Global:
-		res = &globalRole{GlobalRole: &store.GlobalRole{
-			PublicId: withPublicId,
-		}}
+		gRole := allocGlobalRole()
+		gRole.PublicId = withPublicId
+		res = &gRole
 	case scope.Org:
-		res = &orgRole{OrgRole: &store.OrgRole{
-			PublicId: withPublicId,
-		}}
+		oRole := allocOrgRole()
+		oRole.PublicId = withPublicId
+		res = &oRole
 	case scope.Project:
-		res = &projectRole{ProjectRole: &store.ProjectRole{
-			PublicId: withPublicId,
-		}}
+		pRole := allocProjectRole()
+		pRole.PublicId = withPublicId
+		res = &pRole
 	default:
 		return db.NoRowsAffected, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for role: %s", withPublicId))
 	}
