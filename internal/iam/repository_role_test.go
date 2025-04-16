@@ -923,7 +923,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      fmt.Sprintf("iam.(Repository).DeleteRole: cannot find scope for role %s: iam.getRoleScopeId: role %s not found: search issue: error #1100", roleId, roleId),
+			wantErrMsg:      fmt.Sprintf("iam.(Repository).DeleteRole: cannot find scope for role %s: iam.getRoleScopeType: role %s not found: search issue: error #1100", roleId, roleId),
 		},
 	}
 	for _, tt := range tests {
