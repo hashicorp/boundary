@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(16);
+  select plan(22);
   select wtt_load('widgets', 'iam');
 
   ------------------------------------------------------------------------------
@@ -97,19 +97,66 @@ begin;
     'grant_scope_update_time should be set right after insert if the trigger sets it'
   );
 
-  -- 2b) update grant_this_role_scope => trigger should update grant_scope_update_time
+  -- 2b) update grant_this_role_scope => trigger should update grant_this_role_scope_update_time
+  
+  -- update grant_this_role_scope_update_time to default
+  prepare reset_grant_this_role_scope_update_time as
+    update iam_role_org
+       set grant_this_role_scope_update_time = '1970-01-01 00:00:00'
+     where public_id = 'r_org_2222222222';
+  select lives_ok('reset_grant_this_role_scope_update_time');
+
   prepare update_grant_this_role_scope as
     update iam_role_org
-       set grant_this_role_scope = false
+       set grant_this_role_scope = true
      where public_id = 'r_org_2222222222';
   select lives_ok('update_grant_this_role_scope');
+
+  select is(
+    (select grant_this_role_scope_update_time is not null
+       from iam_role_org
+      where public_id = 'r_org_2222222222'),
+    true,
+    'grant_this_role_scope_update_time should be updated after changing grant_this_role_scope'
+  );
+
+  select is(
+    (select grant_this_role_scope_update_time = now()
+       from iam_role_org
+      where public_id = 'r_org_2222222222'),
+    true,
+    'grant_this_role_scope_update_time should be updated after changing grant_this_role_scope'
+  );
+
+
+  -- 2c) update grant_scope => trigger should update grant_this_role_scope_update_time
+  
+  prepare reset_grant_scope_update_time as
+    update iam_role_org
+       set grant_scope_update_time = '1970-01-01 00:00:00'
+     where public_id = 'r_org_2222222222';
+  select lives_ok('reset_grant_scope_update_time');
+
+  prepare update_grant_scope as
+    update iam_role_org
+       set grant_scope = 'children'
+     where public_id = 'r_org_2222222222';
+  select lives_ok('update_grant_scope');
 
   select is(
     (select grant_scope_update_time is not null
        from iam_role_org
       where public_id = 'r_org_2222222222'),
     true,
-    'grant_scope_update_time should be updated after changing grant_this_role_scope'
+    'grant_scope_update_time should be updated after changing grant_scope'
+  );
+
+  select is(
+    (select grant_scope_update_time = now()
+       from iam_role_org
+      where public_id = 'r_org_2222222222'),
+    true,
+    'grant_scope_update_time should be updated after changing grant_scope'
   );
 
   ------------------------------------------------------------------------------

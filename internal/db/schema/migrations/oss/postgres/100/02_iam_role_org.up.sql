@@ -23,6 +23,7 @@ begin;
     ('children'),
     ('individual');       
 
+
   create table iam_role_org (
     public_id wt_role_id primary key
       constraint iam_role_fkey
@@ -70,7 +71,7 @@ begin;
   create trigger update_iam_role_org_grant_this_role_scope_update_time before update on iam_role_org
     for each row execute procedure insert_grant_this_role_scope_update_time();
 
-  create trigger update_iam_role_table_update_time after update on iam_role_org
+  create trigger update_iam_role_org_base_table_update_time after update on iam_role_org
     for each row execute procedure update_iam_role_table_update_time();
 
   create trigger delete_iam_role_subtype after delete on iam_role_org
