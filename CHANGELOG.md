@@ -9,6 +9,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
   ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
 
+### Bug fixes
+
+* Fixed an issue in the worker where closing an SSH channel failed to exit a
+  loop, which would cause a massive spike in CPU usage over time. This change
+  only affects Enterprise.
+
 ## 0.19.0 (2025/02/10)
 ### New and Improved
 
