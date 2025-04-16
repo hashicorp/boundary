@@ -87,7 +87,7 @@ begin;
     for each row execute procedure update_version_column();
 
   create trigger immutable_columns before update on iam_role_org
-    for each row execute procedure immutable_columns('scope_id', 'create_time', 'grant_scope');
+    for each row execute procedure immutable_columns('scope_id', 'create_time');
 
   create table iam_role_org_individual_grant_scope (
     role_id wt_role_id
