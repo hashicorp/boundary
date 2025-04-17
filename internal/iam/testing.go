@@ -201,17 +201,22 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 
 	id, err := newRoleId(ctx)
 	require.NoError(err)
+	grantThis := false
+	if len(opts.withGrantScopeIds) == 0 {
+		grantThis = true
+	}
 
 	var role *Role
 	switch {
 	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
 		g := &globalRole{
 			GlobalRole: &iamstore.GlobalRole{
-				PublicId:    id,
-				ScopeId:     scopeId,
-				Name:        opts.withName,
-				Description: opts.withDescription,
-				GrantScope:  globals.GrantScopeIndividual,
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantScope:         globals.GrantScopeIndividual,
+				GrantThisRoleScope: grantThis,
 			},
 		}
 		require.NoError(rw.Create(ctx, g))
@@ -220,11 +225,12 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	case strings.HasPrefix(scopeId, globals.OrgPrefix):
 		o := &orgRole{
 			OrgRole: &iamstore.OrgRole{
-				PublicId:    id,
-				ScopeId:     scopeId,
-				Name:        opts.withName,
-				Description: opts.withDescription,
-				GrantScope:  globals.GrantScopeIndividual,
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantScope:         globals.GrantScopeIndividual,
+				GrantThisRoleScope: grantThis,
 			},
 		}
 		require.NoError(rw.Create(ctx, o))
@@ -247,9 +253,6 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	}
 
 	grantScopeIds := opts.withGrantScopeIds
-	if len(grantScopeIds) == 0 {
-		grantScopeIds = []string{globals.GrantScopeThis}
-	}
 	for _, gsi := range grantScopeIds {
 		if gsi == "testing-none" {
 			continue
