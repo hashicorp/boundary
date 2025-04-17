@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -2502,6 +2503,73 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 	})
 }
 
+func TestGrantsForUserOrgResources(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	user := TestUser(t, repo, "global")
+	createdRoles := setupDB_IamRoles(t, conn)
+
+	// Add user to created roles
+	for _, roleId := range createdRoles {
+		_, err := repo.AddPrincipalRoles(ctx, roleId, 1, []string{user.PublicId})
+		require.NoError(t, err)
+	}
+
+	globalScope := Scope{Scope: &store.Scope{Type: scope.Global.String(), PublicId: "global"}}
+	org1Scope := Scope{Scope: &store.Scope{Type: scope.Org.String(), PublicId: "o_____colors"}}
+
+	t.Run("Users", func(t *testing.T) {
+		// Fetch global & org roles that grant access to Org resources
+		got, err := repo.grantsForUserOrgResources(ctx, user.PublicId, resource.User, globalScope)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, got, []perms.GrantTuple{
+			{
+				RoleId:            "r_gg_____buy",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
+			{
+				RoleId:            "r_gg____shop",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "children",
+				Grant:             "ids=*;type=user;actions=list,read",
+			},
+		})
+
+		// Fetch org roles that grant access to Org resources
+		got, err = repo.grantsForUserOrgResources(ctx, user.PublicId, resource.User, org1Scope)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, got, []perms.GrantTuple{
+			{
+				RoleId:            "r_go____name",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "o_____colors",
+				Grant:             "ids=*;type=user;actions=create,update,read,list",
+			},
+			{
+				RoleId:            "r_gg_____buy",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
+			{
+				RoleId:            "r_gg____shop",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "children",
+				Grant:             "ids=*;type=user;actions=list,read",
+			},
+		})
+	})
+}
+
 // DO NOT MERGE.
 // This is a test helper function that sets up the database with a number of
 // scopes, roles, and grants for testing the IAM system. It is not intended to
@@ -2560,10 +2628,10 @@ func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
 	values
 	  ('r_gg_____buy', 'ids=*;type=*;actions=update',                      'ids=*;type=*;actions=update'),
       ('r_gg____shop', 'ids=*;type=group;actions=read;output_fields=id',   'ids=*;type=group;actions=read;output_fields=id'),
-      ('r_go____name', 'ids=*;type=alias;actions=create,update,read,list', 'ids=*;type=alias;actions=create,update,read,list'),
-      ('r_go____name', 'ids=*;type=alias;actions=delete',                  'ids=*;type=alias;actions=delete'),
+      ('r_go____name', 'ids=*;type=user;actions=create,update,read,list',  'ids=*;type=user;actions=create,update,read,list'),
       ('r_gp____spec', 'ids=*;type=alias;actions=delete',                  'ids=*;type=alias;actions=delete'),
-      ('r_gg____shop', 'ids=*;type=account;actions=create,update',         'ids=*;type=account;actions=create,update');
+      ('r_gg____shop', 'ids=*;type=account;actions=create,update',         'ids=*;type=account;actions=create,update'),
+      ('r_gg____shop', 'ids=*;type=user;actions=list,read',                'ids=*;type=user;actions=list,read');
 	`
 	_, err = rw.Exec(ctx, insertRoleGrants, nil)
 	require.NoError(err)
