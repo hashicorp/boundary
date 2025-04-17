@@ -2504,9 +2504,17 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	org1Scope := Scope{Scope: &store.Scope{Type: scope.Org.String(), PublicId: "o_____colors"}}
 
 	t.Run("Users", func(t *testing.T) {
+		// Fetch global & org roles that grant access to Org resources
 		got, err := repo.grantsForUserOrgResources(ctx, user.PublicId, resource.User, globalScope)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
+			{
+				RoleId:            "r_gg_____buy",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
 			{
 				RoleId:            "r_gg____shop",
 				RoleScopeId:       "global",
@@ -2515,6 +2523,8 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 				Grant:             "ids=*;type=user;actions=list,read",
 			},
 		})
+
+		// Fetch org roles that grant access to Org resources
 		got, err = repo.grantsForUserOrgResources(ctx, user.PublicId, resource.User, org1Scope)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
@@ -2524,6 +2534,20 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 				RoleParentScopeId: "global",
 				GrantScopeId:      "o_____colors",
 				Grant:             "ids=*;type=user;actions=create,update,read,list",
+			},
+			{
+				RoleId:            "r_gg_____buy",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
+			{
+				RoleId:            "r_gg____shop",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "children",
+				Grant:             "ids=*;type=user;actions=list,read",
 			},
 		})
 	})
