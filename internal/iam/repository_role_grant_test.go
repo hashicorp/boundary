@@ -2587,3 +2587,85 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		})
 	})
 }
+
+// DO NOT MERGE.
+// This is a test helper function that sets up the database with a number of
+// scopes, roles, and grants for testing the IAM system. It is not intended to
+// be merged into the main codebase.
+func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	insertScopes := `
+	insert into iam_scope
+      (parent_id,      type,      public_id,      name)
+    values
+      ('global',       'org',     'o_____colors', 'Colors R Us'),
+      ('o_____colors', 'project', 'p____rcolors', 'Red Color Mill'),
+	  ('o_____colors', 'project', 'p____bcolors', 'Blue Color Mill'),
+      ('o_____colors', 'project', 'p____gcolors', 'Green Color Mill');
+	`
+	_, err := rw.Exec(ctx, insertScopes, nil)
+	require.NoError(err)
+
+	insertGlobalRoles := `
+	insert into iam_role_global
+	  (public_id,       scope_id,   name,                    description,            grant_this_role_scope,  grant_scope)
+	values
+	  ('r_go____name',  'global',   'Color Namer',           'Names colors',         false,                  'individual'),
+	  ('r_gp____spec',  'global',   'Blue Color Inspector',  'Inspects blue colors', true,                   'individual'),
+	  ('r_gg_____buy',  'global',   'Purchaser',             'Buys colors',          false,                  'descendants'),
+	  ('r_gg____shop',  'global',   'Shopper',               'Shops for colors',     true,                   'children');
+	`
+	_, err = rw.Exec(ctx, insertGlobalRoles, nil)
+	require.NoError(err)
+
+	insertIndividualOrgScopeGlobalRoles := `
+	insert into iam_role_global_individual_org_grant_scope
+	  (role_id,        scope_id,   grant_scope)
+	values
+	  ('r_go____name', 'o_____colors', 'individual');
+	`
+	_, err = rw.Exec(ctx, insertIndividualOrgScopeGlobalRoles, nil)
+	require.NoError(err)
+
+	insertIndividualProjScopeGlobalRoles := `
+	insert into iam_role_global_individual_project_grant_scope
+	  (role_id,        scope_id,   grant_scope)
+	values
+	  ('r_gp____spec', 'p____gcolors', 'individual');
+	`
+	_, err = rw.Exec(ctx, insertIndividualProjScopeGlobalRoles, nil)
+	require.NoError(err)
+
+	insertOrgRoles := `
+	insert into iam_role_org
+	  (public_id,       scope_id,   			name,                description,            		grant_this_role_scope,  grant_scope)
+	values
+	  ('r_oc____shop',  'o_____shoppers',   	'Org Shopper',       'Shops for organizations', 	true,                   'children');
+	  ('r_op____name',  'global',   'Color Namer',           'Names colors',         false,                  'children'),
+	  ('r_op____name',  'global',   'Color Namer',           'Names colors',         false,                  'individual'),
+	  ('r_op____spec',  'global',   'Blue Color Inspector',  'Inspects blue colors', true,                   'individual'),
+	`
+	_, err = rw.Exec(ctx, insertOrgRoles, nil)
+	require.NoError(err)
+
+	insertRoleGrants := `
+	insert into iam_role_grant
+	  (role_id,        canonical_grant, raw_grant)
+	values
+	  ('r_gg_____buy', 'ids=*;type=*;actions=update',                      'ids=*;type=*;actions=update'),
+      ('r_gg____shop', 'ids=*;type=group;actions=read;output_fields=id',   'ids=*;type=group;actions=read;output_fields=id'),
+      ('r_go____name', 'ids=*;type=user;actions=create,update,read,list',  'ids=*;type=user;actions=create,update,read,list'),
+      ('r_gp____spec', 'ids=*;type=alias;actions=delete',                  'ids=*;type=alias;actions=delete'),
+      ('r_gg____shop', 'ids=*;type=account;actions=create,update',         'ids=*;type=account;actions=create,update'),
+      ('r_gg____shop', 'ids=*;type=user;actions=list,read',                'ids=*;type=user;actions=list,read'),
+      ('r_oc____shop', 'ids=*;type=user;actions=add-accounts',             'ids=*;type=user;actions=add-accounts');
+	`
+	_, err = rw.Exec(ctx, insertRoleGrants, nil)
+	require.NoError(err)
+
+	return []string{"r_go____name", "r_gp____spec", "r_gg_____buy", "r_gg____shop", "r_oc____shop"}
+}
