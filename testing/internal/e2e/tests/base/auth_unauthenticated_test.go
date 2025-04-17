@@ -40,7 +40,7 @@ func TestCliUnauthenticatedUserAccess(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	// Attempt commands that unauthetnicated users can make
+	// Attempt commands that unauthenticated users can make
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "list",
