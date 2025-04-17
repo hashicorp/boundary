@@ -366,49 +366,56 @@ const (
         where iam_role.public_id in (select role_id from user_group_roles)
           and iam_grant.resource               = any(@resources)
     ),
-    global_roles (role_id
-                ,role_scope_id
-                ,role_type
-                ,grant_scope
-                ,grant_this_role_scope
-                ,individual_grant_scope
-                ,canonical_grant) as (
+    global_roles as (
         select iam_role_global.public_id             as role_id
               ,iam_role_global.scope_id              as role_scope_id
               ,'global'                              as role_type
               ,iam_role_global.grant_scope           as grant_scope
               ,iam_role_global.grant_this_role_scope as grant_this_role_scope
-              ,individual.scope_id                   as individual_grant_scope
+              ,coalesce(individual.scope_id, '')     as individual_grant_scope
               ,roles_with_grants.canonical_grant     as canonical_grant
         from iam_role_global
         join roles_with_grants
             on roles_with_grants.role_id = iam_role_global.public_id
-        where iam_role_global.grant_scope = any('children', 'descendants')
+        join iam_scope
+            on iam_scope.public_id = iam_role_global.scope_id
+        left join iam_role_global_individual_org_grant_scope individual
+            on individual.role_id = iam_role_global.public_id
+            and individual.scope_id = @request_scope
+        where iam_role_global.grant_scope = any('{ children, descendants, individual }')
     ),
-    org_roles (role_id
-              ,role_scope_id
-              ,role_type
-              ,grant_scope
-              ,grant_this_role_scope
-              ,individual_grant_scope
-              ,canonical_grant) as (
+    org_roles as (
         select iam_role_org.public_id             as role_id
               ,iam_role_org.scope_id              as role_scope_id
-              ,'global'                              as role_type
+              ,'org'                              as role_type
               ,iam_role_org.grant_scope           as grant_scope
               ,iam_role_org.grant_this_role_scope as grant_this_role_scope
-              ,individual.scope_id                   as individual_grant_scope
-              ,roles_with_grants.canonical_grant     as canonical_grant
+              ,''                                 as individual_grant_scope
+              ,roles_with_grants.canonical_grant  as canonical_grant
         from iam_role_org
         join roles_with_grants
             on roles_with_grants.role_id = iam_role_org.public_id
         where iam_role_org.grant_this_role_scope
     ),
-    individual_grant_scopes (role_id, scope_id) as (
-      select role_id, scope_id
-      from iam_role_global_individual_org_grant_scope
-      where scope_id = @request_scope
-    ),
+    global_and_org_roles as (
+        select role_id
+              ,role_scope_id
+              ,role_type
+              ,grant_scope
+              ,grant_this_role_scope
+              ,individual_grant_scope
+              ,canonical_grant
+        from global_roles
+        union
+        select role_id
+              ,role_scope_id
+              ,role_type
+              ,grant_scope
+              ,grant_this_role_scope
+              ,individual_grant_scope
+              ,canonical_grant
+        from org_roles
+    )
   select role_id
         ,role_scope_id
         ,role_type
@@ -416,7 +423,7 @@ const (
         ,grant_this_role_scope
         ,array_agg(distinct(individual_grant_scope)) as individual_grant_scopes
         ,array_agg(distinct(canonical_grant))        as canonical_grants
-  from all_roles
+  from global_and_org_roles
   group by (role_id
           ,role_scope_id
           ,role_type
