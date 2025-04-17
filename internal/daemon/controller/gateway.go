@@ -66,6 +66,7 @@ func (noDelimiterStreamingMarshaler) Delimiter() []byte {
 func newGrpcGatewayMux() *runtime.ServeMux {
 	return runtime.NewServeMux(
 		runtime.WithMetadata(correlationIdAnnotator),
+		runtime.WithMetadata(userAgentHeadersAnnotator),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &noDelimiterStreamingMarshaler{
 			&runtime.HTTPBodyMarshaler{
 				Marshaler: handlers.JSONMarshaler(),
@@ -97,6 +98,16 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 
 	return metadata.New(map[string]string{
 		globals.CorrelationIdKey: correlationId,
+	})
+}
+
+func userAgentHeadersAnnotator(_ context.Context, req *http.Request) metadata.MD {
+	userAgent := req.Header.Get("User-Agent")
+	if userAgent == "" {
+		return metadata.MD{}
+	}
+	return metadata.New(map[string]string{
+		userAgentsKey: userAgent,
 	})
 }
 
