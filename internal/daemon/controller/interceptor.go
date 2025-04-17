@@ -48,6 +48,10 @@ const (
 	// apiErrHeader defines an http header for encoded api errors from the
 	// grpc server.
 	apiErrHeader = "x-api-err"
+
+	// boundaryClientAgentProduct defines the product name used to identify the
+	// Boundary client agent in user-agent parsing and validation logic.
+	boundaryClientAgentProduct = "Boundary-client-agent"
 )
 
 // Regular expression to parse user-agent product, version, and comments
@@ -482,8 +486,9 @@ func eventsRequestInterceptor(
 }
 
 // parseUserAgents extracts structured UserAgent data from a raw User-Agent header string.
-// It filters out entries with invalid or non-semver versions (e.g., versions starting with 'v'),
-// and normalizes comments into a slice of strings.
+// Version validation is applied only to Boundary-client-agent entries, which are excluded
+// if the version starts with 'v' or is not a valid semantic version.
+// Comments are split and normalized into a slice of strings.
 func parseUserAgents(rawUserAgent string) []*event.UserAgent {
 	var userAgents []*event.UserAgent
 	matches := userAgentRegex.FindAllStringSubmatch(rawUserAgent, -1)
@@ -493,7 +498,7 @@ func parseUserAgents(rawUserAgent string) []*event.UserAgent {
 		agentVersion := strings.TrimSpace(match[2])
 
 		// Only apply version validation for Boundary-client-agent
-		if product == "Boundary-client-agent" {
+		if product == boundaryClientAgentProduct {
 			if strings.HasPrefix(agentVersion, "v") {
 				// Invalid version format (starting with 'v')
 				continue

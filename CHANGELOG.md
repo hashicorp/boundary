@@ -8,7 +8,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
   ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
-* Adds support to parse User-Agent headers & emit them in telemetry events
+* Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
 
 ## 0.19.0 (2025/02/10)
