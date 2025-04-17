@@ -2605,6 +2605,18 @@ func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
 	_, err = rw.Exec(ctx, insertIndividualProjScopeGlobalRoles, nil)
 	require.NoError(err)
 
+	insertOrgRoles := `
+	insert into iam_role_org
+	  (public_id,       scope_id,   			name,                description,            		grant_this_role_scope,  grant_scope)
+	values
+	  ('r_oc____shop',  'o_____shoppers',   	'Org Shopper',       'Shops for organizations', 	true,                   'children');
+	  ('r_op____name',  'global',   'Color Namer',           'Names colors',         false,                  'children'),
+	  ('r_op____name',  'global',   'Color Namer',           'Names colors',         false,                  'individual'),
+	  ('r_op____spec',  'global',   'Blue Color Inspector',  'Inspects blue colors', true,                   'individual'),
+	`
+	_, err = rw.Exec(ctx, insertOrgRoles, nil)
+	require.NoError(err)
+
 	insertRoleGrants := `
 	insert into iam_role_grant
 	  (role_id,        canonical_grant, raw_grant)
@@ -2614,10 +2626,11 @@ func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
       ('r_go____name', 'ids=*;type=user;actions=create,update,read,list',  'ids=*;type=user;actions=create,update,read,list'),
       ('r_gp____spec', 'ids=*;type=alias;actions=delete',                  'ids=*;type=alias;actions=delete'),
       ('r_gg____shop', 'ids=*;type=account;actions=create,update',         'ids=*;type=account;actions=create,update'),
-      ('r_gg____shop', 'ids=*;type=user;actions=list,read',                'ids=*;type=user;actions=list,read');
+      ('r_gg____shop', 'ids=*;type=user;actions=list,read',                'ids=*;type=user;actions=list,read'),
+      ('r_oc____shop', 'ids=*;type=user;actions=add-accounts',             'ids=*;type=user;actions=add-accounts');
 	`
 	_, err = rw.Exec(ctx, insertRoleGrants, nil)
 	require.NoError(err)
 
-	return []string{"r_go____name", "r_gp____spec", "r_gg_____buy", "r_gg____shop"}
+	return []string{"r_go____name", "r_gp____spec", "r_gg_____buy", "r_gg____shop", "r_oc____shop"}
 }
