@@ -381,8 +381,12 @@ const (
             on iam_scope.public_id = iam_role_global.scope_id
         left join iam_role_global_individual_org_grant_scope individual
             on individual.role_id = iam_role_global.public_id
-            and individual.scope_id = @request_scope
-        where iam_role_global.grant_scope = any('{ children, descendants, individual }')
+        where (
+          iam_role_global.grant_scope = any('{ children, descendants }')
+        ) OR (
+          iam_role_global.grant_scope = 'individual' AND
+          individual.scope_id = @request_scope
+        )
     ),
     org_roles as (
         select iam_role_org.public_id             as role_id
