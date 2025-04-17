@@ -149,6 +149,44 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
+				name: "global role grant descendants with recursive returns global and org tokens",
+				input: &pbs.ListAuthTokensRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=auth-token;actions=list,read;output_fields=id,approximate_last_used_time,expiration_time,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
+				wantErr: nil,
+				wantIDs: []string{org1AT.PublicId, org2AT.PublicId},
+				expectOutfields: []string{
+					globals.IdField,
+					globals.ApproximateLastUsedTimeField,
+					globals.ExpirationTimeField,
+					globals.AuthorizedActionsField,
+				},
+			},
+			{
+				name: "global role grant descendants without recursive returns error",
+				input: &pbs.ListAuthTokensRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: false,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=auth-token;actions=list,read;output_fields=id,approximate_last_used_time,expiration_time,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+				wantIDs: nil,
+			},
+			{
 				name: "org role grant this returns org tokens",
 				input: &pbs.ListAuthTokensRequest{
 					ScopeId:   org1.PublicId,
@@ -180,6 +218,35 @@ func TestGrants_ReadActions(t *testing.T) {
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				wantErr: nil,
+				wantIDs: []string{org1AT.PublicId},
+				expectOutfields: []string{
+					globals.IdField,
+					globals.ScopeIdField,
+					globals.ScopeField,
+					globals.UserIdField,
+					globals.AuthMethodIdField,
+					globals.AccountIdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
+					globals.ApproximateLastUsedTimeField,
+					globals.ExpirationTimeField,
+					globals.AuthorizedActionsField,
+				},
+			},
+			{
+				name: "global role grant this and children returns org tokens",
+				input: &pbs.ListAuthTokensRequest{
+					ScopeId:   org1.PublicId,
+					Recursive: true,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=*"},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
@@ -372,7 +439,7 @@ func TestGrants_CreateActions(t *testing.T) {
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=*;actions=*"},
+						Grants:      []string{"ids=*;type=*;actions=delete:self"},
 						GrantScopes: []string{org2.PublicId},
 					},
 				}),
