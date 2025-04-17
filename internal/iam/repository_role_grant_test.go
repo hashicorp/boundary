@@ -2511,108 +2511,78 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrap)
 	user := TestUser(t, repo, "global")
-	createdRoles := setupDB_IamRoles(t, conn)
+
+	// Create scopes
+	org1 := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	// org2 := TestOrg(t, repo)
+
+	globalScope := Scope{Scope: &store.Scope{Type: scope.Global.String(), PublicId: "global"}}
+	org1Scope := Scope{Scope: &store.Scope{Type: scope.Org.String(), PublicId: org1.PublicId}}
+	// org2Scope := Scope{Scope: &store.Scope{Type: scope.Org.String(), PublicId: org2.PublicId}}
+
+	// Create roles
+	role1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1.PublicId}))
+	// role2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2.PublicId}))
+	role3 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
+	role4 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+
+	// Grant roles
+	TestRoleGrant(t, conn, role1.PublicId, "ids=*;type=user;actions=create,update,read,list")
+	TestRoleGrant(t, conn, role3.PublicId, "ids=*;type=*;actions=update")
+	TestRoleGrant(t, conn, role4.PublicId, "ids=*;type=user;actions=list,read")
 
 	// Add user to created roles
-	for _, roleId := range createdRoles {
+	for _, roleId := range []string{role1.PublicId, role3.PublicId, role4.PublicId} {
 		_, err := repo.AddPrincipalRoles(ctx, roleId, 1, []string{user.PublicId})
 		require.NoError(t, err)
 	}
 
-	globalScope := Scope{Scope: &store.Scope{Type: scope.Global.String(), PublicId: "global"}}
-	org1Scope := Scope{Scope: &store.Scope{Type: scope.Org.String(), PublicId: "o_____colors"}}
-
 	t.Run("Users", func(t *testing.T) {
+		// Fetch global & org roles that grant access to Org resources
 		got, err := repo.grantsForUserOrgResources(ctx, user.PublicId, resource.User, globalScope)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
 			{
-				RoleId:            "r_gg____shop",
+				RoleId:            role3.PublicId,
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
+			{
+				RoleId:            role4.PublicId,
 				RoleScopeId:       "global",
 				RoleParentScopeId: "global",
 				GrantScopeId:      "children",
 				Grant:             "ids=*;type=user;actions=list,read",
 			},
 		})
+
+		// Fetch org roles that grant access to Org resources
 		got, err = repo.grantsForUserOrgResources(ctx, user.PublicId, resource.User, org1Scope)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
 			{
-				RoleId:            "r_go____name",
+				RoleId:            role1.PublicId,
 				RoleScopeId:       "global",
 				RoleParentScopeId: "global",
-				GrantScopeId:      "o_____colors",
+				GrantScopeId:      org1.PublicId,
 				Grant:             "ids=*;type=user;actions=create,update,read,list",
+			},
+			{
+				RoleId:            role3.PublicId,
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
+			{
+				RoleId:            role4.PublicId,
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "children",
+				Grant:             "ids=*;type=user;actions=list,read",
 			},
 		})
 	})
-}
-
-// DO NOT MERGE.
-// This is a test helper function that sets up the database with a number of
-// scopes, roles, and grants for testing the IAM system. It is not intended to
-// be merged into the main codebase.
-func setupDB_IamRoles(t *testing.T, conn *db.DB) []string {
-	t.Helper()
-	ctx := context.Background()
-	require := require.New(t)
-	rw := db.New(conn)
-
-	insertScopes := `
-	insert into iam_scope
-      (parent_id,      type,      public_id,      name)
-    values
-      ('global',       'org',     'o_____colors', 'Colors R Us'),
-      ('o_____colors', 'project', 'p____rcolors', 'Red Color Mill'),
-	  ('o_____colors', 'project', 'p____bcolors', 'Blue Color Mill'),
-      ('o_____colors', 'project', 'p____gcolors', 'Green Color Mill');
-	`
-	_, err := rw.Exec(ctx, insertScopes, nil)
-	require.NoError(err)
-
-	insertGlobalRoles := `
-	insert into iam_role_global
-	  (public_id,       scope_id,   name,                    description,            grant_this_role_scope,  grant_scope)
-	values
-	  ('r_go____name',  'global',   'Color Namer',           'Names colors',         false,                  'individual'),
-	  ('r_gp____spec',  'global',   'Blue Color Inspector',  'Inspects blue colors', true,                   'individual'),
-	  ('r_gg_____buy',  'global',   'Purchaser',             'Buys colors',          false,                  'descendants'),
-	  ('r_gg____shop',  'global',   'Shopper',               'Shops for colors',     true,                   'children');
-	`
-	_, err = rw.Exec(ctx, insertGlobalRoles, nil)
-	require.NoError(err)
-
-	insertIndividualOrgScopeGlobalRoles := `
-	insert into iam_role_global_individual_org_grant_scope
-	  (role_id,        scope_id,   grant_scope)
-	values
-	  ('r_go____name', 'o_____colors', 'individual');
-	`
-	_, err = rw.Exec(ctx, insertIndividualOrgScopeGlobalRoles, nil)
-	require.NoError(err)
-
-	insertIndividualProjScopeGlobalRoles := `
-	insert into iam_role_global_individual_project_grant_scope
-	  (role_id,        scope_id,   grant_scope)
-	values
-	  ('r_gp____spec', 'p____gcolors', 'individual');
-	`
-	_, err = rw.Exec(ctx, insertIndividualProjScopeGlobalRoles, nil)
-	require.NoError(err)
-
-	insertRoleGrants := `
-	insert into iam_role_grant
-	  (role_id,        canonical_grant, raw_grant)
-	values
-	  ('r_gg_____buy', 'ids=*;type=*;actions=update',                      'ids=*;type=*;actions=update'),
-      ('r_gg____shop', 'ids=*;type=group;actions=read;output_fields=id',   'ids=*;type=group;actions=read;output_fields=id'),
-      ('r_go____name', 'ids=*;type=user;actions=create,update,read,list',  'ids=*;type=user;actions=create,update,read,list'),
-      ('r_gp____spec', 'ids=*;type=alias;actions=delete',                  'ids=*;type=alias;actions=delete'),
-      ('r_gg____shop', 'ids=*;type=account;actions=create,update',         'ids=*;type=account;actions=create,update'),
-      ('r_gg____shop', 'ids=*;type=user;actions=list,read',                'ids=*;type=user;actions=list,read');
-	`
-	_, err = rw.Exec(ctx, insertRoleGrants, nil)
-	require.NoError(err)
-
-	return []string{"r_go____name", "r_gp____spec", "r_gg_____buy", "r_gg____shop"}
 }
