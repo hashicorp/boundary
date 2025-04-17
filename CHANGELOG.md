@@ -4,7 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### New and Improved 
+### New and Improved
 
 * Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
   ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
@@ -20,13 +20,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Introduces soft-delete for users within the client cache.
   ([PR](https://github.com/hashicorp/boundary/pull/5173)).
-* GCP dynamic host catalog: Add dynamic host catalog support for 
+* GCP dynamic host catalog: Add dynamic host catalog support for
   discovering GCP Compute Engine VM Instances.
   ([PR](https://github.com/hashicorp/boundary/pull/5229)).
-* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and 
+* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and
 maintainability of worker queries, and improve DB performance. ([PR](https://github.com/hashicorp/boundary/pull/5338)).
 * Adds support for dual-stack networking for AWS operations.
-  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52)) 
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52))
   * **Note**: As a consequence of updating AWS SDK dependencies to enable
     dual-stack support, this Boundary release may consume more memory. From our
     testing, the increase seems to be around 1.6x, however this
@@ -259,7 +259,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * curl (enterprise): The curl binary is no longer included in the published
   Docker container images for Boundary Enterprise to address the CVE-2024-7264
   vulnerability.
-  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)  
+  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)
 
 ## 0.17.0 (2024/07/17)
 
@@ -275,7 +275,7 @@ object store. There are two SBC types, managed secret and environmental.
   for a worker to perform a specific action using the storage bucket. SBC
   permission types (write, read, & delete) represent an action that is required
   for the storage bucket to do as a routine task on an external object store.
-  Each permission type has a permission state (ok, error, unknown). 
+  Each permission type has a permission state (ok, error, unknown).
   * SBC Worker Filtering: For protocol aware workers that require interaction
   with an external storage service, the workers will be filtered by the SBC
   state depending on the action and permission required.
@@ -1371,7 +1371,7 @@ open-source release of 0.12.3; the same fixes will be in 0.13.0 OSS.
   anonymous user; currently these are the same permissions as assigned in
   Boundary's default role permissions. If other use-cases arise this list can be
   expanded. See [the
-  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions/assignable-permissions)
+  documentation](https://www.developer.hashicorp.com/boundary/docs/configuration/identity-access-management/assignable-permissions)
   for more details.
 
 ## 0.8.1 (2022/05/13)
@@ -1530,7 +1530,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
 
 * Boundary now supports dynamic discovery of host resources using our (currently
   internal) new plugin system. See the
-  [documentation](https://www.boundaryproject.io/docs) for configuration
+  [documentation](https://www.developer.hashicorp.com/boundary/docs/concepts/host-discovery) for configuration
   instructions. Currently, only Azure and AWS are supported, but more providers
   will be following in future releases.
 * workers: The existing worker connection replay prevention logic has been
@@ -1659,7 +1659,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
 * OIDC Accounts: When performing a `read` on an `oidc` type account, the
   original token and userinfo claims are provided in the output. This can make
   it significantly easier to write filters to create [managed
-  groups](https://www.boundaryproject.io/docs/concepts/filtering/oidc-managed-groups).
+  groups](https://www.developer.hashicorp.com/boundary/docs/concepts/filtering/managed-groups).
   ([PR](https://github.com/hashicorp/boundary/pull/1419))
 * Controllers will now mark connections as closed in the database if the worker
   has not reported its status; this can be seen as the controller counterpart to
@@ -1687,7 +1687,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
     Boundary.
   * Filtering events: hclog log levels have been replaced by optional sets
     of allow and deny event
-    [filters](https://www.boundaryproject.io/docs/concepts/filtering) which are
+    [filters](https://www.developer.hashicorp.com/boundary/docs/concepts/filtering) which are
     specified via configuration, or in the case of "boundary dev" there are new
     new cmd flags.
   * Observation events are MVP and contain a minimal set of observations about a
@@ -1900,7 +1900,7 @@ Boundary) but it's worth repeating.
   users this defaults to all fields; for `u_anon` this defaults to the fields
   useful for navigating to and authenticating to the system. In either case,
   this is overridable. See the [permissions
-  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions)
+  documentation](https://www.developer.hashicorp.com/boundary/docs/configuration/identity-access-management)
   for more information on why and when to use this. This currently only applies
   to top-level fields in the response.
 * cli/api/sdk: Add support to request additional OIDC claims scope values from
@@ -2086,7 +2086,7 @@ to call out in this changelog. The full set of open issues is on GitHub.
 * list filtering: Listing now supports filtering results before being returned
   to the user. The filtering takes place server side and uses boolean
   expressions against the JSON representation of returned items. See [the
-  documentation](https://www.boundaryproject.io/docs/concepts/filtering/resource-listing)
+  documentation](https://www.developer.hashicorp.com/boundary/docs/concepts/filtering/resource-listing)
   for more details. ([PR 1](https://github.com/hashicorp/boundary/pull/952))
   ([PR 2](https://github.com/hashicorp/boundary/pull/957))
   ([PR 3](https://github.com/hashicorp/boundary/pull/967))
@@ -2094,7 +2094,7 @@ to call out in this changelog. The full set of open issues is on GitHub.
   worked before but wasn't fully tested.)
   ([PR](https://github.com/hashicorp/boundary/pull/959))
 * server: On `SIGHUP`, [worker
-  tags](https://www.boundaryproject.io/docs/configuration/worker#tags) will be
+  tags](https://www.developer.hashicorp.com/boundary/docs/concepts/filtering/worker-tags) will be
   re-parsed and new values used
   ([PR](https://github.com/hashicorp/boundary/pull/959))
 * server: In addition to the existing `tls_min_version` listener configuration
@@ -2331,7 +2331,7 @@ them to access targets).
     favor of specifying `none` for the new `-keyring-type` parameter.
   * [`pass`](https://www.passwordstore.org/) is now the default keyring type on
     non-Windows/non-macOS platforms. See the [CLI docs
-    page](https://www.boundaryproject.io/docs/api-clients/cli) for more
+    page](https://www.developer.hashicorp.com/boundary/docs/commands) for more
     information.
 
 ### New and Improved
