@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -22,6 +23,7 @@ const (
 	defaultRoleGrantScopeTable                        = "iam_role_grant_scope"
 	defaultGlobalRoleIndividualOrgGrantScopeTable     = "iam_role_global_individual_org_grant_scope"
 	defaultGlobalRoleIndividualProjectGrantScopeTable = "iam_role_global_individual_project_grant_scope"
+	defaultOrgRoleIndividualGrantScopeTable           = "iam_role_org_individual_grant_scope"
 )
 
 // ensure that RoleGrantScope implements the interfaces of: Cloneable and db.VetForWriter
@@ -130,7 +132,8 @@ func (g *GlobalRoleIndividualOrgGrantScope) VetForWrite(ctx context.Context, r d
 	if g.ScopeId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	if globals.ResourceInfoFromPrefix(g.ScopeId).Type != resource.Scope {
+	if globals.ResourceInfoFromPrefix(g.ScopeId).Type != resource.Scope &&
+		strings.HasPrefix(g.String(), globals.OrgPrefix) {
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope ID %s", g.ScopeId))
 	}
 	return nil
@@ -169,7 +172,8 @@ func (g *GlobalRoleIndividualProjectGrantScope) VetForWrite(ctx context.Context,
 	if g.ScopeId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	if globals.ResourceInfoFromPrefix(g.ScopeId).Type != resource.Scope {
+	if globals.ResourceInfoFromPrefix(g.ScopeId).Type != resource.Scope &&
+		strings.HasPrefix(g.String(), globals.ProjectPrefix) {
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope ID %s", g.ScopeId))
 	}
 	return nil
@@ -179,5 +183,45 @@ func (g *GlobalRoleIndividualProjectGrantScope) Clone() any {
 	cp := proto.Clone(g.GlobalRoleIndividualProjectGrantScope)
 	return &GlobalRoleIndividualProjectGrantScope{
 		GlobalRoleIndividualProjectGrantScope: cp.(*store.GlobalRoleIndividualProjectGrantScope),
+	}
+}
+
+// OrgRoleIndividualGrantScope defines the grant project scopes
+// that are assigned to an org role
+type OrgRoleIndividualGrantScope struct {
+	*store.OrgRoleIndividualGrantScope
+	tableName string `gorm:"-"`
+}
+
+func (g *OrgRoleIndividualGrantScope) TableName() string {
+	if g.tableName != "" {
+		return g.tableName
+	}
+	return defaultOrgRoleIndividualGrantScopeTable
+}
+
+func (g *OrgRoleIndividualGrantScope) SetTableName(name string) {
+	g.tableName = name
+}
+
+func (g *OrgRoleIndividualGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(OrgRoleIndividualGrantScope).VetForWrite"
+	if g.RoleId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	if g.ScopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if globals.ResourceInfoFromPrefix(g.ScopeId).Type != resource.Scope &&
+		strings.HasPrefix(g.String(), globals.ProjectPrefix) {
+		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope ID %s", g.ScopeId))
+	}
+	return nil
+}
+
+func (g *OrgRoleIndividualGrantScope) Clone() any {
+	cp := proto.Clone(g.OrgRoleIndividualGrantScope)
+	return &OrgRoleIndividualGrantScope{
+		OrgRoleIndividualGrantScope: cp.(*store.OrgRoleIndividualGrantScope),
 	}
 }
