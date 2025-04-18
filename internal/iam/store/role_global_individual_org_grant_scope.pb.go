@@ -36,7 +36,7 @@ type GlobalRoleIndividualOrgGrantScope struct {
 	//
 	// @inject_tag: `gorm:"primary_key"`
 	ScopeId string `protobuf:"bytes,3,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"primary_key"`
-	// grant_scope control type of grant scope granted to this role ['descendant', 'children', 'individual']
+	// grant_scope control type of grant scope granted to this role ['individual']
 	//
 	// @inject_tag: `gorm:"default:null"`
 	GrantScope    string `protobuf:"bytes,4,opt,name=grant_scope,json=grantScope,proto3" json:"grant_scope,omitempty" gorm:"default:null"`
