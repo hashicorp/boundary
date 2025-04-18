@@ -96,7 +96,7 @@ begin;
         on delete cascade
         on update cascade,
     scope_id wt_scope_id not null
-      constraint iam_scope_org_scope_id_fkey
+      constraint iam_scope_project_fkey
         references iam_scope_project(scope_id)
         on delete cascade
         on update cascade,
@@ -119,7 +119,7 @@ begin;
     primary key(role_id, scope_id)
   );
   comment on table iam_role_org_individual_grant_scope is
-    'iam_role_global_individual_grant_scope is the subtype table for the org role with grant_scope as individual.';
+    'iam_role_org_individual_grant_scope is the subtype table for the org role with grant_scope as individual.';
 
   create trigger default_create_time_column before insert on iam_role_org_individual_grant_scope
     for each row execute procedure default_create_time();
