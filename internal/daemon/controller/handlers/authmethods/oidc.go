@@ -19,6 +19,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"google.golang.org/grpc/codes"
 )
 
@@ -419,6 +420,10 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 		// Strip off everything after and including ".well-known/openid-configuration"
 		// but leave the "/" attached to the end.
 		iss = strings.SplitN(iss, ".well-known/", 2)[0]
+		iss, err := parseutil.NormalizeAddr(iss)
+		if err != nil {
+			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot normalize issuer"), errors.WithCode(errors.InvalidParameter))
+		}
 		issuer, err := url.Parse(iss)
 		if err != nil {
 			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
@@ -426,6 +431,10 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
+		apiUrl, err := parseutil.NormalizeAddr(apiUrl)
+		if err != nil {
+			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot normalize api_url_prefix"), errors.WithCode(errors.InvalidParameter))
+		}
 		apiU, err := url.Parse(apiUrl)
 		if err != nil {
 			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
