@@ -433,6 +433,13 @@ func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleIds []string, 
 	if len(roleIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
 	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
 	query := "?"
 	var args []any
 	for i, roleId := range roleIds {
@@ -444,9 +451,24 @@ func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleIds []string, 
 		}
 		args = append(args, roleId)
 	}
-	var roleGrantScopes []*RoleGrantScope
-	if err := r.list(ctx, &roleGrantScopes, fmt.Sprintf("role_id in (%s)", query), args, opt...); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup role grant scopes"))
+	rows, err := r.reader.Query(ctx, roleGrantsScopeQuery, []any{roleIds}, db.WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query role grant scopes"))
 	}
-	return roleGrantScopes, nil
+
+	if rows.Err() != nil {
+		return nil, errors.Wrap(ctx, rows.Err(), op, errors.WithMsg("role grant scope rows error"))
+	}
+	var result []*RoleGrantScope
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &result); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for: %s", roleIds)))
+		}
+
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for: %s", roleIds)))
+	}
+
+	return result, nil
 }

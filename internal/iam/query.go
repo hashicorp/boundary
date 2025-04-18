@@ -223,7 +223,124 @@ const (
 	`
 
 	scopeIdFromRoleIdQuery = `
-	   select scope_id
-		 from iam_role
-		where public_id = @public_id;`
+		select scope_id
+			from iam_role
+		where public_id = @public_id;
+	`
+
+	roleGrantsScopeQuery = `
+	with 
+	global_roles (role_id) as (
+		select
+			public_id as role_id
+		from iam_role_global
+		where public_id = any($1)
+	),
+	org_roles (role_id) as (
+		select
+			public_id as role_id
+		from iam_role_org
+		where public_id = any($1)
+	),
+	proj_roles (role_id) as (
+		select
+			public_id as role_id
+		from iam_role_project
+		where public_id = any($1)
+	),
+	global_role_this_grants (role_id, scope_id_or_special, create_time) as (
+		select 
+			public_id as role_id,
+			'this' as scope_id_or_special,
+			grant_this_role_scope_update_time as create_time
+		from iam_role_global
+		where public_id = any (select role_id from global_roles)
+			and grant_this_role_scope = true
+	),
+	org_role_this_grants (role_id, scope_id_or_special, create_time) as (
+		select 
+			public_id as role_id,
+			'this' as scope_id_or_special,
+			grant_this_role_scope_update_time as create_time
+		from iam_role_org
+		where public_id = any (select role_id from org_roles) 
+			and grant_this_role_scope = true
+	),
+	proj_role_this_grants (role_id, scope_id_or_special, create_time) as (
+		select 
+			public_id as role_id,
+			'this' as scope_id_or_special,
+			create_time as create_time
+		from iam_role_project
+		where public_id = any (select role_id from proj_roles)
+	),
+	global_role_special_grants (role_id, scope_id_or_special, create_time) as (
+		select 
+			public_id as role_id,
+			grant_scope as scope_id_or_special,
+			grant_this_role_scope_update_time as create_time
+		from iam_role_global
+		where public_id = any (select role_id from global_roles)
+			and grant_scope != 'individual'
+	),
+	org_role_special_grants (role_id, scope_id_or_special, create_time) as (
+		select 
+			public_id as role_id,
+			grant_scope as scope_id_or_special,
+			grant_this_role_scope_update_time as create_time
+		from iam_role_org
+		where public_id = any (select role_id from org_roles)
+			and grant_scope != 'individual'
+	),
+	global_role_individual_org_grants (role_id, scope_id_or_special, create_time) as (
+		select 
+			role_id as role_id,
+			scope_id as scope_id_or_special,
+			create_time as create_time
+		from iam_role_global_individual_org_grant_scope
+		where role_id = any (select role_id from global_roles)
+	),
+	global_role_individual_proj_grants (role_id, scope_id_or_special, create_time) as (
+		select 
+			role_id as role_id,
+			scope_id as scope_id_or_special,
+			create_time as create_time
+		from iam_role_global_individual_project_grant_scope
+		where role_id = any (select role_id from global_roles)
+	),
+	org_role_individual_grants (role_id, scope_id_or_special, create_time) as (
+		select 
+			role_id as role_id,
+			scope_id as scope_id_or_special,
+			create_time as create_time
+		from iam_role_org_individual_grant_scope
+		where role_id = any (select role_id from org_roles)
+	),
+	final (role_id, scope_id_or_special, create_time) as (
+		select role_id, scope_id_or_special, create_time
+			from global_role_this_grants
+		union
+		select role_id, scope_id_or_special, create_time
+			from org_role_this_grants
+		union
+		select role_id, scope_id_or_special, create_time
+			from proj_role_this_grants
+		union
+		select role_id, scope_id_or_special, create_time
+			from global_role_special_grants
+		union
+		select role_id, scope_id_or_special, create_time
+			from org_role_special_grants
+		union
+		select role_id, scope_id_or_special, create_time
+			from global_role_individual_org_grants
+		union
+		select role_id, scope_id_or_special, create_time
+			from global_role_individual_proj_grants
+		union
+		select role_id, scope_id_or_special, create_time
+			from org_role_individual_grants
+	)
+	select role_id, scope_id_or_special, create_time from final;
+`
 )
