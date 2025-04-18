@@ -23,7 +23,7 @@ message GlobalRoleIndividualProjectGrantScope {
   // @inject_tag: `gorm:"primary_key"`
   string scope_id = 3;
 
-  // grant_scope control type of grant scope granted to this role ['descendant', 'children', 'individual']
+  // grant_scope control type of grant scope granted to this role ['children', 'individual']
   //
   // @inject_tag: `gorm:"default:null"`
   string grant_scope = 4;
