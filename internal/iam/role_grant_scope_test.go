@@ -1,0 +1,209 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package iam
+
+import (
+	"context"
+	"testing"
+
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/stretchr/testify/require"
+)
+
+func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := TestRepo(t, conn, wrap)
+	rw := db.New(conn)
+	org, proj := TestScopes(t, iamRepo)
+	testcases := []struct {
+		name       string
+		setup      func(t *testing.T) *GlobalRoleIndividualOrgGrantScope
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			name: "happy path grant scope individual",
+			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+				r := TestRole(t, conn, globals.GlobalPrefix)
+				return &GlobalRoleIndividualOrgGrantScope{
+					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
+						RoleId:     r.PublicId,
+						ScopeId:    org.PublicId,
+						GrantScope: globals.GrantScopeIndividual,
+					},
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "error only individual is allowed in grant_scope",
+			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+				r := TestRole(t, conn, globals.GlobalPrefix)
+				gRole := allocGlobalRole()
+				gRole.PublicId = r.PublicId
+				require.NoError(t, rw.LookupByPublicId(ctx, &gRole))
+
+				gRole.GrantScope = globals.GrantScopeChildren
+				updated, err := rw.Update(ctx, &gRole, []string{"GrantScope"}, []string{})
+				require.NoError(t, err)
+				require.Equal(t, 1, updated)
+				return &GlobalRoleIndividualOrgGrantScope{
+					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
+						RoleId:     r.PublicId,
+						ScopeId:    org.PublicId,
+						GrantScope: globals.GrantScopeChildren,
+					},
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: only_individual_grant_scope_allowed constraint failed: check constraint violated: integrity violation: error #1000`,
+		},
+		{
+			name: "error mismatch grant_scope",
+			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+				r := TestRole(t, conn, globals.GlobalPrefix)
+				gRole := allocGlobalRole()
+				gRole.PublicId = r.PublicId
+				require.NoError(t, rw.LookupByPublicId(ctx, &gRole))
+				return &GlobalRoleIndividualOrgGrantScope{
+					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
+						RoleId:     r.PublicId,
+						ScopeId:    org.PublicId,
+						GrantScope: globals.GrantScopeChildren,
+					},
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: only_individual_grant_scope_allowed constraint failed: check constraint violated: integrity violation: error #1000`,
+		},
+		{
+			name: "error trying to add project grant scope",
+			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+				r := TestRole(t, conn, globals.GlobalPrefix)
+				return &GlobalRoleIndividualOrgGrantScope{
+					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
+						RoleId:     r.PublicId,
+						ScopeId:    proj.PublicId,
+						GrantScope: globals.GrantScopeIndividual,
+					},
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_global_individual_org_grant_scope" violates foreign key constraint "iam_scope_org_fkey": integrity violation: error #1003`,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			grantScope := tc.setup(t)
+			err := rw.Create(ctx, grantScope)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tc.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func Test_GlobalRoleIndividualProjectGrantScope(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := TestRepo(t, conn, wrap)
+	rw := db.New(conn)
+	org, proj := TestScopes(t, iamRepo)
+	testcases := []struct {
+		name       string
+		setup      func(t *testing.T) *GlobalRoleIndividualProjectGrantScope
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			name: "happy path grant scope individual",
+			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+				r := TestRole(t, conn, globals.GlobalPrefix)
+				return &GlobalRoleIndividualProjectGrantScope{
+					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
+						RoleId:     r.PublicId,
+						ScopeId:    proj.PublicId,
+						GrantScope: globals.GrantScopeIndividual,
+					},
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "happy path grant_scope children is allowed",
+			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+				r := TestRole(t, conn, globals.GlobalPrefix)
+				gRole := allocGlobalRole()
+				gRole.PublicId = r.PublicId
+				require.NoError(t, rw.LookupByPublicId(ctx, &gRole))
+
+				gRole.GrantScope = globals.GrantScopeChildren
+				updated, err := rw.Update(ctx, &gRole, []string{"GrantScope"}, []string{})
+				require.NoError(t, err)
+				require.Equal(t, 1, updated)
+				return &GlobalRoleIndividualProjectGrantScope{
+					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
+						RoleId:     r.PublicId,
+						ScopeId:    proj.PublicId,
+						GrantScope: globals.GrantScopeChildren,
+					},
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "error mismatch grant_scope",
+			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+				r := TestRole(t, conn, globals.GlobalPrefix)
+				gRole := allocGlobalRole()
+				gRole.PublicId = r.PublicId
+				require.NoError(t, rw.LookupByPublicId(ctx, &gRole))
+				return &GlobalRoleIndividualProjectGrantScope{
+					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
+						RoleId:     r.PublicId,
+						ScopeId:    proj.PublicId,
+						GrantScope: globals.GrantScopeChildren,
+					},
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_global_individual_project_grant_scope" violates foreign key constraint "iam_role_global_grant_scope_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "error trying to add org grant scope",
+			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+				r := TestRole(t, conn, globals.GlobalPrefix)
+				return &GlobalRoleIndividualProjectGrantScope{
+					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
+						RoleId:     r.PublicId,
+						ScopeId:    org.PublicId,
+						GrantScope: globals.GrantScopeIndividual,
+					},
+				}
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Create: insert or update on table "iam_role_global_individual_project_grant_scope" violates foreign key constraint "iam_scope_project_fkey": integrity violation: error #1003`,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			grantScope := tc.setup(t)
+			err := rw.Create(ctx, grantScope)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tc.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
