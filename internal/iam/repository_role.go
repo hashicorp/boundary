@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
@@ -26,8 +28,6 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	switch {
 	case role == nil:
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role")
-	case role.Role == nil:
-		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
 	case role.PublicId != "":
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	case role.ScopeId == "":
@@ -38,10 +38,45 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
-	c := role.Clone().(*Role)
-	c.PublicId = id
 
-	var resource Resource
+	var roleToCreate Resource
+	switch {
+	case strings.HasPrefix(role.GetScopeId(), globals.GlobalPrefix):
+		roleToCreate = &globalRole{
+			GlobalRole: &store.GlobalRole{
+				PublicId:           id,
+				ScopeId:            role.ScopeId,
+				Name:               role.Name,
+				Description:        role.Description,
+				GrantThisRoleScope: false,
+				GrantScope:         globals.GrantScopeIndividual,
+			},
+		}
+	case strings.HasPrefix(role.GetScopeId(), globals.OrgPrefix):
+		roleToCreate = &orgRole{
+			OrgRole: &store.OrgRole{
+				PublicId:           id,
+				ScopeId:            role.ScopeId,
+				Name:               role.Name,
+				Description:        role.Description,
+				GrantThisRoleScope: false,
+				GrantScope:         globals.GrantScopeIndividual,
+			},
+		}
+	case strings.HasPrefix(role.GetScopeId(), globals.ProjectPrefix):
+		roleToCreate = &projectRole{
+			ProjectRole: &store.ProjectRole{
+				PublicId:    id,
+				ScopeId:     role.ScopeId,
+				Name:        role.Name,
+				Description: role.Description,
+			},
+		}
+	default:
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "invalid scope type")
+	}
+
+	var createdRole *Role
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var grantScopes []*RoleGrantScope
@@ -50,16 +85,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, writer db.Writer) error {
-			resource, err = r.create(ctx, c, WithReaderWriter(reader, writer))
+			res, err := r.create(ctx, roleToCreate, WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while creating role"))
 			}
-			_, _, err = r.SetRoleGrantScopes(ctx, id, resource.(*Role).Version, []string{globals.GrantScopeThis}, WithReaderWriter(reader, writer))
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
-			}
 			// Do a fresh lookup to get all return values
-			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, resource.(*Role).PublicId, WithReaderWriter(reader, writer))
+			createdRole, pr, rg, grantScopes, err = r.LookupRole(ctx, res.GetPublicId(), WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -69,9 +100,9 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		if errors.IsUniqueError(err) {
 			return nil, nil, nil, nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
-		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", roleToCreate.GetPublicId())))
 	}
-	return resource.(*Role), pr, rg, grantScopes, nil
+	return createdRole, pr, rg, grantScopes, nil
 }
 
 // UpdateRole will update a role in the repository and return the written role.
@@ -84,9 +115,6 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	const op = "iam.(Repository).UpdateRole"
 	if role == nil {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role")
-	}
-	if role.Role == nil {
-		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
 	}
 	if role.PublicId == "" {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
@@ -125,15 +153,46 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			var err error
-			c := role.Clone().(*Role)
-			resource = c // If we don't have dbMask or nullFields, we'll return this
+			scopeType, err := getRoleScopeType(ctx, read, role.PublicId)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			var res Resource
+			switch scopeType {
+			case scope.Global:
+				res = &globalRole{GlobalRole: &store.GlobalRole{
+					PublicId:    role.GetPublicId(),
+					ScopeId:     role.GetScopeId(),
+					Name:        role.GetName(),
+					Description: role.GetDescription(),
+					Version:     role.GetVersion(),
+				}}
+			case scope.Org:
+				res = &orgRole{OrgRole: &store.OrgRole{
+					PublicId:    role.GetPublicId(),
+					ScopeId:     role.GetScopeId(),
+					Name:        role.GetName(),
+					Description: role.GetDescription(),
+					Version:     role.GetVersion(),
+				}}
+			case scope.Project:
+				res = &projectRole{ProjectRole: &store.ProjectRole{
+					PublicId:    role.GetPublicId(),
+					ScopeId:     role.GetScopeId(),
+					Name:        role.GetName(),
+					Description: role.GetDescription(),
+					Version:     role.GetVersion(),
+				}}
+			case scope.Unknown:
+				return errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for role: %s", role.PublicId))
+			}
+
+			resource = res // If we don't have dbMask or nullFields, we'll return this
 			if len(dbMask) > 0 || len(nullFields) > 0 {
-				resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields, WithReaderWriter(read, w))
+				resource, rowsUpdated, err = r.update(ctx, res, version, dbMask, nullFields, WithReaderWriter(read, w))
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				version = resource.(*Role).Version
 			}
 
 			// Do a fresh lookup since version may have gone up by 1 or 2 based
@@ -147,10 +206,11 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in org %s", role.Name, role.ScopeId))
+			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
 	}
+
 	return resource.(*Role), pr, rg, grantScopes, rowsUpdated, nil
 }
 
@@ -164,16 +224,49 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	opts := getOpts(opt...)
-	role := allocRole()
-	role.PublicId = withPublicId
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var rgs []*RoleGrantScope
+	var role *Role
 
 	lookupFunc := func(read db.Reader, w db.Writer) error {
-		if err := read.LookupByPublicId(ctx, &role); err != nil {
+		scopeType, err := getRoleScopeType(ctx, read, withPublicId)
+		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+		var res Resource
+		switch scopeType {
+		case scope.Global:
+			gRole := allocGlobalRole()
+			gRole.PublicId = withPublicId
+			res = &gRole
+		case scope.Org:
+			oRole := allocOrgRole()
+			oRole.PublicId = withPublicId
+			res = &oRole
+		case scope.Project:
+			pRole := allocProjectRole()
+			pRole.PublicId = withPublicId
+			res = &pRole
+		case scope.Unknown:
+			return errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for role: %s", role.PublicId))
+		}
+
+		if err := read.LookupByPublicId(ctx, res); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		switch res.(type) {
+		case *globalRole:
+			role = res.(*globalRole).toRole()
+		case *orgRole:
+			role = res.(*orgRole).toRole()
+		case *projectRole:
+			role = res.(*projectRole).toRole()
+		default:
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unknown role type %T", res)))
+		}
+
 		repo, err := NewRepository(ctx, read, w, r.kms)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -213,7 +306,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		}
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
-	return &role, pr, rg, rgs, nil
+	return role, pr, rg, rgs, nil
 }
 
 // DeleteRole will delete a role from the repository.
@@ -222,12 +315,29 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
-	role := allocRole()
-	role.PublicId = withPublicId
-	if err := r.reader.LookupByPublicId(ctx, &role); err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+	scopeType, err := getRoleScopeType(ctx, r.reader, withPublicId)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("cannot find scope for role %s", withPublicId))
 	}
-	rowsDeleted, err := r.delete(ctx, &role)
+
+	var res Resource
+	switch scopeType {
+	case scope.Global:
+		gRole := allocGlobalRole()
+		gRole.PublicId = withPublicId
+		res = &gRole
+	case scope.Org:
+		oRole := allocOrgRole()
+		oRole.PublicId = withPublicId
+		res = &oRole
+	case scope.Project:
+		pRole := allocProjectRole()
+		pRole.PublicId = withPublicId
+		res = &pRole
+	default:
+		return db.NoRowsAffected, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unknown scope type for role: %s", withPublicId))
+	}
+	rowsDeleted, err := r.delete(ctx, res)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
@@ -388,4 +498,82 @@ func (r *Repository) estimatedRoleCount(ctx context.Context) (int, error) {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total roles"))
 	}
 	return count, nil
+}
+
+// getRoleScopeType returns scope.Type of the roleId by reading it from the base type iam_role table
+// use this to get scope ID to determine which of the role subtype tables to operate on
+func getRoleScopeType(ctx context.Context, r db.Reader, roleId string) (scope.Type, error) {
+	const op = "iam.getRoleScopeType"
+	if roleId == "" {
+		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	if r == nil {
+		return scope.Unknown, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+	}
+	rows, err := r.Query(ctx, scopeIdFromRoleIdQuery, []any{sql.Named("public_id", roleId)})
+	if err != nil {
+		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup role scope for :%s", roleId)))
+	}
+	var scopeId string
+	cnt := 0
+	for rows.Next() {
+		cnt++
+		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
+			return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for :%s", roleId)))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
+	}
+	if cnt == 0 {
+		return scope.Unknown, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("role %s not found", roleId))
+	}
+
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		return scope.Global, nil
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		return scope.Org, nil
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		return scope.Project, nil
+	default:
+		return scope.Unknown, fmt.Errorf("unknown scope type for role %s", roleId)
+	}
+}
+
+// getRoleScope returns scope of the role
+func getRoleScope(ctx context.Context, r db.Reader, roleId string) (*Scope, error) {
+	const op = "iam.getRoleScope"
+	if roleId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	if r == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+	}
+	rows, err := r.Query(ctx, scopeIdFromRoleIdQuery, []any{sql.Named("public_id", roleId)})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup role scope for :%s", roleId)))
+	}
+	var scopeId string
+	cnt := 0
+	for rows.Next() {
+		cnt++
+		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for :%s", roleId)))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
+	}
+	if cnt == 0 {
+		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("role %s not found", roleId))
+	}
+
+	scp := AllocScope()
+	scp.PublicId = scopeId
+	err = r.LookupByPublicId(ctx, &scp)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup role scope"))
+	}
+	return &scp, nil
 }

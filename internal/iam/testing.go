@@ -6,12 +6,14 @@ package iam
 import (
 	"context"
 	"crypto/rand"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	iamstore "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -197,18 +199,60 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	require := require.New(t)
 	rw := db.New(conn)
 
-	role, err := NewRole(ctx, scopeId, opt...)
-	require.NoError(err)
 	id, err := newRoleId(ctx)
 	require.NoError(err)
-	role.PublicId = id
-	require.NoError(rw.Create(ctx, role))
-	require.NotEmpty(role.PublicId)
+	grantThis := false
+	if len(opts.withGrantScopeIds) == 0 {
+		grantThis = true
+	}
+
+	var role *Role
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		g := &globalRole{
+			GlobalRole: &iamstore.GlobalRole{
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantScope:         globals.GrantScopeIndividual,
+				GrantThisRoleScope: grantThis,
+			},
+		}
+		require.NoError(rw.Create(ctx, g))
+		require.NotEmpty(g.PublicId)
+		role = g.toRole()
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		o := &orgRole{
+			OrgRole: &iamstore.OrgRole{
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantScope:         globals.GrantScopeIndividual,
+				GrantThisRoleScope: grantThis,
+			},
+		}
+		require.NoError(rw.Create(ctx, o))
+		require.NotEmpty(o.PublicId)
+		role = o.toRole()
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		p := &projectRole{
+			ProjectRole: &iamstore.ProjectRole{
+				PublicId:    id,
+				ScopeId:     scopeId,
+				Name:        opts.withName,
+				Description: opts.withDescription,
+			},
+		}
+		require.NoError(rw.Create(ctx, p))
+		require.NotEmpty(p.PublicId)
+		role = p.toRole()
+	default:
+		require.FailNowf("invalid scope id: %s", scopeId)
+	}
 
 	grantScopeIds := opts.withGrantScopeIds
-	if len(grantScopeIds) == 0 {
-		grantScopeIds = []string{globals.GrantScopeThis}
-	}
 	for _, gsi := range grantScopeIds {
 		if gsi == "testing-none" {
 			continue
