@@ -2553,6 +2553,103 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	})
 }
 
+func TestGrantsForUserProjectResources(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	user := TestUser(t, repo, "global")
+	createdRoles := setupDB_IamRoles(t, conn)
+
+	// Add user to created roles
+	for _, roleId := range createdRoles {
+		_, err := repo.AddPrincipalRoles(ctx, roleId, 1, []string{user.PublicId})
+		require.NoError(t, err)
+	}
+
+	globalScope := Scope{Scope: &store.Scope{Type: scope.Global.String(), PublicId: "global"}}
+	org1Scope := Scope{Scope: &store.Scope{Type: scope.Org.String(), PublicId: "o_____colors"}}
+	proj1Scope := Scope{Scope: &store.Scope{Type: scope.Project.String(), PublicId: "p____rcolors"}}
+	// proj2Scope := Scope{Scope: &store.Scope{Type: scope.Project.String(), PublicId: "p____bcolors"}}
+	// proj3Scope := Scope{Scope: &store.Scope{Type: scope.Project.String(), PublicId: "p____gcolors"}}
+
+	t.Run("Targets", func(t *testing.T) {
+		// Fetch global roles that grant access to Project resources
+		got, err := repo.grantsForUserProjectResources(ctx, user.PublicId, resource.User, globalScope)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, got, []perms.GrantTuple{
+			{
+				RoleId:            "r_gg_____buy",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
+			{
+				RoleId:            "r_gg____shop",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "children",
+				Grant:             "ids=*;type=user;actions=list,read",
+			},
+		})
+
+		// Fetch org roles that grant access to Project resources
+		got, err = repo.grantsForUserProjectResources(ctx, user.PublicId, resource.User, org1Scope)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, got, []perms.GrantTuple{
+			{
+				RoleId:            "r_go____name",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "o_____colors",
+				Grant:             "ids=*;type=user;actions=create,update,read,list",
+			},
+			{
+				RoleId:            "r_gg_____buy",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
+			{
+				RoleId:            "r_gg____shop",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "children",
+				Grant:             "ids=*;type=user;actions=list,read",
+			},
+		})
+
+		// Fetch project roles that grant access to Project resources
+		got, err = repo.grantsForUserProjectResources(ctx, user.PublicId, resource.User, proj1Scope)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, got, []perms.GrantTuple{
+			{
+				RoleId:            "r_go____name",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "o_____colors",
+				Grant:             "ids=*;type=user;actions=create,update,read,list",
+			},
+			{
+				RoleId:            "r_gg_____buy",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "descendants",
+				Grant:             "ids=*;type=*;actions=update",
+			},
+			{
+				RoleId:            "r_gg____shop",
+				RoleScopeId:       "global",
+				RoleParentScopeId: "global",
+				GrantScopeId:      "children",
+				Grant:             "ids=*;type=user;actions=list,read",
+			},
+		})
+	})
+}
+
 // DO NOT MERGE.
 // This is a test helper function that sets up the database with a number of
 // scopes, roles, and grants for testing the IAM system. It is not intended to
