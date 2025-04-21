@@ -299,7 +299,7 @@ func Test_LookupRoleScope(t *testing.T) {
 				roleIds = append(roleIds, r.PublicId)
 			}
 			expectRoleScopeMap := roleScopesToMap(t, expect)
-			got, err := iamRepo.listRoleGrantScopes(ctx, roleIds)
+			got, err := listRoleGrantScopes(ctx, rw, roleIds)
 			if tc.wantErr {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tc.wantErrMsg)
