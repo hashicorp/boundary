@@ -405,24 +405,22 @@ func getRoleScopeType(ctx context.Context, r db.Reader, roleId string) (scope.Ty
 	if err != nil {
 		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to lookup role scope for :%s", roleId)))
 	}
-	var scopeId string
-	cnt := 0
+	var scopeIds []string
 	for rows.Next() {
-		cnt++
-		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
+		if err := r.ScanRows(ctx, rows, &scopeIds); err != nil {
 			return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for :%s", roleId)))
-		}
-        if cnt > 1 {
-			return scope.Unknown, errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", cnt))
 		}
 	}
 	if err := rows.Err(); err != nil {
 		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
 	}
-	if cnt == 0 {
+	if len(scopeIds) == 0 {
 		return scope.Unknown, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("role %s not found", roleId))
 	}
-
+	if len(scopeIds) > 1 {
+		return scope.Unknown, errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", len(scopeIds)))
+	}
+	scopeId := scopeIds[0]
 	switch {
 	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
 		return scope.Global, nil
