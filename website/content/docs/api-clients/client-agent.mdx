@@ -15,11 +15,7 @@ When the Boundary Client Agent runs alongside an authenticated Boundary client, 
 If you enter a hostname that matches a Boundary alias that the client is authorized to establish a session to, Boundary automatically generates the session and transparently proxies the connection on your behalf.
 If the Boundary Client Agent cannot find an alias, or if there are any issues with authentication, network connectivity, or latency, the Client Agent defers DNS resolution to the previously configured DNS resolvers.
 
-<Note>
-
-You must enable both IPv4 and IPv6 protocols for your environment to ensure the Client Agent can start and perform DNS lookups.
-
-</Note>
+Note that you must enable both IPv4 and IPv6 protocols for your environment to ensure the Client Agent can start and perform DNS lookups.
 
 ## Security
 
