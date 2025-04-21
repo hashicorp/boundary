@@ -65,17 +65,6 @@ begin;
     'insert_grant_this_role_scope_update_time is used to automatically update the grant_scope_update_time '
     'of the subtype table whenever the grant_this_role_scope column is updated';
 
-  create function delete_iam_role_subtype() returns trigger
-  as $$
-  begin
-    delete from iam_role
-    where public_id = old.public_id;
-    return null; -- result is ignored since this is an after trigger
-  end;
-    $$ language plpgsql;
-    comment on function delete_iam_role_subtype() is
-      'delete_iam_role_subtype is used to automatically delete associated iam_role entry'
-      'since domain implementation performs deletion on the child table which does not cleanup the base iam_role table ';
 
 -- Add trigger to update the new update_time column on every iam_role subtype update.
   create function update_iam_role_table_update_time() returns trigger
@@ -89,6 +78,18 @@ begin;
       'update_iam_role_table_update_time is used to automatically update the update_time '
       'of the base table whenever one of the subtype iam_role tables are updated';
 
+  create function delete_iam_role_subtype() returns trigger
+  as $$
+  begin
+    delete
+      from iam_role
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+    $$ language plpgsql;
+    comment on function delete_iam_role_subtype() is
+      'delete_iam_role_subtype is used to automatically delete associated iam_role entry'
+      'since domain implementation performs deletion on the child table which does not cleanup the base iam_role table ';
 
   -- global iam_role must have a scope_id of global.
   --
@@ -149,7 +150,7 @@ begin;
   create trigger update_iam_role_global_grant_this_role_scope_update_time before update on iam_role_global
     for each row execute procedure insert_grant_this_role_scope_update_time();
 
-  create trigger update_iam_role_table_update_time after update on iam_role_global
+  create trigger update_iam_role_global_base_table_update_time after update on iam_role_global
     for each row execute procedure update_iam_role_table_update_time();
 
   create trigger delete_iam_role_subtype after delete on iam_role_global
@@ -167,21 +168,18 @@ begin;
   create trigger immutable_columns before update on iam_role_global
     for each row execute procedure immutable_columns('scope_id', 'create_time');
 
-  create table iam_role_global_individual_grant_scope (
+
+  create table iam_role_global_individual_org_grant_scope (
     role_id wt_role_id
       constraint iam_role_global_fkey
         references iam_role_global(public_id)
         on delete cascade
         on update cascade,
     scope_id wt_scope_id not null
-      constraint iam_scope_fkey
-        references iam_scope(public_id)
+      constraint iam_scope_org_fkey
+        references iam_scope_org(scope_id)
         on delete cascade
-        on update cascade
-      constraint scope_id_is_not_global
-        check(
-          scope_id != 'global'
-        ),
+        on update cascade,
     -- grant_scope is used for constraint checking.
     -- This restricts the grant_scope to be 'individual'
     -- and since it is also a foreign key to the iam_role_global
@@ -191,6 +189,47 @@ begin;
        constraint only_individual_grant_scope_allowed
          check(
           grant_scope = 'individual'
+        ), 
+    constraint iam_role_global_grant_scope_fkey
+      foreign key (role_id, grant_scope)
+      references iam_role_global(public_id, grant_scope)
+      on delete cascade
+      on update cascade,
+    create_time wt_timestamp,
+    primary key(role_id, scope_id)
+  );
+  comment on table iam_role_global_individual_org_grant_scope is
+    'iam_role_global_individual_org_grant_scope is a list of individually granted org scope to global roles with grant_scope of individual.';
+
+  create trigger default_create_time_column before insert on iam_role_global_individual_org_grant_scope
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on iam_role_global_individual_org_grant_scope
+    for each row execute procedure immutable_columns('role_id', 'scope_id', 'grant_scope', 'create_time');
+
+  create table iam_role_global_individual_project_grant_scope (
+    role_id wt_role_id
+      constraint iam_role_global_fkey
+        references iam_role_global(public_id)
+        on delete cascade
+        on update cascade,
+    scope_id wt_scope_id not null
+      constraint iam_scope_project_fkey
+        references iam_scope_project(scope_id)
+        on delete cascade
+        on update cascade,
+    -- grant_scope is used for constraint checking.
+    -- This restricts the grant_scope to be 'individual'
+    -- and since it is also a foreign key to the iam_role_global
+    -- grant_scope, it ensures that iam_role_global is set to 'individual'
+    -- if this table is populated for the corresponding role.
+    -- both children and individual are allowed for this global role
+    -- because projects can be individually in addition to children 
+    -- which grants all orgs
+    grant_scope text not null
+       constraint only_individual_or_children_grant_scope_allowed
+         check(
+          grant_scope in ('individual', 'children')
         ),
     constraint iam_role_global_grant_scope_fkey
       foreign key (role_id, grant_scope)
@@ -200,13 +239,14 @@ begin;
     create_time wt_timestamp,
     primary key(role_id, scope_id)
   );
-  comment on table iam_role_global_individual_grant_scope is
-    'iam_role_global_individual_grant_scope is the subtype table for the global role with grant_scope as individual.';
+  comment on table iam_role_global_individual_project_grant_scope is
+    'iam_role_global_individual_project_grant_scope is a list of individually granted project scope table to global role with grant_scope of individual or children.';
 
-  create trigger default_create_time_column before insert on iam_role_global_individual_grant_scope
+  create trigger default_create_time_column before insert on iam_role_global_individual_project_grant_scope
     for each row execute procedure default_create_time();
 
-  create trigger immutable_columns before update on iam_role_global_individual_grant_scope
-    for each row execute procedure immutable_columns('role_id', 'grant_scope', 'scope_id', 'create_time');
+  create trigger immutable_columns before update on iam_role_global_individual_project_grant_scope
+    for each row execute procedure immutable_columns('role_id', 'scope_id', 'create_time');
+
 
 commit;
