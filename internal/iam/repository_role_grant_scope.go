@@ -426,10 +426,10 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	return currentRoleGrantScopes, totalRowsDeleted, nil
 }
 
-// ListRoleGrantScopes returns the grant scopes for the roleId and supports the WithLimit
+// listRoleGrantScopes returns the grant scopes for the roleId and supports the WithLimit
 // option.
-func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleIds []string, opt ...Option) ([]*RoleGrantScope, error) {
-	const op = "iam.(Repository).ListRoleGrantScopes"
+func (r *Repository) listRoleGrantScopes(ctx context.Context, roleIds []string, opt ...Option) ([]*RoleGrantScope, error) {
+	const op = "iam.(Repository).listRoleGrantScopes"
 	if len(roleIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
 	}

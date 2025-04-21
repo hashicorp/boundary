@@ -288,7 +288,7 @@ func Test_LookupRoleScope(t *testing.T) {
 				return []*Role{invalidRole}, []*RoleGrantScope{}
 			},
 			wantErr:    true,
-			wantErrMsg: `iam.(Repository).ListRoleGrantScopes: missing role ids: parameter violation: error #100`,
+			wantErrMsg: `iam.(Repository).listRoleGrantScopes: missing role ids: parameter violation: error #100`,
 		},
 	}
 	for _, tc := range testcases {
@@ -299,7 +299,7 @@ func Test_LookupRoleScope(t *testing.T) {
 				roleIds = append(roleIds, r.PublicId)
 			}
 			expectRoleScopeMap := roleScopesToMap(t, expect)
-			got, err := iamRepo.ListRoleGrantScopes(ctx, roleIds)
+			got, err := iamRepo.listRoleGrantScopes(ctx, roleIds)
 			if tc.wantErr {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tc.wantErrMsg)

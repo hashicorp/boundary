@@ -279,7 +279,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		rgs, err = repo.ListRoleGrantScopes(ctx, []string{withPublicId})
+		rgs, err = repo.listRoleGrantScopes(ctx, []string{withPublicId})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -436,7 +436,7 @@ func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []
 			for _, retRole := range retRoles {
 				roleIds = append(roleIds, retRole.PublicId)
 			}
-			retRoleGrantScopes, err = r.ListRoleGrantScopes(ctx, roleIds, WithReaderWriter(rd, w))
+			retRoleGrantScopes, err = r.listRoleGrantScopes(ctx, roleIds, WithReaderWriter(rd, w))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query role grant scopes"))
 			}
