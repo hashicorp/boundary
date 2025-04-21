@@ -28,6 +28,8 @@ import (
 	exec "golang.org/x/sys/execabs"
 )
 
+const sessionCancelTimeout = 10 * time.Second
+
 type SessionInfo struct {
 	Address         string                       `json:"address"`
 	Port            int                          `json:"port"`

@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/api
 
-go 1.23.3
+go 1.23.8
 
 require (
 	github.com/google/go-cmp v0.6.0
@@ -20,7 +20,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.61.0
-	google.golang.org/protobuf v1.36.1
+	google.golang.org/protobuf v1.34.2
 	nhooyr.io/websocket v1.8.10
 )
 
@@ -31,7 +31,6 @@ require (
 	github.com/hashicorp/eventlogger v0.2.6-0.20231025104552-802587e608f0 // indirect
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-plugin v1.6.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.5 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect

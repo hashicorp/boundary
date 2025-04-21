@@ -107,6 +107,7 @@ func Test_convertToProvider(t *testing.T) {
 	testAm.ApiUrl = allowedRedirect
 	testAm.Certificates = []string{tp.CACert()}
 
+	type args struct{}
 	tests := []struct {
 		name        string
 		am          *AuthMethod

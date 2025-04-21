@@ -36,6 +36,7 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -55,7 +56,28 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+const (
+	credentialDomain = "credential"
+	hostDomain       = "host"
+)
+
+// extraWorkerFilterFunc takes in a set of workers and returns another set,
+// after any filtering it wishes to perform. When calling one of these
+// functions, the current set should be passed in and the returned set should be
+// used if there is no error; it is up to the filter writer to ensure that what
+// is returned, if no filtering is desired, is the input set.
+//
+// This is generally used to take in a set selected already from the database
+// and possible filtered via target worker filters and provide additional
+// filtering capabilities on those remaining workers.
+type extraWorkerFilterFunc func(ctx context.Context, workers []*server.Worker, host, port string) ([]*server.Worker, error)
+
 var (
+	// ExtraWorkerFilters contains any custom worker filters that should be
+	// layered in at session authorization time. These will be executed in-order
+	// with the results from one fed into the next.
+	ExtraWorkerFilters []extraWorkerFilterFunc
+
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.NewActionSet(
@@ -768,11 +790,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if authResults.RoundTripValue == nil {
 		return nil, stderrors.New("authorize session: expected to get a target back from auth results")
 	}
-	roundTripTarget, ok := authResults.RoundTripValue.(target.Target)
+	t, ok := authResults.RoundTripValue.(target.Target)
 	if !ok {
 		return nil, stderrors.New("authorize session: round tripped auth results value is not a target")
 	}
-	if roundTripTarget == nil {
+	if t == nil {
 		return nil, stderrors.New("authorize session: round tripped target is nil")
 	}
 
@@ -794,7 +816,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, handlers.ForbiddenError()
 	}
 
-	if roundTripTarget.GetDefaultPort() == 0 {
+	if t.GetDefaultPort() == 0 {
 		return nil, handlers.ConflictErrorf("Target does not have default port defined.")
 	}
 
@@ -803,15 +825,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, err := repo.LookupTarget(ctx, roundTripTarget.GetPublicId())
+	t, err = repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
+			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 		}
 		return nil, err
 	}
 	if t == nil {
-		return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
+		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 	}
 	hostSources := t.GetHostSources()
 	credSources := t.GetCredentialSources()

@@ -51,6 +51,7 @@ func TestProtoAttributeKey(t *testing.T) {
 }
 
 func TestProtoAttributeKeyErrors(t *testing.T) {
+	type notproto struct{}
 	cases := []struct {
 		name        string
 		msg         proto.Message
