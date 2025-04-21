@@ -5,13 +5,13 @@ package iam
 
 import (
 	"context"
-	"github.com/hashicorp/boundary/globals"
-	iamstore "github.com/hashicorp/boundary/internal/iam/store"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	iamstore "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -71,7 +71,6 @@ func TestScope_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
@@ -131,7 +130,6 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			updateStmt := strings.Replace(update, "{{rep}}", tt.tableName, -1)
@@ -194,7 +192,6 @@ func TestUser_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
@@ -273,7 +270,6 @@ func Test_globalRole_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := testGlobalRole.Clone()
@@ -353,7 +349,6 @@ func Test_orgRole_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := testOrgRole.Clone()
@@ -430,7 +425,6 @@ func Test_projRole_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := testProjectRole.Clone()
@@ -496,7 +490,6 @@ func TestGroup_ImmutableFields(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
