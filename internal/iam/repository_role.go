@@ -412,6 +412,9 @@ func getRoleScopeType(ctx context.Context, r db.Reader, roleId string) (scope.Ty
 		if err := r.ScanRows(ctx, rows, &scopeId); err != nil {
 			return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for :%s", roleId)))
 		}
+        if cnt > 1 {
+			return scope.Unknown, errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", cnt))
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return scope.Unknown, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for :%s", roleId)))
