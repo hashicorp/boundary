@@ -189,7 +189,7 @@ begin;
        constraint only_individual_grant_scope_allowed
          check(
           grant_scope = 'individual'
-        ),
+        ), 
     constraint iam_role_global_grant_scope_fkey
       foreign key (role_id, grant_scope)
       references iam_role_global(public_id, grant_scope)
@@ -224,7 +224,7 @@ begin;
     -- grant_scope, it ensures that iam_role_global is set to 'individual'
     -- if this table is populated for the corresponding role.
     -- both children and individual are allowed for this global role
-    -- because projects can be individually in addition to children
+    -- because projects can be individually in addition to children 
     -- which grants all orgs
     grant_scope text not null
        constraint only_individual_or_children_grant_scope_allowed
