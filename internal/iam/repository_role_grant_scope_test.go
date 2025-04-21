@@ -93,6 +93,55 @@ func Test_LookupRoleScope(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "multiple roles with different grants union grants happy path",
+			setupExpect: func(t *testing.T) ([]*Role, []*RoleGrantScope) {
+				firstRole := TestRole(t, conn, globals.GlobalPrefix)
+				secondRole := TestRole(t, conn, org2.PublicId)
+
+				firstRoleOrg1 := &GlobalRoleIndividualProjectGrantScope{
+					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
+						RoleId:     firstRole.PublicId,
+						ScopeId:    org1.PublicId,
+						GrantScope: globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, firstRoleOrg1))
+				firstRoleProj1 := &GlobalRoleIndividualProjectGrantScope{
+					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
+						RoleId:     firstRole.PublicId,
+						ScopeId:    proj1.PublicId,
+						GrantScope: globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, firstRoleProj1))
+
+				secondRoleProj2 := &GlobalRoleIndividualOrgGrantScope{
+					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
+						RoleId:     secondRole.PublicId,
+						ScopeId:    proj2.PublicId,
+						GrantScope: globals.GrantScopeIndividual,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, secondRoleProj2))
+
+				return []*Role{firstRole, secondRole}, []*RoleGrantScope{
+					{
+						RoleId:           firstRole.PublicId,
+						ScopeIdOrSpecial: org1.PublicId,
+					},
+					{
+						RoleId:           firstRole.PublicId,
+						ScopeIdOrSpecial: proj1.PublicId,
+					},
+					{
+						RoleId:           secondRole.PublicId,
+						ScopeIdOrSpecial: proj2.PublicId,
+					},
+				}
+			},
+			wantErr: nil,
+		},
+		{
 			name: "global role with individual scope grants happy path",
 			setupExpect: func(t *testing.T) ([]*Role, []*RoleGrantScope) {
 				r := TestRole(t, conn, globals.GlobalPrefix)
