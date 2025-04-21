@@ -279,7 +279,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		rgs, err = repo.listRoleGrantScopes(ctx, []string{withPublicId})
+		rgs, err = listRoleGrantScopes(ctx, read, []string{withPublicId})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -441,7 +441,7 @@ func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []
 			for _, retRole := range retRoles {
 				roleIds = append(roleIds, retRole.PublicId)
 			}
-			retRoleGrantScopes, err = r.listRoleGrantScopes(ctx, roleIds, WithReaderWriter(rd, w))
+			retRoleGrantScopes, err = listRoleGrantScopes(ctx, r.reader, roleIds)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
