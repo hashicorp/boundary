@@ -40,8 +40,8 @@ begin;
   create trigger update_iam_role_project_base_table_update_time after update on iam_role_project
     for each row execute procedure update_iam_role_table_update_time();
 
-  create trigger delete_base_iam_role after delete on iam_role_project
-    for each row execute procedure delete_base_iam_role();
+  create trigger delete_iam_role_subtype after delete on iam_role_project
+    for each row execute procedure delete_iam_role_subtype();
 
   create trigger immutable_columns before update on iam_role_project
     for each row execute procedure immutable_columns('scope_id', 'create_time');
