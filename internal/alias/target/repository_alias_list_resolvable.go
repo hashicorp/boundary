@@ -74,6 +74,9 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 	}
 
 	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
+	if !allDescendants && len(directIds) == 0 && len(directScopeIds) == 0 && len(childAllScopes) == 0 {
+		return []*Alias{}, time.Time{}, nil
+	}
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -148,6 +151,10 @@ func (r *Repository) listResolvableAliasesRefresh(ctx context.Context, updatedAf
 	}
 
 	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
+
+	if !allDescendants && len(directIds) == 0 && len(directScopeIds) == 0 && len(childAllScopes) == 0 {
+		return []*Alias{}, time.Time{}, nil
+	}
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -229,6 +236,9 @@ func (r *Repository) listRemovedResolvableAliasIds(ctx context.Context, since ti
 	}
 
 	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
+	if !allDescendants && len(directIds) == 0 && len(directScopeIds) == 0 && len(childAllScopes) == 0 {
+		return []string{}, time.Time{}, nil
+	}
 
 	var args []any
 	var destinationIdClauses []string

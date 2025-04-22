@@ -468,21 +468,12 @@ func (a ACL) ListResolvableAliasesPermissions(requestedType resource.Type, actio
 				// so skip it
 				continue
 			}
-		default:
-			// Since direct grants must be the same scope or downstream, the
-			// only possibility left for a children grant is that the parent is
-			// global and the grant is on the org -- if it was for projects it
-			// would need to be a descendants grant
-			if _, ok := childrenScopes[scope.Global.String()]; ok {
-				// We already looked at this scope in the children grants, so skip it
-				continue
-			}
 		}
-
 		if a.buildPermission(&scopes.ScopeInfo{Id: grantScopeId}, requestedType, actions, false, &p) {
 			perms = append(perms, p)
 		}
 	}
+
 	return perms
 }
 

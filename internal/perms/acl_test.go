@@ -872,6 +872,15 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 			expPermissions: []Permission{
 				{
 					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: scope.Global.String(),
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+				{
+					RoleScopeId:  scope.Global.String(),
 					GrantScopeId: globals.GrantScopeDescendants,
 					Resource:     resource.Target,
 					Action:       action.ListResolvableAliases,
@@ -879,6 +888,23 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					All:          false,
 					OnlySelf:     false,
 				},
+			},
+		},
+		{
+			name:         "global_with_this_no_descendants",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: "global",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
 				{
 					RoleScopeId:  scope.Global.String(),
 					GrantScopeId: scope.Global.String(),
@@ -908,6 +934,169 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 				{
 					RoleScopeId:  scope.Global.String(),
 					GrantScopeId: globals.GrantScopeChildren,
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+			},
+		},
+		{
+			name:         "global_with_this_with_valid_children_and_direct_grant",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: "global",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "global",
+					grantScope: globals.GrantScopeChildren,
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "global",
+					grantScope: "p_1",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: scope.Global.String(),
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: globals.GrantScopeChildren,
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: "p_1",
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+			},
+		},
+		{
+			name:         "global_with_this_with_and_direct_grant",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: "global",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "global",
+					grantScope: "p_1",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: scope.Global.String(),
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: "p_1",
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+			},
+		},
+		{
+			name:         "global_with_this_with_multiple_direct_grants",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					roleScope:  "global",
+					grantScope: "global",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "global",
+					grantScope: "o_1",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+				{
+					roleScope:  "global",
+					grantScope: "p_1",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: scope.Global.String(),
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: "o_1",
+					Resource:     resource.Target,
+					Action:       action.ListResolvableAliases,
+					ResourceIds:  []string{"ttcp_1234567890"},
+					All:          false,
+					OnlySelf:     false,
+				},
+				{
+					RoleScopeId:  scope.Global.String(),
+					GrantScopeId: "p_1",
 					Resource:     resource.Target,
 					Action:       action.ListResolvableAliases,
 					ResourceIds:  []string{"ttcp_1234567890"},
@@ -1112,7 +1301,7 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 
 			acl := NewACL(grants...)
 			perms := acl.ListResolvableAliasesPermissions(tt.resourceType, tt.actionSet)
-			require.ElementsMatch(t, tt.expPermissions, perms)
+			assert.ElementsMatch(t, tt.expPermissions, perms)
 		})
 	}
 }
