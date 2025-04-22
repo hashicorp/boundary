@@ -613,14 +613,14 @@ Refer to the steps below for possible workarounds for MacOS and Windows.
 
 #### MacOS
 
-When you run the Client Agent alongside OpenVPN on MacOS, the primary network interface will likely be set to a `tun` type interface, which the Client Agent cannot use for its IP addresses.
+When you run the Client Agent alongside OpenVPN on MacOS, the primary network interface will likely be set to a `utun` type interface, which the Client Agent cannot use for its IP addresses.
 You may see errors such as the following in the `boundary-client-agent.log` file or the `boundary client-agent status` command response:
 
 ```
 [ERROR] macos.addIP: error adding ipv4 address: ifconfig: ioctl (SIOCAIFADDR): Destination address required
 ```
 
-To work around the default `tun` interface, you must provide an explicit network interface using the `interface_to_use` configuration option. For example:
+To work around the default `utun` interface, you must provide an explicit network interface using the `interface_to_use` configuration option. For example:
 
 ```hcl
 interface_to_use=en0
