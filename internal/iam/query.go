@@ -286,8 +286,8 @@ const (
    )
    select role_id,
           role_scope_id,
-          grant_scope,
 		      role_parent_scope_id,
+          grant_scope,
           grant_this_role_scope,
           NULL as individual_grant_scopes, -- there can be no individual grants for global roles
           array_agg(distinct(canonical_grant)) filter (where canonical_grant is not null) as canonical_grants -- only include canonical grants if they are not null

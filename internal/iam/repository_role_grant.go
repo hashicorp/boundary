@@ -571,8 +571,8 @@ func (r *Repository) grantsForUserGlobalResources(
 		if err := rows.Scan(
 			&g.roleId,
 			&g.roleScopeId,
-			&g.grantScope,
 			&g.roleParentScopeId,
+			&g.grantScope,
 			&g.grantThisRoleScope,
 			pq.Array(&g.individualGrantScopes),
 			pq.Array(&g.canonicalGrants),
