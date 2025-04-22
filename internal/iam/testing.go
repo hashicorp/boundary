@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"crypto/rand"
+	"slices"
 	"strings"
 	"testing"
 
@@ -201,17 +202,34 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 
 	id, err := newRoleId(ctx)
 	require.NoError(err)
+	grantScopeIds := opts.withGrantScopeIds
+
+	grantsThis := false
+	if len(grantScopeIds) == 0 || slices.Contains(grantScopeIds, globals.GrantScopeThis) {
+		grantsThis = true
+	}
+
+	var specialGrants string
+	switch {
+	case slices.Contains(grantScopeIds, globals.GrantScopeDescendants):
+		specialGrants = globals.GrantScopeDescendants
+	case slices.Contains(grantScopeIds, globals.GrantScopeChildren):
+		specialGrants = globals.GrantScopeChildren
+	default:
+		specialGrants = globals.GrantScopeIndividual
+	}
 
 	var role *Role
 	switch {
 	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
 		g := &globalRole{
 			GlobalRole: &iamstore.GlobalRole{
-				PublicId:    id,
-				ScopeId:     scopeId,
-				Name:        opts.withName,
-				Description: opts.withDescription,
-				GrantScope:  globals.GrantScopeIndividual,
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantThisRoleScope: grantsThis,
+				GrantScope:         specialGrants,
 			},
 		}
 		require.NoError(rw.Create(ctx, g))
@@ -220,11 +238,12 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	case strings.HasPrefix(scopeId, globals.OrgPrefix):
 		o := &orgRole{
 			OrgRole: &iamstore.OrgRole{
-				PublicId:    id,
-				ScopeId:     scopeId,
-				Name:        opts.withName,
-				Description: opts.withDescription,
-				GrantScope:  globals.GrantScopeIndividual,
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantThisRoleScope: grantsThis,
+				GrantScope:         specialGrants,
 			},
 		}
 		require.NoError(rw.Create(ctx, o))
@@ -246,10 +265,6 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 		require.FailNowf("invalid scope id: %s", scopeId)
 	}
 
-	grantScopeIds := opts.withGrantScopeIds
-	if len(grantScopeIds) == 0 {
-		grantScopeIds = []string{globals.GrantScopeThis}
-	}
 	for _, gsi := range grantScopeIds {
 		if gsi == "testing-none" {
 			continue
