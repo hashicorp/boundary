@@ -130,22 +130,27 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId1)
 	require.NoError(t, err)
 
+	// Create static credentials and add them to the target
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	credentialId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
+	require.NoError(t, err)
+
 	// Connect to target
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	go func() {
 		e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
+				"ssh",
 				"-target-id", targetId,
-				"-exec", "/usr/bin/ssh", "--",
-				"-l", c.TargetSshUser,
-				"-i", c.TargetSshKeyPath,
+				"-remote-command", "hostname -i; sleep 60",
+				"--",
 				"-o", "UserKnownHostsFile=/dev/null",
 				"-o", "StrictHostKeyChecking=no",
 				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-				"-p", "{{boundary.port}}", // this is provided by boundary
-				"{{boundary.ip}}",
-				"hostname -i; sleep 60",
 			),
 		)
 	}()
