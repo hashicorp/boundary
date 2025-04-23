@@ -48,6 +48,7 @@ func (role *Role) GetScopeId() string {
 	}
 	return role.ScopeId
 }
+
 func (role *Role) GetName() string {
 	if role == nil {
 		return ""
@@ -225,6 +226,7 @@ func (g *globalRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+
 func (g *globalRole) toRole() *Role {
 	if g == nil {
 		return nil
@@ -306,6 +308,7 @@ func (o *orgRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+
 func (o *orgRole) toRole() *Role {
 	if o == nil {
 		return nil
@@ -387,6 +390,7 @@ func (p *projectRole) Actions() map[string]action.Type {
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
 }
+
 func (p *projectRole) toRole() *Role {
 	if p == nil {
 		return nil

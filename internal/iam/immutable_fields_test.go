@@ -367,6 +367,7 @@ func Test_orgRole_ImmutableFields(t *testing.T) {
 		})
 	}
 }
+
 func Test_projRole_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
