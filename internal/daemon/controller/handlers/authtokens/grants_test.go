@@ -19,6 +19,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -339,6 +340,142 @@ func TestGrants_ReadActions(t *testing.T) {
 				for _, item := range got.Items {
 					handlers.TestAssertOutputFields(t, item, tc.expectOutfields)
 				}
+			})
+		}
+	})
+
+	t.Run("Get", func(t *testing.T) {
+		testcases := []struct {
+			name            string
+			input           *pbs.GetAuthTokenRequest
+			userFunc        func() (*iam.User, a.Account)
+			wantErr         error
+			wantId          string
+			expectOutfields []string
+		}{
+			{
+				name: "global role grant this returns global token",
+				input: &pbs.GetAuthTokenRequest{
+					Id: globalAT.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=read;output_fields=id,scope_id,scope,user_id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: nil,
+				expectOutfields: []string{
+					globals.IdField,
+					globals.ScopeIdField,
+					globals.ScopeField,
+					globals.UserIdField,
+				},
+				wantId: globalAT.PublicId,
+			},
+			{
+				name: "org role grant this returns org token",
+				input: &pbs.GetAuthTokenRequest{
+					Id: org1AT.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=auth-token;actions=read;output_fields=id,auth_method_id,account_id,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: nil,
+				expectOutfields: []string{
+					globals.IdField,
+					globals.AuthMethodIdField,
+					globals.AccountIdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
+				},
+				wantId: org1AT.PublicId,
+			},
+			{
+				name: "org role grant this cannot read global token",
+				input: &pbs.GetAuthTokenRequest{
+					Id: globalAT.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr:         handlers.ForbiddenError(),
+				expectOutfields: nil,
+			},
+			{
+				name: "global role grant this and children can read org token",
+				input: &pbs.GetAuthTokenRequest{
+					Id: org1AT.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*;output_fields=id,scope_id,scope,user_id"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				}),
+				wantErr: nil,
+				expectOutfields: []string{
+					globals.IdField,
+					globals.AuthMethodIdField,
+					globals.ScopeIdField,
+					globals.ScopeField,
+					globals.UserIdField,
+					globals.AccountIdField,
+					globals.CreatedTimeField,
+					globals.UpdatedTimeField,
+					globals.ApproximateLastUsedTimeField,
+					globals.ExpirationTimeField,
+					globals.AuthorizedActionsField,
+				},
+				wantId: org1AT.PublicId,
+			},
+			{
+				name: "org role grant this pinned id returns org token",
+				input: &pbs.GetAuthTokenRequest{
+					Id: org1AT.PublicId,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{fmt.Sprintf("ids=%s;type=auth-token;actions=read;output_fields=id,scope_id,scope,user_id", org1AT.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: nil,
+				expectOutfields: []string{
+					globals.IdField,
+					globals.ScopeIdField,
+					globals.ScopeField,
+					globals.UserIdField,
+				},
+				wantId: org1AT.PublicId,
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				user, acct := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				got, finalErr := s.GetAuthToken(fullGrantAuthCtx, tc.input)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, finalErr, tc.wantErr)
+					return
+				}
+				require.NoError(t, finalErr)
+				assert.Equal(t, tc.wantId, got.GetItem().Id)
+				handlers.TestAssertOutputFields(t, got.GetItem(), tc.expectOutfields)
 			})
 		}
 	})
