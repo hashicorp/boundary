@@ -42,8 +42,8 @@ type OrgRole struct {
 	// @inject_tag: `gorm:"default:null"`
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// control if this role is granted access to its role scope
-	// @inject_tag: `gorm:"default:true"`
-	GrantThisRoleScope bool `protobuf:"varint,5,opt,name=grant_this_role_scope,json=grantThisRoleScope,proto3" json:"grant_this_role_scope,omitempty" gorm:"default:true"`
+	// @inject_tag: `gorm:"default:false"`
+	GrantThisRoleScope bool `protobuf:"varint,5,opt,name=grant_this_role_scope,json=grantThisRoleScope,proto3" json:"grant_this_role_scope,omitempty" gorm:"default:false"`
 	// control type of grant scope granted to this role ['descendant', 'children', 'individual']
 	// @inject_tag: `gorm:"default:null"`
 	GrantScope string `protobuf:"bytes,6,opt,name=grant_scope,json=grantScope,proto3" json:"grant_scope,omitempty" gorm:"default:null"`
