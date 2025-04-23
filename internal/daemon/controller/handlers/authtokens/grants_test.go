@@ -361,18 +361,20 @@ func TestGrants_CreateActions(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) { return atRepo, nil }
 
 	s, err := at.NewService(ctx, atRepoFn, iamRepoFn, 1000)
-
 	require.NoError(t, err)
 
 	org1, _ := iam.TestScopes(t, iamRepo)
 	org2, _ := iam.TestScopes(t, iamRepo)
+	org3, _ := iam.TestScopes(t, iamRepo)
 	pinnedId := authtoken.TestAuthToken(t, conn, kmsCache, org2.GetPublicId())
+	selfToken := authtoken.TestAuthToken(t, conn, kmsCache, org3.GetPublicId())
 
 	t.Run("Delete", func(t *testing.T) {
 		testcases := []struct {
-			createTokenFn func() *authtoken.AuthToken
 			name          string
+			createTokenFn func() *authtoken.AuthToken
 			userFunc      func() (*iam.User, a.Account)
+			ctxAuthToken  func(ctx context.Context, user *iam.User, acctId string) (*authtoken.AuthToken, error)
 			wantErr       error
 		}{
 			{
@@ -387,6 +389,9 @@ func TestGrants_CreateActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
+				ctxAuthToken: func(ctx context.Context, user *iam.User, acctId string) (*authtoken.AuthToken, error) {
+					return atRepo.CreateAuthToken(ctx, user, acctId)
+				},
 				wantErr: nil,
 			},
 			{
@@ -401,6 +406,9 @@ func TestGrants_CreateActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
+				ctxAuthToken: func(ctx context.Context, user *iam.User, acctId string) (*authtoken.AuthToken, error) {
+					return atRepo.CreateAuthToken(ctx, user, acctId)
+				},
 				wantErr: nil,
 			},
 			{
@@ -415,6 +423,9 @@ func TestGrants_CreateActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
+				ctxAuthToken: func(ctx context.Context, user *iam.User, acctId string) (*authtoken.AuthToken, error) {
+					return atRepo.CreateAuthToken(ctx, user, acctId)
+				},
 				wantErr: nil,
 			},
 			{
@@ -429,20 +440,26 @@ func TestGrants_CreateActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
+				ctxAuthToken: func(ctx context.Context, user *iam.User, acctId string) (*authtoken.AuthToken, error) {
+					return atRepo.CreateAuthToken(ctx, user, acctId)
+				},
 				wantErr: nil,
 			},
 			{
 				name: "org role grant this can delete self",
 				createTokenFn: func() *authtoken.AuthToken {
-					return authtoken.TestAuthToken(t, conn, kmsCache, org2.GetPublicId())
+					return selfToken
 				},
 				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{"ids=*;type=*;actions=delete:self"},
-						GrantScopes: []string{org2.PublicId},
+						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
+				ctxAuthToken: func(ctx context.Context, user *iam.User, acctId string) (*authtoken.AuthToken, error) {
+					return selfToken, nil
+				},
 				wantErr: nil,
 			},
 			{
@@ -457,6 +474,9 @@ func TestGrants_CreateActions(t *testing.T) {
 						GrantScopes: []string{org2.PublicId},
 					},
 				}),
+				ctxAuthToken: func(ctx context.Context, user *iam.User, acctId string) (*authtoken.AuthToken, error) {
+					return atRepo.CreateAuthToken(ctx, user, acctId)
+				},
 				wantErr: handlers.ForbiddenError(),
 			},
 		}
@@ -468,8 +488,9 @@ func TestGrants_CreateActions(t *testing.T) {
 				input := &pbs.DeleteAuthTokenRequest{
 					Id: inputToken.PublicId,
 				}
-				authToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+				authToken, err := tc.ctxAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
+				// authToken, err := atRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, authToken, iamRepo)
 				_, finalErr := s.DeleteAuthToken(fullGrantAuthCtx, input)
 				if tc.wantErr != nil {
