@@ -344,7 +344,7 @@ func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs
 		require.NotEmpty(p.PublicId)
 		role = p.toRole()
 	default:
-		t.Log("invalid scope id: %s", scopeId)
+		t.Logf("invalid scope id: %s", scopeId)
 		t.FailNow()
 	}
 
