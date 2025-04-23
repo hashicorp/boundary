@@ -448,7 +448,6 @@ func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []
 		}
 		transactionTimestamp, err = rd.Now(ctx)
 		return err
-
 	})
 	if err != nil {
 		return nil, time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query roles"))
