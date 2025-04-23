@@ -526,26 +526,6 @@ $ ssh -o StrictHostKeyChecking=no targetalias.boundary.dev
 
 You can also remove the existing server host key from the `~/.ssh/known_hosts` file to avoid the error.
 
-#### This site can't be reached... DNS_PROBE_FINISHED_NXDOMAIN
-
-This error occurs when you have authenticated to Boundary and have a target that is configured with an alias.
-When you copy the alias from the **Target** page and paste it in the browser, you receive the error.
-The Client Agent is not running, and if you attempt to resume it, you receive a message that says "bind address already in use."
-
-A conflicting service may be preventing the Client Agent from receiving DNS requests.
-The service may be bound to port 53.
-Restarting your computer may resolve the conflict.
-
-#### error when attempting to resume... bind address already in use: invalid state transition
-
-This error occurs when you have authenticated to Boundary and have a target that is configured with an alias.
-When you attempt to use the alias to connect to the target, you receive the error message in Boundary Desktop.
-The Client Agent is not running, and if you attempt to resume it, you receive a message that says "bind address already in use."
-
-A conflicting service may be preventing the Client Agent from receiving DNS requests.
-The service may be bound to port 53.
-Restarting your computer may resolve the conflict.
-
 ## Conflicting software
 
 Some software is known to cause conflicts with the Boundary Client Agent.
@@ -672,8 +652,7 @@ Learn more: https://cfl.re/CF_DNS_PROXY_FAILURE
 ```
 
 You can still install both the Cloudflare WARP client and the Boundary Client Agent on the same machine.
-The two products can coexist as long as the WARP client starts first.
-Starting the WARP client first binds it to alternate IPs and leaves the domain available for Boundary.
+As long as you don't run both at the same time, they should work as expected.
 
 ### Huntress EDR client
 
