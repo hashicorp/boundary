@@ -16,10 +16,11 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/lib/pq"
 )
 
-// AddRoleGrant will add role grants associated with the role ID in the
+// AddRoleGrants will add role grants associated with the role ID in the
 // repository. No options are currently supported. Zero is not a valid value for
 // the WithVersion option and will return an error.
 func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, _ ...Option) ([]*RoleGrant, error) {
@@ -33,8 +34,6 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	if roleVersion == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocRole()
-	role.PublicId = roleId
 
 	newRoleGrants := make([]*RoleGrant, 0, len(grants))
 	for _, grant := range grants {
@@ -45,32 +44,47 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 		newRoleGrants = append(newRoleGrants, roleGrant)
 	}
 
-	scope, err := role.GetScope(ctx, r.reader)
+	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
-
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(ctx, &role)
+
+			var updatedRole Resource
+			switch scp.GetType() {
+			case scope.Global.String():
+				g := allocGlobalRole()
+				g.PublicId = roleId
+				g.Version = roleVersion + 1
+				updatedRole = &g
+			case scope.Org.String():
+				o := allocOrgRole()
+				o.PublicId = roleId
+				o.Version = roleVersion + 1
+				updatedRole = &o
+			case scope.Project.String():
+				p := allocProjectRole()
+				p.PublicId = roleId
+				p.Version = roleVersion + 1
+				updatedRole = &p
+			default:
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
+			}
+			roleTicket, err := w.GetTicket(ctx, updatedRole)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-
-			// We need to update the role version as that's the aggregate
-			updatedRole := allocRole()
-			updatedRole.PublicId = roleId
-			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -86,8 +100,8 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -118,14 +132,11 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 	if roleVersion == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	role := allocRole()
-	role.PublicId = roleId
-
-	scope, err := role.GetScope(ctx, r.reader)
+	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope to create metadata", roleId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -137,15 +148,32 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(ctx, &role)
+			var updatedRole Resource
+			switch scp.GetType() {
+			case scope.Global.String():
+				g := allocGlobalRole()
+				g.PublicId = roleId
+				g.Version = roleVersion + 1
+				updatedRole = &g
+			case scope.Org.String():
+				o := allocOrgRole()
+				o.PublicId = roleId
+				o.Version = roleVersion + 1
+				updatedRole = &o
+			case scope.Project.String():
+				p := allocProjectRole()
+				p.PublicId = roleId
+				p.Version = roleVersion + 1
+				updatedRole = &p
+			default:
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
+			}
+			roleTicket, err := w.GetTicket(ctx, updatedRole)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedRole := allocRole()
-			updatedRole.PublicId = roleId
-			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -202,8 +230,8 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -235,9 +263,6 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	if grants == nil {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing grants")
 	}
-
-	role := allocRole()
-	role.PublicId = roleId
 
 	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
 
@@ -294,12 +319,11 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	if len(addRoleGrants) == 0 && len(deleteRoleGrants) == 0 {
 		return currentRoleGrants, db.NoRowsAffected, nil
 	}
-
-	scope, err := role.GetScope(ctx, r.reader)
+	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -311,15 +335,33 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(ctx, &role)
+			var updatedRole Resource
+			switch scp.GetType() {
+			case scope.Global.String():
+				g := allocGlobalRole()
+				g.PublicId = roleId
+				g.Version = roleVersion + 1
+				updatedRole = &g
+			case scope.Org.String():
+				o := allocOrgRole()
+				o.PublicId = roleId
+				o.Version = roleVersion + 1
+				updatedRole = &o
+			case scope.Project.String():
+				p := allocProjectRole()
+				p.PublicId = roleId
+				p.Version = roleVersion + 1
+				updatedRole = &p
+			default:
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
+			}
+			roleTicket, err := w.GetTicket(ctx, updatedRole)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedRole := allocRole()
-			updatedRole.PublicId = roleId
-			updatedRole.Version = roleVersion + 1
+
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -353,8 +395,8 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String(), oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{scp.PublicId},
+				"scope-type":         []string{scp.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {

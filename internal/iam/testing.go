@@ -6,12 +6,15 @@ package iam
 import (
 	"context"
 	"crypto/rand"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	iamstore "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -197,18 +200,71 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	require := require.New(t)
 	rw := db.New(conn)
 
-	role, err := NewRole(ctx, scopeId, opt...)
-	require.NoError(err)
 	id, err := newRoleId(ctx)
 	require.NoError(err)
-	role.PublicId = id
-	require.NoError(rw.Create(ctx, role))
-	require.NotEmpty(role.PublicId)
-
 	grantScopeIds := opts.withGrantScopeIds
-	if len(grantScopeIds) == 0 {
-		grantScopeIds = []string{globals.GrantScopeThis}
+
+	grantsThis := false
+	if len(grantScopeIds) == 0 || slices.Contains(grantScopeIds, globals.GrantScopeThis) {
+		grantsThis = true
 	}
+
+	var specialGrants string
+	switch {
+	case slices.Contains(grantScopeIds, globals.GrantScopeDescendants):
+		specialGrants = globals.GrantScopeDescendants
+	case slices.Contains(grantScopeIds, globals.GrantScopeChildren):
+		specialGrants = globals.GrantScopeChildren
+	default:
+		specialGrants = globals.GrantScopeIndividual
+	}
+
+	var role *Role
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		g := &globalRole{
+			GlobalRole: &iamstore.GlobalRole{
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantThisRoleScope: grantsThis,
+				GrantScope:         specialGrants,
+			},
+		}
+		require.NoError(rw.Create(ctx, g))
+		require.NotEmpty(g.PublicId)
+		role = g.toRole()
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		o := &orgRole{
+			OrgRole: &iamstore.OrgRole{
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantThisRoleScope: grantsThis,
+				GrantScope:         specialGrants,
+			},
+		}
+		require.NoError(rw.Create(ctx, o))
+		require.NotEmpty(o.PublicId)
+		role = o.toRole()
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		p := &projectRole{
+			ProjectRole: &iamstore.ProjectRole{
+				PublicId:    id,
+				ScopeId:     scopeId,
+				Name:        opts.withName,
+				Description: opts.withDescription,
+			},
+		}
+		require.NoError(rw.Create(ctx, p))
+		require.NotEmpty(p.PublicId)
+		role = p.toRole()
+	default:
+		require.FailNowf("invalid scope id: %s", scopeId)
+	}
+
 	for _, gsi := range grantScopeIds {
 		if gsi == "testing-none" {
 			continue
@@ -233,13 +289,64 @@ func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs
 	require := require.New(t)
 	rw := db.New(conn)
 
-	role, err := NewRole(ctx, scopeId)
-	require.NoError(err)
+	grantsThis := false
+	if slices.Contains(grantScopeIDs, globals.GrantScopeThis) {
+		grantsThis = true
+	}
+
+	var specialGrants string
+	switch {
+	case slices.Contains(grantScopeIDs, globals.GrantScopeDescendants):
+		specialGrants = globals.GrantScopeDescendants
+	case slices.Contains(grantScopeIDs, globals.GrantScopeChildren):
+		specialGrants = globals.GrantScopeChildren
+	default:
+		specialGrants = globals.GrantScopeIndividual
+	}
+
 	id, err := newRoleId(ctx)
 	require.NoError(err)
-	role.PublicId = id
-	require.NoError(rw.Create(ctx, role))
-	require.NotEmpty(role.PublicId)
+
+	var role *Role
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		g := &globalRole{
+			GlobalRole: &iamstore.GlobalRole{
+				PublicId:           id,
+				ScopeId:            scopeId,
+				GrantThisRoleScope: grantsThis,
+				GrantScope:         specialGrants,
+			},
+		}
+		require.NoError(rw.Create(ctx, g))
+		require.NotEmpty(g.PublicId)
+		role = g.toRole()
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		o := &orgRole{
+			OrgRole: &iamstore.OrgRole{
+				PublicId:           id,
+				ScopeId:            scopeId,
+				GrantThisRoleScope: grantsThis,
+				GrantScope:         specialGrants,
+			},
+		}
+		require.NoError(rw.Create(ctx, o))
+		require.NotEmpty(o.PublicId)
+		role = o.toRole()
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		p := &projectRole{
+			ProjectRole: &iamstore.ProjectRole{
+				PublicId: id,
+				ScopeId:  scopeId,
+			},
+		}
+		require.NoError(rw.Create(ctx, p))
+		require.NotEmpty(p.PublicId)
+		role = p.toRole()
+	default:
+		t.Logf("invalid scope id: %s", scopeId)
+		t.FailNow()
+	}
 
 	for _, gsi := range grantScopeIDs {
 		gs, err := NewRoleGrantScope(ctx, id, gsi)

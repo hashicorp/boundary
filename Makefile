@@ -155,6 +155,9 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_global.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_org.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_project.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/principal_role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant_scope.pb.go

@@ -23,6 +23,7 @@ begin;
     ('children'),
     ('individual');       
 
+
   create table iam_role_org (
     public_id wt_role_id primary key
       constraint iam_role_fkey
@@ -48,7 +49,9 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     constraint iam_role_org_grant_scope_public_id_uq
-      unique(grant_scope, public_id)
+      unique(grant_scope, public_id),
+    constraint iam_role_org_name_scope_id_uq
+      unique(name, scope_id)
   );
   comment on table iam_role_org is
     'iam_role_org is a subtype table of the iam_role table. It is used to store roles that are scoped to an org.';
@@ -67,6 +70,12 @@ begin;
 
   create trigger update_iam_role_org_grant_this_role_scope_update_time before update on iam_role_org
     for each row execute procedure insert_grant_this_role_scope_update_time();
+
+  create trigger update_iam_role_org_base_table_update_time after update on iam_role_org
+    for each row execute procedure update_iam_role_table_update_time();
+
+  create trigger delete_iam_role_subtype after delete on iam_role_org
+    for each row execute procedure delete_iam_role_subtype();
 
   create trigger default_create_time_column before insert on iam_role_org
     for each row execute procedure default_create_time();

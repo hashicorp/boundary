@@ -18,7 +18,9 @@ begin;
     description text,
     version wt_version,
     create_time wt_timestamp,
-    update_time wt_timestamp
+    update_time wt_timestamp,
+    constraint iam_role_project_name_scope_id_uq
+        unique(name, scope_id)
   );
   comment on table iam_role_project is
     'iam_role_project is a subtype table of the iam_role table. It is used to store roles that are scoped to a project.';
@@ -34,6 +36,12 @@ begin;
 
   create trigger update_version_column after update on iam_role_project
     for each row execute procedure update_version_column();
+
+  create trigger update_iam_role_project_base_table_update_time after update on iam_role_project
+    for each row execute procedure update_iam_role_table_update_time();
+
+  create trigger delete_iam_role_subtype after delete on iam_role_project
+    for each row execute procedure delete_iam_role_subtype();
 
   create trigger immutable_columns before update on iam_role_project
     for each row execute procedure immutable_columns('scope_id', 'create_time');
