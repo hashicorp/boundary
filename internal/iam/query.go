@@ -207,7 +207,7 @@ const (
     `
 
 	grantsForUserGlobalResourcesQuery = `
-	with
+	  with
     users (id) as (
       select public_id
         from iam_user
@@ -261,16 +261,16 @@ const (
     ),
     roles_with_grants (role_id, canonical_grant) as (
       select iam_role_grant.role_id,
-        iam_role_grant.canonical_grant
-      from iam_role_grant
-      join iam_role
-        on iam_role.public_id               = iam_role_grant.role_id
-      join iam_grant
-        on iam_grant.canonical_grant        = iam_role_grant.canonical_grant
-      where iam_role.public_id in (select role_id from user_group_roles)
-        and iam_grant.resource              = any(@resources)
-   ),
-   global_roles as (
+             iam_role_grant.canonical_grant
+        from iam_role_grant
+        join iam_role
+          on iam_role.public_id               = iam_role_grant.role_id
+        join iam_grant
+          on iam_grant.canonical_grant        = iam_role_grant.canonical_grant
+       where iam_role.public_id in (select role_id from user_group_roles)
+         and iam_grant.resource               = any(@resources)
+    ),
+    global_roles as (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
              iam_scope.type                        as role_type,
@@ -278,29 +278,29 @@ const (
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
              roles_with_grants.canonical_grant     as canonical_grant
-      from iam_role_global
-      join roles_with_grants
-        on roles_with_grants.role_id = iam_role_global.public_id
-      join iam_scope
-        on iam_scope.public_id = iam_role_global.scope_id
-   )
-   select role_id,
-          role_scope_id,
-		      role_parent_scope_id,
-          grant_scope,
-          grant_this_role_scope,
-          NULL as individual_grant_scopes, -- there can be no individual grants for global roles
-          array_agg(distinct(canonical_grant)) filter (where canonical_grant is not null) as canonical_grants -- only include canonical grants if they are not null
-   from global_roles
-   where global_roles.grant_this_role_scope = true
-   group by (
-          role_id,
-          role_scope_id,
-		      role_parent_scope_id,
-          grant_scope,
-          grant_this_role_scope
-   );
-   `
+        from iam_role_global
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_global.public_id
+        join iam_scope
+          on iam_scope.public_id = iam_role_global.scope_id
+    )
+    select role_id,
+           role_scope_id,
+		       role_parent_scope_id,
+           grant_scope,
+           grant_this_role_scope,
+           NULL as individual_grant_scopes, -- there can be no individual grants for global roles
+           array_agg(distinct(canonical_grant)) filter (where canonical_grant is not null) as canonical_grants -- only include canonical grants if they are not null
+      from global_roles
+     where global_roles.grant_this_role_scope = true
+     group by (
+           role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           grant_this_role_scope
+    );
+    `
 
 	estimateCountRoles = `
 		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)
