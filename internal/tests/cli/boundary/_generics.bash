@@ -14,5 +14,5 @@ function generic_update_name() {
 }
 
 function generic_delete() {
-    boundary delete $1
+    boundary delete $1 -format json
 }
