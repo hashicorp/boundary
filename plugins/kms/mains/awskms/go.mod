@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/plugins/kms/mains/awskms
 
-go 1.23.0
+go 1.23.8
 
 require (
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.7
@@ -8,7 +8,7 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go v1.55.5 // indirect
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -31,9 +31,9 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/grpc v1.59.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
