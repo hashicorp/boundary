@@ -31,13 +31,17 @@ var (
 	_ Cloneable       = (*RoleGrantScope)(nil)
 	_ db.VetForWriter = (*RoleGrantScope)(nil)
 
-	_ Cloneable               = (*GlobalRoleIndividualOrgGrantScope)(nil)
-	_ db.VetForWriter         = (*GlobalRoleIndividualOrgGrantScope)(nil)
-	_ oplog.ReplayableMessage = (*GlobalRoleIndividualOrgGrantScope)(nil)
+	_ Cloneable               = (*globalRoleIndividualOrgGrantScope)(nil)
+	_ db.VetForWriter         = (*globalRoleIndividualOrgGrantScope)(nil)
+	_ oplog.ReplayableMessage = (*globalRoleIndividualOrgGrantScope)(nil)
 
-	_ Cloneable               = (*GlobalRoleIndividualProjectGrantScope)(nil)
-	_ db.VetForWriter         = (*GlobalRoleIndividualProjectGrantScope)(nil)
-	_ oplog.ReplayableMessage = (*GlobalRoleIndividualProjectGrantScope)(nil)
+	_ Cloneable               = (*globalRoleIndividualProjectGrantScope)(nil)
+	_ db.VetForWriter         = (*globalRoleIndividualProjectGrantScope)(nil)
+	_ oplog.ReplayableMessage = (*globalRoleIndividualProjectGrantScope)(nil)
+
+	_ Cloneable               = (*orgRoleIndividualGrantScope)(nil)
+	_ db.VetForWriter         = (*orgRoleIndividualGrantScope)(nil)
+	_ oplog.ReplayableMessage = (*orgRoleIndividualGrantScope)(nil)
 )
 
 // RoleGrantScope defines the grant scopes that are assigned to a role
@@ -45,6 +49,27 @@ type RoleGrantScope struct {
 	CreateTime       *timestamp.Timestamp
 	RoleId           string
 	ScopeIdOrSpecial string
+}
+
+func (r *RoleGrantScope) GetCreateTime() *timestamp.Timestamp {
+	if r == nil {
+		return nil
+	}
+	return r.CreateTime
+}
+
+func (r *RoleGrantScope) GetRoleId() string {
+	if r == nil {
+		return ""
+	}
+	return r.RoleId
+}
+
+func (r *RoleGrantScope) GetScopeIdOrSpecial() string {
+	if r == nil {
+		return ""
+	}
+	return r.ScopeIdOrSpecial
 }
 
 // NewRoleGrantScope creates a new in memory role grant scope. No options are
@@ -65,12 +90,10 @@ func NewRoleGrantScope(ctx context.Context, roleId string, grantScope string, _ 
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", grantScope))
 	}
-
 	rgs := &RoleGrantScope{
 		RoleId:           roleId,
 		ScopeIdOrSpecial: grantScope,
 	}
-
 	return rgs, nil
 }
 
@@ -106,25 +129,25 @@ func (g *RoleGrantScope) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpTy
 	return nil
 }
 
-// GlobalRoleIndividualOrgGrantScope defines the grant org scopes
+// globalRoleIndividualOrgGrantScope defines the grant org scopes
 // that are assigned to a global role
-type GlobalRoleIndividualOrgGrantScope struct {
+type globalRoleIndividualOrgGrantScope struct {
 	*store.GlobalRoleIndividualOrgGrantScope
 	tableName string `gorm:"-"`
 }
 
-func (g *GlobalRoleIndividualOrgGrantScope) TableName() string {
+func (g *globalRoleIndividualOrgGrantScope) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
 	return defaultGlobalRoleIndividualOrgGrantScopeTable
 }
 
-func (g *GlobalRoleIndividualOrgGrantScope) SetTableName(name string) {
+func (g *globalRoleIndividualOrgGrantScope) SetTableName(name string) {
 	g.tableName = name
 }
 
-func (g *GlobalRoleIndividualOrgGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (g *globalRoleIndividualOrgGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(GlobalRoleIndividualOrgGrantScope).VetForWrite"
 	if g.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
@@ -139,32 +162,32 @@ func (g *GlobalRoleIndividualOrgGrantScope) VetForWrite(ctx context.Context, r d
 	return nil
 }
 
-func (g *GlobalRoleIndividualOrgGrantScope) Clone() any {
+func (g *globalRoleIndividualOrgGrantScope) Clone() any {
 	cp := proto.Clone(g.GlobalRoleIndividualOrgGrantScope)
-	return &GlobalRoleIndividualOrgGrantScope{
+	return &globalRoleIndividualOrgGrantScope{
 		GlobalRoleIndividualOrgGrantScope: cp.(*store.GlobalRoleIndividualOrgGrantScope),
 	}
 }
 
-// GlobalRoleIndividualProjectGrantScope defines the grant project scopes
+// globalRoleIndividualProjectGrantScope defines the grant project scopes
 // that are assigned to a global role
-type GlobalRoleIndividualProjectGrantScope struct {
+type globalRoleIndividualProjectGrantScope struct {
 	*store.GlobalRoleIndividualProjectGrantScope
 	tableName string `gorm:"-"`
 }
 
-func (g *GlobalRoleIndividualProjectGrantScope) TableName() string {
+func (g *globalRoleIndividualProjectGrantScope) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
 	return defaultGlobalRoleIndividualProjectGrantScopeTable
 }
 
-func (g *GlobalRoleIndividualProjectGrantScope) SetTableName(name string) {
+func (g *globalRoleIndividualProjectGrantScope) SetTableName(name string) {
 	g.tableName = name
 }
 
-func (g *GlobalRoleIndividualProjectGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (g *globalRoleIndividualProjectGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(GlobalRoleIndividualProjectGrantScope).VetForWrite"
 	if g.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
@@ -179,32 +202,32 @@ func (g *GlobalRoleIndividualProjectGrantScope) VetForWrite(ctx context.Context,
 	return nil
 }
 
-func (g *GlobalRoleIndividualProjectGrantScope) Clone() any {
+func (g *globalRoleIndividualProjectGrantScope) Clone() any {
 	cp := proto.Clone(g.GlobalRoleIndividualProjectGrantScope)
-	return &GlobalRoleIndividualProjectGrantScope{
+	return &globalRoleIndividualProjectGrantScope{
 		GlobalRoleIndividualProjectGrantScope: cp.(*store.GlobalRoleIndividualProjectGrantScope),
 	}
 }
 
 // OrgRoleIndividualGrantScope defines the grant project scopes
 // that are assigned to an org role
-type OrgRoleIndividualGrantScope struct {
+type orgRoleIndividualGrantScope struct {
 	*store.OrgRoleIndividualGrantScope
 	tableName string `gorm:"-"`
 }
 
-func (g *OrgRoleIndividualGrantScope) TableName() string {
+func (g *orgRoleIndividualGrantScope) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
 	return defaultOrgRoleIndividualGrantScopeTable
 }
 
-func (g *OrgRoleIndividualGrantScope) SetTableName(name string) {
+func (g *orgRoleIndividualGrantScope) SetTableName(name string) {
 	g.tableName = name
 }
 
-func (g *OrgRoleIndividualGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (g *orgRoleIndividualGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(OrgRoleIndividualGrantScope).VetForWrite"
 	if g.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
@@ -219,9 +242,9 @@ func (g *OrgRoleIndividualGrantScope) VetForWrite(ctx context.Context, r db.Read
 	return nil
 }
 
-func (g *OrgRoleIndividualGrantScope) Clone() any {
+func (g *orgRoleIndividualGrantScope) Clone() any {
 	cp := proto.Clone(g.OrgRoleIndividualGrantScope)
-	return &OrgRoleIndividualGrantScope{
+	return &orgRoleIndividualGrantScope{
 		OrgRoleIndividualGrantScope: cp.(*store.OrgRoleIndividualGrantScope),
 	}
 }

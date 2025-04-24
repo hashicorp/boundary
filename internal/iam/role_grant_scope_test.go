@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
+func Test_globalRoleIndividualOrgGrantScope(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -23,15 +23,15 @@ func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
 	org, proj := TestScopes(t, iamRepo)
 	testcases := []struct {
 		name       string
-		setup      func(t *testing.T) *GlobalRoleIndividualOrgGrantScope
+		setup      func(t *testing.T) *globalRoleIndividualOrgGrantScope
 		wantErr    bool
 		wantErrMsg string
 	}{
 		{
 			name: "happy path grant scope individual",
-			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualOrgGrantScope {
 				r := TestRole(t, conn, globals.GlobalPrefix)
-				return &GlobalRoleIndividualOrgGrantScope{
+				return &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    org.PublicId,
@@ -43,7 +43,7 @@ func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
 		},
 		{
 			name: "error only individual is allowed in grant_scope",
-			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualOrgGrantScope {
 				r := TestRole(t, conn, globals.GlobalPrefix)
 				gRole := allocGlobalRole()
 				gRole.PublicId = r.PublicId
@@ -53,7 +53,7 @@ func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
 				updated, err := rw.Update(ctx, &gRole, []string{"GrantScope"}, []string{})
 				require.NoError(t, err)
 				require.Equal(t, 1, updated)
-				return &GlobalRoleIndividualOrgGrantScope{
+				return &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    org.PublicId,
@@ -66,12 +66,12 @@ func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
 		},
 		{
 			name: "error mismatch grant_scope",
-			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualOrgGrantScope {
 				r := TestRole(t, conn, globals.GlobalPrefix)
 				gRole := allocGlobalRole()
 				gRole.PublicId = r.PublicId
 				require.NoError(t, rw.LookupByPublicId(ctx, &gRole))
-				return &GlobalRoleIndividualOrgGrantScope{
+				return &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    org.PublicId,
@@ -84,9 +84,9 @@ func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
 		},
 		{
 			name: "error trying to add project grant scope",
-			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualOrgGrantScope {
 				r := TestRole(t, conn, globals.GlobalPrefix)
-				return &GlobalRoleIndividualOrgGrantScope{
+				return &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -99,9 +99,9 @@ func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
 		},
 		{
 			name: "error cannot add GlobalRoleIndividualOrgGrantScope for org role",
-			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualOrgGrantScope {
 				r := TestRole(t, conn, org.PublicId)
-				return &GlobalRoleIndividualOrgGrantScope{
+				return &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -114,9 +114,9 @@ func Test_GlobalRoleIndividualOrgGrantScope(t *testing.T) {
 		},
 		{
 			name: "error cannot add GlobalRoleIndividualOrgGrantScope for proj role",
-			setup: func(t *testing.T) *GlobalRoleIndividualOrgGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualOrgGrantScope {
 				r := TestRole(t, conn, proj.PublicId)
-				return &GlobalRoleIndividualOrgGrantScope{
+				return &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -151,15 +151,15 @@ func Test_GlobalRoleIndividualProjectGrantScope(t *testing.T) {
 	org, proj := TestScopes(t, iamRepo)
 	testcases := []struct {
 		name       string
-		setup      func(t *testing.T) *GlobalRoleIndividualProjectGrantScope
+		setup      func(t *testing.T) *globalRoleIndividualProjectGrantScope
 		wantErr    bool
 		wantErrMsg string
 	}{
 		{
 			name: "happy path grant scope individual",
-			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualProjectGrantScope {
 				r := TestRole(t, conn, globals.GlobalPrefix)
-				return &GlobalRoleIndividualProjectGrantScope{
+				return &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -171,7 +171,7 @@ func Test_GlobalRoleIndividualProjectGrantScope(t *testing.T) {
 		},
 		{
 			name: "happy path grant_scope children is allowed",
-			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualProjectGrantScope {
 				r := TestRole(t, conn, globals.GlobalPrefix)
 				gRole := allocGlobalRole()
 				gRole.PublicId = r.PublicId
@@ -181,7 +181,7 @@ func Test_GlobalRoleIndividualProjectGrantScope(t *testing.T) {
 				updated, err := rw.Update(ctx, &gRole, []string{"GrantScope"}, []string{})
 				require.NoError(t, err)
 				require.Equal(t, 1, updated)
-				return &GlobalRoleIndividualProjectGrantScope{
+				return &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -193,9 +193,9 @@ func Test_GlobalRoleIndividualProjectGrantScope(t *testing.T) {
 		},
 		{
 			name: "error mismatch grant_scope",
-			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualProjectGrantScope {
 				r := TestRole(t, conn, globals.GlobalPrefix)
-				return &GlobalRoleIndividualProjectGrantScope{
+				return &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -208,9 +208,9 @@ func Test_GlobalRoleIndividualProjectGrantScope(t *testing.T) {
 		},
 		{
 			name: "error trying to add org grant scope",
-			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualProjectGrantScope {
 				r := TestRole(t, conn, globals.GlobalPrefix)
-				return &GlobalRoleIndividualProjectGrantScope{
+				return &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    org.PublicId,
@@ -223,9 +223,9 @@ func Test_GlobalRoleIndividualProjectGrantScope(t *testing.T) {
 		},
 		{
 			name: "error cannot add GlobalRoleIndividualProjectGrantScope for org role",
-			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualProjectGrantScope {
 				r := TestRole(t, conn, org.PublicId)
-				return &GlobalRoleIndividualProjectGrantScope{
+				return &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -238,9 +238,9 @@ func Test_GlobalRoleIndividualProjectGrantScope(t *testing.T) {
 		},
 		{
 			name: "error cannot add GlobalRoleIndividualProjectGrantScope for proj role",
-			setup: func(t *testing.T) *GlobalRoleIndividualProjectGrantScope {
+			setup: func(t *testing.T) *globalRoleIndividualProjectGrantScope {
 				r := TestRole(t, conn, proj.PublicId)
-				return &GlobalRoleIndividualProjectGrantScope{
+				return &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -276,15 +276,15 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 	_, proj2 := TestScopes(t, iamRepo)
 	testcases := []struct {
 		name       string
-		setup      func(t *testing.T) *OrgRoleIndividualGrantScope
+		setup      func(t *testing.T) *orgRoleIndividualGrantScope
 		wantErr    bool
 		wantErrMsg string
 	}{
 		{
 			name: "happy path grant scope individual",
-			setup: func(t *testing.T) *OrgRoleIndividualGrantScope {
+			setup: func(t *testing.T) *orgRoleIndividualGrantScope {
 				r := TestRole(t, conn, org.PublicId)
-				return &OrgRoleIndividualGrantScope{
+				return &orgRoleIndividualGrantScope{
 					OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -296,7 +296,7 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 		},
 		{
 			name: "error only individual is allowed in grant_scope",
-			setup: func(t *testing.T) *OrgRoleIndividualGrantScope {
+			setup: func(t *testing.T) *orgRoleIndividualGrantScope {
 				r := TestRole(t, conn, org.PublicId)
 				gRole := allocOrgRole()
 				gRole.PublicId = r.PublicId
@@ -306,7 +306,7 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 				updated, err := rw.Update(ctx, &gRole, []string{"GrantScope"}, []string{})
 				require.NoError(t, err)
 				require.Equal(t, 1, updated)
-				return &OrgRoleIndividualGrantScope{
+				return &orgRoleIndividualGrantScope{
 					OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -319,7 +319,7 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 		},
 		{
 			name: "error only iam_role_org.grant_scope individual is allowed in grant_scope",
-			setup: func(t *testing.T) *OrgRoleIndividualGrantScope {
+			setup: func(t *testing.T) *orgRoleIndividualGrantScope {
 				r := TestRole(t, conn, org.PublicId)
 				gRole := allocOrgRole()
 				gRole.PublicId = r.PublicId
@@ -329,7 +329,7 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 				updated, err := rw.Update(ctx, &gRole, []string{"GrantScope"}, []string{})
 				require.NoError(t, err)
 				require.Equal(t, 1, updated)
-				return &OrgRoleIndividualGrantScope{
+				return &orgRoleIndividualGrantScope{
 					OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -342,9 +342,9 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 		},
 		{
 			name: "error mismatch grant_scope",
-			setup: func(t *testing.T) *OrgRoleIndividualGrantScope {
+			setup: func(t *testing.T) *orgRoleIndividualGrantScope {
 				r := TestRole(t, conn, org.PublicId)
-				return &OrgRoleIndividualGrantScope{
+				return &orgRoleIndividualGrantScope{
 					OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj.PublicId,
@@ -357,9 +357,9 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 		},
 		{
 			name: "error trying to add org scope to grant_scope",
-			setup: func(t *testing.T) *OrgRoleIndividualGrantScope {
+			setup: func(t *testing.T) *orgRoleIndividualGrantScope {
 				r := TestRole(t, conn, org.PublicId)
-				return &OrgRoleIndividualGrantScope{
+				return &orgRoleIndividualGrantScope{
 					OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    org.PublicId,
@@ -372,9 +372,9 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 		},
 		{
 			name: "error cannot add proj not belong to org",
-			setup: func(t *testing.T) *OrgRoleIndividualGrantScope {
+			setup: func(t *testing.T) *orgRoleIndividualGrantScope {
 				r := TestRole(t, conn, org.PublicId)
-				return &OrgRoleIndividualGrantScope{
+				return &orgRoleIndividualGrantScope{
 					OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    org.PublicId,
@@ -387,9 +387,9 @@ func Test_OrgRoleIndividualGrantScope(t *testing.T) {
 		},
 		{
 			name: "error cannot add proj not belong to org",
-			setup: func(t *testing.T) *OrgRoleIndividualGrantScope {
+			setup: func(t *testing.T) *orgRoleIndividualGrantScope {
 				r := TestRole(t, conn, org.PublicId)
-				return &OrgRoleIndividualGrantScope{
+				return &orgRoleIndividualGrantScope{
 					OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj2.PublicId,
