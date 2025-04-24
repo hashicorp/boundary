@@ -502,8 +502,6 @@ func (r *Repository) estimatedRoleCount(ctx context.Context) (int, error) {
 
 // getRoleScopeType returns scope.Type of the roleId by reading it from the base type iam_role table
 // use this to get scope ID to determine which of the role subtype tables to operate on
-// getRoleScopeType returns scope.Type of the roleId by reading it from the base type iam_role table
-// use this to get scope ID to determine which of the role subtype tables to operate on
 func getRoleScopeType(ctx context.Context, r db.Reader, roleId string) (scope.Type, error) {
 	const op = "iam.getRoleScopeType"
 	if roleId == "" {
