@@ -759,7 +759,6 @@ func Test_globalRole_Clone(t *testing.T) {
 		},
 		GrantScopes: []*RoleGrantScope{
 			{
-
 				CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
 				RoleId:           "r_abcdef",
 				ScopeIdOrSpecial: "children",

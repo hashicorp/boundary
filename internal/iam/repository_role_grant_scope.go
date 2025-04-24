@@ -457,7 +457,6 @@ func listRoleGrantScopes(ctx context.Context, reader db.Reader, roleIds []string
 		if err := reader.ScanRows(ctx, rows, &result); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for: %s", roleIds)))
 		}
-
 	}
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for: %s", roleIds)))
