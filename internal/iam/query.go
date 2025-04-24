@@ -226,4 +226,45 @@ const (
 	   select scope_id
 		 from iam_role
 		where public_id = @public_id;`
+
+	listRolesQuery = `
+	with
+	combined_role_types (role_id) as (
+		select public_id
+	  	  from iam_role
+		 where %s -- the where clause is programmatically generated
+         order by update_time desc, public_id desc
+		 limit @limit
+	)
+	select public_id,
+		   scope_id,
+		   name,
+		   description,
+		   create_time,
+		   update_time,
+		   version
+	from iam_role_global
+	where public_id = any(select role_id from combined_role_types)
+	union all
+	select public_id,
+		   scope_id,
+		   name,
+		   description,
+		   create_time,
+		   update_time,
+		   version
+	from iam_role_org
+	where public_id = any(select role_id from combined_role_types)
+	union all
+	select public_id,
+		   scope_id,
+		   name,
+		   description,
+		   create_time,
+		   update_time,
+		   version
+	from iam_role_project
+	where public_id = any(select role_id from combined_role_types)
+    order by update_time desc, public_id desc
+	`
 )

@@ -360,11 +360,11 @@ func (r *Repository) listRoles(ctx context.Context, withScopeIds []string, opt .
 	case opts.withLimit < 0:
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
 	}
-
 	var args []any
+	args = append(args, sql.Named("limit", limit))
+
 	whereClause := "scope_id in @scope_ids"
 	args = append(args, sql.Named("scope_ids", withScopeIds))
-
 	if opts.withStartPageAfterItem != nil {
 		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
 		args = append(args,
@@ -372,8 +372,7 @@ func (r *Repository) listRoles(ctx context.Context, withScopeIds []string, opt .
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
 		)
 	}
-	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
-	return r.queryRoles(ctx, whereClause, args, dbOpts...)
+	return r.queryRoles(ctx, whereClause, args)
 }
 
 // listRolesRefresh lists roles in the given scopes and supports the
@@ -388,9 +387,7 @@ func (r *Repository) listRolesRefresh(ctx context.Context, updatedAfter time.Tim
 	case len(withScopeIds) == 0:
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-
 	opts := getOpts(opt...)
-
 	limit := r.defaultLimit
 	switch {
 	case opts.withLimit > 0:
@@ -401,6 +398,7 @@ func (r *Repository) listRolesRefresh(ctx context.Context, updatedAfter time.Tim
 	}
 
 	var args []any
+	args = append(args, sql.Named("limit", limit))
 	whereClause := "update_time > @updated_after_time and scope_id in @scope_ids"
 	args = append(args,
 		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
@@ -413,24 +411,31 @@ func (r *Repository) listRolesRefresh(ctx context.Context, updatedAfter time.Tim
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
 		)
 	}
-
-	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
-	return r.queryRoles(ctx, whereClause, args, dbOpts...)
+	return r.queryRoles(ctx, whereClause, args)
 }
 
-func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*Role, time.Time, error) {
+func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []any) ([]*Role, time.Time, error) {
 	const op = "iam.(Repository).queryRoles"
 
-	var transactionTimestamp time.Time
+	query := fmt.Sprintf(listRolesQuery, whereClause)
 	var retRoles []*Role
 	var retRoleGrantScopes []*RoleGrantScope
-	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
-		var inRet []*Role
-		if err := rd.SearchWhere(ctx, &inRet, whereClause, args, opt...); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query roles"))
+	var transactionTimestamp time.Time
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		rows, err := rd.Query(ctx, query, args)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to execute list roles "))
 		}
-		retRoles = inRet
-		var err error
+		for rows.Next() {
+			var role Role
+			if err := rd.ScanRows(ctx, rows, &role); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			retRoles = append(retRoles, &role)
+		}
+		if rows.Err() != nil {
+			return errors.Wrap(ctx, rows.Err(), op)
+		}
 		if len(retRoles) > 0 {
 			roleIds := make([]string, 0, len(retRoles))
 			for _, retRole := range retRoles {
@@ -438,13 +443,14 @@ func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []
 			}
 			retRoleGrantScopes, err = r.ListRoleGrantScopes(ctx, roleIds, WithReaderWriter(rd, w))
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query role grant scopes"))
+				return errors.Wrap(ctx, err, op)
 			}
 		}
 		transactionTimestamp, err = rd.Now(ctx)
 		return err
-	}); err != nil {
-		return nil, time.Time{}, err
+	})
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query roles"))
 	}
 	roleGrantScopesMap := make(map[string][]*RoleGrantScope)
 	for _, rgs := range retRoleGrantScopes {
