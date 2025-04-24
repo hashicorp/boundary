@@ -434,7 +434,7 @@ func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []
 			retRoles = append(retRoles, &role)
 		}
 		if rows.Err() != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query roles"))
+			return errors.Wrap(ctx, rows.Err(), op)
 		}
 		if len(retRoles) > 0 {
 			roleIds := make([]string, 0, len(retRoles))
@@ -443,7 +443,7 @@ func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []
 			}
 			retRoleGrantScopes, err = r.ListRoleGrantScopes(ctx, roleIds, WithReaderWriter(rd, w))
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query role grant scopes"))
+				return errors.Wrap(ctx, err, op)
 			}
 		}
 		transactionTimestamp, err = rd.Now(ctx)
