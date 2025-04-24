@@ -629,37 +629,22 @@ If you only provide the VPN DNS servers, the Client Agent will not be able to re
 
 </Note>
 
-If you are using OpenVPN's DNS settings, it may create additional conflicts.
-Refer to the steps below for possible workarounds for MacOS and Windows.
+If you configured OpenVPN to push DNS servers to the client, it may create additional conflicts.
+Refer to the sections below for more information about how this configuration affects MacOS and Windows systems.
 
 #### MacOS
 
-When you run the Client Agent alongside OpenVPN on MacOS, the primary network interface will likely be set to a `utun` type interface, which the Client Agent cannot use for its IP addresses.
-You may see errors such as the following in the `boundary-client-agent.log` file or the `boundary client-agent status` command response:
-
-```
-[ERROR] macos.addIP: error adding ipv4 address: ifconfig: ioctl (SIOCAIFADDR): Destination address required
-```
-
-To work around the default `utun` interface, you must provide an explicit network interface using the `interface_to_use` configuration option. For example:
-
-```hcl
-interface_to_use=en0
-```
-
-The `interface_to_use` option allows the Client Agent to create the IPs it needs to serve the DNS server and proxy traffic.
-You must restart the Client Agent for it to update its configuration with the new setting.
-
-If both OpenVPN and the Client Agent are configured to listen for changes to the primary DNS, each service may attempt to override the other's DNS settings.
+When OpenVPN is configured to push DNS servers to the client, the client-side service monitors and updates the system DNS settings.
+As a result, OpenVPN may attempt to override the Client Agent's configuration.
 This scenario can create an unstable network environment and lead to disruptions in user connectivity and service access.
 There is no workaround for this scenario at this time.
 
 #### Windows
 
-If both OpenVPN and the Client Agent are configured to listen for changes to the primary DNS, each service may attempt to override the other's DNS settings.
-OpenVPN creates a `DNSClientNrptRule` that prevents the Client Agent from establishing itself as the primary DNS resolver.
-
-As a workaround, you can manually delete all `DNSClientNrptRule` entries and override the DNS settings for the Local Area Connection.
+When OpenVPN is configured to push DNS servers to the client, it creates `DNSClientNrptRule` entries in Windows that control DNS routing independently of the interface priority.
+Although the Client Agent updates the interface's DNS settings, it does not manage the Name Resolution Policy Table (NRPT).
+As a result, the OpenVPN rules may override the Client Agent's configuration.
+This scenario may lead to conflicts, and there is no supported workaround at this time.
 
 ### Palo Alto Networking Global Protect VPN
 
