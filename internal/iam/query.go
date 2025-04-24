@@ -382,5 +382,4 @@ const (
 	)
 	select role_id, scope_id_or_special, create_time from final;
 `
-
 )

@@ -27,5 +27,4 @@ message GlobalRoleIndividualOrgGrantScope {
   //
   // @inject_tag: `gorm:"default:null"`
   string grant_scope = 4;
-
 }
