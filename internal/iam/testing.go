@@ -405,6 +405,12 @@ func testRoleGrantScopeThis(t testing.TB, conn *db.DB, r *Role) *RoleGrantScope 
 func testRoleGrantScopeSpecial(t testing.TB, conn *db.DB, r *Role, grantScopeId string) *RoleGrantScope {
 	rw := db.New(conn)
 	ctx := context.Background()
+	allowedGrantScopeId := []string{
+		globals.GrantScopeChildren,
+		globals.GrantScopeDescendants,
+	}
+	// ensure that only special scopes are passed in here
+	require.Contains(t, allowedGrantScopeId, grantScopeId)
 	var result *RoleGrantScope
 	switch {
 	case strings.HasPrefix(r.ScopeId, globals.GlobalPrefix):
