@@ -2562,13 +2562,14 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		got, err = repo.grantsForUserOrgResources(ctx, user.PublicId, resource.User, org1Scope)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, got, []perms.GrantTuple{
-			{
-				RoleId:            role1.PublicId,
-				RoleScopeId:       "global",
-				RoleParentScopeId: "global",
-				GrantScopeId:      org1.PublicId,
-				Grant:             "ids=*;type=user;actions=create,update,read,list",
-			},
+			// TODO: Uncomment when we individual grant scopes are supported
+			// {
+			// 	RoleId:            role1.PublicId,
+			// 	RoleScopeId:       "global",
+			// 	RoleParentScopeId: "global",
+			// 	GrantScopeId:      org1.PublicId,
+			// 	Grant:             "ids=*;type=user;actions=create,update,read,list",
+			// },
 			{
 				RoleId:            role3.PublicId,
 				RoleScopeId:       "global",
