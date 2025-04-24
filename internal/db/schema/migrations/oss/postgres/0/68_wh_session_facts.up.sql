@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
   -- Column names for numeric fields that are not a measurement end in id or

@@ -1,0 +1,21 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.resources.billing.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/billing;billing";
+
+message ActiveUsers {
+  // Output only. The number of active users between the start time and end time.
+  uint32 count = 1; // @gotags: `class:"public"`
+
+  // Output only. The start time of the active users count, inclusive.
+  google.protobuf.Timestamp start_time = 2 [json_name = "start_time"]; // @gotags: class:"public"
+
+  // Output only. The end time of the active users count, exclusive.
+  google.protobuf.Timestamp end_time = 3 [json_name = "end_time"]; // @gotags: class:"public"
+}

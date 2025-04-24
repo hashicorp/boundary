@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package auth
 
 import (
@@ -28,6 +31,7 @@ func Test_GetOpts(t *testing.T) {
 		WithRecoveryTokenNotAllowed(true),
 		WithAnonymousUserNotAllowed(true),
 		WithResource(res),
+		WithActions([]string{"callback"}),
 	)
 	exp := options{
 		withScopeId:                 "foo",
@@ -40,6 +44,7 @@ func Test_GetOpts(t *testing.T) {
 		withRecoveryTokenNotAllowed: true,
 		withAnonymousUserNotAllowed: true,
 		withResource:                res,
+		withActions:                 []string{"callback"},
 	}
 	assert.Equal(t, exp, opts)
 }

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package controller
 
 import (
@@ -5,7 +8,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 )
 
 func devUiPassthroughHandler(uiPassthroughDir string) http.Handler {

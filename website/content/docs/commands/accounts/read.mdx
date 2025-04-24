@@ -1,0 +1,70 @@
+---
+layout: docs
+page_title: accounts read - Command
+description: >-
+  The "accounts read" command retrieves the account details for an account.
+---
+
+# accounts read
+
+Command: `boundary accounts read`
+
+The `accounts read` command retrieves the account details for a given account ID.
+
+
+## Examples
+
+The following example reads any account information with the ID `acctpw_1234567890`:
+
+```shell-session
+$ boundary accounts read -id acctpw_1234567890
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Account information:
+  Auth Method ID:      ampw_1234567890
+  Created Time:        Wed, 12 Jul 2023 12:20:54 PDT
+  ID:                  acctpw_1234567890
+  Type:                password
+  Updated Time:        Wed, 12 Jul 2023 22:29:59 PDT
+  Version:             5
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    set-password
+    change-password
+
+  Attributes:
+    Login Name:        admin
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts read [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the account to read.
+
+@include 'cmd-option-note.mdx'

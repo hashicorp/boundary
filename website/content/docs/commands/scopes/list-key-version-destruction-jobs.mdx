@@ -1,0 +1,37 @@
+---
+layout: docs
+page_title: scopes list-key-version-destruction-jobs - Command
+description: >-
+  The "scopes list-key-version-destruction-jobs" lists all pending key version destruction jobs within a scope resource.
+---
+
+# scopes list-key-version-destruction-jobs
+
+Command: `scopes list-key-version-destruction-jobs`
+
+When the [key version destruction job](/boundary/docs/commands/scopes/destroy-key-version) runs, it asynchronously re-encrypts any existing data within the latest key version before it destroys the key version you selected for destruction.
+The `scopes list-key-version-destruction jobs` command lists all pending key version destruction jobs within a scope.
+
+## Example
+
+This example lists all pending key version destruction jobs within the scope `global`:
+
+```shell-session
+$ boundary scopes list-key-version-destruction-jobs -scope-id global
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary scopes list-key-version-destruction-jobs [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-scope-id=<string>` - The ID of the scope from which to list key version destruction jobs.
+
+@include 'cmd-option-note.mdx'

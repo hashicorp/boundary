@@ -1,0 +1,43 @@
+---
+layout: docs
+page_title: scopes update - Command
+description: >-
+  The "scopes update" command updates an existing scope resource.
+---
+
+# scopes update
+
+Command: `scopes update`
+
+The `scopes update` command lets you update an existing scope.
+
+## Example
+
+This example updates a scope with the ID `o_1234567890` to include the name `devops` and the description `Scope for DevOps`:
+
+```shell-session
+$ boundary scopes update -id o_1234567890 -name "devops" -description "Scope for DevOps"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary scopes update [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-description=<string>` - The description to set on the scope.
+- `-id=<string>` - The ID of the scope to update.
+- `-name=<string>` - The name to set on the scope.
+- `-primary-auth-method-id=<string>` - The primary auth method ID for the scope.
+The primary auth method is allowed to create users on the initial login.
+It is also used as a source for the account full name and email used for the scope's users.
+- `-version=<int>` - The version of the scope to update.
+If you do not specify a version, the command performs a check-and-set automatically.
+
+@include 'cmd-option-note.mdx'

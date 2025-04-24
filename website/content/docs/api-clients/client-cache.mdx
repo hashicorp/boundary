@@ -1,0 +1,79 @@
+---
+layout: docs
+page_title: Client cache overview
+description: >-
+  Learn how the client cache enables Boundary to quickly retrieve local information about session and target resources. Manage startup and other cache functions.
+---
+
+# Client cache
+
+The Boundary client cache runs on end users' computers and locally caches session and target resource information from Boundary instances.
+The cache helps expedite searches.
+
+## Boundary `list` vs. `search`
+
+You can use the Boundary API or CLI to `list` resources like targets, sessions, hosts, and users.
+When you use the `list` command, Boundary searches the control plane to provide a current total of resources when it produces the list of results.
+Some Boundary resources can provide a significant number of items in the response.
+
+Because large lists of results may overwhelm your system resources, the client cache caches the results of the `list` operation.
+You can search the local cache instead of the control plane to help protect your system resources.
+The Boundary `search` command also produces a list of Boundary resources.
+When you use the `search` command, however, Boundary searches the local cache to create the list.
+
+For more information, refer to the [`search`](/boundary/docs/commands/search) command documentation.
+
+<Note>
+
+The `search` operation only displays the resources that you have read permissions to view.
+If you are logged in as a user who does not have the permissions to view a resource, it does not display in the list of results.
+
+For more information, refer to [Identity and access management (IAM)](/boundary/docs/concepts/iam).
+
+</Note>
+
+## Client cache management
+
+The Boundary client cache starts automatically in the background when a user runs a CLI command that interacts with a Boundary instance.
+If you do not want the cache to automatically start, you can include the `-skip-cache-daemon` flag or set the **BOUNDARY_SKIP_CACHE_DAEMON** environment variable when you use the Boundary CLI to interact with a Boundary instance.
+
+### Startup and customization
+
+You can start the cache manually using the `boundary cache start` command.
+By default, the cache starts in the foreground.
+You can start it in the background by adding the `-background` flag.
+
+If you start the cache manually, you can customize the caching behavior.
+Include any of the following options to customize the behavior:
+
+- `max-search-staleness` - The amount of time that can pass since the last refresh before calling `boundary search` results in a blocking refresh from the Boundary instance of the resources being searched.
+- `max-search-refresh-timeout` - The amount of time the `boundary search` blocking refresh can take before it times out.
+In the event of a timeout, Boundary uses the stale data that is currently in the cache.
+- `refresh-interval` - A duration that specifies how frequently the client cache should query Boundary for changes to sessions and targets.
+Note that Boundary only searches sessions and targets that the user who ran the command has access to.
+
+For more information, refer to the [`cache start`](/boundary/docs/commands/cache/start) command documentation.
+
+### Logging
+
+The client cache stores a log file in the **~/.boundary** directory.
+Boundary automatically rotates the log once it reaches 5 MB.
+It compresses and keeps the last 3 rotated logs before deleting a log.
+
+### Status
+
+You can check the status of the cache using the `boundary cache status` command.
+The command returns information about the cache including the uptime, user count, user information, and which Boundary resources the cache is tracking.
+
+For more information, refer to the [`cache status`](/boundary/docs/commands/cache/status) command documentation.
+
+
+### Auth tokens
+
+By default, the Boundary CLI tries to use a keyring to store and receive auth tokens.
+Whenever you use an auth token to interact with Boundary, the client cache stores the auth token and syncs the data associated with it.
+If you authenticate to multiple Boundary instances, the client cache stores multiple auth tokens and syncs the data associated with each token.
+
+To search the client cache for a specific Boundary instance, you can specify the appropriate auth token using the `boundary cache add-token` command.
+
+For more information, refer to the [`cache add-token`](/boundary/docs/commands/cache/add-token) command documentation.

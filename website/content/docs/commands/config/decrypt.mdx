@@ -1,0 +1,65 @@
+---
+layout: docs
+page_title: config decrypt - Command
+description: >-
+  The "config decrypt" command decrypts sensitive values in configuration files. You must mark sensitive values with {{decrypt()}} as appropriate.
+---
+
+# config decrypt
+
+Command: `boundary config decrypt`
+
+The `config decrypt` command decrypts sensitive values in a Boundary
+configuration file. You must mark these values with `{{decrypt()}}` as
+appropriate, for example: `key = {{decrypt(encrypted_value)}}`.
+
+## Examples
+
+The following command overwrites the existing configuration file using the `-overwrite` flag:
+
+```shell-session
+$ boundary config decrypt -overwrite config.hcl
+```
+
+In order for this command to perform its task, you must define a "kms" block within the configuration file:
+
+```hcl
+kms "aead" {
+   purpose = "config"
+   aead_type = "aes-gcm"
+   key = "7xtkEoS5EXPbgynwd+dDLHopaCqK8cq0Rpep4eooaTs="
+}
+```
+
+You can define the "kms" block in the configuration file or using the `-config`
+flag. If you define it in the configuration file, only string parameters are
+supported, and the markers must be inside the quotation marks that delimit the string.
+Additionally, if you define the block inline, do not use an "aead" block with
+the key defined in the configuration file, as it provides no protection.
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary config decrypt [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-config` `(string: "")` - The configuration file to decrypt.
+
+- `-config-kms` `(string: "")` - If set, the given file is parsed for
+   a "kms" block with purpose `config` to determine whether it should be used to perform the command.
+   If you do not configure this value, the command expects a block to be defined inline with the configuration file, and will only be able to support quoted string parameters.
+
+- `-overwrite`  - If set, overwrites the existing file. The default value is
+  `false`.
+
+- `-strip`  - If set, strips the declarations from the file afterwards.
+  The default value is `false`.
+
+@include 'cmd-option-note.mdx'

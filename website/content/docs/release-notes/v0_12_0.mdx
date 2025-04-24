@@ -1,0 +1,106 @@
+---
+layout: docs
+page_title: v0.12.0 release notes
+description: >-
+  Learn more about the new features included in the Boundary 0.12.0 release and understand deprecations and changes.
+---
+
+# Boundary v0.12.0
+
+The release notes below contain information about new functionality available in the Boundary v0.12.0 release.
+To see a granular record of when each item was merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md).
+To learn about what Boundary consists of, we highly recommend you review the [Getting Started Page](/boundary/docs/getting-started).
+
+For instructions on how to upgrade an existing Boundary deployment to v0.12.0, refer to Boundary's [general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
+
+## Boundary v0.12.0 highlights
+
+The 0.12.0 release adds major new functionality to Boundary.
+Highlights include:
+
+- Reversed-proxying to target networks through multi-hop sessions (HCP only)
+- Credential injection using Vault SSH signed certificates (HCP only)
+- Addresses on targets
+- Authentication improvements
+
+## New features
+
+**Reverse proxying to target networks using multi-hop sessions (HCP only)**: You can deploy Boundary workers in any public or private network to enable secure access to resources.
+In previous versions workers needed outbound network access to the HCP Boundary control plane, and those workers needed inbound network access from the client that was trying to establish the session.
+However, many users do not want any inbound access to their private networks, which means that remote users would need to be on the same corporate network or use a VPN to reach the Boundary worker.
+
+We are introducing a feature called multi-hop sessions in version 0.12.0.
+This new feature allows multiple workers to chain together to form reverse-proxy connections.
+Now a worker in a private network only requires outbound network access to reach upstream workers or the control plane.
+Remote users no longer require network access to the private network.
+They only need network access to the client-facing (or "frontline") worker.
+
+For more information, refer to the [multi-hop session](/boundary/docs/configuration/worker/pki-worker#multi-hop-sessionshcp-only) documentation.
+
+**Credential injection using Vault SSH signed certificates (HCP only)**: You can now configure SSH credential injection using Vault's secret engine to create the SSH certificate credentials.
+SSH certificate-based authentication extends key-based authentication using digital signatures
+Your users' authenticity is determined by a certificate signed by a trusted certificate authority (CA).
+You configure Vault's secrets engine to act as the CA.
+Vault is the only supported CA in Boundary version 0.12.0.
+
+SSH certificates let you specify how long they are valid for, who can gain access to a target, how users can log in, and what commands can be used on the target machine.
+SSH certificates are short-lived and self-destructive unlinke SSH key pairs.
+
+For more information, refer to the [Vault SSH certificate credential library attributes](/boundary/docs/concepts/domain-model/credential-libraries#vault-ssh-certificate-credential-library-attributeshcp-only) documentation.
+
+**Addresses on targets**: HashiCorp Boundary offers an extensible domain model that allows administrators to organize target resources in a way that best compliments how their organization manages its computing infrastructure.
+But that flexibility could become a hindrance when setting up a quick proof-of-concept and defining a target to create a session.
+
+Version 0.12.0 introduces a quick way to set up a target.
+Previously, you would need to define [hosts](/boundary/docs/concepts/domain-model/hosts) within a [host set](/boundary/docs/concepts/domain-model/host-sets), and then assign that to a [target](/boundary/docs/concepts/domain-model/targets).
+The hosts contain the hostname or IP address of the computing resources, and the target definition contains various connection parameters for those hosts.
+Starting with version 0.12.0 the hostname or IP address can be specified directly within the target definition, without having to create hosts, host sets, or a host catalog.
+
+This functionality allows you to get started with Boundary quickly while still maintaining the same flexibility for more complex and production-like scenarios.
+
+For more information, refer to the [Target and Host Resources](/boundary/docs/concepts/domain-model#target-and-host-resources) documentation.
+
+**Authentication improvements**: In previous versions, authenticating through the CLI required you to provide an [**Auth Method ID**](/boundary/docs/concepts/domain-model/auth-methods).
+This value could be difficult to find if you did not previously save it.
+Starting in version 0.12.0 the Boundary CLI no longer requires an **Auth Method ID**, and will use the default **Auth Method ID** if none is provided.
+The built-in password auth method is now marked as **Primary** when an HCP Boundary cluster is deployed.
+
+**JSON credentials**: In previous versions Boundary only supported two types of static credentials: Username/Password and SSH Private Key.
+In version 0.12.0, we are releasing a new type of credential to the static credential store.
+You can now create and broker JSON blobs to authorized users at session establishment time.
+
+For more information, refer to the [JSON credentials](/boundary/docs/concepts/domain-model/credentials#json) documentation.
+
+**Job run table maintenance**: A new job was added to automatically clean up completed runs from the `job_run` table.
+It deletes any existing completed jobs on a regular interval to help manage the size of your Boundary database.
+
+## Deprecations and changes
+
+Boundary version 0.12.0 has the following deprecations or changes:
+
+- A vulnerability in Boundary was identified such that when a Key Management Service (KMS) was defined in Boundary's configuration file with the intent of using the KMS to encrypt the credentials stored on disk, new credentials created after a rotation may not have been encrypted via the intended KMS.
+This would result in the credentials being stored in plain text on the Boundary PKI worker's disk.
+This vulnerability, [CVE-2023-0690](https://discuss.hashicorp.com/t/hcsec-2023-03-boundary-workers-store-rotated-credentials-in-plaintext-even-when-key-management-service-configured/49907), was fixed in Boundary 0.12.0.
+
+- In this release there is a change to the initial components that are created when you run Boundary in dev mode.
+The `boundary dev` command now creates two TCP targets: one is created using the host source, and the other is created using the `address` field.
+Note that this may affect you if you use the default target for testing.
+
+- In Boundary 0.9.0, targets were updated to require a default port value.
+This had been the original intention; it was a mistake that it was optional.
+Unfortunately, due to a separate defect in the update verification logic for static hosts, it was possible for a host to be updated (but not created) with a port.
+This meant that targets could use ports attached to host addresses, which was not the intention and lead to confusing behavior across different installations.
+
+  In this version, updating static hosts no longer allows ports to be part of the address.
+  Any port on such a host will be ignored in favor of the default port on the target when you authorize a session.
+  In Boundary 0.14.0 this will become an error instead.
+  This means that the fallback logic for targets that did not have a default port defined is no longer in service.
+  All targets must now have a default port defined.
+
+- With the introduction of `vault-ssh-certificate` credential libraries, the Vault credential library subtype is being renamed to `vault-generic` to denote it as a credential library that can be used in a generalized way to issue credentials from Vault.
+Existing credential libraries with the subtype of `vault` will be updated to `vault-generic`.
+The `vault` subtype will still be accepted as a valid subtype in API requests to the credential library's endpoints, but it is deprecated and will be removed in Boundary 0.14.0.
+We recommend that you use `vault-generic` instead.
+
+  In addition, the Boundary credential library sub-commands `create vault` and `update vault` will still function, but are deprecated.
+  Instead, you should use the Boundary credential library sub-commands `create vault-generic` and `update vault-generic`.

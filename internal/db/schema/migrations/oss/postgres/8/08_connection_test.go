@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package migration
 
 import (
@@ -87,6 +90,7 @@ func TestMigration(t *testing.T) {
 		require.NoError(rows.Scan(&sessVal, &serverVal))
 		require.False(serverVal.Valid)
 	}
+	require.NoError(rows.Err())
 
 	_, err = db.Query(update)
 	require.NoError(err)
@@ -101,4 +105,5 @@ func TestMigration(t *testing.T) {
 		require.Equal(tests[count].sessServerId, serverVal.String)
 		count++
 	}
+	require.NoError(rows.Err())
 }

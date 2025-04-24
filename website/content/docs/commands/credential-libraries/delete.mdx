@@ -1,0 +1,37 @@
+---
+layout: docs
+page_title: credential-libraries delete - Command
+description: >-
+  The "credential-libraries delete" command deletes an existing credential library resource.
+---
+
+# credential-libraries delete
+
+Command: `boundary credential-libraries delete`
+
+The `credential-libraries delete` command lets you delete an existing credential library resource.
+
+## Example
+
+The following example deletes a credential library with the ID `csvlt_5fvkRjCjou`:
+
+```shell-session
+$ boundary credential-libraries delete -id csvlt_5fvkRjCjou
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-libraries delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the credential library to delete.
+
+@include 'cmd-option-note.mdx'

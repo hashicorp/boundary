@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
@@ -51,8 +54,6 @@ type State struct {
 	SessionId string `json:"session_id,omitempty" gorm:"primary_key"`
 	// status of the session
 	Status Status `json:"status,omitempty" gorm:"column:state"`
-	// PreviousEndTime from the RDBMS
-	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
 	// StartTime from the RDBMS
 	StartTime *timestamp.Timestamp `json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
 	// EndTime from the RDBMS
@@ -68,15 +69,15 @@ var (
 
 // NewState creates a new in memory session state.  No options
 // are currently supported.
-func NewState(session_id string, state Status, _ ...Option) (*State, error) {
+func NewState(ctx context.Context, session_id string, state Status, _ ...Option) (*State, error) {
 	const op = "session.NewState"
 	s := State{
 		SessionId: session_id,
 		Status:    state,
 	}
 
-	if err := s.validate(); err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+	if err := s.validate(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &s, nil
 }
@@ -87,20 +88,11 @@ func allocState() State {
 }
 
 // Clone creates a clone of the State
-func (s *State) Clone() interface{} {
+func (s *State) Clone() any {
 	clone := &State{
 		SessionId: s.SessionId,
 		Status:    s.Status,
 	}
-	if s.PreviousEndTime != nil {
-		clone.PreviousEndTime = &timestamp.Timestamp{
-			Timestamp: &timestamppb.Timestamp{
-				Seconds: s.PreviousEndTime.Timestamp.Seconds,
-				Nanos:   s.PreviousEndTime.Timestamp.Nanos,
-			},
-		}
-	}
-
 	if s.StartTime != nil {
 		clone.StartTime = &timestamp.Timestamp{
 			Timestamp: &timestamppb.Timestamp{
@@ -124,7 +116,7 @@ func (s *State) Clone() interface{} {
 // before it's written.
 func (s *State) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "session.(State).VetForWrite"
-	if err := s.validate(); err != nil {
+	if err := s.validate(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
@@ -146,22 +138,19 @@ func (s *State) SetTableName(n string) {
 }
 
 // validate checks the session state
-func (s *State) validate() error {
+func (s *State) validate(ctx context.Context) error {
 	const op = "session.(State).validate"
 	if s.Status == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing status")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing status")
 	}
 	if s.SessionId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
 	if s.StartTime != nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "start time is not settable")
+		return errors.New(ctx, errors.InvalidParameter, op, "start time is not settable")
 	}
 	if s.EndTime != nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "end time is not settable")
-	}
-	if s.PreviousEndTime != nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "previous end time is not settable")
+		return errors.New(ctx, errors.InvalidParameter, op, "end time is not settable")
 	}
 	return nil
 }

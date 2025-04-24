@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package authmethods
 
 import (
@@ -46,9 +49,9 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 
 	reqBody := opts.postMap
 	reqBody[versionPostBodyKey] = version
-	attrMap, ok := reqBody[attributesPostBodyKey].(map[string]interface{})
+	attrMap, ok := reqBody[attributesPostBodyKey].(map[string]any)
 	if !ok {
-		attrMap = make(map[string]interface{})
+		attrMap = make(map[string]any)
 		reqBody[attributesPostBodyKey] = attrMap
 	}
 	attrMap[statePostBodyKey] = state
@@ -72,6 +75,6 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

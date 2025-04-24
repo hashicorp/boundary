@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package password
 
 import (
@@ -5,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -38,15 +42,15 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	}
 	m = m.Clone()
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
-			return nil, errors.New(ctx, errors.InvalidPublicId, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix))
+		if !strings.HasPrefix(opts.withPublicId, globals.PasswordAuthMethodPrefix+"_") {
+			return nil, errors.New(ctx, errors.InvalidPublicId, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, globals.PasswordAuthMethodPrefix))
 		}
 		m.PublicId = opts.withPublicId
 	} else {
-		id, err := newAuthMethodId()
+		id, err := newAuthMethodId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -57,12 +61,12 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	if !ok {
 		return nil, errors.New(ctx, errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
-	if err := c.validate(); err != nil {
+	if err := c.validate(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var err error
-	c.PrivateId, err = newArgon2ConfigurationId()
+	c.PrivateId, err = newArgon2ConfigurationId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -106,20 +110,6 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ..
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	return r.lookupAuthMethod(ctx, publicId)
-}
-
-// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit and
-// WithOrder options are the only option supported.
-func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
-	const op = "password.(Repository).ListAuthMethods"
-	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
-	}
-	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return authMethods, nil
 }
 
 // DeleteAuthMethod deletes the auth method for the provided id from the repository returning a count of the
@@ -199,7 +189,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"Name":               authMethod.Name,
 			"Description":        authMethod.Description,
 			"MinPasswordLength":  authMethod.MinPasswordLength,
@@ -307,7 +297,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	}
 
 	dbArgs := []db.Option{}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
@@ -323,7 +313,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		}
 	}
 
-	var args []interface{}
+	var args []any
 	var where []string
 	switch {
 	case authMethodId != "":

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 -- replaces view from 15/02_wh_rename_host_dimension_org.up.sql

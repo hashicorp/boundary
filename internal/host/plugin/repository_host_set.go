@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -14,9 +18,10 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/util"
+	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -28,19 +33,22 @@ import (
 
 // normalizeCatalogAttributes allows a plugin to normalize set attributes before
 // they are saved
-func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHs *pb.HostSet) error {
+func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHc *hcpb.HostCatalog, plgHs *pb.HostSet) error {
 	const op = "plugin.(Repository).normalizeSetAttributes"
 	switch {
 	case util.IsNil(plgClient):
 		return errors.New(ctx, errors.InvalidParameter, op, "plugin client is nil")
 	case plgHs == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "host set is nil")
+	case plgHc.GetWorkerFilter().GetValue() != "" && plgHc.GetPlugin() == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin data is not available on host catalog with worker filter")
 	case plgHs.GetAttributes() == nil:
 		return nil
 	}
 
 	ret, err := plgClient.NormalizeSetData(ctx, &plgpb.NormalizeSetDataRequest{
 		Attributes: plgHs.GetAttributes(),
+		Plugin:     plgHc.GetPlugin(),
 	})
 	switch {
 	case err == nil:
@@ -65,7 +73,7 @@ func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServi
 //
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
-func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet, _ ...Option) (*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet, _ ...Option) (*HostSet, *plugin.Plugin, error) {
 	const op = "plugin.(Repository).CreateSet"
 	if s == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -111,12 +119,11 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	s.LastSyncTime = timestamp.New(time.Unix(0, 0))
 	s.NeedSync = true
 
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-
-	plgHc, err := toPluginCatalog(ctx, c)
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -125,15 +132,23 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
 	if plgHs.GetAttributes() != nil {
-		if err := normalizeSetAttributes(ctx, plgClient, plgHs); err != nil {
+		if err := normalizeSetAttributes(ctx, plgClient, plgHc, plgHs); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
+		if s.Attributes, err = proto.Marshal(plgHs.GetAttributes()); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
-	var preferredEndpoints []interface{}
+	var preferredEndpoints []*host.PreferredEndpoint
 	if s.PreferredEndpoints != nil {
-		preferredEndpoints = make([]interface{}, 0, len(s.PreferredEndpoints))
+		preferredEndpoints = make([]*host.PreferredEndpoint, 0, len(s.PreferredEndpoints))
 		for i, e := range s.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, s.PublicId, uint32(i+1), e)
 			if err != nil {
@@ -206,10 +221,6 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	// The set now exists in the plugin, sync it immediately.
 	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0, scheduler.WithRunNow(true))
 
-	plg, err := r.getPlugin(ctx, c.GetPluginId())
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
 	return returnedHostSet, plg, nil
 }
 
@@ -236,7 +247,7 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 // record written, but some plugins may perform some actions on this
 // call. Update of the record in the database is aborted if this call
 // fails.
-func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet, version uint32, fieldMask []string, opt ...Option) (*HostSet, []*Host, *hostplugin.Plugin, int, error) {
+func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet, version uint32, fieldMask []string, opt ...Option) (*HostSet, []*Host, *plugin.Plugin, int, error) {
 	const op = "plugin.(Repository).UpdateSet"
 	if s == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -352,15 +363,9 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in project id %q", newSet.CatalogId, projectId))
 	}
 
-	// Get the plugin client.
-	plgClient, ok := r.plugins[catalog.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", catalog.GetPluginId()))
-	}
-
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
-	plgHc, err := toPluginCatalog(ctx, catalog)
+	plgHc, err := toPluginCatalog(ctx, catalog, plg)
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -373,9 +378,14 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
 	if updateAttributes {
 		if newPlgSet.GetAttributes() != nil {
-			if err := normalizeSetAttributes(ctx, plgClient, newPlgSet); err != nil {
+			if err := normalizeSetAttributes(ctx, plgClient, plgHc, newPlgSet); err != nil {
 				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			if newSet.Attributes, err = proto.Marshal(newPlgSet.GetAttributes()); err != nil {
@@ -385,9 +395,9 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 	}
 
 	// Get the preferred endpoints to write out.
-	var preferredEndpoints []interface{}
+	var preferredEndpoints []*host.PreferredEndpoint
 	if endpointOp == endpointOpUpdate {
-		preferredEndpoints = make([]interface{}, 0, len(newSet.PreferredEndpoints))
+		preferredEndpoints = make([]*host.PreferredEndpoint, 0, len(newSet.PreferredEndpoints))
 		for i, e := range newSet.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, newSet.PublicId, uint32(i+1), e)
 			if err != nil {
@@ -447,7 +457,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 			case endpointOpDelete, endpointOpUpdate:
 				if len(currentSet.PreferredEndpoints) > 0 {
 					// Delete all old endpoint entries.
-					var peps []interface{}
+					var peps []*host.PreferredEndpoint
 					for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
 						p := host.AllocPreferredEndpoint()
 						p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
@@ -569,7 +579,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 // LookupSet will look up a host set in the repository and return the host set,
 // as well as host IDs that match. If the host set is not found, it will return
 // nil, nil, nil. No options are currently supported.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...host.Option) (*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...Option) (*HostSet, *plugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
@@ -590,19 +600,111 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...host.O
 	return sets[0], plg, nil
 }
 
-// ListSets returns a slice of HostSets for the catalogId. WithLimit is the
-// only option supported.
-func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host.Option) ([]*HostSet, *hostplugin.Plugin, error) {
-	const op = "plugin.(Repository).ListSets"
+// listSets returns a slice of HostSets for the catalogId.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, *plugin.Plugin, time.Time, error) {
+	const op = "plugin.(Repository).listSets"
 	if catalogId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
+		return nil, nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
 	}
 
-	sets, plg, err := r.getSets(ctx, "", catalogId, opt...)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
 	}
-	return sets, plg, nil
+	query := fmt.Sprintf(listSetsTemplate, limit)
+	args := []any{sql.Named("catalog_id", catalogId)}
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listSetsPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.querySets(ctx, query, args)
+}
+
+// listSetsRefresh returns a slice of Host sets for the catalogId and the associated plugin.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listSetsRefresh(ctx context.Context, catalogId string, updatedAfter time.Time, opt ...Option) ([]*HostSet, *plugin.Plugin, time.Time, error) {
+	const op = "plugin.(Repository).listSetsRefresh"
+	switch {
+	case catalogId == "":
+		return nil, nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+	case updatedAfter.IsZero():
+		return nil, nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	query := fmt.Sprintf(listSetsRefreshTemplate, limit)
+	args := []any{
+		sql.Named("catalog_id", catalogId),
+		sql.Named("updated_after_time", updatedAfter),
+	}
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listSetsRefreshPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.querySets(ctx, query, args)
+}
+
+func (r *Repository) querySets(ctx context.Context, query string, args []any) ([]*HostSet, *plugin.Plugin, time.Time, error) {
+	const op = "plugin.(Repository).querySets"
+
+	var sets []*HostSet
+	var plg *plugin.Plugin
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		rows, err := r.Query(ctx, query, args)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		var foundSets []*hostSetAgg
+		for rows.Next() {
+			if err := r.ScanRows(ctx, rows, &foundSets); err != nil {
+				return err
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		if len(foundSets) != 0 {
+			plg = plugin.NewPlugin()
+			plg.PublicId = foundSets[0].PluginId
+			if err := r.LookupByPublicId(ctx, plg); err != nil {
+				return err
+			}
+			sets = make([]*HostSet, 0, len(foundSets))
+			for _, ha := range foundSets {
+				set, err := ha.toHostSet(ctx)
+				if err != nil {
+					return err
+				}
+				sets = append(sets, set)
+			}
+		}
+		transactionTimestamp, err = r.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+	return sets, plg, transactionTimestamp, nil
 }
 
 // DeleteSet deletes the host set for the provided id from the repository
@@ -634,11 +736,7 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 		return db.NoRowsAffected, nil
 	}
 
-	plgClient, ok := r.plugins[plg.GetPublicId()]
-	if !ok || plgClient == nil {
-		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
-	}
-	plgHc, err := toPluginCatalog(ctx, c)
+	plgHc, err := toPluginCatalog(ctx, c, plg)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
@@ -646,11 +744,17 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
-	_, err = plgClient.OnDeleteSet(ctx, &plgpb.OnDeleteSetRequest{Catalog: plgHc, Persisted: p, Set: plgHs})
+
+	plgClient, err := pluginClientFactoryFn(ctx, plgHc, r.plugins)
 	if err != nil {
-		// Even if the plugin returns an error, we ignore it and proceed
-		// with deleting the set.
+		return 0, errors.Wrap(ctx, err, op)
 	}
+
+	// Even if the plugin returns an error, we ignore it and proceed with
+	// deleting the set, hence we don't check the error here. This is because we
+	// may get errors from the plugin that we can't do anything about (say, it's
+	// already deleted) and we still want to delete the set from the database.
+	_, _ = plgClient.OnDeleteSet(ctx, &plgpb.OnDeleteSetRequest{Catalog: plgHc, Persisted: p, Set: plgHs})
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -680,7 +784,7 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	return rowsDeleted, nil
 }
 
-func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *plugin.Plugin, error) {
 	const op = "plugin.(Repository).getSets"
 	if publicId == "" && catalogId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both host set id and catalog id are empty")
@@ -700,7 +804,16 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		limit = opts.WithLimit
 	}
 
-	args := make([]interface{}, 0, 1)
+	reader := r.reader
+	writer := r.writer
+	if !util.IsNil(opts.WithReader) {
+		reader = opts.WithReader
+	}
+	if !util.IsNil(opts.WithWriter) {
+		writer = opts.WithWriter
+	}
+
+	args := make([]any, 0, 1)
 	var where string
 
 	switch {
@@ -721,7 +834,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 	}
 
 	var aggHostSets []*hostSetAgg
-	if err := r.reader.SearchWhere(ctx, &aggHostSets, where, args, dbArgs...); err != nil {
+	if err := reader.SearchWhere(ctx, &aggHostSets, where, args, dbArgs...); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", publicId)))
 	}
 
@@ -738,9 +851,9 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		}
 		sets = append(sets, hs)
 	}
-	var plg *hostplugin.Plugin
+	var plg *plugin.Plugin
 	if plgId != "" {
-		plg, err = r.getPlugin(ctx, plgId)
+		plg, err = r.getPlugin(ctx, plgId, WithReaderWriter(reader, writer))
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
@@ -782,6 +895,51 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 	return hs, nil
 }
 
+// listDeletedSetIds lists the public IDs of any hosts deleted since the timestamp provided,
+// and the timestamp of the transaction within which the hosts were listed.
+func (r *Repository) listDeletedSetIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "static.(Repository).listDeletedHostSetIds"
+	var deleteHostSets []*deletedHostSet
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteHostSets, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted host sets"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var hostSetIds []string
+	for _, t := range deleteHostSets {
+		hostSetIds = append(hostSetIds, t.PublicId)
+	}
+	return hostSetIds, transactionTimestamp, nil
+}
+
+// estimatedSetCount returns an estimate of the total number of plugin host sets.
+func (r *Repository) estimatedSetCount(ctx context.Context) (int, error) {
+	const op = "plugin.(Repository).estimatedHostSetCount"
+	rows, err := r.reader.Query(ctx, estimateCountHostSets, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query plugin host sets"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query plugin host sets"))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query plugin host sets"))
+	}
+	return count, nil
+}
+
 // Endpoints provides all the endpoints available for a given set id.
 // An error is returned if the set, related catalog, or related plugin are
 // unable to be retrieved.  If a host does not contain an addressible endpoint
@@ -794,7 +952,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 
 	// Fist, look up the sets corresponding to the set IDs
 	var setAggs []*hostSetAgg
-	if err := r.reader.SearchWhere(ctx, &setAggs, "public_id in (?)", []interface{}{setIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &setAggs, "public_id in (?)", []any{setIds}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve sets %v", setIds)))
 	}
 	if len(setAggs) == 0 {
@@ -810,7 +968,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 	}
 
 	var setMembers []*HostSetMember
-	if err := r.reader.SearchWhere(ctx, &setMembers, "set_id in (?)", []interface{}{setIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &setMembers, "set_id in (?)", []any{setIds}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve set members for sets %v", setIds)))
 	}
 	if len(setMembers) == 0 {
@@ -826,7 +984,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 		hostIds = append(hostIds, hid)
 	}
 	var hostAggs []*hostAgg
-	if err := r.reader.SearchWhere(ctx, &hostAggs, "public_id in (?)", []interface{}{hostIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &hostAggs, "public_id in (?)", []any{hostIds}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve hosts %v", hostIds)))
 	}
 	if len(hostAggs) == 0 {

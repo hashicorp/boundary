@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -11,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-dbw"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
@@ -36,6 +39,8 @@ const (
 	AccountClaimMapsField                  = "AccountClaimMaps"
 	TokenClaimsField                       = "TokenClaims"
 	UserinfoClaimsField                    = "UserinfoClaims"
+	KeyIdField                             = "KeyId"
+	PromptsField                           = "Prompts"
 )
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
@@ -55,7 +60,7 @@ const (
 // be updated.  Fields will be set to NULL if the field is a
 // zero value and included in fieldMask. Name, Description, Issuer,
 // ClientId, ClientSecret, MaxAge are all updatable fields.  The AuthMethod's
-// Value Objects of SigningAlgs, CallbackUrls, AudClaims and Certificates are
+// Value Objects of SigningAlgs, Prompts, CallbackUrls, AudClaims and Certificates are
 // also updatable. if no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
 //
@@ -92,7 +97,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 
 	dbMask, nullFields := dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			NameField:             am.Name,
 			DescriptionField:      am.Description,
 			IssuerField:           am.Issuer,
@@ -105,6 +110,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			CertificatesField:     am.Certificates,
 			ClaimsScopesField:     am.ClaimsScopes,
 			AccountClaimMapsField: am.AccountClaimMaps,
+			PromptsField:          am.Prompts,
 		},
 		fieldMaskPaths,
 		nil,
@@ -149,41 +155,93 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 	}
 
-	addAlgs, deleteAlgs, err := valueObjectChanges(ctx, origAm.PublicId, SigningAlgVO, am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
+	aa, ad, err := valueObjectChanges(ctx, origAm.PublicId, SigningAlgVO, am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	addAlgs := []*SigningAlg{}
+	for _, a := range aa {
+		addAlgs = append(addAlgs, a.(*SigningAlg))
+	}
+	deleteAlgs := []*SigningAlg{}
+	for _, a := range ad {
+		deleteAlgs = append(deleteAlgs, a.(*SigningAlg))
 	}
 
-	addCerts, deleteCerts, err := valueObjectChanges(ctx, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
+	ac, dc, err := valueObjectChanges(ctx, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	addCerts := []*Certificate{}
+	for _, c := range ac {
+		addCerts = append(addCerts, c.(*Certificate))
+	}
+	deleteCerts := []*Certificate{}
+	for _, c := range dc {
+		deleteCerts = append(deleteCerts, c.(*Certificate))
 	}
 
-	addAuds, deleteAuds, err := valueObjectChanges(ctx, origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
+	aa, ad, err = valueObjectChanges(ctx, origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	addAuds := []*AudClaim{}
+	for _, a := range aa {
+		addAuds = append(addAuds, a.(*AudClaim))
+	}
+	deleteAuds := []*AudClaim{}
+	for _, a := range ad {
+		deleteAuds = append(deleteAuds, a.(*AudClaim))
 	}
 
-	addScopes, deleteScopes, err := valueObjectChanges(ctx, origAm.PublicId, ClaimsScopesVO, am.ClaimsScopes, origAm.ClaimsScopes, dbMask, nullFields)
+	as, ds, err := valueObjectChanges(ctx, origAm.PublicId, ClaimsScopesVO, am.ClaimsScopes, origAm.ClaimsScopes, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	addScopes := []*ClaimsScope{}
+	for _, s := range as {
+		addScopes = append(addScopes, s.(*ClaimsScope))
+	}
+	deleteScopes := []*ClaimsScope{}
+	for _, s := range ds {
+		deleteScopes = append(deleteScopes, s.(*ClaimsScope))
 	}
 
-	addMaps, deleteMaps, err := valueObjectChanges(ctx, origAm.PublicId, AccountClaimMapsVO, am.AccountClaimMaps, origAm.AccountClaimMaps, dbMask, nullFields)
+	aacm, dacm, err := valueObjectChanges(ctx, origAm.PublicId, AccountClaimMapsVO, am.AccountClaimMaps, origAm.AccountClaimMaps, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
+	addMaps := []*AccountClaimMap{}
+	for _, m := range aacm {
+		addMaps = append(addMaps, m.(*AccountClaimMap))
+	}
+	deleteMaps := []*AccountClaimMap{}
+	for _, m := range dacm {
+		deleteMaps = append(deleteMaps, m.(*AccountClaimMap))
+	}
+
+	ap, dp, err := valueObjectChanges(ctx, origAm.PublicId, PromptsVO, am.Prompts, origAm.Prompts, dbMask, nullFields)
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	addPrompts := []*Prompt{}
+	for _, p := range ap {
+		addPrompts = append(addPrompts, p.(*Prompt))
+	}
+	deletePrompts := []*Prompt{}
+	for _, p := range dp {
+		deletePrompts = append(deletePrompts, p.(*Prompt))
+	}
+
 	// we don't allow updates for "sub" claim maps, because we have no way to
 	// determine if the updated "from" claim in the map might create collisions
 	// with any existing account's subject.
-	for _, rawCm := range addMaps {
-		cm := rawCm.(*AccountClaimMap)
+	for _, cm := range addMaps {
 		if cm.ToClaim == string(ToSubClaim) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
 		}
 	}
-	for _, rawCm := range deleteMaps {
-		cm := rawCm.(*AccountClaimMap)
+	for _, cm := range deleteMaps {
 		if cm.ToClaim == string(ToSubClaim) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
 		}
@@ -192,7 +250,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
 		switch f {
-		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField:
+		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField, PromptsField:
 			continue
 		default:
 			filteredDbMask = append(filteredDbMask, f)
@@ -200,7 +258,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 	for _, f := range nullFields {
 		switch f {
-		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField:
+		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField, PromptsField:
 			continue
 		default:
 			filteredNullFields = append(filteredNullFields, f)
@@ -219,17 +277,19 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		len(addScopes) == 0 &&
 		len(deleteScopes) == 0 &&
 		len(addMaps) == 0 &&
-		len(deleteMaps) == 0 {
+		len(deleteMaps) == 0 &&
+		len(addPrompts) == 0 &&
+		len(deletePrompts) == 0 {
 		return origAm, db.NoRowsAffected, nil
 	}
 
 	// ClientSecret is a bit odd, because it uses the Struct wrapping, we need
 	// to add the encrypted fields to the dbMask or nullFields
 	if strutil.StrListContains(filteredDbMask, ClientSecretField) {
-		filteredDbMask = append(filteredDbMask, CtClientSecretField, ClientSecretHmacField)
+		filteredDbMask = append(filteredDbMask, CtClientSecretField, ClientSecretHmacField, KeyIdField)
 	}
 	if strutil.StrListContains(filteredNullFields, ClientSecretField) {
-		filteredNullFields = append(filteredNullFields, CtClientSecretField, ClientSecretHmacField)
+		filteredNullFields = append(filteredNullFields, CtClientSecretField, ClientSecretHmacField, KeyIdField)
 	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeDatabase)
@@ -255,7 +315,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 7) // AuthMethod, Algs*2, Certs*2, Audiences*2
+			msgs := make([]*oplog.Message, 0, 9) // AuthMethod, Algs*2, Certs*2, Audiences*2, Prompts*2
 			ticket, err := w.GetTicket(ctx, am)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -304,6 +364,25 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add signing algorithms"))
 				}
 				msgs = append(msgs, addAlgsOplogMsgs...)
+			}
+
+			if len(deletePrompts) > 0 {
+				deletePromptOplogMsgs := make([]*oplog.Message, 0, len(deletePrompts))
+				rowsDeleted, err := w.DeleteItems(ctx, deletePrompts, db.NewOplogMsgs(&deletePromptOplogMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete prompts"))
+				}
+				if rowsDeleted != len(deletePrompts) {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("prompts deleted %d did not match request for %d", rowsDeleted, len(deletePrompts)))
+				}
+				msgs = append(msgs, deletePromptOplogMsgs...)
+			}
+			if len(addPrompts) > 0 {
+				addPromptsOplogMsgs := make([]*oplog.Message, 0, len(addPrompts))
+				if err := w.CreateItems(ctx, addPrompts, db.NewOplogMsgs(&addPromptsOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add prompts"))
+				}
+				msgs = append(msgs, addPromptsOplogMsgs...)
 			}
 
 			if len(deleteCerts) > 0 {
@@ -422,12 +501,13 @@ const (
 	AudClaimVO         voName = "AudClaims"
 	ClaimsScopesVO     voName = "ClaimsScopes"
 	AccountClaimMapsVO voName = "AccountClaimMaps"
+	PromptsVO          voName = "Prompts"
 )
 
 // validVoName decides if the name is valid
 func validVoName(name voName) bool {
 	switch name {
-	case SigningAlgVO, CertificateVO, AudClaimVO, ClaimsScopesVO, AccountClaimMapsVO:
+	case SigningAlgVO, CertificateVO, AudClaimVO, ClaimsScopesVO, AccountClaimMapsVO, PromptsVO:
 		return true
 	default:
 		return false
@@ -435,27 +515,27 @@ func validVoName(name voName) bool {
 }
 
 // factoryFunc defines a func type for value object factories
-type factoryFunc func(ctx context.Context, publicId string, i interface{}) (interface{}, error)
+type factoryFunc func(ctx context.Context, publicId string, i any) (any, error)
 
 // supportedFactories are the currently supported factoryFunc for value objects
 var supportedFactories = map[voName]factoryFunc{
-	SigningAlgVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	SigningAlgVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewSigningAlg(ctx, publicId, Alg(str))
 	},
-	CertificateVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	CertificateVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewCertificate(ctx, publicId, str)
 	},
-	AudClaimVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	AudClaimVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewAudClaim(ctx, publicId, str)
 	},
-	ClaimsScopesVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	ClaimsScopesVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewClaimsScope(ctx, publicId, str)
 	},
-	AccountClaimMapsVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	AccountClaimMapsVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		const op = "oidc.AccountClaimMapsFactory"
 		str := fmt.Sprintf("%s", i)
 		acm, err := ParseAccountClaimMaps(ctx, str)
@@ -474,6 +554,10 @@ var supportedFactories = map[voName]factoryFunc{
 		}
 		return NewAccountClaimMap(ctx, publicId, m.From, to)
 	},
+	PromptsVO: func(ctx context.Context, publicId string, i any) (any, error) {
+		str := fmt.Sprintf("%s", i)
+		return NewPrompt(ctx, publicId, PromptParam(str))
+	},
 }
 
 // valueObjectChanges takes the new and old list of VOs (value objects) and
@@ -487,7 +571,7 @@ func valueObjectChanges(
 	oldVOs,
 	dbMask,
 	nullFields []string,
-) (add []interface{}, del []interface{}, e error) {
+) (add []any, del []any, e error) {
 	const op = "valueObjectChanges"
 	if publicId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
@@ -518,10 +602,10 @@ func valueObjectChanges(
 	for _, a := range oldVOs {
 		foundVOs[a] = true
 	}
-	var adds []interface{}
-	var deletes []interface{}
+	var adds []any
+	var deletes []any
 	if strutil.StrListContains(nullFields, string(valueObjectName)) {
-		deletes = make([]interface{}, 0, len(oldVOs))
+		deletes = make([]any, 0, len(oldVOs))
 		for _, v := range oldVOs {
 			deleteObj, err := factory(ctx, publicId, v)
 			if err != nil {
@@ -532,7 +616,7 @@ func valueObjectChanges(
 		}
 	}
 	if strutil.StrListContains(dbMask, string(valueObjectName)) {
-		adds = make([]interface{}, 0, len(newVOs))
+		adds = make([]any, 0, len(newVOs))
 		for _, v := range newVOs {
 			if _, ok := foundVOs[v]; ok {
 				delete(foundVOs, v)
@@ -576,6 +660,7 @@ func validateFieldMask(ctx context.Context, fieldMaskPaths []string) error {
 		case strings.EqualFold(CertificatesField, f):
 		case strings.EqualFold(ClaimsScopesField, f):
 		case strings.EqualFold(AccountClaimMapsField, f):
+		case strings.EqualFold(PromptsField, f):
 		default:
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -642,6 +727,14 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 				cp.AccountClaimMaps = make([]string, 0, len(new.AccountClaimMaps))
 				cp.AccountClaimMaps = append(cp.AccountClaimMaps, new.AccountClaimMaps...)
 			}
+		case PromptsField:
+			switch {
+			case len(new.Prompts) == 0:
+				cp.Prompts = nil
+			default:
+				cp.Prompts = make([]string, 0, len(new.Prompts))
+				cp.Prompts = append(cp.Prompts, new.Prompts...)
+			}
 		}
 	}
 	return cp
@@ -695,21 +788,21 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 		return errors.Wrap(ctx, err, op)
 	}
 
-	var result *multierror.Error
+	var result error
 	if info.Issuer != am.Issuer {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op,
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op,
 			fmt.Sprintf("auth method issuer doesn't match discovery issuer: expected %s and got %s", am.Issuer, info.Issuer)))
 	}
 	for _, a := range am.SigningAlgs {
 		if !strutil.StrListContains(info.IdTokenSigningAlgsSupported, a) {
-			result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op,
+			result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op,
 				fmt.Sprintf("auth method signing alg is not in discovered supported algs: expected %s and got %s", a, info.IdTokenSigningAlgsSupported)))
 		}
 	}
 	providerClient, err := provider.HTTPClient()
 	if err != nil {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, "unable to get oidc http client", errors.WithWrap(err)))
-		return result.ErrorOrNil()
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, "unable to get oidc http client", errors.WithWrap(err)))
+		return result
 	}
 
 	// we need to prevent redirects during these tests... we don't want to have
@@ -721,25 +814,25 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 	// test JWKs URL
 	statusCode, err := pingEndpoint(ctx, providerClient, "JWKs", "GET", info.JWKSURL)
 	if err != nil {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify JWKs endpoint: %s", info.JWKSURL), errors.WithWrap(err)))
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify JWKs endpoint: %s", info.JWKSURL), errors.WithWrap(err)))
 	}
 	if statusCode != 200 {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("non-200 status (%d) from JWKs endpoint: %s", statusCode, info.JWKSURL), errors.WithWrap(err)))
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("non-200 status (%d) from JWKs endpoint: %s", statusCode, info.JWKSURL), errors.WithWrap(err)))
 	}
 
 	// test Auth URL
 	if _, err := pingEndpoint(ctx, providerClient, "AuthURL", "GET", info.AuthURL); err != nil {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify authorize endpoint: %s", info.AuthURL), errors.WithWrap(err)))
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify authorize endpoint: %s", info.AuthURL), errors.WithWrap(err)))
 	}
 
 	// test Token URL
 	if _, err := pingEndpoint(ctx, providerClient, "TokenURL", "POST", info.TokenURL); err != nil {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify token endpoint: %s", info.TokenURL), errors.WithWrap(err)))
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify token endpoint: %s", info.TokenURL), errors.WithWrap(err)))
 	}
 
 	// we're not verifying the UserInfo URL, since it's not a required dependency.
 
-	return result.ErrorOrNil()
+	return result
 }
 
 type HTTPClient interface {
@@ -756,6 +849,9 @@ func pingEndpoint(ctx context.Context, client HTTPClient, endpointType, method, 
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("request to %s endpoint failed", endpointType), errors.WithWrap(err))
+	}
+	if resp.Body != nil {
+		resp.Body.Close()
 	}
 	return resp.StatusCode, nil
 }

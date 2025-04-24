@@ -1,0 +1,49 @@
+---
+layout: docs
+page_title: aliases - Command
+description: >-
+  The "aliases" command performs operations on alias resources. An alias is a globally unique, DNS-like string that is associated with a destination resource.
+---
+
+# aliases
+
+Command: `boundary aliases`
+
+The `aliases` command lets you create and manage alias resources in Boundary.
+
+
+## Examples
+
+The following example retrieves alias information for a given alias ID, `alt_1234567890`:
+
+```shell-session
+$ boundary aliases read -id alt_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary aliases [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    create             Create an alias
+    delete             Delete an alias
+    list               List an alias
+    read               Read an alias
+    update             Update an alias
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/aliases/create)
+- [delete](/boundary/docs/commands/aliases/delete)
+- [list](/boundary/docs/commands/aliases/list)
+- [read](/boundary/docs/commands/aliases/read)
+- [update](/boundary/docs/commands/aliases/update)

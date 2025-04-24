@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -67,9 +70,9 @@ do/lpv8N1+5Eb3lOB3DrqcEqRwXzSQcO2QcpikNSHyPquGR689I3xUm6kWmpKs49aacTUx
 )
 
 // TestJsonObject returns a json object and it's marshalled format to be used for testing
-func TestJsonObject() (credential.JsonObject, []byte, error) {
+func TestJsonObject(t testing.TB) (credential.JsonObject, []byte) {
 	object := credential.JsonObject{
-		structpb.Struct{
+		Struct: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"username": structpb.NewStringValue("user"),
 				"password": structpb.NewStringValue("password"),
@@ -78,7 +81,8 @@ func TestJsonObject() (credential.JsonObject, []byte, error) {
 		},
 	}
 	b, err := json.Marshal(object.AsMap())
-	return object, b, err
+	require.NoError(t, err)
+	return object, b
 }
 
 // TestCredentialStore creates a static credential store in the provided DB with

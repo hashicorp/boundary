@@ -1,19 +1,24 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package perms
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ActionParsingValidation(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	type input struct {
 		name      string
@@ -37,13 +42,17 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "empty action with output fields",
 			input: Grant{
-				OutputFields: OutputFieldsMap{
-					"id": true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"id": true,
+					},
 				},
 			},
 			result: Grant{
-				OutputFields: OutputFieldsMap{
-					"id": true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"id": true,
+					},
 				},
 			},
 		},
@@ -93,7 +102,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.input.parseAndValidateActions()
+			err := test.input.parseAndValidateActions(ctx)
 			if test.errResult == "" {
 				require.NoError(t, err)
 				assert.Equal(t, test.result, test.input)
@@ -107,13 +116,14 @@ func Test_ActionParsingValidation(t *testing.T) {
 
 func Test_ValidateType(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	var g Grant
-	for i := resource.Unknown; i <= resource.Credential; i++ {
+	for i := resource.Unknown; i <= resource.Alias; i++ {
 		g.typ = i
 		if i == resource.Controller {
-			assert.Error(t, g.validateType())
+			assert.Error(t, g.validateType(ctx))
 		} else {
-			assert.NoError(t, g.validateType())
+			assert.NoError(t, g.validateType(ctx))
 		}
 	}
 }
@@ -130,65 +140,110 @@ func Test_MarshalingAndCloning(t *testing.T) {
 
 	tests := []input{
 		{
-			name: "empty",
-			input: Grant{
-				scope: Scope{
-					Type: scope.Org,
-				},
-			},
+			name:            "empty",
 			jsonOutput:      `{}`,
 			canonicalString: ``,
 		},
 		{
 			name: "type and id",
 			input: Grant{
-				id: "baz",
-				scope: Scope{
-					Type: scope.Project,
-				},
+				id:  "baz",
 				typ: resource.Group,
 			},
 			jsonOutput:      `{"id":"baz","type":"group"}`,
 			canonicalString: `id=baz;type=group`,
 		},
 		{
-			name: "output fields",
+			name: "type and ids",
 			input: Grant{
-				id: "baz",
-				scope: Scope{
-					Type: scope.Project,
-				},
+				ids: []string{"baz", "bop"},
 				typ: resource.Group,
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+			},
+			jsonOutput:      `{"ids":["baz","bop"],"type":"group"}`,
+			canonicalString: `ids=baz,bop;type=group`,
+		},
+		{
+			name: "type and ids single id",
+			input: Grant{
+				ids: []string{"baz"},
+				typ: resource.Group,
+			},
+			jsonOutput:      `{"ids":["baz"],"type":"group"}`,
+			canonicalString: `ids=baz;type=group`,
+		},
+		{
+			name: "output fields id",
+			input: Grant{
+				id:  "baz",
+				typ: resource.Group,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonOutput:      `{"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
 			canonicalString: `id=baz;type=group;output_fields=id,name,version`,
 		},
 		{
-			name: "everything",
+			name: "output fields ids",
 			input: Grant{
-				id: "baz",
-				scope: Scope{
-					Type: scope.Project,
+				ids: []string{"baz", "bop"},
+				typ: resource.Group,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
+			},
+			jsonOutput:      `{"ids":["baz","bop"],"output_fields":["id","name","version"],"type":"group"}`,
+			canonicalString: `ids=baz,bop;type=group;output_fields=id,name,version`,
+		},
+		{
+			name: "everything id",
+			input: Grant{
+				id:  "baz",
 				typ: resource.Group,
 				actions: map[action.Type]bool{
 					action.Create: true,
 					action.Read:   true,
 				},
 				actionsBeingParsed: []string{"create", "read"},
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonOutput:      `{"actions":["create","read"],"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
 			canonicalString: `id=baz;type=group;actions=create,read;output_fields=id,name,version`,
+		},
+		{
+			name: "everything ids",
+			input: Grant{
+				ids: []string{"baz", "bop"},
+				typ: resource.Group,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+				actionsBeingParsed: []string{"create", "read"},
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"ids":     true,
+					},
+				},
+			},
+			jsonOutput:      `{"actions":["create","read"],"ids":["baz","bop"],"output_fields":["ids","name","version"],"type":"group"}`,
+			canonicalString: `ids=baz,bop;type=group;actions=create,read;output_fields=ids,name,version`,
 		},
 	}
 
@@ -205,6 +260,8 @@ func Test_MarshalingAndCloning(t *testing.T) {
 
 func Test_Unmarshaling(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	type input struct {
 		name      string
@@ -229,11 +286,113 @@ func Test_Unmarshaling(t *testing.T) {
 			jsonErr:   "perms.(Grant).unmarshalJSON: error occurred during decode, encoding issue: error #303: invalid character 'w' looking for beginning of value",
 		},
 		{
-			name:      "bad segment",
+			name:      "bad segment id",
 			jsonInput: `{"id":true}`,
 			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "id" as string: parameter violation: error #100`,
 			textInput: `id=`,
 			textErr:   `perms.(Grant).unmarshalText: segment "id=" not formatted correctly, missing value: parameter violation: error #100`,
+		},
+		{
+			name:      "bad segment id comma",
+			jsonInput: `{"id":","}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `id=,`,
+			textErr:   `perms.(Grant).unmarshalText: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "bad segment id start with comma",
+			jsonInput: `{"id":",something"}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `id=,something`,
+			textErr:   `perms.(Grant).unmarshalText: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "bad segment id with comma",
+			jsonInput: `{"id":"some,thing"}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `id=some,thing`,
+			textErr:   `perms.(Grant).unmarshalText: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "bad segment id end with comma",
+			jsonInput: `{"id":"something,"}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `id=something,`,
+			textErr:   `perms.(Grant).unmarshalText: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "bad segment ids",
+			jsonInput: `{"ids":true}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "ids" as array: parameter violation: error #100`,
+			textInput: `ids=`,
+			textErr:   `perms.(Grant).unmarshalText: segment "ids=" not formatted correctly, missing value: parameter violation: error #100`,
+		},
+		{
+			name:      "empty segment ids",
+			jsonInput: `{"ids":[""]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: empty ID provided: parameter violation: error #100`,
+			textInput: `ids=,`,
+			textErr:   `perms.(Grant).unmarshalText: empty ID provided: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids comma",
+			jsonInput: `{"ids":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with comma",
+			jsonInput: `{"ids":[",something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with comma",
+			jsonInput: `{"ids":["some,thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with comma",
+			jsonInput: `{"ids":["something,"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids semicolon",
+			jsonInput: `{"ids":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with semicolon",
+			jsonInput: `{"ids":[";something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with semicolon",
+			jsonInput: `{"ids":["some;thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with semicolon",
+			jsonInput: `{"ids":["something;"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids equals sign",
+			jsonInput: `{"ids":["="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with equals sign",
+			jsonInput: `{"ids":["=something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with equals sign",
+			jsonInput: `{"ids":["some=thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with equals sign",
+			jsonInput: `{"ids":["something="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name: "good id",
@@ -244,11 +403,26 @@ func Test_Unmarshaling(t *testing.T) {
 			textInput: `id=foobar`,
 		},
 		{
+			name: "good ids",
+			expected: Grant{
+				ids: []string{"foobar"},
+			},
+			jsonInput: `{"ids":["foobar"]}`,
+			textInput: `ids=foobar`,
+		},
+		{
 			name:      "bad id",
 			jsonInput: `{"id":true}`,
 			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "id" as string: parameter violation: error #100`,
 			textInput: `=id`,
 			textErr:   `perms.(Grant).unmarshalText: segment "=id" not formatted correctly, missing key: parameter violation: error #100`,
+		},
+		{
+			name:      "bad ids",
+			jsonInput: `{"ids":true}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "ids" as array: parameter violation: error #100`,
+			textInput: `=ids`,
+			textErr:   `perms.(Grant).unmarshalText: segment "=ids" not formatted correctly, missing key: parameter violation: error #100`,
 		},
 		{
 			name: "good type",
@@ -266,23 +440,106 @@ func Test_Unmarshaling(t *testing.T) {
 			textErr:   `perms.(Grant).unmarshalText: segment "type=host-catalog=id" not formatted correctly, wrong number of equal signs: parameter violation: error #100`,
 		},
 		{
-			name: "good output fields",
+			name: "good output fields id",
 			expected: Grant{
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonInput: `{"output_fields":["id","name","version"]}`,
 			textInput: `output_fields=id,version,name`,
 		},
 		{
-			name:      "bad output fields",
+			name: "good output fields ids",
+			expected: Grant{
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"ids":     true,
+					},
+				},
+			},
+			jsonInput: `{"output_fields":["ids","name","version"]}`,
+			textInput: `output_fields=ids,version,name`,
+		},
+		{
+			name:      "bad output fields id",
 			jsonInput: `{"output_fields":true}`,
 			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "output_fields" as array: parameter violation: error #100`,
 			textInput: `output_fields=id=version,name`,
 			textErr:   `perms.(Grant).unmarshalText: segment "output_fields=id=version,name" not formatted correctly, wrong number of equal signs: parameter violation: error #100`,
+		},
+		{
+			name:      "bad output fields ids",
+			jsonInput: `{"output_fields":true}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "output_fields" as array: parameter violation: error #100`,
+			textInput: `output_fields=ids=version,name`,
+			textErr:   `perms.(Grant).unmarshalText: segment "output_fields=ids=version,name" not formatted correctly, wrong number of equal signs: parameter violation: error #100`,
+		},
+		{
+			name:      "bad output fields comma",
+			jsonInput: `{"output_fields":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "output fields starting with comma",
+			jsonInput: `{"output_fields":[",something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "output fields with comma",
+			jsonInput: `{"output_fields":["some,thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "output fields ending with comma",
+			jsonInput: `{"output_fields":["something,"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids semicolon",
+			jsonInput: `{"ids":[";"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with semicolon",
+			jsonInput: `{"ids":[";something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with semicolon",
+			jsonInput: `{"ids":["some;thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with semicolon",
+			jsonInput: `{"ids":["something;"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids equals sign",
+			jsonInput: `{"ids":["="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with equals sign",
+			jsonInput: `{"ids":["=something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with equals sign",
+			jsonInput: `{"ids":["some=thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with equals sign",
+			jsonInput: `{"ids":["something="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name: "good actions",
@@ -311,6 +568,26 @@ func Test_Unmarshaling(t *testing.T) {
 			jsonInput: `{"actions":[1, true]}`,
 			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret 1 in actions array as string: parameter violation: error #100`,
 		},
+		{
+			name:      "segment actions comma",
+			jsonInput: `{"actions":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: action cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment actions starting with comma",
+			jsonInput: `{"actions":[",something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: action cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment actions with comma",
+			jsonInput: `{"actions":["some,thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: action cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment actions ending with comma",
+			jsonInput: `{"actions":["something,"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: action cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
 	}
 
 	for _, test := range tests {
@@ -319,7 +596,7 @@ func Test_Unmarshaling(t *testing.T) {
 			require := require.New(t)
 			var g Grant
 			if test.jsonInput != "" {
-				err := g.unmarshalJSON([]byte(test.jsonInput))
+				err := g.unmarshalJSON(ctx, []byte(test.jsonInput))
 				if test.jsonErr != "" {
 					require.Error(err)
 					assert.Equal(test.jsonErr, err.Error())
@@ -330,7 +607,7 @@ func Test_Unmarshaling(t *testing.T) {
 			}
 			g = Grant{}
 			if test.textInput != "" {
-				err := g.unmarshalText(test.textInput)
+				err := g.unmarshalText(ctx, test.textInput)
 				if test.textErr != "" {
 					require.Error(err)
 					assert.Equal(test.textErr, err.Error())
@@ -346,6 +623,8 @@ func Test_Unmarshaling(t *testing.T) {
 func Test_Parse(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	type input struct {
 		name          string
 		input         string
@@ -358,89 +637,61 @@ func Test_Parse(t *testing.T) {
 
 	tests := []input{
 		{
-			name: "empty",
-			err:  `perms.Parse: missing grant string: parameter violation: error #100`,
-		},
-		{
-			name:  "bad json",
-			input: "{2:193}",
-			err:   `perms.Parse: unable to parse JSON grant string: perms.(Grant).unmarshalJSON: error occurred during decode, encoding issue: error #303: invalid character '2' looking for beginning of object key string`,
-		},
-		{
-			name:  "bad text",
-			input: "id=foo=bar",
-			err:   `perms.Parse: unable to parse grant string: perms.(Grant).unmarshalText: segment "id=foo=bar" not formatted correctly, wrong number of equal signs: parameter violation: error #100`,
-		},
-		{
-			name:  "bad type",
-			input: "id=foobar;type=barfoo;actions=create,read",
-			err:   `perms.Parse: unable to parse grant string: perms.(Grant).unmarshalText: unknown type specifier "barfoo": parameter violation: error #100`,
-		},
-		{
-			name:  "bad actions",
-			input: "id=foobar;type=host-catalog;actions=createread",
-			err:   `perms.Parse: perms.(Grant).parseAndValidateActions: unknown action "createread": parameter violation: error #100`,
-		},
-		{
-			name:  "bad create action for id",
-			input: "id=foobar;actions=create",
-			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
-		},
-		{
-			name:  "bad create action for id with other perms",
-			input: "id=foobar;actions=read,create",
-			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
-		},
-		{
-			name:  "bad list action for id",
-			input: "id=foobar;actions=list",
-			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
-		},
-		{
-			name:  "bad list action for id with other perms",
-			input: "type=host-catalog;actions=list,read",
-			err:   `perms.Parse: parsed grant string contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
-		},
-		{
-			name:  "wildcard id and actions without collection",
-			input: "id=*;actions=read",
-			err:   `perms.Parse: parsed grant string would not result in any action being authorized: parameter violation: error #100`,
-		},
-		{
-			name:  "wildcard id and actions with list",
-			input: "id=*;actions=read,list",
-			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
-		},
-		{
-			name:  "wildcard type with no id",
-			input: "type=*;actions=read,list",
-			err:   `perms.Parse: parsed grant string contains wildcard type with no id value: parameter violation: error #100`,
-		},
-		{
-			name:  "empty id and type",
-			input: "actions=create",
-			err:   `perms.Parse: parsed grant string contains no id or type: parameter violation: error #100`,
-		},
-		{
 			name:  "empty output fields",
 			input: "id=*;type=*;actions=read,list;output_fields=",
-			err:   `perms.Parse: unable to parse grant string: perms.(Grant).unmarshalText: segment "output_fields=" not formatted correctly, missing value: parameter violation: error #100`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "*",
+				typ:          resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+					action.List: true,
+				},
+				OutputFields: &OutputFields{
+					fields: make(map[string]bool),
+				},
+			},
 		},
 		{
 			name:  "empty output fields json",
 			input: `{"id": "*", "type": "*", "actions": ["read", "list"], "output_fields": []}`,
-			err:   "perms.Parse: parsed grant string has output_fields set but empty: parameter violation: error #100",
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "*",
+				typ:          resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+					action.List: true,
+				},
+				OutputFields: &OutputFields{
+					fields: make(map[string]bool),
+				},
+			},
 		},
 		{
 			name:  "wildcard id and type and actions with list",
 			input: "id=*;type=*;actions=read,list",
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "*",
+				typ:          resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+					action.List: true,
 				},
-				id:  "*",
-				typ: resource.All,
+			},
+		},
+		{
+			name:  "wildcard ids and type and actions with list",
+			input: "ids=*;type=*;actions=read,list",
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				ids:          []string{"*"},
+				typ:          resource.All,
 				actions: map[action.Type]bool{
 					action.Read: true,
 					action.List: true,
@@ -451,11 +702,9 @@ func Test_Parse(t *testing.T) {
 			name:  "good json type",
 			input: `{"type":"host-catalog","actions":["create"]}`,
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				typ: resource.HostCatalog,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				typ:          resource.HostCatalog,
 				actions: map[action.Type]bool{
 					action.Create: true,
 				},
@@ -463,53 +712,84 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "good json id",
-			input: `{"id":"foobar","actions":["read"]}`,
+			input: `{"id":"u_foobar","actions":["read"]}`,
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				id:  "foobar",
-				typ: resource.Unknown,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "u_foobar",
+				typ:          resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
 			},
 		},
 		{
-			name:  "good json output fields",
-			input: `{"id":"foobar","actions":["read"],"output_fields":["version","id","name"]}`,
+			name:  "good json ids",
+			input: `{"ids":["hcst_foobar", "hcst_foobaz"],"actions":["read"]}`,
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				id:  "foobar",
-				typ: resource.Unknown,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				ids:          []string{"hcst_foobar", "hcst_foobaz"},
+				typ:          resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+			},
+		},
+		{
+			name:  "good json output fields id",
+			input: `{"id":"u_foobar","actions":["read"],"output_fields":["version","id","name"]}`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "u_foobar",
+				typ:          resource.Unknown,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
+				},
+			},
+		},
+		{
+			name:  "good json output fields ids",
+			input: `{"ids":["u_foobar"],"actions":["read"],"output_fields":["version","ids","name"]}`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				ids:          []string{"u_foobar"},
+				typ:          resource.Unknown,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"ids":     true,
+						"name":    true,
+					},
 				},
 			},
 		},
 		{
 			name:  "good json output fields no action",
-			input: `{"id":"foobar","output_fields":["version","id","name"]}`,
+			input: `{"id":"u_foobar","output_fields":["version","id","name"]}`,
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				id:  "foobar",
-				typ: resource.Unknown,
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "u_foobar",
+				typ:          resource.Unknown,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
 				},
 			},
 		},
@@ -517,11 +797,9 @@ func Test_Parse(t *testing.T) {
 			name:  "good text type",
 			input: `type=host-catalog;actions=create`,
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				typ: resource.HostCatalog,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				typ:          resource.HostCatalog,
 				actions: map[action.Type]bool{
 					action.Create: true,
 				},
@@ -529,50 +807,79 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "good text id",
-			input: `id=foobar;actions=read`,
+			input: `id=u_foobar;actions=read`,
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				id:  "foobar",
-				typ: resource.Unknown,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "u_foobar",
+				typ:          resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
 			},
 		},
 		{
-			name:  "good output fields",
-			input: `id=foobar;actions=read;output_fields=version,id,name`,
+			name:  "good text ids",
+			input: `ids=hcst_foobar,hcst_foobaz;actions=read`,
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				id:  "foobar",
-				typ: resource.Unknown,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				ids:          []string{"hcst_foobar", "hcst_foobaz"},
+				typ:          resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+			},
+		},
+		{
+			name:  "good output fields id",
+			input: `id=u_foobar;actions=read;output_fields=version,id,name`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "u_foobar",
+				typ:          resource.Unknown,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
+				},
+			},
+		},
+		{
+			name:  "good output fields ids",
+			input: `ids=hcst_foobar,hcst_foobaz;actions=read;output_fields=version,ids,name`,
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				ids:          []string{"hcst_foobar", "hcst_foobaz"},
+				typ:          resource.Unknown,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"ids":     true,
+						"name":    true,
+					},
 				},
 			},
 		},
 		{
 			name:          "default project scope",
-			input:         `id=foobar;actions=read`,
+			input:         `id=hcst_foobar;actions=read`,
 			scopeOverride: "p_1234",
 			expected: Grant{
-				scope: Scope{
-					Id:   "p_1234",
-					Type: scope.Project,
-				},
-				id:  "foobar",
-				typ: resource.Unknown,
+				roleScopeId:  "p_1234",
+				grantScopeId: "p_1234",
+				id:           "hcst_foobar",
+				typ:          resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
@@ -580,15 +887,13 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:          "default org scope",
-			input:         `id=foobar;actions=read`,
+			input:         `id=acctpw_foobar;actions=read`,
 			scopeOverride: "o_1234",
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_1234",
-					Type: scope.Org,
-				},
-				id:  "foobar",
-				typ: resource.Unknown,
+				roleScopeId:  "o_1234",
+				grantScopeId: "o_1234",
+				id:           "acctpw_foobar",
+				typ:          resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
@@ -596,15 +901,13 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:          "default global scope",
-			input:         `id=foobar;actions=read`,
+			input:         `id=acctpw_foobar;actions=read`,
 			scopeOverride: "global",
 			expected: Grant{
-				scope: Scope{
-					Id:   "global",
-					Type: scope.Global,
-				},
-				id:  "foobar",
-				typ: resource.Unknown,
+				roleScopeId:  "global",
+				grantScopeId: "global",
+				id:           "acctpw_foobar",
+				typ:          resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
@@ -617,15 +920,19 @@ func Test_Parse(t *testing.T) {
 			err:    `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
 		},
 		{
+			name:   "bad user ids template",
+			input:  `ids={{superman}};actions=create,read`,
+			userId: "u_abcd1234",
+			err:    `perms.Parse: unknown template "{{superman}}" in grant "ids" value: parameter violation: error #100`,
+		},
+		{
 			name:   "good user id template",
 			input:  `id={{    user.id}};actions=read,update`,
 			userId: "u_abcd1234",
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				id: "u_abcd1234",
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           "u_abcd1234",
 				actions: map[action.Type]bool{
 					action.Update: true,
 					action.Read:   true,
@@ -635,25 +942,29 @@ func Test_Parse(t *testing.T) {
 		{
 			name:      "bad old account id template",
 			input:     `id={{superman}};actions=read`,
-			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
 			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
+		},
+		{
+			name:      "bad old account ids template",
+			input:     `ids={{superman}};actions=read`,
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
+			err:       `perms.Parse: unknown template "{{superman}}" in grant "ids" value: parameter violation: error #100`,
 		},
 		{
 			name:      "bad new account id template",
 			input:     `id={{superman}};actions=read`,
-			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
 			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
 		},
 		{
 			name:      "good old account id template",
 			input:     `id={{    account.id}};actions=update,read`,
-			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
-				},
-				id: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
 				actions: map[action.Type]bool{
 					action.Update: true,
 					action.Read:   true,
@@ -663,13 +974,26 @@ func Test_Parse(t *testing.T) {
 		{
 			name:      "good new account id template",
 			input:     `id={{    account.id}};actions=update,read`,
-			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
 			expected: Grant{
-				scope: Scope{
-					Id:   "o_scope",
-					Type: scope.Org,
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				id:           fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
+				actions: map[action.Type]bool{
+					action.Update: true,
+					action.Read:   true,
 				},
-				id: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			},
+		},
+		{
+			name:      "good ids template",
+			input:     `ids={{    user.id}},{{    account.id}};actions=read,update`,
+			userId:    "u_abcd1234",
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
+			expected: Grant{
+				roleScopeId:  "o_scope",
+				grantScopeId: "o_scope",
+				ids:          []string{"u_abcd1234", "acctpw_1234567890"},
 				actions: map[action.Type]bool{
 					action.Update: true,
 					action.Read:   true,
@@ -678,13 +1002,17 @@ func Test_Parse(t *testing.T) {
 		},
 	}
 
-	_, err := Parse("", "")
+	_, err := Parse(ctx, GrantTuple{RoleScopeId: "", GrantScopeId: "", Grant: ""})
 	require.Error(t, err)
 	assert.Equal(t, "perms.Parse: missing grant string: parameter violation: error #100", err.Error())
 
-	_, err = Parse("", "{}")
+	_, err = Parse(ctx, GrantTuple{RoleScopeId: "", GrantScopeId: "", Grant: "{}"})
 	require.Error(t, err)
-	assert.Equal(t, "perms.Parse: missing scope id: parameter violation: error #100", err.Error())
+	assert.Equal(t, "perms.Parse: missing role scope id: parameter violation: error #100", err.Error())
+
+	_, err = Parse(ctx, GrantTuple{RoleScopeId: "p_abcd", GrantScopeId: "", Grant: "{}"})
+	require.Error(t, err)
+	assert.Equal(t, "perms.Parse: missing grant scope id: parameter violation: error #100", err.Error())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -694,7 +1022,7 @@ func Test_Parse(t *testing.T) {
 			if test.scopeOverride != "" {
 				scope = test.scopeOverride
 			}
-			grant, err := Parse(scope, test.input, WithUserId(test.userId), WithAccountId(test.accountId))
+			grant, err := Parse(ctx, GrantTuple{RoleScopeId: scope, GrantScopeId: scope, Grant: test.input}, WithUserId(test.userId), WithAccountId(test.accountId))
 			if test.err != "" {
 				require.Error(err)
 				assert.Equal(test.err, err.Error())
@@ -753,4 +1081,76 @@ func TestHasActionOrSubaction(t *testing.T) {
 			assert.Equal(t, tt.want, g.hasActionOrSubaction(tt.act))
 		})
 	}
+}
+
+func Test_HasNoGrants(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var gt GrantTuples
+
+	hash, err := gt.GrantHash(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0, 0, 0, 0, 0, 0, 0, 0}, hash)
+}
+
+func FuzzParse(f *testing.F) {
+	ctx := context.Background()
+	tc := []string{
+		"id=*;type=*;actions=read,list;output_fields=",
+		`{"id": "*", "type": "*", "actions": ["read", "list"], "output_fields": []}`,
+		"id=*;type=*;actions=read,list",
+		"ids=*;type=*;actions=read,list",
+		`{"type":"host-catalog","actions":["create"]}`,
+		`{"id":"u_foobar","actions":["read"]}`,
+		`{"id":"u_foobar","actions":["read"],"output_fields":["version","id","name"]}`,
+		`{"id":"u_foobar","output_fields":["version","id","name"]}`,
+		`type=host-catalog;actions=create`,
+		`ids=hcst_foobar,hcst_foobaz;actions=read;output_fields=version,ids,name`,
+		`id=hcst_foobar;actions=read`,
+		`id=acctpw_foobar;actions=read`,
+		`id={{    user.id}};actions=read,update`,
+		"type=host-catalog;actions=create",
+		"type=*;actions=*",
+		"id=*;type=*;actions=*",
+		"ids=*;type=*;actions=*",
+		"id=*;type=*;actions=read,list",
+		"ids=*;type=*;actions=read,list",
+		"id=foobar;actions=read;output_fields=version,id,name",
+		"ids=foobar,foobaz;actions=read;output_fields=version,id,name",
+		"id={{account.id}};actions=update,read",
+		"ids={{account.id}},{{user.id}};actions=update,read",
+		`{"id":"foobar","type":"host-catalog","actions":["create"]}`,
+		`{"ids":["foobar"],"type":"host-catalog","actions":["create"]}`,
+		`{"ids":["\""]}`,
+	}
+	for _, tc := range tc {
+		f.Add(tc)
+	}
+
+	f.Fuzz(func(t *testing.T, grant string) {
+		g, err := Parse(ctx, GrantTuple{GrantScopeId: "global", Grant: grant}, WithSkipFinalValidation(true))
+		if err != nil {
+			return
+		}
+		g2, err := Parse(ctx, GrantTuple{GrantScopeId: "global", Grant: g.CanonicalString()}, WithSkipFinalValidation(true))
+		if err != nil {
+			t.Fatal("Failed to parse canonical string:", err)
+		}
+		if g.CanonicalString() != g2.CanonicalString() {
+			t.Errorf("grant roundtrip failed, input %q, output %q", g.CanonicalString(), g2.CanonicalString())
+		}
+		jsonBytes, err := g.MarshalJSON()
+		if err != nil {
+			t.Error("Failed to marshal JSON:", err)
+		}
+		g3, err := Parse(ctx, GrantTuple{GrantScopeId: "global", Grant: string(jsonBytes)}, WithSkipFinalValidation(true))
+		if err != nil {
+			t.Fatal("Failed to parse json string:", err)
+		}
+		if g.CanonicalString() != g3.CanonicalString() {
+			t.Errorf("grant JSON roundtrip failed, input %q, output %q", g.CanonicalString(), g3.CanonicalString())
+		}
+	})
 }

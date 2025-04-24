@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -13,6 +16,7 @@ import (
 )
 
 func TestHostCatalog_New(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -83,7 +87,7 @@ func TestHostCatalog_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewHostCatalog(tt.args.projectId, tt.args.opts...)
+			got, err := NewHostCatalog(ctx, tt.args.projectId, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
@@ -93,14 +97,14 @@ func TestHostCatalog_New(t *testing.T) {
 					assert.Emptyf(got.PublicId, "PublicId set")
 					assert.Equal(tt.want, got)
 
-					id, err := newHostCatalogId()
+					id, err := newHostCatalogId(ctx)
 					assert.NoError(err)
 
 					tt.want.PublicId = id
 					got.PublicId = id
 
 					w := db.New(conn)
-					err2 := w.Create(context.Background(), got)
+					err2 := w.Create(ctx, got)
 					assert.NoError(err2)
 				}
 			}

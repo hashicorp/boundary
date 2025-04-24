@@ -1,14 +1,37 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package target
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target/store"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	updateTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
+}
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
@@ -58,6 +81,19 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithDefaultPort = uint32(22)
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithDefaultClientPort", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of 0
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.WithDefaultClientPort = 0
+		assert.Equal(opts, testOpts)
+
+		opts = GetOpts(WithDefaultClientPort(22))
+		testOpts = getDefaultOptions()
+		testOpts.WithDefaultClientPort = uint32(22)
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithUserId", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := GetOpts(WithUserId("testId"))
@@ -87,7 +123,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithType", func(t *testing.T) {
-		subtype := subtypes.Subtype("testtype")
+		subtype := globals.Subtype("testtype")
 		assert := assert.New(t)
 		opts := GetOpts(WithType(subtype))
 		testOpts := getDefaultOptions()
@@ -109,11 +145,32 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithWorkerFilter = `"/foo" == "bar"`
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithTestWorkerFilter", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithTestWorkerFilter(`"/foo" == "bar"`))
+		testOpts := getDefaultOptions()
+		testOpts.WithTestWorkerFilter = `"/foo" == "bar"`
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithEgressWorkerFilter", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithEgressWorkerFilter(`"/foo" == "bar"`))
+		testOpts := getDefaultOptions()
+		testOpts.WithEgressWorkerFilter = `"/foo" == "bar"`
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithIngressWorkerFilter", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithIngressWorkerFilter(`"/foo" == "bar"`))
+		testOpts := getDefaultOptions()
+		testOpts.WithIngressWorkerFilter = `"/foo" == "bar"`
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithPermissions", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := GetOpts(WithPermissions([]perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}))
+		opts := GetOpts(WithPermissions([]perms.Permission{{GrantScopeId: "test1"}, {GrantScopeId: "test2"}}))
 		testOpts := getDefaultOptions()
-		testOpts.WithPermissions = []perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}
+		testOpts.WithPermissions = []perms.Permission{{GrantScopeId: "test1"}, {GrantScopeId: "test2"}}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCredentialLibraries", func(t *testing.T) {
@@ -181,5 +238,34 @@ func Test_GetOpts(t *testing.T) {
 			},
 		}
 		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithStorageBucketId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithStorageBucketId("testId"))
+		testOpts := getDefaultOptions()
+		testOpts.WithStorageBucketId = "testId"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithEnableSessionRecording", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithEnableSessionRecording(true))
+		testOpts := getDefaultOptions()
+		testOpts.WithEnableSessionRecording = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts := GetOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
+		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+	})
+	t.Run("WithAliases", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		al, err := talias.NewAlias(context.Background(), "global", "test")
+		require.NoError(err)
+		input := []*talias.Alias{al}
+		opts := GetOpts(WithAliases(input))
+		assert.Equal(input, opts.withAliases)
 	})
 }

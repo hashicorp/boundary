@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package handlers
 
 import (
@@ -25,7 +28,7 @@ type Option func(*options)
 type options struct {
 	withDiscardUnknownFields        bool
 	WithUserIsAnonymous             bool
-	WithOutputFields                *perms.OutputFieldsMap
+	WithOutputFields                *perms.OutputFields
 	WithScope                       *scopes.ScopeInfo
 	WithPlugin                      *plugins.PluginInfo
 	WithAuthorizedActions           []string
@@ -58,7 +61,7 @@ func WithUserIsAnonymous(anonListing bool) Option {
 
 // WithOutputFields provides an option when creating responses to only include
 // specific fields
-func WithOutputFields(fields *perms.OutputFieldsMap) Option {
+func WithOutputFields(fields *perms.OutputFields) Option {
 	return func(o *options) {
 		o.WithOutputFields = fields
 	}

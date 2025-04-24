@@ -1,8 +1,8 @@
 ---
 layout: docs
-page_title: AliCloud KMS - KMSs - Configuration
+page_title: AliCloud KMS configuration
 description: >-
-  The AliCloud KMS configures Boundary to use AliCloud KMS for key management.
+  Learn about using the AliCloud KMS for key management and configuring parameters and authentication. View an example alicloudkms configuration.
 ---
 
 # `alicloudkms` KMS
@@ -12,7 +12,7 @@ The AliCloud KMS is activated by one of the following:
 
 - The presence of a `kms "alicloudkms"` block in Boundary's configuration file.
 
-## `alicloudkms` Example
+## `alicloudkms` example
 
 This example shows configuring AliCloud KMS through the Boundary configuration file
 by providing all the required values:
@@ -27,11 +27,12 @@ kms "alicloudkms" {
 }
 ```
 
-## `alicloudkms` Parameters
+## `alicloudkms` parameters
 
 These parameters apply to the `kms` stanza in the Boundary configuration file:
 
-- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`, `recovery`, or `config`.
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
+   `root`, `previous-root`, `recovery`, `bsr`, or `config`.
 
 - `region` `(string: <required> "us-east-1")`: The AliCloud region where the encryption key
   lives. May also be specified by the `ALICLOUD_REGION`

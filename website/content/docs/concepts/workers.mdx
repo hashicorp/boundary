@@ -1,0 +1,82 @@
+---
+layout: docs
+page_title: Workers
+description: >-
+  Workers let you proxy traffic to private targets. Learn about worker capabilities, using tags to filter tasks, worker health, and best practices for deployment.
+---
+
+# Workers
+Boundary's architecture consists of three main components:
+1. **Control plane** - made up of controllers
+1. **Data plane** - made up of workers
+1. **Client** - installed on the user's device
+
+**Controllers** are what users authenticate to using the client, they contain Boundary's resources and permissions. In addition, controllers also communicate with external components
+such as the database, KMS, Vault, identity providers, and plugins.
+
+**Workers** are primarily used as network proxies for Boundary sessions, they allow you to access
+private targets. Instead of exposing a private network to the public, or allowing users to have access to entire private networks, workers create a direct network
+tunnel between users and targets.
+
+![How Boundary Works](/img/how-boundary-works_light.png#light-theme-only)
+![How Boundary Works](/img/how-boundary-works_dark.png#dark-theme-only)
+
+## Capabilities
+You can use workers in various ways depending on your needs, as follows:
+
+### Session proxying
+
+You can use workers to proxy sessions between clients and targets located in public or private networks. In addition, you can configure workers in
+[multi-hop](#multi-hop-sessions) sessions and form a chain of proxies to reach deeper into protected networks.
+
+### Worker authentication
+
+Workers can [authenticate](/boundary/docs/concepts/security/connections-tls#pki-based-worker-authentication) directly to the control plane or through an upstream worker to the control plane. Authenticating through an upstream worker is also referred to as "multi-hop worker authentication."
+
+### Controller proxy
+
+In situations where controllers need access to a private service but don't have network access to it, workers can act as a proxy for communication. This is currently
+supported for controllers connecting to a [private Vault](/boundary/tutorials/credential-management/hcp-private-vault-cred-injection)
+environment.
+
+### Protocol decryption
+
+Workers can perform SSH protocol decryption for [credential injection](/boundary/docs/concepts/credential-management#credential-injection) and [session
+recording](/boundary/docs/concepts/domain-model/session-recordings). For session recording, workers also write the recorded session contents directly to the [storage
+bucket](/boundary/docs/concepts/domain-model/storage-buckets).
+
+## Tags
+In multi-datacenter and multi-cloud operating models, patterns of dividing up controllers, workers, and targets into appropriate regions or networks is often
+desired to reduce latency or comply with security standards. You can assign workers [tags](/boundary/tutorials/worker-management/target-aware-workers) that Boundary
+can [filter](/boundary/docs/concepts/filtering/worker-tags) through, to find the appropriate worker to use for a session. For example, Boundary could filter to workers
+with tag “A,” to connect to targets in “Network A.”
+
+![Boundary architecture example showing workers with tags](/img/worker-tags.png)
+
+## Status and health
+Boundary workers report their status to controllers on a regular basis. You can view the last time a worker reported its status in the
+admin UI as **Last Seen** and in the CLI as the **Last Status Time**. If a worker hasn't reported status recently, it can be an
+indication of an unhealthy worker.
+
+You can query the worker health endpoint to determine the health of a worker. The endpoint returns the worker state, active
+session count, and connection state of the worker. For more information, refer to the [health endpoints](/boundary/docs/operations/health) documentation.
+
+## Multi-hop sessions
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Most organizations want to provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies requiring
+inbound traffic to route through multiple network enclaves in order to reach the target system.
+Multi-hop sessions allow you to chain together two or more workers across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
+
+Refer to the [multi-hop sessions](/boundary/docs/concepts/connection-workflows/multi-hop) documentation for more information.
+
+## Deployment
+Workers are services that can run on a container or virtual machine. You should deploy them strategically within networks to provide access to targets. In
+all editions of Boundary, workers are fully self-managed and can be deployed anywhere. In HCP Boundary, HCP-managed workers are automatically deployed with the cluster.
+
+To learn more about workers and deployment, see:
+* [Worker configuration](/boundary/docs/configuration/worker)
+* [Recommended architecture](/boundary/docs/install-boundary/recommended-architecture)
+* [Worker system requirements](/boundary/docs/install-boundary/system-requirements)
+* [Worker management tutorials](/boundary/tutorials/worker-management)

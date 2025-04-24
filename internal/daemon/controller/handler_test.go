@@ -1,20 +1,28 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package controller
 
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAuthenticationHandler(t *testing.T) {
@@ -26,8 +34,8 @@ func TestAuthenticationHandler(t *testing.T) {
 	})
 	defer c.Shutdown()
 
-	request := map[string]interface{}{
-		"attributes": map[string]interface{}{
+	request := map[string]any{
+		"attributes": map[string]any{
 			"login_name": "admin",
 			"password":   "password123",
 		},
@@ -41,13 +49,13 @@ func TestAuthenticationHandler(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
 
-	b, err = ioutil.ReadAll(resp.Body)
+	b, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	body := make(map[string]interface{})
+	body := make(map[string]any)
 	require.NoError(t, json.Unmarshal(b, &body))
 
 	require.Contains(t, body, "attributes")
-	attrs := body["attributes"].(map[string]interface{})
+	attrs := body["attributes"].(map[string]any)
 	pubId, tok := attrs["id"].(string), attrs["token"].(string)
 	assert.NotEmpty(t, pubId)
 	assert.NotEmpty(t, tok)
@@ -62,12 +70,12 @@ func TestAuthenticationHandler(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
 
-	b, err = ioutil.ReadAll(resp.Body)
+	b, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	body = make(map[string]interface{})
+	body = make(map[string]any)
 	require.NoError(t, json.Unmarshal(b, &body))
 
-	attrs = body["attributes"].(map[string]interface{})
+	attrs = body["attributes"].(map[string]any)
 
 	require.Contains(t, attrs, "id")
 	require.Contains(t, attrs, "auth_method_id")
@@ -101,6 +109,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 		"GET": {
 			"v1/accounts",
 			"v1/accounts/someid",
+			"v1/aliases",
+			"v1/aliases/someid",
 			"v1/auth-methods",
 			"v1/auth-methods/someid",
 			"v1/auth-methods/someid:authenticate:callback",
@@ -123,14 +133,18 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid",
 			"v1/sessions",
 			"v1/sessions/someid",
+			"v1/storage-buckets",
+			"v1/storage-buckets/someid",
 			"v1/targets",
-			"v1/targets/someid",
+			"v1/targets/some_id",
 			"v1/users",
 			"v1/users/someid",
+			"v1/billing:monthly-active-users",
 		},
 		"POST": {
 			// Creation end points
 			"v1/accounts",
+			"v1/aliases",
 			"v1/auth-methods",
 			"v1/credential-stores",
 			"v1/groups",
@@ -139,6 +153,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/hosts",
 			"v1/roles",
 			"v1/scopes",
+			"v1/storage-buckets",
 			"v1/targets",
 			"v1/users",
 
@@ -159,19 +174,20 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/roles/someid:set-principals",
 			"v1/roles/someid:remove-principals",
 			"v1/sessions/someid:cancel",
-			"v1/targets/someid:authorize-session",
-			"v1/targets/someid:add-host-sources",
-			"v1/targets/someid:set-host-sources",
-			"v1/targets/someid:remove-host-sources",
-			"v1/targets/someid:add-credential-sources",
-			"v1/targets/someid:set-credential-sources",
-			"v1/targets/someid:remove-credential-sources",
+			"v1/targets/some_id:authorize-session",
+			"v1/targets/some_id:add-host-sources",
+			"v1/targets/some_id:set-host-sources",
+			"v1/targets/some_id:remove-host-sources",
+			"v1/targets/some_id:add-credential-sources",
+			"v1/targets/some_id:set-credential-sources",
+			"v1/targets/some_id:remove-credential-sources",
 			"v1/users/someid:add-accounts",
 			"v1/users/someid:set-accounts",
 			"v1/users/someid:remove-accounts",
 		},
 		"DELETE": {
 			"v1/accounts/someid",
+			"v1/aliases/someid",
 			"v1/auth-methods/someid",
 			"v1/auth-tokens/someid",
 			"v1/credential-stores/someid",
@@ -181,11 +197,13 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/hosts/someid",
 			"v1/roles/someid",
 			"v1/scopes/someid",
-			"v1/targets/someid",
+			"v1/storage-buckets/someid",
+			"v1/targets/some_id",
 			"v1/users/someid",
 		},
 		"PATCH": {
 			"v1/accounts/someid",
+			"v1/aliases/someid",
 			"v1/auth-methods/someid",
 			"v1/credential-stores/someid",
 			"v1/groups/someid",
@@ -194,7 +212,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/hosts/someid",
 			"v1/roles/someid",
 			"v1/scopes/someid",
-			"v1/targets/someid",
+			"v1/storage-buckets/someid",
+			"v1/targets/some_id",
 			"v1/users/someid",
 		},
 	} {
@@ -302,7 +321,7 @@ func TestCallbackInterceptor(t *testing.T) {
 			},
 			wantJson: &cmdAttrs{
 				Command: "callback",
-				Attributes: map[string]interface{}{
+				Attributes: map[string]any{
 					"state": "fooBar",
 					"token": "barFoo",
 				},
@@ -343,4 +362,106 @@ func TestCallbackInterceptor(t *testing.T) {
 	}
 
 	require.NoError(t, server.Shutdown(context.Background()))
+}
+
+func TestStreamingResponse(t *testing.T) {
+	listener, err := net.Listen("tcp", ":0")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		// Ignore errors as a normal shutdown will also close the listener when
+		// the server Shutdown is called. This is just in case.
+		_ = listener.Close()
+	})
+	mux := newGrpcGatewayMux()
+	marshaler := &noDelimiterStreamingMarshaler{
+		&runtime.HTTPBodyMarshaler{
+			Marshaler: handlers.JSONMarshaler(),
+		},
+	}
+	size := 500
+	blob := make([]byte, size)
+	_, err = io.ReadFull(rand.Reader, blob)
+	require.NoError(t, err)
+	var i int
+	n := 5
+	recv := func() (proto.Message, error) {
+		t.Log("Sending chunk", i)
+		if i < n {
+			buf := make([]byte, size/n)
+			copy(buf, blob[i*len(buf):])
+			i++
+			return &httpbody.HttpBody{
+				ContentType: "application/octet-stream",
+				Data:        buf,
+			}, nil
+		}
+		return nil, io.EOF
+	}
+
+	mux.HandlePath("GET", "/", runtime.HandlerFunc(func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		ctx := r.Context()
+		ctx = runtime.NewServerMetadataContext(ctx, runtime.ServerMetadata{})
+		runtime.ForwardResponseStream(ctx, mux, marshaler, w, r, recv)
+	}))
+
+	server := &http.Server{
+		Handler: mux,
+	}
+	go func() {
+		if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+			assert.NoError(t, err)
+		}
+	}()
+	t.Cleanup(func() {
+		require.NoError(t, server.Shutdown(context.Background()))
+	})
+	resp, err := http.Get("http://" + listener.Addr().String())
+	require.NoError(t, err)
+	read, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.True(t, string(read) == string(blob), "Got: %q", string(read))
+	require.Equal(t, i, n)
+}
+
+func TestGetActions(t *testing.T) {
+	testCases := []struct {
+		name     string
+		url      string
+		expected []string
+	}{
+		{
+			name:     "No actions",
+			url:      "/v1/auth-methods/amoidc_1234567890",
+			expected: []string{},
+		},
+		{
+			name:     "1 Action",
+			url:      "/v1/auth-methods/amoidc_1234567890:authenticate",
+			expected: []string{"authenticate"},
+		},
+		{
+			name:     "Multiple Actions",
+			url:      "https://hello.com/v1/auth-methods/amoidc_1234567890:authenticate:callback",
+			expected: []string{"authenticate", "callback"},
+		},
+		{
+			name:     "1 Action with query params",
+			url:      "https://hello.com/v1/auth-methods/amoidc_1234567890:authenticate?state=foo&token=bar",
+			expected: []string{"authenticate"},
+		},
+		{
+			name:     "Multiple Actions with query params",
+			url:      "https://hello.com/v1/auth-methods/amoidc_1234567890:authenticate:callback?state=foo&token=bar",
+			expected: []string{"authenticate", "callback"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require := require.New(t)
+			actions := getActions(tc.url)
+			fmt.Println("actions", len(actions))
+			require.Equal(tc.expected, actions)
+		})
+	}
 }

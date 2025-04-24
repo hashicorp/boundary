@@ -1,0 +1,40 @@
+---
+layout: docs
+page_title: host-sets set-hosts - Command
+description: >-
+  The "host-sets set-hosts" command configures a complete set of hosts on host set resources.
+---
+
+# host-sets set-hosts
+
+Command: `host-sets set-hosts`
+
+The `host-sets set-hosts` command lets you configure the complete set of hosts on a host set resource, if the types match and it is allowed by the host set type.
+
+## Example
+
+This example sets the host `hst_1234567890` on the host set `hsst_1234567890`:
+
+```shell-session
+$ boundary host-sets set-hosts -id hsst_1234567890 -host hst_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-sets set-hosts <subcommand> [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-host=<string>` - The hosts to configure on the host set.
+You can specify multiple hosts.
+- `-id=<string>` - The ID of the host set to set hosts on.
+- `-version=<int>` The version of the host set you want to set hosts on.
+If you do not specify a version, the command performs a check-and-set automatically.
+
+@include 'cmd-option-note.mdx'

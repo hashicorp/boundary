@@ -1,13 +1,22 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package password
 
 import (
 	"context"
+	"runtime"
+	"slices"
+	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +35,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 	t.Run("default-configuration", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		var confs []*Argon2Configuration
-		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		require.Equal(1, len(confs))
 		got := confs[0]
@@ -49,7 +58,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		got := NewArgon2Configuration()
 		require.NotNil(got)
 		var err error
-		got.PrivateId, err = newArgon2ConfigurationId()
+		got.PrivateId, err = newArgon2ConfigurationId(context.Background())
 		require.NoError(err)
 		got.PasswordMethodId = authMethodId
 		err = rw.Create(ctx, got)
@@ -59,13 +68,13 @@ func TestArgon2Configuration_New(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		var confs []*Argon2Configuration
-		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		assert.Equal(1, len(confs))
 
 		c1 := NewArgon2Configuration()
 		require.NotNil(c1)
-		c1.PrivateId, err = newArgon2ConfigurationId()
+		c1.PrivateId, err = newArgon2ConfigurationId(context.Background())
 		require.NoError(err)
 		c1.PasswordMethodId = authMethodId
 		c1.Iterations = c1.Iterations + 1
@@ -75,7 +84,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 
 		c2 := NewArgon2Configuration()
 		require.NotNil(c2)
-		c2.PrivateId, err = newArgon2ConfigurationId()
+		c2.PrivateId, err = newArgon2ConfigurationId(context.Background())
 		require.NoError(err)
 		c2.PasswordMethodId = authMethodId
 		c2.Memory = 32 * 1024
@@ -85,7 +94,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		assert.NoError(err)
 
 		confs = nil
-		err = rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err = rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		assert.Equal(3, len(confs))
 	})
@@ -143,7 +152,7 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var confs []*Argon2Configuration
-			err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []interface{}{authMethodId})
+			err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []any{authMethodId})
 			require.NoError(err)
 			assert.Greater(len(confs), 0)
 			orig := confs[0]
@@ -276,7 +285,7 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got := tt.in.validate()
+			got := tt.in.validate(context.Background())
 			if tt.wantErr {
 				require.Error(got)
 				assert.Truef(errors.Match(errors.T(tt.wantErrIs), got), "want err code: %q got err: %q", tt.wantErrIs, got)
@@ -290,10 +299,11 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 
 func testArgon2Confs(t *testing.T, conn *db.DB, authMethodId string, count int) []*Argon2Configuration {
 	t.Helper()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
 	var confs []*Argon2Configuration
-	err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []interface{}{authMethodId})
+	err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []any{authMethodId})
 	require.NoError(err)
 	assert.Equal(1, len(confs))
 	base := confs[0]
@@ -301,12 +311,12 @@ func testArgon2Confs(t *testing.T, conn *db.DB, authMethodId string, count int) 
 		conf := NewArgon2Configuration()
 		require.NotNil(conf)
 		conf.PasswordMethodId = authMethodId
-		conf.PrivateId, err = newArgon2ConfigurationId()
+		conf.PrivateId, err = newArgon2ConfigurationId(ctx)
 		require.NoError(err)
 
 		conf.Iterations = base.Iterations + uint32(i+1)
 		conf.Threads = base.Threads + uint32(i+1)
-		err = rw.Create(context.Background(), conf)
+		err = rw.Create(ctx, conf)
 		require.NoError(err)
 		confs = append(confs, conf)
 	}
@@ -317,13 +327,17 @@ func TestArgon2Credential_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 
 	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
+	rootWrapper := db.TestWrapper(t)
 
-	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
 	accts := TestMultipleAccounts(t, conn, aut.PublicId, 5)
 	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
+
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	wrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), 1)
+	require.NoError(t, err)
 
 	type args struct {
 		accountId string
@@ -417,7 +431,7 @@ func TestArgon2Credential_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newArgon2Credential(tt.args.accountId, tt.args.password, tt.args.conf)
+			got, err := newArgon2Credential(context.Background(), tt.args.accountId, tt.args.password, tt.args.conf)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -446,4 +460,95 @@ func TestArgon2Credential_New(t *testing.T) {
 			assert.Equal(tt.want.PasswordConfId, gotCred.PasswordConfId)
 		})
 	}
+}
+
+func TestArgon2Credential_ConcurrencyLimit(t *testing.T) {
+	// Do NOT run this concurrently with other tests in this package or elsewhere,
+	// since it relies on the global concurrency limit.
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
+	aut := auts[0]
+	accts := TestMultipleAccounts(t, conn, aut.PublicId, 5)
+	conf := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)[0]
+
+	testTimeout := time.Minute
+	testDeadline, ok := t.Deadline()
+	if ok && time.Until(testDeadline) < testTimeout {
+		// If the test deadline is less than the default timeout, use the deadline
+		testTimeout = time.Until(testDeadline)
+	}
+	deadlineCtx, deadlineCtxCancel := context.WithTimeout(context.Background(), testTimeout)
+	defer deadlineCtxCancel()
+
+	// Measure memory usage when using the default limit of 1
+	mean1, _, _ := measureCredentialCreations(deadlineCtx, t, accts[0].PublicId, conf)
+
+	// Now set the limit to 5 and measure again
+	require.NoError(t, SetHashingPermits(5))
+	t.Cleanup(func() {
+		require.NoError(t, SetHashingPermits(1))
+	})
+	mean5, _, _ := measureCredentialCreations(deadlineCtx, t, accts[0].PublicId, conf)
+
+	// Assert that we used less memory while the limit was in place
+	assert.Less(t, mean1, mean5)
+}
+
+func measureCredentialCreations(ctx context.Context, t testing.TB, publicId string, conf *Argon2Configuration) (mean float64, max, min uint64) {
+	wg := &sync.WaitGroup{}
+	start := make(chan struct{})
+
+	// Start 5 goroutines all trying to create a new credential concurrently
+	for i := range 5 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			t.Log("Credential " + strconv.Itoa(i) + " starting")
+			_, err := newArgon2Credential(ctx, publicId, "password", conf)
+			assert.NoError(t, err)
+			t.Log("Credential " + strconv.Itoa(i) + " finished")
+		}()
+	}
+
+	doneDone := make(chan struct{})
+
+	go func() {
+		wg.Wait()
+		close(doneDone)
+	}()
+
+	// Start the goroutines
+	close(start)
+	var memStats runtime.MemStats
+	var measures []uint64
+	for {
+		select {
+		case <-ctx.Done():
+			t.Error("timeout")
+			return
+		case <-time.After(10 * time.Millisecond):
+			// Run GC and check memory use
+			runtime.GC()
+			runtime.ReadMemStats(&memStats)
+			measures = append(measures, memStats.HeapAlloc)
+		case <-doneDone:
+			// All credential creations done
+			return meanInt(measures), slices.Max(measures), slices.Min(measures)
+		}
+	}
+}
+
+func meanInt(in []uint64) float64 {
+	return sumInt(in) / float64(len(in))
+}
+
+func sumInt(in []uint64) float64 {
+	var sum float64
+	for _, n := range in {
+		sum += float64(n)
+	}
+	return sum
 }

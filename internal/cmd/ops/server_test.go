@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package ops
 
 import (
@@ -9,7 +12,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/http"
@@ -18,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
@@ -35,6 +36,7 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -104,7 +106,7 @@ func TestNewServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := NewServer(tt.logger, tt.c, tt.w, tt.listeners...)
+			s, err := NewServer(context.Background(), tt.logger, tt.c, tt.w, tt.listeners...)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, s)
@@ -131,7 +133,7 @@ func TestNewServerIntegration(t *testing.T) {
 		expErrMsg  string
 	}{
 		{
-			name: "one tcp ops listener",
+			name: "one tcp ops ipv4 listener",
 			listeners: []*listenerutil.ListenerConfig{
 				{
 					Type:       "tcp",
@@ -141,7 +143,24 @@ func TestNewServerIntegration(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, addrs []string) {
-				_, err := http.Get("http://" + addrs[0])
+				resp, err := http.Get("http://" + addrs[0])
+				resp.Body.Close()
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "one tcp ops ipv6 listener",
+			listeners: []*listenerutil.ListenerConfig{
+				{
+					Type:       "tcp",
+					Purpose:    []string{"ops"},
+					Address:    "[::1]:0",
+					TLSDisable: true,
+				},
+			},
+			assertions: func(t *testing.T, addrs []string) {
+				resp, err := http.Get("http://" + addrs[0])
+				resp.Body.Close()
 				require.NoError(t, err)
 			},
 		},
@@ -162,10 +181,12 @@ func TestNewServerIntegration(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, addrs []string) {
-				_, err := http.Get("http://" + addrs[0])
+				resp, err := http.Get("http://" + addrs[0])
+				resp.Body.Close()
 				require.NoError(t, err)
 
-				_, err = http.Get("http://" + addrs[1])
+				resp, err = http.Get("http://" + addrs[1])
+				resp.Body.Close()
 				require.NoError(t, err)
 			},
 		},
@@ -276,7 +297,7 @@ func TestNewServerIntegration(t *testing.T) {
 			err := bs.SetupListeners(nil, &configutil.SharedConfig{Listeners: tt.listeners}, []string{"ops"})
 			require.NoError(t, err)
 
-			s, err := NewServer(hclog.Default(), nil, nil, bs.Listeners...)
+			s, err := NewServer(context.Background(), hclog.Default(), nil, nil, bs.Listeners...)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, s)
@@ -286,7 +307,11 @@ func TestNewServerIntegration(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, s)
 			s.Start()
-			t.Cleanup(func() { s.Shutdown() })
+			t.Cleanup(func() {
+				if err := s.Shutdown(); err != nil {
+					t.Logf("error shutting down: %v", err)
+				}
+			})
 
 			addrs := make([]string, 0, len(s.bundles))
 			for _, b := range s.bundles {
@@ -570,10 +595,9 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	// Start controller. This sets `cmd.controller`.
 	err = tc.Controller().Start()
 	require.NoError(t, err)
-	t.Cleanup(tc.Shutdown)
 
 	// Controller has started and is set onto our Command object, start ops.
-	opsServer, err := NewServer(hclog.Default(), tc.Controller(), nil, tc.Config().Listeners...)
+	opsServer, err := NewServer(tc.Context(), hclog.Default(), tc.Controller(), nil, tc.Config().Listeners...)
 	require.NoError(t, err)
 	opsServer.Start()
 
@@ -663,6 +687,7 @@ func TestWaitIfHealthExists(t *testing.T) {
 }
 
 func TestCreateOpsHandler(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name            string
 		setupController bool
@@ -718,12 +743,21 @@ func TestCreateOpsHandler(t *testing.T) {
 				require.NoError(t, err)                         // We can do the GET request
 				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
 				pbResp := &pbs.GetHealthResponse{}
-				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
+				body, err = io.ReadAll(rsp.Body)
+				require.NoError(t, err)
+				require.NoError(t, protojson.Unmarshal(body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
 					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
 				}}
-				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
+				assert.Empty(t,
+					cmp.Diff(
+						want,
+						pbResp,
+						protocmp.Transform(),
+						protocmp.IgnoreFields(&pbhealth.HealthInfo{}, "upstream_connection_state"),
+					),
+				)
 			},
 		},
 		{
@@ -742,12 +776,21 @@ func TestCreateOpsHandler(t *testing.T) {
 				require.NoError(t, err)                         // We can do the GET request
 				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
 				pbResp := &pbs.GetHealthResponse{}
-				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
+				body, err = io.ReadAll(rsp.Body)
+				require.NoError(t, err)
+				require.NoError(t, protojson.Unmarshal(body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
 					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
 				}}
-				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
+				assert.Empty(t,
+					cmp.Diff(
+						want,
+						pbResp,
+						protocmp.Transform(),
+						protocmp.IgnoreFields(&pbhealth.HealthInfo{}, "upstream_connection_state"),
+					),
+				)
 			},
 		},
 		{
@@ -764,18 +807,16 @@ func TestCreateOpsHandler(t *testing.T) {
 			var c *controller.Controller
 			if tt.setupController {
 				tc := controller.NewTestController(t, &controller.TestControllerOpts{})
-				t.Cleanup(tc.Shutdown)
 
 				c = tc.Controller()
 			}
 			var w *worker.Worker
 			if tt.setupWorker {
 				tc := worker.NewTestWorker(t, &worker.TestWorkerOpts{})
-				t.Cleanup(tc.Shutdown)
 				w = tc.Worker()
 			}
 
-			h, err := createOpsHandler(tt.lncfg, c, w)
+			h, err := createOpsHandler(ctx, tt.lncfg, c, w)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, h)
@@ -790,7 +831,7 @@ func TestCreateOpsHandler(t *testing.T) {
 			go s.Serve(l)
 
 			t.Cleanup(func() {
-				require.NoError(t, s.Shutdown(context.Background()))
+				require.NoError(t, s.Shutdown(ctx))
 			})
 
 			tt.assertions(t, l.Addr().String())
@@ -917,7 +958,7 @@ func testTlsHttpClient(t *testing.T, certPath string) *http.Client {
 	f, err := os.Open(certPath)
 	require.NoError(t, err)
 
-	certBytes, err := ioutil.ReadAll(f)
+	certBytes, err := io.ReadAll(f)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 

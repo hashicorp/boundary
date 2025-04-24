@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 -- TODO (jimlambrt 7/2020) remove update_time

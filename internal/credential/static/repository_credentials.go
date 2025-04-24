@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -18,17 +21,17 @@ func (r *Repository) Retrieve(ctx context.Context, projectId string, ids []strin
 	}
 
 	var upCreds []*UsernamePasswordCredential
-	err := r.reader.SearchWhere(ctx, &upCreds, "public_id in (?)", []interface{}{ids})
+	err := r.reader.SearchWhere(ctx, &upCreds, "public_id in (?)", []any{ids})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	var spkCreds []*SshPrivateKeyCredential
-	err = r.reader.SearchWhere(ctx, &spkCreds, "public_id in (?)", []interface{}{ids})
+	err = r.reader.SearchWhere(ctx, &spkCreds, "public_id in (?)", []any{ids})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	var jsonCreds []*JsonCredential
-	err = r.reader.SearchWhere(ctx, &jsonCreds, "public_id in (?)", []interface{}{ids})
+	err = r.reader.SearchWhere(ctx, &jsonCreds, "public_id in (?)", []any{ids})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

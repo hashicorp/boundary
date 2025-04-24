@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
@@ -22,49 +25,20 @@ func TestWorkerTags_Create(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		want          *store.WorkerTag
+		want          *store.ApiTag
 		wantCreateErr bool
 	}{
 		{
-			name: "success api source",
-			want: &store.WorkerTag{
-				WorkerId: worker.GetPublicId(),
-				Key:      "key",
-				Value:    "value",
-				Source:   ApiTagSource.String(),
-			},
-		},
-		{
-			name: "success config source",
-			want: &store.WorkerTag{
-				WorkerId: worker.GetPublicId(),
-				Key:      "key",
-				Value:    "value",
-				Source:   ConfigurationTagSource.String(),
-			},
-		},
-		{
-			name: "unknown source",
-			want: &store.WorkerTag{
-				WorkerId: worker.GetPublicId(),
-				Key:      "key",
-				Value:    "value",
-				Source:   "unknown",
-			},
-			wantCreateErr: true,
-		},
-		{
-			name: "no source",
-			want: &store.WorkerTag{
+			name: "success- api tag",
+			want: &store.ApiTag{
 				WorkerId: worker.GetPublicId(),
 				Key:      "key",
 				Value:    "value",
 			},
-			wantCreateErr: true,
 		},
 		{
 			name: "bad worker id",
-			want: &store.WorkerTag{
+			want: &store.ApiTag{
 				WorkerId: "w_badworkeridthatdoesntexist",
 				Key:      "key",
 				Value:    "value",
@@ -73,7 +47,7 @@ func TestWorkerTags_Create(t *testing.T) {
 		},
 		{
 			name: "missing worker id",
-			want: &store.WorkerTag{
+			want: &store.ApiTag{
 				Key:   "key",
 				Value: "value",
 			},
@@ -81,7 +55,7 @@ func TestWorkerTags_Create(t *testing.T) {
 		},
 		{
 			name: "missing key",
-			want: &store.WorkerTag{
+			want: &store.ApiTag{
 				WorkerId: worker.GetPublicId(),
 				Value:    "value",
 			},
@@ -89,7 +63,7 @@ func TestWorkerTags_Create(t *testing.T) {
 		},
 		{
 			name: "missing value",
-			want: &store.WorkerTag{
+			want: &store.ApiTag{
 				WorkerId: worker.GetPublicId(),
 				Key:      "key",
 			},
@@ -108,17 +82,27 @@ func TestWorkerTags_Create(t *testing.T) {
 			}
 		})
 	}
+
+	// Create a config tag
+	configTag := &store.ConfigTag{
+		WorkerId: worker.GetPublicId(),
+		Key:      "key",
+		Value:    "value",
+	}
+	err := rw.Create(context.Background(), configTag)
+	assert.NoError(t, err)
 }
 
 func TestRepository_AddWorkerTags(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 	// WithWorkerTags sets config tags to ensure they are not affected by api tag operations
@@ -275,7 +259,7 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(tt.want, got)
+			assert.ElementsMatch(tt.want, got.convertToTag())
 			repoWorker, err := repo.LookupWorker(context.Background(), tt.args.publicId)
 			require.NoError(err)
 			assert.Equal(tt.args.version+1, repoWorker.Version)
@@ -285,6 +269,7 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 
 func TestRepository_SetWorkerTags(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -292,7 +277,7 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 	worker := TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key_c", Value: "value_c"}))
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -441,6 +426,7 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 func TestRepository_DeleteWorkerTags(t *testing.T) {
 	// Note: more delete operation testcases are found in subsequent func TestRepository_WorkerTagsConsequent
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -448,7 +434,7 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 	worker := TestKmsWorker(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -593,12 +579,13 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 
 func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -617,7 +604,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	}
 	added, err := repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
 	assert.NoError(err)
-	assert.Equal(manyTags, added)
+	assert.ElementsMatch(manyTags, added.convertToTag())
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(2), worker.Version)
@@ -652,7 +639,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(2), worker.Version)
-	assert.Equal(len(manyTags), len(worker.apiTags))
+	assert.Equal(len(manyTags), len(worker.ApiTags))
 
 	// Delete a valid tag from worker
 	rowsDeleted, err = repo.DeleteWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
@@ -663,19 +650,19 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(3), worker.Version)
-	assert.Contains(worker.apiTags, &Tag{Key: "key", Value: "value"})
-	assert.Contains(worker.apiTags, &Tag{Key: "key2", Value: "value2"})
+	assert.Contains(worker.ApiTags.convertToTag(), &Tag{Key: "key", Value: "value"})
+	assert.Contains(worker.ApiTags.convertToTag(), &Tag{Key: "key2", Value: "value2"})
 
 	// Add another valid tag to worker
-	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
+	_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
 		{Key: "key!", Value: "value!"},
 	})
 	assert.NoError(err)
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(4), worker.Version)
-	assert.Contains(worker.apiTags, &Tag{Key: "key!", Value: "value!"})
-	assert.Equal(3, len(worker.apiTags))
+	assert.Contains(worker.ApiTags.convertToTag(), &Tag{Key: "key!", Value: "value!"})
+	assert.Equal(3, len(worker.ApiTags))
 
 	// Set all tags to nil
 	set, err = repo.SetWorkerTags(context.Background(), worker.PublicId, worker.Version, nil)
@@ -684,8 +671,8 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(5), worker.Version)
-	assert.Equal(set, worker.apiTags)
-	assert.Equal(0, len(worker.apiTags))
+	assert.Equal(Tags(nil), worker.ApiTags)
+	assert.Equal(0, len(worker.ApiTags))
 
 	// Ensure config tags are untouched
 	for _, ct := range []*Tag{
@@ -694,18 +681,18 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 		{Key: "key3", Value: "value3"},
 		{Key: "key?", Value: "value?"},
 	} {
-		assert.Contains(worker.configTags, ct)
+		assert.Contains(worker.ConfigTags.convertToTag(), ct)
 	}
-	assert.Equal(4, len(worker.configTags))
+	assert.Equal(4, len(worker.ConfigTags))
 
 	// Go full circle
-	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
+	_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
 	assert.NoError(err)
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(6), worker.Version)
-	assert.Equal(len(manyTags), len(worker.apiTags))
+	assert.Equal(len(manyTags), len(worker.ApiTags))
 	for _, t := range manyTags {
-		assert.Contains(worker.apiTags, t)
+		assert.Contains(worker.ApiTags.convertToTag(), t)
 	}
 }

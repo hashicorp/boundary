@@ -1,0 +1,42 @@
+---
+layout: docs
+page_title: Build Boundary
+description: >-
+  Learn how to build Boundary from the source. Discover resources to compile a cross-platform build and troubleshoot UI assets.
+---
+
+# Build Boundary
+
+Building Boundary from source requires:
+
+- [Go](https://golang.org/dl/). Boundary developers keep current with new
+  releases of Go in order to take advantage of new features and to ensure that
+  security issues within Go are addressed. If building Boundary yourself, always
+  use the latest version and keep current.
+- `make` installed
+- [Docker](https://docs.docker.com/get-docker/) installed
+- Basic development environment (git, xcode if you're on Mac, etc)
+
+1. `$ git clone https://github.com/hashicorp/boundary` or if you're using SSH auth for
+   github, `$ git clone git@github.com:hashicorp/boundary`
+2. `$ cd boundary`
+3. `$ make install`
+
+The first time you run `make install` it will build UI assets, which will take a
+long time. After the initial build, you can update those assets to the
+currently-pinned version via `make build-ui`.
+
+Once you've built Boundary, the binary will be available at `<repo path>/bin/boundary`. Move this
+binary to somewhere in your `$PATH` such as `/usr/local/bin`.
+
+## Cross-platform build
+
+If you need to cross compile boundary for another OS or architecture, use the [GOOS and GOARCH](https://github.com/hashicorp/boundary/blob/master/scripts/build.sh#L26)
+environment variable to set this. Example: `$ GOOS=linux GOARCH=amd64 make install`
+
+For more details, please consult the [Boundary project on GitHub](https://github.com/hashicorp/boundary#build-and-start-boundary-in-dev-mode).
+
+## Troubleshoot
+
+UI assets are built inside a Docker container. If this build step fails, try
+increasing memory and swap available to Docker.

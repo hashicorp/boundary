@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
 	"context"
+	"crypto/ecdh"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -17,16 +21,15 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
-	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
+	"github.com/hashicorp/nodeenrollment/storage/inmem"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/curve25519"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -173,8 +176,9 @@ func TestStoreWorkerAuth(t *testing.T) {
 	require.NoError(err)
 	keyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 	require.NoError(err)
-	nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
+	privKey, err := ecdh.X25519().NewPrivateKey(nodeCreds.EncryptionPrivateKeyBytes)
 	require.NoError(err)
+	nodePubKey := privKey.PublicKey().Bytes()
 
 	// Add in node information to storage so we have a key to use
 	nodeInfo := &types.NodeInformation{
@@ -196,7 +200,7 @@ func TestStoreWorkerAuth(t *testing.T) {
 		Id: keyId,
 	}
 	err = storage.Load(ctx, nodeLookup)
-	assert.Equal(err, nodee.ErrNotFound)
+	assert.Equal(err, nodeenrollment.ErrNotFound)
 
 	// The AuthorizeNode request will result in a WorkerAuth record being stored
 	_, err = registration.AuthorizeNode(ctx, storage, fetchReq, nodeenrollment.WithState(state))
@@ -247,7 +251,7 @@ func TestStoreServerLedActivationToken(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
 	require.NoError(err)
 
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 	worker, err := repo.CreateWorker(ctx, &Worker{Worker: &store.Worker{ScopeId: scope.Global.String()}}, WithCreateControllerLedActivationToken(true))
 	require.NoError(err)
@@ -311,8 +315,6 @@ func TestStoreNodeInformationTx(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, testWrapper)
 	// Ensures the global scope contains a valid root key
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
-	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
-	require.NoError(t, err)
 
 	testRootStorage, err := NewRepositoryStorage(testCtx, rw, rw, kmsCache)
 	require.NoError(t, err)
@@ -329,13 +331,14 @@ func TestStoreNodeInformationTx(t *testing.T) {
 
 	testNodeInfoFn := func() *types.NodeInformation {
 		// This happens on the worker
-		fileStorage, err := file.New(testCtx)
+		storage, err := inmem.New(testCtx)
 		require.NoError(t, err)
-		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+		nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
 		require.NoError(t, err)
 
-		nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
+		privKey, err := ecdh.X25519().NewPrivateKey(nodeCreds.EncryptionPrivateKeyBytes)
 		require.NoError(t, err)
+		nodePubKey := privKey.PublicKey().Bytes()
 		// Add in node information to storage so we have a key to use
 		nodeInfo := &types.NodeInformation{
 			Id:                              testKeyId,
@@ -350,10 +353,33 @@ func TestStoreNodeInformationTx(t *testing.T) {
 		return nodeInfo
 	}
 
+	// For swapping out key ID for wrapping registration flow
+	wrappingRegFlowStorage, err := inmem.New(testCtx)
+	require.NoError(t, err)
+	wrappingRegFlowNodeCreds, err := types.NewNodeCredentials(testCtx, wrappingRegFlowStorage)
+	require.NoError(t, err)
+	wrappingRegFlowNodeInfoFn := func() *types.NodeInformation {
+		ni := testNodeInfoFn()
+		wci, err := structpb.NewStruct(map[string]any{
+			"name":             "regflow-worker-name",
+			"description":      "regflow-worker-description",
+			"boundary_version": "0.13.0",
+		})
+		require.NoError(t, err)
+		ni.WrappingRegistrationFlowInfo = &types.WrappingRegistrationFlowInfo{
+			Nonce:                     ni.RegistrationNonce,
+			CertificatePublicKeyPkix:  ni.CertificatePublicKeyPkix,
+			ApplicationSpecificParams: wci,
+		}
+		return ni
+	}
+
 	tests := []struct {
 		name            string
+		reader          db.Reader
 		writer          db.Writer
-		databaseWrapper wrapping.Wrapper
+		scope           string
+		kms             *kms.Kms
 		node            *types.NodeInformation
 		wantErr         bool
 		wantErrIs       errors.Code
@@ -361,61 +387,70 @@ func TestStoreNodeInformationTx(t *testing.T) {
 	}{
 		{
 			name:            "missing-writer",
-			databaseWrapper: databaseWrapper,
+			reader:          rw,
+			scope:           scope.Global.String(),
+			kms:             kmsCache,
 			node:            testNodeInfoFn(),
 			wantErr:         true,
 			wantErrIs:       errors.InvalidParameter,
 			wantErrContains: "missing writer",
 		},
 		{
-			name:            "missing-wrapper",
+			name:            "missing-reader",
 			writer:          rw,
+			scope:           scope.Global.String(),
+			kms:             kmsCache,
 			node:            testNodeInfoFn(),
 			wantErr:         true,
 			wantErrIs:       errors.InvalidParameter,
-			wantErrContains: "missing database wrapper",
+			wantErrContains: "missing reader",
+		},
+		{
+			name:            "missing-scope",
+			reader:          rw,
+			writer:          rw,
+			kms:             kmsCache,
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing scope",
+		},
+		{
+			name:            "missing-kms",
+			reader:          rw,
+			writer:          rw,
+			scope:           scope.Global.String(),
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing kms",
 		},
 		{
 			name:            "missing-node",
+			reader:          rw,
 			writer:          rw,
-			databaseWrapper: databaseWrapper,
+			scope:           scope.Global.String(),
+			kms:             kmsCache,
 			wantErr:         true,
 			wantErrIs:       errors.InvalidParameter,
 			wantErrContains: "missing NodeInformation",
 		},
 		{
-			name:            "key-id-error",
-			writer:          rw,
-			databaseWrapper: &mockTestWrapper{err: errors.New(testCtx, errors.Internal, "testing", "key-id-error")},
-			node:            testNodeInfoFn(),
-			wantErr:         true,
-			wantErrIs:       errors.Internal,
-			wantErrContains: "key-id-error",
-		},
-		{
-			name:   "encrypt-error",
-			writer: rw,
-			databaseWrapper: &mockTestWrapper{
-				encryptError: true,
-				err:          errors.New(testCtx, errors.Encrypt, "testing", "encrypt-error"),
-			},
-			node:            testNodeInfoFn(),
-			wantErr:         true,
-			wantErrIs:       errors.Encrypt,
-			wantErrContains: "encrypt-error",
-		},
-		{
 			name:            "create-error-no-db",
+			reader:          rw,
+			scope:           scope.Global.String(),
 			writer:          &db.Db{},
-			databaseWrapper: databaseWrapper,
+			kms:             kmsCache,
 			node:            testNodeInfoFn(),
 			wantErr:         true,
 			wantErrContains: "db.Create",
 		},
 		{
-			name:            "create-error-validation",
-			writer:          rw,
-			databaseWrapper: databaseWrapper,
+			name:   "create-error-validation",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
 			node: func() *types.NodeInformation {
 				ni := testNodeInfoFn()
 				ni.State = nil
@@ -425,16 +460,69 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			wantErrContains: "missing WorkerId",
 		},
 		{
-			name:            "success",
-			writer:          rw,
-			databaseWrapper: databaseWrapper,
-			node:            testNodeInfoFn(),
+			name:   "wrapflow-no-name",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
+			node: func() *types.NodeInformation {
+				ni := wrappingRegFlowNodeInfoFn()
+				ni.WrappingRegistrationFlowInfo.ApplicationSpecificParams.Fields["name"] = nil
+				ni.CertificatePublicKeyPkix = wrappingRegFlowNodeCreds.CertificatePublicKeyPkix
+				keyId, err := nodeenrollment.KeyIdFromPkix(ni.CertificatePublicKeyPkix)
+				require.NoError(t, err)
+				ni.Id = keyId
+				return ni
+			}(),
+			wantErr:         true,
+			wantErrContains: "in wrapping registration flow but worker name not provided",
+		},
+		{
+			name:   "wrapflow-no-version",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
+			node: func() *types.NodeInformation {
+				ni := wrappingRegFlowNodeInfoFn()
+				ni.WrappingRegistrationFlowInfo.ApplicationSpecificParams.Fields["boundary_version"] = nil
+				ni.CertificatePublicKeyPkix = wrappingRegFlowNodeCreds.CertificatePublicKeyPkix
+				keyId, err := nodeenrollment.KeyIdFromPkix(ni.CertificatePublicKeyPkix)
+				require.NoError(t, err)
+				ni.Id = keyId
+				return ni
+			}(),
+			wantErr:         true,
+			wantErrContains: "in wrapping registration flow but boundary version not provided",
+		},
+		{
+			name:   "success",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
+			node:   testNodeInfoFn(),
+		},
+		{
+			name:   "success-wrapflow",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
+			node: func() *types.NodeInformation {
+				ni := wrappingRegFlowNodeInfoFn()
+				ni.CertificatePublicKeyPkix = wrappingRegFlowNodeCreds.CertificatePublicKeyPkix
+				keyId, err := nodeenrollment.KeyIdFromPkix(ni.CertificatePublicKeyPkix)
+				require.NoError(t, err)
+				ni.Id = keyId
+				return ni
+			}(),
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := StoreNodeInformationTx(testCtx, tc.writer, tc.databaseWrapper, tc.node)
+			err := StoreNodeInformationTx(testCtx, tc.reader, tc.writer, tc.kms, tc.scope, tc.node)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != errors.Unknown {
@@ -448,6 +536,337 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			require.NoError(err)
 		})
 	}
+}
+
+func TestStoreNodeInformationTx_Twice(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	testWrapper := db.TestWrapper(t)
+	testKeyId, err := testWrapper.KeyId(testCtx)
+	require.NoError(t, err)
+
+	kmsCache := kms.TestKms(t, conn, testWrapper)
+	// Ensures the global scope contains a valid root key
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	testRootStorage, err := NewRepositoryStorage(testCtx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	_, err = rotation.RotateRootCertificates(testCtx, testRootStorage)
+	require.NoError(t, err)
+
+	// Create struct to pass in with workerId that will be passed along to
+	// storage
+	testWorker := TestPkiWorker(t, conn, testWrapper)
+
+	testState, err := AttachWorkerIdToState(testCtx, testWorker.PublicId)
+	require.NoError(t, err)
+
+	testNodeInfoFn := func() *types.NodeInformation {
+		// This happens on the worker
+		storage, err := inmem.New(testCtx)
+		require.NoError(t, err)
+		nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
+		require.NoError(t, err)
+
+		privKey, err := ecdh.X25519().NewPrivateKey(nodeCreds.EncryptionPrivateKeyBytes)
+		require.NoError(t, err)
+		nodePubKey := privKey.PublicKey().Bytes()
+		// Add in node information to storage so we have a key to use
+		nodeInfo := &types.NodeInformation{
+			Id:                              testKeyId,
+			CertificatePublicKeyPkix:        nodeCreds.CertificatePublicKeyPkix,
+			CertificatePublicKeyType:        nodeCreds.CertificatePrivateKeyType,
+			EncryptionPublicKeyBytes:        nodePubKey,
+			EncryptionPublicKeyType:         nodeCreds.EncryptionPrivateKeyType,
+			ServerEncryptionPrivateKeyBytes: []byte("whatever"),
+			RegistrationNonce:               nodeCreds.RegistrationNonce,
+			State:                           testState,
+		}
+		return nodeInfo
+	}
+	testNodeInfoFn2 := func() *types.NodeInformation {
+		// This happens on the worker
+		storage, err := inmem.New(testCtx)
+		require.NoError(t, err)
+		nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
+		require.NoError(t, err)
+
+		privKey, err := ecdh.X25519().NewPrivateKey(nodeCreds.EncryptionPrivateKeyBytes)
+		require.NoError(t, err)
+		nodePubKey := privKey.PublicKey().Bytes()
+		// Add in node information to storage so we have a key to use
+		nodeInfo := &types.NodeInformation{
+			Id:                              "fake-secondary-key-id",
+			CertificatePublicKeyPkix:        nodeCreds.CertificatePublicKeyPkix,
+			CertificatePublicKeyType:        nodeCreds.CertificatePrivateKeyType,
+			EncryptionPublicKeyBytes:        nodePubKey,
+			EncryptionPublicKeyType:         nodeCreds.EncryptionPrivateKeyType,
+			ServerEncryptionPrivateKeyBytes: []byte("whatever"),
+			RegistrationNonce:               nodeCreds.RegistrationNonce,
+			State:                           testState,
+		}
+		return nodeInfo
+	}
+
+	tests := []struct {
+		name                       string
+		reader                     db.Reader
+		writer                     db.Writer
+		scope                      string
+		kms                        *kms.Kms
+		node                       *types.NodeInformation
+		wantErr                    bool
+		wantErrIs                  errors.Code
+		wantErrContains            string
+		secondStoreDifferentNode   bool
+		wantSecondStoreErr         bool
+		wantSecondStoreErrIs       errors.Code
+		wantSecondStoreErrContains string
+	}{
+		{
+			name:                       "duplicate record error",
+			reader:                     rw,
+			writer:                     rw,
+			scope:                      scope.Global.String(),
+			kms:                        kmsCache,
+			node:                       testNodeInfoFn(),
+			wantSecondStoreErr:         true,
+			wantSecondStoreErrContains: "duplicate record found",
+		},
+		{
+			// This test will fail because on the second store we change the incoming NodeInformation
+			// so that it does not match the already inserted record
+			name:                       "fail-store-twice-different-node-info",
+			reader:                     rw,
+			writer:                     rw,
+			scope:                      scope.Global.String(),
+			kms:                        kmsCache,
+			node:                       testNodeInfoFn2(),
+			secondStoreDifferentNode:   true,
+			wantSecondStoreErr:         true,
+			wantSecondStoreErrIs:       errors.NotUnique,
+			wantSecondStoreErrContains: "server.(WorkerAuthRepositoryStorage).StoreNodeInformationTx: db.Create: duplicate key value violates unique constraint \"worker_auth_authorized_pkey\": unique constraint violation: integrity violation: error #1002",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := StoreNodeInformationTx(testCtx, tc.reader, tc.writer, tc.kms, tc.scope, tc.node)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != errors.Unknown {
+					assert.True(errors.Match(errors.T(tc.wantErrIs), err))
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			// Try to store the "same" node information twice
+			node := tc.node
+			if tc.secondStoreDifferentNode {
+				storage, err := inmem.New(testCtx)
+				require.NoError(err)
+				nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
+				require.NoError(err)
+				node.CertificatePublicKeyPkix = nodeCreds.CertificatePublicKeyPkix
+			}
+			err = StoreNodeInformationTx(testCtx, tc.reader, tc.writer, tc.kms, tc.scope, node)
+			if tc.wantSecondStoreErr {
+				require.Error(err)
+				if tc.wantSecondStoreErrIs != errors.Unknown {
+					assert.True(errors.Match(errors.T(tc.wantSecondStoreErrIs), err))
+				}
+				if tc.wantSecondStoreErrContains != "" {
+					assert.Contains(err.Error(), tc.wantSecondStoreErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+func TestFilterToAuthorizedWorkerKeyIds(t *testing.T) {
+	ctx := context.Background()
+	rootWrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	t.Run("query returns error", func(t *testing.T) {
+		conn, mock := db.TestSetupWithMock(t)
+		rw := db.New(conn)
+		mock.ExpectQuery(`select`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		brokenRepo, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		_, err = brokenRepo.FilterToAuthorizedWorkerKeyIds(ctx, []string{"something"})
+		assert.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// Ensures the global scope contains a valid root key
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	rw := db.New(conn)
+	repo, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	got, err := repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{})
+	require.NoError(t, err)
+	assert.Empty(t, got)
+
+	var keyId1 string
+	w1 := TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId1))
+	var keyId2 string
+	_ = TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId2))
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{"not-found-key-id", keyId1})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId1}, got)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId2, "not-found-key-id"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId2}, got)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{keyId1, keyId2}, got)
+
+	workerRepo, err := NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	_, err = workerRepo.DeleteWorker(ctx, w1.GetPublicId())
+	require.NoError(t, err)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId2}, got)
+}
+
+func TestSplitBrain(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	wrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	// Ensures the global scope contains a valid root key
+	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(err)
+	wrapper, err = kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
+	require.NoError(err)
+	require.NotNil(t, wrapper)
+
+	rw := db.New(conn)
+
+	serversRepo, err := NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	require.NoError(err)
+	wrk := NewWorker(scope.Global.String())
+	wrk, err = serversRepo.CreateWorker(ctx, wrk)
+	require.NoError(err)
+	require.NotNil(wrk)
+
+	controllerStorage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	_, err = rotation.RotateRootCertificates(ctx, controllerStorage)
+	require.NoError(err)
+
+	// Create struct to pass in with workerId that will be passed along to storage
+	state, err := AttachWorkerIdToState(ctx, wrk.PublicId)
+	require.NoError(err)
+
+	// This happens on the worker
+	workerStorage, err := file.New(ctx)
+	require.NoError(err)
+	initCreds, err := types.NewNodeCredentials(ctx, workerStorage)
+	require.NoError(err)
+	// Create request using worker id
+	fetchReq, err := initCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(err)
+	registeredNode, err := registration.AuthorizeNode(ctx, controllerStorage, fetchReq, nodeenrollment.WithState(state))
+	require.NoError(err)
+	require.NotNil(registeredNode)
+
+	fetchResp, err := registration.FetchNodeCredentials(ctx, controllerStorage, fetchReq)
+	require.NoError(err)
+	initCreds, err = initCreds.HandleFetchNodeCredentialsResponse(ctx, workerStorage, fetchResp)
+	require.NoError(err)
+
+	// Simulate the auth rotation
+	// Worker side ----------------------------------
+	newCreds, err := types.NewNodeCredentials(ctx, workerStorage, nodeenrollment.WithSkipStorage(true))
+	require.NoError(err)
+
+	newCreds.PreviousCertificatePublicKeyPkix = initCreds.CertificatePublicKeyPkix
+	fetchReq, err = newCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(err)
+
+	encFetchReq, err := nodeenrollment.EncryptMessage(ctx, fetchReq, initCreds)
+	require.NoError(err)
+
+	controllerReq := &types.RotateNodeCredentialsRequest{
+		CertificatePublicKeyPkix:             initCreds.CertificatePublicKeyPkix,
+		EncryptedFetchNodeCredentialsRequest: encFetchReq,
+	}
+
+	// Send request to controller
+	// Controller side ------------------------------
+	resp, err := rotation.RotateNodeCredentials(ctx, controllerStorage, controllerReq)
+	require.NoError(err)
+
+	// Send response to worker
+	// Worker side ----------------------------------
+	// Simulate response going missing
+	_ = resp
+
+	// Now simulate the subsequent auth rotation attempt
+	newNewCreds, err := types.NewNodeCredentials(ctx, workerStorage, nodeenrollment.WithSkipStorage(true))
+	require.NoError(err)
+	require.NotEqual(t, newNewCreds.CertificatePublicKeyPkix, newCreds.CertificatePublicKeyPkix)
+
+	newNewCreds.PreviousCertificatePublicKeyPkix = initCreds.CertificatePublicKeyPkix
+	fetchReq, err = newNewCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(err)
+
+	encFetchReq, err = nodeenrollment.EncryptMessage(ctx, fetchReq, initCreds)
+	require.NoError(err)
+
+	controllerReq = &types.RotateNodeCredentialsRequest{
+		CertificatePublicKeyPkix:             initCreds.CertificatePublicKeyPkix,
+		EncryptedFetchNodeCredentialsRequest: encFetchReq,
+	}
+
+	// Send request to controller
+	// Controller side ------------------------------
+	// Split brain would fail this, as it used the wrong creds for decryption
+	_, err = rotation.RotateNodeCredentials(ctx, controllerStorage, controllerReq)
+	require.NoError(err)
+
+	// Ensure new key has been stored
+	keyId, err := nodeenrollment.KeyIdFromPkix(newNewCreds.CertificatePublicKeyPkix)
+	require.NoError(err)
+	_, err = types.LoadNodeInformation(ctx, controllerStorage, keyId)
+	require.NoError(err)
+
+	// Verify that "split brain" creds have been removed from the DB
+	keyId, err = nodeenrollment.KeyIdFromPkix(newCreds.CertificatePublicKeyPkix)
+	require.NoError(err)
+	_, err = types.LoadNodeInformation(ctx, controllerStorage, keyId)
+	require.Error(err)
+	require.ErrorIs(err, nodeenrollment.ErrNotFound)
+
+	// Ensure the correct previous key is still stored
+	keyId, err = nodeenrollment.KeyIdFromPkix(initCreds.CertificatePublicKeyPkix)
+	require.NoError(err)
+	_, err = types.LoadNodeInformation(ctx, controllerStorage, keyId)
+	require.NoError(err)
 }
 
 type mockTestWrapper struct {
@@ -469,7 +888,7 @@ func (m *mockTestWrapper) Encrypt(ctx context.Context, plaintext []byte, options
 	if m.err != nil && m.encryptError {
 		return nil, m.err
 	}
-	panic("todo")
+	return &wrapping.BlobInfo{}, nil
 }
 
 func (m *mockTestWrapper) Decrypt(ctx context.Context, ciphertext *wrapping.BlobInfo, options ...wrapping.Option) ([]byte, error) {

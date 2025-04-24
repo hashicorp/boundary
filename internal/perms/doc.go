@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 /*
 Package perms provides the boundary permissions engine using grants which are
 tied to IAM Roles within a Scope.

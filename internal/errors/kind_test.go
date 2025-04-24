@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package errors
 
 import (
@@ -42,6 +45,11 @@ func TestKind_String(t *testing.T) {
 			name: "VaultToken",
 			e:    VaultToken,
 			want: "vault token issue",
+		},
+		{
+			name: "Configuration",
+			e:    Configuration,
+			want: "configuration issue",
 		},
 	}
 	for _, tt := range tests {

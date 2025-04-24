@@ -1,0 +1,82 @@
+---
+layout: docs
+page_title: -exec flag
+description: >-
+  Learn how to use the `-exec` flag to execute TCP sessions or pass flags using your preferred client.
+---
+
+# Exec flag
+
+Boundary includes built-in connect helpers for clients, however, `boundary connect` can execute clients even when there is no built-in support for a specific client using the `-exec` flag.
+The `-exec` flag lets you wrap Boundary TCP sessions in your preferred client.
+You can use this flag to create an authenticated proxy to almost anything.
+
+When you use `-exec`, you can pass flags to the client by including them in the executed command after a double-dash `--`.
+For example, the following command passes `-l myuser -i ~/.ssh/identity` to the PuTTY client:
+
+```shell-session
+$ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890 -- -l myuser -i ~/.ssh/identity
+```
+
+You can substitute the following templated values into the command arguments.
+Boundary injects these values in the executed command as environment variables:
+
+- `{{boundary.ip}}` (`BOUNDARY_PROXIED_IP`): The IP address of the listening socket that `boundary connect` opened.
+- `{{boundary.port}}` (`BOUNDARY_PROXIED_PORT`): The port of the listening socket that `boundary connect` has opened.
+- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): The host:port format of the address.
+This value is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.
+
+For example, if you wanted to use Boundary to create an authenticated firewall
+around `curl`, you could update the default TCP target from a default port
+of `:22` to `:443` using the following command:
+
+```shell-session
+$ boundary targets update tcp -default-port 443 -id ttcp_1234567890
+
+Target information:
+  Address:                    127.0.0.1
+  Created Time:               Fri, 25 Sep 2020 18:35:47 PDT
+  Description:                Provides an initial target in Boundary
+  ID:                         ttcp_1234567890
+  Name:                       Generated target
+  Session Connection Limit:   1
+  Session Max Seconds:        28800
+  Type:                       tcp
+  Updated Time:               Fri, 25 Sep 2020 18:36:18 PDT
+  Version:                    2
+
+  Scope:
+    ID:                       p_1234567890
+    Name:                     Generated project scope
+    Parent Scope ID:          o_1234567890
+    Type:                     project
+
+  Attributes:
+    Default Port:             443
+```
+
+In the output above, the default port for the target has now changed to `:443`.
+
+Now, you can use `curl` as the client for a TCP target session.
+For example, the following command uses `curl` to perform an authenticated download of hashicorp.com:
+
+```shell-session
+$ boundary connect -exec curl -target-id ttcp_1234567890 \
+         -- -vvsL --output /dev/null hashicorp.com
+
+*   Trying 76.76.21.21...
+* TCP_NODELAY set
+* Connected to hashicorp.com (76.76.21.21) port 80 (#0)
+> GET / HTTP/1.1
+> Host: hashicorp.com
+> User-Agent: curl/7.64.1
+> Accept: */*
+...<truncated output>...
+```
+
+Note that you can use `-exec` for subcommands that wrap clients as well.
+As an example, if `putty.exe` is available on a Windows host but the command is being run from WSL, you could use the following command to specify the correct binary to use, since WSL must use `.exe` when it invokes Windows binaries:
+
+```shell-session
+$ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890
+```

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package kms
 
 import (
@@ -26,12 +29,14 @@ type options struct {
 	withWorkerAuthWrapper        wrapping.Wrapper
 	withWorkerAuthStorageWrapper wrapping.Wrapper
 	withRecoveryWrapper          wrapping.Wrapper
+	withBsrWrapper               wrapping.Wrapper
 	withOrderByVersion           db.OrderBy
 	withKeyId                    string
 	withScopeIds                 []string
 	withRandomReader             io.Reader
 	withReader                   db.Reader
 	withWriter                   db.Writer
+	withRewrap                   bool
 }
 
 func getDefaultOptions() options {
@@ -77,6 +82,13 @@ func WithRecoveryWrapper(w wrapping.Wrapper) Option {
 	}
 }
 
+// WithBsrWrapper sets the external Bsr wrapper for a KMS
+func WithBsrWrapper(w wrapping.Wrapper) Option {
+	return func(o *options) {
+		o.withBsrWrapper = w
+	}
+}
+
 // WithOrderByVersion provides an option to specify ordering by the
 // CreateTime field.
 func WithOrderByVersion(orderBy db.OrderBy) Option {
@@ -118,5 +130,13 @@ func WithReaderWriter(r db.Reader, w db.Writer) Option {
 	return func(o *options) {
 		o.withReader = r
 		o.withWriter = w
+	}
+}
+
+// WithRewrap allows for optionally specifying that the keys should be
+// rewrapped.
+func WithRewrap(enableRewrap bool) Option {
+	return func(o *options) {
+		o.withRewrap = enableRewrap
 	}
 }

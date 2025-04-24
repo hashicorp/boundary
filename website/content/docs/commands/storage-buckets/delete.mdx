@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: storage-buckets delete - Command
+description: >-
+  The "storage-buckets delete" deletes existing storage bucket resources.
+---
+
+# storage-buckets delete
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary storage-buckets delete`
+
+The `boundary storage-buckets delete` command lets you delete Boundary storage buckets.
+
+## Example
+
+This example deletes a storage bucket with the ID `_1234567890`:
+
+```shell-session
+$ boundary storage-buckets delete -id _1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary storage-buckets delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the storage bucket you want to delete.
+
+@include 'cmd-option-note.mdx'

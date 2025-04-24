@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -45,6 +48,7 @@ type privateCredential struct {
 	CtClientKey          []byte
 	ClientKeyHmac        []byte
 	ClientKeyId          string
+	SessionCorrelationId string
 }
 
 func (pc *privateCredential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
@@ -97,7 +101,7 @@ func (pc *privateCredential) client(ctx context.Context) (vaultClient, error) {
 
 	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(pc.WorkerFilter))
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
 	}
 	return client, nil
 }

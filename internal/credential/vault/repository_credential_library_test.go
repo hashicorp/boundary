@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -5,10 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -16,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRepository_CreateCredentialLibrary(t *testing.T) {
@@ -171,7 +179,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -179,7 +187,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 		},
@@ -191,7 +199,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			wantErr: errors.VaultInvalidMappingOverride,
@@ -218,7 +226,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -229,7 +237,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 		},
@@ -243,7 +251,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -254,7 +262,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 		},
@@ -269,7 +277,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -281,7 +289,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 		},
@@ -292,7 +300,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -300,7 +308,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 		},
@@ -312,7 +320,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			wantErr: errors.VaultInvalidMappingOverride,
@@ -325,7 +333,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			wantErr: errors.VaultInvalidMappingOverride,
@@ -340,7 +348,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -351,7 +359,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 		},
@@ -365,7 +373,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -376,7 +384,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 		},
@@ -390,7 +398,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -401,7 +409,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 		},
@@ -417,7 +425,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -430,7 +438,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 		},
@@ -443,7 +451,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
 			sche := scheduler.TestScheduler(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), tt.in, tt.opts...)
@@ -455,7 +463,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+			assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -476,7 +484,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 					// verify it was persisted in the database
 					override := allocUsernamePasswordOverride()
-					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
+					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []any{got.GetPublicId()}))
 
 				case *SshPrivateKeyOverride:
 					g, ok := got.MappingOverride.(*SshPrivateKeyOverride)
@@ -487,7 +495,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 					// verify it was persisted in the database
 					override := allocSshPrivateKeyOverride()
-					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
+					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []any{got.GetPublicId()}))
 
 				default:
 					assert.Fail("Unknown mapping override")
@@ -501,7 +509,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -518,7 +526,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -534,7 +542,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -556,7 +564,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -566,7 +574,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		got2, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, CredentialLibraryPrefix, got2.GetPublicId())
+		assertPublicId(t, globals.VaultCredentialLibraryPrefix, got2.GetPublicId())
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -622,7 +630,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		}
 	}
 
-	changeCredentialType := func(t credential.Type) func(*CredentialLibrary) *CredentialLibrary {
+	changeCredentialType := func(t globals.CredentialType) func(*CredentialLibrary) *CredentialLibrary {
 		return func(l *CredentialLibrary) *CredentialLibrary {
 			l.CredentialLibrary.CredentialType = string(t)
 			return l
@@ -922,7 +930,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:     "GET",
 					VaultPath:      "/old/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			chgFn: changeVaultPath("/new/path"),
@@ -932,7 +940,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:     "GET",
 					VaultPath:      "/new/path",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1082,10 +1090,10 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
-			chgFn:   changeCredentialType(credential.UnspecifiedType),
+			chgFn:   changeCredentialType(globals.UnspecifiedCredentialType),
 			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "StoreId", "CredentialType"},
 			wantErr: errors.InvalidFieldMask,
 		},
@@ -1100,7 +1108,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1117,7 +1125,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1133,7 +1141,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1150,7 +1158,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1166,7 +1174,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1185,7 +1193,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1197,7 +1205,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1216,7 +1224,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1232,7 +1240,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(nil),
@@ -1242,7 +1250,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-name-repo",
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1275,7 +1283,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1292,7 +1300,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1307,7 +1315,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1324,7 +1332,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1339,7 +1347,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1356,7 +1364,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1373,7 +1381,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1394,7 +1402,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1406,7 +1414,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(
@@ -1427,7 +1435,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1444,7 +1452,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			chgFn: changeMappingOverride(nil),
@@ -1454,7 +1462,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					HttpMethod:     "GET",
 					VaultPath:      "/some/path",
 					Name:           "test-ssh-private-key-repo",
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 				},
 			},
 			wantCount: 1,
@@ -1468,7 +1476,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
 			sche := scheduler.TestScheduler(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -1493,7 +1501,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+			assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)
@@ -1544,7 +1552,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1578,7 +1586,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1600,7 +1608,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -1626,7 +1634,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1650,7 +1658,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		// Expire the credential store Vault token
 		rows, err := rw.Exec(context.Background(),
 			"update credential_vault_token set status = ? where token_hmac = ?",
-			[]interface{}{ExpiredToken, cs.Token().TokenHmac})
+			[]any{ExpiredToken, cs.Token().TokenHmac})
 		require.NoError(err)
 		require.Equal(1, rows)
 
@@ -1667,7 +1675,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1709,7 +1717,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 		csWithExpiredToken := css[1]
 		rows, err := rw.Exec(context.Background(),
 			"update credential_vault_token set status = ? where token_hmac = ?",
-			[]interface{}{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
+			[]any{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
 		require.NoError(t, err)
 		require.Equal(t, 1, rows)
 
@@ -1745,7 +1753,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.UsernamePasswordType),
+						CredentialType: string(globals.UsernamePasswordCredentialType),
 					},
 				},
 			},
@@ -1759,7 +1767,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.UsernamePasswordType),
+						CredentialType: string(globals.UsernamePasswordCredentialType),
 					},
 				},
 			},
@@ -1773,7 +1781,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.UsernamePasswordType),
+						CredentialType: string(globals.UsernamePasswordCredentialType),
 					},
 				},
 			},
@@ -1788,7 +1796,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.UsernamePasswordType),
+						CredentialType: string(globals.UsernamePasswordCredentialType),
 					},
 				},
 			},
@@ -1799,7 +1807,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.SshPrivateKeyType),
+						CredentialType: string(globals.SshPrivateKeyCredentialType),
 					},
 				},
 			},
@@ -1813,7 +1821,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.SshPrivateKeyType),
+						CredentialType: string(globals.SshPrivateKeyCredentialType),
 					},
 				},
 			},
@@ -1827,7 +1835,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.SshPrivateKeyType),
+						CredentialType: string(globals.SshPrivateKeyCredentialType),
 					},
 				},
 			},
@@ -1841,7 +1849,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.SshPrivateKeyType),
+						CredentialType: string(globals.SshPrivateKeyCredentialType),
 					},
 				},
 			},
@@ -1857,7 +1865,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						HttpMethod:     "GET",
 						VaultPath:      "/some/path",
-						CredentialType: string(credential.SshPrivateKeyType),
+						CredentialType: string(globals.SshPrivateKeyCredentialType),
 					},
 				},
 			},
@@ -1871,7 +1879,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 				ctx := context.Background()
 				kms := kms.TestKms(t, conn, wrapper)
 				sche := scheduler.TestScheduler(t, conn, wrapper)
-				repo, err := NewRepository(rw, rw, kms, sche)
+				repo, err := NewRepository(ctx, rw, rw, kms, sche)
 				assert.NoError(err)
 				require.NotNil(repo)
 				orig, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), tt.in)
@@ -1913,7 +1921,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		// test
@@ -1929,10 +1937,10 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
-		badId, err := newCredentialLibraryId()
+		badId, err := newCredentialLibraryId(ctx)
 		assert.NoError(err)
 		require.NotNil(badId)
 		// test
@@ -1944,6 +1952,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 
 func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1953,7 +1962,7 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 		l := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
 
-		badId, err := newCredentialLibraryId()
+		badId, err := newCredentialLibraryId(ctx)
 		require.NoError(t, err)
 		require.NotNil(t, badId)
 
@@ -1983,10 +1992,9 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
 				assert, require := assert.New(t), require.New(t)
-				ctx := context.Background()
 				kms := kms.TestKms(t, conn, wrapper)
 				sche := scheduler.TestScheduler(t, conn, wrapper)
-				repo, err := NewRepository(rw, rw, kms, sche)
+				repo, err := NewRepository(ctx, rw, rw, kms, sche)
 				assert.NoError(err)
 				require.NotNil(repo)
 
@@ -2005,10 +2013,9 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 		// setup
 		assert, require := assert.New(t), require.New(t)
 
-		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -2024,7 +2031,7 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 				HttpMethod:     "GET",
 				VaultPath:      "/some/path",
 				Name:           "test-name-repo",
-				CredentialType: string(credential.UsernamePasswordType),
+				CredentialType: string(globals.UsernamePasswordCredentialType),
 			},
 		}
 
@@ -2052,7 +2059,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -2068,7 +2075,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 				HttpMethod:     "GET",
 				VaultPath:      "/some/path",
 				Name:           "test-name-repo",
-				CredentialType: string(credential.UsernamePasswordType),
+				CredentialType: string(globals.UsernamePasswordCredentialType),
 			},
 		}
 
@@ -2077,17 +2084,26 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		require.NotNil(orig)
 
 		// test
-		got, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId())
+		got, ttime, err := repo.ListLibraries(ctx, cs.GetPublicId())
 		assert.NoError(err)
 		require.Len(got, 1)
-		got1 := got[0]
-		assert.Equal(orig.GetPublicId(), got1.GetPublicId())
-		assert.Equal(orig.GetStoreId(), got1.GetStoreId())
-		assert.Equal(orig.GetHttpMethod(), got1.GetHttpMethod())
-		assert.Equal(orig.GetVaultPath(), got1.GetVaultPath())
-		assert.Equal(orig.GetName(), got1.GetName())
-		assert.Equal(orig.GetCredentialType(), got1.GetCredentialType())
-		assert.Empty(got1.MappingOverride)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		require.Empty(cmp.Diff(
+			orig,
+			got[0],
+			cmpopts.IgnoreUnexported(
+				CredentialLibrary{},
+				store.CredentialLibrary{},
+				timestamp.Timestamp{},
+				timestamppb.Timestamp{},
+			),
+			cmpopts.IgnoreFields(
+				CredentialLibrary{},
+				"MappingOverride",
+			),
+		))
 	})
 
 	t.Run("with-no-credential-store-id", func(t *testing.T) {
@@ -2096,14 +2112,13 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		// test
-		got, err := repo.ListCredentialLibraries(ctx, "")
+		_, _, err = repo.ListLibraries(ctx, "")
 		wantErr := errors.InvalidParameter
 		assert.Truef(errors.Match(errors.T(wantErr), err), "want err: %q got: %q", wantErr, err)
-		assert.Nil(got)
 	})
 
 	t.Run("CredentialStore-with-no-libraries", func(t *testing.T) {
@@ -2112,15 +2127,18 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 		// test
-		got, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId())
+		got, ttime, err := repo.ListLibraries(ctx, cs.GetPublicId())
 		assert.NoError(err)
 		assert.Empty(got)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 	})
 }
 
@@ -2139,7 +2157,7 @@ func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
 	tests := []struct {
 		name     string
 		repoOpts []Option
-		listOpts []Option
+		listOpts []credential.Option
 		wantLen  int
 	}{
 		{
@@ -2152,30 +2170,20 @@ func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
 			wantLen:  3,
 		},
 		{
-			name:     "with-negative-repo-limit",
-			repoOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
 			name:     "with-list-limit",
-			listOpts: []Option{WithLimit(3)},
+			listOpts: []credential.Option{credential.WithLimit(3)},
 			wantLen:  3,
-		},
-		{
-			name:     "with-negative-list-limit",
-			listOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
 		},
 		{
 			name:     "with-repo-smaller-than-list-limit",
 			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
+			listOpts: []credential.Option{credential.WithLimit(6)},
 			wantLen:  6,
 		},
 		{
 			name:     "with-repo-larger-than-list-limit",
 			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
+			listOpts: []credential.Option{credential.WithLimit(2)},
 			wantLen:  2,
 		},
 	}
@@ -2186,12 +2194,160 @@ func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)
+			got, ttime, err := repo.ListLibraries(ctx, libs[0].StoreId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
+}
+
+func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	css := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 3)
+
+	for _, cs := range css[:2] { // Leave the third store empty
+		TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 5)
+	}
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	for _, cs := range css[:2] {
+		page1, ttime, err := repo.ListLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime, err := repo.ListLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, ttime, err := repo.ListLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
+		require.NoError(err)
+		require.Len(page3, 1)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range append(page1, page2...) {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+		}
+		page4, ttime, err := repo.ListLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
+		require.NoError(err)
+		require.Empty(page4)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	}
+
+	emptyPage, ttime, err := repo.ListLibraries(ctx, css[2].GetPublicId(), credential.WithLimit(2))
+	require.NoError(err)
+	assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	require.Empty(emptyPage)
+}
+
+func TestRepository_ListDeletedLibraryIds(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.ListDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a vault library
+	_, err = repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), libs[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.ListDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Equal([]string{libs[0].GetPublicId()}, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.ListDeletedLibraryIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func TestRepository_EstimatedLibraryCount(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.EstimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create some libraries
+	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(2, numItems)
+
+	// Delete a library
+	_, err = repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), libs[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(1, numItems)
 }

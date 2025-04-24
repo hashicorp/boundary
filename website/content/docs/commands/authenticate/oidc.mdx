@@ -1,0 +1,63 @@
+---
+layout: docs
+page_title: authenticate oidc - Command
+description: >-
+  The "authenticate oidc" command invokes the OIDC auth method to authenticate the CLI client.
+---
+
+# authenticate oidc
+
+Command: `boundary authenticate oidc`
+
+The `authenticate oidc` command lets you invoke the OIDC auth method to authenticate the
+Boundary CLI.
+
+The OIDC authentication method lets Boundary users delegate authentication
+to an OIDC provider. OIDC authentication allows Boundary to integrate with widely
+adopted identity providers like Okta, cloud-hosted active directory services
+with an OIDC frontend, and cloud identity management systems such as AWS IAM.
+
+## Examples
+
+The following command authenticates the Boundary CLI using an OIDC auth method with the ID `amoidc_q7jAdI1QgA`:
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
+Opening returned authentication URL in your browser...
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Authentication information:
+  Account ID:      acctoidc_f0wWsno9jQ
+  Auth Method ID:  amoidc_q7jAdI1QgA
+  Expiration Time: Wed, 21 Apr 2021 15:02:38 MDT
+  User ID:         u_zAfnbL9b7y
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary authenticate oidc [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-auth-method-id` `(string: "")` - The auth method resource you want to use for the authentication.
+You can also specify the auth method resource using the **BOUNDARY_AUTH_METHOD_ID** environment variable.
+
+- `-scope-id` `(string: "")` - The scope ID to use for the operation.
+You can also specify the scope ID using the **BOUNDARY_SCOPE_ID** environment variable.
+
+@include 'cmd-option-note.mdx'

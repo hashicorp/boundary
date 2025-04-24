@@ -1,0 +1,41 @@
+---
+layout: docs
+page_title: delete - Command
+description: >-
+  The "delete" command deletes existing resources.
+---
+
+# delete
+
+Command: `boundary delete`
+
+The `boundary delete` command lets you delete Boundary resources.
+It is a generic command that runs a delete operation on a Boundary resource using the resource's ID.
+
+When you run this command, Boundary interprets it as the type-specific command.
+For example, if you enter the `delete` command with a storage bucket ID, Boundary runs the `storage-buckets delete` command.
+Help, error, or cURL output from the command may show the full command syntax.
+
+## Example
+
+This example deletes a storage bucket with the ID `sb_1234567890`:
+
+```shell-session
+$ boundary delete -id sb_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary delete [resource ID] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the resource you want to delete.
+
+@include 'cmd-option-note.mdx'

@@ -1,0 +1,104 @@
+---
+layout: docs
+page_title: API list pagination
+description: >-
+  Learn about API pagination and how the cache works in Boundary to prevent system resources from being overwhelmed and to help you find resources.
+---
+
+# API list pagination
+
+Boundary uses an API pagination feature to support searching and filtering large lists of results without overwhelming your system resources.
+
+## Introduction
+
+When you perform a `list` operation on a resource, the API request returns the first 1000 results, by default.
+You can request the next page of results by repeating the `list` command and including a parameter with a token provided by Boundary.
+
+## Initial pagination
+
+When you run a `list` operation on a resource, the initial results are sorted in descending order by creation time and public ID (most recently created first).
+Boundary returns the maximum number of responses along with the top-level fields `response_type` and `list_token`.
+If the `response_type` is `delta`, it means there are more items available in the list.
+
+List tokens contain general metadata associated with the ongoing pagination.
+To request the next page of results, run the `list` operation again and include the `list_token` that Boundary provided in the last response.
+Boundary returns the next page of results with new `response_type` and `list_token` values.
+
+![API pagination workflow](/img/api-pagination/pagination-workflow.png)
+
+You can continue viewing new pages of results using the `list_token` values until the `response_type` reads `complete`.
+If you compose an invalid token, you receive an invalid token error.
+
+## Request updated and deleted resources
+
+When the `response_type` reads `complete`, you have viewed all the results that were available when you ran the initial `list` operation.
+You can now request any resources that were updated or deleted since you started paginating.
+
+To refresh the cached list results, make another `list` request using the `list_token` from the previous response.
+Boundary returns a `response_type` and `list_token` as part of the response, similarly to when you ran the initial operation.
+If the `response_type` is `delta`, it means there are more items available in the list.
+You can use the `list_token` as a parameter to continue viewing new pages of results until the `response_type` reads `complete`.
+
+Boundary also includes the top-level response `removed_ids` as part of the refresh operation.
+The `removed_ids` response contains the IDs of any resources that were deleted since you began paginating the results of the previous `list` operation.
+Any resources that have been deleted are included on the first page of results.
+
+After 30 days, the `list_token` expires and you must make a new `list` request without the token to regenerate the full list of results.
+If you make a `list` request using a token that has a `create_time` older than 30 days, Boundary treats it as an invalid token and returns an error.
+
+## Response structure
+
+All `list` endpoints support the following parameters:
+
+- `list_token` (optional) - An opaque token that is returned from the previous `list` response.
+If you do not supply a value, pagination starts from the beginning.
+- `page_size` (optional) - An unsigned integer that indicates the number of items that should be included on the page of search results.
+If you do not include a value, or if you include a value of `0`, Boundary uses the default page size of 1000 items.
+If you configure it, the `page_size` value overrides the default page size.
+Controller administrators can also configure a `max_page_size` option that constrains the maximum page size a user can request.
+
+Boundary returns the following response parameters:
+
+- `response_type` - Defines whether the response is a `delta` or `complete` listing.
+The value is `delta` until the last page is returned, at which point it will be `complete`.
+- `list_token` - An opaque token which is included in subsequent listing requests after the initial one, so that the client can continue to paginate the results.
+- `sort_by` - The column name that the returned items should be sorted on.
+This attribute is included in the response, so that the sort order for each endpoint is explicit.
+- `sort_dir` - The direction in which the returned items are sorted.
+Responses can include `desc` for descending, or `asc` for ascending.
+- `items` - The list of items.
+- `est_item_count` - An unsigned integer that indicates the total number of items that are available in the list of results.
+This number may be an estimate, since the number of items may change during the pagination process.
+
+### Example response
+
+```json
+{
+  "response_type": "<delta|complete>",
+  "list_token": "<opaque-token>",
+  "sort_by": "created_time",
+  "sort_dir": "desc",
+  "est_item_count": 1000,
+  "items": [
+    {
+      "id": "ttcp_1234567890",
+      "scope_id": "p_1234567890"
+    },
+    {
+      "id": "ttcp_2234567890",
+      "scope_id": "p_1234567890"
+    }
+  ]
+}
+```
+
+## Constraints and limitations
+
+In scenarios where updates are so frequent that the results may change while the refresh operation runs, those updates may not appear at all in the refreshed list.
+If you make frequent updates to a resource, or if you are updating data while you run a `list` operation, HashiCorp recommends that you generate the full list of results instead of performing a refresh.
+
+Workers are not included in refresh operations because the updates they send to the controller are too frequent to be captured in a refresh.
+To update a list of worker resources, you must regenerate the full list of results.
+
+When you refresh the list of results, you may notice duplicate items in the list.
+This is a fundamental tradeoff when you search across multiple database transactions.

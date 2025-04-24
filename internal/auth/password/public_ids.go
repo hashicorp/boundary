@@ -1,40 +1,43 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package password
 
 import (
+	"context"
+
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/intglobals"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAuthMethodPrefix, resource.AuthMethod, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAccountPreviousPrefix, resource.Account, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAccountPrefix, resource.Account, auth.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the password package.
 const (
-	AuthMethodPrefix = "ampw"
-
-	Subtype = subtypes.Subtype("password")
+	Subtype = globals.Subtype("password")
 )
 
-func newAuthMethodId() (string, error) {
+func newAuthMethodId(ctx context.Context) (string, error) {
 	const op = "password.newAuthMethodId"
-	id, err := db.NewPublicId(AuthMethodPrefix)
+	id, err := db.NewPublicId(ctx, globals.PasswordAuthMethodPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op)
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }
 
-func newAccountId() (string, error) {
+func newAccountId(ctx context.Context) (string, error) {
 	const op = "password.newAccountId"
-	id, err := db.NewPublicId(intglobals.NewPasswordAccountPrefix)
+	id, err := db.NewPublicId(ctx, globals.PasswordAccountPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op)
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }

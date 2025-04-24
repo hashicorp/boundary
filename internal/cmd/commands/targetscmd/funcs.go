@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package targetscmd
 
 import (
@@ -14,6 +17,8 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/static"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/go-wordwrap"
@@ -44,9 +49,9 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"add-host-sources":          {"id", "host-source", "version"},
 		"remove-host-sources":       {"id", "host-source", "version"},
 		"set-host-sources":          {"id", "host-source", "version"},
-		"add-credential-sources":    {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
-		"remove-credential-sources": {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
-		"set-credential-sources":    {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"add-credential-sources":    {"id", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"remove-credential-sources": {"id", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"set-credential-sources":    {"id", "brokered-credential-source", "injected-application-credential-source", "version"},
 	}
 }
 
@@ -242,12 +247,6 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 				Target: &c.flagBrokeredCredentialSources,
 				Usage:  "The credential source to add, set, or remove that Boundary will return to the user when creating a connection. May be specified multiple times.",
 			})
-		case "application-credential-source":
-			f.StringSliceVar(&base.StringSliceVar{
-				Name:   "application-credential-source",
-				Target: &c.flagBrokeredCredentialSources,
-				Usage:  "Deprecated: use -brokered-credential-source instead",
-			})
 		case "injected-application-credential-source":
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   "injected-application-credential-source",
@@ -315,6 +314,9 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId != "" {
 		*opts = append(*opts, targets.WithScopeId(c.FlagScopeId))
+	}
+	if strutil.StrListContains(flagsMap[c.Func], "scope-name") && c.FlagScopeName != "" {
+		*opts = append(*opts, targets.WithScopeName(c.FlagScopeName))
 	}
 
 	switch c.Func {
@@ -482,6 +484,11 @@ func (c *Command) printListTable(items []*targets.Target) string {
 				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
+		if item.Address != "" {
+			output = append(output,
+				fmt.Sprintf("    Address:             %s", item.Address),
+			)
+		}
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -494,7 +501,7 @@ func (c *Command) printListTable(items []*targets.Target) string {
 }
 
 func printItemTable(item *targets.Target, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -516,8 +523,17 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
 	}
+	if item.Address != "" {
+		nonAttributeMap["Address"] = item.Address
+	}
 	if item.WorkerFilter != "" {
 		nonAttributeMap["Worker Filter"] = item.WorkerFilter
+	}
+	if item.EgressWorkerFilter != "" {
+		nonAttributeMap["Egress Worker Filter"] = item.EgressWorkerFilter
+	}
+	if item.IngressWorkerFilter != "" {
+		nonAttributeMap["Ingress Worker Filter"] = item.IngressWorkerFilter
 	}
 	if resp != nil && resp.Map != nil {
 		if resp.Map[globals.SessionConnectionLimitField] != nil {
@@ -530,10 +546,10 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
-	var hostSourceMaps []map[string]interface{}
+	var hostSourceMaps []map[string]any
 	if len(item.HostSources) > 0 {
 		for _, set := range item.HostSources {
-			m := map[string]interface{}{
+			m := map[string]any{
 				"ID":              set.Id,
 				"Host Catalog ID": set.HostCatalogId,
 			}
@@ -544,14 +560,14 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 		}
 	}
 
-	var credentialSourceMaps map[credential.Purpose][]map[string]interface{}
+	var credentialSourceMaps map[credential.Purpose][]map[string]any
 	if len(item.BrokeredCredentialSources) > 0 {
 		if credentialSourceMaps == nil {
-			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
+			credentialSourceMaps = make(map[credential.Purpose][]map[string]any)
 		}
-		var brokeredCredentialSourceMaps []map[string]interface{}
+		var brokeredCredentialSourceMaps []map[string]any
 		for _, source := range item.BrokeredCredentialSources {
-			m := map[string]interface{}{
+			m := map[string]any{
 				"ID":                  source.Id,
 				"Credential Store ID": source.CredentialStoreId,
 			}
@@ -564,11 +580,11 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	}
 	if len(item.InjectedApplicationCredentialSources) > 0 {
 		if credentialSourceMaps == nil {
-			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
+			credentialSourceMaps = make(map[credential.Purpose][]map[string]any)
 		}
-		var injectedApplicationCredentialSourceMaps []map[string]interface{}
+		var injectedApplicationCredentialSourceMaps []map[string]any
 		for _, source := range item.InjectedApplicationCredentialSources {
-			m := map[string]interface{}{
+			m := map[string]any{
 				"ID":                  source.Id,
 				"Credential Store ID": source.CredentialStoreId,
 			}
@@ -576,6 +592,20 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 		}
 		credentialSourceMaps[credential.InjectedApplicationPurpose] = injectedApplicationCredentialSourceMaps
 		if l := len("Credential Store ID"); l > maxLength {
+			maxLength = l
+		}
+	}
+
+	var aliasMaps []map[string]any
+	if len(item.Aliases) > 0 {
+		for _, al := range item.Aliases {
+			m := map[string]any{
+				"ID":    al.Id,
+				"Value": al.Value,
+			}
+			aliasMaps = append(aliasMaps, m)
+		}
+		if l := len("Value"); l > maxLength {
 			maxLength = l
 		}
 	}
@@ -605,6 +635,18 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	ret = append(ret,
 		"",
 	)
+
+	if len(aliasMaps) > 0 {
+		ret = append(ret,
+			"  Aliases:",
+		)
+		for _, m := range aliasMaps {
+			ret = append(ret,
+				base.WrapMap(4, maxLength, m),
+				"",
+			)
+		}
+	}
 
 	if len(hostSourceMaps) > 0 {
 		ret = append(ret,
@@ -656,7 +698,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 		case "table":
 			var ret []string
 
-			nonAttributeMap := map[string]interface{}{
+			nonAttributeMap := map[string]any{
 				"Session ID":          item.SessionId,
 				"Target ID":           item.TargetId,
 				"Scope ID":            item.Scope.Id,
@@ -714,7 +756,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 
 					var secretStr []string
 					switch cred.CredentialSource.Type {
-					case "vault", "static":
+					case vault.Subtype.String(), vault.GenericLibrarySubtype.String(), static.Subtype.String():
 						switch {
 						case cred.Credential != nil:
 							maxLength := 0
@@ -772,7 +814,10 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 }
 
 var keySubstMap = map[string]string{
-	"default_port": "Default Port",
+	"default_port":             "Default Port",
+	"default_client_port":      "Default Client Port",
+	"enable_session_recording": "Enable Session Recording",
+	"storage_bucket_id":        "Storage Bucket ID",
 }
 
 func exampleOutput() string {
@@ -810,7 +855,7 @@ func exampleOutput() string {
 				CredentialStoreId: "clvlt_0987654321",
 			},
 		},
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"default_port": 22,
 		},
 	}

@@ -1,9 +1,11 @@
 ---
 layout: docs
-page_title: Filtering - Resource Listing
-description: |-
-  How to use filter list responses coming back from Boundary.
+page_title: Filtering - resource listing
+description: >-
+  Learn how to use filters to reduce the set of resources returned when you perform a list operation. Filtering list results helps you find information.
 ---
+
+# Filter resource listings
 
 This page describes how to use filters when listing resources. This can be used
 to reduce the returned set of resources when performing a list operation.
@@ -12,10 +14,8 @@ to reduce the returned set of resources when performing a list operation.
 affect the database queries generated for the operation and as such is not
 designed to provide greater efficiency.
 
-# List Filtering
-
 Starting in Boundary 0.1.8, when running a list action, a filter can be
-specified. It uses the standard [filter syntax](/docs/concepts/filtering) used
+specified. It uses the standard [filter syntax](/boundary/docs/concepts/filtering) used
 elsewhere in Boundary. Unless otherwise specified for a given list endpoint, the
 list of items being returned is looped through and the filter is run on the JSON
 representation of that item. A good way to see what that data looks like is by

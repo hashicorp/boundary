@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
 	"context"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -12,7 +16,7 @@ import (
 
 // CreateAuthMethod creates am (*AuthMethod) in the repo along with its
 // associated embedded optional value objects of SigningAlgs, AudClaims,
-// and Certificates and returns the newly created AuthMethod
+// Prompts, and Certificates and returns the newly created AuthMethod
 // (with its PublicId set)
 //
 // The AuthMethod's public id and version must be empty (zero values).
@@ -42,7 +46,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 		}
 		am.PublicId = id
 	} else {
-		if !strings.HasPrefix(am.PublicId, AuthMethodPrefix+"_") {
+		if !strings.HasPrefix(am.PublicId, globals.OidcAuthMethodPrefix+"_") {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "wrong auth method id prefix")
 		}
 	}
@@ -118,6 +122,13 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 					return err
 				}
 				msgs = append(msgs, accountClaimMapsOplogMsgs...)
+			}
+			if len(vo.Prompts) > 0 {
+				promptOplogMsgs := make([]*oplog.Message, 0, len(vo.Prompts))
+				if err := w.CreateItems(ctx, vo.Prompts, db.NewOplogMsgs(&promptOplogMsgs)); err != nil {
+					return err
+				}
+				msgs = append(msgs, promptOplogMsgs...)
 			}
 			metadata := am.oplog(oplog.OpType_OP_TYPE_CREATE)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {

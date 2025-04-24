@@ -1,10 +1,16 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/server/store"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -21,6 +27,45 @@ type WorkerAuth struct {
 	tableName string `gorm:"-"`
 }
 
+func (w *WorkerAuth) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "server.(WorkerAuth).encrypt"
+	if len(w.ControllerEncryptionPrivKey) == 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "no private key provided")
+	}
+	if err := structwrapping.WrapStruct(ctx, cipher, w.WorkerAuth, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	}
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
+	}
+	w.KeyId = keyId
+	return nil
+}
+
+func (w *WorkerAuth) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "server.(WorkerAuth).decrypt"
+	if err := structwrapping.UnwrapStruct(ctx, cipher, w.WorkerAuth, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+	}
+	return nil
+}
+
+func (w *WorkerAuth) compare(other *WorkerAuth) bool {
+	switch {
+	case w.WorkerId != other.WorkerId:
+		return false
+	case !bytes.Equal(w.WorkerEncryptionPubKey, other.WorkerEncryptionPubKey):
+		return false
+	case !bytes.Equal(w.WorkerSigningPubKey, other.WorkerSigningPubKey):
+		return false
+	case !bytes.Equal(w.Nonce, other.Nonce):
+		return false
+	default:
+		return true
+	}
+}
+
 // WorkerAuthSet is intended to store a set of WorkerAuth records
 // This set represents the current and previous WorkerAuth records for a worker
 type WorkerAuthSet struct {
@@ -34,6 +79,11 @@ type WorkerKeys struct {
 	workerEncryptionPubKey []byte
 }
 
+// newWorkerAuth initializes a new in-memory WorkerAuth struct.
+// supported options:
+// - withWorkerKeys
+// - withControllerEncryptionPrivateKey (assigns the value to the plain-text field)
+// - withNonce
 func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, opt ...Option) (*WorkerAuth, error) {
 	const op = "server.newWorkerAuth"
 	opts := GetOpts(opt...)
@@ -52,15 +102,13 @@ func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, op
 		},
 	}
 
-	if &opts.withWorkerKeys != nil {
+	if len(opts.withWorkerKeys.workerSigningPubKey) != 0 &&
+		len(opts.withWorkerKeys.workerEncryptionPubKey) != 0 {
 		l.WorkerSigningPubKey = opts.withWorkerKeys.workerSigningPubKey
 		l.WorkerEncryptionPubKey = opts.withWorkerKeys.workerEncryptionPubKey
 	}
-	if &opts.withControllerEncryptionPrivateKey != nil {
+	if len(opts.withControllerEncryptionPrivateKey) != 0 {
 		l.ControllerEncryptionPrivKey = opts.withControllerEncryptionPrivateKey
-	}
-	if opts.withKeyId != "" {
-		l.KeyId = opts.withKeyId
 	}
 	if opts.withNonce != nil {
 		l.Nonce = opts.withNonce
@@ -96,8 +144,8 @@ func (w *WorkerAuth) ValidateNewWorkerAuth(ctx context.Context) error {
 	if w.WorkerEncryptionPubKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing WorkerEncryptionPubKey")
 	}
-	if w.ControllerEncryptionPrivKey == nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing ControllerEncryptionPrivKey")
+	if w.CtControllerEncryptionPrivKey == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing encrypted ControllerEncryptionPrivKey")
 	}
 	if w.KeyId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing KeyId")
@@ -167,7 +215,7 @@ func (w *WorkerCertBundle) clone() *WorkerCertBundle {
 
 // Validate is called before storing a WorkerCertBundle in the db
 func (w *WorkerCertBundle) ValidateNewWorkerCertBundle(ctx context.Context) error {
-	const op = "server.(WorkerAuth).validateNewWorkerCertBundle"
+	const op = "server.(WorkerCertBundle).validateNewWorkerCertBundle"
 	if w.RootCertificatePublicKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing CertificatePublicKey")
 	}

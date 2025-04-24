@@ -1,0 +1,141 @@
+---
+layout: docs
+page_title: host-sets create - Command
+description: >-
+  The "host-sets create" command creates a new host set resource. You can create plugin or static type host sets.
+---
+
+# host-sets create
+
+Command: `host-sets create`
+
+The `host-sets create` command lets you create a new host set.
+
+## Example
+
+This example creates a static host set with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary host-sets create static -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-sets create [type] <subcommand> [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    plugin    Create a plugin-type host set
+    static    Create a static-type host set
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can create plugin or static type host sets.
+
+<Tabs>
+<Tab heading="Plugin">
+
+The `boundary host-sets create plugin` command lets you create a plugin type host set.
+
+#### Example
+
+This example creates a plugin type host set with the name `prodops` and the description `Plugin host-set for ProdOps`, and adds it to a host catalog with the ID `hcst_1234567890`.
+
+```shell-session
+$ boundary host-sets create plugin -host-catalog-id hcst_1234567890 -name prodops -description "Plugin host-set for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-sets create plugin [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the plugin host set.
+- `-host-catalog-id=<string>` - The host catalog resource to use for the operation.
+You can also specify the host catalog using the **BOUNDARY_HOST_CATALOG_ID** environment variable.
+- `-name=<string>` - The name to set on the plugin host set.
+
+#### Attribute options
+
+- `-attr` - A key=value pair to add to the request's attribute map.
+This option can also be a key value only, which sets a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can override the type using `-string-attr`, `-bool-attr`, or `-num-attr`.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-attributes=<string>` - A JSON map value that you can use as the entirety of the request's attributes map.
+Usually this value is sourced from a file using the `file://` syntax.
+This option is exclusive with other `attr` flags.
+- `-bool-attr` - A key=value Boolean value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-num-attr` - A key=value numeric value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This attribute supports referencing values from files using `file://` and environment variables using `env://`.
+- `-string-attr` - A key=value string value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+
+#### Plugin host-set options
+
+- `-preferred-endpoint=<string>` - If set, indicates which IP address or DNS name out of a host's available options is preferred as an endpoint.
+You can specify your preference using `cidr:<valid IPv4/6 CIDR>` or `dns:<globbed name>`.
+You can specify multiple preferences to create an order of preferences.
+If you do not specify a preference, Boundary chooses a value from all available values using a built-in priority order.
+The endpoint preference option may not be valid for all plugin types.
+- `-sync-interval=<string>` - The interval of time between sync operations on the host set.
+You can enter an integer number of seconds or a string such as `400s`, `5m`, or `6h`.
+The interval is applied to the end of the previous sync operation, not the beginning.
+If you set the interval to a negative value, it disables synchronization for that host set.
+If you set the interval to null, Boundary uses the default value.
+The default value may change between releases.
+
+</Tab>
+
+<Tab heading="Static">
+
+The `boundary host-sets create static` command lets you create a static type host set.
+
+#### Example
+
+This example creates a static type host set with the name `prodops` and the description `Static host for ProdOps`:
+
+```shell-session
+$ boundary host-sets create static -name prodops -description "Static host-set for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-sets create static [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the static host set.
+- `-host-catalog-id=<string>` - The host catalog resource to use for the operation.
+You can also specify the host catalog using the **BOUNDARY_HOST_CATALOG_ID** environment variable.
+- `-name=<string>` - The name to set on the static host set.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

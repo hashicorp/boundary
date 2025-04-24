@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -8,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -131,6 +135,11 @@ func (cs *CredentialStore) SetTableName(n string) {
 	cs.tableName = n
 }
 
+// GetResourceType returns the resource type of the CredentialStore
+func (cs *CredentialStore) GetResourceType() resource.Type {
+	return resource.CredentialStore
+}
+
 func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{cs.PublicId},
@@ -191,9 +200,9 @@ func (cs *CredentialStore) client(ctx context.Context) (vaultClient, error) {
 	return c, nil
 }
 
-func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []interface{}) {
+func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []any) {
 	query = softDeleteStoreQuery
-	queryValues = []interface{}{
+	queryValues = []any{
 		cs.PublicId,
 	}
 	return

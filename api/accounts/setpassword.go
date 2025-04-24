@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package accounts
 
 import (
@@ -35,7 +38,7 @@ func (c *Client) SetPassword(ctx context.Context, accountId, password string, ve
 		version = existingTarget.Item.Version
 	}
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"version":  version,
 		"password": password,
 	}
@@ -59,6 +62,6 @@ func (c *Client) SetPassword(ctx context.Context, accountId, password string, ve
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

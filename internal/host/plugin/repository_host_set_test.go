@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
@@ -10,6 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -19,7 +23,8 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/mitchellh/mapstructure"
@@ -32,6 +37,7 @@ import (
 )
 
 func TestRepository_CreateSet(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -39,8 +45,8 @@ func TestRepository_CreateSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "create")
-	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
+	plg := plugin.TestPlugin(t, conn, "create")
+	unimplementedPlugin := plugin.TestPlugin(t, conn, "unimplemented")
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	unimplementedPluginCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -236,8 +242,8 @@ func TestRepository_CreateSet(t *testing.T) {
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{
-							"k1":                "foo",
+						st, err := structpb.NewStruct(map[string]any{
+							"k1":                nil,
 							"removed":           nil,
 							normalizeToSliceKey: "normalizeme",
 						})
@@ -253,7 +259,14 @@ func TestRepository_CreateSet(t *testing.T) {
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
-						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"k1": structpb.NewStringValue("foo")}})
+						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{
+							normalizeToSliceKey: structpb.NewListValue(
+								&structpb.ListValue{
+									Values: []*structpb.Value{
+										structpb.NewStringValue("normalizeme"),
+									},
+								}),
+						}})
 						require.NoError(t, err)
 						return b
 					}(),
@@ -274,7 +287,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			}
 			var pluginCalled bool
 			plgm := map[string]plgpb.HostPluginServiceClient{
-				plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{
+				plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{
 					NormalizeSetDataFn: func(_ context.Context, req *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error) {
 						if req.Attributes == nil {
 							return new(plgpb.NormalizeSetDataResponse), nil
@@ -290,24 +303,26 @@ func TestRepository_CreateSet(t *testing.T) {
 						retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
 							Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
 						})
+						require.NotNil(req.GetPlugin())
 						return &plgpb.NormalizeSetDataResponse{Attributes: retAttrs}, nil
 					},
 					OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 						pluginCalled = true
 						pluginReceivedAttrs = req.GetSet().GetAttributes()
+						require.NotNil(req.GetCatalog().GetPlugin())
 						return &plgpb.OnCreateSetResponse{}, nil
 					},
 				}),
-				unimplementedPlugin.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+				unimplementedPlugin.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					pluginCalled = true
 					pluginReceivedAttrs = req.GetSet().GetAttributes()
 					return plgpb.UnimplementedHostPluginServiceServer{}.OnCreateSet(ctx, req)
 				}}),
 			}
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, plgInfo, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
+			got, plgInfo, err := repo.CreateSet(ctx, prj.GetPublicId(), tt.in, tt.opts...)
 			assert.Equal(tt.wantPluginCalled, pluginCalled)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
@@ -317,11 +332,12 @@ func TestRepository_CreateSet(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
+			assert.True(strings.HasPrefix(got.GetPublicId(), globals.PluginHostSetPrefix))
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.GetName())
 			assert.Equal(tt.want.Description, got.GetDescription())
 			assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
+			assert.Equal(string(tt.want.GetAttributes()), string(got.GetAttributes()))
 
 			if origPluginAttrs != nil {
 				if normalizeVal := origPluginAttrs.Fields[normalizeToSliceKey]; normalizeVal != nil {
@@ -352,12 +368,12 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		var pluginCalled bool
 		plgm := map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 				pluginCalled = true
 				return &plgpb.OnCreateSetResponse{}, nil
 			}}),
 		}
-		repo, err := NewRepository(rw, rw, kms, sched, plgm)
+		repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -376,7 +392,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(got)
 		assert.True(pluginCalled)
-		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
+		assert.True(strings.HasPrefix(got.GetPublicId(), globals.PluginHostSetPrefix))
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.GetName())
 		assert.Equal(in.Description, got.GetDescription())
@@ -395,12 +411,12 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		var pluginCalled bool
 		plgm := map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 				pluginCalled = true
 				return &plgpb.OnCreateSetResponse{}, nil
 			}}),
 		}
-		repo, err := NewRepository(rw, rw, kms, sched, plgm)
+		repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -424,7 +440,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.True(pluginCalled)
 		require.NoError(err)
 		require.NotNil(got)
-		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
+		assert.True(strings.HasPrefix(got.GetPublicId(), globals.PluginHostSetPrefix))
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.GetName())
 		assert.Equal(in.Description, got.GetDescription())
@@ -438,7 +454,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(got2)
 		assert.True(pluginCalled)
-		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
+		assert.True(strings.HasPrefix(got.GetPublicId(), globals.PluginHostSetPrefix))
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.GetName())
 		assert.Equal(in2.Description, got2.GetDescription())
@@ -455,14 +471,14 @@ func TestRepository_UpdateSet(t *testing.T) {
 	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
 	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
 
-	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	testPlugin := plugin.TestPlugin(t, dbConn, "test")
 	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
-		testPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
+		testPlugin.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
 	}
 
 	// Set up a test catalog and the secrets for it
 	testCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
-	testCatalogSecret, err := newHostCatalogSecret(ctx, testCatalog.GetPublicId(), mustStruct(map[string]interface{}{
+	testCatalogSecret, err := newHostCatalogSecret(ctx, testCatalog.GetPublicId(), mustStruct(map[string]any{
 		"one": "two",
 	}))
 	require.NoError(t, err)
@@ -535,7 +551,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	changeAttributes := func(m map[string]interface{}) changeHostSetFunc {
+	changeAttributes := func(m map[string]any) changeHostSetFunc {
 		return func(c *HostSet) *HostSet {
 			c.Attributes = mustMarshal(m)
 			return c
@@ -589,7 +605,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	checkAttributes := func(want map[string]interface{}) checkHostSetFunc {
+	checkAttributes := func(want map[string]any) checkHostSetFunc {
 		return func(t *testing.T, got *HostSet) {
 			t.Helper()
 			st := &structpb.Struct{}
@@ -692,21 +708,21 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	checkUpdateSetRequestCurrentAttributes := func(want map[string]interface{}) checkPluginReqFunc {
+	checkUpdateSetRequestCurrentAttributes := func(want map[string]any) checkPluginReqFunc {
 		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
 			t.Helper()
 			assert.Empty(t, cmp.Diff(mustStruct(want), got.CurrentSet.GetAttributes(), protocmp.Transform()), "checkUpdateSetRequestCurrentAttributes")
 		}
 	}
 
-	checkUpdateSetRequestNewAttributes := func(want map[string]interface{}) checkPluginReqFunc {
+	checkUpdateSetRequestNewAttributes := func(want map[string]any) checkPluginReqFunc {
 		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
 			t.Helper()
 			assert.Empty(t, cmp.Diff(mustStruct(want), got.NewSet.GetAttributes(), protocmp.Transform()), "checkUpdateSetRequestNewAttributes")
 		}
 	}
 
-	checkUpdateSetRequestPersistedSecrets := func(want map[string]interface{}) checkPluginReqFunc {
+	checkUpdateSetRequestPersistedSecrets := func(want map[string]any) checkPluginReqFunc {
 		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
 			t.Helper()
 			assert.Empty(t, cmp.Diff(mustStruct(want), got.Persisted.Secrets, protocmp.Transform()), "checkUpdateSetRequestPersistedSecrets")
@@ -760,7 +776,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			WithPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 		)
 		// Set some (default) attributes on our test set
-		set.Attributes = mustMarshal(map[string]interface{}{
+		set.Attributes = mustMarshal(map[string]any{
 			"foo": "bar",
 		})
 
@@ -880,7 +896,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewName("foo"),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -899,7 +915,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewNameNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -918,7 +934,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentDescriptionNil(),
 				checkUpdateSetRequestNewDescription("foo"),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -937,7 +953,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentDescriptionNil(),
 				checkUpdateSetRequestNewDescriptionNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -954,7 +970,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeSyncInterval(42)},
 			fieldMask:   []string{"SyncIntervalSeconds"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -973,7 +989,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentPreferredEndpoints(nil),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -992,7 +1008,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -1011,7 +1027,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpointsNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -1024,25 +1040,25 @@ func TestRepository_UpdateSet(t *testing.T) {
 		{
 			name:        "update attributes (add)",
 			startingSet: setupHostSet,
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]any{
 				"baz": "qux",
 			})},
 			fieldMask: []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{
 					"foo": "bar",
 					"baz": "qux",
 				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{
+				checkAttributes(map[string]any{
 					"foo": "bar",
 					"baz": "qux",
 				}),
@@ -1053,26 +1069,26 @@ func TestRepository_UpdateSet(t *testing.T) {
 		{
 			name:        "update attributes (overwrite)",
 			startingSet: setupHostSet,
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]any{
 				"foo":               "baz",
 				normalizeToSliceKey: "normalizeme",
 			})},
 			fieldMask: []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{
 					"foo":               "baz",
 					normalizeToSliceKey: []any{"normalizeme"},
 				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{
+				checkAttributes(map[string]any{
 					"foo":               "baz",
 					normalizeToSliceKey: []any{"normalizeme"},
 				}),
@@ -1083,22 +1099,22 @@ func TestRepository_UpdateSet(t *testing.T) {
 		{
 			name:        "update attributes (null)",
 			startingSet: setupHostSet,
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]any{
 				"foo": nil,
 			})},
 			fieldMask: []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{}),
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{}),
+				checkAttributes(map[string]any{}),
 				checkNeedSync(true),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -1109,17 +1125,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeAttributesNil()},
 			fieldMask:   []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{}),
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{}),
+				checkAttributes(map[string]any{}),
 				checkNeedSync(true),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -1127,26 +1143,26 @@ func TestRepository_UpdateSet(t *testing.T) {
 		{
 			name:        "update attributes (combined)",
 			startingSet: setupHostSet,
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]any{
 				"a":   "b",
 				"foo": "baz",
 			})},
 			fieldMask: []string{"attributes.a", "attributes.foo"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{
 					"a":   "b",
 					"foo": "baz",
 				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{
+				checkAttributes(map[string]any{
 					"a":   "b",
 					"foo": "baz",
 				}),
@@ -1167,7 +1183,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestNewName("foo"),
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -1195,8 +1211,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 			// well.
 			var gotOnUpdateCallCount int
 			testPluginMap := map[string]plgpb.HostPluginServiceClient{
-				testPlugin.GetPublicId(): &WrappingPluginClient{
-					Server: &TestPluginServer{
+				testPlugin.GetPublicId(): &loopback.WrappingPluginHostClient{
+					Server: &loopback.TestPluginHostServer{
 						NormalizeSetDataFn: func(_ context.Context, req *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error) {
 							if req.Attributes == nil {
 								return new(plgpb.NormalizeSetDataResponse), nil
@@ -1212,6 +1228,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 							retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
 								Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
 							})
+							require.NotNil(req.GetPlugin())
 							return &plgpb.NormalizeSetDataResponse{Attributes: retAttrs}, nil
 						},
 						OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
@@ -1219,6 +1236,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 							for _, check := range tt.wantCheckPluginReqFuncs {
 								check(t, req)
 							}
+							require.NotNil(req.GetCatalog().GetPlugin())
 							return &plgpb.OnUpdateSetResponse{}, tt.withPluginError
 						},
 					},
@@ -1231,7 +1249,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			if tt.withEmptyPluginMap {
 				pluginMap = make(map[string]plgpb.HostPluginServiceClient)
 			}
-			repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
+			repo, err := NewRepository(ctx, dbRW, dbRW, dbKmsCache, sched, pluginMap)
 			require.NoError(err)
 			require.NotNil(repo)
 
@@ -1294,14 +1312,14 @@ func TestRepository_UpdateSet(t *testing.T) {
 	t.Run("Unset Empty PreferredEndpoint", func(t *testing.T) {
 		var gotOnUpdateCallCount int
 		testPluginMap := map[string]plgpb.HostPluginServiceClient{
-			testPlugin.GetPublicId(): &WrappingPluginClient{
-				Server: &TestPluginServer{
+			testPlugin.GetPublicId(): &loopback.WrappingPluginHostClient{
+				Server: &loopback.TestPluginHostServer{
 					OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
 						gotOnUpdateCallCount++
 						for _, check := range []checkPluginReqFunc{
 							checkUpdateSetRequestCurrentPreferredEndpoints(nil),
 							checkUpdateSetRequestNewPreferredEndpointsNil(),
-							checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+							checkUpdateSetRequestPersistedSecrets(map[string]any{
 								"one": "two",
 							}),
 						} {
@@ -1316,7 +1334,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		origSet, _ := setupBareHostSet(t, ctx)
 
 		pluginMap := testPluginMap
-		repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
+		repo, err := NewRepository(ctx, dbRW, dbRW, dbKmsCache, sched, pluginMap)
 		require.NoError(t, err)
 		require.NotNil(t, repo)
 
@@ -1345,14 +1363,14 @@ func TestRepository_LookupSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "lookup")
+	plg := plugin.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, kms, sched, catalog, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginHostServer{
 			ListHostsFn: func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 				require.NotEmpty(t, req.GetSets())
 				require.NotNil(t, req.GetCatalog())
@@ -1388,7 +1406,7 @@ func TestRepository_LookupSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, _, err := repo.LookupSet(ctx, tt.in)
@@ -1414,11 +1432,11 @@ func TestRepository_Endpoints(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "endpoints")
+	plg := plugin.TestPlugin(t, conn, "endpoints")
 
 	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -1505,7 +1523,7 @@ func TestRepository_Endpoints(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.Endpoints(ctx, tt.setIds)
@@ -1542,7 +1560,8 @@ func TestRepository_Endpoints(t *testing.T) {
 	}
 }
 
-func TestRepository_ListSets(t *testing.T) {
+func TestRepository_listSets(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1550,9 +1569,9 @@ func TestRepository_ListSets(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "list")
+	plg := plugin.TestPlugin(t, conn, "list")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	catalogA := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -1568,7 +1587,7 @@ func TestRepository_ListSets(t *testing.T) {
 	tests := []struct {
 		name      string
 		in        string
-		opts      []host.Option
+		opts      []Option
 		want      []*HostSet
 		wantIsErr errors.Code
 	}{
@@ -1592,10 +1611,10 @@ func TestRepository_ListSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, gotPlg, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
+			got, gotPlg, ttime, err := repo.listSets(ctx, tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -1610,11 +1629,15 @@ func TestRepository_ListSets(t *testing.T) {
 			if got != nil {
 				assert.Empty(cmp.Diff(plg, gotPlg, protocmp.Transform()))
 			}
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
 
-func TestRepository_ListSets_Limits(t *testing.T) {
+func TestRepository_listSets_Limits(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1622,9 +1645,9 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "listlimit")
+	plg := plugin.TestPlugin(t, conn, "listlimit")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	count := 10
@@ -1636,7 +1659,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	tests := []struct {
 		name     string
 		repoOpts []host.Option
-		listOpts []host.Option
+		listOpts []Option
 		wantLen  int
 	}{
 		{
@@ -1649,30 +1672,20 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 			wantLen:  3,
 		},
 		{
-			name:     "With negative repo limit",
-			repoOpts: []host.Option{host.WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
 			name:     "With List limit",
-			listOpts: []host.Option{host.WithLimit(3)},
+			listOpts: []Option{WithLimit(3)},
 			wantLen:  3,
-		},
-		{
-			name:     "With negative List limit",
-			listOpts: []host.Option{host.WithLimit(-1)},
-			wantLen:  count,
 		},
 		{
 			name:     "With repo smaller than list limit",
 			repoOpts: []host.Option{host.WithLimit(2)},
-			listOpts: []host.Option{host.WithLimit(6)},
+			listOpts: []Option{WithLimit(6)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
 			repoOpts: []host.Option{host.WithLimit(6)},
-			listOpts: []host.Option{host.WithLimit(2)},
+			listOpts: []Option{WithLimit(2)},
 			wantLen:  2,
 		},
 	}
@@ -1681,15 +1694,202 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, gotPlg, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)
+			got, gotPlg, ttime, err := repo.listSets(ctx, hostSets[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 			assert.Empty(cmp.Diff(plg, gotPlg, protocmp.Transform()))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
+}
+
+func TestRepository_listSets_Pagination(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+	catalog := TestCatalog(t, conn, proj1.GetPublicId(), plg.GetPublicId())
+
+	total := 5
+	for i := 0; i < total; i++ {
+		TestSet(t, conn, kms, sched, catalog, plgm)
+	}
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+	require.NoError(t, err)
+
+	t.Run("no-options", func(t *testing.T) {
+		got, retPlg, ttime, err := repo.listSets(ctx, catalog.GetPublicId())
+		require.NoError(t, err)
+		assert.Equal(t, total, len(got))
+		assert.Equal(t, retPlg, plg)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+	})
+
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		page1, retPlg, ttime, err := repo.listSets(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+		)
+		require.NoError(err)
+		require.Len(page1, 2)
+		assert.Equal(retPlg, plg)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, retPlg, ttime, err := repo.listSets(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page1[1]),
+		)
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.Equal(retPlg, plg)
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page3, retPlg, ttime, err := repo.listSets(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page2[1]),
+		)
+		require.NoError(err)
+		require.Len(page3, 1)
+		assert.Equal(retPlg, plg)
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+		}
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page4, retPlg, ttime, err := repo.listSets(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page3[0]),
+		)
+		require.NoError(err)
+		require.Empty(page4)
+		require.Empty(retPlg)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
+}
+
+func Test_listDeletedSetIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+	catalog := TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms, sched, plgm)
+	require.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listDeletedSetIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a set
+	s := TestSet(t, conn, testKms, sched, catalog, plgm)
+	_, err = repo.DeleteSet(ctx, proj.GetPublicId(), s.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listDeletedSetIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{s.GetPublicId()}, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedSetIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedHostSetCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+	catalog := TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms, sched, plgm)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedSetCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a set, expect 1 entries
+	s := TestSet(t, conn, testKms, sched, catalog, plgm)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedSetCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the set, expect 0 again
+	_, err = repo.DeleteSet(ctx, proj.GetPublicId(), s.GetPublicId())
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedSetCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }
 
 func TestRepository_DeleteSet(t *testing.T) {
@@ -1701,10 +1901,10 @@ func TestRepository_DeleteSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "create")
+	plg := plugin.TestPlugin(t, conn, "create")
 
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 			return &plgpb.OnCreateSetResponse{}, nil
 		}}),
 	}
@@ -1764,7 +1964,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteSet(ctx, prj.PublicId, tt.in)

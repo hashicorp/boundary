@@ -1,0 +1,39 @@
+---
+layout: docs
+page_title: groups delete - Command
+description: >-
+  The "groups delete" command deletes an existing group resource.
+---
+
+# groups delete
+
+Command: `boundary groups delete`
+
+The `groups delete` command lets you delete an existing group.
+
+
+## Examples
+
+The following example deletes a group with the given ID, `g_FNVVhAd0on`.
+
+```shell-session
+$ boundary groups delete -id g_FNVVhAd0on
+The delete operation completed successfully.
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary groups delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the group to delete.
+
+@include 'cmd-option-note.mdx'

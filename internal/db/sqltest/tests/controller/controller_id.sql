@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- controller_id tests:
 --  validates the wt_controller_id domain
 

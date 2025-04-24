@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package accountscmd
 
 import (
@@ -59,8 +62,8 @@ func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string
 	return helpStr + c.Flags().Help()
 }
 
-func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.FlagSet) {
-	f = set.NewFlagSet("Password Account Options")
+func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, _ *base.FlagSet) {
+	f := set.NewFlagSet("Password Account Options")
 
 	for _, name := range flagsPasswordMap[c.Func] {
 		switch name {

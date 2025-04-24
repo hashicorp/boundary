@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -6,13 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/mitchellh/pointerstructure"
+	"google.golang.org/protobuf/proto"
 )
 
 // Callback is an oidc domain service function for processing a successful OIDC
@@ -165,8 +169,8 @@ func Callback(
 
 	// okay, now we need some claims from both the ID Token and userinfo, so we can
 	// upsert an auth account
-	idTkClaims := map[string]interface{}{}     // intentionally, NOT nil for call to upsertAccount(...)
-	userInfoClaims := map[string]interface{}{} // intentionally, NOT nil for call to upsertAccount(...)
+	idTkClaims := map[string]any{}     // intentionally, NOT nil for call to upsertAccount(...)
+	userInfoClaims := map[string]any{} // intentionally, NOT nil for call to upsertAccount(...)
 
 	if err := tk.IDToken().Claims(&idTkClaims); err != nil {
 		return "", errors.New(ctx, errors.Unknown, op, "unable to parse ID Token claims", errors.WithWrap(err))
@@ -189,13 +193,13 @@ func Callback(
 	}
 
 	// Get the set of all managed groups so we can filter
-	mgs, err := r.ListManagedGroups(ctx, am.GetPublicId())
+	mgs, _, err := r.ListManagedGroups(ctx, am.GetPublicId(), WithLimit(-1))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
 	if len(mgs) > 0 {
 		matchedMgs := make([]*ManagedGroup, 0, len(mgs))
-		evalData := map[string]interface{}{
+		evalData := map[string]any{
 			"token":    idTkClaims,
 			"userinfo": userInfoClaims,
 		}
@@ -230,9 +234,9 @@ func Callback(
 		return "", errors.Wrap(ctx, err, op)
 	}
 
-	scope, err := iamRepo.LookupScope(ctx, am.ScopeId)
+	_, err = iamRepo.LookupScope(ctx, am.ScopeId)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup account scope: "+scope.PublicId))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup account scope: "+am.ScopeId))
 	}
 
 	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId)
@@ -249,11 +253,16 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
-	if _, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(reqState.TokenRequestId), authtoken.WithStatus(authtoken.PendingStatus)); err != nil {
+	authToken, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(reqState.TokenRequestId), authtoken.WithStatus(authtoken.PendingStatus))
+	if err != nil {
 		if errors.Match(errors.T(errors.NotUnique), err) {
 			return "", errors.New(ctx, errors.Forbidden, op, "not a unique request", errors.WithWrap(err))
 		}
 		return "", errors.Wrap(ctx, err, op)
+	}
+	if err := event.WriteObservation(ctx, op, event.WithDetails("user_id", user.GetPublicId(), "auth_token_start",
+		authToken.GetCreateTime(), "auth_token_end", authToken.GetExpirationTime())); err != nil {
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("Unable to write observation event for authenticate method"))
 	}
 	// tada!  we can return a final redirect URL for the successful authentication.
 	return reqState.FinalRedirectUrl, nil

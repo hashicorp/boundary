@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package rolescmd
 
 import (
@@ -22,41 +25,40 @@ func init() {
 }
 
 type extraCmdVars struct {
-	flagGrantScopeId string
-	flagPrincipals   []string
-	flagGrants       []string
+	flagGrantScopeIds []string
+	flagPrincipals    []string
+	flagGrants        []string
 }
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create":            {"grant-scope-id"},
-		"update":            {"grant-scope-id"},
-		"add-principals":    {"id", "principal", "version"},
-		"set-principals":    {"id", "principal", "version"},
-		"remove-principals": {"id", "principal", "version"},
-		"add-grants":        {"id", "grant", "version"},
-		"set-grants":        {"id", "grant", "version"},
-		"remove-grants":     {"id", "grant", "version"},
+		"add-principals":      {"id", "principal", "version"},
+		"set-principals":      {"id", "principal", "version"},
+		"remove-principals":   {"id", "principal", "version"},
+		"add-grants":          {"id", "grant", "version"},
+		"set-grants":          {"id", "grant", "version"},
+		"remove-grants":       {"id", "grant", "version"},
+		"add-grant-scopes":    {"id", "grant-scope-id", "version"},
+		"set-grant-scopes":    {"id", "grant-scope-id", "version"},
+		"remove-grant-scopes": {"id", "grant-scope-id", "version"},
 	}
 }
 
 func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
 	case "add-principals", "set-principals", "remove-principals":
-		return c.principalsGrantsSynopsisFunc(c.Func, true)
+		return c.principalsGrantsSynopsisFunc(c.Func, "principals (users, groups)")
 	case "add-grants", "set-grants", "remove-grants":
-		return c.principalsGrantsSynopsisFunc(c.Func, false)
+		return c.principalsGrantsSynopsisFunc(c.Func, "grants")
+	case "add-grant-scopes":
+		return c.principalsGrantsSynopsisFunc(c.Func, "grant scopes")
 	}
 
 	return ""
 }
 
-func (c *Command) principalsGrantsSynopsisFunc(inFunc string, principals bool) string {
+func (c *Command) principalsGrantsSynopsisFunc(inFunc, switchStr string) string {
 	var in string
-	switchStr := "principals (users, groups)"
-	if !principals {
-		switchStr = "grants"
-	}
 	switch {
 	case strings.HasPrefix(inFunc, "add"):
 		in = fmt.Sprintf("Add %s to", switchStr)
@@ -110,7 +112,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Adds grants to a role given its ID. The "grant" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles add-grants -id r_1234567890 -grant "id=*;type=*;actions=read"`,
+			`    $ boundary roles add-grants -id r_1234567890 -grant "ids=*;type=*;actions=read"`,
 			"",
 			"",
 		})
@@ -121,7 +123,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Sets the complete set of grants on a role given its ID. The "grant" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles set-grants -id r_1234567890 -grant "id=*;type=*;actions=read" -grant "id=*;type=*;actions=list"`,
+			`    $ boundary roles set-grants -id r_1234567890 -grant "ids=*;type=*;actions=read" -grant "ids=*;type=*;actions=list"`,
 			"",
 			"",
 		})
@@ -132,7 +134,40 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Removes grants from a role given its ID. The "grant" flags can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles remove-grants -id r_1234567890 -grant "id=*;type=*;actions=read"`,
+			`    $ boundary roles remove-grants -id r_1234567890 -grant "ids=*;type=*;actions=read"`,
+			"",
+			"",
+		})
+
+	case "add-grant-scopes":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary roles add-grant-scopes [options] [args]",
+			"",
+			`  Adds grant scopes to a role given its ID. The "grant-scope-id" flag can be specified multiple times. Example:`,
+			"",
+			`    $ boundary roles add-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
+			"",
+			"",
+		})
+
+	case "set-grant-scopes":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary roles set-grant-scopes [options] [args]",
+			"",
+			`  Sets the complete set of grant scopes on a role given its ID. The "grant-scope-id" flag can be specified multiple times. Example:`,
+			"",
+			`    $ boundary roles set-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
+			"",
+			"",
+		})
+
+	case "remove-grant-scopes":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary roles remove-grant-scopes [options] [args]",
+			"",
+			`  Removes grant scopes from a role given its ID. The "grant-scope-id" flags can be specified multiple times. Example:`,
+			"",
+			`    $ boundary roles remove-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
 			"",
 			"",
 		})
@@ -147,10 +182,10 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
 		case "grant-scope-id":
-			f.StringVar(&base.StringVar{
+			f.StringSliceVar(&base.StringSliceVar{
 				Name:   "grant-scope-id",
-				Target: &c.flagGrantScopeId,
-				Usage:  "The scope ID for grants set on the role",
+				Target: &c.flagGrantScopeIds,
+				Usage:  "The scope IDs to inherit grants set on the role",
 			})
 		case "principal":
 			f.StringSliceVar(&base.StringSliceVar{
@@ -169,14 +204,6 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 }
 
 func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Option) bool {
-	switch c.flagGrantScopeId {
-	case "":
-	case "null":
-		*opts = append(*opts, roles.DefaultGrantScopeId())
-	default:
-		*opts = append(*opts, roles.WithGrantScopeId(c.flagGrantScopeId))
-	}
-
 	switch c.Func {
 	case "add-principals", "remove-principals":
 		if len(c.flagPrincipals) == 0 {
@@ -187,6 +214,12 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Opti
 	case "add-grants", "remove-grants":
 		if len(c.flagGrants) == 0 {
 			c.UI.Error("No grants supplied via -grant")
+			return false
+		}
+
+	case "add-grant-scopes", "remove-grant-scopes":
+		if len(c.flagGrantScopeIds) == 0 {
+			c.UI.Error("No grant scope IDs supplied via -grant-scope-id")
 			return false
 		}
 
@@ -211,13 +244,31 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Opti
 				c.flagGrants = nil
 			}
 		}
+
+	case "set-grant-scopes":
+		switch len(c.flagGrantScopeIds) {
+		case 0:
+			c.UI.Error("No grant scope IDs supplied via -grant-scope-id")
+			return false
+		case 1:
+			if c.flagGrantScopeIds[0] == "null" {
+				c.flagGrantScopeIds = nil
+			}
+		}
 	}
 
 	if len(c.flagGrants) > 0 {
 		for _, grant := range c.flagGrants {
-			_, err := perms.Parse(scope.Global.String(), grant)
+			parsed, err := perms.Parse(c.Context, perms.GrantTuple{RoleScopeId: scope.Global.String(), GrantScopeId: scope.Global.String(), Grant: grant})
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Grant %q could not be parsed successfully: %w", grant, err).Error())
+				return false
+			}
+			switch {
+			case parsed.Id() == "":
+				// Nothing
+			default:
+				c.UI.Error(fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", grant, "id", "ids"))
 				return false
 			}
 		}
@@ -260,6 +311,24 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *roles
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-grants":
 		result, err := roleClient.RemoveGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	case "add-grant-scopes":
+		result, err := roleClient.AddGrantScopes(c.Context, c.FlagId, version, c.flagGrantScopeIds, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	case "set-grant-scopes":
+		result, err := roleClient.SetGrantScopes(c.Context, c.FlagId, version, c.flagGrantScopeIds, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	case "remove-grant-scopes":
+		result, err := roleClient.RemoveGrantScopes(c.Context, c.FlagId, version, c.flagGrantScopeIds, opts...)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -323,7 +392,7 @@ func (c *Command) printListTable(items []*roles.Role) string {
 }
 
 func printItemTable(item *roles.Role, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -341,9 +410,6 @@ func printItemTable(item *roles.Role, resp *api.Response) string {
 	}
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
-	}
-	if item.GrantScopeId != "" {
-		nonAttributeMap["Grant Scope ID"] = item.GrantScopeId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
@@ -392,6 +458,17 @@ func printItemTable(item *roles.Role, resp *api.Response) string {
 	for _, grant := range item.Grants {
 		ret = append(ret,
 			fmt.Sprintf("    %s", grant.Canonical),
+		)
+	}
+	if len(item.GrantScopeIds) > 0 {
+		ret = append(ret,
+			"",
+			fmt.Sprintf("  Grant Scope IDs:       %s", ""),
+		)
+	}
+	for _, grantScope := range item.GrantScopeIds {
+		ret = append(ret,
+			fmt.Sprintf("    ID:             %s", grantScope),
 		)
 	}
 

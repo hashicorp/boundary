@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 /*
 Globals, in the traditional sense, are usually bad. But there are some
 situations where we want either consts or known values that are constant per

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -5,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -39,16 +43,16 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	opts := getOpts(opt...)
 
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, HostCatalogPrefix+"_") {
+		if !strings.HasPrefix(opts.withPublicId, globals.StaticHostCatalogPrefix+"_") {
 			return nil, errors.New(ctx,
 				errors.InvalidPublicId,
 				op,
-				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostCatalogPrefix),
+				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, globals.StaticHostCatalogPrefix),
 			)
 		}
 		c.PublicId = opts.withPublicId
 	} else {
-		id, err := newHostCatalogId()
+		id, err := newHostCatalogId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -198,26 +202,6 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
 	}
 	return c, nil
-}
-
-// ListCatalogs returns a slice of HostCatalogs for the project IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...Option) ([]*HostCatalog, error) {
-	const op = "static.(Repository).ListCatalogs"
-	if len(projectIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
-	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var hostCatalogs []*HostCatalog
-	err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return hostCatalogs, nil
 }
 
 // DeleteCatalog deletes id from the repository returning a count of the

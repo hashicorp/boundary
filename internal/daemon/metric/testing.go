@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package metric
 
 import (
@@ -37,7 +40,7 @@ type TestInvoker struct {
 	RetErr error
 }
 
-func (i *TestInvoker) Invoke(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+func (i *TestInvoker) Invoke(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
 	i.Called = true
 
 	require.NotNil(i.T, ctx)

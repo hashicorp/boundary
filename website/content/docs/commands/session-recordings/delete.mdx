@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: session-recordings delete - Command
+description: >-
+  The "session-recordings delete" command deletes an existing session recording resource.
+---
+
+# session-recordings delete
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `session-recordings delete`
+
+The `session-recordings delete` command lets you delete a session recording.
+
+## Example
+
+This example deletes a session recording with the ID `sr_1234567890`:
+
+```shell-session
+$ boundary session-recordings delete -id sr_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary session-recordings delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the session recording you want to delete.
+
+@include 'cmd-option-note.mdx'

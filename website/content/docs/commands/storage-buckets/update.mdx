@@ -1,0 +1,88 @@
+---
+layout: docs
+page_title: storage-buckets update - Command
+description: >-
+  The "storage-buckets update" command updates existing storage bucket resources.
+---
+
+# storage-buckets update
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary storage-buckets update`
+
+The `boundary storage-buckets update` command lets you update Boundary storage buckets by ID.
+
+## Example
+
+This example updates a storage bucket with the ID `_1234567890` to add the name `devops` and the description `storage bucket for DevOps`:
+
+```shell-session
+$ boundary storage-buckets update -id _1234567890 -name devops -description "storage bucket for DevOps"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary storage-buckets update [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-description=<string>` - The description to set for the storage bucket.
+- `-id=<string>` - The ID of the storage bucket you want to update.
+- `-name=<string>` - The name to set for the storage bucket.
+- `-version=<int>` - The version of the storage bucket against which to perform the update operation.
+If you do not specify a version, the command performs a check-and-set operation automatically.
+
+### Attribute options
+
+- `-attr` - A key=value pair to add to the request's attribute map.
+This option can also be a key value only, which sets a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can override the type using `-string-attr`, `-bool-attr`, or `-num-attr`.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-attributes=<string>` - A JSON map value that you can use as the entirety of the request's attributes map.
+Usually this value is sourced from a file using the `file://` syntax.
+This option is exclusive with other `attr` flags.
+- `-bool-attr` - A key=value Boolean value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-num-attr` - A key=value numeric value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This attribute supports referencing values from files using `file://` and environment variables using `env://`.
+- `-string-attr` - A key=value string value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+
+### Secrets options
+
+- `-bool-secret` - A key=value Boolean value that you can add to the request's secrets map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-num-secret` - A key=value numeric value that you can add to the request's secrets map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-secret` - A key=value pair that you can add to the request's secrets map.
+This option can also be a key value only, which sets a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can override the type using `-string-secret`, `-bool-secret`, or `-num-secret`.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-secrets=<string>` - A JSON map value that you can use as the entirety of the request's secrets map.
+Usually this value is sourced from file using `file://` syntax.
+This option is exclusive with other secret flags.
+- `-string-secret` - A key=value string value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+
+### Storage bucket options
+
+- `-worker-filter=<string>` - A Boolean expression that you can use to filter which workers can process communication to the storage bucket.
+
+@include 'cmd-option-note.mdx'

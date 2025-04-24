@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -125,7 +128,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		}
 	}
 	dbMask, nullFields := dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			nameField:        cs.Name,
 			descriptionField: cs.Description,
 		},
@@ -166,27 +169,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	}
 
 	return returnedCredentialStore, rowsUpdated, nil
-}
-
-// ListCredentialStores returns a slice of CredentialStores for the
-// projectIds. WithLimit is the only option supported.
-func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []string, opt ...Option) ([]*CredentialStore, error) {
-	const op = "static.(Repository).ListCredentialStores"
-	if len(projectIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no projectIds")
-	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var credentialStores []*CredentialStore
-	err := r.reader.SearchWhere(ctx, &credentialStores, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return credentialStores, nil
 }
 
 // DeleteCredentialStore deletes publicId from the repository and returns

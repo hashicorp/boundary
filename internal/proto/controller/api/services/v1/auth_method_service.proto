@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.services.v1;
@@ -15,87 +18,82 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "auth";
 
 service AuthMethodService {
-  // GetAuthMethod returns a stored Auth Method if present.  The provided request
-  // must include the Auth Method id. If missing, malformed or referencing a
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Auth method service"
+    description:
+      "The auth method service exposes endpoints for interacting with auth methods in Boundary. "
+      "An auth method defines how users can authenticate themselves within the system. "
+      "It acts as a bridge between Boundary and various external identity providers or authentication mechanisms."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods";
+      description: "Read about auth methods in the Boundary domain model";
+    }
+  };
+  // GetAuthMethod returns a stored auth method if present.  The provided request
+  // must include the auth method id. If missing, malformed or referencing a
   // non existing resource an error is returned.
   rpc GetAuthMethod(GetAuthMethodRequest) returns (GetAuthMethodResponse) {
     option (google.api.http) = {
       get: "/v1/auth-methods/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Auth Method."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single auth method."};
   }
 
-  // ListAuthMethods returns a list of stored Auth Methods which are in the
-  // provided scope. The request must include the scope id and if missing,
+  // ListAuthMethods returns a list of stored auth methods which are in the
+  // provided scope. The request must include the scope ID and if missing,
   // malformed, or referencing a non existing scope, an error is returned.
   rpc ListAuthMethods(ListAuthMethodsRequest) returns (ListAuthMethodsResponse) {
-    option (google.api.http) = {
-      get: "/v1/auth-methods"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Auth Methods."
-    };
+    option (google.api.http) = {get: "/v1/auth-methods"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all auth methods."};
   }
 
-  // CreateAuthMethod creates and stores an Auth Method in boundary.  The
-  // provided request must include the scope in which the Auth Method will be
-  // created. If the scope id is missing, malformed or referencing a
+  // CreateAuthMethod creates and stores an auth method in Boundary.  The
+  // provided request must include the scope in which the auth method will be
+  // created. If the scope ID is missing, malformed or referencing a
   // non existing resource an error is returned.  If a name is provided that is
-  // in use in another Auth Method in the same scope, an error is returned.
+  // in use in another auth method in the same scope, an error is returned.
   rpc CreateAuthMethod(CreateAuthMethodRequest) returns (CreateAuthMethodResponse) {
     option (google.api.http) = {
       post: "/v1/auth-methods"
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Auth Method."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single auth method."};
   }
 
-  // UpdateAuthMethod updates an existing Auth Method in boundary.  The provided
-  // Auth Method must not have any read only fields set.  The update mask must be
+  // UpdateAuthMethod updates an existing auth method in Boundary.  The provided
+  // auth method must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided user. An error is returned if the Auth Method id is missing
+  // in the provided user. An error is returned if the auth method ID is missing
   // or reference a non existing resource.  An error is also returned if the
   // request attempts to update the name to one that is already in use by
-  // another Auth Method in the parent scope.
+  // another auth method in the parent scope.
   rpc UpdateAuthMethod(UpdateAuthMethodRequest) returns (UpdateAuthMethodResponse) {
     option (google.api.http) = {
       patch: "/v1/auth-methods/{id}"
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates an Auth Method."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates an auth method."};
   }
 
-  // DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
+  // DeleteAuthMethod removes an auth method from Boundary. If the auth method id
   // is malformed or not provided an error is returned.
   rpc DeleteAuthMethod(DeleteAuthMethodRequest) returns (DeleteAuthMethodResponse) {
-    option (google.api.http) = {
-      delete: "/v1/auth-methods/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes an AuthMethod"
-    };
+    option (google.api.http) = {delete: "/v1/auth-methods/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an AuthMethod"};
   }
 
-  // ChangeState changes the state of an Auth Method from Boundary.
+  // ChangeState changes the state of an auth method from Boundary.
   rpc ChangeState(ChangeStateRequest) returns (ChangeStateResponse) {
     option (google.api.http) = {
       post: "/v1/auth-methods/{id}:change-state"
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Changes the state of an OIDC AuthMethod"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Changes the state of an OIDC AuthMethod"};
   }
 
   // Authenticate validates credentials provided and returns an Auth Token.
@@ -104,14 +102,13 @@ service AuthMethodService {
       post: "/v1/auth-methods/{auth_method_id}:authenticate"
       body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Authenticate a user to an scope and retrieve an authentication token."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Authenticate a user to an scope and retrieve an authentication token."};
   }
 }
 
 message GetAuthMethodRequest {
-  string id = 1; // @gotags: `class:"public"`
+  // ID of the auth method being requested.
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetAuthMethodResponse {
@@ -119,13 +116,48 @@ message GetAuthMethodResponse {
 }
 
 message ListAuthMethodsRequest {
-  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  // The scope ID in which to list auth methods.
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  // Whether to recursively list auth methods in the provided scope's child scopes.
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+  string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The maximum size of a page in this iteration.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
+  uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListAuthMethodsResponse {
+  // The items returned in this page.
   repeated resources.authmethods.v1.AuthMethod items = 1;
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message CreateAuthMethodRequest {
@@ -133,12 +165,14 @@ message CreateAuthMethodRequest {
 }
 
 message CreateAuthMethodResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.authmethods.v1.AuthMethod item = 2;
 }
 
 message UpdateAuthMethodRequest {
-  string id = 1; // @gotags: `class:"public"`
+  // The ID of the auth method that should be updated
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  // A subset of the auth method containing the fields to update.
   resources.authmethods.v1.AuthMethod item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -148,17 +182,18 @@ message UpdateAuthMethodResponse {
 }
 
 message DeleteAuthMethodRequest {
-  string id = 1; // @gotags: `class:"public"`
+  // The ID of the auth method to delete.
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteAuthMethodResponse {}
 
-// Attributes specific to changing the state of an oidc auth method.
+// Attributes specific to changing the state of an OIDC auth method.
 message OidcChangeStateAttributes {
   // state must be `inactive`, `active-private`, or `active-public`
   string state = 1; // @gotags: `class:"public"`
-  // This flag is only useful for an oidc auth method.  It should not be used
-  // unless the oidc provider's config is incorrectly set and is stopping the
+  // This flag is only useful for an OIDC auth method. It should not be used
+  // unless the OIDC provider's config is incorrectly set and is stopping the
   // activation of this auth method.
   bool disable_discovered_config_validation = 2 [json_name = "disable_discovered_config_validation"]; // @gotags: `class:"public"`
 }
@@ -171,7 +206,23 @@ message ChangeStateRequest {
 
   oneof attrs {
     // The attributes specific to this auth method's state.
-    google.protobuf.Struct attributes = 4 [(custom_options.v1.subtype) = "default"];
+    google.protobuf.Struct attributes = 4 [
+      (custom_options.v1.subtype) = "default",
+      (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+        example: "{\"state\": \"active-public\", \"disable_discovered_config_validation\": false}",
+        description:
+          "The attributes that are applicable for the specific auth method type. "
+          "The schema of this field depends on the type of the auth method. "
+          "The only supported auth method type is OIDC.\n"
+          "For OIDC auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"state\": \"active-public\",\n"
+          "  \"disable_discovered_config_validation\": false\n"
+          "}\n"
+          "```\n"
+      }
+    ];
     OidcChangeStateAttributes oidc_change_state_attributes = 5 [
       (custom_options.v1.subtype) = "oidc",
       (google.api.field_visibility).restriction = "INTERNAL"
@@ -183,14 +234,15 @@ message ChangeStateResponse {
   resources.authmethods.v1.AuthMethod item = 1;
 }
 
-// The layout of the struct for "attributes" field in AuthenticateRequest for a password type. This message isn't directly referenced anywhere but is used here to define the expected field names and
-// types.
+// The layout of the struct for "attributes" field in AuthenticateRequest for a password type.
+// This message isn't directly referenced anywhere but is used here to define the expected
+// field names and types.
 message PasswordLoginAttributes {
   string login_name = 1 [json_name = "login_name"]; // @gotags: `class:"sensitive"`
   string password = 2; // @gotags: `class:"secret"`
 }
 
-// The layout of the struct for "attributes" field in AuthenticateRequest for a oidc type's start command. This message isn't directly referenced anywhere but is used here to define the expected field
+// The layout of the struct for "attributes" field in AuthenticateRequest for a OIDC type's start command. This message isn't directly referenced anywhere but is used here to define the expected field
 // names and types.
 message OidcStartAttributes {
   // An object which will be marshaled as JSON and roundtripped in the token command call.
@@ -199,9 +251,17 @@ message OidcStartAttributes {
   string cached_roundtrip_payload = 2; // @gotags: `class:"sensitive"`
 }
 
+// The layout of the struct for "attributes" field in AuthenticateRequest for an
+// ldap type. This message isn't directly referenced anywhere but is used here
+// to define the expected field names and types.
+message LdapLoginAttributes {
+  string login_name = 10 [json_name = "login_name"]; // @gotags: `class:"sensitive"`
+  string password = 20; // @gotags: `class:"secret"`
+}
+
 message AuthenticateRequest {
-  // The ID of the Auth Method in the system that should be used for authentication.
-  string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public"`
+  // The ID of the auth method in the system that should be used for authentication.
+  string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public" eventstream:"observation"`
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser. Deprecated, use "type" instead.
   string token_type = 2 [
@@ -210,18 +270,65 @@ message AuthenticateRequest {
   ]; // @gotags: `class:"public"`
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser.
-  string type = 6 [json_name = "type"]; // @gotags: `class:"public"`
+  string type = 6 [json_name = "type"]; // @gotags: `class:"public" eventstream:"observation"`
   oneof attrs {
-    // Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
-    google.protobuf.Struct attributes = 4;
+    // Attributes are passed to the auth method. The valid keys and values depend on the type of auth method as well as the command.
+    google.protobuf.Struct attributes = 4 [
+      json_name = "attributes",
+      (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+        example: "{\"login\": \"login\", \"password\": \"password\"}",
+        description:
+          "The attributes that are used to authenticate to the auth method. "
+          "The schema of this field depends on the type of the auth method. "
+          "For password auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"login_name\": \"login_name\",\n"
+          "  \"password\": \"password\"\n"
+          "}\n"
+          "```\n"
+          "For LDAP auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"login_name\": \"login_name\",\n"
+          "  \"password\": \"password\"\n"
+          "}\n"
+          "```\n"
+          "For OIDC auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"roundtrip_payload\": {}\n"
+          "}\n"
+          "```\n"
+          "OIDC authentication requires multiple calls to this endpoint. "
+          "After the initial call and successful authentication, the OIDC "
+          "provider must redirect the user to the `callback` command:\n"
+          "```json\n"
+          "{\n"
+          "  \"code\": \"code\",\n"
+          "  \"state\": \"state\",\n"
+          "  \"error\": \"error\",\n"
+          "  \"error_description\": \"error_description\",\n"
+          "  \"error_uri\": \"error_uri\"\n"
+          "}\n"
+          "```\n"
+          "Once this has succeded, the issued auth token can be retrieved by using the `token` command:\n"
+          "```json\n"
+          "{\n"
+          "  \"token_id\": \"token_id_from_initial_response\"\n"
+          "}\n"
+          "```\n"
+      }
+    ];
     // Note: these fields have a custom mapping function for transforming to and from the generic attributes,
     // they do not use the standard attribute transformation.
     PasswordLoginAttributes password_login_attributes = 7 [(google.api.field_visibility).restriction = "INTERNAL"];
     OidcStartAttributes oidc_start_attributes = 8 [(google.api.field_visibility).restriction = "INTERNAL"];
     controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateCallbackRequest oidc_auth_method_authenticate_callback_request = 9 [(google.api.field_visibility).restriction = "INTERNAL"];
     controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateTokenRequest oidc_auth_method_authenticate_token_request = 10 [(google.api.field_visibility).restriction = "INTERNAL"];
+    LdapLoginAttributes ldap_login_attributes = 11 [(google.api.field_visibility).restriction = "INTERNAL"];
   }
-  // The command to perform.
+  // The command to perform. One of "login", "callback", or "token".
   string command = 5 [json_name = "command"]; // @gotags: `class:"public"`
 
   // Deprecated fields
@@ -233,10 +340,44 @@ message AuthenticateResponse {
   reserved 1, 2; // Old item and token_type
   reserved "item", "token_type";
   // The type of the token returned. Either "cookie" or "token".
-  string type = 3; // @gotags: `class:"public"`
+  string type = 3; // @gotags: `class:"public" eventstream:"observation"`
   oneof attrs {
-    // Valid keys and values depend on the type of Auth Method as well as the command.
-    google.protobuf.Struct attributes = 4 [json_name = "attributes"];
+    // Valid keys and values depend on the type of auth method as well as the command.
+    google.protobuf.Struct attributes = 4 [
+      json_name = "attributes",
+      (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+        example: "{\"login\": \"login\", \"password\": \"password\"}",
+        description:
+          "The response attributes that are used to authenticate to the auth method. "
+          "The schema of this field depends on the type of the auth method. "
+          "For password, OIDC and LDAP auth methods, the response is an auth token:\n"
+          "```json\n"
+          "{\n"
+          "  \"id\": \"token_id\",\n"
+          "  \"scope_id\": \"scope_id\",\n"
+          "  \"token\": \"token_string\",\n"
+          "  \"user_id\": \"user_id\",\n"
+          "  \"auth_method_id\": \"auth_method_id\",\n"
+          "  \"account_id\": \"account_id\",\n"
+          "  \"created_time\": \"token_created_time\",\n"
+          "  \"updated_time\": \"token_updated_time\",\n"
+          "  \"approximate_last_used_time\": \"token_approximate_last_used_time\",\n"
+          "  \"expiration_time\": \"token_expiration_time\"\n"
+          "}\n"
+          "```\n"
+          "For OIDC auth methods, the initial parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"auth_url\": \"OIDC_auth_url\",\n"
+          "  \"token_id\": \"OIDC_token_id\"\n"
+          "}\n"
+          "```\n"
+          "The `auth_url` is the URL that authenticating user should open "
+          "in the browser to authenticate with the OIDC provider. "
+          "The `token_id` should be used in subsequent calls to the `authenticate` endpoint "
+          "to retrieve the auth token.\n"
+      }
+    ];
     // Note: these fields have a custom mapping function for transforming to and from the generic attributes,
     // they do not use the standard attribute transformation.
     controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateStartResponse oidc_auth_method_authenticate_start_response = 6 [(google.api.field_visibility).restriction = "INTERNAL"];

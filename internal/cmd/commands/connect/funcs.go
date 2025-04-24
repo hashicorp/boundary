@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package connect
 
 import (
@@ -13,7 +16,7 @@ import (
 )
 
 func generateSessionInfoTableOutput(in SessionInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Session ID":       in.SessionId,
 		"Protocol":         in.Protocol,
 		"Address":          in.Address,
@@ -52,7 +55,7 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 		ret = append(ret, fmt.Sprintf("%sCredentials:", prefixString))
 	}
 	for _, crd := range creds {
-		credMap := map[string]interface{}{
+		credMap := map[string]any{
 			"Credential Store ID":   crd.CredentialSource.CredentialStoreId,
 			"Credential Source ID":  crd.CredentialSource.Id,
 			"Credential Store Type": crd.CredentialSource.Type,
@@ -82,39 +85,35 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	prefixStr := strings.Repeat(" ", indent)
 	origSecret := []string{fmt.Sprintf("%s    %s", prefixStr, sc.Secret.Raw)}
-	switch sc.CredentialSource.Type {
-	case "vault", "static":
-		if sc.Credential != nil {
-			maxLength := 0
-			for k := range sc.Credential {
-				if len(k) > maxLength {
-					maxLength = len(k)
-				}
+	if sc.Credential != nil {
+		maxLength := 0
+		for k := range sc.Credential {
+			if len(k) > maxLength {
+				maxLength = len(k)
 			}
-			return []string{fmt.Sprintf("%s    %s", prefixStr, base.WrapMap(2, maxLength+2, sc.Credential))}
 		}
-
-		in, err := base64.StdEncoding.DecodeString(strings.Trim(string(sc.Secret.Raw), `"`))
-		if err != nil {
-			return origSecret
-		}
-		dst := new(bytes.Buffer)
-		if err := json.Indent(dst, in, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
-			return origSecret
-		}
-		secretStr := strings.Split(dst.String(), "\n")
-		if len(secretStr) > 0 {
-			secretStr[0] = fmt.Sprintf("%s    %s", prefixStr, secretStr[0])
-		}
-		return secretStr
+		return []string{fmt.Sprintf("%s    %s", prefixStr, base.WrapMap(2, maxLength+2, sc.Credential))}
 	}
-	return origSecret
+
+	in, err := base64.StdEncoding.DecodeString(strings.Trim(string(sc.Secret.Raw), `"`))
+	if err != nil {
+		return origSecret
+	}
+	dst := new(bytes.Buffer)
+	if err := json.Indent(dst, in, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
+		return origSecret
+	}
+	secretStr := strings.Split(dst.String(), "\n")
+	if len(secretStr) > 0 {
+		secretStr[0] = fmt.Sprintf("%s    %s", prefixStr, secretStr[0])
+	}
+	return secretStr
 }
 
 func generateConnectionInfoTableOutput(in ConnectionInfo) string {
 	var ret []string
 
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Connections Left": in.ConnectionsLeft,
 	}
 
@@ -138,7 +137,7 @@ func generateConnectionInfoTableOutput(in ConnectionInfo) string {
 func generateTerminationInfoTableOutput(in TerminationInfo) string {
 	var ret []string
 
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Reason": in.Reason,
 	}
 

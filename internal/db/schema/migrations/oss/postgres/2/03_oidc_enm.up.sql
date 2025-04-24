@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 -- auth_oidc_method_state_enum entries define the possible oidc auth method

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authmethods
 
 import (
@@ -10,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
@@ -28,23 +32,23 @@ var pwMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if pwMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&pwstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}}); err != nil {
+	if pwMaskManager, err = handlers.NewMaskManager(context.Background(), handlers.MaskDestination{&pwstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}}); err != nil {
 		panic(err)
 	}
 
-	IdActions[password.Subtype] = action.ActionSet{
+	IdActions[password.Subtype] = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.Authenticate,
-	}
+	)
 }
 
 // createPwInRepo creates a password auth method in a repo and returns the result.
 // This method should never return a nil AuthMethod without returning an error.
 func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
-	u, err := toStoragePwAuthMethod(scopeId, item)
+	u, err := toStoragePwAuthMethod(ctx, scopeId, item)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +64,7 @@ func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.Au
 }
 
 func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*password.AuthMethod, error) {
-	u, err := toStoragePwAuthMethod(scopeId, item)
+	u, err := toStoragePwAuthMethod(ctx, scopeId, item)
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +101,7 @@ func (s Service) authenticatePassword(ctx context.Context, req *pbs.Authenticate
 }
 
 func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
+	const op = "authmethods.(Service).authenticateWithPwRepo"
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
 		return nil, err
@@ -127,14 +132,32 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 		return nil, err
 	}
 
+	if err := event.WriteObservation(ctx, op, event.WithDetails("user_id", u.GetPublicId(), "auth_token_start",
+		tok.GetCreateTime(), "auth_token_end", tok.GetExpirationTime())); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to write observation event for authenticate method"))
+	}
+
 	return s.ConvertInternalAuthTokenToApiAuthToken(
 		ctx,
 		tok,
 	)
 }
 
-func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticatePasswordRequest(ctx context.Context, req *pbs.AuthenticateRequest) error {
+	const op = "authmethods.(Service).validateAuthenticatePasswordRequest"
 	badFields := make(map[string]string)
+
+	requestInfo, ok := auth.GetRequestInfo(ctx)
+	if !ok {
+		return errors.New(ctx, errors.Internal, op, "no request info found")
+	}
+
+	for _, action := range requestInfo.Actions {
+		switch action {
+		case auth.CallbackAction:
+			badFields["request_path"] = "callback is not a valid action for this auth method."
+		}
+	}
 
 	attrs := req.GetPasswordLoginAttributes()
 	switch {
@@ -171,10 +194,10 @@ func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	return nil
 }
 
-func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
+func toStoragePwAuthMethod(ctx context.Context, scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
 	const op = "authmethod_service.toStoragePwAuthMethod"
 	if item == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil auth method.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil auth method.")
 	}
 	var opts []password.Option
 	if item.GetName() != nil {
@@ -183,7 +206,7 @@ func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthM
 	if item.GetDescription() != nil {
 		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := password.NewAuthMethod(scopeId, opts...)
+	u, err := password.NewAuthMethod(ctx, scopeId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for creation: %v.", err)
 	}

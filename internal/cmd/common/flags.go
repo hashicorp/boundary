@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package common
 
 import (
@@ -51,9 +54,10 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 			})
 		case "id":
 			f.StringVar(&base.StringVar{
-				Name:   "id",
-				Target: &c.FlagId,
-				Usage:  fmt.Sprintf("ID of the %s on which to operate.", resourceType),
+				Name:    "id",
+				Target:  &c.FlagId,
+				Default: c.FlagId,
+				Usage:   fmt.Sprintf("ID of the %s on which to operate.", resourceType),
 			})
 		case "name":
 			f.StringVar(&base.StringVar{
@@ -68,7 +72,7 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Usage:  fmt.Sprintf("Description to set on the %s.", resourceType),
 			})
 		case "version":
-			f.IntVar(&base.IntVar{
+			f.Int64Var(&base.Int64Var{
 				Name:   "version",
 				Target: &c.FlagVersion,
 				Usage:  fmt.Sprintf("The version of the %s against which to perform an update operation. If not specified, the command will perform a check-and-set automatically.", resourceType),
@@ -116,151 +120,113 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 	}
 }
 
-func PopulateAttributeFlags(c *base.Command, f *base.FlagSet, flagNames map[string][]string, command string) {
-	keyDelimiter := "."
-	for _, name := range flagNames[command] {
-		switch name {
-		case "attributes":
-			f.StringVar(&base.StringVar{
-				Name:   "attributes",
-				Target: &c.FlagAttributes,
-				Usage:  `A JSON map value to use as the entirety of the request's attributes map. Usually this will be sourced from a file via "file://" syntax. Is exclusive with the other attr flags.`,
-			})
-		case "attr":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "attr",
-				Target:         &c.FlagAttrs,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value attribute to add to the request's attributes map. The type is automatically inferred. Use -string-attr, -bool-attr, or -num-attr if the type needs to be overridden. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "string-attr":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "string-attr",
-				Target:         &c.FlagAttrs,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value string attribute to add to the request's attributes map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "bool-attr":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "bool-attr",
-				Target:         &c.FlagAttrs,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value bool attribute to add to the request's attributes map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "num-attr":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "num-attr",
-				Target:         &c.FlagAttrs,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value numeric attribute to add to the request's attributes map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		}
-	}
+type CombinedSliceFlagValuePopulationInput struct {
+	// FlagSet is the flag set to add vars to
+	FlagSet *base.FlagSet
+
+	// FlagNames is the set of flag names
+	FlagNames []string
+
+	// FullPopulationFlag is the string var to set if a fully-specified map is
+	// supplied, e.g. "attributes"
+	FullPopulationFlag *string
+
+	// FullPopulationInputName is the name of the flag when setting a
+	// fully-specified map; also used for generating help texts
+	FullPopulationInputName string
+
+	// PiecewisePopulationFlag is the var that is built up via the combination
+	// method, e.g. "attr", "string-attr", etc.
+	PiecewisePopulationFlag *[]base.CombinedSliceFlagValue
+
+	// PiecewisePopulationInputName is the base name of the flag when using the
+	// combination method, e.g. "attr" will be used to build "string-attr"; also
+	// used for generating help texts
+	PiecewisePopulationInputBaseName string
+
+	// If ProtoCompat is true, the key will be validated against proto3 syntax
+	// requirements for identifiers. If the string is split via KeyDelimiter, each
+	// segment will be evaluated independently.
+	PiecewiseNoProtoCompat bool
 }
 
-func PopulateSecretFlags(c *base.Command, f *base.FlagSet, flagNames map[string][]string, command string) {
+func PopulateCombinedSliceFlagValue(input CombinedSliceFlagValuePopulationInput) {
 	keyDelimiter := "."
-	for _, name := range flagNames[command] {
+	for _, name := range input.FlagNames {
 		switch name {
-		case "secrets":
-			f.StringVar(&base.StringVar{
-				Name:   "secrets",
-				Target: &c.FlagSecrets,
-				Usage:  `A JSON map value to use as the entirety of the request's secrets map. Usually this will be sourced from a file via "file://" syntax. Is exclusive with the other secret flags.`,
+		case input.FullPopulationInputName:
+			input.FlagSet.StringVar(&base.StringVar{
+				Name:   input.FullPopulationInputName,
+				Target: input.FullPopulationFlag,
+				Usage: fmt.Sprintf(
+					"A JSON map value to use as the entirety of the request's %s map. "+
+						"Usually this will be sourced from a file via \"file://\" syntax. "+
+						"Is exclusive with the other %s flags.",
+					input.FullPopulationInputName,
+					input.PiecewisePopulationInputBaseName,
+				),
 			})
-		case "secret":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "secret",
-				Target:         &c.FlagScrts,
+		case input.PiecewisePopulationInputBaseName:
+			input.FlagSet.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           input.PiecewisePopulationInputBaseName,
+				Target:         input.PiecewisePopulationFlag,
+				KvSplit:        true,
+				KeyDelimiter:   &keyDelimiter,
+				ProtoCompatKey: !input.PiecewiseNoProtoCompat,
+				KeyOnlyAllowed: true,
+				Usage: fmt.Sprintf(
+					"A key=value pair to add to the request's %s map. "+
+						"This can also be a key value only which will set a JSON null as the value. "+
+						"If a value is provided, the type is automatically inferred. Use -string-%s, -bool-%s, or -num-%s if the type needs to be overridden. "+
+						"Can be specified multiple times. "+
+						"Supports sourcing values from files via \"file://\" and env vars via \"env://\".",
+					input.FullPopulationInputName,
+					input.PiecewisePopulationInputBaseName,
+					input.PiecewisePopulationInputBaseName,
+					input.PiecewisePopulationInputBaseName,
+				),
+			})
+		case "string-" + input.PiecewisePopulationInputBaseName:
+			input.FlagSet.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "string-" + input.PiecewisePopulationInputBaseName,
+				Target:         input.PiecewisePopulationFlag,
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
-				Usage:          `A key=value secret to add to the request's secrets map. The type is automatically inferred. Use -string-secret, -bool-secret, or -num-secret if the type needs to be overridden. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+				Usage: fmt.Sprintf(
+					"A key=value string value to add to the request's %s map. "+
+						"Can be specified multiple times. "+
+						"Supports sourcing values from files via \"file://\" and env vars via \"env://\"`.",
+					input.FullPopulationInputName,
+				),
 			})
-		case "string-secret":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "string-secret",
-				Target:         &c.FlagScrts,
+		case "bool-" + input.PiecewisePopulationInputBaseName:
+			input.FlagSet.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "bool-" + input.PiecewisePopulationInputBaseName,
+				Target:         input.PiecewisePopulationFlag,
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
-				Usage:          `A key=value string secret to add to the request's secrets map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+				Usage: fmt.Sprintf(
+					"A key=value bool value to add to the request's %s map. "+
+						"Can be specified multiple times. "+
+						"Supports sourcing values from files via \"file://\" and env vars via \"env://\"`.",
+					input.FullPopulationInputName,
+				),
 			})
-		case "bool-secret":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "bool-secret",
-				Target:         &c.FlagScrts,
+		case "num-" + input.PiecewisePopulationInputBaseName:
+			input.FlagSet.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "num-" + input.PiecewisePopulationInputBaseName,
+				Target:         input.PiecewisePopulationFlag,
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
-				Usage:          `A key=value bool secret to add to the request's secrets map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "num-secret":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "num-secret",
-				Target:         &c.FlagScrts,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value numeric secret to add to the request's secrets map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		}
-	}
-}
-
-func PopulateObjectFlags(c *base.Command, f *base.FlagSet, flagNames map[string][]string, command string) {
-	keyDelimiter := "."
-	for _, name := range flagNames[command] {
-		switch name {
-		case "object":
-			f.StringVar(&base.StringVar{
-				Name:   "object",
-				Target: &c.FlagObject,
-				Usage:  `A JSON map value to use as the entirety of the request's object map. Usually this will be sourced from a file via "file://" syntax. Is exclusive with the other kv flags.`,
-			})
-		case "kv":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "kv",
-				Target:         &c.FlagKv,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value pair to add to the request's object map. The type is automatically inferred. Use -string-kv, -bool-kv, or -num-kv if the type needs to be overridden. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "string-kv":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "string-kv",
-				Target:         &c.FlagKv,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value string value to add to the request's object map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "bool-kv":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "bool-kv",
-				Target:         &c.FlagKv,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value bool value to add to the request's object map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "num-kv":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "num-kv",
-				Target:         &c.FlagKv,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value numeric value to add to the request's object map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+				Usage: fmt.Sprintf(
+					"A key=value numeric value to add to the request's %s map. "+
+						"Can be specified multiple times. "+
+						"Supports sourcing values from files via \"file://\" and env vars via \"env://\"`.",
+					input.FullPopulationInputName,
+				),
 			})
 		}
 	}
@@ -272,7 +238,7 @@ var jsonNumberRegex = regexp.MustCompile(`^-?(?:0|[1-9]\d*)(?:\.\d+)?$`)
 // HandleAttributeFlags takes in a command and a func to call for default (that
 // is, set to nil) and non-default values. Suffix can be used to allow this
 // logic to be used for various needs, e.g. -attr vs -secret.
-func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields []base.CombinedSliceFlagValue, defaultFunc func(), setFunc func(map[string]interface{})) error {
+func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields []base.CombinedSliceFlagValue, defaultFunc func(), setFunc func(map[string]any)) error {
 	// If we were given a fullly defined field, use that as-is
 	switch fullField {
 	case "":
@@ -286,7 +252,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			return fmt.Errorf("error parsing %s flag as a URL: %w", suffix, err)
 		}
 		// We should be able to parse the string as a JSON object
-		var setMap map[string]interface{}
+		var setMap map[string]any
 		if err := json.Unmarshal([]byte(parsedString), &setMap); err != nil {
 			return fmt.Errorf("error parsing %s flag as JSON: %w", suffix, err)
 		}
@@ -294,7 +260,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 		return nil
 	}
 
-	setMap := map[string]interface{}{}
+	setMap := map[string]any{}
 
 	for _, field := range sepFields {
 		if len(field.Keys) == 0 {
@@ -302,32 +268,42 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			continue
 		}
 
-		var val interface{}
+		var val any
 		var err error
 
 		// First, perform any needed parsing if we are given the type
 		switch field.Name {
 		case "num-" + suffix:
-			// JSON treats all numbers equally, however, we will try to be a
-			// little better so that we don't include decimals if we don't need
-			// to (and don't have to worry about precision if not necessary)
-			if strings.Contains(field.Value, ".") {
-				val, err = strconv.ParseFloat(field.Value, 64)
+			if field.Value == nil {
+				return fmt.Errorf("num-%s flag requires a value", suffix)
+			}
+			switch {
+			case strings.Contains(field.Value.GetValue(), "."):
+				// JSON treats all numbers equally, however, we will try to be a
+				// little better so that we don't include decimals if we don't need
+				// to (and don't have to worry about precision if not necessary)
+				val, err = strconv.ParseFloat(field.Value.GetValue(), 64)
 				if err != nil {
 					return fmt.Errorf("error parsing value %q as a float: %w", field.Value, err)
 				}
-			} else {
-				val, err = strconv.ParseInt(field.Value, 10, 64)
+			default:
+				val, err = strconv.ParseInt(field.Value.GetValue(), 10, 64)
 				if err != nil {
 					return fmt.Errorf("error parsing value %q as an integer: %w", field.Value, err)
 				}
 			}
 
 		case "string-" + suffix:
-			val = strings.Trim(field.Value, `"`)
+			if field.Value == nil {
+				return fmt.Errorf("string-%s flag requires a value", suffix)
+			}
+			val = field.Value.GetValue()
 
 		case "bool-" + suffix:
-			switch field.Value {
+			if field.Value == nil {
+				return fmt.Errorf("bool-%s flag requires a value", suffix)
+			}
+			switch field.Value.GetValue() {
 			case "true":
 				val = true
 			case "false":
@@ -340,44 +316,43 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			// In this case, use heuristics to just do the right thing the vast
 			// majority of the time
 			switch {
-			case field.Value == "null": // Explicit null, we want to set to a null value to clear it
+			case field.Value == nil: // Key-only, set to null
+
+			case field.Value.GetValue() == "null": // Explicit null, we want to set to a null value to clear it
 				val = nil
 
-			case field.Value == "true": // bool true
+			case field.Value.GetValue() == "true": // bool true
 				val = true
 
-			case field.Value == "false": // bool false
+			case field.Value.GetValue() == "false": // bool false
 				val = false
 
-			case strings.HasPrefix(field.Value, `"`): // explicitly quoted string
-				val = strings.Trim(field.Value, `"`)
-
-			case jsonNumberRegex.MatchString(strings.Trim(field.Value, `"`)): // number
+			case jsonNumberRegex.MatchString(strings.Trim(field.Value.GetValue(), `"`)): // number
 				// Same logic as above
-				if strings.Contains(field.Value, ".") {
-					val, err = strconv.ParseFloat(field.Value, 64)
+				if strings.Contains(field.Value.GetValue(), ".") {
+					val, err = strconv.ParseFloat(field.Value.GetValue(), 64)
 					if err != nil {
 						return fmt.Errorf("error parsing value %q as a float: %w", field.Value, err)
 					}
 				} else {
-					val, err = strconv.ParseInt(field.Value, 10, 64)
+					val, err = strconv.ParseInt(field.Value.GetValue(), 10, 64)
 					if err != nil {
 						return fmt.Errorf("error parsing value %q as an integer: %w", field.Value, err)
 					}
 				}
 
-			case strings.HasPrefix(field.Value, "["): // serialized JSON array
-				var s []interface{}
-				u := json.NewDecoder(bytes.NewBufferString(field.Value))
+			case strings.HasPrefix(field.Value.GetValue(), "["): // serialized JSON array
+				var s []any
+				u := json.NewDecoder(bytes.NewBufferString(field.Value.GetValue()))
 				u.UseNumber()
 				if err := u.Decode(&s); err != nil {
 					return fmt.Errorf("error parsing value %q as a json array: %w", field.Value, err)
 				}
 				val = s
 
-			case strings.HasPrefix(field.Value, "{"): // serialized JSON map
-				var m map[string]interface{}
-				u := json.NewDecoder(bytes.NewBufferString(field.Value))
+			case strings.HasPrefix(field.Value.GetValue(), "{"): // serialized JSON map
+				var m map[string]any
+				u := json.NewDecoder(bytes.NewBufferString(field.Value.GetValue()))
 				u.UseNumber()
 				if err := u.Decode(&m); err != nil {
 					return fmt.Errorf("error parsing value %q as a json map: %w", field.Value, err)
@@ -386,8 +361,9 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 
 			default:
 				// Default is to treat as a string value
-				val = field.Value
+				val = field.Value.GetValue()
 			}
+
 		default:
 			return fmt.Errorf("unknown flag %q", field.Name)
 		}
@@ -413,14 +389,14 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 					// Nothing currently exists
 					currMap[segment] = val
 
-				case []interface{}:
+				case []any:
 					// It's already a slice, so just append
 					currMap[segment] = append(t, val)
 
 				default:
 					// It's not a slice, so create a new slice with the
-					// exisitng and new values
-					currMap[segment] = []interface{}{t, val}
+					// existing and new values
+					currMap[segment] = []any{t, val}
 				}
 
 			default:
@@ -429,11 +405,11 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 				case nil:
 					// We haven't hit this segment before, so create a new
 					// object leading off of it and set it to current
-					newMap := map[string]interface{}{}
+					newMap := map[string]any{}
 					currMap[segment] = newMap
 					currMap = newMap
 
-				case map[string]interface{}:
+				case map[string]any:
 					// We've seen this before and already have a map so just set
 					// that as our new location
 					currMap = t

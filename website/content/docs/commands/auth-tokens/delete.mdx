@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: auth-tokens delete - Command
+description: >-
+  The "auth-tokens delete" command deletes an existing auth token resource.
+---
+
+# auth-tokens delete
+
+Command: `boundary auth-tokens delete`
+
+The `auth-tokens delete` command deletes an auth token given its ID.
+
+## Example
+
+The following command deletes an auth token with the ID `at_LvUqeYz80B`:
+
+```shell-session
+$ boundary auth-tokens delete -id at_LvUqeYz80B
+The delete operation completed successfully.
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-tokens delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the auth token to delete.
+
+@include 'cmd-option-note.mdx'

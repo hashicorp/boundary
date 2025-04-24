@@ -1,0 +1,49 @@
+---
+layout: docs
+page_title: session-recordings list - Command
+description: >-
+  The "session-recordings list" command lists the available session recording resources within a scope or resource.
+---
+
+# session-recordings list
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary session-recordings list`
+
+The `boundary session-recordings list` command lets you list the Boundary session recordings within a given scope or resource.
+
+## Example
+
+This example lists all session recordings within the scope `s_1234567890`.
+The `recursive` option means Boundary runs the operation recursively on any child scopes, if applicable:
+
+```shell-session
+$ boundary session-recordings list -scope-id s_1234567890 -recursive
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary session-recordings list [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `recursive` - If set, runs the list operation recursively on any child scopes, if the type supports it.
+The default value is `false`.
+- `scope-id=<string>` - The scope from which you want to list the session recordings.
+The default value is `global`.
+You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
+- `list_token` (optional) - An opaque token that is returned from the previous `list` response.
+If you do not supply a value, pagination starts from the beginning.
+- `page_size` (optional) - An unsigned integer that indicates the number of items that should be included on the page of search results.
+If you do not provide a value, or if you provide a value of `0`, Boundary uses the default page size of 1000 items.
+If you configure it, the `page_size` value overrides the default page size.
+Controller administrators can also configure a `max_page_size` option that constrains the maximum page size a user can request.
+
+@include 'cmd-option-note.mdx'

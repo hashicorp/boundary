@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 -- Changes the default that was set in 0/41_targets.up.sql

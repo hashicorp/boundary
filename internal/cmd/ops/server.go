@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package ops encapsulates the lifecycle of Boundary's ops-purpose listeners
 // and servers: Creating, setting them up, starting and shutdown.
 package ops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,10 +19,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/mitchellh/cli"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -37,7 +39,7 @@ type opsBundle struct {
 
 // NewServer iterates through all the listeners and sets up HTTP Servers for each, along with individual handlers.
 // If Controller is set-up, NewServer will set-up a health endpoint for it.
-func NewServer(l hclog.Logger, c *controller.Controller, w *worker.Worker, listeners ...*base.ServerListener) (*Server, error) {
+func NewServer(ctx context.Context, l hclog.Logger, c *controller.Controller, w *worker.Worker, listeners ...*base.ServerListener) (*Server, error) {
 	const op = "ops.NewServer()"
 	if l == nil {
 		return nil, fmt.Errorf("%s: missing logger", op)
@@ -55,7 +57,7 @@ func NewServer(l hclog.Logger, c *controller.Controller, w *worker.Worker, liste
 			return nil, fmt.Errorf("%s: missing ops listener", op)
 		}
 
-		h, err := createOpsHandler(ln.Config, c, w)
+		h, err := createOpsHandler(ctx, ln.Config, c, w)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +88,7 @@ func (s *Server) Start() {
 func (s *Server) Shutdown() error {
 	const op = "ops.(Server).Shutdown"
 
-	var closeErrors *multierror.Error
+	var closeErrors error
 	for _, b := range s.bundles {
 		if b == nil || b.ln == nil || b.ln.Config == nil || b.ln.OpsListener == nil || b.ln.HTTPServer == nil {
 			return fmt.Errorf("%s: missing bundle, listener or its fields", op)
@@ -97,17 +99,17 @@ func (s *Server) Shutdown() error {
 
 		err := b.ln.HTTPServer.Shutdown(ctx)
 		if err != nil {
-			multierror.Append(closeErrors, fmt.Errorf("%s: failed to shutdown http server: %w", op, err))
+			errors.Join(closeErrors, fmt.Errorf("%s: failed to shutdown http server: %w", op, err))
 		}
 
 		err = b.ln.OpsListener.Close()
 		err = listenerCloseErrorCheck(b.ln.Config.Type, err)
 		if err != nil {
-			multierror.Append(closeErrors, fmt.Errorf("%s: failed to close listener mux: %w", op, err))
+			errors.Join(closeErrors, fmt.Errorf("%s: failed to close listener mux: %w", op, err))
 		}
 	}
 
-	return closeErrors.ErrorOrNil()
+	return closeErrors
 }
 
 // WaitIfHealthExists waits for a configurable period of time `d` if the health endpoint has been
@@ -129,7 +131,7 @@ func (s *Server) WaitIfHealthExists(d time.Duration, ui cli.Ui) {
 	<-time.After(d)
 }
 
-func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controller, w *worker.Worker) (http.Handler, error) {
+func createOpsHandler(ctx context.Context, lncfg *listenerutil.ListenerConfig, c *controller.Controller, w *worker.Worker) (http.Handler, error) {
 	mux := http.NewServeMux()
 	var h http.Handler
 	var err error

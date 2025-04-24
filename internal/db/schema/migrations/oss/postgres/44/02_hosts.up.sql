@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
   -- dropping these foreign keys because they were never needed
@@ -14,6 +17,7 @@ begin;
   -- insert_host_catalog_subtype() is a before insert trigger function for
   -- subtypes of host_catalog.
   -- Replaces the insert_host_catalog_subtype function defined in 20/04_host.up.sql
+  -- Replaced in 80/10_host_catalog_base_table_updates.up.sql
   create or replace function insert_host_catalog_subtype() returns trigger
   as $$
   begin
@@ -70,8 +74,8 @@ begin;
   $$ language plpgsql;
 
   -- update views
-  -- Replace view from 20/10_plugin_host_secrets_hmac.up.sql
   drop view host_plugin_catalog_with_secret;
+  -- Recreated in 56/02_add_data_key_foreign_key_references.up.sql
   create view host_plugin_catalog_with_secret as
   select
     hc.public_id,
@@ -95,6 +99,7 @@ begin;
     'host plugin catalog with its associated persisted data';
 
   -- Replaces view from 20/08_plugin_host_views.up.sql
+  -- Replaced in 69/01_plugin_host_external_name.up.sql
   drop view host_plugin_host_with_value_obj_and_set_memberships;
   create view host_plugin_host_with_value_obj_and_set_memberships as
   select

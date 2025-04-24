@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -24,21 +27,6 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 	}
 	opts := getOpts(opt...)
 	return r.lookupAuthMethod(ctx, publicId, WithUnauthenticatedUser(opts.withUnauthenticatedUser))
-}
-
-// ListAuthMethods returns a slice of AuthMethods for the scopeId. The
-// WithUnauthenticatedUser, WithLimit and WithOrder options are supported and
-// all other options are ignored.
-func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
-	const op = "oidc.(Repository).ListAuthMethods"
-	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope IDs")
-	}
-	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return authMethods, nil
 }
 
 // lookupAuthMethod will lookup a single auth method
@@ -98,7 +86,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		}
 	}
 
-	var args []interface{}
+	var args []any
 	var where []string
 	switch {
 	case authMethodId != "":
@@ -164,6 +152,9 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		if agg.AccountClaimMaps != "" {
 			am.AccountClaimMaps = strings.Split(agg.AccountClaimMaps, aggregateDelimiter)
 		}
+		if agg.Prompts != "" {
+			am.Prompts = strings.Split(agg.Prompts, aggregateDelimiter)
+		}
 		authMethods = append(authMethods, &am)
 	}
 	return authMethods, nil
@@ -195,6 +186,7 @@ type authMethodAgg struct {
 	Certs                             string
 	ClaimsScopes                      string
 	AccountClaimMaps                  string
+	Prompts                           string
 }
 
 // TableName returns the table name for gorm

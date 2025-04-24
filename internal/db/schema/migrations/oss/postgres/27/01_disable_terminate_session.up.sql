@@ -1,9 +1,13 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 -- Replaces function from 0/51_connection.up.sql
 -- Remove call to terminate_session_if_possible
 drop trigger update_connection_state_on_closed_reason on session_connection;
 drop function update_connection_state_on_closed_reason();
 
+-- Removed in 90/01_remove_session_connection_state.up.sql
 create function update_connection_state_on_closed_reason() returns trigger
 as $$
     begin

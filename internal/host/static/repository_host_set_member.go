@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -71,11 +74,11 @@ func (r *Repository) AddSetMembers(ctx context.Context, projectId string, setId 
 	return hosts, nil
 }
 
-func (r *Repository) newMembers(ctx context.Context, setId string, hostIds []string) ([]interface{}, error) {
-	var members []interface{}
+func (r *Repository) newMembers(ctx context.Context, setId string, hostIds []string) ([]*HostSetMember, error) {
+	var members []*HostSetMember
 	for _, id := range hostIds {
 		var m *HostSetMember
-		m, err := NewHostSetMember(setId, id)
+		m, err := NewHostSetMember(ctx, setId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, "static.newMembers")
 		}
@@ -84,7 +87,7 @@ func (r *Repository) newMembers(ctx context.Context, setId string, hostIds []str
 	return members, nil
 }
 
-func createMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*oplog.Message, error) {
+func createMembers(ctx context.Context, w db.Writer, members []*HostSetMember) ([]*oplog.Message, error) {
 	var msgs []*oplog.Message
 	if err := w.CreateItems(ctx, members, db.NewOplogMsgs(&msgs)); err != nil {
 		return nil, errors.Wrap(ctx, err, "static.createMembers")
@@ -134,7 +137,7 @@ func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([
           limit ?
        )`
 
-	params := []interface{}{setId}
+	params := []any{setId}
 	var where string
 	switch limit {
 	case unlimited:
@@ -211,7 +214,7 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, projectId string, set
 	return len(hostIds), nil
 }
 
-func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*oplog.Message, error) {
+func deleteMembers(ctx context.Context, w db.Writer, members []*HostSetMember) ([]*oplog.Message, error) {
 	const op = "static.deleteMembers"
 	var msgs []*oplog.Message
 	rowsDeleted, err := w.DeleteItems(ctx, members, db.NewOplogMsgs(&msgs))
@@ -258,9 +261,9 @@ func (r *Repository) SetSetMembers(ctx context.Context, projectId string, setId 
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	var deletions, additions []interface{}
+	var deletions, additions []*HostSetMember
 	for _, c := range changes {
-		m, err := NewHostSetMember(setId, c.HostId)
+		m, err := NewHostSetMember(ctx, setId, c.HostId)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
@@ -341,7 +344,7 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	}
 	query := fmt.Sprintf(setChangesQuery, inClause)
 
-	var params []interface{}
+	var params []any
 	params = append(params, sql.Named("1", setId))
 	for idx, v := range hostIds {
 		params = append(params, sql.Named(fmt.Sprintf("%d", idx+2), v))
@@ -359,6 +362,9 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		changes = append(changes, &chg)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("next row error"))
 	}
 	return changes, nil
 }

@@ -1,0 +1,91 @@
+---
+layout: docs
+page_title: connect - Command
+description: >-
+  The "connect" command authorizes a target resource and launches a proxied connection.
+---
+
+# connect
+
+Command: `boundary connect`
+
+Every command that results in an API call contains a set of flags that control connection options, which include TLS and other settings.
+Boundary provides connect helpers that can facilitate access to certain protocols like HTTP, RDP, and SSH.
+One example is the Boundary helper for SSH that automatically accepts host SSH key prompts for you.
+You run these connect helpers using the command `boundary connect <subcommand>`.
+You can run `boundary connect -h` to see the available helpers, options, and arguments.
+
+## Examples
+
+The following example connects to a target `ttcP_INY0BCD2VF` and shows the use of the
+[`-listen-addr`](/boundary/docs/commands//connect#-listen-port) and
+[`-listen-port`](/boundary/docs/commands//connect#-listen-addr) flags
+to specify the listening address and port used that Boundary will attempt to use
+for every connection. This example uses the address `127.0.0.1` and
+the port `8872`:
+
+```shell-session
+$ boundary connect ssh \
+    -listen-addr=127.0.0.1 \
+    -listen-port=8872
+    -target_id=ttcp_INY0BCD2VF
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```text
+Usage: boundary connect <subcommand> [options] [args]
+  # ...
+Subcommands:
+    http        Authorize a session against a target and invoke an HTTP client to connect
+    kube        Authorize a session against a target and invoke a Kubernetes client to connect
+    postgres    Authorize a session against a target and invoke a Postgres client to connect
+    rdp         Authorize a session against a target and invoke an RDP client to connect
+    ssh         Authorize a session against a target and invoke an SSH client to connect
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [http](/boundary/docs/commands/connect/http)
+- [kube](/boundary/docs/commands/connect/kube)
+- [postgres](/boundary/docs/commands/connect/postgres)
+- [rdp](/boundary/docs/commands/connect/rdp)
+- [ssh](/boundary/docs/commands/connect/ssh)
+
+### Command options
+
+-  `-addr` `(string: "")` - The address of the Boundary controller as a complete URL, for example https://boundary.example.com:9200.
+   Instead of passing the `-addr` argument with every command, you can configure the **BOUNDARY_ADDR** environment variable.
+   In both cases, the value denotes the address of the Boundary environment you want to send CLI commands to.
+-  `-ca-cert` `(string: "")` - The path on the local disk to a single PEM-encoded CA certificate that should be used to verify the controller or worker server's SSL certificate.
+   This value takes precedence over `-ca-path`.
+   You can also specify the path using the **BOUNDARY_CACERT** environment variable.
+-  `-ca-path` `(string: "")` - The path on the local disk to a directory of PEM-encoded CA certificates that should be used to verify the controller's SSL certificate.
+   You can also specify the path using the **BOUNDARY_CAPATH** environment variable.
+-  `-client-cert` `(string: "")` - The path on the local disk to a single PEM-encoded CA certificate that should be used for TLS authentication to the Boundary controller.
+   If you configure this flag, the `-client-key` value is also required.
+   You can also specify the path using the **BOUNDARY_CLIENT_CERT** environment variable.
+-  `-client-key` `(string: "")` - The path on the local disk to a single PEM-encoded private key that matches the client certificate you referenced with `-client-cert`.
+  You can also specify the path using the **BOUNDARY_CLIENT_KEY** environment variable.
+-  `-listen-addr` `(string: "")` - If set, the CLI attempts to bind its listening address to the given value, which must be an IP address.
+   If it cannot bind the listening address, the command produces an error.
+   If you do not set this value, Boundary defaults to the most common IPv4 loopback address, 127.0.0.1.
+   You can also specify a listening address using the **BOUNDARY_CONNECT_LISTEN_ADDR** environment variable.
+-  `-listen-port` `(string: "")` - If set, the CLI attempts to bind its listening port to the given value.
+   If it cannot bind the listening port, the command produces error.
+   You can also specify a listening address using the **BOUNDARY_CONNECT_LISTEN_PORT** environment variable.
+- `-tls-insecure` - If set, this option disables verification of TLS certificates.
+   We highly discourage using this option as it decreases the security of data transmissions to
+      and from the Boundary server.
+      The default value is `false`.
+      You can also disable TLS certificate validation using the **BOUNDARY_TLS_INSECURE** environment variable.
+-  `-tls-server-name` `(string: "")` - A name to use as the SNI host when you connect to the Boundary server using TLS.
+   You can also specify the SNI host using the **BOUNDARY_TLS_SERVER_NAME** environment variable.
+
+
+@include 'cmd-connect-command-options.mdx'

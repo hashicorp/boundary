@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package base
 
 import (
@@ -14,6 +17,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/kr/pretty"
 	"github.com/posener/complete"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // FlagExample is an interface which declares an example value.
@@ -88,75 +92,11 @@ func (b *boolValue) Set(s string) error {
 	return nil
 }
 
-func (b *boolValue) Get() interface{} { return *b.target }
+func (b *boolValue) Get() any         { return *b.target }
 func (b *boolValue) String() string   { return strconv.FormatBool(*b.target) }
 func (b *boolValue) Example() string  { return "" }
 func (b *boolValue) Hidden() bool     { return b.hidden }
 func (b *boolValue) IsBoolFlag() bool { return true }
-
-// -- IntVar and intValue
-type IntVar struct {
-	Name       string
-	Aliases    []string
-	Usage      string
-	Default    int
-	Hidden     bool
-	EnvVar     string
-	Target     *int
-	Completion complete.Predictor
-}
-
-func (f *FlagSet) IntVar(i *IntVar) {
-	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
-		if i, err := strconv.ParseInt(v, 0, 64); err == nil {
-			initial = int(i)
-		}
-	}
-
-	def := ""
-	if i.Default != 0 {
-		def = strconv.FormatInt(int64(i.Default), 10)
-	}
-
-	f.VarFlag(&VarFlag{
-		Name:       i.Name,
-		Aliases:    i.Aliases,
-		Usage:      i.Usage,
-		Default:    def,
-		EnvVar:     i.EnvVar,
-		Value:      newIntValue(initial, i.Target, i.Hidden),
-		Completion: i.Completion,
-	})
-}
-
-type intValue struct {
-	hidden bool
-	target *int
-}
-
-func newIntValue(def int, target *int, hidden bool) *intValue {
-	*target = def
-	return &intValue{
-		hidden: hidden,
-		target: target,
-	}
-}
-
-func (i *intValue) Set(s string) error {
-	v, err := strconv.ParseInt(s, 0, 64)
-	if err != nil {
-		return err
-	}
-
-	*i.target = int(v)
-	return nil
-}
-
-func (i *intValue) Get() interface{} { return int(*i.target) }
-func (i *intValue) String() string   { return strconv.Itoa(int(*i.target)) }
-func (i *intValue) Example() string  { return "int" }
-func (i *intValue) Hidden() bool     { return i.hidden }
 
 // -- Int64Var and int64Value
 type Int64Var struct {
@@ -217,74 +157,10 @@ func (i *int64Value) Set(s string) error {
 	return nil
 }
 
-func (i *int64Value) Get() interface{} { return int64(*i.target) }
-func (i *int64Value) String() string   { return strconv.FormatInt(int64(*i.target), 10) }
-func (i *int64Value) Example() string  { return "int" }
-func (i *int64Value) Hidden() bool     { return i.hidden }
-
-// -- UintVar && uintValue
-type UintVar struct {
-	Name       string
-	Aliases    []string
-	Usage      string
-	Default    uint
-	Hidden     bool
-	EnvVar     string
-	Target     *uint
-	Completion complete.Predictor
-}
-
-func (f *FlagSet) UintVar(i *UintVar) {
-	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
-		if i, err := strconv.ParseUint(v, 0, 64); err == nil {
-			initial = uint(i)
-		}
-	}
-
-	def := ""
-	if i.Default != 0 {
-		def = strconv.FormatUint(uint64(i.Default), 10)
-	}
-
-	f.VarFlag(&VarFlag{
-		Name:       i.Name,
-		Aliases:    i.Aliases,
-		Usage:      i.Usage,
-		Default:    def,
-		EnvVar:     i.EnvVar,
-		Value:      newUintValue(initial, i.Target, i.Hidden),
-		Completion: i.Completion,
-	})
-}
-
-type uintValue struct {
-	hidden bool
-	target *uint
-}
-
-func newUintValue(def uint, target *uint, hidden bool) *uintValue {
-	*target = def
-	return &uintValue{
-		hidden: hidden,
-		target: target,
-	}
-}
-
-func (i *uintValue) Set(s string) error {
-	v, err := strconv.ParseUint(s, 0, 64)
-	if err != nil {
-		return err
-	}
-
-	*i.target = uint(v)
-	return nil
-}
-
-func (i *uintValue) Get() interface{} { return uint(*i.target) }
-func (i *uintValue) String() string   { return strconv.FormatUint(uint64(*i.target), 10) }
-func (i *uintValue) Example() string  { return "uint" }
-func (i *uintValue) Hidden() bool     { return i.hidden }
+func (i *int64Value) Get() any        { return int64(*i.target) }
+func (i *int64Value) String() string  { return strconv.FormatInt(int64(*i.target), 10) }
+func (i *int64Value) Example() string { return "int" }
+func (i *int64Value) Hidden() bool    { return i.hidden }
 
 // -- Uint64Var and uint64Value
 type Uint64Var struct {
@@ -345,10 +221,74 @@ func (i *uint64Value) Set(s string) error {
 	return nil
 }
 
-func (i *uint64Value) Get() interface{} { return uint64(*i.target) }
-func (i *uint64Value) String() string   { return strconv.FormatUint(uint64(*i.target), 10) }
-func (i *uint64Value) Example() string  { return "uint" }
-func (i *uint64Value) Hidden() bool     { return i.hidden }
+func (i *uint64Value) Get() any        { return uint64(*i.target) }
+func (i *uint64Value) String() string  { return strconv.FormatUint(uint64(*i.target), 10) }
+func (i *uint64Value) Example() string { return "uint" }
+func (i *uint64Value) Hidden() bool    { return i.hidden }
+
+// -- Uint16Var and uint16Value
+type Uint16Var struct {
+	Name       string
+	Aliases    []string
+	Usage      string
+	Default    uint16
+	Hidden     bool
+	EnvVar     string
+	Target     *uint16
+	Completion complete.Predictor
+}
+
+func (f *FlagSet) Uint16Var(i *Uint16Var) {
+	initial := i.Default
+	if v, exist := os.LookupEnv(i.EnvVar); exist {
+		if i, err := strconv.ParseUint(v, 0, 16); err == nil {
+			initial = uint16(i)
+		}
+	}
+
+	def := ""
+	if i.Default != 0 {
+		strconv.FormatUint(uint64(i.Default), 10)
+	}
+
+	f.VarFlag(&VarFlag{
+		Name:       i.Name,
+		Aliases:    i.Aliases,
+		Usage:      i.Usage,
+		Default:    def,
+		EnvVar:     i.EnvVar,
+		Value:      newUint16Value(initial, i.Target, i.Hidden),
+		Completion: i.Completion,
+	})
+}
+
+type uint16Value struct {
+	hidden bool
+	target *uint16
+}
+
+func newUint16Value(def uint16, target *uint16, hidden bool) *uint16Value {
+	*target = def
+	return &uint16Value{
+		hidden: hidden,
+		target: target,
+	}
+}
+
+func (i *uint16Value) Set(s string) error {
+	v, err := strconv.ParseUint(s, 0, 16)
+	if err != nil {
+		return err
+	}
+
+	*i.target = uint16(v)
+	return nil
+}
+
+func (i *uint16Value) Get() any        { return uint64(*i.target) }
+func (i *uint16Value) String() string  { return strconv.FormatUint(uint64(*i.target), 10) }
+func (i *uint16Value) Example() string { return "uint" }
+func (i *uint16Value) Hidden() bool    { return i.hidden }
 
 // -- StringVar and stringValue
 type StringVar struct {
@@ -402,10 +342,10 @@ func (s *stringValue) Set(val string) error {
 	return nil
 }
 
-func (s *stringValue) Get() interface{} { return *s.target }
-func (s *stringValue) String() string   { return *s.target }
-func (s *stringValue) Example() string  { return "string" }
-func (s *stringValue) Hidden() bool     { return s.hidden }
+func (s *stringValue) Get() any        { return *s.target }
+func (s *stringValue) String() string  { return *s.target }
+func (s *stringValue) Example() string { return "string" }
+func (s *stringValue) Hidden() bool    { return s.hidden }
 
 // -- Float64Var and float64Value
 type Float64Var struct {
@@ -466,10 +406,10 @@ func (f *float64Value) Set(s string) error {
 	return nil
 }
 
-func (f *float64Value) Get() interface{} { return float64(*f.target) }
-func (f *float64Value) String() string   { return strconv.FormatFloat(float64(*f.target), 'g', -1, 64) }
-func (f *float64Value) Example() string  { return "float" }
-func (f *float64Value) Hidden() bool     { return f.hidden }
+func (f *float64Value) Get() any        { return float64(*f.target) }
+func (f *float64Value) String() string  { return strconv.FormatFloat(float64(*f.target), 'g', -1, 64) }
+func (f *float64Value) Example() string { return "float" }
+func (f *float64Value) Hidden() bool    { return f.hidden }
 
 // -- DurationVar and durationValue
 type DurationVar struct {
@@ -534,10 +474,10 @@ func (d *durationValue) Set(s string) error {
 	return nil
 }
 
-func (d *durationValue) Get() interface{} { return time.Duration(*d.target) }
-func (d *durationValue) String() string   { return (*d.target).String() }
-func (d *durationValue) Example() string  { return "duration" }
-func (d *durationValue) Hidden() bool     { return d.hidden }
+func (d *durationValue) Get() any        { return time.Duration(*d.target) }
+func (d *durationValue) String() string  { return (*d.target).String() }
+func (d *durationValue) Example() string { return "duration" }
+func (d *durationValue) Hidden() bool    { return d.hidden }
 
 // appendDurationSuffix is used as a backwards-compat tool for assuming users
 // meant "seconds" when they do not provide a suffixed duration value.
@@ -637,10 +577,10 @@ func (s *stringSliceValue) Set(val string) error {
 	return nil
 }
 
-func (s *stringSliceValue) Get() interface{} { return *s.target }
-func (s *stringSliceValue) String() string   { return strings.Join(*s.target, ",") }
-func (s *stringSliceValue) Example() string  { return "string" }
-func (s *stringSliceValue) Hidden() bool     { return s.hidden }
+func (s *stringSliceValue) Get() any        { return *s.target }
+func (s *stringSliceValue) String() string  { return strings.Join(*s.target, ",") }
+func (s *stringSliceValue) Example() string { return "string" }
+func (s *stringSliceValue) Hidden() bool    { return s.hidden }
 
 // -- StringMapVar and stringMapValue
 type StringMapVar struct {
@@ -697,10 +637,10 @@ func (s *stringMapValue) Set(val string) error {
 	return nil
 }
 
-func (s *stringMapValue) Get() interface{} { return *s.target }
-func (s *stringMapValue) String() string   { return mapToKV(*s.target) }
-func (s *stringMapValue) Example() string  { return "key=value" }
-func (s *stringMapValue) Hidden() bool     { return s.hidden }
+func (s *stringMapValue) Get() any        { return *s.target }
+func (s *stringMapValue) String() string  { return mapToKV(*s.target) }
+func (s *stringMapValue) Example() string { return "key=value" }
+func (s *stringMapValue) Hidden() bool    { return s.hidden }
 
 func mapToKV(m map[string]string) string {
 	list := make([]string, 0, len(m))
@@ -826,10 +766,10 @@ func sliceMapToKV(m map[string][]string) string {
 	return strings.Join(list, ", ")
 }
 
-func (c *stringSliceMapValue) Get() interface{} { return *c.target }
-func (c *stringSliceMapValue) String() string   { return sliceMapToKV(*c.target) }
-func (c *stringSliceMapValue) Example() string  { return "key1=val-a, key2=val-b,val-c" }
-func (c *stringSliceMapValue) Hidden() bool     { return c.hidden }
+func (s *stringSliceMapValue) Get() any        { return *s.target }
+func (s *stringSliceMapValue) String() string  { return sliceMapToKV(*s.target) }
+func (s *stringSliceMapValue) Example() string { return "key1=val-a, key2=val-b,val-c" }
+func (s *stringSliceMapValue) Hidden() bool    { return s.hidden }
 
 // -- VarFlag
 type VarFlag struct {
@@ -909,6 +849,9 @@ func (f *FlagSet) Var(value flag.Value, name, usage string) {
 // Value parts so that validation can happen at parsing time. If you don't want
 // this kind of behavior, simply combine them, or set KvSplit to false.
 //
+// If KeyOnlyAllowed is true then it is valid to parse an input with only a key
+// segment and no value.
+//
 // If KeyDelimiter is non-nil (along with KvSplit being true), the string will
 // be used to split the key. Otherwise, the Keys will be a single-element slice
 // containing the full value.
@@ -924,6 +867,7 @@ type CombinationSliceVar struct {
 	Target         *[]CombinedSliceFlagValue
 	Completion     complete.Predictor
 	KvSplit        bool
+	KeyOnlyAllowed bool
 	KeyDelimiter   *string
 	ProtoCompatKey bool
 }
@@ -933,7 +877,7 @@ func (f *FlagSet) CombinationSliceVar(i *CombinationSliceVar) {
 		Name:       i.Name,
 		Aliases:    i.Aliases,
 		Usage:      i.Usage,
-		Value:      newCombinedSliceValue(i.Name, i.Target, i.Hidden, i.KvSplit, i.KeyDelimiter, i.ProtoCompatKey),
+		Value:      newCombinedSliceValue(i.Name, i.Target, i.Hidden, i.KvSplit, i.KeyOnlyAllowed, i.KeyDelimiter, i.ProtoCompatKey),
 		Completion: i.Completion,
 	})
 }
@@ -943,24 +887,26 @@ func (f *FlagSet) CombinationSliceVar(i *CombinationSliceVar) {
 type CombinedSliceFlagValue struct {
 	Name  string
 	Keys  []string
-	Value string
+	Value *wrapperspb.StringValue
 }
 
 type combinedSliceValue struct {
 	name           string
 	hidden         bool
 	kvSplit        bool
+	keyOnlyAllowed bool
 	keyDelimiter   *string
 	protoCompatKey bool
 	target         *[]CombinedSliceFlagValue
 }
 
-func newCombinedSliceValue(name string, target *[]CombinedSliceFlagValue, hidden, kvSplit bool, keyDelimiter *string, protoCompatKey bool) *combinedSliceValue {
+func newCombinedSliceValue(name string, target *[]CombinedSliceFlagValue, hidden, kvSplit, keyOnlyAllowed bool, keyDelimiter *string, protoCompatKey bool) *combinedSliceValue {
 	return &combinedSliceValue{
 		name:           name,
 		hidden:         hidden,
 		kvSplit:        kvSplit,
 		keyDelimiter:   keyDelimiter,
+		keyOnlyAllowed: keyOnlyAllowed,
 		protoCompatKey: protoCompatKey,
 		target:         target,
 	}
@@ -971,21 +917,27 @@ var protoIdentifierRegex = regexp.MustCompile("^[a-zA-Z][A-Za-z0-9_]*$")
 func (c *combinedSliceValue) Set(val string) error {
 	ret := CombinedSliceFlagValue{
 		Name:  c.name,
-		Value: strings.TrimSpace(val),
+		Value: wrapperspb.String(strings.TrimSpace(val)),
 	}
 
 	if c.kvSplit {
-		kv := strings.SplitN(ret.Value, "=", 2)
+		kv := strings.SplitN(ret.Value.GetValue(), "=", 2)
 		switch len(kv) {
 		case 0:
+			// This shouldn't happen
+			return fmt.Errorf("unexpected length of string after splitting")
 		case 1:
-			ret.Value = strings.TrimSpace(kv[0])
+			if !c.keyOnlyAllowed {
+				return fmt.Errorf("key-only value provided but not supported for this flag")
+			}
+			ret.Keys = []string{kv[0]}
+			ret.Value = nil
 		default:
 			ret.Keys = []string{kv[0]}
 			if c.keyDelimiter != nil {
 				ret.Keys = strings.Split(kv[0], *c.keyDelimiter)
 			}
-			ret.Value = strings.TrimSpace(kv[1])
+			ret.Value = wrapperspb.String(strings.TrimSpace(kv[1]))
 		}
 	}
 
@@ -1002,16 +954,20 @@ func (c *combinedSliceValue) Set(val string) error {
 		}
 	}
 
-	var err error
-	if ret.Value, err = parseutil.ParsePath(ret.Value); err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
-		return fmt.Errorf("error checking if value is a path: %w", err)
+	if ret.Value != nil {
+		pathParsedValue, err := parseutil.ParsePath(ret.Value.GetValue())
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return fmt.Errorf("error checking if value is a path: %w", err)
+		}
+		// This will either be the round-tripped value or the substituted value
+		ret.Value = wrapperspb.String(pathParsedValue)
 	}
 
 	*c.target = append(*c.target, ret)
 	return nil
 }
 
-func (c *combinedSliceValue) Get() interface{} { return *c.target }
-func (c *combinedSliceValue) String() string   { return pretty.Sprint(*c.target) }
-func (c *combinedSliceValue) Example() string  { return "" }
-func (c *combinedSliceValue) Hidden() bool     { return c.hidden }
+func (c *combinedSliceValue) Get() any        { return *c.target }
+func (c *combinedSliceValue) String() string  { return pretty.Sprint(*c.target) }
+func (c *combinedSliceValue) Example() string { return "" }
+func (c *combinedSliceValue) Hidden() bool    { return c.hidden }

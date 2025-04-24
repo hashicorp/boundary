@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package main
 
 import (
@@ -5,8 +8,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/billing"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
@@ -16,9 +21,12 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/policies"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/session_recordings"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
@@ -59,6 +67,7 @@ type fieldInfo struct {
 	Query             bool
 	SkipDefault       bool
 	JsonTags          []string // Appended to a field's `json` tag (comma separated)
+	AllowEmpty        bool
 }
 
 type structInfo struct {
@@ -74,6 +83,11 @@ type structInfo struct {
 	// unambiguous. It also switches the behavior of the functions to work on
 	// the attributes map.
 	subtypeName string
+
+	// subtype specifies exactly the value expected in the resource's "type"
+	// Field.  This is used when checking if the attributes returned can be
+	// marshaled into a specific generated attributes struct.
+	subtype string
 
 	// For non-top-level collections, this can be used to indicate the name of
 	// the argument that should be used
@@ -104,6 +118,10 @@ type structInfo struct {
 	// useful to avoid collisions
 	nameOverride string
 
+	// skipListFiltering indicates that the collection doesn't support
+	// filtering when listing
+	skipListFiltering bool
+
 	// recursiveListing indicates that the collection supports recursion when
 	// listing
 	recursiveListing bool
@@ -123,6 +141,12 @@ type structInfo struct {
 	// fieldFilter is a set of field names that will not result in generated API
 	// fields
 	fieldFilter []string
+
+	// nonPaginatedListing indicates a collection that does not support
+	// pagination
+	nonPaginatedListing bool
+
+	allowEmpty bool
 }
 
 var inputStructs = []*structInfo{
@@ -158,6 +182,28 @@ var inputStructs = []*structInfo{
 		skipOptions: true,
 	},
 	{
+		inProto:     &scopes.Key{},
+		outFile:     "scopes/key.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &scopes.KeyVersion{},
+		outFile:     "scopes/key_version.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &scopes.KeyVersionDestructionJob{},
+		outFile:     "scopes/key_version_destruction_job.gen.go",
+		skipOptions: true,
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "CompletedCount", JsonTags: []string{"string"}},
+			{Name: "TotalCount", JsonTags: []string{"string"}},
+		},
+	},
+	{
 		inProto: &scopes.Scope{},
 		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{
@@ -186,6 +232,39 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
+	},
+	{
+		inProto: &billing.ActiveUsers{},
+		outFile: "billing/active_users.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:       "Count",
+				ProtoName:  "count",
+				FieldType:  "uint32",
+				AllowEmpty: true,
+			},
+		},
+		extraFields: []fieldInfo{
+			{
+				Name:        "StartTime",
+				ProtoName:   "start_time",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+			{
+				Name:        "EndTime",
+				ProtoName:   "end_time",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+		},
+		pluralResourceName: "billing",
+		versionEnabled:     true,
 	},
 	// User related resources
 	{
@@ -279,6 +358,10 @@ var inputStructs = []*structInfo{
 				SliceType: "[]string",
 				VarName:   "grantStrings",
 			},
+			"GrantScopes": {
+				SliceType: "[]string",
+				VarName:   "grantScopeIds",
+			},
 		},
 		pluralResourceName:  "roles",
 		versionEnabled:      true,
@@ -290,6 +373,15 @@ var inputStructs = []*structInfo{
 		inProto:        &authmethods.PasswordAuthMethodAttributes{},
 		outFile:        "authmethods/password_auth_method_attributes.gen.go",
 		subtypeName:    "PasswordAuthMethod",
+		parentTypeName: "AuthMethod",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &authmethods.LdapAuthMethodAttributes{},
+		outFile:        "authmethods/ldap_auth_method_attributes.gen.go",
+		subtypeName:    "LdapAuthMethod",
 		parentTypeName: "AuthMethod",
 		templates: []*template.Template{
 			mapstructureConversionTemplate,
@@ -355,6 +447,15 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:        &accounts.LdapAccountAttributes{},
+		outFile:        "accounts/ldap_account_attributes.gen.go",
+		subtypeName:    "LdapAccount",
+		parentTypeName: "Account",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto:        &accounts.OidcAccountAttributes{},
 		outFile:        "accounts/oidc_account_attributes.gen.go",
 		subtypeName:    "OidcAccount",
@@ -396,6 +497,21 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &managedgroups.LdapManagedGroupAttributes{},
+		outFile:     "managedgroups/ldap_managed_group_attributes.gen.go",
+		subtypeName: "LdapManagedGroup",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Filter",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "ManagedGroup",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &managedgroups.ManagedGroup{},
 		outFile: "managedgroups/managedgroups.gen.go",
 		templates: []*template.Template{
@@ -422,7 +538,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName:  "auth-tokens",
-		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		createResponseTypes: []string{ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Credentials
@@ -485,6 +601,7 @@ var inputStructs = []*structInfo{
 		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
 		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
 		subtypeName: "VaultCredentialLibrary",
+		subtype:     "vault-generic",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Path",
@@ -497,11 +614,58 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentiallibraries.VaultSSHCertificateCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_ssh_certificate_credential_library_attributes.gen.go",
+		subtypeName: "VaultSSHCertificateCredentialLibrary",
+		subtype:     "vault-ssh-certificate",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Username",
+				SkipDefault: true,
+			},
+			{
+				Name:      "CriticalOptions",
+				FieldType: "map[string]string",
+			},
+			{
+				Name:      "Extensions",
+				FieldType: "map[string]string",
+			},
+		},
+		parentTypeName: "CredentialLibrary",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &credentiallibraries.CredentialLibrary{},
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -516,6 +680,7 @@ var inputStructs = []*structInfo{
 		inProto:     &credentials.UsernamePasswordAttributes{},
 		outFile:     "credentials/username_password_attributes.gen.go",
 		subtypeName: "UsernamePasswordCredential",
+		subtype:     "username_password",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Username",
@@ -535,6 +700,7 @@ var inputStructs = []*structInfo{
 		inProto:     &credentials.SshPrivateKeyAttributes{},
 		outFile:     "credentials/ssh_private_key_attributes.gen.go",
 		subtypeName: "SshPrivateKeyCredential",
+		subtype:     "ssh_private_key",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Username",
@@ -601,6 +767,143 @@ var inputStructs = []*structInfo{
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 
+	// Alias related resources
+	{
+		inProto:        &aliases.TargetAliasAttributes{},
+		outFile:        "aliases/target_alias_attributes.gen.go",
+		subtypeName:    "target",
+		parentTypeName: "Alias",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:     &aliases.AuthorizeSessionArguments{},
+		outFile:     "aliases/authorize_session_arguments.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto: &aliases.Alias{},
+		outFile: "aliases/alias.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "aliases",
+		versionEnabled:      true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		recursiveListing:    true,
+	},
+
+	// Storage related resources
+	{
+		inProto: &storagebuckets.StorageBucket{},
+		outFile: "storagebuckets/storage_bucket.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			commonCreateTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		extraFields: []fieldInfo{
+			{
+				Name:        "PluginName",
+				ProtoName:   "plugin_name",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "PluginId",
+				SkipDefault: true,
+			},
+		},
+		pluralResourceName:  "storage-buckets",
+		versionEnabled:      true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		recursiveListing:    true,
+	},
+
+	// Policy-related resources.
+	{
+		inProto: &policies.StoragePolicyDeleteAfter{},
+		outFile: "policies/storage_policy_delete_after.gen.go",
+	},
+	{
+		inProto: &policies.StoragePolicyRetainFor{},
+		outFile: "policies/storage_policy_retain_for.gen.go",
+	},
+	{
+		inProto:        &policies.StoragePolicyAttributes{},
+		outFile:        "policies/storage_policy_attributes.gen.go",
+		parentTypeName: "Policy",
+		subtypeName:    "StoragePolicy",
+		subtype:        "storage",
+		templates:      []*template.Template{mapstructureConversionTemplate},
+	},
+	{
+		inProto: &policies.Policy{},
+		outFile: "policies/policy.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "policies",
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		versionEnabled:      true,
+		recursiveListing:    true,
+	},
+
 	// Host related resources
 	{
 		inProto: &hostcatalogs.HostCatalog{},
@@ -653,6 +956,15 @@ var inputStructs = []*structInfo{
 		recursiveListing:    true,
 	},
 	{
+		inProto:        &hosts.StaticHostAttributes{},
+		outFile:        "hosts/static_host_attributes.gen.go",
+		subtypeName:    "StaticHost",
+		parentTypeName: "Host",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &hosts.Host{},
 		outFile: "hosts/host.gen.go",
 		templates: []*template.Template{
@@ -667,15 +979,6 @@ var inputStructs = []*structInfo{
 		parentTypeName:      "host-catalog",
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
-	},
-	{
-		inProto:        &hosts.StaticHostAttributes{},
-		outFile:        "hosts/static_host_attributes.gen.go",
-		subtypeName:    "StaticHost",
-		parentTypeName: "Host",
-		templates: []*template.Template{
-			mapstructureConversionTemplate,
-		},
 	},
 	{
 		inProto: &hostsets.HostSet{},
@@ -708,6 +1011,18 @@ var inputStructs = []*structInfo{
 		outFile: "targets/credential_source.gen.go",
 	},
 	{
+		inProto: &targets.Alias{},
+		outFile: "targets/alias.gen.go",
+	},
+	{
+		inProto: &targets.TargetAliasAttributes{},
+		outFile: "targets/target_alias_attributes.gen.go",
+	},
+	{
+		inProto: &targets.AuthorizeSessionArguments{},
+		outFile: "targets/authorize_session_arguments.gen.go",
+	},
+	{
 		inProto: &targets.SessionSecret{},
 		outFile: "targets/session_secret.gen.go",
 		fieldOverrides: []fieldInfo{
@@ -725,6 +1040,11 @@ var inputStructs = []*structInfo{
 		inProto:     &targets.SessionAuthorization{},
 		outFile:     "targets/session_authorization.gen.go",
 		subtypeName: "SessionAuthorization",
+	},
+	{
+		inProto:     &targets.SessionAuthorizationData{},
+		outFile:     "targets/session_authorization_data.gen.go",
+		subtypeName: "SessionAuthorizationData",
 	},
 	{
 		inProto:     &targets.WorkerInfo{},
@@ -747,6 +1067,12 @@ var inputStructs = []*structInfo{
 		parentTypeName: "Target",
 		templates: []*template.Template{
 			mapstructureConversionTemplate,
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "EnableSessionRecording",
+				SkipDefault: true,
+			},
 		},
 	},
 	{
@@ -807,11 +1133,6 @@ var inputStructs = []*structInfo{
 				SkipDefault: true,
 			},
 			{
-				Name:      "ApplicationCredentialSourceIds",
-				ProtoName: "application_credential_source_ids",
-				FieldType: "[]string",
-			},
-			{
 				Name:      "BrokeredCredentialSourceIds",
 				ProtoName: "brokered_credential_source_ids",
 				FieldType: "[]string",
@@ -820,6 +1141,13 @@ var inputStructs = []*structInfo{
 				Name:      "InjectedApplicationCredentialSourceIds",
 				ProtoName: "injected_application_credential_source_ids",
 				FieldType: "[]string",
+			},
+			// with_aliases is used when creating a target with alaises.
+			{
+				Name:        "Aliases",
+				ProtoName:   "with_aliases",
+				FieldType:   "[]Alias",
+				SkipDefault: true,
 			},
 		},
 		versionEnabled:      true,
@@ -834,9 +1162,9 @@ var inputStructs = []*structInfo{
 		inProto: &sessions.Connection{},
 		outFile: "sessions/connection.gen.go",
 		fieldOverrides: []fieldInfo{
-			// uint64 fields get marshalled by protobuf as strings, so we have
+			// int64 fields get marshalled by protobuf as strings, so we have
 			// to tell the json parser that their json representation is a
-			// string but they go into Go uint64 types.
+			// string but they go into Go int64 types.
 			{Name: "BytesUp", JsonTags: []string{"string"}},
 			{Name: "BytesDown", JsonTags: []string{"string"}},
 		},
@@ -860,11 +1188,181 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "sessions",
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		fieldFilter:         []string{"private_key"},
+		versionEnabled:      true,
 		recursiveListing:    true,
+	},
+	{
+		inProto: &session_recordings.User{},
+		outFile: "sessionrecordings/user.gen.go",
+	},
+	{
+		inProto: &session_recordings.Target{},
+		outFile: "sessionrecordings/target.gen.go",
+	},
+	{
+		inProto:        &session_recordings.SshTargetAttributes{},
+		outFile:        "sessionrecordings/ssh_target_attributes.gen.go",
+		subtypeName:    "Ssh",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.Host{},
+		outFile: "sessionrecordings/host.gen.go",
+	},
+	{
+		inProto:        &session_recordings.StaticHostAttributes{},
+		outFile:        "sessionrecordings/static_host_attributes.gen.go",
+		subtypeName:    "Static",
+		parentTypeName: "Host",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.HostCatalog{},
+		outFile: "sessionrecordings/host_catalog.gen.go",
+	},
+	{
+		inProto: &session_recordings.Credential{},
+		outFile: "sessionrecordings/credential.gen.go",
+	},
+	{
+		inProto:        &session_recordings.UsernamePasswordCredentialAttributes{},
+		outFile:        "sessionrecordings/username_password_credential_attributes.gen.go",
+		subtype:        "username_password",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &session_recordings.JsonCredentialAttributes{},
+		outFile:        "sessionrecordings/json_credential_attributes.gen.go",
+		subtype:        "json",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &session_recordings.SshPrivateKeyCredentialAttributes{},
+		outFile:        "sessionrecordings/ssh_private_key_credential_attributes.gen.go",
+		subtype:        "ssh_private_key",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.CredentialLibrary{},
+		outFile: "sessionrecordings/credential_library.gen.go",
+	},
+	{
+		inProto:        &session_recordings.VaultCredentialLibraryAttributes{},
+		outFile:        "sessionrecordings/vault_credential_library_attributes.gen.go",
+		subtype:        "vault-generic",
+		parentTypeName: "CredentialLibrary",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &session_recordings.VaultSSHCertificateCredentialLibraryAttributes{},
+		outFile:        "sessionrecordings/vault_ssh_certificate_credential_library_attributes.gen.go",
+		subtype:        "vault-ssh-certificate",
+		parentTypeName: "CredentialLibrary",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:      "CriticalOptions",
+				FieldType: "map[string]string",
+			},
+			{
+				Name:      "Extensions",
+				FieldType: "map[string]string",
+			},
+		},
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.CredentialStore{},
+		outFile: "sessionrecordings/credential_store.gen.go",
+	},
+	{
+		inProto:        &session_recordings.VaultCredentialStoreAttributes{},
+		outFile:        "sessionrecordings/vault_credential_store_attributes.gen.go",
+		subtype:        "vault",
+		parentTypeName: "CredentialStore",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.ValuesAtTime{},
+		outFile: "sessionrecordings/values_at_time.gen.go",
+	},
+	{
+		inProto: &session_recordings.ConnectionRecording{},
+		outFile: "sessionrecordings/connection_recording.gen.go",
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
+	},
+	{
+		inProto: &session_recordings.ChannelRecording{},
+		outFile: "sessionrecordings/channel_recording.gen.go",
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
+	},
+	{
+		// this must be the last block of session recording blocks, otherwise
+		// the bits beyond inProto and outFile will get overwritten by
+		// subsequent session recording blocks
+		inProto: &session_recordings.SessionRecording{},
+		outFile: "sessionrecordings/session_recording.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			readTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "session-recordings",
+		createResponseTypes: []string{ReadResponseType, DeleteResponseType, ListResponseType},
+		recursiveListing:    true,
+		skipListFiltering:   true,
+		versionEnabled:      false,
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
 	},
 	{
 		inProto: &workers.Certificate{},
 		outFile: "workers/certificate.gen.go",
+	},
+	{
+		inProto: &workers.RemoteStorageState{},
+		outFile: "workers/remote_storage_state.gen.go",
+	},
+	{
+		inProto: &workers.RemoteStoragePermissions{},
+		outFile: "workers/remote_storage_permissions.gen.go",
 	},
 	{
 		inProto:             &workers.CertificateAuthority{},
@@ -922,8 +1420,16 @@ var inputStructs = []*structInfo{
 				VarName:   "apiTags",
 			},
 		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:      "RemoteStorageState",
+				ProtoName: "remote_storage_state",
+				FieldType: "map[string]RemoteStorageState",
+			},
+		},
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 		versionEnabled:      true,
+		nonPaginatedListing: true,
 	},
 }

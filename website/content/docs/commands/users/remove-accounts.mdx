@@ -1,0 +1,40 @@
+---
+layout: docs
+page_title: users remove-accounts - Command
+description: >-
+  The "users remove-accounts" command disassociates accounts from a user resource.
+---
+
+# users remove-accounts
+
+Command: `users remove-accounts`
+
+The `users remove-accounts` command lets you disassociate accounts from a user.
+
+## Example
+
+This example disassociates a user `u_1234567890` from an account `a_1234567890`:
+
+```shell-session
+$ boundary users remove-accounts -id u_1234567890 -account a_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary users remove-accounts [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-account=<string>` - The account you want to disassociate from the user.
+You can specify multiple accounts.
+- `-id=<string>` - The ID of the user you want to disassociate from an account.
+- `-version=<int>` - The version of the user to perform the operation on.
+If you do not specify a version, the command performs a check-and-set automatically.
+
+@include 'cmd-option-note.mdx'

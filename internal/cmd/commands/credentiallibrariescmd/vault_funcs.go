@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package credentiallibrariescmd
 
 import (
@@ -12,39 +15,10 @@ func init() {
 	extraVaultFlagsHandlingFunc = extraVaultFlagHandlingFuncImpl
 }
 
-const (
-	pathFlagName              = "vault-path"
-	httpMethodFlagName        = "vault-http-method"
-	httpRequestBodyFlagName   = "vault-http-request-body"
-	credentialTypeFlagName    = "credential-type"
-	credentialMappingFlagName = "credential-mapping-override"
-)
-
-type extraVaultCmdVars struct {
-	flagPath              string
-	flagHttpMethod        string
-	flagHttpRequestBody   string
-	flagCredentialType    string
-	flagCredentialMapping []base.CombinedSliceFlagValue
-}
+type extraVaultCmdVars extraVaultGenericCmdVars
 
 func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
-	flags := map[string][]string{
-		"create": {
-			pathFlagName,
-			httpMethodFlagName,
-			httpRequestBodyFlagName,
-			credentialTypeFlagName,
-			credentialMappingFlagName,
-		},
-		"update": {
-			pathFlagName,
-			httpMethodFlagName,
-			httpRequestBodyFlagName,
-			credentialMappingFlagName,
-		},
-	}
-	return flags
+	return extraVaultGenericActionsFlagsMapFuncImpl()
 }
 
 func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSet) {
@@ -118,25 +92,25 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, _ *base.FlagSets, opts *[]c
 	switch len(c.flagCredentialMapping) {
 	case 0:
 	case 1:
-		if len(c.flagCredentialMapping[0].Keys) == 0 && c.flagCredentialMapping[0].Value == "null" {
+		if len(c.flagCredentialMapping[0].Keys) == 1 && c.flagCredentialMapping[0].Keys[0] == "null" && c.flagCredentialMapping[0].Value == nil {
 			*opts = append(*opts, credentiallibraries.DefaultCredentialMappingOverrides())
 			break
 		}
 		fallthrough
 	default:
-		mappings := make(map[string]interface{}, len(c.flagCredentialMapping))
+		mappings := make(map[string]any, len(c.flagCredentialMapping))
 		for _, mapping := range c.flagCredentialMapping {
 			switch {
-			case len(mapping.Keys) != 1 || mapping.Keys[0] == "" || mapping.Value == "":
+			case len(mapping.Keys) != 1 || mapping.Keys[0] == "" || mapping.Value == nil || mapping.Value.GetValue() == "":
 				// mapping override does not support key segments (e.g. 'x.y=z')
 				c.UI.Error("Credential mapping override must be in the format 'key=value', 'key=null' to clear field or 'null' to clear all.")
 				return false
-			case mapping.Value == "null":
+			case mapping.Value.GetValue() == "null":
 				// user provided 'key=null' indicating the field specific override should
 				// be cleared, set map value to nil
 				mappings[mapping.Keys[0]] = nil
 			default:
-				mappings[mapping.Keys[0]] = mapping.Value
+				mappings[mapping.Keys[0]] = mapping.Value.GetValue()
 			}
 		}
 		*opts = append(*opts, credentiallibraries.WithCredentialMappingOverrides(mappings))
@@ -150,6 +124,7 @@ func (c *VaultCommand) extraVaultHelpFunc(_ map[string]func() string) string {
 	switch c.Func {
 	case "create":
 		helpStr = base.WrapForHelpText([]string{
+			"Deprecated: use 'boundary credential-libraries create vault-generic' instead.",
 			"Usage: boundary credential-libraries create vault -credential-store-id [options] [args]",
 			"",
 			"  Create a vault-type credential library. Example:",
@@ -161,6 +136,7 @@ func (c *VaultCommand) extraVaultHelpFunc(_ map[string]func() string) string {
 
 	case "update":
 		helpStr = base.WrapForHelpText([]string{
+			"Deprecated: use 'boundary credential-libraries update vault-generic' instead.",
 			"Usage: boundary credential-libraries update vault [options] [args]",
 			"",
 			"  Update a vault-type credential library given its ID. Example:",

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -6,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -117,7 +121,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			name: "recovery-user",
 			args: args{
 				roleVersion:     1,
-				specificUserIds: []string{"u_recovery"},
+				specificUserIds: []string{globals.RecoveryUserId},
 			},
 			wantErr: true,
 		},
@@ -125,32 +129,24 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { r := allocUserRole(); return &r }(), "1=1")
-			db.TestDeleteWhere(t, conn, func() interface{} { g := allocGroupRole(); return &g }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { r := allocUserRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { g := allocGroupRole(); return &g }(), "1=1")
 			orgs, projects := createScopesFn()
 			var userIds, groupIds []string
 
 			for _, roleId := range []string{orgRole.PublicId, projRole.PublicId} {
-				origRole, _, _, err := repo.LookupRole(context.Background(), roleId)
+				origRole, _, _, _, err := repo.LookupRole(context.Background(), roleId)
 				require.NoError(err)
 
 				if tt.args.wantUserIds {
 					userIds = createUsersFn(orgs)
 					u := TestUser(t, repo, staticOrg.PublicId)
-					if roleId == orgRole.PublicId {
-						userIds = append(userIds, u.PublicId)
-					} else {
-						userIds = append(userIds, u.PublicId)
-					}
+					userIds = append(userIds, u.PublicId)
 				}
 				if tt.args.wantGroupIds {
 					groupIds = createGrpsFn(orgs, projects)
 					g := TestGroup(t, conn, staticProj.PublicId)
-					if roleId == projRole.PublicId {
-						groupIds = append(groupIds, g.PublicId)
-					} else {
-						groupIds = append(groupIds, g.PublicId)
-					}
+					groupIds = append(groupIds, g.PublicId)
 				}
 				if len(tt.args.specificUserIds) > 0 {
 					userIds = tt.args.specificUserIds
@@ -183,7 +179,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 					assert.Equal(gotPrincipal[principalId].GetType(), r.GetType())
 				}
 
-				r, _, _, err := repo.LookupRole(context.Background(), roleId)
+				r, _, _, _, err := repo.LookupRole(context.Background(), roleId)
 				require.NoError(err)
 				assert.Equal(tt.args.roleVersion+1, r.Version)
 				assert.Equal(origRole.Version, r.Version-1)
@@ -264,7 +260,7 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { r := allocRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
 			role := TestRole(t, conn, tt.createScopeId)
 			userRoles := make([]string, 0, tt.createCnt)
 			groupRoles := make([]string, 0, tt.createCnt)
@@ -525,8 +521,8 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			u := TestUser(t, repo, org.PublicId)
 			results = append(results, u.PublicId)
 		}
-		results = append(results, "u_anon")
-		results = append(results, "u_auth")
+		results = append(results, globals.AnonymousUserId)
+		results = append(results, globals.AnyAuthenticatedUserId)
 		return results
 	}
 	createGrpsFn := func() []string {
@@ -642,7 +638,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			if tt.args.addToOrigGrps {
 				tt.args.groupIds = append(tt.args.groupIds, origGrps...)
 			}
-			origRole, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			origRole, _, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			require.NoError(err)
 
 			principalIds := append(tt.args.userIds, tt.args.groupIds...)
@@ -667,7 +663,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			sort.Strings(gotIds)
 			assert.Equal(wantIds, gotIds)
 
-			r, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			r, _, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			require.NoError(err)
 			if tt.name != "no change" {
 				assert.Equalf(tt.args.roleVersion+1, r.Version, "%s unexpected version: %d/%d", tt.name, tt.args.roleVersion+1, r.Version)

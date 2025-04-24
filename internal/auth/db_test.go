@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package auth
 
 import (
@@ -6,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,14 +21,17 @@ func TestDB_AuthMethodIDTrigger(t *testing.T) {
 create table if not exists test_auth_method (
     public_id wt_public_id primary key,
     scope_id wt_public_id not null references iam_scope(public_id),
-	name wt_name
+	name wt_name,
+	create_time wt_timestamp,
+	update_time wt_timestamp,
+	state text
 );
 `
 		insert = `
 insert into test_auth_method
-  (public_id, scope_id)
+  (public_id, scope_id, create_time, update_time, state)
 values
-  (@public_id, @scoped_id);
+  (@public_id, @scoped_id, @create_time, @update_time, @state);
 `
 		addTriggers = `
 create trigger
@@ -56,7 +63,17 @@ select count(*) from test_auth_method where public_id = @public_id
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	inserted, err := rw.Exec(ctx, insert, []interface{}{sql.Named("public_id", id), sql.Named("scoped_id", org.GetPublicId())})
+	inserted, err := rw.Exec(
+		ctx,
+		insert,
+		[]any{
+			sql.Named("public_id", id),
+			sql.Named("scoped_id", org.GetPublicId()),
+			sql.Named("create_time", timestamp.Now()),
+			sql.Named("update_time", timestamp.Now()),
+			sql.Named("state", "active-public"),
+		},
+	)
 	require.NoError(err)
 	require.Equal(1, inserted)
 
@@ -64,23 +81,25 @@ select count(*) from test_auth_method where public_id = @public_id
 		Count int
 	}
 	var count c
-	rows, err := rw.Query(ctx, baseTableQuery, []interface{}{sql.Named("public_id", id)})
+	rows, err := rw.Query(ctx, baseTableQuery, []any{sql.Named("public_id", id)})
 	require.NoError(err)
 	defer rows.Close()
 	for rows.Next() {
 		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
+	assert.NoError(rows.Err())
 	assert.Equal(1, count.Count)
 
 	count.Count = 0
-	rows, err = rw.Query(ctx, testTableQuery, []interface{}{sql.Named("public_id", id)})
+	rows, err = rw.Query(ctx, testTableQuery, []any{sql.Named("public_id", id)})
 	require.NoError(err)
 	defer rows.Close()
 	for rows.Next() {
 		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
+	assert.NoError(rows.Err())
 	assert.Equal(1, count.Count)
 }
 
@@ -135,33 +154,35 @@ values
 
 	org, _ := iam.TestScopes(t, repo)
 	meth_id := "31Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	_, err = rw.Exec(ctx, insertAuthMethod, []interface{}{meth_id, org.GetPublicId()})
+	_, err = rw.Exec(ctx, insertAuthMethod, []any{meth_id, org.GetPublicId()})
 	require.NoError(err)
 
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	_, err = rw.Exec(ctx, insert, []interface{}{id, meth_id})
+	_, err = rw.Exec(ctx, insert, []any{id, meth_id})
 	require.NoError(err)
 
 	type c struct {
 		Count int
 	}
 	var count c
-	rows, err := rw.Query(ctx, baseTableQuery, []interface{}{id})
+	rows, err := rw.Query(ctx, baseTableQuery, []any{id})
 	require.NoError(err)
 	defer rows.Close()
 	for rows.Next() {
 		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
+	assert.NoError(rows.Err())
 	assert.Equal(1, count.Count)
 
 	count.Count = 0
-	rows, err = rw.Query(ctx, testTableQuery, []interface{}{id})
+	rows, err = rw.Query(ctx, testTableQuery, []any{id})
 	require.NoError(err)
 	defer rows.Close()
 	for rows.Next() {
 		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
+	assert.NoError(rows.Err())
 	assert.Equal(1, count.Count)
 }

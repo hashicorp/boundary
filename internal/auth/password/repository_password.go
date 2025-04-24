@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package password
 
 import (
@@ -65,7 +68,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 		if err != nil {
 			return acct.Account, errors.Wrap(ctx, err, op, errors.WithMsg("retrieve current password configuration"))
 		}
-		cred, err := newArgon2Credential(acct.PublicId, password, cc.argon2())
+		cred, err := newArgon2Credential(ctx, acct.PublicId, password, cc.argon2())
 		if err != nil {
 			return acct.Account, errors.Wrap(ctx, err, op, errors.WithCode(errors.PasswordInvalidConfiguration))
 		}
@@ -81,7 +84,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 			return acct.Account, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("update credential"))
 		}
 
-		fields := []string{"CtSalt", "DerivedKey", "PasswordConfId"}
+		fields := []string{"CtSalt", "DerivedKey", "PasswordConfId", "KeyId"}
 		metadata := cred.oplog(oplog.OpType_OP_TYPE_UPDATE)
 
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
@@ -163,7 +166,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 	if cc.MinPasswordLength > len(new) {
 		return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("must be at least %d", cc.MinPasswordLength))
 	}
-	newCred, err := newArgon2Credential(accountId, new, cc.argon2())
+	newCred, err := newArgon2Credential(ctx, accountId, new, cc.argon2())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -214,7 +217,7 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 	const op = "password.(Repository).authenticate"
 	var accts []authAccount
 
-	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{sql.Named("auth_method_id", authMethodId), sql.Named("login_name", loginName)})
+	rows, err := r.reader.Query(ctx, authenticateQuery, []any{sql.Named("auth_method_id", authMethodId), sql.Named("login_name", loginName)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -225,6 +228,9 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		accts = append(accts, aa)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var acct authAccount
@@ -291,7 +297,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 		if cc.MinPasswordLength > len(password) {
 			return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("password must be at least %v", cc.MinPasswordLength))
 		}
-		newCred, err = newArgon2Credential(accountId, password, cc.argon2())
+		newCred, err = newArgon2Credential(ctx, accountId, password, cc.argon2())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -316,7 +322,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 			acct = updatedAccount
 
 			oldCred := allocCredential()
-			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", []interface{}{accountId}); err != nil {
+			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", []any{accountId}); err != nil {
 				if !errors.IsNotFoundError(err) {
 					return errors.Wrap(ctx, err, op)
 				}

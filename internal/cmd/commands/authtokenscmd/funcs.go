@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authtokenscmd
 
 import (
@@ -122,7 +125,7 @@ func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 }
 
 func printItemTable(item *authtokens.AuthToken, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"ID":                         item.Id,
 		"Auth Method ID":             item.AuthMethodId,
 		"User ID":                    item.UserId,

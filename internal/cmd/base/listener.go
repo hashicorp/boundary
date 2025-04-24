@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package base
 
 import (
@@ -13,6 +16,7 @@ import (
 	_ "crypto/sha512"
 	"crypto/tls"
 
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
@@ -37,6 +41,7 @@ type WorkerAuthInfo struct {
 	Description     string `json:"description"`
 	ConnectionNonce string `json:"connection_nonce"`
 	ProxyAddress    string `json:"proxy_address"`
+	BoundaryVersion string `json:"boundary_version"`
 }
 
 // Factory is the factory function to create a listener.
@@ -133,24 +138,22 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 		}
 	}
 
-	host, port, err := net.SplitHostPort(l.Address)
+	host, port, err := util.SplitHostPort(l.Address)
 	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			switch purpose {
-			case "api":
-				port = "9200"
-			case "cluster":
-				port = "9201"
-			case "proxy":
-				port = "9202"
-			case "ops":
-				port = "9203"
-			default:
-				return "", nil, errors.New("no purpose provided for listener and no port discoverable")
-			}
-			host = l.Address
-		} else {
-			return "", nil, fmt.Errorf("error splitting host/port: %w", err)
+		return "", nil, fmt.Errorf("error splitting host/port: %w", err)
+	}
+	if port == "" {
+		switch purpose {
+		case "api":
+			port = "9200"
+		case "cluster":
+			port = "9201"
+		case "proxy":
+			port = "9202"
+		case "ops":
+			port = "9203"
+		default:
+			return "", nil, errors.New("no purpose provided for listener and no port discoverable")
 		}
 	}
 

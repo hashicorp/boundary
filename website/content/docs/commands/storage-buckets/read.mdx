@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: storage-buckets read - Command
+description: >-
+  The "storage-buckets read" command retrieves the details of an existing storage bucket resource.
+---
+
+# storage-buckets read
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary storage-buckets read`
+
+The `boundary storage-buckets read` command lets you read information about Boundary storage buckets.
+
+## Example
+
+This example reads the details of a storage bucket with the ID `_1234567890`:
+
+```shell-session
+$ boundary storage-buckets read -id _1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary storage-buckets read [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the storage bucket you want to read.
+
+@include 'cmd-option-note.mdx'

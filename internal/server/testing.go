@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
@@ -31,11 +34,13 @@ const defaultLength = 20
 // Generate random bytes for byte fields
 func populateBytes(length int) []byte {
 	fieldBytes := make([]byte, length)
-	rand.Read(fieldBytes)
+	if _, err := rand.Read(fieldBytes); err != nil {
+		panic(err)
+	}
 	return fieldBytes
 }
 
-func TestKmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) string {
+func TestKmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) (string, wrapping.Wrapper) {
 	t.Helper()
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -44,7 +49,7 @@ func TestKmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping
 	testKey, err := databaseWrapper.KeyId(ctx)
 	require.NoError(t, err)
 
-	return testKey
+	return testKey, databaseWrapper
 }
 
 func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey string) *RootCertificate {
@@ -61,12 +66,13 @@ func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey 
 
 	cert, err := newRootCertificate(ctx, mathRand.Uint64(), populateBytes(defaultLength), beforeTimestamp, afterTimestamp,
 		rootCertKeys, kmsKey, CurrentState)
+	require.NoError(t, err)
 	err = rw.Create(ctx, cert)
 	require.NoError(t, err)
 	return cert
 }
 
-func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *WorkerAuth {
+func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsWrapper wrapping.Wrapper) *WorkerAuth {
 	t.Helper()
 	ctx := context.Background()
 	rw := db.New(conn)
@@ -76,7 +82,6 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *W
 	controllerKey := populateBytes(defaultLength)
 	nonce := populateBytes(defaultLength)
 	opt := []Option{
-		WithKeyId(kmsKey),
 		WithWorkerKeys(workerKeys),
 		WithControllerEncryptionPrivateKey(controllerKey),
 		WithNonce(nonce),
@@ -84,8 +89,8 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *W
 
 	workerAuth, err := newWorkerAuth(ctx, "worker-key-identifier", worker.PublicId, opt...)
 	require.NoError(t, err)
-	err = rw.Create(ctx, workerAuth)
-	require.NoError(t, err)
+	require.NoError(t, workerAuth.encrypt(ctx, kmsWrapper))
+	require.NoError(t, rw.Create(ctx, workerAuth))
 
 	return workerAuth
 }
@@ -95,43 +100,44 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *W
 // random name will be generated and assigned to the worker.
 func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
+	ctx := context.Background()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := NewRepository(rw, rw, kms)
+	serversRepo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
-	ctx := context.Background()
 	opts := GetOpts(opt...)
 
-	namePart, err := newWorkerId(ctx)
+	if opts.withName == "" {
+		namePart, err := newWorkerId(ctx)
+		require.NoError(t, err)
+		name := "test-worker-" + strings.ToLower(namePart)
+		opt = append(opt, WithName(name))
+	}
+	if opts.withAddress == "" {
+		address := "127.0.0.1"
+		opt = append(opt, WithAddress(address))
+	}
+	if opts.withReleaseVersion == "" {
+		// Only set the release version if it isn't already set
+		versionInfo := version.Get()
+		relVer := versionInfo.FullVersionNumber(false)
+		opt = append(opt, WithReleaseVersion(relVer))
+	}
+
+	wrk := NewWorker(scope.Global.String(), opt...)
+	wrk, err = TestUpsertAndReturnWorker(ctx, t, wrk, serversRepo)
 	require.NoError(t, err)
-	name := "test-worker-" + strings.ToLower(namePart)
-	if opts.withName != "" {
-		name = opts.withName
-	}
-	address := "127.0.0.1"
-	if opts.withAddress != "" {
-		address = opts.withAddress
-	}
-	versionInfo := version.Get()
-	relVer := versionInfo.FullVersionNumber(false)
-	wrk := NewWorker(scope.Global.String(),
-		WithName(name),
-		WithAddress(address),
-		WithDescription(opts.withDescription),
-		WithReleaseVersion(relVer))
-	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
 	require.Equal(t, "kms", wrk.Type)
 
 	if len(opts.withWorkerTags) > 0 {
-		var tags []interface{}
+		var tags []*store.ConfigTag
 		for _, t := range opts.withWorkerTags {
-			tags = append(tags, &store.WorkerTag{
+			tags = append(tags, &store.ConfigTag{
 				WorkerId: wrk.GetPublicId(),
 				Key:      t.Key,
 				Value:    t.Value,
-				Source:   "configuration",
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
@@ -149,11 +155,11 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 // passed to WithTestPkiWorkerAuthorizedKeyId is set to the key id.
 func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
+	ctx := context.Background()
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := NewRepository(rw, rw, kmsCache)
+	serversRepo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
-	ctx := context.Background()
 	opts := GetOpts(opt...)
 
 	require.NoError(t, err)
@@ -164,13 +170,12 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.NotNil(t, wrk)
 
 	if len(opts.withWorkerTags) > 0 {
-		var tags []interface{}
+		var tags []*store.ConfigTag
 		for _, t := range opts.withWorkerTags {
-			tags = append(tags, &store.WorkerTag{
+			tags = append(tags, &store.ConfigTag{
 				WorkerId: wrk.GetPublicId(),
 				Key:      t.Key,
 				Value:    t.Value,
-				Source:   "configuration",
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
@@ -205,4 +210,36 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	wrk, err = serversRepo.LookupWorker(ctx, wrk.GetPublicId())
 	require.NoError(t, err)
 	return wrk
+}
+
+// TestLookupWorkerByName looks up a worker by name
+func TestLookupWorkerByName(ctx context.Context, t *testing.T, name string, serversRepo *Repository) (*Worker, error) {
+	workers, err := serversRepo.ListWorkers(ctx, []string{"global"})
+	require.NoError(t, err)
+	for _, w := range workers {
+		if w.GetName() == name {
+			return w, nil
+		}
+	}
+	return nil, nil
+}
+
+// TestUpsertAndReturnWorker upserts and returns a worker
+func TestUpsertAndReturnWorker(ctx context.Context, t *testing.T, w *Worker, serversRepo *Repository, opt ...Option) (*Worker, error) {
+	workerId, err := serversRepo.UpsertWorkerStatus(ctx, w, opt...)
+	require.NoError(t, err)
+	require.NotEmpty(t, workerId)
+	return serversRepo.LookupWorker(ctx, workerId)
+}
+
+// TestUseCommunityFilterWorkersFn is used to ensure that CE tests run from the
+// ENT repo use the CE worker filtering logic. WARNING: Do NOT run tests in
+// parallel when using this.
+func TestUseCommunityFilterWorkersFn(t *testing.T) {
+	oldFn := FilterWorkersFn
+	FilterWorkersFn = filterWorkers
+
+	t.Cleanup(func() {
+		FilterWorkersFn = oldFn
+	})
 }

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -10,6 +13,7 @@ import (
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
@@ -19,6 +23,7 @@ import (
 
 func TestRepository_CreateRole(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -43,7 +48,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(org.PublicId, WithName("valid-org"+id), WithDescription(id))
+					r, err := NewRole(ctx, org.PublicId, WithName("valid-org"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -54,7 +59,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "valid-proj",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
+					r, err := NewRole(ctx, proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -65,7 +70,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "bad-public-id",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
+					r, err := NewRole(ctx, proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
 					assert.NoError(t, err)
 					r.PublicId = id
 					return r
@@ -101,7 +106,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "bad-scope-id",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(id)
+					r, err := NewRole(ctx, id)
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -114,7 +119,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "dup-name",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(org.PublicId, WithName("dup-name"+id), WithDescription(id))
+					r, err := NewRole(ctx, org.PublicId, WithName("dup-name"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -129,7 +134,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "dup-name-but-diff-scope",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(proj.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
+					r, err := NewRole(ctx, proj.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -144,13 +149,13 @@ func TestRepository_CreateRole(t *testing.T) {
 			assert := assert.New(t)
 
 			if tt.wantDup {
-				dup, err := NewRole(org.PublicId, tt.args.opt...)
+				dup, err := NewRole(ctx, org.PublicId, tt.args.opt...)
 				assert.NoError(err)
-				dup, err = repo.CreateRole(context.Background(), dup, tt.args.opt...)
+				dup, _, _, _, err = repo.CreateRole(context.Background(), dup, tt.args.opt...)
 				assert.NoError(err)
 				assert.NotNil(dup)
 			}
-			grp, err := repo.CreateRole(context.Background(), tt.args.role, tt.args.opt...)
+			grp, _, _, _, err := repo.CreateRole(context.Background(), tt.args.role, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(grp)
@@ -162,7 +167,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			assert.NotNil(grp.CreateTime)
 			assert.NotNil(grp.UpdateTime)
 
-			foundGrp, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
+			foundGrp, _, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundGrp, grp))
 
@@ -388,9 +393,9 @@ func TestRepository_UpdateRole(t *testing.T) {
 			if tt.wantDup {
 				r := TestRole(t, conn, org.PublicId)
 				_ = TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
-				_ = TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+				_ = TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 				r.Name = tt.args.name
-				_, _, _, _, err := repo.UpdateRole(context.Background(), r, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, _, _, _, err := repo.UpdateRole(context.Background(), r, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
 			}
 
@@ -411,7 +416,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				princRole.RoleScopeId = tt.newScopeId
 				princRole.ScopedPrincipalId = fmt.Sprintf("%s:%s", org.PublicId, ur.PrincipalId)
 			}
-			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 			updateRole := allocRole()
 			updateRole.PublicId = r.PublicId
@@ -422,9 +427,9 @@ func TestRepository_UpdateRole(t *testing.T) {
 			updateRole.Name = tt.args.name
 			updateRole.Description = tt.args.description
 
-			roleAfterUpdate, principals, grants, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
+			roleAfterUpdate, principals, grants, _, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				assert.Nil(roleAfterUpdate)
 				assert.Equal(0, updatedRows)
@@ -445,7 +450,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			default:
 				assert.NotEqual(r.UpdateTime, roleAfterUpdate.UpdateTime)
 			}
-			foundRole, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
+			foundRole, _, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(roleAfterUpdate, foundRole))
 			underlyingDB, err := conn.SqlDB(ctx)
@@ -467,13 +472,14 @@ func TestRepository_UpdateRole(t *testing.T) {
 
 func TestRepository_DeleteRole(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
-	roleId, err := newRoleId()
+	roleId, err := newRoleId(ctx)
 	require.NoError(t, err)
 
 	type args struct {
@@ -512,7 +518,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			name: "not-found",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(org.PublicId)
+					r, err := NewRole(ctx, org.PublicId)
 					r.PublicId = roleId
 					require.NoError(t, err)
 					return r
@@ -526,7 +532,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			deletedRows, err := repo.DeleteRole(context.Background(), tt.args.role.PublicId, tt.args.opt...)
+			deletedRows, err := repo.DeleteRole(ctx, tt.args.role.PublicId, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
@@ -538,7 +544,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			foundRole, _, _, _, err := repo.LookupRole(ctx, tt.args.role.PublicId)
 			assert.NoError(err)
 			assert.Nil(foundRole)
 
@@ -548,13 +554,15 @@ func TestRepository_DeleteRole(t *testing.T) {
 	}
 }
 
-func TestRepository_ListRoles(t *testing.T) {
+func TestRepository_listRoles(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
 	const testLimit = 10
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
-	org, proj := TestScopes(t, repo)
+	org, proj := TestScopes(t, repo, WithSkipDefaultRoleCreation(true))
 
 	type args struct {
 		withScopeId string
@@ -569,7 +577,7 @@ func TestRepository_ListRoles(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name:          "no-limit",
+			name:          "negative-limit",
 			createCnt:     repo.defaultLimit + 1,
 			createScopeId: org.PublicId,
 			args: args{
@@ -577,10 +585,10 @@ func TestRepository_ListRoles(t *testing.T) {
 				opt:         []Option{WithLimit(-1)},
 			},
 			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
-			name:          "no-limit-proj-role",
+			name:          "negative-limit-proj-role",
 			createCnt:     repo.defaultLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
@@ -588,7 +596,7 @@ func TestRepository_ListRoles(t *testing.T) {
 				opt:         []Option{WithLimit(-1)},
 			},
 			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:          "default-limit",
@@ -625,21 +633,114 @@ func TestRepository_ListRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { r := allocRole(); return &r }(), "1=1")
+			t.Cleanup(func() {
+				db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
+			})
 			testRoles := []*Role{}
 			for i := 0; i < tt.createCnt; i++ {
 				testRoles = append(testRoles, TestRole(t, conn, tt.createScopeId))
 			}
 			assert.Equal(tt.createCnt, len(testRoles))
-			got, err := repo.ListRoles(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
+			got, ttime, err := repo.listRoles(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+
+		for i := 0; i < 10; i++ {
+			_ = TestRole(t, conn, org.GetPublicId())
+		}
+
+		repo, err := NewRepository(ctx, rw, rw, kms)
+		require.NoError(err)
+		page1, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page1[1]))
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page2[1]))
+		require.NoError(err)
+		require.Len(page3, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page3[1]))
+		require.NoError(err)
+		assert.Len(page4, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page4[1]))
+		require.NoError(err)
+		assert.Len(page5, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page5[1]))
+		require.NoError(err)
+		assert.Empty(page6)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		// Create 2 new roles
+		newR1 := TestRole(t, conn, org.GetPublicId())
+		newR2 := TestRole(t, conn, org.GetPublicId())
+
+		// since it will return newest to oldest, we get page1[1] first
+		page7, ttime, err := repo.listRolesRefresh(
+			ctx,
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), newR2.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		page8, ttime, err := repo.listRolesRefresh(
+			context.Background(),
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+			WithStartPageAfterItem(page7[0]),
+		)
+		require.NoError(err)
+		require.Len(page8, 1)
+		require.Equal(page8[0].GetPublicId(), newR1.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
 }
 
 func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
@@ -649,7 +750,7 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	db.TestDeleteWhere(t, conn, func() interface{} { i := allocRole(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := allocRole(); return &i }(), "1=1")
 
 	const numPerScope = 10
 	var total int
@@ -662,7 +763,93 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 		total++
 	}
 
-	got, err := repo.ListRoles(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	got, ttime, err := repo.listRoles(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_listRoleDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo, WithSkipDefaultRoleCreation(true))
+	r := TestRole(t, conn, org.GetPublicId())
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listRoleDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a role
+	_, err = repo.DeleteRole(ctx, r.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listRoleDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{r.GetPublicId()}, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listRoleDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedRoleCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedRoleCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	iamRepo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, iamRepo, WithSkipDefaultRoleCreation(true))
+	// Create a role, expect 1 entry
+	r := TestRole(t, conn, org.GetPublicId())
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedRoleCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the role, expect 0 again
+	_, err = repo.DeleteRole(ctx, r.GetPublicId())
+	require.NoError(t, err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedRoleCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }

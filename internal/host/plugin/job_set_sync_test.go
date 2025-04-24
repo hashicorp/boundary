@@ -1,8 +1,12 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -11,7 +15,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	assertpkg "github.com/stretchr/testify/assert"
@@ -26,9 +31,9 @@ func TestNewSetSyncJob(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
-	plg := hostplg.TestPlugin(t, conn, "lookup")
+	plg := plugin.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	type args struct {
@@ -139,10 +144,10 @@ func TestSetSyncJob_Run(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 
-	plgServer := &TestPluginServer{}
-	plg := hostplg.TestPlugin(t, conn, "run")
+	plgServer := &loopback.TestPluginServer{}
+	plg := plugin.TestPlugin(t, conn, "run")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(plgServer),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(plgServer),
 	}
 
 	r, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
@@ -151,7 +156,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	err = sche.RegisterJob(context.Background(), r)
 	require.NoError(err)
 
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// No sets should have been synced.
 	assert.Equal(0, r.numProcessed)
@@ -160,7 +165,8 @@ func TestSetSyncJob_Run(t *testing.T) {
 
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
-	plgServer.ListHostsFn = func(_ context.Context, _ *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+	plgServer.ListHostsFn = func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+		require.NotNil(req.GetCatalog().GetPlugin())
 		return &plgpb.ListHostsResponse{}, nil
 	}
 	// Start with a set with a member that should be removed
@@ -169,7 +175,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	TestSetMembers(t, conn, setToRemoveHosts.GetPublicId(), []*Host{hostToRemove})
 
 	// Run sync again with the newly created set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 
 	hsa := &hostSetAgg{PublicId: setToRemoveHosts.GetPublicId()}
@@ -184,6 +190,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	set1 := TestSet(t, conn, kmsCache, sched, cat, plgm)
 	counter := new(uint32)
 	plgServer.ListHostsFn = func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+		require.NotNil(req.GetCatalog().GetPlugin())
 		assert.GreaterOrEqual(1, len(req.GetSets()))
 		var setIds []string
 		for _, s := range req.GetSets() {
@@ -194,7 +201,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 			Hosts: []*plgpb.ListHostsResponseHost{
 				{
 					ExternalId:  "first",
-					IpAddresses: []string{fmt.Sprintf("10.0.0.%d", *counter)},
+					IpAddresses: []string{fmt.Sprintf("10.0.0.%d", *counter), testGetIpv6Address(t)},
 					DnsNames:    []string{"foo.com"},
 					SetIds:      setIds,
 				},
@@ -202,7 +209,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 		}, nil
 	}
 
-	hostRepo, err := NewRepository(rw, rw, kmsCache, sche, plgm)
+	hostRepo, err := NewRepository(ctx, rw, rw, kmsCache, sche, plgm)
 	require.NoError(err)
 
 	hsa = &hostSetAgg{PublicId: set1.GetPublicId()}
@@ -210,17 +217,24 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.Less(hsa.LastSyncTime.AsTime().UnixNano(), hsa.CreateTime.AsTime().UnixNano())
 
 	// Run sync again with the newly created set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 	// Check the version number of the host(s)
-	hosts, _, err := hostRepo.ListHostsByCatalogId(ctx, hsa.CatalogId)
+	hosts, _, _, err := hostRepo.listHosts(ctx, hsa.CatalogId)
 	require.NoError(err)
 	assert.Len(hosts, 1)
 	for _, host := range hosts {
 		assert.Equal(uint32(1), host.Version)
+		require.Len(host.IpAddresses, 2)
+		ipv4 := net.ParseIP(host.IpAddresses[0])
+		require.NotNil(ipv4)
+		require.NotNil(ipv4.To4())
+		ipv6 := net.ParseIP(host.IpAddresses[1])
+		require.NotNil(ipv6)
+		require.NotNil(ipv6.To16())
 	}
 
 	require.NoError(rw.LookupByPublicId(ctx, hsa))
@@ -229,7 +243,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	firstSyncTime := hsa.LastSyncTime
 
 	// Run sync again with the freshly synced set
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	assert.Equal(0, r.numSets)
 	assert.Equal(0, r.numProcessed)
@@ -244,13 +258,13 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.True(hs.NeedSync)
 
 	// Run sync again with the set needing update
-	err = r.Run(context.Background())
+	err = r.Run(context.Background(), 0)
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 	// Check the version number of the host(s) again
-	hosts, _, err = hostRepo.ListHostsByCatalogId(ctx, hsa.CatalogId)
+	hosts, _, _, err = hostRepo.listHosts(ctx, hsa.CatalogId)
 	require.NoError(err)
 	assert.Len(hosts, 1)
 	for _, host := range hosts {
@@ -259,7 +273,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 
 	// Run sync with a new second set
 	_ = TestSet(t, conn, kmsCache, sched, cat, plgm)
-	require.NoError(r.Run(context.Background()))
+	require.NoError(r.Run(context.Background(), 0))
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 
@@ -384,7 +398,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 			assert.Equal(1, count)
 
 			// Run job
-			err = r.Run(context.Background())
+			err = r.Run(context.Background(), 0)
 			require.NoError(err)
 
 			// Validate results
@@ -408,9 +422,9 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "lookup")
+	plg := plugin.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, kmsCache, sched, catalog, plgm)

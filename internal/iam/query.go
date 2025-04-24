@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 // query.go contains "raw sql" for the iam package that goes directly against
@@ -107,5 +110,115 @@ const (
 	)
 	select * from final
 	order by action, member_id;
+	`
+
+	grantsForUserQuery = `
+    with
+    users (id) as (
+      select public_id
+        from iam_user
+       %s -- anonUser || authUser
+    ),
+    user_groups (id) as (
+      select group_id
+        from iam_group_member_user
+       where member_id in (select id from users)
+    ),
+    user_accounts (id) as (
+      select public_id
+        from auth_account
+       where iam_user_id in (select id from users)
+    ),
+    user_oidc_managed_groups (id) as (
+      select managed_group_id
+        from auth_oidc_managed_group_member_account
+       where member_id in (select id from user_accounts)
+    ),
+    user_ldap_managed_groups (id) as (
+      select managed_group_id
+        from auth_ldap_managed_group_member_account
+       where member_id in (select id from user_accounts)
+    ),
+    managed_group_roles (role_id) as (
+      select distinct role_id
+        from iam_managed_group_role
+       where principal_id in (select id from user_oidc_managed_groups)
+          or principal_id in (select id from user_ldap_managed_groups)
+    ),
+    group_roles (role_id) as (
+      select role_id
+        from iam_group_role
+       where principal_id in (select id from user_groups)
+    ),
+    user_roles (role_id) as (
+      select role_id
+        from iam_user_role
+       where principal_id in (select id from users)
+    ),
+    user_group_roles (role_id) as (
+      select role_id
+        from group_roles
+      union
+      select role_id
+        from user_roles
+      union
+      select role_id
+        from managed_group_roles
+    ),
+    -- Now that we have the role IDs, expand the information to include scope
+    roles (role_id, role_scope_id, role_parent_scope_id) as (
+      select iam_role.public_id,
+             iam_role.scope_id,
+             iam_scope.parent_id
+        from iam_role
+        join iam_scope
+          on iam_scope.public_id = iam_role.scope_id
+       where iam_role.public_id in (select role_id from user_group_roles)
+    ),
+    grant_scopes (role_id, grant_scope_ids) as (
+        select roles.role_id,
+               string_agg(iam_role_grant_scope.scope_id_or_special, '^') as grant_scope_ids
+          from roles
+          join iam_role_grant_scope
+            on iam_role_grant_scope.role_id = roles.role_id
+      group by roles.role_id
+    ),
+    grants (role_id, grants) as (
+        select roles.role_id,
+               string_agg(iam_role_grant.canonical_grant, '^') as grants
+          from roles
+          join iam_role_grant
+            on iam_role_grant.role_id = roles.role_id
+      group by roles.role_id
+    )
+    -- Finally, take the resulting roles and pull grant scope IDs and canonical grants.
+    -- We will split these out in application logic to keep the result set size low. 
+     select
+           roles.role_id as role_id,
+           roles.role_scope_id as role_scope_id,
+           roles.role_parent_scope_id as role_parent_scope_id,
+           grant_scopes.grant_scope_ids as grant_scope_ids,
+           grants.grants as grants
+      from roles
+      join grant_scopes
+        on grant_scopes.role_id = roles.role_id
+      join grants
+        on grants.role_id = roles.role_id;
+    `
+
+	estimateCountRoles = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)
+	`
+
+	estimateCountUsers = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_user'::regclass)
+	`
+
+	estimateCountGroups = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_group'::regclass)
+	`
+
+	estimateCountScopes = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_scope'::regclass)
 	`
 )

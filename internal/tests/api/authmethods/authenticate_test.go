@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authmethods_test
 
 import (
@@ -13,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	tests_api "github.com/hashicorp/boundary/internal/tests/api"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
@@ -40,19 +43,19 @@ func TestAuthenticate(t *testing.T) {
 	client := tc.Client()
 	methods := authmethods.NewClient(client)
 
-	tok, err := methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+	tok, err := methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]any{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	assert.NotNil(tok)
 
-	_, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "wrong"})
+	_, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]any{"login_name": "user", "password": "wrong"})
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)
 	assert.EqualValuesf(http.StatusUnauthorized, apiErr.Response().StatusCode(), "Expected unauthorized, got %q", apiErr.Message)
 
 	// Also ensure that, for now, using "credentials" still works, as well as no command.
-	reqBody := map[string]interface{}{
-		"attributes": map[string]interface{}{"login_name": "user", "password": "passpass"},
+	reqBody := map[string]any{
+		"attributes": map[string]any{"login_name": "user", "password": "passpass"},
 	}
 	req, err := client.NewRequest(tc.Context(), "POST", fmt.Sprintf("auth-methods/%s:authenticate", tc.Server().DevPasswordAuthMethodId), reqBody)
 	require.NoError(err)
@@ -71,7 +74,7 @@ func TestAuthenticate(t *testing.T) {
 	require.NotNil(eventConfig.AuditEvents)
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
 
-	tok, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+	tok, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]any{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	assert.NotNil(tok)
 	got := tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
@@ -79,19 +82,19 @@ func TestAuthenticate(t *testing.T) {
 	// All attribute fields are classified for now.
 	reqDetails := tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["PasswordLoginAttributes"], "password", "login_name")
+	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]any)["PasswordLoginAttributes"], "password", "login_name")
 
 	respDetails := tests_api.GetEventDetails(t, got, "response")
 	tests_api.AssertRedactedValues(t, respDetails)
-	tests_api.AssertRedactedValues(t, respDetails["Attrs"].(map[string]interface{})["AuthTokenResponse"], "token")
+	tests_api.AssertRedactedValues(t, respDetails["Attrs"].(map[string]any)["AuthTokenResponse"], "token")
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
-	tok, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "bad-pass"})
+	tok, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]any{"login_name": "user", "password": "bad-pass"})
 	require.Error(err)
 	assert.Nil(tok)
 	got = tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
 	reqDetails = tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["PasswordLoginAttributes"], "password", "login_name")
+	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]any)["PasswordLoginAttributes"], "password", "login_name")
 }

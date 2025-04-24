@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package scheduler
 
 import (
@@ -10,20 +13,6 @@ import (
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
-	t.Run("WithRunJobsLimit", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithRunJobsLimit(10))
-		testOpts := getDefaultOptions()
-		assert.NotEqual(opts, testOpts)
-		testOpts.withRunJobsLimit = 10
-		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithZeroRunJobsLimit", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithRunJobsLimit(0))
-		testOpts := getDefaultOptions()
-		assert.Equal(opts, testOpts)
-	})
 	t.Run("WithRunJobsInterval", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithRunJobsInterval(time.Hour))

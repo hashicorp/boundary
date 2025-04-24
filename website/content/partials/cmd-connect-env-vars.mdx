@@ -1,0 +1,10 @@
+You also have access to some templated values that are substituted into the
+command arguments, and these values are additionally injected as environment
+variables in the executed command:
+
+- `{{boundary.ip}}` (`BOUNDARY_PROXIED_IP`): The IP address of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.port}}` (`BOUNDARY_PROXIED_PORT`): The port of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): The host:port format of the
+  address. This is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.

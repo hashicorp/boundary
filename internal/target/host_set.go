@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package target
 
 import (
@@ -27,13 +30,13 @@ var _ db.VetForWriter = (*TargetHostSet)(nil)
 
 // NewTargetHostSet creates a new in memory target host set. No options are
 // currently supported.
-func NewTargetHostSet(targetId, hostSetId string, _ ...Option) (*TargetHostSet, error) {
+func NewTargetHostSet(ctx context.Context, targetId, hostSetId string, _ ...Option) (*TargetHostSet, error) {
 	const op = "target.NewTargetHostSet"
 	if targetId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if hostSetId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing hostSetId id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing hostSetId id")
 	}
 	t := &TargetHostSet{
 		TargetHostSet: &store.TargetHostSet{
@@ -45,7 +48,7 @@ func NewTargetHostSet(targetId, hostSetId string, _ ...Option) (*TargetHostSet, 
 }
 
 // Clone creates a clone of the target host set
-func (t *TargetHostSet) Clone() interface{} {
+func (t *TargetHostSet) Clone() any {
 	cp := proto.Clone(t.TargetHostSet)
 	return &TargetHostSet{
 		TargetHostSet: cp.(*store.TargetHostSet),

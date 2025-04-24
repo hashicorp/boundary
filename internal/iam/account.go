@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -35,7 +38,7 @@ func allocAccount() authAccount {
 }
 
 // Clone creates a clone of the auth account.
-func (a *authAccount) Clone() interface{} {
+func (a *authAccount) Clone() any {
 	cp := proto.Clone(a.Account)
 	return &authAccount{
 		Account: cp.(*authStore.Account),

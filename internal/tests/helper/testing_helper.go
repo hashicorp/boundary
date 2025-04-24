@@ -1,149 +1,113 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package helper
 
 import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"reflect"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
+	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/session"
-	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wspb"
 )
 
 const (
-	DefaultGracePeriod                       = time.Second * 15
+	DefaultControllerRPCGracePeriod          = time.Second * 15
 	expectConnectionStateOnControllerTimeout = time.Minute * 2
-	expectConnectionStateOnWorkerTimeout     = DefaultGracePeriod * 3
+	expectConnectionStateOnWorkerTimeout     = DefaultControllerRPCGracePeriod * 3
 
 	// This is the interval that we check states on in the worker. It
 	// needs to be particularly granular to ensure that we allow for
 	// adequate time to catch any edge cases where the connection state
 	// disappears from the worker before we can update the state.
-	//
-	// As of this writing, the (hardcoded) status request interval on
-	// the worker is 2 seconds, and a session is removed from the state
-	// when it has no connections left on the *next* pass. A one second
-	// interval would only mean two chances to check with a high
-	// possibility of skew; while it seems okay I'm still not 100%
-	// comfortable with this little resolution.
 	expectConnectionStateOnWorkerInterval = time.Millisecond * 100
 )
 
 // TestSession represents an authorized session.
 type TestSession struct {
-	SessionId        string
-	WorkerAddr       string
-	Transport        *http.Transport
-	tofuToken        string
-	connectionsLeft  int32
-	SessionAuthzData *targetspb.SessionAuthorizationData
+	proxy     *apiproxy.ClientProxy
+	SessionId string
 }
 
-// NewTestSession authorizes a session and creates all of the data
-// necessary to initialize.
+// NewTestSession authorizes a session and starts a client proxy. Connections
+// through the proxy can be established via the `connect` function.
 func NewTestSession(
 	ctx context.Context,
 	t *testing.T,
 	tcl *targets.Client,
 	targetId string,
+	opt ...Option,
 ) *TestSession {
 	t.Helper()
-	require := require.New(t)
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	require, assert := require.New(t), assert.New(t)
+
+	opts, err := getOpts(opt...)
+	require.NoError(err)
+
 	sar, err := tcl.AuthorizeSession(ctx, targetId)
 	require.NoError(err)
 	require.NotNil(sar)
 
-	s := &TestSession{
-		SessionId: sar.Item.SessionId,
+	sessAuth, err := sar.GetSessionAuthorization()
+	require.NoError(err)
+
+	sessAuthData, err := sessAuth.GetSessionAuthorizationData()
+	if len(opts.WithWorkerInfo) != 0 {
+		sessAuthData.WorkerInfo = opts.WithWorkerInfo
 	}
-	authzString := sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
-	marshaled, err := base58.FastBase58Decoding(authzString)
-	require.NoError(err)
-	require.NotZero(marshaled)
-
-	s.SessionAuthzData = new(targetspb.SessionAuthorizationData)
-	err = proto.Unmarshal(marshaled, s.SessionAuthzData)
-	require.NoError(err)
-	require.NotZero(s.SessionAuthzData.GetWorkerInfo())
-
-	s.WorkerAddr = s.SessionAuthzData.GetWorkerInfo()[0].GetAddress()
-
-	tlsConf, err := connect.ClientTlsConfig(s.SessionAuthzData, "")
 	require.NoError(err)
 
-	s.Transport = cleanhttp.DefaultTransport()
-	s.Transport.DisableKeepAlives = false
-	s.Transport.TLSClientConfig = tlsConf
-	s.Transport.IdleConnTimeout = 0
-
-	return s
-}
-
-// connect returns a connected websocket for the stored session,
-// connecting to the stored workerAddr with the configured transport.
-//
-// The returned (wrapped) net.Conn should be ready for communication.
-func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
-	t.Helper()
-	require := require.New(t)
-	conn, resp, err := websocket.Dial(
+	proxy, err := apiproxy.New(
 		ctx,
-		fmt.Sprintf("wss://%s/v1/proxy", s.WorkerAddr),
-		&websocket.DialOptions{
-			HTTPClient: &http.Client{
-				Transport: s.Transport,
-			},
-			Subprotocols: []string{globals.TcpProxyV1},
-		},
+		sessAuth.AuthorizationToken,
+		apiproxy.WithWorkerHost(sessAuth.SessionId),
+		apiproxy.WithSkipSessionTeardown(opts.WithSkipSessionTeardown),
+		apiproxy.WithSessionAuthorizationData(sessAuthData),
 	)
 	require.NoError(err)
-	require.NotNil(conn)
-	require.NotNil(resp)
-	require.Equal(resp.Header.Get("Sec-WebSocket-Protocol"), globals.TcpProxyV1)
 
-	// Send the handshake.
-	if s.tofuToken == "" {
-		s.tofuToken, err = base62.Random(20)
+	cleanupDone := make(chan struct{}, 1)
+	go func() {
+		proxyErr := proxy.Start()
+		assert.NoError(proxyErr)
+		close(cleanupDone)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		<-cleanupDone
+	})
+
+	return &TestSession{
+		proxy:     proxy,
+		SessionId: sessAuth.SessionId,
 	}
+}
 
-	require.NoError(err)
-	handshake := proxy.ClientHandshake{TofuToken: s.tofuToken}
-	err = wspb.Write(ctx, conn, &handshake)
-	require.NoError(err)
-
-	// Receive/check the handshake
-	var handshakeResult proxy.HandshakeResult
-	err = wspb.Read(ctx, conn, &handshakeResult)
-	require.NoError(err)
-
-	// This is just a cursory check to make sure that the handshake is
-	// populated. We could check connections remaining too, but that
-	// could legitimately be a trivial (zero) value.
-	require.NotNil(handshakeResult.GetExpiration())
-	s.connectionsLeft = handshakeResult.GetConnectionsLeft()
-
-	return websocket.NetConn(ctx, conn, websocket.MessageBinary)
+// connect returns a connected dialed through the client proxy. The returned
+// net.Conn should be ready for communications.
+func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
+	t.Helper()
+	conn, err := net.Dial("tcp", s.proxy.ListenerAddress(ctx))
+	require.NoError(t, err)
+	return conn
 }
 
 // ExpectConnectionStateOnController waits until all connections in a
@@ -191,11 +155,9 @@ func (s *TestSession) ExpectConnectionStateOnController(
 		}
 
 		for i, conn := range conns {
-			_, states, err := connectionRepo.LookupConnection(ctx, conn.PublicId, nil)
+			c, err := connectionRepo.LookupConnection(ctx, conn.PublicId, nil)
 			require.NoError(err)
-			// Look at the first state in the returned list, which will
-			// be the most recent state.
-			actualStates[i] = states[0].Status
+			actualStates[i] = session.ConnectionStatusFromString(c.Status)
 		}
 
 		if reflect.DeepEqual(expectStates, actualStates) {
@@ -302,8 +264,8 @@ type TestSessionConnection struct {
 }
 
 // Close a test connection
-func (t *TestSessionConnection) Close() error {
-	return t.conn.Close()
+func (c *TestSessionConnection) Close() error {
+	return c.conn.Close()
 }
 
 // Connect returns a TestSessionConnection for a TestSession. Check
@@ -372,9 +334,6 @@ func (c *TestSessionConnection) testSendRecv(t *testing.T) bool {
 		}
 
 		require.Equal(j, i)
-
-		// Sleep 1s
-		// time.Sleep(time.Second)
 	}
 
 	t.Log("finished send/recv successfully", "num_successfully_sent", testSendRecvSendMax)
@@ -469,5 +428,71 @@ func NewTestTcpServer(t *testing.T) *TestTcpServer {
 	require.NoError(err)
 
 	go ts.run()
+
+	require.Eventually(func() bool {
+		c, err := net.Dial(ts.ln.Addr().Network(), ts.ln.Addr().String())
+		if err != nil {
+			return false
+		}
+		_, err = c.Write([]byte("test"))
+		if err != nil {
+			return false
+		}
+		buf := make([]byte, len("test"))
+		_, err = c.Read(buf)
+		if err != nil {
+			return false
+		}
+		if string(buf) != "test" {
+			return false
+		}
+		if err := c.Close(); err != nil {
+			return false
+		}
+		return true
+	}, 10*time.Second, 100*time.Millisecond)
+
 	return ts
+}
+
+// ExpectWorkers is a blocking call, where the method validates that the expected workers
+// can be found in the controllers status update. If the provided list of workers is empty,
+// this method will validate that the controller worker routing info is not called.
+func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worker.TestWorker) {
+	t.Helper()
+	// validate the controller has no reported workers
+	if len(workers) == 0 {
+		assert.Eventually(t, func() bool {
+			workers := []string{}
+			c.Controller().WorkerRoutingInfoUpdateTimes().Range(func(workerId, lastRoutingInfo any) bool {
+				if assert.NotNil(t, workerId) {
+					return false
+				}
+				if assert.NotNil(t, lastRoutingInfo) {
+					return false
+				}
+				if time.Since(lastRoutingInfo.(time.Time)) < DefaultControllerRPCGracePeriod {
+					workers = append(workers, workerId.(string))
+				}
+				return true
+			})
+			return len(workers) == 0
+		}, 2*DefaultControllerRPCGracePeriod, 250*time.Millisecond)
+		return
+	}
+
+	// validate the controller has expected workers
+	wg := new(sync.WaitGroup)
+	for _, w := range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NoError(t, w.Worker().WaitForNextSuccessfulRoutingInfoUpdate())
+			assert.Eventually(t, func() bool {
+				_, ok := c.Controller().WorkerRoutingInfoUpdateTimes().Load(w.Name())
+				return ok
+			}, 30*time.Second, time.Second)
+		}()
+	}
+	wg.Wait()
 }

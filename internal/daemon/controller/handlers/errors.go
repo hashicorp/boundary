@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package handlers
 
 import (
@@ -12,9 +15,9 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -73,12 +76,15 @@ func ApiErrorWithCode(c codes.Code) error {
 }
 
 // ApiErrorWithCodeAndMessage returns an api error with the provided code and message.
-func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...interface{}) error {
+func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...any) error {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
 	return &ApiError{
 		Status: int32(runtime.HTTPStatusFromCode(c)),
 		Inner: &pb.Error{
 			Kind:    c.String(),
-			Message: fmt.Sprintf(msg, args...),
+			Message: msg,
 		},
 	}
 }
@@ -95,7 +101,7 @@ func NotFoundError() error {
 }
 
 // NotFoundErrorf returns an ApiError indicating a resource couldn't be found.
-func NotFoundErrorf(msg string, a ...interface{}) *ApiError {
+func NotFoundErrorf(msg string, a ...any) *ApiError {
 	return &ApiError{
 		Status: http.StatusNotFound,
 		Inner: &pb.Error{
@@ -150,6 +156,41 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) *ApiError {
 	return apiErr
 }
 
+func invalidListTokenError(err error) *ApiError {
+	const op = "handlers.invalidListTokenError"
+	ctx := context.TODO()
+
+	var domainErr *errors.Err
+	if !errors.As(err, &domainErr) {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("Unable to build invalid list token api error."))
+	}
+
+	return &ApiError{
+		Status: http.StatusBadRequest,
+		Inner: &pb.Error{
+			Kind:    domainErr.Info().Message,
+			Op:      string(domainErr.Op),
+			Message: domainErr.Msg,
+		},
+	}
+}
+
+// ConflictErrorf generates an ApiErr when a pre-conditional check is violated.
+// Note, this deliberately doesn't translate to the similarly named '412
+// Precondition Failed' HTTP response status. The ApiErr returned is a 400 bad
+// request because this is how the grpc-gateway mapping is implemented for
+// failed precondition protobuf errors.
+func ConflictErrorf(msg string) *ApiError {
+	const op = "handlers.ConflictErrorf"
+	ctx := context.TODO()
+	err := ApiErrorWithCodeAndMessage(codes.FailedPrecondition, msg)
+	var apiErr *ApiError
+	if !errors.As(err, &apiErr) {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("Unable to build conflict api error."))
+	}
+	return apiErr
+}
+
 var statusRegEx = regexp.MustCompile("Status: ([0-9]+), Kind: \"(.*)\", Error: \"(.*)\"")
 
 // Converts a known errors into an error that can presented to an end user over the API.
@@ -180,10 +221,14 @@ func backendErrorToApiError(inErr error) *ApiError {
 		return NotFoundErrorf(genericNotFoundMsg)
 	case errors.Match(errors.T(errors.AccountAlreadyAssociated), inErr):
 		return InvalidArgumentErrorf(inErr.Error(), nil)
+	case errors.Match(errors.T(errors.InvalidListToken), inErr):
+		return invalidListTokenError(inErr)
 	case errors.Match(errors.T(errors.InvalidFieldMask), inErr), errors.Match(errors.T(errors.EmptyFieldMask), inErr):
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
 	case errors.IsUniqueError(inErr):
 		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
+	case errors.IsConflictError(inErr):
+		return ConflictErrorf(inErr.Error())
 	}
 
 	var statusCode int32 = http.StatusInternalServerError

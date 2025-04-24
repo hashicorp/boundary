@@ -1,0 +1,42 @@
+---
+layout: docs
+page_title: sessions - Command
+description: >-
+  The "sessions" command performs operations on Boundary session resources. A session is a set of related connections between a user and host.
+---
+
+# sessions
+
+Command: `boundary sessions`
+
+The `sessions` command lets you perform operations on Boundary session resources.
+
+## Example
+
+The following command reads the details of a session with the id `s_1234567890`:
+
+```shell-session
+$ boundary sessions read -id s_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary sessions <subcommand> [options] [args]
+  # ...
+Subcommands:
+    cancel    Cancel a session
+    list      List a session
+    read      Read a session
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [cancel](/boundary/docs/commands/sessions/cancel)
+- [list](/boundary/docs/commands/sessions/list)
+- [read](/boundary/docs/commands/sessions/read)

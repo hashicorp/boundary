@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
@@ -24,7 +27,7 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrap)
 	tlRequire.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	tlRequire.NoError(err)
 
 	// First create a worker without an activation token so we can verify it doesn't show up in the table
@@ -93,13 +96,6 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 				return "update worker_auth_server_led_activation_token set token_id = ? where worker_id = ?", []any{in.TokenId[0:5], in.WorkerId}
 			},
 			wantErrContains: "immutable column: worker_auth_server_led_activation_token.token_id: integrity violation",
-		},
-		{
-			name: "modify-create-time",
-			updateModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) (string, []any) {
-				return "update worker_auth_server_led_activation_token set creation_time_encrypted = ? where worker_id = ?", []any{in.CreationTimeEncrypted[0:5], in.WorkerId}
-			},
-			wantErrContains: "immutable column: worker_auth_server_led_activation_token.creation_time_encrypted: integrity violation",
 		},
 	}
 	for _, tc := range cases {

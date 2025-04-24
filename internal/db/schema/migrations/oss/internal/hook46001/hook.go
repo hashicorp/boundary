@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package hook46001 implements the hook CheckFunc & RepairFunc definitions for CVE-2022-36130.
 //
 // The check functionality reports illegal associations between a target and a resource

@@ -1,0 +1,63 @@
+---
+layout: docs
+page_title: Validate recorded session integrity
+description: >-
+  View the components of the Boundary Session Recording (BSR) file. Verify the integrity of the contents of a BSR cryptographically to ensure security compliance.
+---
+
+# Validate the integrity of session recordings
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+BSR directories are validated based on the contents in the directory.
+Boundary cryptographically verifies each individual Boundary Session Recording (BSR) file.
+The keys used for verifying all Boundary Session Recording files are written to storage and wrapped by the KMS you configured.
+Each session recording has its own individual key.
+Boundary generates the following keys when a session recording is authorized:
+
+-  The BSR key is a plaintext AES-GCM key.
+It is not uploaded to the external object store.
+
+- The private and public key pair is a ed25519 key pair.
+The key pair is not uploaded to the external object store.
+
+The following files are stored in the BSR file structure to ensure the integrity of a session recording:
+
+- `bsrKey.pub` is the public ed25519 key.
+- `wrappedBsrKey` is the BSR key wrapped by the external KMS AES-GCM key that you configure.
+- `wrappedPrivKey` is the private ed25519 key wrapped by the external KMS AES-GCM key that you configure.
+- `pubKeySelfSignature.sign` is a self-signature of the plaintext public ed25519 key created with its private key.
+- `pubKeyBsrSignature.sign` is a signature of the plaintext public ed25519 key created with the BSR key.
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
+
+Encrypting the BSR key with an external KMS means that Boundary is not responsible for the longevity of the keys.
+The Boundary admin can always use that external KMS to unwrap the `wrappedBsrKey` and `wrappedPrivKey`.
+A BSR’s key is encrypted using the `go-kms-wrapping` package, and therefore the encrypted BlobInfo includes the metadata required to identify the key-version used during encryption.
+So if the wrapper is reinitialized properly, you can unwrap the keys even if the key has been rotated.
+
+Each BSR directory contains a SHA256SUM and SHA256SUM.sig file that you can use to cryptographically verify the BSR directory's contents.
+The SHA256SUM file contains rows of file names paired with a checksum for the file contents.
+The SHA256SUM.sig is a copy of the SHA256SUM file, signed with the BSR's private key.
+Refer to the following example of a SHA256SUM file:
+
+   ```
+   dc8ce2c42553ce510197c99efe21d89d6229feb4b49170511f49965f2e3cf1a3  wrappedBsrKey
+   a5a91b1b52fb53c4bab661b2e5846bb2a836f050e3d745e436078871914a0bc2  wrappedPrivKey
+   1ca281852ec0d447b94708f28a51b562d47b84affdba25e13a97b0fbd9126424  pubKeyBsrSignature.sign
+   7b5e18e5930bb4cce12a3f203328d9065cae29f26aba3963bb5faece2cf97231  pubKeySelfSignature.sign
+   dc7c6b1316624c7c486a22bab157f947df92b9f2ce4a72469b1f335399a043d5  bsrKey.pub
+   4d3966c458f4e5d67f9ac70b804540b927c718965267c3f36526bf0b18c40ad9  session-meta.json
+   6fec2173d331828677fb5e77fc19168daad3c5f0e82517a82e5701e6c2bdcbe1  session-recording.meta
+   ad76483e7cf3e65391a3a1d0b86a3ad436333ee225bea042b13900abc188b226  session-recording-summary.json
+   ```
+
+Follow these steps to validate a session recording:
+
+1. Unwrap `wrappedBsrKey` using the external KMS you configured to retrieve the BSR key.
+2. Unwrap `wrappedPrivKey` using the external KMS you configured to retrieve the private key.
+3. Use the BSR key or the private key to verify the `bsrKey.pub` key using `go-kms-wrapping` HmacSha256(...).
+4. When the key is verified, use the `bsrKey.pub` key to verify the BSR SHA256SUM.sig file using `go-kms-wrapping` ed25519.Sign(...).
+5. After verifying the SHA256SUM.sig file, use the `sha256` commandline tool to verify BSR checksums using `sha256sum -c SHA256SUM`.
+6. Examine the *.meta files in the directory. For session-recording.meta, every connection logged in the meta file should
+correspond to a connection folder in the directory. For a connection-recording.meta, every channel logged in the meta file should
+correspond to a channel folder in the directory.

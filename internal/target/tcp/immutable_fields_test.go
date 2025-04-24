@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package tcp_test
 
 import (
@@ -175,10 +178,11 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	updateTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestId(t))
 	updateHset := hsets[1]
 
-	_, gotHostSources, _, err := repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), 1, []string{hsets[0].PublicId})
+	gotTarget, err := repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), 1, []string{hsets[0].PublicId})
+	gotHostSources := gotTarget.GetHostSources()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(gotHostSources))
-	new, err := target.NewTargetHostSet(projTarget.GetPublicId(), gotHostSources[0].Id())
+	new, err := target.NewTargetHostSet(ctx, projTarget.GetPublicId(), gotHostSources[0].Id())
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -219,7 +223,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "target_id = ? and host_set_id = ?", []interface{}{new.TargetId, new.HostSetId})
+			err := rw.LookupWhere(context.Background(), orig, "target_id = ? and host_set_id = ?", []any{new.TargetId, new.HostSetId})
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
@@ -227,7 +231,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_set_id = ?", []interface{}{new.TargetId, new.HostSetId})
+			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_set_id = ?", []any{new.TargetId, new.HostSetId})
 			require.NoError(err)
 			assert.True(proto.Equal(orig.(*target.TargetHostSet), after.(*target.TargetHostSet)))
 		})

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -70,13 +73,13 @@ var (
 
 // NewGroupMemberUser creates a new in memory user member of the group. No
 // options are currently supported.
-func NewGroupMemberUser(groupId, userId string, _ ...Option) (*GroupMemberUser, error) {
+func NewGroupMemberUser(ctx context.Context, groupId, userId string, _ ...Option) (*GroupMemberUser, error) {
 	const op = "iam.NewGroupMemberUser"
 	if groupId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	if userId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	return &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{
@@ -93,7 +96,7 @@ func allocGroupMember() GroupMemberUser {
 }
 
 // Clone creates a clone of the GroupMember
-func (m *GroupMemberUser) Clone() interface{} {
+func (m *GroupMemberUser) Clone() any {
 	cp := proto.Clone(m.GroupMemberUser)
 	return &GroupMemberUser{
 		GroupMemberUser: cp.(*store.GroupMemberUser),

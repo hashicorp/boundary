@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
@@ -63,9 +66,9 @@ func (r *OrphanedHostCleanupJob) Status() scheduler.JobStatus {
 // deletes those hosts.  Can not be run in parallel, if
 // Run is invoked while already running an error with code JobAlreadyRunning
 // will be returned.
-func (r *OrphanedHostCleanupJob) Run(ctx context.Context) error {
+func (r *OrphanedHostCleanupJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "plugin.(OrphanedHostCleanupJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
@@ -87,7 +90,6 @@ func (r *OrphanedHostCleanupJob) Run(ctx context.Context) error {
 
 // NextRunIn returns the default run frequency of the cleanup job.
 func (r *OrphanedHostCleanupJob) NextRunIn(_ context.Context) (time.Duration, error) {
-	const op = "plugin.(OrphanedHostCleanupJob).NextRunIn"
 	return orphanedHostCleanupJobRunInterval, nil
 }
 

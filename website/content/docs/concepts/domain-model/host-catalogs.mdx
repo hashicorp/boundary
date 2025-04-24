@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Domain Model - Host Catalogs
-description: |-
-  The anatomy of a Boundary host catalog
+page_title: Host catalog resource
+description: >-
+  Learn about using the host catalog resource to organize and manage hosts and host sets within a project based on their function, environment, or other criteria.
 ---
 
-# Host Catalogs
+# Host catalogs
 
 A host catalog is a resource
 that contains [hosts][] and [host sets][].
@@ -20,7 +20,7 @@ A host catalog has the following configurable attributes:
 
 - `description` - (optional)
 
-### Plugin Host Catalog Information and Attributes
+### Plugin host catalog information and attributes
 
 - `plugin_id` - (required)
   Must reference an installed plugin.
@@ -33,20 +33,20 @@ A host catalog has the following configurable attributes:
   A collection of sensitive fields, like credentials, which the plugin uses to
   interface with the backing service.  These fields are write-only.
 
-## Referenced By
+## Referenced by
 
 - [Host][]
 - [Host Set][]
 - [Project][]
 
-[host set]: /docs/concepts/domain-model/host-sets
-[host sets]: /docs/concepts/domain-model/host-sets
-[host]: /docs/concepts/domain-model/hosts
-[hosts]: /docs/concepts/domain-model/hosts
-[project]: /docs/concepts/domain-model/scopes#projects
+[host set]: /boundary/docs/concepts/domain-model/host-sets
+[host sets]: /boundary/docs/concepts/domain-model/host-sets
+[host]: /boundary/docs/concepts/domain-model/hosts
+[hosts]: /boundary/docs/concepts/domain-model/hosts
+[project]: /boundary/docs/concepts/domain-model/scopes#projects
 
-## Service API Docs
+## Service API docs
 
 The following services are relevant to this resource:
 
-- [Host Catalog Service](/api-docs/host-catalog-service)
+- [Host Catalog Service](/boundary/api-docs/host-catalog-service)

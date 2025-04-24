@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
@@ -31,48 +34,13 @@ func TestDeleteTermiantedSessionsJob(t *testing.T) {
 		threshold      time.Duration
 		expected       int
 	}{
-		{
-			0,
-			0,
-			time.Nanosecond,
-			0,
-		},
-		{
-			1,
-			1,
-			time.Nanosecond,
-			1,
-		},
-		{
-			1,
-			1,
-			time.Hour,
-			0,
-		},
-		{
-			10,
-			10,
-			time.Nanosecond,
-			10,
-		},
-		{
-			10,
-			4,
-			time.Nanosecond,
-			4,
-		},
-		{
-			10,
-			0,
-			time.Nanosecond,
-			0,
-		},
-		{
-			10,
-			10,
-			time.Hour,
-			0,
-		},
+		{0, 0, time.Nanosecond, 0},
+		{1, 1, time.Nanosecond, 1},
+		{1, 1, time.Hour, 0},
+		{10, 10, time.Nanosecond, 10},
+		{10, 4, time.Nanosecond, 4},
+		{10, 0, time.Nanosecond, 0},
+		{10, 10, time.Hour, 0},
 	}
 
 	for _, tc := range cases {
@@ -98,9 +66,9 @@ func TestDeleteTermiantedSessionsJob(t *testing.T) {
 
 			job, err := newDeleteTerminatedJob(ctx, repo, tc.threshold)
 			require.NoError(t, err)
-			err = job.Run(ctx)
+			err = job.Run(ctx, 1*time.Second)
 			require.NoError(t, err)
-			assert.Equal(t, tc.expected, job.deletedInRun)
+			assert.Equal(t, tc.expected, job.Status().Completed)
 		})
 	}
 }

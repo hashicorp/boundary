@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 syntax = "proto3";
 
 // Package store provides protobufs for storing types in the static host
@@ -151,5 +154,15 @@ message UnimplementedSetFields {
   int32 sync_interval_seconds = 22 [(custom_options.v1.mask_mapping) = {
     this: "SyncIntervalSeconds"
     that: "sync_interval_seconds"
+  }];
+}
+
+// These fields are not implemented yet on the host catalog. They are captured
+// here for the purpose of identifying the mask maps which are on the top level
+// api catalog resource but aren't present in the static host catalog storage.
+message UnimplementedCatalogFields {
+  string worker_filter = 11 [(custom_options.v1.mask_mapping) = {
+    this: "WorkerFilter"
+    that: "worker_filter"
   }];
 }

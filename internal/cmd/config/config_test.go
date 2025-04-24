@@ -1,12 +1,20 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
+	"github.com/hashicorp/boundary/internal/util"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -22,26 +30,50 @@ func TestDevController(t *testing.T) {
 
 	truePointer := new(bool)
 	*truePointer = true
+
+	apiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+	uiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {defaultCsp},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+
 	exp := &Config{
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*listenerutil.ListenerConfig{
 				{
-					Type:               "tcp",
-					Purpose:            []string{"api"},
-					TLSDisable:         true,
-					CorsEnabled:        truePointer,
-					CorsAllowedOrigins: []string{"*"},
+					Type:                     "tcp",
+					Purpose:                  []string{"api"},
+					TLSDisable:               true,
+					CorsEnabled:              truePointer,
+					CorsAllowedOrigins:       []string{"*"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:    "tcp",
-					Purpose: []string{"cluster"},
+					Type:                     "tcp",
+					Purpose:                  []string{"cluster"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:       "tcp",
-					Purpose:    []string{"ops"},
-					TLSDisable: true,
+					Type:                     "tcp",
+					Purpose:                  []string{"ops"},
+					TLSDisable:               true,
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 			},
 			Seals: []*configutil.KMS{
@@ -63,6 +95,14 @@ func TestDevController(t *testing.T) {
 				},
 				{
 					Type:    "aead",
+					Purpose: []string{"bsr"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_bsr",
+					},
+				},
+				{
+					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -72,11 +112,16 @@ func TestDevController(t *testing.T) {
 			},
 		},
 		Controller: &Controller{
-			Name:        "dev-controller",
-			Description: "A default controller created in dev mode",
+			Name:                    "dev-controller",
+			Description:             "A default controller created in dev mode",
+			ApiRateLimits:           make(ratelimit.Configs, 0),
+			ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 		},
 		DevController: true,
 	}
+	exp.Eventing.ErrorEventsDisabled = true
+	exp.Eventing.SysEventsEnabled = false
+	exp.Eventing.ObservationsEnabled = false
 
 	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
 	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
@@ -84,9 +129,11 @@ func TestDevController(t *testing.T) {
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
+	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
+	exp.DevBsrKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
 
 	assert.Equal(t, exp, actual)
 
@@ -163,11 +210,10 @@ func TestDevController(t *testing.T) {
 }
 
 func TestDevWorker(t *testing.T) {
-	actual, err := DevWorker()
+	actual, err := DevWorker(WithSysEventsEnabled(true), WithObservationsEnabled(true), TestWithErrorEventsEnabled(t, true))
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	exp := &Config{
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
@@ -176,6 +222,22 @@ func TestDevWorker(t *testing.T) {
 				{
 					Type:    "tcp",
 					Purpose: []string{"proxy"},
+					CustomApiResponseHeaders: map[int]http.Header{
+						0: {
+							"Content-Security-Policy":   {"default-src 'none'"},
+							"X-Content-Type-Options":    {"nosniff"},
+							"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+							"Cache-Control":             {"no-store"},
+						},
+					},
+					CustomUiResponseHeaders: map[int]http.Header{
+						0: {
+							"Content-Security-Policy":   {defaultCsp},
+							"X-Content-Type-Options":    {"nosniff"},
+							"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+							"Cache-Control":             {"no-store"},
+						},
+					},
 				},
 			},
 			Seals: []*configutil.KMS{
@@ -193,7 +255,7 @@ func TestDevWorker(t *testing.T) {
 			Name:                "w_1234567890",
 			Description:         "A default worker created in dev mode",
 			InitialUpstreams:    []string{"127.0.0.1"},
-			InitialUpstreamsRaw: []interface{}{"127.0.0.1"},
+			InitialUpstreamsRaw: []any{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},
@@ -329,30 +391,56 @@ func TestDevCombined(t *testing.T) {
 
 	truePointer := new(bool)
 	*truePointer = true
+
+	apiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+	uiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {defaultCsp},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+
 	exp := &Config{
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*listenerutil.ListenerConfig{
 				{
-					Type:               "tcp",
-					Purpose:            []string{"api"},
-					TLSDisable:         true,
-					CorsEnabled:        truePointer,
-					CorsAllowedOrigins: []string{"*"},
+					Type:                     "tcp",
+					Purpose:                  []string{"api"},
+					TLSDisable:               true,
+					CorsEnabled:              truePointer,
+					CorsAllowedOrigins:       []string{"*"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:    "tcp",
-					Purpose: []string{"cluster"},
+					Type:                     "tcp",
+					Purpose:                  []string{"cluster"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:       "tcp",
-					Purpose:    []string{"ops"},
-					TLSDisable: true,
+					Type:                     "tcp",
+					Purpose:                  []string{"ops"},
+					TLSDisable:               true,
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:    "tcp",
-					Purpose: []string{"proxy"},
+					Type:                     "tcp",
+					Purpose:                  []string{"proxy"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 			},
 			Seals: []*configutil.KMS{
@@ -374,6 +462,14 @@ func TestDevCombined(t *testing.T) {
 				},
 				{
 					Type:    "aead",
+					Purpose: []string{"bsr"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_bsr",
+					},
+				},
+				{
+					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -391,15 +487,17 @@ func TestDevCombined(t *testing.T) {
 			},
 		},
 		Controller: &Controller{
-			Name:        "dev-controller",
-			Description: "A default controller created in dev mode",
+			Name:                    "dev-controller",
+			Description:             "A default controller created in dev mode",
+			ApiRateLimits:           make(ratelimit.Configs, 0),
+			ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 		},
 		DevController: true,
 		Worker: &Worker{
 			Name:                "w_1234567890",
 			Description:         "A default worker created in dev mode",
 			InitialUpstreams:    []string{"127.0.0.1"},
-			InitialUpstreamsRaw: []interface{}{"127.0.0.1"},
+			InitialUpstreamsRaw: []any{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},
@@ -414,15 +512,17 @@ func TestDevCombined(t *testing.T) {
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
 	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
+	exp.Seals[4].Config["key"] = actual.Seals[4].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
-	exp.DevWorkerAuthStorageKey = actual.Seals[3].Config["key"]
+	exp.DevBsrKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
+	exp.DevWorkerAuthStorageKey = actual.Seals[4].Config["key"]
 	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
 }
 
-func TestDevWorkerCredentialStorageDir(t *testing.T) {
+func TestDevWorkerCredentialStoragePath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                           string
@@ -477,11 +577,311 @@ func TestDevWorkerCredentialStorageDir(t *testing.T) {
 	}
 }
 
+func TestDevWorkerRecordingStorageMinimumAvailableCapacity(t *testing.T) {
+	t.Parallel()
+	td := t.TempDir()
+	tests := []struct {
+		name                           string
+		devWorkerProvidedConfiguration string
+		storagePath                    string
+		storageCapacity                string
+		expectedDiskSpace              uint64
+		expectedErrMsg                 string
+	}{
+		{
+			name: "empty storage with empty capacity",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+			}
+			`,
+			expectedDiskSpace: 0,
+			storagePath:       "",
+		},
+		{
+			name: "empty storage path with set capacity",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_minimum_available_capacity = "4kib"
+			}
+			`,
+			expectedErrMsg: "recording_storage_path cannot be empty when providing recording_storage_minimum_available_capacity",
+		},
+		{
+			name: "storage path with empty capacity defaults to 500mib",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+			}
+			`, td),
+			storagePath:       td,
+			expectedDiskSpace: 524288000,
+		},
+		{
+			name: "storage path with capacity string",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+				recording_storage_minimum_available_capacity = "4kib"
+			}
+			`, td),
+			storagePath:       td,
+			expectedDiskSpace: 4096,
+		},
+		{
+			name: "storage path with raw byte value",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+				recording_storage_minimum_available_capacity = "4096"
+			}
+			`, td),
+			storagePath:       td,
+			expectedDiskSpace: 4096,
+		},
+		{
+			name: "storage path with invalid capacity input",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+				recording_storage_minimum_available_capacity = "gib"
+			}
+			`, td),
+			storagePath:    td,
+			expectedErrMsg: "could not parse capacity from input",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
+			if tt.expectedErrMsg != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.expectedErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.storagePath, parsed.Worker.RecordingStoragePath)
+			assert.Equal(t, tt.expectedDiskSpace, parsed.Worker.RecordingStorageMinimumAvailableDiskSpace)
+		})
+	}
+}
+
+func TestDevWorkerRecordingStoragePath(t *testing.T) {
+	t.Parallel()
+	td := t.TempDir()
+	tests := []struct {
+		name                           string
+		devWorkerProvidedConfiguration string
+		storagePath                    string
+	}{
+		{
+			name: "Relative Storage Directory",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = ".."
+			}
+			`,
+			storagePath: "..",
+		},
+		{
+			name: "temp dir",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+			}
+			`, td),
+			storagePath: td,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
+			require.NoError(t, err)
+			require.Equal(t, tt.storagePath, parsed.Worker.RecordingStoragePath)
+		})
+	}
+}
+
+func TestDevControllerIpv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	// This test only validates that all listeners are utilizing an IPv6 address.
+	// Other dev controller configurations are validates in TestDevController.
+	actual, err := DevController(WithIPv6Enabled(true))
+	require.NoError(err)
+
+	// expected an error here because we purposely did not provide a port number
+	// to allow randomly assigned port values
+	_, _, err = net.SplitHostPort(actual.Controller.PublicClusterAddr)
+	require.Error(err)
+
+	// assert the square brackets are removed from the host ipv6 address and that the port value is empty
+	publicAddr, port, err := util.SplitHostPort(actual.Controller.PublicClusterAddr)
+	require.NoError(err)
+	assert.Empty(port)
+	assert.Empty(publicAddr)
+
+	require.NotEmpty(actual.Listeners)
+	for _, l := range actual.Listeners {
+		addr, _, err := util.SplitHostPort(l.Address)
+		require.NoError(err)
+		ip := net.ParseIP(addr)
+		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+	}
+}
+
+func TestDevWorkerIpv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	// This test only validates that all listeners are utilizing an IPv6 address.
+	// Other dev worker configurations are validates in TestDevWorker.
+	actual, err := DevWorker(WithIPv6Enabled(true))
+	require.NoError(err)
+
+	// expected an error here because we purposely did not provide a port number
+	// to allow randomly assigned port values
+	_, _, err = net.SplitHostPort(actual.Worker.PublicAddr)
+	require.Error(err)
+
+	// assert the square brackets are removed from the worker ipv6 address and that the port value is empty
+	publicAddr, port, err := util.SplitHostPort(actual.Worker.PublicAddr)
+	require.NoError(err)
+	assert.Empty(port)
+	ip := net.ParseIP(publicAddr)
+	assert.NotNil(ip, "failed to parse worker public address")
+	assert.NotNil(ip.To16(), "worker public address is not IPv6 %s", actual.Worker.PublicAddr)
+
+	require.NotEmpty(actual.Listeners)
+	for _, l := range actual.Listeners {
+		addr, _, err := util.SplitHostPort(l.Address)
+		require.NoError(err)
+		ip := net.ParseIP(addr)
+		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+	}
+}
+
+func TestDevCombinedIpv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	// This test only validates that all listeners are utilizing an IPv6 address.
+	actual, err := DevCombined(WithIPv6Enabled(true))
+	require.NoError(err)
+
+	// expected an error here because we purposely did not provide a port number
+	// to allow randomly assigned port values for the worker and controller
+	_, _, err = net.SplitHostPort(actual.Worker.PublicAddr)
+	require.Error(err)
+	_, _, err = net.SplitHostPort(actual.Controller.PublicClusterAddr)
+	require.Error(err)
+
+	// assert the square brackets are removed from the host ipv6 address and that the port value is empty
+	publicAddr, port, err := util.SplitHostPort(actual.Worker.PublicAddr)
+	require.NoError(err)
+	assert.Empty(port)
+	ip := net.ParseIP(publicAddr)
+	assert.NotNil(ip, "failed to parse worker public address")
+	assert.NotNil(ip.To16(), "worker public address is not IPv6 %s", actual.Worker.PublicAddr)
+
+	// assert the square brackets are removed from the controller ipv6 address and that the port value is empty
+	publicAddr, port, err = util.SplitHostPort(actual.Controller.PublicClusterAddr)
+	require.NoError(err)
+	assert.Empty(port)
+	assert.Empty(publicAddr)
+
+	require.NotEmpty(actual.Listeners)
+	for _, l := range actual.Listeners {
+		addr, _, err := util.SplitHostPort(l.Address)
+		require.NoError(err)
+		ip := net.ParseIP(addr)
+		assert.NotNil(ip, "failed to parse listener address for %v", l.Purpose)
+		assert.NotNil(ip.To16(), "failed to convert address to IPv6 for %v, found %v", l.Purpose, addr)
+	}
+}
+
 func TestDevKeyGeneration(t *testing.T) {
 	t.Parallel()
 	dk := DevKeyGeneration()
-	numBytes := 32
-	require.Equal(t, numBytes, len(dk))
+	buf, err := base64.StdEncoding.DecodeString(dk)
+	require.NoError(t, err)
+	require.Len(t, buf, 32)
 	require.NotEqual(t, dk, DevKeyGeneration())
 }
 
@@ -1192,7 +1592,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			expErr:             false,
 		},
 		{
-			name: "One Upstream",
+			name: "ipv4 Upstream",
 			in: `
 			worker {
 				name = "test"
@@ -1200,6 +1600,28 @@ func TestWorkerUpstreams(t *testing.T) {
 			}
 			`,
 			expWorkerUpstreams: []string{"127.0.0.1"},
+			expErr:             false,
+		},
+		{
+			name: "ipv6 Upstream",
+			in: `
+			worker {
+				name = "test"
+				initial_upstreams = ["[2001:4860:4860:0:0:0:0:8888]"]
+			}
+			`,
+			expWorkerUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]"},
+			expErr:             false,
+		},
+		{
+			name: "abbreviated ipv6 Upstream",
+			in: `
+			worker {
+				name = "test"
+				initial_upstreams = ["[2001:4860:4860::8888]"]
+			}
+			`,
+			expWorkerUpstreams: []string{"[2001:4860:4860::8888]"},
 			expErr:             false,
 		},
 		{
@@ -1284,40 +1706,6 @@ func TestWorkerUpstreams(t *testing.T) {
 			expErr:             true,
 			expErrIs:           parseutil.ErrNotAUrl,
 		},
-		{
-			name: "Worker using deprecated controllers field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
-			}`,
-			expWorkerUpstreams: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
-			expErr:             false,
-		},
-		{
-			name: "Different values in controllers and initial_upstreams field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
-				initial_upstreams = ["127.0.0.1"]
-			}`,
-			expWorkerUpstreams: nil,
-			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
-		},
-		{
-			name: "Identical values in controllers and initial_upstreams field",
-			in: `
-			worker {
-				name = "test"
-				controllers = ["127.0.0.1"]
-				initial_upstreams = ["127.0.0.1"]
-			}`,
-			expWorkerUpstreams: nil,
-			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
-		},
 	}
 
 	for _, tt := range tests {
@@ -1395,6 +1783,208 @@ func TestControllerDescription(t *testing.T) {
 			require.NotNil(t, c)
 			require.NotNil(t, c.Controller)
 			require.Equal(t, tt.expDescription, c.Controller.Description)
+		})
+	}
+}
+
+func TestControllerApiRateLimits(t *testing.T) {
+	tests := []struct {
+		name      string
+		in        string
+		expLimits ratelimit.Configs
+		expErr    bool
+		expErrStr string
+	}{
+		{
+			name: "Single Rate limit",
+			in: `
+			controller {
+				api_rate_limit {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "Single Rate with name",
+			in: `
+			controller {
+				api_rate_limit "default" {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "Multiple Rate limit",
+			in: `
+			controller {
+				api_rate_limit {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+
+				api_rate_limit {
+					resources = ["*"]
+					actions   = ["list"]
+					per       = "total"
+					limit     = 20
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list"},
+					Per:       "total",
+					Limit:     20,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "Multiple Rate limit with names",
+			in: `
+			controller {
+				api_rate_limit "default" {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+
+				api_rate_limit "default-list" {
+					resources = ["*"]
+					actions   = ["list"]
+					per       = "total"
+					limit     = 20
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list"},
+					Per:       "total",
+					Limit:     20,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "Multiple Rate limit with name and no name",
+			in: `
+			controller {
+				api_rate_limit {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+
+				api_rate_limit "list" {
+					resources = ["*"]
+					actions   = ["list"]
+					per       = "total"
+					limit     = 20
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list"},
+					Per:       "total",
+					Limit:     20,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expLimits, c.Controller.ApiRateLimits)
 		})
 	}
 }
@@ -1818,7 +2408,6 @@ func TestDatabaseSkipSharedLockAcquisition(t *testing.T) {
 }
 
 func TestSetupControllerPublicClusterAddress(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name                    string
 		inputConfig             *Config
@@ -1842,7 +2431,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: ":9201",
 		},
 		{
-			name: "setting public cluster address directly with ip",
+			name: "setting public cluster address directly with ipv4",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -1857,7 +2446,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:9201",
 		},
 		{
-			name: "setting public cluster address directly with ip:port",
+			name: "setting public cluster address directly with ipv4:port",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -1870,6 +2459,66 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expErr:                  false,
 			expErrStr:               "",
 			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "setting public cluster address directly with ipv6",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:9201",
+		},
+		{
+			name: "setting public cluster address directly with ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]:8080",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+		},
+		{
+			name: "setting public cluster address directly with abbreviated ipv6",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:9201",
+		},
+		{
+			name: "setting public cluster address directly with abbreviated ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]:8080",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "setting public cluster address to env var",
@@ -2026,7 +2675,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:8080",
 		},
 		{
-			name: "read address from listeners ip only",
+			name: "read address from listeners ipv4 only",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2040,7 +2689,7 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expPublicClusterAddress: "127.0.0.1:9201",
 		},
 		{
-			name: "read address from listeners ip:port",
+			name: "read address from listeners ipv4:port",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2052,6 +2701,62 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 			expErr:                  false,
 			expErrStr:               "",
 			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "read address from listeners ipv6 only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860:0:0:0:0:8888]"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:9201",
+		},
+		{
+			name: "read address from listeners ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860:0:0:0:0:8888]:8080"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+		},
+		{
+			name: "read address from listeners abbreviated ipv6 only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860::8888]"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:9201",
+		},
+		{
+			name: "read address from listeners abbreviated ipv6:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "[2001:4860:4860::8888]:8080"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "read address from listeners is ignored on different purpose",
@@ -2167,7 +2872,7 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expInitialUpstreams: nil,
 		},
 		{
-			name: "PublicClusterAddr",
+			name: "ipv4 PublicClusterAddr",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -2180,6 +2885,36 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expErr:              false,
 			expErrStr:           "",
 			expInitialUpstreams: []string{"192.168.0.4:9201"},
+		},
+		{
+			name: "ipv6 PublicClusterAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860:0:0:0:0:8888]:9201",
+				},
+				Worker: &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]:9201"},
+		},
+		{
+			name: "abbreviated ipv6 PublicClusterAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "[2001:4860:4860::8888]:9201",
+				},
+				Worker: &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860::8888]:9201"},
 		},
 		{
 			name: "ListenerNoAddr",
@@ -2199,7 +2934,7 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expInitialUpstreams: []string{"127.0.0.1:9201"},
 		},
 		{
-			name: "ListenerAddr",
+			name: "ipv4 ListenerAddr",
 			inputConfig: &Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{
@@ -2215,6 +2950,42 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			expErr:              false,
 			expErrStr:           "",
 			expInitialUpstreams: []string{"192.168.0.5:9201"},
+		},
+		{
+			name: "ipv6 ListenerAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "[2001:4860:4860:0:0:0:0:8888]:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860:0:0:0:0:8888]:9201"},
+		},
+		{
+			name: "abbreviated ipv6 ListenerAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "[2001:4860:4860::8888]:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"[2001:4860:4860::8888]:9201"},
 		},
 		{
 			name: "ListenerAddrDomain",
@@ -2326,4 +3097,441 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetDownstreamWorkersTimeout(t *testing.T) {
+	tests := []struct {
+		name                  string
+		in                    string
+		wantController        bool
+		wantWorker            bool
+		wantControllerTimeout time.Duration
+		wantWorkerTimeout     time.Duration
+		assertErr             func(*testing.T, error)
+	}{
+		{
+			name: "controller_valid_time_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = "10s"
+			}`,
+			wantControllerTimeout: 10 * time.Second,
+			wantWorkerTimeout:     0,
+			wantController:        true,
+			wantWorker:            false,
+			assertErr:             nil,
+		},
+		{
+			name: "worker_valid_time_value",
+			in: `
+			worker {
+				name = "example-worker"
+				get_downstream_workers_timeout = "5s"
+			}`,
+			wantControllerTimeout: 0,
+			wantWorkerTimeout:     5 * time.Second,
+			wantController:        false,
+			wantWorker:            true,
+			assertErr:             nil,
+		},
+		{
+			name: "both_valid_time_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = "5s"
+			}
+			worker {
+				name = "example-worker"
+				get_downstream_workers_timeout = "500ms"
+			}`,
+			wantControllerTimeout: 5 * time.Second,
+			wantWorkerTimeout:     500 * time.Millisecond,
+			wantController:        true,
+			wantWorker:            true,
+			assertErr:             nil,
+		},
+		{
+			name: "both_unspecified_defaults_to_zero",
+			in: `
+			controller {
+				name = "example-controller"
+			}
+			worker {
+				name = "example-worker"
+			}`,
+			wantController:        true,
+			wantWorker:            true,
+			wantControllerTimeout: 0,
+			wantWorkerTimeout:     0,
+			assertErr:             nil,
+		},
+		{
+			name: "controller_int_value_no_unit_assumes_seconds",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = 100
+			}`,
+			wantController:        true,
+			wantWorker:            false,
+			wantControllerTimeout: 100 * time.Second,
+			wantWorkerTimeout:     0,
+		},
+		{
+			name: "worker_int_value_no_unit_assumes_seconds",
+			in: `
+			worker {
+				name = "example-worker"
+				get_downstream_workers_timeout = 30
+			}`,
+			wantController:    false,
+			wantWorker:        true,
+			wantWorkerTimeout: 30 * time.Second,
+		},
+		{
+			name: "controller_invalid_bool_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = true
+			}`,
+			wantController: true,
+			wantWorker:     false,
+			assertErr: func(t *testing.T, err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, `error trying to parse controller get_downstream_workers_timeout`)
+			},
+		},
+		{
+			name: "worker_invalid_bool_value",
+			in: `
+			worker {
+				name = "example-worker"
+				get_downstream_workers_timeout = false
+			}`,
+			wantController: false,
+			wantWorker:     true,
+			assertErr: func(t *testing.T, err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, `error trying to parse worker get_downstream_workers_timeout`)
+			},
+		},
+		{
+			name: "controller_invalid_empty_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = ""
+			}`,
+			wantController:        true,
+			wantWorker:            false,
+			wantControllerTimeout: 0,
+		},
+		{
+			name: "worker_invalid_empty_value",
+			in: `
+			worker {
+				name = "example-worker"
+				get_downstream_workers_timeout = ""
+			}`,
+			wantController:    false,
+			wantWorker:        true,
+			wantWorkerTimeout: 0,
+		},
+		{
+			name: "controller_invalid_zero_value",
+			in: `
+			controller {
+				name = "example-controller"
+				get_downstream_workers_timeout = "0s"
+			}`,
+			wantController:        true,
+			wantWorker:            false,
+			wantControllerTimeout: 0,
+		},
+		{
+			name: "worker_invalid_zero_value",
+			in: `
+			worker {
+				name = "example-worker"
+				get_downstream_workers_timeout = "0s"
+			}`,
+			wantController:    false,
+			wantWorker:        true,
+			wantWorkerTimeout: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := Parse(tt.in)
+			if tt.assertErr != nil {
+				tt.assertErr(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantController {
+				require.NotNil(t, c.Controller)
+				require.Equal(t, tt.wantControllerTimeout, c.Controller.GetDownstreamWorkersTimeoutDuration)
+			}
+			if tt.wantWorker {
+				require.NotNil(t, c.Worker)
+				require.Equal(t, tt.wantWorkerTimeout, c.Worker.GetDownstreamWorkersTimeoutDuration)
+			}
+		})
+	}
+}
+
+func TestMaxPageSize(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             string
+		envMaxPageSize string
+		expMaxPageSize uint
+		expErr         bool
+		expErrStr      string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = 5
+			}`,
+			expMaxPageSize: 5,
+			expErr:         false,
+		},
+		{
+			name: "Valid string value",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "5"
+			}`,
+			expMaxPageSize: 5,
+			expErr:         false,
+		},
+		{
+			name: "Invalid value integer",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = 0
+			}`,
+			expErr:    true,
+			expErrStr: "Max page size value must be at least 1, was 0",
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "string bad"
+			}`,
+			expErr: true,
+			expErrStr: "Max page size value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = false
+			}`,
+			expErr:    true,
+			expErrStr: "Max page size: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "env://ENV_MAX_PAGE_SIZE"
+			}`,
+			expMaxPageSize: 8,
+			envMaxPageSize: "8",
+			expErr:         false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "env://ENV_MAX_PAGE_SIZE"
+			}`,
+			envMaxPageSize: "bogus value",
+			expErr:         true,
+			expErrStr: "Max page size value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_PAGE_SIZE", tt.envMaxPageSize)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expMaxPageSize, c.Controller.MaxPageSize)
+		})
+	}
+}
+
+func TestConcurrentPasswordHashWorkers(t *testing.T) {
+	tests := []struct {
+		name                             string
+		in                               string
+		envConcurrentPasswordHashWorkers string
+		expConcurrentPasswordHashWorkers uint
+		expErr                           bool
+		expErrStr                        string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 5
+			}`,
+			expConcurrentPasswordHashWorkers: 5,
+			expErr:                           false,
+		},
+		{
+			name: "Valid string value",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "5"
+			}`,
+			expConcurrentPasswordHashWorkers: 5,
+			expErr:                           false,
+		},
+		{
+			name: "Invalid value integer",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 0
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers value must be at least 1, was 0",
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "string bad"
+			}`,
+			expErr: true,
+			expErrStr: "Concurrent password hash workers value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value string integer",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "-1"
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers value must be at least 1, was -1",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = false
+			}`,
+			expErr:    true,
+			expErrStr: "Concurrent password hash workers: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "env://ENV_MAX_PW_WORKERS"
+			}`,
+			expConcurrentPasswordHashWorkers: 8,
+			envConcurrentPasswordHashWorkers: "8",
+			expErr:                           false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = "env://ENV_MAX_PW_WORKERS"
+			}`,
+			envConcurrentPasswordHashWorkers: "bogus value",
+			expErr:                           true,
+			expErrStr: "Concurrent password hash workers value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_PW_WORKERS", tt.envConcurrentPasswordHashWorkers)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expConcurrentPasswordHashWorkers, c.Controller.ConcurrentPasswordHashWorkers)
+		})
+	}
+
+	t.Run("using environment variable", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "2")
+		in := `
+			controller {
+				name = "example-controller"
+			}`
+		c, err := Parse(in)
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		require.NotNil(t, c.Controller)
+		require.EqualValues(t, 2, c.Controller.ConcurrentPasswordHashWorkers)
+	})
+
+	t.Run("using environment variable with invalid value", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "invalid")
+		in := `
+			controller {
+				name = "example-controller"
+			}`
+		c, err := Parse(in)
+		require.Error(t, err)
+		require.Nil(t, c)
+		require.Contains(t, err.Error(), "BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS value is not an int")
+	})
+
+	t.Run("using environment variable and config value uses config value", func(t *testing.T) {
+		t.Setenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS", "2")
+		in := `
+			controller {
+				name = "example-controller"
+				concurrent_password_hash_workers = 3
+			}`
+		c, err := Parse(in)
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		require.NotNil(t, c.Controller)
+		require.EqualValues(t, 3, c.Controller.ConcurrentPasswordHashWorkers)
+	})
 }

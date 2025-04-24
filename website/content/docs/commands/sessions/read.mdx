@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: sessions read - Command
+description: >-
+  The "sessions read" command retrieves the details of a session resources.
+---
+
+# sessions read
+
+Command: `boundary sessions read`
+
+The `boundary sessions read` command lets you read information a Boundary session by providing the ID.
+
+## Example
+
+This example reads the details of a session with the ID `s_1234567890`:
+
+```shell-session
+$ boundary sessions read -id s_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary sessions read [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the session you want to read.
+
+@include 'cmd-option-note.mdx'

@@ -1,14 +1,21 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -38,25 +45,26 @@ func (r *Repository) CreateHost(ctx context.Context, projectId string, h *Host, 
 	if projectId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
-	h.Address = strings.TrimSpace(h.Address)
-	if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-		return nil, errors.New(ctx, errors.InvalidAddress, op, "invalid address")
+	var err error
+	h.Address, err = util.ParseAddress(ctx, h.Address)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidAddress), errors.WithMsg("invalid address"))
 	}
 	h = h.clone()
 
 	opts := getOpts(opt...)
 
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, HostPrefix+"_") {
+		if !strings.HasPrefix(opts.withPublicId, globals.StaticHostPrefix+"_") {
 			return nil, errors.New(ctx,
 				errors.InvalidPublicId,
 				op,
-				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostPrefix),
+				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, globals.StaticHostPrefix),
 			)
 		}
 		h.PublicId = opts.withPublicId
 	} else {
-		id, err := newHostId()
+		id, err := newHostId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -132,9 +140,10 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
 		case strings.EqualFold("Address", f):
-			h.Address = strings.TrimSpace(h.Address)
-			if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-				return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidAddress, op, "invalid address")
+			var err error
+			h.Address, err = util.ParseAddress(ctx, h.Address)
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidAddress), errors.WithMsg("invalid address"))
 			}
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
@@ -142,7 +151,7 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"Name":        h.Name,
 			"Description": h.Description,
 			"Address":     h.Address,
@@ -162,7 +171,7 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 	var rowsUpdated int
 	var returnedHost *Host
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(r db.Reader, w db.Writer) error {
 			returnedHost = h.clone()
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedHost, dbMask, nullFields,
@@ -177,7 +186,7 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 			ha := &hostAgg{
 				PublicId: h.PublicId,
 			}
-			if err := r.reader.LookupByPublicId(ctx, ha); err != nil {
+			if err := r.LookupByPublicId(ctx, ha); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup host after update"))
 			}
 			returnedHost.SetIds = ha.getSetIds()
@@ -222,12 +231,14 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 	return ha.toHost(), nil
 }
 
-// ListHosts returns a slice of Hosts for the catalogId.
-// WithLimit is the only option supported.
-func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Option) ([]*Host, error) {
-	const op = "static.(Repository).ListHosts"
+// listHosts returns a slice of Hosts for the catalogId.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listHosts(ctx context.Context, catalogId string, opt ...Option) ([]*Host, time.Time, error) {
+	const op = "static.(Repository).listHosts"
 	if catalogId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -235,17 +246,83 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var aggs []*hostAgg
-	err := r.reader.SearchWhere(ctx, &aggs, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	hosts := make([]*Host, 0, len(aggs))
-	for _, ha := range aggs {
-		hosts = append(hosts, ha.toHost())
+	query := fmt.Sprintf(listHostsTemplate, limit)
+	args := []any{sql.Named("catalog_id", catalogId)}
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listHostsPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
 	}
 
-	return hosts, nil
+	return r.queryHosts(ctx, query, args)
+}
+
+// listHostsRefresh returns a slice of Hosts for the catalogId.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listHostsRefresh(ctx context.Context, catalogId string, updatedAfter time.Time, opt ...Option) ([]*Host, time.Time, error) {
+	const op = "static.(Repository).listHostsRefresh"
+	switch {
+	case catalogId == "":
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	query := fmt.Sprintf(listHostsRefreshTemplate, limit)
+	args := []any{
+		sql.Named("catalog_id", catalogId),
+		sql.Named("updated_after_time", updatedAfter),
+	}
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listHostsRefreshPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.queryHosts(ctx, query, args)
+}
+
+func (r *Repository) queryHosts(ctx context.Context, query string, args []any) ([]*Host, time.Time, error) {
+	const op = "static.(Repository).queryHosts"
+
+	var hosts []*Host
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		rows, err := r.Query(ctx, query, args)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		var foundHosts []*hostAgg
+		for rows.Next() {
+			if err := r.ScanRows(ctx, rows, &foundHosts); err != nil {
+				return err
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		hosts = make([]*Host, 0, len(foundHosts))
+		for _, ha := range foundHosts {
+			hosts = append(hosts, ha.toHost())
+		}
+		transactionTimestamp, err = r.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+	return hosts, transactionTimestamp, nil
 }
 
 // DeleteHost deletes the host for the provided id from the repository
@@ -285,4 +362,49 @@ func (r *Repository) DeleteHost(ctx context.Context, projectId string, publicId 
 	}
 
 	return rowsDeleted, nil
+}
+
+// listDeletedHostIds lists the public IDs of any hosts deleted since the timestamp provided,
+// and the timestamp of the transaction within which the hosts were listed.
+func (r *Repository) listDeletedHostIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "static.(Repository).listDeletedHostIds"
+	var deleteHosts []*deletedHost
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteHosts, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted hosts"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var hostIds []string
+	for _, t := range deleteHosts {
+		hostIds = append(hostIds, t.PublicId)
+	}
+	return hostIds, transactionTimestamp, nil
+}
+
+// estimatedHostCount returns an estimate of the total number of static hosts.
+func (r *Repository) estimatedHostCount(ctx context.Context) (int, error) {
+	const op = "static.(Repository).estimatedHostCount"
+	rows, err := r.reader.Query(ctx, estimateCountHosts, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static hosts"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static hosts"))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static hosts"))
+	}
+	return count, nil
 }

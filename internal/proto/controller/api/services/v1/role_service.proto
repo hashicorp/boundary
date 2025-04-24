@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.services.v1;
@@ -10,6 +13,17 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service RoleService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Role service"
+    description:
+      "A role represents a collection of permissions that define what actions a user or service account can perform within the system. "
+      "The role service provides endpoints that let you manage roles in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles";
+      description: "Read about roles in the Boundary domain model";
+    }
+  };
+
   // GetRole returns a stored Role if present. The provided request must include
   // the Role ID for the Role being retrieved. If the ID is missing, malformed
   // or reference a non-existing resource an error is returned.
@@ -18,9 +32,7 @@ service RoleService {
       get: "/v1/roles/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Role."};
   }
 
   // ListRoles returns a list of stored Roles which exist inside the scope
@@ -28,12 +40,8 @@ service RoleService {
   // the Roles being retrieved. If the scope ID is missing, malformed, or
   // reference a non-existing scope, an error is returned.
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
-    option (google.api.http) = {
-      get: "/v1/roles"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Roles."
-    };
+    option (google.api.http) = {get: "/v1/roles"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Roles."};
   }
 
   // CreateRole creates and stores a Role. The provided request must include the
@@ -47,9 +55,7 @@ service RoleService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Role."};
   }
 
   // UpdateRole updates an existing Role in boundary.  The provided
@@ -66,20 +72,14 @@ service RoleService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Role."};
   }
 
   // DeleteRole removes a Role from Boundary. If the provided scope or Role IDs
   // are malformed, or not provided an error is returned.
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {
-    option (google.api.http) = {
-      delete: "/v1/roles/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Role."
-    };
+    option (google.api.http) = {delete: "/v1/roles/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Role."};
   }
 
   // AddRolePrincipals adds users and/or groups to a Role. The provided request
@@ -93,9 +93,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds Users and/or Groups to a Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds Users and/or Groups to a Role."};
   }
 
   // SetRolePrincipals sets the Role's users and/or groups. Any existing
@@ -110,9 +108,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Set Users and/or Groups to a Role, removing any principals that are not specified in the request."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set Users and/or Groups to a Role, removing any principals that are not specified in the request."};
   }
 
   // RemoveRolePrincipals removes the users and/or groups from the specified
@@ -127,9 +123,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes the specified Users and/or Groups from a Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes the specified Users and/or Groups from a Role."};
   }
 
   // AddRoleGrants adds grants to a Role. The provided request must include
@@ -141,9 +135,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds grants to a Role"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds grants to a Role"};
   }
 
   // SetRoleGrants sets the Role's grants. Any existing grants on the Role are
@@ -156,9 +148,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Set grants for a Role, removing any grants that are not specified in the request."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set grants for a Role, removing any grants that are not specified in the request."};
   }
 
   // RemoveRoleGrants removes the grants from the specified Role.
@@ -171,14 +161,52 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes grants from a Role."
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes grants from a Role."};
+  }
+
+  // AddRoleGrantScopes adds grants scopes to a Role. The provided request must
+  // include the Role id which the grant scopes will be added to. An error is
+  // returned if the provided id is malformed or references a non-existing
+  // resource.
+  rpc AddRoleGrantScopes(AddRoleGrantScopesRequest) returns (AddRoleGrantScopesResponse) {
+    option (google.api.http) = {
+      post: "/v1/roles/{id}:add-grant-scopes"
+      body: "*"
+      response_body: "item"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds grant scopes to a Role"};
+  }
+
+  // SetRoleGrants sets the Role's grant scopes. Any existing grant scopes on
+  // the Role are deleted if they are not included in this request. The provided
+  // request must include the Role ID on which the grants will be set. If
+  // missing, malformed, or referencing a non-existing resource, an error is
+  // returned.
+  rpc SetRoleGrantScopes(SetRoleGrantScopesRequest) returns (SetRoleGrantScopesResponse) {
+    option (google.api.http) = {
+      post: "/v1/roles/{id}:set-grant-scopes"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set grant scopes for a Role, removing any grant scopes that are not specified in the request."};
+  }
+
+  // RemoveRoleGrantScopes removes the grant scopes from the specified Role. The
+  // provided request must include the Role IDs from which the grants will be
+  // removed. If missing, malformed, or references a non-existing resource, an
+  // error is returned.
+  rpc RemoveRoleGrantScopes(RemoveRoleGrantScopesRequest) returns (RemoveRoleGrantScopesResponse) {
+    option (google.api.http) = {
+      post: "/v1/roles/{id}:remove-grant-scopes"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes grant scopes from a Role."};
   }
 }
 
 message GetRoleRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetRoleResponse {
@@ -186,13 +214,53 @@ message GetRoleResponse {
 }
 
 message ListRolesRequest {
-  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+  string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the default page configured,
+  // the page size will be truncated to this number..
+  uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListRolesResponse {
   repeated resources.roles.v1.Role items = 1;
+
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message CreateRoleRequest {
@@ -205,7 +273,7 @@ message CreateRoleResponse {
 }
 
 message UpdateRoleRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.roles.v1.Role item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -215,17 +283,17 @@ message UpdateRoleResponse {
 }
 
 message DeleteRoleRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteRoleResponse {}
 
 message AddRolePrincipalsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string principal_ids = 3 [json_name = "principal_ids"]; // @gotags: `class:"public"`
+  repeated string principal_ids = 3 [json_name = "principal_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AddRolePrincipalsResponse {
@@ -233,11 +301,11 @@ message AddRolePrincipalsResponse {
 }
 
 message SetRolePrincipalsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string principal_ids = 3 [json_name = "principal_ids"]; // @gotags: `class:"public"`
+  repeated string principal_ids = 3 [json_name = "principal_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message SetRolePrincipalsResponse {
@@ -245,11 +313,11 @@ message SetRolePrincipalsResponse {
 }
 
 message RemoveRolePrincipalsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string principal_ids = 3 [json_name = "principal_ids"]; // @gotags: `class:"public"`
+  repeated string principal_ids = 3 [json_name = "principal_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message RemoveRolePrincipalsResponse {
@@ -289,5 +357,41 @@ message RemoveRoleGrantsRequest {
 }
 
 message RemoveRoleGrantsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message AddRoleGrantScopesRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_scope_ids = 3 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
+}
+
+message AddRoleGrantScopesResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message SetRoleGrantScopesRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_scope_ids = 3 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
+}
+
+message SetRoleGrantScopesResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message RemoveRoleGrantScopesRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_scope_ids = 3 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
+}
+
+message RemoveRoleGrantScopesResponse {
   resources.roles.v1.Role item = 1;
 }

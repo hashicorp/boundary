@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 create table worker_auth_operational_indicator_enm(
@@ -23,6 +26,8 @@ create table worker_auth_ca(
  create_time wt_timestamp,
  update_time wt_timestamp
 );
+comment on table worker_auth_ca is
+  'worker_auth_ca is a one-row versioned table used for locking for certificate rotation on the worker_auth_ca_certificate table.';
 
 create trigger immutable_columns before update on worker_auth_ca
   for each row execute procedure immutable_columns('private_id','create_time');
@@ -37,9 +42,6 @@ insert into worker_auth_ca(private_id) values('roots');
 
 create trigger update_version_column after update on worker_auth_ca
   for each row execute procedure update_version_column(private_id);
-
-comment on table worker_auth_ca is
-  'worker_auth_ca is a one-row versioned table used for locking for certificate rotation on the worker_auth_ca_certificate table.';
 
 create table worker_auth_ca_certificate(
  serial_number numeric,
@@ -70,12 +72,12 @@ create table worker_auth_ca_certificate(
     constraint worker_auth_ca_fkey
       references worker_auth_ca(private_id)
 );
-
-create trigger immutable_columns before update on worker_auth_ca_certificate
-  for each row execute procedure immutable_columns('serial_number', 'certificate', 'not_valid_before', 'not_valid_after', 'public_key', 'private_key', 'key_id', 'state', 'issuing_ca');
-
 comment on table worker_auth_ca_certificate is
   'worker_auth_ca_certificate is a table where each row represents a root certificate for used for worker authentication.';
+
+-- this trigger is updated in 56/05_mutable_ciphertext_columns.up.sql
+create trigger immutable_columns before update on worker_auth_ca_certificate
+  for each row execute procedure immutable_columns('serial_number', 'certificate', 'not_valid_before', 'not_valid_after', 'public_key', 'private_key', 'key_id', 'state', 'issuing_ca');
 
 create table worker_auth_authorized(
   worker_key_identifier text primary key, -- The public key id for this WorkerAuth entry, generated from the signing pub key
@@ -103,7 +105,7 @@ create table worker_auth_authorized(
 comment on table worker_auth_authorized is
   'worker_auth_authorized is a table where each row represents key and cert data associated with an authorized worker.';
 
--- Trigger updated in 55/01_worker_auth_create_time.up.sql
+-- this trigger is updated in 56/05_mutable_ciphertext_columns.up.sql
 create trigger immutable_columns before update on worker_auth_authorized
   for each row execute procedure immutable_columns('worker_key_identifier', 'worker_id', 'worker_signing_pub_key', 'worker_encryption_pub_key', 'controller_encryption_priv_key', 'key_id', 'nonce');
 

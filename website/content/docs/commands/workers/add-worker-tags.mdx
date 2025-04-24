@@ -1,0 +1,40 @@
+---
+layout: docs
+page_title: workers add-worker-tags - Command
+description: >-
+  The "workers add-worker-tags" command adds API tags to worker resources.
+---
+
+# workers add-worker-tags
+
+Command: `boundary workers add-worker-tags`
+
+The `boundary workers add-worker-tags` command lets you add API tags to worker resources.
+
+## Example
+
+This example adds the API tags `key1=val-a` and `key2=val-b,val-c` to a worker with the ID `w_1234567890`:
+
+```shell-session
+$ boundary workers add-worker-tags -id w_1234567890 -tag "key1=val-a" -tag "key2=val-b,val-c"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary workers add-worker-tags [sub command] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id=<string>` - The ID of the worker you want to add API tags to.
+- `tag=<key=val-a, key2=val-b,val-c>` - The API tag resources you want to add to workers.
+- `version=<int>` - The version of the worker to add the API tag to.
+If you do not specify a version, the command performs a check-and-set automatically.
+
+@include 'cmd-option-note.mdx'

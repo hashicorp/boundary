@@ -1,0 +1,99 @@
+---
+layout: docs
+page_title: groups list - Command
+description: >-
+  The "groups list" command lists the available group resources within an enclosing scope or resource.
+---
+
+# groups list
+
+Command: `boundary groups list`
+
+The `groups list` command lists all groups within an enclosing scope or resource.
+
+## Examples
+
+The following example lists all groups defined within the scope `o_R0wbo0H6Zl`:
+
+```shell-session
+$ boundary groups list -scope-id o_R0wbo0H6Zl
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Group information:
+  ID:                    g_XzlDiNLgoz
+    Version:             2
+    Name:                group01
+    Description:         A test group
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-members
+      set-members
+      remove-members
+
+  ID:                    g_FNVVhAd0on
+    Version:             1
+    Name:                webdev
+    Description:         Web dev group
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-members
+      set-members
+      remove-members
+
+  ID:                    g_9SpLKOoTse
+    Version:             1
+    Name:                support
+    Description:         Support engineering group
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-members
+      set-members
+      remove-members
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary groups list [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-filter` `(string: "")` - If set, Boundary filters the list operation before the results are returned.
+The filter operates against each item in the list.
+We recommend that you use single quotes, because the filters contain double quotes.
+Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
+- `-recursive`  - If set, runs the list operation recursively on any child scopes, if the type supports it.
+The default value is `false`.
+- `-scope-id ``(string: "")` - The scope from which to list the groups.
+The default value is `global`.
+You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
+- `list_token` (optional) - An opaque token that is returned from the previous `list` response.
+If you do not supply a value, pagination starts from the beginning.
+- `page_size` (optional) - An unsigned integer that indicates the number of items that should be included on the page of search results.
+If you do not provide a value, or if you provide a value of `0`, Boundary uses the default page size of 1000 items.
+If you configure it, the `page_size` value overrides the default page size.
+Controller administrators can also configure a `max_page_size` option that constrains the maximum page size a user can request.
+
+@include 'cmd-option-note.mdx'

@@ -1,0 +1,31 @@
+### Connect command options:
+
+- `-authz-token` `(string: "")` - The authorization string returned from the Boundary controller via an `authorize-session` action against a target.
+  This option is only required if you don't set a `-target-id`.
+  If you set the value to `-`, the command attempts to read in the authorization string from standard input.
+  You can also specify the authorization string using the **BOUNDARY_CONNECT_AUTHZ_TOKEN** environment variable.
+
+- `-exec` `(string: "")` - If set, specifies that the given binary should be executed after connecting to the worker, if set.
+  This value should be a binary on your path or an absolute path.
+  If all command flags are followed by ` -- ` (space, two hyphens, space), then any arguments after that are sent directly to the binary.
+  You can also specify a binary using the **BOUNDARY_CONNECT_EXEC** environment variable.
+
+- `-host-id` `(string: "")` - The ID of a specific host to connect to out of
+   the target's host sets.
+   If you do not indicate a specific host, Boundary chooses one at random.
+
+- `-target-id` `(string: "")` - The ID of the target to authorize against.
+  You cannot use this option with `-authz-token`.
+
+- `-target-name`  `(string: "")` - The target name, if you authorize the session using
+  scope parameters and target name.
+
+- `-target-scope-id` `(string: "")` - The target scope ID, if you authorize the
+  session using scope parameters and target name.
+  This value is mutually exclusive with `-scope-name`.
+  You can also specify the target scope ID using the **BOUNDARY_CONNECT_TARGET_SCOPE_ID** environment variable.
+
+- `-target-scope-name` `(string: "")` - The target scope name, if you authorize the
+  session using scope parameters and target name.
+  This value is mutually exclusive with `-scope-id`.
+  You can also specify the target scope name using the **BOUNDARY_CONNECT_TARGET_SCOPE_NAME** environment variable.

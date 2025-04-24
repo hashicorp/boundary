@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package usernamepassword
 
 import (
@@ -7,7 +10,7 @@ import (
 )
 
 type (
-	data map[string]interface{}
+	data map[string]any
 
 	// extractFunc attempts to extract the username and password
 	// from sd using the provided attribute names, using a known
@@ -81,7 +84,7 @@ func defaultExtract(sd data, usernameAttr, passwordAttr string) (username string
 // kv2Extract looks for the the usernameAttr and passwordAttr in the embedded
 // 'data' field within the data map.
 //
-// Additionaly it validates the data is in the expected KV-v2 format:
+// Additionally it validates the data is in the expected KV-v2 format:
 //
 //	{
 //		"data": {},
@@ -96,18 +99,18 @@ func kv2Extract(sd data, usernameAttr, passwordAttr string) (username string, pa
 		return "", ""
 	}
 
-	var data, metadata map[string]interface{}
+	var data, metadata map[string]any
 	for k, v := range sd {
 		switch k {
 		case "data":
 			var ok bool
-			if data, ok = v.(map[string]interface{}); !ok {
+			if data, ok = v.(map[string]any); !ok {
 				// data field should be of type map[string]interface{} in KV-v2
 				return "", ""
 			}
 		case "metadata":
 			var ok bool
-			if metadata, ok = v.(map[string]interface{}); !ok {
+			if metadata, ok = v.(map[string]any); !ok {
 				// metadata field should be of type map[string]interface{} in KV-v2
 				return "", ""
 			}

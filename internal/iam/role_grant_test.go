@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -14,6 +17,7 @@ import (
 
 func TestRoleGrant_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -37,7 +41,7 @@ func TestRoleGrant_Create(t *testing.T) {
 			name: "nil-role",
 			args: args{
 				roleId: "",
-				grant:  "id=*;type=*;actions=*",
+				grant:  "ids=*;type=*;actions=*",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -56,13 +60,13 @@ func TestRoleGrant_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "id=*;type=*;actions=*",
+				grant:  "ids=*;type=*;actions=*",
 			},
 			want: func() *RoleGrant {
 				g := allocRoleGrant()
 				g.RoleId = projRole.PublicId
-				g.RawGrant = "id=*;type=*;actions=*"
-				g.CanonicalGrant = "id=*;type=*;actions=*"
+				g.RawGrant = "ids=*;type=*;actions=*"
+				g.CanonicalGrant = "ids=*;type=*;actions=*"
 				return &g
 			}(),
 			create: true,
@@ -71,13 +75,13 @@ func TestRoleGrant_Create(t *testing.T) {
 			name: "valid-reversed-grant",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "type=*;actions=*;id=*",
+				grant:  "type=*;actions=*;ids=*",
 			},
 			want: func() *RoleGrant {
 				g := allocRoleGrant()
 				g.RoleId = projRole.PublicId
-				g.RawGrant = "type=*;actions=*;id=*"
-				g.CanonicalGrant = "id=*;type=*;actions=*"
+				g.RawGrant = "type=*;actions=*;ids=*"
+				g.CanonicalGrant = "ids=*;type=*;actions=*"
 				return &g
 			}(),
 			create: true,
@@ -86,8 +90,8 @@ func TestRoleGrant_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { a := allocRoleGrant(); return &a }(), "1=1")
-			got, err := NewRoleGrant(tt.args.roleId, tt.args.grant, tt.args.opt...)
+			db.TestDeleteWhere(t, conn, func() any { a := allocRoleGrant(); return &a }(), "1=1")
+			got, err := NewRoleGrant(ctx, tt.args.roleId, tt.args.grant, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -124,9 +128,9 @@ func TestRoleGrant_Update(t *testing.T) {
 	t.Run("updates not allowed", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		r := TestRole(t, conn, org.PublicId)
-		roleGrant := TestRoleGrant(t, conn, r.PublicId, "id=*;type=*;actions=*")
+		roleGrant := TestRoleGrant(t, conn, r.PublicId, "ids=*;type=*;actions=*")
 		updateRoleGrant := roleGrant.Clone().(*RoleGrant)
-		updateRoleGrant.RawGrant = "type=*;actions=*;id=*"
+		updateRoleGrant.RawGrant = "type=*;actions=*;ids=*"
 		updatedRows, err := rw.Update(context.Background(), updateRoleGrant, []string{"RawGrant"}, nil)
 		require.Error(err)
 		assert.Equal(0, updatedRows)
@@ -135,6 +139,7 @@ func TestRoleGrant_Update(t *testing.T) {
 
 func TestRoleGrant_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -158,7 +163,7 @@ func TestRoleGrant_Delete(t *testing.T) {
 			name: "nil-role",
 			args: args{
 				roleId: "",
-				grant:  "id=*;type=*;actions=*",
+				grant:  "ids=*;type=*;actions=*",
 			},
 			wantErr:     true,
 			wantsErrStr: "is not set",
@@ -176,14 +181,14 @@ func TestRoleGrant_Delete(t *testing.T) {
 			name: "invalid",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "id=a_edcb;actions=read,update",
+				grant:  "ids=u_edcb;actions=read,update",
 			},
 		},
 		{
 			name: "valid",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "id=a_bcde;actions=read,update",
+				grant:  "ids=u_bcde;actions=read,update",
 			},
 			deletedRows: 1,
 		},
@@ -193,10 +198,10 @@ func TestRoleGrant_Delete(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			r := allocRoleGrant()
 			db.TestDeleteWhere(t, conn, &r, "1=1")
-			rg, err := NewRoleGrant(projRole.PublicId, "id=a_bcde;actions=read,update")
+			rg, err := NewRoleGrant(ctx, projRole.PublicId, "ids=u_bcde;actions=read,update")
 			require.NoError(err)
 			require.NoError(rw.Create(context.Background(), rg))
-			rg, err = NewRoleGrant(projRole.PublicId, "id=a_cdef;actions=read,update")
+			rg, err = NewRoleGrant(ctx, projRole.PublicId, "ids=u_cdef;actions=read,update")
 			require.NoError(err)
 			require.NoError(rw.Create(context.Background(), rg))
 
@@ -221,6 +226,7 @@ func TestRoleGrant_Delete(t *testing.T) {
 
 func TestRoleGrant_Clone(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -229,31 +235,31 @@ func TestRoleGrant_Clone(t *testing.T) {
 		s := testOrg(t, repo, "", "")
 		role := TestRole(t, conn, s.PublicId)
 
-		g, err := NewRoleGrant(role.PublicId, "id=*;type=*;actions=*")
+		g, err := NewRoleGrant(ctx, role.PublicId, "ids=*;type=*;actions=*")
 		assert.NoError(err)
 		assert.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
-		assert.Equal(g.RawGrant, "id=*;type=*;actions=*")
+		assert.Equal(g.RawGrant, "ids=*;type=*;actions=*")
 
 		cp := g.Clone()
 		assert.True(proto.Equal(cp.(*RoleGrant).RoleGrant, g.RoleGrant))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		assert := assert.New(t)
+		require, assert := require.New(t), assert.New(t)
 		s := testOrg(t, repo, "", "")
 		role := TestRole(t, conn, s.PublicId)
 
-		g, err := NewRoleGrant(role.PublicId, "id=*;type=*;actions=*")
+		g, err := NewRoleGrant(ctx, role.PublicId, "ids=*;type=*;actions=*")
 		assert.NoError(err)
-		assert.NotNil(g)
+		require.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
-		assert.Equal(g.RawGrant, "id=*;type=*;actions=*")
+		assert.Equal(g.RawGrant, "ids=*;type=*;actions=*")
 
-		g2, err := NewRoleGrant(role.PublicId, "id=foo;actions=read")
+		g2, err := NewRoleGrant(ctx, role.PublicId, "ids=u_foo;actions=read")
 		assert.NoError(err)
-		assert.NotNil(g2)
+		require.NotNil(g2)
 		assert.Equal(g2.RoleId, role.PublicId)
-		assert.Equal(g2.RawGrant, "id=foo;actions=read")
+		assert.Equal(g2.RawGrant, "ids=u_foo;actions=read")
 
 		cp := g.Clone()
 		assert.True(!proto.Equal(cp.(*RoleGrant).RoleGrant, g2.RoleGrant))

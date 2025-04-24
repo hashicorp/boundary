@@ -1,0 +1,56 @@
+---
+layout: docs
+page_title: License Boundary Enterprise
+description: >-
+  Learn how to enable Boundary Enterprise with a valid license. Request access from an account team to enable enterprise features.
+---
+
+# License Boundary Enterprise
+
+The Boundary Enterprise binaries require a license key to enforce entitlements and time restrictions according to your contractual agreement.
+Once purchased, your HashiCorp account team send you a valid Boundary license for environment activation.
+If you don't yet have an acccount team, but are interested in Boundary Enterprise, you can request access [here](https://www.hashicorp.com/contact-sales).
+
+Once you have received your valid Boundary license, there are two options for enabling Boundary Enterprise:
+
+1. You may set the enterprise license for Boundary using an environment variable.
+Set the `BOUNDARY_LICENSE` environment variable to the license key value you received:
+
+   `$ export BOUNDARY_LICENSE=02MV4UU43BK5...`
+
+   or
+
+   `$ BOUNDARY_LICENSE=file:///folder_path/license.hclic`
+
+1. You may specify the enterprise license key in the Boundary controller configuration using the `license` attribute in the `controller` block.
+You can either specify the raw license key or the path to a file containing the license key.
+Refer to the sample configurations below:
+
+   **Sample #1**
+
+   ```hcl
+   controller {
+     name = "controller"
+     description = "controller"
+     database {
+       url = "postgresql://boundary:PASSWORD@127.0.0.1:5432/boundary"
+     }
+     public_cluster_addr = "boundary.domain"
+     license = "file:///folder_path/license.hclic"
+   }
+   ```
+   **Sample #2**
+
+   ```hcl
+   controller {
+     name = "controller"
+     description = "controller"
+     database {
+       url = "postgresql://boundary:PASSWORD@127.0.0.1:5432/boundary"
+     }
+     public_cluster_addr = "boundary.domain"
+     license = "02MV4UU43BK5..."
+   }
+   ```
+
+   Refer to the [controller](/boundary/docs/configuration/controller) configuration  documentation for more information.

@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: session-recordings read - Command
+description: >-
+  The "session-recordings read" command retrieves the details of a session recording resource.
+---
+
+# session-recordings read
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary session-recordings read`
+
+The `boundary session-recordings read` command lets you read information about a Boundary session recording by providing the ID.
+
+## Example
+
+This example reads the details of a session recording with the ID `sr_1234567890`:
+
+```shell-session
+$ boundary session-recordings read -id sr_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary session-recordings read [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the session recording you want to read.
+
+@include 'cmd-option-note.mdx'

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.services.v1;
@@ -12,6 +15,18 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "host";
 
 service HostCatalogService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Host catalog service"
+    description:
+      "A host catalog serves as a central repository for managing and organizing the target "
+      "hosts or resources that Boundary can access and control. "
+      "The host catalog service provides endpoints for managing host catalogs in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-catalogs";
+      description: "Read about host catalogs in the Boundary domain model";
+    }
+  };
+
   // GetHostCatalog returns a stored Host Catalog if present.  The provided
   // request must include the Catalog IDs for the Host Catalog being retrieved.
   // If missing, malformed, or referencing a non-existing resource an error is
@@ -21,9 +36,7 @@ service HostCatalogService {
       get: "/v1/host-catalogs/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Host Catalog."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Host Catalog."};
   }
 
   // ListHostCatalogs returns a list of stored Host Catalogs which exist inside
@@ -31,12 +44,8 @@ service HostCatalogService {
   // ID and if it is  missing, malformed, or references a non-existing resource
   // an error is returned.
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
-    option (google.api.http) = {
-      get: "/v1/host-catalogs"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a list of Host Catalogs."
-    };
+    option (google.api.http) = {get: "/v1/host-catalogs"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a list of Host Catalogs."};
   }
 
   // CreateHostCatalog creates and stores a Host Catalog in boundary.  The
@@ -50,9 +59,7 @@ service HostCatalogService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a Host Catalog"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a Host Catalog"};
   }
 
   // UpdateHostCatalog updates an existing Host Catalog in Boundary. The
@@ -66,26 +73,20 @@ service HostCatalogService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Host Catalog"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Host Catalog"};
   }
 
   // DeleteHostCatalog removes a Host Catalog and all associated Hosts and Host
   // sets from Boundary. If the provided Host Catalog IDs is malformed or not
   // provided DeleteHostCatalog returns an error.
   rpc DeleteHostCatalog(DeleteHostCatalogRequest) returns (DeleteHostCatalogResponse) {
-    option (google.api.http) = {
-      delete: "/v1/host-catalogs/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Host Catalog"
-    };
+    option (google.api.http) = {delete: "/v1/host-catalogs/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Host Catalog"};
   }
 }
 
 message GetHostCatalogRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetHostCatalogResponse {
@@ -93,13 +94,45 @@ message GetHostCatalogResponse {
 }
 
 message ListHostCatalogsRequest {
-  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+  string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the default page configured,
+  // the page size will be truncated to this number.
+  uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListHostCatalogsResponse {
   repeated api.resources.hostcatalogs.v1.HostCatalog items = 1;
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message CreateHostCatalogRequest {
@@ -110,12 +143,12 @@ message CreateHostCatalogRequest {
 }
 
 message CreateHostCatalogResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   api.resources.hostcatalogs.v1.HostCatalog item = 2;
 }
 
 message UpdateHostCatalogRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   api.resources.hostcatalogs.v1.HostCatalog item = 2;
   google.protobuf.FieldMask update_mask = 3;
 }
@@ -125,7 +158,7 @@ message UpdateHostCatalogResponse {
 }
 
 message DeleteHostCatalogRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteHostCatalogResponse {}

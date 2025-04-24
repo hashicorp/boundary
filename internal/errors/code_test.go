@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package errors
 
 import (
@@ -346,6 +349,81 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "QueueIsFull",
 			c:    QueueIsFull,
 			want: QueueIsFull,
+		},
+		{
+			name: "NotFound",
+			c:    NotFound,
+			want: NotFound,
+		},
+		{
+			name: "StorageFileClose",
+			c:    StorageFileClosed,
+			want: StorageFileClosed,
+		},
+		{
+			name: "StorageContainerClosed",
+			c:    StorageContainerClosed,
+			want: StorageContainerClosed,
+		},
+		{
+			name: "StorageFileReadOnly",
+			c:    StorageFileReadOnly,
+			want: StorageFileReadOnly,
+		},
+		{
+			name: "StorageFileWriteOnly",
+			c:    StorageFileWriteOnly,
+			want: StorageFileWriteOnly,
+		},
+		{
+			name: "StorageFileAlreadyExists",
+			c:    StorageFileAlreadyExists,
+			want: StorageFileAlreadyExists,
+		},
+		{
+			name: "StorageContainerReadOnly",
+			c:    StorageContainerReadOnly,
+			want: StorageContainerReadOnly,
+		},
+		{
+			name: "StorageContainerWriteOnly",
+			c:    StorageContainerWriteOnly,
+			want: StorageContainerWriteOnly,
+		},
+		{
+			name: "WorkerNotFoundForRequest",
+			c:    WorkerNotFoundForRequest,
+			want: WorkerNotFoundForRequest,
+		},
+		{
+			name: "Closed",
+			c:    Closed,
+			want: Closed,
+		},
+		{
+			name: "ExternalPlugin",
+			c:    ExternalPlugin,
+			want: ExternalPlugin,
+		},
+		{
+			name: "ChecksumMismatch",
+			c:    ChecksumMismatch,
+			want: ChecksumMismatch,
+		},
+		{
+			name: "InvalidConfiguration",
+			c:    InvalidConfiguration,
+			want: InvalidConfiguration,
+		},
+		{
+			name: "InvalidListToken",
+			c:    InvalidListToken,
+			want: InvalidListToken,
+		},
+		{
+			name: "InvalidTextRepresentation",
+			c:    InvalidTextRepresentation,
+			want: InvalidTextRepresentation,
 		},
 	}
 	for _, tt := range tests {

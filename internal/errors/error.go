@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package errors
 
 import (
@@ -7,9 +10,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/event"
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Op represents an operation (package.function).
@@ -155,30 +158,6 @@ func Wrap(ctx context.Context, e error, op Op, opt ...Option) error {
 	return E(ctx, opt...)
 }
 
-// EDeprecated is the legacy version of E which does not
-// create an event. Please refrain from using this.
-// When all calls are moved from EDeprecated to
-// E, please update ICU-1883
-func EDeprecated(opt ...Option) error {
-	return E(context.TODO(), opt...)
-}
-
-// NewDeprecated is the legacy version of New which does not
-// create an event. Please refrain from using this.
-// When all calls are moved from NewDeprecated to
-// New, please update ICU-1883
-func NewDeprecated(c Code, op Op, msg string, opt ...Option) error {
-	return New(context.TODO(), c, op, msg, opt...)
-}
-
-// WrapDeprecated is the legacy version of New which does not
-// create an event. Please refrain from using this.
-// When all calls are moved from WrapDeprecated to
-// New, please update ICU-1884
-func WrapDeprecated(e error, op Op, opt ...Option) error {
-	return Wrap(context.TODO(), e, op, opt...)
-}
-
 // Convert will convert the error to a Boundary *Err (returning it as an error)
 // and attempt to add a helpful error msg as well. If that's not possible, it
 // will return nil
@@ -205,6 +184,9 @@ func Convert(e error) *Err {
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pgxError.ConstraintName)
 				return E(ctx, WithoutEvent(), WithMsg(msg), WithWrap(E(ctx, WithoutEvent(), WithCode(CheckConstraint), WithMsg("check constraint violated")))).(*Err)
+			case "23602": // set_once_column
+				msg := fmt.Sprintf("%s.%s can only be set once", pgxError.TableName, pgxError.ColumnName)
+				return E(ctx, WithoutEvent(), WithMsg(msg), WithWrap(E(ctx, WithoutEvent(), WithCode(ImmutableColumn), WithMsg("set_once_column constraint violated")))).(*Err)
 			default:
 				return E(ctx, WithoutEvent(), WithCode(NotSpecificIntegrity), WithMsg(pgxError.Message)).(*Err)
 			}
@@ -216,6 +198,9 @@ func Convert(e error) *Err {
 			return E(ctx, WithoutEvent(), WithCode(ColumnNotFound), WithMsg(pgxError.Message)).(*Err)
 		case "P0001":
 			return E(ctx, WithoutEvent(), WithCode(Exception), WithMsg(pgxError.Message)).(*Err)
+		case "22P02":
+			return E(ctx, WithoutEvent(), WithCode(InvalidTextRepresentation), WithMsg(pgxError.Message)).(*Err)
+
 		}
 	}
 	// unfortunately, we can't help.
@@ -335,6 +320,6 @@ func Is(err, target error) bool {
 
 // As is the equivalent of the std errors.As, and allows devs to only import
 // this package for the capability.
-func As(err error, target interface{}) bool {
+func As(err error, target any) bool {
 	return errors.As(err, target)
 }

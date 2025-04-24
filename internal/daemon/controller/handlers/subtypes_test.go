@@ -1,6 +1,10 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package handlers
 
 import (
+	"context"
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -35,8 +39,8 @@ func TestStructToProtoToStruct(t *testing.T) {
 		},
 		{
 			name:     "tcp target",
-			pb:       &targetspb.TcpTargetAttributes{DefaultPort: &wrapperspb.UInt32Value{Value: 22}},
-			wantJson: `{"default_port": 22}`,
+			pb:       &targetspb.TcpTargetAttributes{DefaultPort: &wrapperspb.UInt32Value{Value: 22}, DefaultClientPort: &wrapperspb.UInt32Value{Value: 23}},
+			wantJson: `{"default_port": 22, "default_client_port": 23}`,
 		},
 		{
 			name:     "static host",
@@ -46,7 +50,7 @@ func TestStructToProtoToStruct(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			st, err := ProtoToStruct(tc.pb)
+			st, err := ProtoToStruct(context.Background(), tc.pb)
 			require.NoError(t, err)
 
 			wantStruct := &structpb.Struct{}

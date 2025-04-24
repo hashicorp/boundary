@@ -1,16 +1,21 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authtoken
 
 import (
 	"context"
+	"crypto/subtle"
+	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -31,15 +36,15 @@ type Repository struct {
 
 // NewRepository creates a new Repository. The returned repository is not safe for concurrent go
 // routines to access it.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "authtoken.NewRepository"
 	switch {
 	case r == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil db reader")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil db reader")
 	case w == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil db writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil db writer")
 	case kms == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
 	}
 
 	opts := getOpts(opt...)
@@ -71,14 +76,14 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	if withAuthAccountId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth account id")
 	}
-	at, err := newAuthToken()
+	at, err := newAuthToken(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	at.AuthAccountId = withAuthAccountId
 	opts := getOpts(opt...)
 	if opts.withPublicId == "" {
-		id, err := NewAuthTokenId()
+		id, err := NewAuthTokenId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -100,10 +105,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 
 	// We truncate the expiration time to the nearest second to make testing in different platforms with
 	// different time resolutions easier.
-	expiration, err := ptypes.TimestampProto(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidTimeStamp))
-	}
+	expiration := timestamppb.New(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
 	var newAuthToken *AuthToken
@@ -211,14 +213,8 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	}
 
 	// If the token is too old or stale invalidate it and return nothing.
-	exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("expiration time"), errors.WithCode(errors.InvalidTimeStamp))
-	}
-	lastAccessed, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("last accessed time"), errors.WithCode(errors.InvalidTimeStamp))
-	}
+	exp := retAT.GetExpirationTime().AsTime()
+	lastAccessed := retAT.GetApproximateLastAccessTime().AsTime()
 
 	now := time.Now()
 	sinceLastAccessed := now.Sub(lastAccessed) + timeSkew
@@ -245,7 +241,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		return nil, nil
 	}
 
-	if retAT.GetToken() != token {
+	if subtle.ConstantTimeCompare([]byte(retAT.GetToken()), []byte(token)) == 0 {
 		return nil, nil
 	}
 	// retAT.Token set to empty string so the value is not returned as described in the methods' doc.
@@ -287,29 +283,140 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	return retAT, nil
 }
 
-// ListAuthTokens lists auth tokens in the given scopes and supports the
-// WithLimit option.
-func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AuthToken, error) {
-	const op = "authtoken.(Repository).ListAuthTokens"
+// listAuthTokens lists auth tokens in the given scopes and supports the
+// WithLimit and WithStartPageAfterItem options.
+func (r *Repository) listAuthTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AuthToken, time.Time, error) {
+	const op = "authtoken.(Repository).listAuthTokens"
 	if len(withScopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 
-	// use the view, to bring in the required account columns. Just don't forget
-	// to convert them before returning them
-	var atvs []*authTokenView
-	if err := r.reader.SearchWhere(ctx, &atvs, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []interface{}{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	limit := r.limit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
 	}
-	authTokens := make([]*AuthToken, 0, len(atvs))
-	for _, atv := range atvs {
-		atv.Token = ""
-		atv.CtToken = nil
-		atv.KeyId = ""
-		authTokens = append(authTokens, atv.toAuthToken())
+
+	args := []any{sql.Named("scope_ids", withScopeIds)}
+	whereClause := "scope_id in @scope_ids"
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
 	}
-	return authTokens, nil
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
+	return r.queryAuthTokens(ctx, whereClause, args, dbOpts...)
+}
+
+// listAuthTokensRefresh lists auth tokens in the given scopes and supports the
+// WithLimit and WithStartPageAfterItem options.
+func (r *Repository) listAuthTokensRefresh(ctx context.Context, updatedAfter time.Time, withScopeIds []string, opt ...Option) ([]*AuthToken, time.Time, error) {
+	const op = "authtoken.(Repository).listAuthTokensRefresh"
+
+	switch {
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+
+	case len(withScopeIds) == 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+
+	opts := getOpts(opt...)
+
+	limit := r.limit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
+	args := []any{
+		sql.Named("scope_ids", withScopeIds),
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	}
+	whereClause := "scope_id in @scope_ids and update_time > @updated_after_time"
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
+	return r.queryAuthTokens(ctx, whereClause, args, dbOpts...)
+}
+
+func (r *Repository) queryAuthTokens(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*AuthToken, time.Time, error) {
+	const op = "authtoken.(Repository).queryAuthTokens"
+
+	var transactionTimestamp time.Time
+	var authTokens []*AuthToken
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		var atvs []*authTokenView
+		err := rd.SearchWhere(ctx, &atvs, whereClause, args, opt...)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		authTokens = make([]*AuthToken, 0, len(atvs))
+		for _, atv := range atvs {
+			// Remove encrypted token value before converting
+			atv.CtToken = nil
+			authTokens = append(authTokens, atv.toAuthToken())
+		}
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	return authTokens, transactionTimestamp, nil
+}
+
+// listDeletedIds lists the public IDs of any auth tokens deleted since the timestamp provided.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "authtoken.(Repository).listDeletedIds"
+	var deletedAuthTokens []*deletedAuthToken
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedAuthTokens, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted auth tokens"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var atIds []string
+	for _, at := range deletedAuthTokens {
+		atIds = append(atIds, at.PublicId)
+	}
+	return atIds, transactionTimestamp, nil
+}
+
+// estimatedCount returns an estimate of the total number of items in the auth tokens table.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "authtoken.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountAuthTokens, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
+	}
+	return count, nil
 }
 
 // DeleteAuthToken deletes the token with the provided id from the repository returning a count of the
@@ -422,7 +529,7 @@ func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) 
 func (r *Repository) CloseExpiredPendingTokens(ctx context.Context) (int, error) {
 	const op = "authtoken.(Repository).CloseExpiredPendingTokens"
 
-	args := []interface{}{string(FailedStatus), string(PendingStatus)}
+	args := []any{string(FailedStatus), string(PendingStatus)}
 	const sql = `update auth_token set status = ? where status = ? and now() > expiration_time`
 	var tokensClosed int
 	_, err := r.writer.DoTx(

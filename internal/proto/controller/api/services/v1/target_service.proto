@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.services.v1;
@@ -12,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "target";
 
 service TargetService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Target service"
+    description:
+      "A target represents an endpoint or resource that users can access through Boundary sessions. "
+      "The target service provides endpoints that let you manage targets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets";
+      description: "Read about targets in the Boundary domain model";
+    }
+  };
+
   // GetTarget returns a stored Target if present.  The provided request
   // must include the Target ID for the Target being retrieved. If
   // that ID is missing, malformed or reference a non existing
@@ -21,9 +35,7 @@ service TargetService {
       get: "/v1/targets/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Target."};
   }
 
   // ListTargets returns a list of stored Targets which exist inside the project
@@ -31,12 +43,8 @@ service TargetService {
   // the Targets being retrieved. If the scope ID is missing, malformed, or
   // reference a non existing scope, an error is returned.
   rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse) {
-    option (google.api.http) = {
-      get: "/v1/targets"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Targets."
-    };
+    option (google.api.http) = {get: "/v1/targets"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Targets."};
   }
 
   // CreateTarget creates and stores a Target in boundary.  The provided
@@ -50,9 +58,7 @@ service TargetService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Target."};
   }
 
   // UpdateTarget updates an existing Target in boundary.  The provided
@@ -69,32 +75,28 @@ service TargetService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Target."};
   }
 
   // DeleteTarget removes a Target from Boundary. If the provided Target ID
   // is malformed or not provided an error is returned.
   rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse) {
-    option (google.api.http) = {
-      delete: "/v1/targets/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Target."
-    };
+    option (google.api.http) = {delete: "/v1/targets/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Target."};
   }
 
   // AuthorizeSession creates authorization information from a given Target.
+  // Note that unlike most APIs, since we support using a target name along with
+  // scope ID or name to identify a target, this uses a pattern that allows the
+  // "id" field to have any number of segments, which works so long as the last
+  // part of the path is the verb, which is our normal pattern.
   rpc AuthorizeSession(AuthorizeSessionRequest) returns (AuthorizeSessionResponse) {
     option (google.api.http) = {
-      post: "/v1/targets/{id}:authorize-session"
+      post: "/v1/targets/{id=**}:authorize-session"
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Authorizes a Session."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Authorizes a Session."};
   }
 
   // AddTargetHostSources adds Host Sources to this Target. The provided request
@@ -102,17 +104,16 @@ service TargetService {
   // Host Sources added to the provided Target must be a child of a Catalog that
   // is a child of the same scope as this Target. If the scope or Target IDs are
   // missing, malformed, or reference non-existing resources, an error is
-  // returned. An error is returned if a Host Source is attempted to be added to a
-  // target that is already present on the Target.
+  // returned. An error is returned if a Host Source is attempted to be added to
+  // a target that is already present on the Target. If the given target already
+  // has its address field set, a Bad Request error is returned.
   rpc AddTargetHostSources(AddTargetHostSourcesRequest) returns (AddTargetHostSourcesResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:add-host-sources"
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds existing Host Sources to a Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds existing Host Sources to a Target. Cannot be used on targets that have their address field set."};
   }
 
   // SetTargetHostSources sets the Target's Host Sources. Any existing Host
@@ -121,16 +122,15 @@ service TargetService {
   // Host Sources will be set. All Host Sources in the request must be a child
   // of a Catalog that is in the same scope as the provided Target. If any IDs
   // are missing, malformed, or references a non-existing resource, an error is
-  // returned.
+  // returned. If the given target already has its address field set, a Bad
+  // Request error is returned.
   rpc SetTargetHostSources(SetTargetHostSourcesRequest) returns (SetTargetHostSourcesResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:set-host-sources"
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Sources the Host Sources on the Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sources the Host Sources on the Target. Cannot be used on targets that have their address field set."};
   }
 
   // RemoveTargetHostSources removes the Host Sources from the specified Target.
@@ -145,9 +145,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes Host Sources from the Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes Host Sources from the Target."};
   }
 
   // AddTargetCredentialSources adds Credential Sources to this Target.
@@ -164,9 +162,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds existing Credential Sources to a Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds existing Credential Sources to a Target."};
   }
 
   // SetTargetCredentialSources sets the Target's Credential Sources.
@@ -182,9 +178,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Sets the Credential Sources on the Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets the Credential Sources on the Target."};
   }
 
   // RemoveTargetCredentialSources removes the Credential Sources from the
@@ -199,14 +193,12 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes Credential Sources from the Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes Credential Sources from the Target."};
   }
 }
 
 message GetTargetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetTargetResponse {
@@ -214,13 +206,45 @@ message GetTargetResponse {
 }
 
 message ListTargetsRequest {
-  string scope_id = 1; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+  string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the default page configured,
+  // the page size will be truncated to this number..
+  uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListTargetsResponse {
   repeated resources.targets.v1.Target items = 1;
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message CreateTargetRequest {
@@ -228,12 +252,12 @@ message CreateTargetRequest {
 }
 
 message CreateTargetResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.targets.v1.Target item = 2;
 }
 
 message UpdateTargetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public" eventstream:"observation"`
   resources.targets.v1.Target item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -243,17 +267,17 @@ message UpdateTargetResponse {
 }
 
 message DeleteTargetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteTargetResponse {}
 
 message AddTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AddTargetHostSourcesResponse {
@@ -261,11 +285,11 @@ message AddTargetHostSourcesResponse {
 }
 
 message SetTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message SetTargetHostSourcesResponse {
@@ -273,11 +297,11 @@ message SetTargetHostSourcesResponse {
 }
 
 message RemoveTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message RemoveTargetHostSourcesResponse {
@@ -285,16 +309,10 @@ message RemoveTargetHostSourcesResponse {
 }
 
 message AddTargetCredentialSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
 
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
@@ -307,6 +325,8 @@ message AddTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message AddTargetCredentialSourcesResponse {
@@ -316,16 +336,10 @@ message AddTargetCredentialSourcesResponse {
 // Sets the values for credential sources. Any credential_source_id field that
 // is not set in the request will result in those fields being cleared.
 message SetTargetCredentialSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
 
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
@@ -338,6 +352,8 @@ message SetTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message SetTargetCredentialSourcesResponse {
@@ -345,16 +361,10 @@ message SetTargetCredentialSourcesResponse {
 }
 
 message RemoveTargetCredentialSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {always: true}]; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_id",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
 
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
@@ -367,6 +377,8 @@ message RemoveTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message RemoveTargetCredentialSourcesResponse {
@@ -375,19 +387,28 @@ message RemoveTargetCredentialSourcesResponse {
 
 message AuthorizeSessionRequest {
   // The ID of the target. Required unless some combination of scope_id/scope_name and name are set.
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = {
+    unless_set: {
+      // scope id and scope name being set indicates that the value in this field
+      // is actually a target name and not an alias.
+      fields: [
+        'scope_id',
+        'scope_name'
+      ]
+    }
+  }]; // @gotags: `class:"public" eventstream:"observation"`
 
   // The name of the target. When using this, scope_id or scope_name must be set.
   string name = 3; // @gotags: `class:"public"`
 
   // The scope ID containing the target, if specifying the target by name.
-  string scope_id = 4; // @gotags: `class:"public"`
+  string scope_id = 4; // @gotags: `class:"public" eventstream:"observation"`
 
   // The scope name containing the target, if specifying the target by name.
   string scope_name = 5; // @gotags: `class:"public"`
 
   // An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session.
-  string host_id = 2 [json_name = "host_id"]; // @gotags: `class:"public"`
+  string host_id = 2 [json_name = "host_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AuthorizeSessionResponse {

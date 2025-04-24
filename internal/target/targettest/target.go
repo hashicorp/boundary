@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package targettest provides a test target subtype for use by the target
 // package.  Note that it leverages the tcp.Target's database table to avoid
 // needing schema migrations just for tests.
@@ -8,26 +11,31 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/targettest/store"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
-	Subtype      = subtypes.Subtype("tcp")
-	TargetPrefix = "ttcp"
+	Subtype = globals.Subtype("tcp")
 )
 
 // Target is a target.Target used for tests.
 type Target struct {
 	*store.Target
-	tableName string `gorm:"-"`
+	Address           string                    `gorm:"-"`
+	tableName         string                    `gorm:"-"`
+	HostSource        []target.HostSource       `gorm:"-"`
+	CredentialSources []target.CredentialSource `gorm:"-"`
+	Aliases           []*talias.Alias           `gorm:"-"`
 }
 
 var (
@@ -81,6 +89,10 @@ func (t *Target) GetDefaultPort() uint32 {
 	return t.DefaultPort
 }
 
+func (t *Target) GetDefaultClientPort() uint32 {
+	return t.DefaultClientPort
+}
+
 func (t *Target) GetName() string {
 	return t.Name
 }
@@ -93,7 +105,7 @@ func (t *Target) GetVersion() uint32 {
 	return t.Version
 }
 
-func (t *Target) GetType() subtypes.Subtype {
+func (t *Target) GetType() globals.Subtype {
 	return Subtype
 }
 
@@ -117,10 +129,45 @@ func (t *Target) GetWorkerFilter() string {
 	return t.WorkerFilter
 }
 
+func (t *Target) GetEgressWorkerFilter() string {
+	return t.EgressWorkerFilter
+}
+
+func (t *Target) GetIngressWorkerFilter() string {
+	return t.IngressWorkerFilter
+}
+
+func (t *Target) GetAddress() string {
+	return t.Address
+}
+
+func (t *Target) GetAliases() []*talias.Alias {
+	return t.Aliases
+}
+
+func (t *Target) GetHostSources() []target.HostSource {
+	return t.HostSource
+}
+
+func (t *Target) GetCredentialSources() []target.CredentialSource {
+	return t.CredentialSources
+}
+
+func (t *Target) GetEnableSessionRecording() bool {
+	return false
+}
+
+func (t *Target) GetStorageBucketId() string {
+	return ""
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
-		Target: cp.(*store.Target),
+		Address:           t.Address,
+		Target:            cp.(*store.Target),
+		HostSource:        t.HostSource,
+		CredentialSources: t.CredentialSources,
 	}
 }
 
@@ -141,12 +188,21 @@ func (t *Target) SetDescription(description string) {
 	t.Description = description
 }
 
+// GetResourceType returns the resource type of the Target
+func (t *Target) GetResourceType() resource.Type {
+	return resource.Target
+}
+
 func (t *Target) SetVersion(v uint32) {
 	t.Version = v
 }
 
 func (t *Target) SetDefaultPort(port uint32) {
 	t.DefaultPort = port
+}
+
+func (t *Target) SetDefaultClientPort(port uint32) {
+	t.DefaultClientPort = port
 }
 
 func (t *Target) SetCreateTime(ts *timestamp.Timestamp) {
@@ -165,9 +221,37 @@ func (t *Target) SetSessionConnectionLimit(l int32) {
 	t.SessionConnectionLimit = l
 }
 
-func (t *Target) SetWorkerFilter(f string) {
-	t.WorkerFilter = f
+func (t *Target) SetWorkerFilter(filter string) {
+	t.WorkerFilter = filter
 }
+
+func (t *Target) SetEgressWorkerFilter(filter string) {
+	t.EgressWorkerFilter = filter
+}
+
+func (t *Target) SetIngressWorkerFilter(filter string) {
+	t.IngressWorkerFilter = filter
+}
+
+func (t *Target) SetAddress(a string) {
+	t.Address = a
+}
+
+func (t *Target) SetAliases(aliases []*talias.Alias) {
+	t.Aliases = aliases
+}
+
+func (t *Target) SetHostSources(sources []target.HostSource) {
+	t.HostSource = sources
+}
+
+func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
+	t.CredentialSources = sources
+}
+
+func (t *Target) SetEnableSessionRecording(_ bool) {}
+
+func (t *Target) SetStorageBucketId(_ string) {}
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return oplog.Metadata{
@@ -236,11 +320,11 @@ func VetCredentialSources(_ context.Context, _ []*target.CredentialLibrary, _ []
 }
 
 // New creates a targettest.Target.
-func New(projectId string, opt ...target.Option) (target.Target, error) {
+func New(ctx context.Context, projectId string, opt ...target.Option) (target.Target, error) {
 	const op = "target_test.New"
 	opts := target.GetOpts(opt...)
 	if projectId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing project id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	t := &Target{
 		Target: &store.Target{
@@ -248,10 +332,14 @@ func New(projectId string, opt ...target.Option) (target.Target, error) {
 			Name:                   opts.WithName,
 			Description:            opts.WithDescription,
 			DefaultPort:            opts.WithDefaultPort,
+			DefaultClientPort:      opts.WithDefaultClientPort,
 			SessionConnectionLimit: opts.WithSessionConnectionLimit,
 			SessionMaxSeconds:      opts.WithSessionMaxSeconds,
 			WorkerFilter:           opts.WithWorkerFilter,
+			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
+			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
+		Address: opts.WithAddress,
 	}
 	return t, nil
 }
@@ -263,18 +351,18 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 	opts := target.GetOpts(opt...)
 	require := require.New(t)
 	rw := db.New(conn)
-	tar, err := New(projectId, opt...)
+	tar, err := New(ctx, projectId, opt...)
 	require.NoError(err)
-	id, err := db.NewPublicId(TargetPrefix)
+	id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 	require.NoError(err)
 	tar.SetPublicId(ctx, id)
 	err = rw.Create(context.Background(), tar)
 	require.NoError(err)
 
 	if len(opts.WithHostSources) > 0 {
-		newHostSets := make([]interface{}, 0, len(opts.WithHostSources))
+		newHostSets := make([]*target.TargetHostSet, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
-			hostSet, err := target.NewTargetHostSet(tar.GetPublicId(), s)
+			hostSet, err := target.NewTargetHostSet(ctx, tar.GetPublicId(), s)
 			require.NoError(err)
 			newHostSets = append(newHostSets, hostSet)
 		}
@@ -282,12 +370,17 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 		require.NoError(err)
 	}
 	if len(opts.WithCredentialLibraries) > 0 {
-		newCredLibs := make([]interface{}, 0, len(opts.WithCredentialLibraries))
+		newCredLibs := make([]*target.CredentialLibrary, 0, len(opts.WithCredentialLibraries))
 		for _, cl := range opts.WithCredentialLibraries {
 			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)
 		}
 		err := rw.CreateItems(context.Background(), newCredLibs)
+		require.NoError(err)
+	}
+	if len(opts.WithAddress) != 0 {
+		addr := target.TestNewTargetAddress(id, opts.WithAddress)
+		err := rw.Create(ctx, addr)
 		require.NoError(err)
 	}
 	return tar

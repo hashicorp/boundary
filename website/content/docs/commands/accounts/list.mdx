@@ -1,0 +1,77 @@
+---
+layout: docs
+page_title: accounts list - Command
+description: >-
+  The "accounts list" command lists the available accounts that were created for an auth method.
+---
+
+# accounts list
+
+Command: `boundary accounts list`
+
+The `accounts list` command lists all accounts created for a given auth method.
+
+## Example
+
+The following example lists all accounts for an auth method with ID, `ampw_1234567890`:
+
+```shell-session
+$ boundary accounts list -auth-method-id ampw_1234567890
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Account information:
+  ID:                    acctpw_0987654321
+    Version:             1
+    Type:                password
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      set-password
+      change-password
+
+  ID:                    acctpw_1234567890
+    Version:             5
+    Type:                password
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      set-password
+      change-password
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts list [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-auth-method-id` `(string: "")` - The auth-method resource from which to list accounts. You can also specify the auth-method resource using the **BOUNDARY_AUTH_METHOD_ID**
+   environment variable.
+- `-filter` `(string: "")` - If set, the list operation is filtered before
+   being returned. The filter operates against each item in the list. We recommend using
+   single quotes, because filters contain double quotes.
+- `list_token` (optional) - An opaque token that is returned from the previous `list` response.
+If you do not supply a value, pagination starts from the beginning.
+- `page_size` (optional) - An unsigned integer that indicates the number of items that should be included on the page of search results.
+If you do not provide a value, or if you provide a value of `0`, Boundary uses the default page size of 1000 items.
+If you configure it, the `page_size` value overrides the default page size.
+Controller administrators can also configure a `max_page_size` option that constrains the maximum page size a user can request.
+
+@include 'cmd-option-note.mdx'

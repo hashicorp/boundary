@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package tcp_test
 
 import (
@@ -5,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -74,9 +78,9 @@ func TestTarget_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := db.NewPublicId(tcp.TargetPrefix)
+				id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 				require.NoError(err)
-				got.SetPublicId(ctx, id)
+				require.NoError(got.SetPublicId(ctx, id))
 				err = db.New(conn).Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
@@ -115,9 +119,9 @@ func TestTarget_Delete(t *testing.T) {
 			target: func() target.Target {
 				tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
 
-				id, err := db.NewPublicId(tcp.TargetPrefix)
+				id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 				require.NoError(t, err)
-				tar.SetPublicId(ctx, id)
+				require.NoError(t, tar.SetPublicId(ctx, id))
 				tar.SetName(tcp.TestTargetName(t, proj.PublicId))
 				return tar
 			}(),
@@ -128,8 +132,8 @@ func TestTarget_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteTarget := tcp.NewTestTarget("")
-			deleteTarget.SetPublicId(ctx, tt.target.GetPublicId())
+			deleteTarget := tcp.NewTestTarget(ctx, "")
+			require.NoError(deleteTarget.SetPublicId(ctx, tt.target.GetPublicId()))
 			deletedRows, err := rw.Delete(context.Background(), deleteTarget)
 			if tt.wantErr {
 				require.Error(err)
@@ -141,8 +145,8 @@ func TestTarget_Delete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundTarget := tcp.NewTestTarget("")
-			foundTarget.SetPublicId(ctx, tt.target.GetPublicId())
+			foundTarget := tcp.NewTestTarget(ctx, "")
+			require.NoError(foundTarget.SetPublicId(ctx, tt.target.GetPublicId()))
 			err = rw.LookupById(context.Background(), foundTarget)
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
@@ -262,8 +266,8 @@ func TestTarget_Update(t *testing.T) {
 			id := tcp.TestId(t)
 			tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, id, target.WithDescription(id))
 
-			updateTarget := tcp.NewTestTarget(tt.args.ProjectId)
-			updateTarget.SetPublicId(ctx, tar.GetPublicId())
+			updateTarget := tcp.NewTestTarget(ctx, tt.args.ProjectId)
+			require.NoError(updateTarget.SetPublicId(ctx, tar.GetPublicId()))
 			updateTarget.SetName(tt.args.name)
 			updateTarget.SetDescription(tt.args.description)
 
@@ -280,8 +284,8 @@ func TestTarget_Update(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(tar.GetUpdateTime(), updateTarget.GetUpdateTime())
-			foundTarget := tcp.NewTestTarget(tt.args.ProjectId)
-			foundTarget.SetPublicId(ctx, tar.GetPublicId())
+			foundTarget := tcp.NewTestTarget(ctx, tt.args.ProjectId)
+			require.NoError(foundTarget.SetPublicId(ctx, tar.GetPublicId()))
 			err = rw.LookupByPublicId(ctx, foundTarget)
 			require.NoError(err)
 			assert.True(proto.Equal(updateTarget.(*tcp.Target).Target, foundTarget.(*tcp.Target).Target))
@@ -309,7 +313,7 @@ func TestTarget_Update(t *testing.T) {
 		assert.Equal(1, updatedRows)
 
 		foundTarget, _ := target.New(ctx, tcp.Subtype, proj2.PublicId)
-		foundTarget.SetPublicId(ctx, projTarget.GetPublicId())
+		require.NoError(foundTarget.SetPublicId(ctx, projTarget.GetPublicId()))
 		err = rw.LookupByPublicId(ctx, foundTarget)
 		require.NoError(err)
 		assert.Equal(id, projTarget.GetName())
@@ -324,7 +328,9 @@ func TestTarget_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId))
+		tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId),
+			target.WithAddress("8.8.8.8"),
+		)
 		cp := tar.Clone()
 		assert.True(proto.Equal(cp.(*tcp.Target).Target, tar.(*tcp.Target).Target))
 	})
@@ -333,10 +339,10 @@ func TestTarget_Clone(t *testing.T) {
 		_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		_, proj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		target1 := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId))
-		target2 := tcp.TestTarget(ctx, t, conn, proj2.PublicId, tcp.TestTargetName(t, proj2.PublicId))
+		talias := tcp.TestTarget(ctx, t, conn, proj2.PublicId, tcp.TestTargetName(t, proj2.PublicId))
 
 		cp := target1.Clone()
-		assert.True(!proto.Equal(cp.(*tcp.Target).Target, target2.(*tcp.Target).Target))
+		assert.True(!proto.Equal(cp.(*tcp.Target).Target, talias.(*tcp.Target).Target))
 	})
 }
 

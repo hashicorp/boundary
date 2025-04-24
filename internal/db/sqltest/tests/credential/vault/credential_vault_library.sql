@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- credential_vault_library tests:
 --   the following triggers
 --    insert_credential_library_subtype

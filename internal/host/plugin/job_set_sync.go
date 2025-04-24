@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
@@ -7,14 +10,15 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	ua "go.uber.org/atomic"
 )
 
@@ -50,7 +54,7 @@ func newSetSyncJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
-	case len(plgm) == 0:
+	case plgm == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing plugin manager")
 	}
 
@@ -81,9 +85,9 @@ func (r *SetSyncJob) Status() scheduler.JobStatus {
 // creates a plugin client and syncs each set.  Can not be run in parallel, if
 // Run is invoked while already running an error with code JobAlreadyRunning
 // will be returned.
-func (r *SetSyncJob) Run(ctx context.Context) error {
+func (r *SetSyncJob) Run(ctx context.Context, _ time.Duration) error {
 	const op = "plugin.(SetSyncJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
@@ -97,7 +101,7 @@ func (r *SetSyncJob) Run(ctx context.Context) error {
 	// Fetch all sets that will reach their sync point within the syncWindow.
 	// This is done to avoid constantly scheduling the set sync job when there
 	// are multiple sets to sync in sequence.
-	err := r.reader.SearchWhere(ctx, &setAggs, setSyncJobQuery, []interface{}{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &setAggs, setSyncJobQuery, []any{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -117,7 +121,7 @@ func (r *SetSyncJob) NextRunIn(ctx context.Context) (time.Duration, error) {
 	const op = "plugin.(SetSyncJob).NextRunIn"
 	next, err := nextSync(ctx, r)
 	if err != nil {
-		return setSyncJobRunInterval, errors.WrapDeprecated(err, op)
+		return setSyncJobRunInterval, errors.Wrap(ctx, err, op)
 	}
 	return next, nil
 }
@@ -141,17 +145,20 @@ func nextSync(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 		query = setSyncNextRunInQuery
 		r = job.reader
 	default:
-		return 0, errors.NewDeprecated(errors.Unknown, op, "unknown job")
+		return 0, errors.New(ctx, errors.Unknown, op, "unknown job")
 	}
 
-	rows, err := r.Query(context.Background(), query, []interface{}{setSyncJobRunInterval})
+	rows, err := r.Query(context.Background(), query, []any{setSyncJobRunInterval})
 	if err != nil {
-		return 0, errors.WrapDeprecated(err, op)
+		return 0, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
 		return setSyncJobRunInterval, nil
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op)
 	}
 
 	type NextResync struct {
@@ -162,7 +169,7 @@ func nextSync(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 	var n NextResync
 	err = r.ScanRows(ctx, rows, &n)
 	if err != nil {
-		return 0, errors.WrapDeprecated(err, op)
+		return 0, errors.Wrap(ctx, err, op)
 	}
 	switch {
 	case n.SyncNow:
@@ -214,10 +221,6 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 				setInfos: make(map[string]*setInfo),
 			}
 		}
-		ci.plg, ok = r.plugins[ag.PluginId]
-		if !ok {
-			return errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", ag.PluginId))
-		}
 
 		s, err := ag.toHostSet(ctx)
 		if err != nil {
@@ -237,13 +240,14 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 		catalogInfos[ag.CatalogId] = ci
 	}
 
-	// Now, look up the catalog persisted (secret) information
+	// Now, look up the catalog persisted (secret) information. Additionally,
+	// find the correct plugin to use.
 	catIds := make([]string, 0, len(catalogInfos))
 	for k := range catalogInfos {
 		catIds = append(catIds, k)
 	}
 	var catAggs []*catalogAgg
-	if err := r.reader.SearchWhere(ctx, &catAggs, "public_id in (?)", []interface{}{catIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &catAggs, "public_id in (?)", []any{catIds}); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalogs %v", catIds)))
 	}
 	if len(catAggs) == 0 {
@@ -255,12 +259,17 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 		if !ok {
 			return errors.New(ctx, errors.NotSpecificIntegrity, op, "catalog returned when no set requested it")
 		}
-		plgCat, err := toPluginCatalog(ctx, c)
+		plgCat, err := toPluginCatalog(ctx, c, ca.plugin())
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin catalog conversion"))
 		}
 		ci.plgCat = plgCat
 		ci.storeCat = c
+
+		ci.plg, err = pluginClientFactoryFn(ctx, ci.plgCat, r.plugins)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get plugin client"))
+		}
 
 		per, err := toPluginPersistedData(ctx, r.kms, c.GetProjectId(), s)
 		if err != nil {
@@ -393,7 +402,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				var hOplogMsg oplog.Message
 				onConflict := &db.OnConflict{
 					Target: db.Constraint("host_plugin_host_pkey"),
-					Action: db.SetColumns([]string{"name", "description", "version"}),
+					Action: db.SetColumns([]string{"name", "external_name", "description", "version"}),
 				}
 				var rowsAffected int64
 				dbOpts := []db.Option{
@@ -405,6 +414,18 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				if version > 0 {
 					dbOpts = append(dbOpts, db.WithVersion(&version))
 					ret.Version += 1
+				}
+				// This check is the logical counterpart of the database
+				// constraints on the external_name field. By replicating the
+				// checks as closely as possible in code, we reduce the risk of
+				// this transaction failing due to a bad external name.
+				if !strutil.Printable(ret.ExternalName) || len(ret.ExternalName) > 256 {
+					event.WriteError(ctx, op,
+						fmt.Errorf("ignoring host id %q external name %q due to its length (greater than 256 characters) or the presence of unsupported unicode characters",
+							ret.PublicId,
+							ret.ExternalName),
+					)
+					ret.ExternalName = ""
 				}
 				if err := w.Create(ctx, ret, dbOpts...); err != nil {
 					return errors.Wrap(ctx, err, op)
@@ -418,7 +439,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				{
 					if len(hi.ipsToRemove) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToRemove))
-						count, err := w.DeleteItems(ctx, hi.ipsToRemove.toArray(), db.NewOplogMsgs(&oplogMsgs))
+						count, err := w.DeleteItems(ctx, hi.ipsToRemove.toSlice(), db.NewOplogMsgs(&oplogMsgs))
 						if err != nil {
 							return err
 						}
@@ -433,8 +454,8 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 							Target: db.Constraint("host_ip_address_pkey"),
 							Action: db.DoNothing(true),
 						}
-						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
-							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toArray(), ret.GetPublicId())))
+						if err := w.CreateItems(ctx, hi.ipsToAdd.toSlice(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
+							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toSlice(), ret.GetPublicId())))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
@@ -444,7 +465,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				{
 					if len(hi.dnsNamesToRemove) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToRemove))
-						count, err := w.DeleteItems(ctx, hi.dnsNamesToRemove.toArray(), db.NewOplogMsgs(&oplogMsgs))
+						count, err := w.DeleteItems(ctx, hi.dnsNamesToRemove.toSlice(), db.NewOplogMsgs(&oplogMsgs))
 						if err != nil {
 							return err
 						}
@@ -459,7 +480,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 							Target: db.Constraint("host_dns_name_pkey"),
 							Action: db.DoNothing(true),
 						}
-						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
+						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toSlice(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
 							return err
 						}
 						msgs = append(msgs, oplogMsgs...)
@@ -544,7 +565,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				}
 
 				// Update last sync time
-				numRows, err := w.Exec(ctx, updateSyncDataQuery, []interface{}{setId})
+				numRows, err := w.Exec(ctx, updateSyncDataQuery, []any{setId})
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("updating last sync time"))
 				}

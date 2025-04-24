@@ -1,0 +1,112 @@
+---
+layout: docs
+page_title: managed-groups update - Command
+description: >-
+  The "managed-groups update" command updates an existing managed group resource.
+---
+
+# managed-groups update
+
+Command: `managed-groups update`
+
+The `managed-groups update` command lets you update an existing managed group.
+
+## Example
+
+This example updates a managed group with the ID `_1234567890` to include the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary managed-groups update -id _1234567890 -name "prodops" -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups update [options] [args]
+
+Please see the managed-groups subcommand help for detailed usage information.
+
+Subcommands:
+    ldap    Update an ldap managed group
+    oidc    Update an oidc managed group
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can update LDAP or OIDC managed groups.
+
+<Tabs>
+<Tab heading="LDAP">
+
+The `boundary managed-groups update ldap` command lets you update LDAP managed groups.
+
+#### Example
+
+This example updates a LDAP managed group with the ID `acctldap_1234567890` to add the name `devops` and the description `Ldap managed group for DevOps`:
+
+```shell-session
+$ boundary managed-groups update ldap -id acctldap_1234567890 -name "devops" -description "Ldap managed group for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups update ldap [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set for the LDAP managed group.
+- `-group-names=<string>` - The LDAP group names against which an LDAP account's associated groups are evaluated to determine membership.
+Boundary evaluates managed group membership when you log in.
+You can specify multiple group names.
+- `-id=<string>` - The ID of the LDAP managed group to update.
+- `-name=<string>` - The name to set for the LDAP managed group.
+- `-version=<int>` - The version of the LDAP managed group to update.
+If you do not specify a version, the command automatically performs a check-and-set.
+
+</Tab>
+<Tab heading="OIDC">
+
+The `boundary managed-groups update oidc` command lets you update OIDC managed groups.
+
+#### Example
+
+This example updates an OIDC managed group with the ID `acctoidc_1234567890` to add the name `devops` and the description `Oidc managed group for DevOps`:
+
+```shell-session
+$ boundary managed-groups update oidc -id acctoidc_1234567890 -name "devops" -description "Oidc managed group for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups update oidc [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set for the OIDC managed group.
+- `-filter=<string>` - The filter that defines the criteria against which an account's OIDC token and user info are evaluated to determine if it is a member of the OIDC managed group.
+Boundary evaluates managed group membership when you log in.
+- `-id=<string>` - The ID of the OIDC managed group you want to update.
+- `-name=<string>` - The name to set for the OIDC managed group.
+- `-version=<int>` - The version of the OIDC managed group to update.
+If you do not specify a version, the command performs a check-and-set automatically.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

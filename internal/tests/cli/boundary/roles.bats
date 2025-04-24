@@ -6,7 +6,7 @@ load _roles
 load _helpers
 
 export NEW_ROLE='test'
-export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
+export NEW_GRANT='ids=*;type=*;actions=create,read,update,delete,list'
 
 @test "boundary/login: can login as default principal" {
   run login $DEFAULT_LOGIN
@@ -15,13 +15,17 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
 }
 
 @test "boundary/roles: can add $NEW_ROLE role to global scope granting rights in default org scope" {
-	run create_role $DEFAULT_GLOBAL $NEW_ROLE $DEFAULT_O_ID
+	run create_role $DEFAULT_GLOBAL $NEW_ROLE
+  echo "$output"
+	[ "$status" -eq 0 ]
+
+  run set_grant_scopes $DEFAULT_GLOBAL $NEW_ROLE $DEFAULT_O_ID
   echo "$output"
 	[ "$status" -eq 0 ]
 }
 
 @test "boundary/roles: can not add already created $NEW_ROLE role" {
-	run create_role $DEFAULT_GLOBAL $NEW_ROLE $DEFAULT_O_ID
+	run create_role $DEFAULT_GLOBAL $NEW_ROLE
   echo "$output"
 	[ "$status" -eq 1 ]
 }

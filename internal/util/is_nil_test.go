@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package util_test
 
 import (
@@ -16,11 +19,12 @@ func Test_IsNil(t *testing.T) {
 	var testArrayNilPtr *[1]string
 	var testChanNilPtr *chan string
 	var testSliceNilPtr *[]string
+	var testFuncNil func()
 
 	var testChanString chan string
 
 	tc := []struct {
-		i    interface{}
+		i    any
 		want bool
 	}{
 		{i: &testError{}, want: false},
@@ -32,6 +36,7 @@ func Test_IsNil(t *testing.T) {
 		{i: &testChanString, want: false},
 		{i: "string", want: false},
 		{i: []string{}, want: false},
+		{i: func() {}, want: false},
 		{i: nil, want: true},
 		{i: testErrNilPtr, want: true},
 		{i: testMapNilPtr, want: true},
@@ -39,6 +44,7 @@ func Test_IsNil(t *testing.T) {
 		{i: testChanNilPtr, want: true},
 		{i: testChanString, want: true},
 		{i: testSliceNilPtr, want: true},
+		{i: testFuncNil, want: true},
 	}
 
 	for i, tc := range tc {

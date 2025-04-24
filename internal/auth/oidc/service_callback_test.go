@@ -1,27 +1,36 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	authStore "github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
-
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/cap/oidc"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,17 +45,25 @@ func Test_Callback(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
 	testCtx := context.Background()
-
+	opt := event.TestWithObservationSink(t)
+	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", opt)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	c.EventerConfig.TelemetryEnabled = true
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Callback", event.WithEventerConfig(&c.EventerConfig)))
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	repoFn := func() (*Repository, error) {
 		return NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kmsCache)
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepo, err := atRepoFn()
 	require.NoError(t, err)
@@ -89,7 +106,7 @@ func Test_Callback(t *testing.T) {
 	require.NoError(t, err)
 
 	// a reusable token request id for the tests.
-	testTokenRequestId, err := authtoken.NewAuthTokenId()
+	testTokenRequestId, err := authtoken.NewAuthTokenId(ctx)
 	require.NoError(t, err)
 
 	// usuable nonce for the unit tests
@@ -289,7 +306,7 @@ func Test_Callback(t *testing.T) {
 			_, err := rw.Exec(ctx, "delete from auth_token", nil)
 			require.NoError(err)
 			// start with no users in the db
-			excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
+			excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 			_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 			require.NoError(err)
 			// start with no oplog entries
@@ -316,7 +333,7 @@ func Test_Callback(t *testing.T) {
 			}
 			tp.SetExpectedSubject(tt.wantSubject)
 
-			info := map[string]interface{}{}
+			info := map[string]any{}
 			if tt.wantSubject != "" {
 				info["sub"] = tt.wantSubject
 			}
@@ -329,7 +346,6 @@ func Test_Callback(t *testing.T) {
 			if len(info) > 0 {
 				tp.SetUserInfoReply(info)
 			}
-
 			gotRedirect, err := Callback(ctx,
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
@@ -346,13 +362,13 @@ func Test_Callback(t *testing.T) {
 
 				// make sure there are no tokens in the db..
 				var tokens []*authtoken.AuthToken
-				err := rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
+				err := rw.SearchWhere(ctx, &tokens, "1=?", []any{1})
 				require.NoError(err)
 				assert.Equal(0, len(tokens))
 
 				// make sure there weren't any oplog entries written.
 				var entries []*oplog.Entry
-				err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
+				err = rw.SearchWhere(ctx, &entries, "1=?", []any{1})
 				require.NoError(err)
 				amId := ""
 				if tt.am != nil {
@@ -364,9 +380,24 @@ func Test_Callback(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantFinalRedirect, gotRedirect)
 
+			sinkFileName := c.ObservationEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := os.ReadFile(sinkFileName)
+			require.NoError(err)
+			got := &cloudevents.Event{}
+			err = json.Unmarshal(b, got)
+			require.NoErrorf(err, "json: %s", string(b))
+			details, ok := got.Data.(map[string]any)["details"]
+			require.True(ok)
+			for _, key := range details.([]any) {
+				assert.Contains(key.(map[string]any)["payload"], "user_id")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_start")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
+			}
+
 			// make sure a pending token was created.
 			var tokens []*authtoken.AuthToken
-			err = rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
+			err = rw.SearchWhere(ctx, &tokens, "1=?", []any{1})
 			require.NoError(err)
 			require.Equal(1, len(tokens))
 			tk, err := atRepo.LookupAuthToken(ctx, tokens[0].PublicId)
@@ -375,7 +406,7 @@ func Test_Callback(t *testing.T) {
 
 			// make sure the account was updated properly
 			var acct Account
-			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject = ?", []interface{}{tt.am.PublicId, tt.wantSubject})
+			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject = ?", []any{tt.am.PublicId, tt.wantSubject})
 			require.NoError(err)
 			assert.Equal(tt.wantInfoEmail, acct.Email)
 			assert.Equal(tt.wantInfoName, acct.FullName)
@@ -391,7 +422,7 @@ func Test_Callback(t *testing.T) {
 
 			// check the oplog entries.
 			var entries []*oplog.Entry
-			err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
+			err = rw.SearchWhere(ctx, &entries, "1=?", []any{1})
 			require.NoError(err)
 			oplogWrapper, err := kmsCache.GetWrapper(ctx, tt.am.ScopeId, kms.KeyPurposeOplog)
 			require.NoError(err)
@@ -406,7 +437,7 @@ func Test_Callback(t *testing.T) {
 			foundAcct, foundOidcAcct := false, false
 			for _, e := range entries {
 				cnt += 1
-				e.Cipherer = oplogWrapper
+				e.Wrapper = oplogWrapper
 				err := e.DecryptData(ctx)
 				require.NoError(err)
 				msgs, err := e.UnmarshalData(ctx, types)
@@ -438,7 +469,7 @@ func Test_Callback(t *testing.T) {
 		_, err := rw.Exec(ctx, "delete from auth_token", nil)
 		require.NoError(err)
 		// start with no users in the db
-		excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
+		excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 		_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 		require.NoError(err)
 		// start with no oplog entries
@@ -456,9 +487,20 @@ func Test_Callback(t *testing.T) {
 		wantSubject := "replay-attack-with-dup-state@example.com"
 		tp.SetExpectedSubject(wantSubject)
 
-		tp.SetUserInfoReply(map[string]interface{}{"sub": wantSubject})
+		tp.SetUserInfoReply(map[string]any{"sub": wantSubject})
 		tp.SetExpectedAuthNonce(testNonce)
-
+		config := event.EventerConfig{
+			ObservationsEnabled: true,
+		}
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+		e, err := event.NewEventer(testLogger, testLock, "replay-attack-with-dup-state", config)
+		require.NoError(err)
+		ctx, err := event.NewEventerContext(ctx, e)
+		require.NoError(err)
 		// the first request should succeed.
 		gotRedirect, err := Callback(ctx,
 			repoFn,
@@ -493,14 +535,20 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 	t.Run("startAuth-to-Callback", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
-
+		c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback")
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+		require.NoError(event.InitSysEventer(testLogger, testLock, "use-Test_StartAuth_to_Callback", event.WithEventerConfig(&c.EventerConfig)))
 		conn, _ := db.TestSetup(t, "postgres")
 		rw := db.New(conn)
 		// start with no tokens in the db
 		_, err := rw.Exec(ctx, "delete from auth_token", nil)
 		require.NoError(err)
 		// start with no users in the db
-		excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
+		excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 		_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 		require.NoError(err)
 		// start with no oplog entries
@@ -512,13 +560,13 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 
 		// func pointers for the test controller.
 		iamRepoFn := func() (*iam.Repository, error) {
-			return iam.NewRepository(rw, rw, kmsCache)
+			return iam.NewRepository(ctx, rw, rw, kmsCache)
 		}
 		repoFn := func() (*Repository, error) {
 			return NewRepository(ctx, rw, rw, kmsCache)
 		}
 		atRepoFn := func() (*authtoken.Repository, error) {
-			return authtoken.NewRepository(rw, rw, kmsCache)
+			return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 		}
 		atRepo, err := atRepoFn()
 		require.NoError(err)
@@ -584,13 +632,13 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		resp, err := client.Get(authUrl.String())
 		require.NoError(err)
 		defer resp.Body.Close()
-		contents, err := ioutil.ReadAll(resp.Body)
+		contents, err := io.ReadAll(resp.Body)
 		require.NoError(err)
 		require.Containsf(string(contents), "Congratulations", "expected \"Congratulations\" on successful oidc authentication and got: %s", string(contents))
 
 		// check to make sure there's a pending token, after the successful callback
 		var tokens []*authtoken.AuthToken
-		err = rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
+		err = rw.SearchWhere(ctx, &tokens, "1=?", []any{1})
 		require.NoError(err)
 		require.Equal(1, len(tokens))
 		tk, err := atRepo.LookupAuthToken(ctx, tokens[0].PublicId)
@@ -612,17 +660,26 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	rw := db.New(conn)
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
-
+	opt := event.TestWithObservationSink(t)
+	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", opt)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	c.EventerConfig.TelemetryEnabled = true
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_ManagedGroupFiltering", event.WithEventerConfig(&c.EventerConfig)))
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	repoFn := func() (*Repository, error) {
-		return NewRepository(ctx, rw, rw, kmsCache)
+		// Set a low limit to test that the managed group listing overrides the limit
+		return NewRepository(ctx, rw, rw, kmsCache, WithLimit(1))
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kmsCache)
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, rootWrapper)
@@ -680,7 +737,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	tp.SetExpectedAuthCode(code)
 	tp.SetExpectedSubject(sub)
 	tp.SetCustomAudience("foo", "alice-rp")
-	info := map[string]interface{}{
+	info := map[string]any{
 		"roles":  []string{"user", "operator"},
 		"sub":    "alice@example.com",
 		"email":  "alice-alias@example.com",
@@ -750,7 +807,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			// A unique token ID for each test
-			testTokenRequestId, err := authtoken.NewAuthTokenId()
+			testTokenRequestId, err := authtoken.NewAuthTokenId(ctx)
 			require.NoError(err)
 
 			// the test provider is stateful, so we need to configure
@@ -763,8 +820,11 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			tp.SetExpectedState(state)
 
 			// Set the filters on the MGs for this test. First we need to get the current versions.
-			currMgs, err := repo.ListManagedGroups(ctx, testAuthMethod.PublicId)
+			currMgs, ttime, err := repo.ListManagedGroups(ctx, testAuthMethod.PublicId, WithLimit(-1))
 			require.NoError(err)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 			require.Len(currMgs, 2)
 			currVersionMap := map[string]uint32{
 				currMgs[0].PublicId: currMgs[0].Version,
@@ -776,7 +836,6 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 				require.Equal(numUpdated, 1)
 				require.NoError(err)
 			}
-
 			// Run the callback
 			_, err = Callback(ctx,
 				repoFn,
@@ -787,9 +846,22 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 				code,
 			)
 			require.NoError(err)
-
+			sinkFileName := c.ObservationEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := os.ReadFile(sinkFileName)
+			require.NoError(err)
+			got := &cloudevents.Event{}
+			err = json.Unmarshal(b, got)
+			require.NoErrorf(err, "json: %s", string(b))
+			details, ok := got.Data.(map[string]any)["details"]
+			require.True(ok)
+			for _, key := range details.([]any) {
+				assert.Contains(key.(map[string]any)["payload"], "user_id")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_start")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
+			}
 			// Ensure that we get the expected groups
-			memberships, err := repo.ListManagedGroupMembershipsByMember(ctx, account.PublicId)
+			memberships, err := repo.ListManagedGroupMembershipsByMember(ctx, account.PublicId, WithLimit(-1))
 			require.NoError(err)
 			assert.Equal(len(tt.matchingMgs), len(memberships))
 			var matchingIds []string

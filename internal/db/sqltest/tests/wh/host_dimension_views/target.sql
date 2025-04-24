@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- target tests teh whx_host_dimension_target view.
 begin;
   select plan(2);

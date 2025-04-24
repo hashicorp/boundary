@@ -1,21 +1,21 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package tcp_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
-	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -126,7 +126,7 @@ func TestRepository_LookupTarget(t *testing.T) {
 			if tt.projectName != "" {
 				opts = append(opts, target.WithProjectName(tt.projectName))
 			}
-			got, _, _, err := repo.LookupTarget(ctx, id, opts...)
+			got, err := repo.LookupTarget(ctx, id, opts...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -135,52 +135,6 @@ func TestRepository_LookupTarget(t *testing.T) {
 			assert.Equal(tgt.GetPublicId(), got.GetPublicId())
 		})
 	}
-}
-
-func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	testKms := kms.TestKms(t, conn, wrapper)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-
-	_, proj1 := iam.TestScopes(t, iamRepo)
-	_, proj2 := iam.TestScopes(t, iamRepo)
-
-	db.TestDeleteWhere(t, conn, tcp.NewTestTarget(""), "1=1")
-
-	ctx := context.Background()
-	const numPerScope = 10
-	var total int
-	for i := 0; i < numPerScope; i++ {
-		tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i))
-		total++
-		tcp.TestTarget(ctx, t, conn, proj2.GetPublicId(), fmt.Sprintf("proj2-%d", i))
-		total++
-	}
-
-	rw := db.New(conn)
-	repo, err := target.NewRepository(ctx, rw, rw, testKms,
-		target.WithPermissions([]perms.Permission{
-			{
-				ScopeId:  proj1.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
-			},
-			{
-				ScopeId:  proj2.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
-			},
-		}),
-	)
-	require.NoError(t, err)
-
-	got, err := repo.ListTargets(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, total, len(got))
 }
 
 func TestRepository_DeleteTarget(t *testing.T) {
@@ -231,7 +185,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			name: "not-found",
 			args: args{
 				target: func() target.Target {
-					id, err := db.NewPublicId(tcp.TargetPrefix)
+					id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 					require.NoError(t, err)
 					tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
 					tar.SetPublicId(ctx, id)
@@ -258,7 +212,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundGroup, _, _, err := repo.LookupTarget(ctx, tt.args.target.GetPublicId())
+			foundGroup, err := repo.LookupTarget(ctx, tt.args.target.GetPublicId())
 			assert.NoError(err)
 			assert.Nil(foundGroup)
 

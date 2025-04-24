@@ -1,0 +1,87 @@
+---
+layout: docs
+page_title: accounts - Command
+description: >-
+  The "accounts" command performs operations on account resources. You can associate users with accounts using auth methods.
+---
+
+# accounts
+
+Command: `boundary accounts`
+
+The `accounts` command lets you create and manage accounts resources in Boundary.
+You can associate Boundary users with one or more account resources using auth methods.
+Accounts represent external notions of a particular entity.
+Among other use cases, accounts provide an easy way to switch users to new IdPs within the organization that deploys Boundary.
+
+## Examples
+
+The following example retrieves account information for a given account ID, `acctpw_1234567890`:
+
+```shell-session
+$ boundary accounts read -id acctpw_1234567890
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Account information:
+  Auth Method ID:      ampw_1234567890
+  Created Time:        Wed, 12 Jul 2023 12:20:54 PDT
+  ID:                  acctpw_1234567890
+  Type:                password
+  Updated Time:        Wed, 12 Jul 2023 12:20:54 PDT
+  Version:             1
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    set-password
+    change-password
+
+  Attributes:
+    Login Name:        admin
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary accounts [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    change-password    Change the password on an account
+    create             Create an account
+    delete             Delete an account
+    list               List an account
+    read               Read an account
+    set-password       Directly set the password on an account
+    update             Update an account
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/accounts/create)
+- [delete](/boundary/docs/commands/accounts/delete)
+- [read](/boundary/docs/commands/accounts/read)
+- [update](/boundary/docs/commands/accounts/update)
+- [list](/boundary/docs/commands/accounts/list)
+- [set-password](/boundary/docs/commands/accounts/set-password)
+- [change-password](/boundary/docs/commands/accounts/change-password)

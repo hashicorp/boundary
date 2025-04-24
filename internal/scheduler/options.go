@@ -1,9 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package scheduler
 
 import "time"
 
 const (
-	defaultRunJobsLimit       = 1
 	defaultRunJobsInterval    = time.Minute
 	defaultMonitorInterval    = 30 * time.Second
 	defaultInterruptThreshold = 5 * time.Minute
@@ -24,7 +26,6 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withNextRunIn          time.Duration
-	withRunJobsLimit       int
 	withRunJobInterval     time.Duration
 	withMonitorInterval    time.Duration
 	withInterruptThreshold time.Duration
@@ -33,23 +34,9 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		withRunJobsLimit:       defaultRunJobsLimit,
 		withRunJobInterval:     defaultRunJobsInterval,
 		withMonitorInterval:    defaultMonitorInterval,
 		withInterruptThreshold: defaultInterruptThreshold,
-	}
-}
-
-// WithRunJobsLimit provides an option to provide the number of jobs that will be requested
-// by the scheduler when querying for jobs to run.
-// If WithRunJobsLimit == 0, then default run jobs limit is used.
-// If WithRunJobsLimit < 0, then no limit is used.
-func WithRunJobsLimit(l int) Option {
-	return func(o *options) {
-		o.withRunJobsLimit = l
-		if o.withRunJobsLimit == 0 {
-			o.withRunJobsLimit = defaultRunJobsLimit
-		}
 	}
 }
 

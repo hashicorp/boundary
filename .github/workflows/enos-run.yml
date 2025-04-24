@@ -9,45 +9,131 @@ on:
       artifact-name:
         required: true
         type: string
+      edition:
+        required: true
+        type: string
       go-version:
         required: true
+        type: string
+      docker-image-name:
+        required: false
+        type: string
+      docker-image-file:
+        required: false
         type: string
 
 env:
   PKG_NAME: boundary
 
 jobs:
+  setup:
+    outputs:
+      cache-go-build: ${{ steps.go-cache-paths.outputs.go-build }}
+      cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
+      cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
+      go-cache-key: ${{ steps.go-cache-key.outputs.key }}
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: '0'
+      - name: Set up Go
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: false
+      - name: Determine go cache key
+        id: go-cache-key
+        run: |
+          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
+      - name: Determine Go cache paths
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+      - name: Set up Go modules cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ steps.go-cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - name: Install Tools
+        run: |
+          go mod download
+          make tools
   enos:
     name: Integration
+    needs:
+      - setup
     # Enos jobs are still a bit flaky, ensure they don't fail the workflow.
     continue-on-error: true
     strategy:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'integration test:cli_ui'
-          - filter: 'e2e_credential_vault'
-          - filter: 'e2e_host_aws'
-          - filter: 'e2e_host_static'
-    runs-on: ubuntu-latest
+          - filter: 'e2e_aws builder:crt ip_version:4'
+          - filter: 'e2e_database'
+          - filter: 'e2e_docker_base builder:crt'
+          - filter: 'e2e_docker_base_plus builder:crt'
+          - filter: 'e2e_docker_base_with_gcp builder:crt'
+          - filter: 'e2e_docker_base_with_vault builder:crt'
+          - filter: 'e2e_docker_base_with_worker builder:crt'
+          - filter: 'e2e_docker_worker_registration_controller_led builder:crt'
+          - filter: 'e2e_docker_worker_registration_worker_led builder:crt'
+    runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
+      # Scenario variables
+      ENOS_DEBUG_DATA_ROOT_DIR: ./enos/support/debug-data
+      ENOS_VAR_aws_region: us-east-1
+      ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
+      ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
+      ENOS_VAR_local_boundary_dir: ./support/boundary
+      ENOS_VAR_local_boundary_src_dir: ${{ github.workspace }}
+      ENOS_VAR_local_boundary_ui_src_dir: ./support/src/boundary-ui
+      ENOS_VAR_crt_bundle_path: ./support/boundary.zip
+      ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
+      ENOS_VAR_boundary_edition: ${{ inputs.edition }}
+      ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
+      ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
+      ENOS_VAR_go_version: ${{ inputs.go-version }}
+      ENOS_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
+      ENOS_VAR_gcp_client_email: ${{ secrets.GCP_CLIENT_EMAIL_CI }}
+      ENOS_VAR_gcp_private_key_id: ${{ secrets.GCP_PRIVATE_KEY_ID_CI }}
+      ENOS_VAR_gcp_private_key: ${{ secrets.GCP_PRIVATE_KEY_CI }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ inputs.go-version }}
+          cache: false
+      - name: Set up Go modules cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+          fail-on-cache-miss: false
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           # the terraform wrapper will break Terraform execution in enos because
           # it changes the output to text when we expect it to be JSON.
           terraform_wrapper: false
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v5
+        uses: crazy-max/ghaction-import-gpg@cb9bde2e2525e640591a934b1fd28eef1dcaf5e5 # v6.2.0
         with:
           gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
@@ -58,53 +144,46 @@ jobs:
           echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
           cat ~/.gnupg/gpg.conf
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
           aws-region: us-east-1
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_CI }}
           role-skip-session-tagging: true
           role-duration-seconds: 3600
+      - name: Configure GCP credentials
+        if: contains(matrix.filter, 'gcp')
+        id: gcp_auth
+        uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f # v2.1.7
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          access_token_lifetime: '3600s'
+          project_id: ${{ secrets.GCP_PROJECT_ID_CI }}
+      - name: 'Set up GCP Cloud SDK'
+        if: contains(matrix.filter, 'gcp')
+        uses: google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a # v2.1.2
       - name: Set up Enos
-        uses: hashicorp/action-setup-enos@v1
+        uses: hashicorp/action-setup-enos@v1    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           github-token: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
-      - name: Set up AWS SSH private key
+      - name: Prepare scenario dependencies
+        id: prepare_scenario
         run: |
           mkdir -p ./enos/support
-          echo "${{ secrets.ENOS_CI_SSH_KEY }}" > ./enos/support/private_key.pem
+          echo "${{ secrets.SSH_KEY_PRIVATE_CI }}" > ./enos/support/private_key.pem
           chmod 600 ./enos/support/private_key.pem
+          echo "debug_data_artifact_name=enos-debug-data_$(echo ${{ matrix.filter }} | sed -e 's/ /_/g' | sed -e 's/:/=/g')" >> "$GITHUB_OUTPUT"
       - name: Set up dependency cache
         id: dep-cache
-        uses: actions/cache@v3
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: /tmp/test-deps
-          key: enos-test-deps-jq-1.6-password-store-1.7.4-vault-1.11.4
+          key: enos-test-deps-password-store-1.7.4-vault-1.12.2
       - name: Debug dep-cache
         run: |
           mkdir -p /tmp/test-deps
           ls -la /tmp/test-deps
-      - name: Set up Node for Bats install
-        if: matrix.filter == 'integration test:cli_ui'
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - name: Install Bats via NPM
-        if: matrix.filter == 'integration test:cli_ui'
-        # Use npm so this workflow is portable on multiple runner distros
-        run: npm install --location=global bats
-      - name: Download jq for Bats CLI UI tests
-        if: steps.dep-cache.outputs.cache-hit != 'true'
-        # NOTE: if you update the jq version make sure to update the dep cache key
-        run: |
-          mkdir -p /tmp/test-deps
-          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/test-deps/jq-bin
-      - name: Install jq for Bats CLI UI tests
-        if: matrix.filter == 'integration test:cli_ui'
-        run: |
-          chmod +x /tmp/test-deps/jq-bin
-          sudo cp /tmp/test-deps/jq-bin /usr/local/bin/jq
       - name: Download and unzip pass for Boundary keyring
         if: steps.dep-cache.outputs.cache-hit != 'true'
         # NOTE: if you update the password store version make sure to update the dep cache key
@@ -118,74 +197,170 @@ jobs:
           cd /tmp/test-deps/pass/password-store-1.7.4
           sudo make install
           pass init ${{ secrets.ENOS_GPG_UID }}
-      - name: Download Vault AMD64 binary for integration testing
+      - name: Download Vault AMD64 binary
         if: steps.dep-cache.outputs.cache-hit != 'true'
         run: |
-          wget https://releases.hashicorp.com/vault/1.11.4/vault_1.11.4_linux_amd64.zip -O /tmp/test-deps/vault.zip
-      - name: Install Vault for integration testing
-        if: matrix.filter == 'e2e_credential_vault'
+          wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/test-deps/vault.zip
+      - name: Install Vault CLI
+        if: contains(matrix.filter, 'vault') || contains(matrix.filter, 'e2e_docker') || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui_aws builder:crt'
         run: |
           unzip /tmp/test-deps/vault.zip -d /usr/local/bin
-      - name: Download Linux AMD64 Boundary bundle
+      - name: GH fix for localhost resolution
+        if: github.repository == 'hashicorp/boundary' && contains(matrix.filter, 'e2e_docker')
+        run: |
+          cat /etc/hosts && echo "-----------"
+          sudo sed -i 's/::1 *localhost ip6-localhost ip6-loopback/::1 ip6 -localhost ip6-loopback/g' /etc/hosts
+          cat /etc/hosts
+          ssh -V
+      - name: Download Boundary Linux AMD64 bundle
         id: download
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: ${{ inputs.artifact-name }}
           path: ./enos/support/downloads
       - name: Unzip and rename Boundary bundle
         run: |
-          unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support
+          unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support/boundary
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
+      - name: Download Boundary Linux AMD64 docker image
+        if: contains(matrix.filter, 'e2e_docker')
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        id: download-docker
+        with:
+          name: ${{ inputs.docker-image-file }}
+          path: ./enos/support/downloads
+      - name: Rename docker image file
+        if: contains(matrix.filter, 'e2e_docker')
+        run: |
+          mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
+      - name: Set up Node.js
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        if: contains(matrix.filter, 'e2e_ui')
+        with:
+          node-version: '16.x'
+      - name: Checkout boundary-ui
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        if: contains(matrix.filter, 'e2e_ui')
+        with:
+          repository: hashicorp/boundary-ui
+          path: enos/support/src/boundary-ui
+      - name: Install boundary-ui dependencies
+        if: contains(matrix.filter, 'e2e_ui')
+        run: yarn --cwd enos/support/src/boundary-ui install
+      - name: Install playwright dependencies (i.e. browsers)
+        if: contains(matrix.filter, 'e2e_ui')
+        run: npx playwright install --with-deps
+        working-directory: enos/support/src/boundary-ui
+      - name: Output Terraform version info
+        run: |
+          mkdir -p ./enos/terraform-plugin-cache
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario check --chdir ./enos ${{ matrix.filter }} && \
+          enos scenario exec --chdir ./enos ${{ matrix.filter }} --cmd "version"
       - name: Run Enos scenario
         id: run
         # Continue once and retry
         continue-on-error: true
-        env:
-          ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
-          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/
-          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
-          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          # Skip a few known failing bats tests
-          ENOS_VAR_skip_failing_bats_tests: "true"
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }} builder:crt
+          enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Rename e2e tests output
+        continue-on-error: true
+        run: |
+          pushd enos
+          scenario="${{ matrix.filter }}"
+          count=$(find ./*.log 2>/dev/null | wc -l | xargs)
+          if [ "$count" != 0 ]
+          then
+            for f in *.log; do mv --  "$f" "${f%.log}_${scenario%% *}.log"; done
+          fi
+          popd
+      - name: Split matrix filter name
+        id: split
+        run: |
+          SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1,3 | sed 's/:/_/g')
+          echo fragment="${SCENARIO}" >> "$GITHUB_OUTPUT"
+      - name: Upload e2e tests output
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: test-${{ steps.split.outputs.fragment }}
+          path: enos/*.log
+          retention-days: 5
+      - name: Get logs from postgres container
+        # Retrieve logs from the postgres container on a failed
+        # run to help diagnose a deadlock issue
+        if: contains(matrix.filter, 'e2e_docker') && steps.run.outcome == 'failure'
+        run: |
+          docker logs database
+      - name: Upload e2e UI tests debug info
+        if: contains(matrix.filter, 'e2e_ui') && steps.run.outcome == 'failure'
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: test-e2e-ui-debug
+          path: enos/support/src/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
+          retention-days: 5
       - name: Retry Enos scenario
         id: run_retry
         if: steps.run.outcome == 'failure'
-        env:
-          ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
-          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/
-          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
-          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          # Skip a few known failing bats tests
-          ENOS_VAR_skip_failing_bats_tests: "true"
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }} builder:crt
+          enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Upload Debug Data
+        if: ${{ always() && steps.run_retry.outcome == 'failure' }}
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores and colons replaced by equals.
+          name: ${{ steps.prepare_scenario.outputs.debug_data_artifact_name }}
+          path: ${{ env.ENOS_DEBUG_DATA_ROOT_DIR }}
+          retention-days: 30
       - name: Destroy Enos scenario
-        env:
-          ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
-          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/
-          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
-          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          # Skip a few known failing bats tests
-          ENOS_VAR_skip_failing_bats_tests: "true"
+        id: destroy
+        continue-on-error: true
+        if: ${{ always() }}
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }} builder:crt
-      - name: Output debug information on failure
+          enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Get logs for aws dependencies error
+        # Retrieve logs from the terraform to help diagnose some aws cleanup issues
+        if: ${{ always() && steps.destroy.outcome == 'failure' }}
+        continue-on-error: true
+        run: |
+          enos scenario exec --cmd graph --chdir ./enos ${{ matrix.filter }}
+          TF_DIR=$(find ./enos/.enos/ -type d -mindepth 1 -maxdepth 1  | tail -1)
+          pushd "${TF_DIR}"
+          terraform state list
+          terraform state show module.create_base_infra.aws_route.igw
+          popd
+      - name: Destroy Enos scenario (Retry)
+        if: ${{ always() && steps.destroy.outcome == 'failure' }}
+        run: |
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Output Enos debug information on failure
         if: ${{ failure() }}
         run: |
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
+      - name: Send Slack message if Run and Retry fails (or if something else went wrong)
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
+        # failure() captures errors before `Run Enos scenario`
+        # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
+        if: ${{ failure() || (steps.run.outcome == 'failure' && steps.run_retry.outcome == 'failure') }}
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+            text: ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
+      - name: Send Slack message if Run but Retry passes
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+            text: ":warning: e2e tests passed, but needed retry (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
+

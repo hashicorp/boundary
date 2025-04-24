@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package common
 
 import (
@@ -8,8 +11,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 )
@@ -103,16 +106,16 @@ func WrapWithOptionals(ctx context.Context, with *writerWrapper, wrap http.Respo
 // WrapWithEventsHandler will wrap the provided http.Handler with a
 // handler that adds an Eventer to the request context and starts/flushes gated
 // events of type: observation and audit
-func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms, listenerCfg *listenerutil.ListenerConfig) (http.Handler, error) {
+func WrapWithEventsHandler(ctx context.Context, h http.Handler, e *event.Eventer, kms *kms.Kms, listenerCfg *listenerutil.ListenerConfig) (http.Handler, error) {
 	const op = "common.WrapWithEventsHandler"
 	if h == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing handler")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing handler")
 	}
 	if e == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing eventer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing eventer")
 	}
 	if kms == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

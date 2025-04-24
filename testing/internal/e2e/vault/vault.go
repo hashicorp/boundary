@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package vault provides methods for commonly used vault actions that are used in end-to-end tests.
 package vault
 
@@ -5,83 +8,107 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
-	"runtime"
+	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/boundary/testing/internal/e2e"
-	"github.com/kelseyhightower/envconfig"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/require"
 )
 
-type config struct {
-	VaultAddr  string `envconfig:"VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
-	VaultToken string `envconfig:"VAULT_TOKEN" required:"true"`
-}
-
-func loadConfig() (*config, error) {
-	var c config
-	err := envconfig.Process("", &c)
-	if err != nil {
-		return nil, err
+// CreateTokenResponse parses the json response from running `vault token create`
+type CreateTokenResponse struct {
+	Auth struct {
+		Client_Token string
 	}
-
-	return &c, err
 }
 
 // Setup verifies if appropriate credentials are set and adds the boundary controller
 // policy to vault. Returns the vault address.
-func Setup(t testing.TB) (string, string) {
-	c, err := loadConfig()
+func Setup(t testing.TB, boundaryControllerFilePath string) (boundaryPolicyName string, kvPolicyFilePath string) {
+	// Set up boundary policy
+	boundaryPolicyFilePath, err := filepath.Abs(boundaryControllerFilePath)
+	require.NoError(t, err)
+	boundaryPolicyName = WritePolicy(t, context.Background(), boundaryPolicyFilePath)
+
+	// Create kv policy
+	kvPolicyFilePath = fmt.Sprintf("%s/%s", t.TempDir(), "kv-policy.hcl")
+	_, err = os.Create(kvPolicyFilePath)
 	require.NoError(t, err)
 
-	_, filename, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	ctx := context.Background()
-	policyName := "boundary-controller"
-	output := e2e.RunCommand(ctx, "vault", "policy", "write", policyName,
-		path.Join(path.Dir(filename), "boundary-controller-policy.hcl"),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault", "policy", "delete", policyName)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
-	return c.VaultAddr, policyName
+	return
 }
 
 // CreateKvPrivateKeyCredential creates a private key credential in vault and creates a vault policy
 // to be able to read that credential. Returns the name of the policy.
-func CreateKvPrivateKeyCredential(t testing.TB, secretName string, secretPath string, user string, keyPath string) string {
-	// Create policy file to read secret
-	kvPolicyFileName := "kv-policy-test.hcl"
-	kvPolicyFilePath := fmt.Sprintf("%s/%s", t.TempDir(), kvPolicyFileName)
-
-	f, err := os.Create(kvPolicyFilePath)
+func CreateKvPrivateKeyCredential(t testing.TB, secretPath string, user string, keyPath string, kvPolicyFilePath string) string {
+	secretName, err := base62.Random(16)
 	require.NoError(t, err)
-	_, err = f.WriteString(fmt.Sprintf("path \"%s/data/%s\" { capabilities = [\"read\"] }",
+
+	// Update policy file
+	f, err := os.OpenFile(kvPolicyFilePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	require.NoError(t, err)
+	_, err = f.WriteString(fmt.Sprintf("path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
 		secretPath,
 		secretName,
 	))
 	require.NoError(t, err)
 
-	// Add policy to vault
-	ctx := context.Background()
-	policyName := "kv-read"
-	output := e2e.RunCommand(ctx, "vault", "policy", "write", policyName, kvPolicyFilePath)
+	// Create secret
+	output := e2e.RunCommand(context.Background(), "vault",
+		e2e.WithArgs(
+			"kv", "put",
+			"-mount", secretPath,
+			secretName,
+			"username="+user,
+			"private_key=@"+keyPath,
+		),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault", "policy", "delete", policyName)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
+
+	return secretName
+}
+
+// CreateKvPasswordCredential creates a username/password credential in vault and creates a vault
+// policy to be able to read that credential. Returns the name of the policy
+func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, kvPolicyFilePath string) (secretName string, password string) {
+	secretName, err := base62.Random(16)
+	require.NoError(t, err)
+
+	// Update policy file
+	f, err := os.OpenFile(kvPolicyFilePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	require.NoError(t, err)
+	_, err = f.WriteString(fmt.Sprintf("path \"%s/data/%s\" { capabilities = [\"read\"] }\n",
+		secretPath,
+		secretName,
+	))
+	require.NoError(t, err)
 
 	// Create secret
-	output = e2e.RunCommand(ctx, "vault", "kv", "put",
-		"-mount", secretPath,
-		secretName,
-		"username="+user,
-		"private_key=@"+keyPath,
+	password, err = base62.Random(16)
+	require.NoError(t, err)
+	output := e2e.RunCommand(context.Background(), "vault",
+		e2e.WithArgs(
+			"kv", "put",
+			"-mount", secretPath,
+			secretName,
+			"username="+user,
+			"password="+password,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	return
+}
+
+// WritePolicy adds a policy to vault. Provide a name for the policy that you want to create as well
+// as the path to the file that contains the policy definition. Returns a policy name
+func WritePolicy(t testing.TB, ctx context.Context, policyFilePath string) string {
+	policyName, err := base62.Random(16)
+	require.NoError(t, err)
+
+	output := e2e.RunCommand(ctx, "vault",
+		e2e.WithArgs("policy", "write", policyName, policyFilePath),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 

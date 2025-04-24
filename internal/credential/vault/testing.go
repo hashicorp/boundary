@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -46,7 +49,7 @@ func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, pr
 	cs, err := NewCredentialStore(projectId, vaultAddr, []byte(vaultToken), opts...)
 	assert.NoError(t, err)
 	require.NotNil(t, cs)
-	id, err := newCredentialStoreId()
+	id, err := newCredentialStoreId(ctx)
 	assert.NoError(t, err)
 	require.NotEmpty(t, id)
 	cs.PublicId = id
@@ -89,7 +92,7 @@ func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, p
 		cs := TestCredentialStore(t, conn, wrapper, projectId, fmt.Sprintf("http://vault%d", i), fmt.Sprintf("vault-token-%s-%d", projectId, i), fmt.Sprintf("accessor-%s-%d", projectId, i))
 
 		inCert := testClientCert(t, testCaCert(t))
-		clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
+		clientCert, err := NewClientCertificate(ctx, inCert.Cert.Cert, inCert.Cert.Key)
 		require.NoError(t, err)
 		require.NotEmpty(t, clientCert)
 		clientCert.StoreId = cs.GetPublicId()
@@ -114,6 +117,7 @@ func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, p
 // test will fail.
 func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
 	t.Helper()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
 	var libs []*CredentialLibrary
@@ -122,12 +126,43 @@ func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, stor
 		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), WithMethod(MethodGet))
 		assert.NoError(err)
 		require.NotNil(lib)
-		id, err := newCredentialLibraryId()
+		id, err := newCredentialLibraryId(ctx)
 		assert.NoError(err)
 		require.NotEmpty(id)
 		lib.PublicId = id
 
-		ctx := context.Background()
+		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, iw db.Writer) error {
+				return iw.Create(ctx, lib)
+			},
+		)
+
+		require.NoError(err2)
+		libs = append(libs, lib)
+	}
+	return libs
+}
+
+// TestSSHCertificateCredentialLibraries creates count number of vault ssh
+// certificate credential libraries in the provided DB with the provided store
+// id. If any errors are encountered during the creation of the credential
+// libraries, the test will fail.
+func TestSSHCertificateCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*SSHCertificateCredentialLibrary {
+	t.Helper()
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+	w := db.New(conn)
+	var libs []*SSHCertificateCredentialLibrary
+
+	for i := 0; i < count; i++ {
+		lib, err := NewSSHCertificateCredentialLibrary(storeId, fmt.Sprintf("ssh/sign/role-%d", i), "username", WithKeyType(KeyTypeEd25519))
+		assert.NoError(err)
+		require.NotNil(lib)
+		id, err := newSSHCertificateCredentialLibraryId(ctx)
+		assert.NoError(err)
+		require.NotEmpty(id)
+		lib.PublicId = id
+
 		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, iw db.Writer) error {
 				return iw.Create(ctx, lib)
@@ -151,7 +186,7 @@ func TestCredentials(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, librar
 	ctx := context.Background()
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms, sche)
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -168,16 +203,16 @@ func TestCredentials(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, librar
 
 	var credentials []*Credential
 	for i := 0; i < count; i++ {
-		credential, err := newCredential(lib.GetPublicId(), sessionId, fmt.Sprintf("vault/credential/%d", i), token.GetTokenHmac(), 5*time.Minute)
+		credential, err := newCredential(ctx, lib.GetPublicId(), fmt.Sprintf("vault/credential/%d", i), token.GetTokenHmac(), 5*time.Minute)
 		assert.NoError(err)
 		require.NotNil(credential)
 
-		id, err := newCredentialId()
+		id, err := newCredentialId(ctx)
 		assert.NoError(err)
 		require.NotNil(id)
 		credential.PublicId = id
 
-		query, queryValues := credential.insertQuery()
+		query, queryValues := insertQuery(credential, sessionId)
 		rows, err2 := rw.Exec(ctx, query, queryValues)
 		assert.Equal(1, rows)
 		assert.NoError(err2)
@@ -195,7 +230,7 @@ func createTestToken(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projec
 	databaseWrapper, err := kkms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	inToken, err := newToken(storeId, []byte(token), []byte(accessor), 5*time.Minute)
+	inToken, err := newToken(ctx, storeId, []byte(token), []byte(accessor), 5*time.Minute)
 	assert.NoError(t, err)
 	require.NotNil(t, inToken)
 
@@ -226,7 +261,7 @@ func testTokens(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projectId, 
 		num := r.Int31()
 		inToken := createTestToken(t, conn, wrapper, projectId, storeId, fmt.Sprintf("vault-token-%s-%d-%v", storeId, i, num), fmt.Sprintf("accessor-%s-%d-%v", storeId, i, num))
 		outToken := allocToken()
-		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
+		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", []any{inToken.TokenHmac}))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
 
 		tokens = append(tokens, outToken)
@@ -269,7 +304,7 @@ type testCert struct {
 
 func (tc *testCert) ClientCertificate(t testing.TB) *ClientCertificate {
 	t.Helper()
-	c, err := NewClientCertificate(tc.Cert, tc.Key)
+	c, err := NewClientCertificate(context.Background(), tc.Cert, tc.Key)
 	require.NoError(t, err)
 	return c
 }
@@ -333,7 +368,7 @@ func testCaCert(t testing.TB) *testCert {
 }
 
 // testServerCert will generate a test x509 server cert.
-func testServerCert(t testing.TB, ca *testCert, hosts ...string) *testCertBundle {
+func testServerCert(t testing.TB, ca *testCert, opt ...TestOption) *testCertBundle {
 	t.Helper()
 	require := require.New(t)
 
@@ -369,7 +404,8 @@ func testServerCert(t testing.TB, ca *testCert, hosts ...string) *testCertBundle
 		BasicConstraintsValid: true,
 	}
 
-	for _, h := range hosts {
+	opts := getTestOpts(t, opt...)
+	for _, h := range opts.serverCertHostNames {
 		if ip := net.ParseIP(h); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
@@ -477,17 +513,20 @@ type TestOption func(testing.TB, *testOptions)
 
 // options = how options are represented
 type testOptions struct {
-	orphan        bool
-	periodic      bool
-	renewable     bool
-	policies      []string
-	mountPath     string
-	roleName      string
-	vaultTLS      TestVaultTLS
-	dockerNetwork bool
-	skipCleanup   bool
-	tokenPeriod   time.Duration
-	clientKey     *ecdsa.PrivateKey
+	orphan              bool
+	periodic            bool
+	renewable           bool
+	policies            []string
+	allowedExtensions   []string
+	mountPath           string
+	roleName            string
+	vaultTLS            TestVaultTLS
+	dockerNetwork       bool
+	skipCleanup         bool
+	tokenPeriod         time.Duration
+	clientKey           *ecdsa.PrivateKey
+	vaultVersion        string
+	serverCertHostNames []string
 }
 
 func getDefaultTestOptions(t testing.TB) testOptions {
@@ -500,15 +539,16 @@ func getDefaultTestOptions(t testing.TB) testOptions {
 	}
 
 	return testOptions{
-		orphan:        true,
-		periodic:      true,
-		renewable:     true,
-		policies:      []string{"default", "boundary-controller"},
-		mountPath:     "",
-		roleName:      "boundary",
-		vaultTLS:      TestNoTLS,
-		dockerNetwork: false,
-		tokenPeriod:   defaultPeriod,
+		orphan:              true,
+		periodic:            true,
+		renewable:           true,
+		policies:            []string{"default", "boundary-controller"},
+		mountPath:           "",
+		roleName:            "boundary",
+		vaultTLS:            TestNoTLS,
+		dockerNetwork:       false,
+		tokenPeriod:         defaultPeriod,
+		serverCertHostNames: []string{"localhost"},
 	}
 }
 
@@ -547,6 +587,16 @@ func WithTestVaultTLS(s TestVaultTLS) TestOption {
 	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.vaultTLS = s
+	}
+}
+
+// WithServerCertHostNames sets the host names or IP address to attach to
+// the test server's TLS certificate. The default host name attached to the
+// test server's TLS certificate is 'localhost'.
+func WithServerCertHostNames(h []string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.serverCertHostNames = h
 	}
 }
 
@@ -590,6 +640,24 @@ func WithDontCleanUp() TestOption {
 	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.skipCleanup = true
+	}
+}
+
+// WithVaultVersion sets the version of vault that will be started.
+// defaults to the value stored in vault.supported.DefaultVaultVersion
+func WithVaultVersion(s string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.vaultVersion = s
+	}
+}
+
+// WithAllowedExtension tells vault to allow a specific SSH extension
+// to be used by vault's ssh secrets engine
+func WithAllowedExtension(e string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.allowedExtensions = append(o.allowedExtensions, e)
 	}
 }
 
@@ -644,11 +712,13 @@ func (v *TestVaultServer) ClientUsingToken(t testing.TB, token string) *client {
 	ctx := context.Background()
 	require := require.New(t)
 	conf := &clientConfig{
-		Addr:       v.Addr,
-		Token:      TokenSecret(token),
-		CaCert:     v.CaCert,
-		ClientCert: v.ClientCert,
-		ClientKey:  v.ClientKey,
+		Addr:          v.Addr,
+		Token:         TokenSecret(token),
+		CaCert:        v.CaCert,
+		ClientCert:    v.ClientCert,
+		ClientKey:     v.ClientKey,
+		TlsServerName: v.TlsServerName,
+		TlsSkipVerify: v.TlsSkipVerify,
 	}
 
 	client, err := newClient(ctx, conf)
@@ -736,7 +806,7 @@ func (v *TestVaultServer) LookupLease(t testing.TB, leaseId string) *vault.Secre
 	t.Helper()
 	require := require.New(t)
 	vc := v.client(t).cl
-	credData := map[string]interface{}{"lease_id": leaseId}
+	credData := map[string]any{"lease_id": leaseId}
 	secret, err := vc.Logical().Write("sys/leases/lookup", credData)
 	require.NoError(err)
 	require.NotNil(secret)
@@ -750,6 +820,95 @@ func (v *TestVaultServer) addPolicy(t testing.TB, name string, pc pathCapabiliti
 	require.NotEmpty(policy)
 	vc := v.client(t).cl
 	require.NoError(vc.Sys().PutPolicy(name, policy))
+}
+
+// MountSSH mounts the Vault SSH secret engine and initializes it by
+// generating a root certificate authority and creating a default role on
+// the mount. The root CA is returned.
+//
+// The default mount path is ssh and the default role name is boundary.
+// WithTestMountPath, WithTestRoleName, and WithAllowedExtension are the
+// test options supported. extensions are combined into allowed_extensions.
+// allowed_extensions defaults to "*" (allow all)
+// The role is defined as:
+//
+//	{
+//		"key_type": "ca",
+//		"allowed_users": "*",
+//		"allowed_extensions": "*",
+//		"allow_user_certificates": true,
+//		"ttl": "12h0m0s"
+//	}
+//
+// MountSSH also adds a Vault policy named 'ssh' to v and adds it to the
+// standard set of polices attached to tokens created with v.CreateToken.
+// The policy is defined as:
+//
+//	path "mountPath/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
+func (v *TestVaultServer) MountSSH(t testing.TB, opt ...TestOption) *vault.Secret {
+	require := require.New(t)
+	opts := getTestOpts(t, opt...)
+	vc := v.client(t).cl
+
+	// Mount SSH
+	maxTTL := 24 * time.Hour
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			maxTTL = time.Until(deadline) * 2
+		}
+	}
+
+	defaultTTL := maxTTL / 2
+	t.Logf("maxTTL: %s, defaultTTL: %s", maxTTL, defaultTTL)
+	mountInput := &vault.MountInput{
+		Type:        "ssh",
+		Description: t.Name(),
+		Config: vault.MountConfigInput{
+			DefaultLeaseTTL: defaultTTL.String(),
+			MaxLeaseTTL:     maxTTL.String(),
+		},
+	}
+	mountPath := opts.mountPath
+	if mountPath == "" {
+		mountPath = "ssh/"
+	}
+	// this is the call that actually enables the secrets engine
+	require.NoError(vc.Sys().Mount(mountPath, mountInput))
+
+	policyPath := fmt.Sprintf("%s*", mountPath)
+	pc := pathCapabilities{
+		policyPath: createCapability | readCapability | updateCapability | deleteCapability | listCapability,
+	}
+	v.addPolicy(t, "ssh", pc)
+
+	// Generate a root CA
+	caPath := path.Join(mountPath, "config/ca")
+	caOptions := map[string]any{
+		"generate_signing_key": true,
+	}
+	s, err := vc.Logical().Write(caPath, caOptions)
+	require.NoError(err)
+	require.NotEmpty(s)
+
+	// Create default role
+	rolePath := path.Join(mountPath, "roles", opts.roleName)
+	allowExtensions := "*"
+	if len(opts.allowedExtensions) > 0 {
+		allowExtensions = strings.Join(opts.allowedExtensions, ",")
+	}
+	roleOptions := map[string]any{
+		"key_type":                "ca",
+		"allowed_users":           "*",
+		"allowed_extensions":      allowExtensions,
+		"allow_user_certificates": true,
+		"ttl":                     defaultTTL.String(),
+	}
+	_, err = vc.Logical().Write(rolePath, roleOptions)
+	require.NoError(err)
+
+	return s
 }
 
 // MountPKI mounts the Vault PKI secret engine and initializes it by
@@ -804,7 +963,7 @@ func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secre
 
 	// Generate a root CA
 	caPath := path.Join(mountPath, "root/generate/internal")
-	caOptions := map[string]interface{}{
+	caOptions := map[string]any{
 		"common_name": t.Name(),
 		"ttl":         maxTTL.String(),
 	}
@@ -814,7 +973,7 @@ func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secre
 
 	// Create default role
 	rolePath := path.Join(mountPath, "roles", opts.roleName)
-	roleOptions := map[string]interface{}{
+	roleOptions := map[string]any{
 		"allow_any_name": true,
 		"ttl":            defaultTTL.String(),
 	}
@@ -864,18 +1023,20 @@ type TestVaultServer struct {
 	RootToken string
 	Addr      string
 
-	CaCert     []byte
-	ServerCert []byte
-	ClientCert []byte
-	ClientKey  []byte
+	CaCert        []byte
+	ServerCert    []byte
+	ClientCert    []byte
+	ClientKey     []byte
+	TlsServerName string
+	TlsSkipVerify bool
 
 	serverCertBundle *testCertBundle
 	clientCertBundle *testCertBundle
 
-	pool              interface{}
-	vaultContainer    interface{}
-	network           interface{}
-	postgresContainer interface{}
+	pool              any
+	vaultContainer    any
+	network           any
+	postgresContainer any
 }
 
 // NewTestVaultServer creates and returns a TestVaultServer. Some Vault

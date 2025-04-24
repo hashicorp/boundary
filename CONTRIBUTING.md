@@ -114,7 +114,7 @@ If a test is interrupted check to make certain that all Docker containers have b
 
 ### Running individual tests
 
-If you don't want to run the entire test suite, you can just run a singe test
+If you don't want to run the entire test suite, you can just run a single test
 with go. For example, if you wanted to run the tests TestAuthTokenAuthenticator, you would
 run:
 
@@ -153,7 +153,7 @@ $ make test-database-up
 $ docker logs custom-name
 ```
 
-The default docker image is built using the `postgres:11` base image.
+The default docker image is built using the `postgres:12` base image.
 The image can be changed using a make option to test against other versions:
 
 ```

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
   alter table wh_date_dimension
     rename column id to key;
@@ -94,6 +97,7 @@ begin;
   ;
 
   -- replaces function from 14/01_wh_user_dimension_oidc.up.sql
+  -- replaced in 82/02_wh_upsert_user_refact.up.sql
   drop function wh_upsert_user;
   create function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id) returns wh_dim_key
   as $$
@@ -393,6 +397,7 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- Replaced in 92/02_session_state_tstzrange.up.sql
   create trigger wh_insert_session_state after insert on session_state
     for each row execute function wh_insert_session_state();
 
@@ -400,6 +405,7 @@ begin;
   drop trigger wh_insert_session_connection_state on session_connection_state;
   drop function wh_insert_session_connection_state;
 
+-- Updated in 90/01_remove_session_connection_state.up.sql
   create function wh_insert_session_connection_state() returns trigger
   as $$
   declare

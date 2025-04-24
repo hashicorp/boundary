@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -30,11 +34,11 @@ var (
 )
 
 // NewGroup creates a new in memory group with a scope (project/org)
-// and allowed options include: withDescripion, WithName.
-func NewGroup(scopeId string, opt ...Option) (*Group, error) {
+// and allowed options include: withDescription, WithName.
+func NewGroup(ctx context.Context, scopeId string, opt ...Option) (*Group, error) {
 	const op = "iam.NewGroup"
 	if scopeId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 	g := &Group{
@@ -48,7 +52,7 @@ func NewGroup(scopeId string, opt ...Option) (*Group, error) {
 }
 
 // Clone creates a clone of the Group.
-func (g *Group) Clone() interface{} {
+func (g *Group) Clone() any {
 	cp := proto.Clone(g.Group)
 	return &Group{
 		Group: cp.(*store.Group),
@@ -74,7 +78,7 @@ func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 	return nil
 }
 
-func (u *Group) validScopeTypes() []scope.Type {
+func (g *Group) validScopeTypes() []scope.Type {
 	return []scope.Type{scope.Global, scope.Org, scope.Project}
 }
 
@@ -83,8 +87,8 @@ func (g *Group) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, g)
 }
 
-// ResourceType returns the type of the Group.
-func (*Group) ResourceType() resource.Type { return resource.Group }
+// GetResourceType returns the type of the Group.
+func (*Group) GetResourceType() resource.Type { return resource.Group }
 
 // Actions returns the  available actions for Group
 func (*Group) Actions() map[string]action.Type {
@@ -104,4 +108,14 @@ func (g *Group) TableName() string {
 // reset to the default name.
 func (g *Group) SetTableName(n string) {
 	g.tableName = n
+}
+
+type deletedGroup struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (u *deletedGroup) TableName() string {
+	return "iam_group_deleted"
 }

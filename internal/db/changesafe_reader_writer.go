@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package db
 
 import (
@@ -46,6 +49,10 @@ func (r *changeSafeDbwReader) SearchWhere(ctx context.Context, resources any, wh
 	return dbw.New(r.db.underlying.wrapped.Load()).SearchWhere(ctx, resources, where, args, opt...)
 }
 
+func (r *changeSafeDbwReader) Dialect() (_ dbw.DbType, rawName string, _ error) {
+	return r.db.underlying.wrapped.Load().DbType()
+}
+
 // changeSafeDbwWriter is a type that wraps a *db.Db as a dbw.Writer and ensures
 // that uses of the underlying database follows changes to the connection.
 type changeSafeDbwWriter struct {
@@ -68,7 +75,7 @@ func (w *changeSafeDbwWriter) Create(ctx context.Context, i any, opt ...dbw.Opti
 	return dbw.New(w.db.underlying.wrapped.Load()).Create(ctx, i, opt...)
 }
 
-func (w *changeSafeDbwWriter) CreateItems(ctx context.Context, createItems []any, opt ...dbw.Option) error {
+func (w *changeSafeDbwWriter) CreateItems(ctx context.Context, createItems any, opt ...dbw.Option) error {
 	return dbw.New(w.db.underlying.wrapped.Load()).CreateItems(ctx, createItems, opt...)
 }
 
@@ -76,7 +83,7 @@ func (w *changeSafeDbwWriter) Delete(ctx context.Context, i any, opt ...dbw.Opti
 	return dbw.New(w.db.underlying.wrapped.Load()).Delete(ctx, i, opt...)
 }
 
-func (w *changeSafeDbwWriter) DeleteItems(ctx context.Context, deleteItems []any, opt ...dbw.Option) (int, error) {
+func (w *changeSafeDbwWriter) DeleteItems(ctx context.Context, deleteItems any, opt ...dbw.Option) (int, error) {
 	return dbw.New(w.db.underlying.wrapped.Load()).DeleteItems(ctx, deleteItems, opt...)
 }
 
@@ -100,6 +107,10 @@ func (w *changeSafeDbwWriter) ScanRows(rows *sql.Rows, result any) error {
 	return dbw.New(w.db.underlying.wrapped.Load()).ScanRows(rows, result)
 }
 
-func (w *changeSafeDbwWriter) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...dbw.Option) (int, error) {
+func (w *changeSafeDbwWriter) Update(ctx context.Context, i any, fieldMaskPaths []string, setToNullPaths []string, opt ...dbw.Option) (int, error) {
 	return dbw.New(w.db.underlying.wrapped.Load()).Update(ctx, i, fieldMaskPaths, setToNullPaths, opt...)
+}
+
+func (w *changeSafeDbwWriter) Dialect() (_ dbw.DbType, rawName string, _ error) {
+	return w.db.underlying.wrapped.Load().DbType()
 }

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -22,10 +25,10 @@ type ClientCertificate struct {
 }
 
 // NewClientCertificate creates a new in memory ClientCertificate.
-func NewClientCertificate(certificate []byte, key KeySecret) (*ClientCertificate, error) {
+func NewClientCertificate(ctx context.Context, certificate []byte, key KeySecret) (*ClientCertificate, error) {
 	const op = "vault.NewClientCertificate"
 	if len(certificate) == 0 {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no certificate")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no certificate")
 	}
 
 	certificateCopy := make([]byte, len(certificate))
@@ -115,9 +118,9 @@ func (c *ClientCertificate) hmacCertificateKey(ctx context.Context, cipher wrapp
 	return nil
 }
 
-func (c *ClientCertificate) insertQuery() (query string, queryValues []interface{}) {
+func (c *ClientCertificate) insertQuery() (query string, queryValues []any) {
 	query = upsertClientCertQuery
-	queryValues = []interface{}{
+	queryValues = []any{
 		sql.Named("store_id", c.StoreId),
 		sql.Named("certificate", c.Certificate),
 		sql.Named("certificate_key", c.CtCertificateKey),
@@ -127,9 +130,9 @@ func (c *ClientCertificate) insertQuery() (query string, queryValues []interface
 	return
 }
 
-func (c *ClientCertificate) deleteQuery() (query string, queryValues []interface{}) {
+func (c *ClientCertificate) deleteQuery() (query string, queryValues []any) {
 	query = deleteClientCertQuery
-	queryValues = []interface{}{
+	queryValues = []any{
 		c.StoreId,
 	}
 	return

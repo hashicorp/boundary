@@ -1,0 +1,89 @@
+---
+layout: docs
+page_title: credential-libraries - Command
+description: >-
+  The "credential-libraries" command performs operations on credential library resources. Credential libraries provide credentials of the same type and access level.
+---
+
+# credential-libraries
+
+Command: `boundary credential-libraries`
+
+The `credential-libraries` command lets you perform operations on Boundary credential library resources.
+A credential library provides credentials for sessions.
+All credentials returned by a library must be equivalent from an access control perspective.
+
+A credential library is responsible for managing the lifecycle of the credentials it returns.
+For dynamic secrets, this includes creation, renewal, and revocation.
+For rotating credentials, this includes check-out, check-in, and rotation of secrets.
+The system retrieves credentials from a library for a session and notifies the library when the session has been terminated.
+A credential library belongs to a single credential store.
+
+## Examples
+
+The following example retrieves information for a credential library with the ID, `clvlt_QYnQPAjA24`:
+
+```shell-session
+$ boundary credential-libraries read -id clvlt_QYnQPAjA24
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Credential Library information:
+  Created Time:          Fri, 18 Aug 2023 16:22:29 PDT
+  Credential Store ID:   csvlt_5fvkRjCjou
+  ID:                    clvlt_QYnQPAjA24
+  Name:                  northwind dba
+  Type:                  vault-generic
+  Updated Time:          Fri, 18 Aug 2023 16:22:29 PDT
+  Version:               1
+
+  Scope:
+    ID:                  p_tnqESc86qE
+    Name:                db-project
+    Parent Scope ID:     o_4VUR6ZATqW
+    Type:                project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    HTTP Method:         GET
+    Path:                database/creds/dba
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary credential-libraries [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    create    Create a credential library
+    delete    Delete a credential library
+    list      List a credential library
+    read      Read a credential library
+    update    Update a credential library
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/credential-libraries/create)
+- [delete](/boundary/docs/commands/credential-libraries/delete)
+- [list](/boundary/docs/commands/credential-libraries/list)
+- [read](/boundary/docs/commands/credential-libraries/read)
+- [update](/boundary/docs/commands/credential-libraries/update)

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package credentialstores_test
 
 import (
@@ -7,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/credentialstores"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/db"
@@ -35,7 +39,7 @@ func TestList(t *testing.T) {
 	var expected []*credentialstores.CredentialStore
 	for i := 0; i < 10; i++ {
 		_, tok := vaultServ.CreateToken(t)
-		expected = append(expected, &credentialstores.CredentialStore{Name: fmt.Sprint(i), Attributes: map[string]interface{}{
+		expected = append(expected, &credentialstores.CredentialStore{Name: fmt.Sprint(i), Attributes: map[string]any{
 			"address": vaultServ.Addr,
 			"token":   tok,
 		}})
@@ -135,7 +139,7 @@ func TestCrud(t *testing.T) {
 	// credential store with an expired token is correctly returned over the API
 	rw := db.New(tc.DbConn())
 	num, err := rw.Exec(tc.Context(), "update credential_vault_token set status = ? where store_id = ?",
-		[]interface{}{vault.ExpiredToken, cs.GetItem().Id})
+		[]any{vault.ExpiredToken, cs.GetItem().Id})
 	require.NoError(err)
 	assert.Equal(1, num)
 	vaultServ.RevokeToken(t, vaultTok)
@@ -207,7 +211,7 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, err = c.Read(tc.Context(), vault.CredentialStorePrefix+"_doesntexis")
+	_, err = c.Read(tc.Context(), globals.VaultCredentialStorePrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

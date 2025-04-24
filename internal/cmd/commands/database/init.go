@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package database
 
 import (
@@ -34,16 +37,17 @@ type InitCommand struct {
 	// deferred function on the Run method.
 	configWrapperCleanupFunc func() error
 
-	flagConfig                       []string
-	flagConfigKms                    string
-	flagLogLevel                     string
-	flagLogFormat                    string
-	flagMigrationUrl                 string
-	flagSkipInitialLoginRoleCreation bool
-	flagSkipAuthMethodCreation       bool
-	flagSkipScopesCreation           bool
-	flagSkipHostResourcesCreation    bool
-	flagSkipTargetCreation           bool
+	flagConfig                                   []string
+	flagConfigKms                                string
+	flagLogLevel                                 string
+	flagLogFormat                                string
+	flagMigrationUrl                             string
+	flagSkipInitialLoginRoleCreation             bool
+	flagSkipInitialAuthenticatedUserRoleCreation bool
+	flagSkipAuthMethodCreation                   bool
+	flagSkipScopesCreation                       bool
+	flagSkipHostResourcesCreation                bool
+	flagSkipTargetCreation                       bool
 }
 
 func (c *InitCommand) Synopsis() string {
@@ -121,31 +125,37 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-initial-login-role-creation",
 		Target: &c.flagSkipInitialLoginRoleCreation,
-		Usage:  "If not set, a default role allowing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+		Usage:  "If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-initial-authenticated-user-role-creation",
+		Target: &c.flagSkipInitialAuthenticatedUserRoleCreation,
+		Usage:  "If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-auth-method-creation",
 		Target: &c.flagSkipAuthMethodCreation,
-		Usage:  "If not set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+		Usage:  "If set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-scopes-creation",
 		Target: &c.flagSkipScopesCreation,
-		Usage:  "If not set, scopes will not be created as part of initialization.",
+		Usage:  "If set, scopes will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-host-resources-creation",
 		Target: &c.flagSkipHostResourcesCreation,
-		Usage:  "If not set, host resources (host catalog, host set, host) will not be created as part of initialization.",
+		Usage:  "If set, host resources (host catalog, host set, host) will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-target-creation",
 		Target: &c.flagSkipTargetCreation,
-		Usage:  "If not set, a target will not be created as part of initialization.",
+		Usage:  "If set, a target will not be created as part of initialization.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -197,7 +207,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 	serverName = fmt.Sprintf("%s/boundary-database-init", serverName)
-	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	if err := c.SetupEventing(c.Context, c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
@@ -297,9 +307,9 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Info("Global-scope KMS keys successfully created.")
 	}
 
-	var jsonMap map[string]interface{}
+	var jsonMap map[string]any
 	if base.Format(c.UI) == "json" {
-		jsonMap = make(map[string]interface{})
+		jsonMap = make(map[string]any)
 		defer func() {
 			b, err := base.JsonFormatter{}.Format(jsonMap)
 			if err != nil {
@@ -327,9 +337,30 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateInitialRoleTableOutput(roleInfo))
+		c.UI.Output(generateInitialLoginRoleTableOutput(roleInfo))
 	case "json":
 		jsonMap["login_role"] = roleInfo
+	}
+
+	if c.flagSkipInitialAuthenticatedUserRoleCreation {
+		return base.CommandSuccess
+	}
+
+	role, err = c.CreateInitialAuthenticatedUserRole(c.Context)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial global-scoped authenticated user role: %w", err).Error())
+		return base.CommandCliError
+	}
+
+	roleInfo = &RoleInfo{
+		RoleId: role.PublicId,
+		Name:   role.Name,
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialAuthenticatedUserRoleOutput(roleInfo))
+	case "json":
+		jsonMap["authenticated_user_role"] = roleInfo
 	}
 
 	if c.flagSkipAuthMethodCreation {
@@ -426,26 +457,42 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	c.DevTargetSessionConnectionLimit = -1
-	t, err := c.CreateInitialTarget(c.Context)
+	ta, err := c.CreateInitialTargetWithAddress(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())
 		return base.CommandCliError
 	}
+	taInfo := &TargetInfo{
+		TargetId:               ta.GetPublicId(),
+		DefaultPort:            ta.GetDefaultPort(),
+		SessionMaxSeconds:      ta.GetSessionMaxSeconds(),
+		SessionConnectionLimit: ta.GetSessionConnectionLimit(),
+		Type:                   string(ta.GetType()),
+		ScopeId:                ta.GetProjectId(),
+		Name:                   ta.GetName(),
+	}
 
-	targetInfo := &TargetInfo{
-		TargetId:               c.DevTargetId,
-		DefaultPort:            t.GetDefaultPort(),
-		SessionMaxSeconds:      t.GetSessionMaxSeconds(),
-		SessionConnectionLimit: t.GetSessionConnectionLimit(),
-		Type:                   "tcp",
-		ScopeId:                c.DevProjectId,
-		Name:                   t.GetName(),
+	ths, err := c.CreateInitialTargetWithHostSources(c.Context)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial secondary target: %w", err).Error())
+		return base.CommandCliError
+	}
+	thsInfo := &TargetInfo{
+		TargetId:               ths.GetPublicId(),
+		DefaultPort:            ths.GetDefaultPort(),
+		SessionMaxSeconds:      ths.GetSessionMaxSeconds(),
+		SessionConnectionLimit: ths.GetSessionConnectionLimit(),
+		Type:                   string(ths.GetType()),
+		ScopeId:                ths.GetProjectId(),
+		Name:                   ths.GetName(),
 	}
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateInitialTargetTableOutput(targetInfo))
+		c.UI.Output(generateInitialTargetTableOutput(taInfo))
+		c.UI.Output(generateInitialTargetTableOutput(thsInfo))
 	case "json":
-		jsonMap["target"] = targetInfo
+		jsonMap["target"] = taInfo
+		jsonMap["target_secondary"] = thsInfo
 	}
 
 	return base.CommandSuccess
@@ -481,7 +528,7 @@ func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 	const op = "database.(InitCommand).verifyOplogIsEmpty"
 	underlyingDB, err := c.Database.SqlDB(ctx)
 	if err != nil {
-		return errors.NewDeprecated(errors.Internal, op, "unable to retreive db", errors.WithWrap(err))
+		return errors.New(ctx, errors.Internal, op, "unable to retrieve db", errors.WithWrap(err))
 	}
 	r := underlyingDB.QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
 	if r.Err() != nil {
@@ -492,7 +539,7 @@ func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 		return errors.Wrap(ctx, err, op)
 	}
 	if !empty {
-		return errors.NewDeprecated(errors.MigrationIntegrity, op, "oplog_entry is not empty")
+		return errors.New(ctx, errors.MigrationIntegrity, op, "oplog_entry is not empty")
 	}
 	return nil
 }

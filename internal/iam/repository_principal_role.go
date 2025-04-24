@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -5,9 +8,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -33,25 +36,25 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing any of users, groups, or managed groups to add")
 	}
 
-	newUserRoles := make([]interface{}, 0, len(userIds))
+	newUserRoles := make([]*UserRole, 0, len(userIds))
 	for _, id := range userIds {
-		usrRole, err := NewUserRole(roleId, id)
+		usrRole, err := NewUserRole(ctx, roleId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory user role"))
 		}
 		newUserRoles = append(newUserRoles, usrRole)
 	}
-	newGrpRoles := make([]interface{}, 0, len(groupIds))
+	newGrpRoles := make([]*GroupRole, 0, len(groupIds))
 	for _, id := range groupIds {
-		grpRole, err := NewGroupRole(roleId, id)
+		grpRole, err := NewGroupRole(ctx, roleId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group role"))
 		}
 		newGrpRoles = append(newGrpRoles, grpRole)
 	}
-	newManagedGrpRoles := make([]interface{}, 0, len(managedGroupIds))
+	newManagedGrpRoles := make([]*ManagedGroupRole, 0, len(managedGroupIds))
 	for _, id := range managedGroupIds {
-		managedGrpRole, err := NewManagedGroupRole(roleId, id)
+		managedGrpRole, err := NewManagedGroupRole(ctx, roleId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory managed group role"))
 		}
@@ -335,25 +338,25 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	role := allocRole()
 	role.PublicId = roleId
 
-	deleteUserRoles := make([]interface{}, 0, len(userIds))
+	deleteUserRoles := make([]*UserRole, 0, len(userIds))
 	for _, id := range userIds {
-		usrRole, err := NewUserRole(roleId, id)
+		usrRole, err := NewUserRole(ctx, roleId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory user role"))
 		}
 		deleteUserRoles = append(deleteUserRoles, usrRole)
 	}
-	deleteGrpRoles := make([]interface{}, 0, len(groupIds))
+	deleteGrpRoles := make([]*GroupRole, 0, len(groupIds))
 	for _, id := range groupIds {
-		grpRole, err := NewGroupRole(roleId, id)
+		grpRole, err := NewGroupRole(ctx, roleId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group role"))
 		}
 		deleteGrpRoles = append(deleteGrpRoles, grpRole)
 	}
-	deleteManagedGrpRoles := make([]interface{}, 0, len(managedGroupIds))
+	deleteManagedGrpRoles := make([]*ManagedGroupRole, 0, len(managedGroupIds))
 	for _, id := range managedGroupIds {
-		managedGrpRole, err := NewManagedGroupRole(roleId, id)
+		managedGrpRole, err := NewManagedGroupRole(ctx, roleId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory managed group role"))
 		}
@@ -453,7 +456,7 @@ func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	var roles []*PrincipalRole
-	if err := r.list(ctx, &roles, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
+	if err := r.list(ctx, &roles, "role_id = ?", []any{roleId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup roles"))
 	}
 	principals := make([]*PrincipalRole, 0, len(roles))
@@ -462,12 +465,12 @@ func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt 
 }
 
 type PrincipalSet struct {
-	AddUserRoles            []interface{}
-	AddGroupRoles           []interface{}
-	AddManagedGroupRoles    []interface{}
-	DeleteUserRoles         []interface{}
-	DeleteGroupRoles        []interface{}
-	DeleteManagedGroupRoles []interface{}
+	AddUserRoles            []*UserRole
+	AddGroupRoles           []*GroupRole
+	AddManagedGroupRoles    []*ManagedGroupRole
+	DeleteUserRoles         []*UserRole
+	DeleteGroupRoles        []*GroupRole
+	DeleteManagedGroupRoles []*ManagedGroupRole
 	// unchangedPrincipalRoles is set iff there are no changes, that is, the
 	// length of all other members is zero
 	UnchangedPrincipalRoles []*PrincipalRole
@@ -500,66 +503,66 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is unknown principal type %s", p.PrincipalId, p.GetType()))
 		}
 	}
-	var newUserRoles []interface{}
+	var newUserRoles []*UserRole
 	userIdsMap := map[string]struct{}{}
 	for _, id := range userIds {
 		userIdsMap[id] = struct{}{}
 		if _, ok := existingUsers[id]; !ok {
-			usrRole, err := NewUserRole(role.PublicId, id)
+			usrRole, err := NewUserRole(ctx, role.PublicId, id)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory user role for add"))
 			}
 			newUserRoles = append(newUserRoles, usrRole)
 		}
 	}
-	var newGrpRoles []interface{}
+	var newGrpRoles []*GroupRole
 	groupIdsMap := map[string]struct{}{}
 	for _, id := range groupIds {
 		groupIdsMap[id] = struct{}{}
 		if _, ok := existingGroups[id]; !ok {
-			grpRole, err := NewGroupRole(role.PublicId, id)
+			grpRole, err := NewGroupRole(ctx, role.PublicId, id)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group role for add"))
 			}
 			newGrpRoles = append(newGrpRoles, grpRole)
 		}
 	}
-	var newManagedGrpRoles []interface{}
+	var newManagedGrpRoles []*ManagedGroupRole
 	managedGroupIdsMap := map[string]struct{}{}
 	for _, id := range managedGroupIds {
 		managedGroupIdsMap[id] = struct{}{}
 		if _, ok := existingManagedGroups[id]; !ok {
-			managedGrpRole, err := NewManagedGroupRole(role.PublicId, id)
+			managedGrpRole, err := NewManagedGroupRole(ctx, role.PublicId, id)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory managed group role for add"))
 			}
 			newManagedGrpRoles = append(newManagedGrpRoles, managedGrpRole)
 		}
 	}
-	var deleteUserRoles []interface{}
+	var deleteUserRoles []*UserRole
 	for _, p := range existingUsers {
 		if _, ok := userIdsMap[p.PrincipalId]; !ok {
-			usrRole, err := NewUserRole(p.GetRoleId(), p.GetPrincipalId())
+			usrRole, err := NewUserRole(ctx, p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory user role for delete"))
 			}
 			deleteUserRoles = append(deleteUserRoles, usrRole)
 		}
 	}
-	var deleteGrpRoles []interface{}
+	var deleteGrpRoles []*GroupRole
 	for _, p := range existingGroups {
 		if _, ok := groupIdsMap[p.PrincipalId]; !ok {
-			grpRole, err := NewGroupRole(p.GetRoleId(), p.GetPrincipalId())
+			grpRole, err := NewGroupRole(ctx, p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group role for delete"))
 			}
 			deleteGrpRoles = append(deleteGrpRoles, grpRole)
 		}
 	}
-	var deleteManagedGrpRoles []interface{}
+	var deleteManagedGrpRoles []*ManagedGroupRole
 	for _, p := range existingManagedGroups {
 		if _, ok := managedGroupIdsMap[p.PrincipalId]; !ok {
-			managedGrpRole, err := NewManagedGroupRole(p.GetRoleId(), p.GetPrincipalId())
+			managedGrpRole, err := NewManagedGroupRole(ctx, p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory managed group role for delete"))
 			}
@@ -592,17 +595,22 @@ func splitPrincipals(ctx context.Context, principals []string) (users, groups, m
 	const op = "iam.splitPrincipals"
 	for _, principal := range principals {
 		switch {
-		case strings.HasPrefix(principal, UserPrefix):
+		case strings.HasPrefix(principal, globals.UserPrefix):
 			if users == nil {
 				users = make([]string, 0, len(principals))
 			}
 			users = append(users, principal)
-		case strings.HasPrefix(principal, GroupPrefix):
+		case strings.HasPrefix(principal, globals.GroupPrefix):
 			if groups == nil {
 				groups = make([]string, 0, len(principals))
 			}
 			groups = append(groups, principal)
-		case strings.HasPrefix(principal, intglobals.OidcManagedGroupPrefix):
+		case strings.HasPrefix(principal, globals.OidcManagedGroupPrefix):
+			if managedGroups == nil {
+				managedGroups = make([]string, 0, len(principals))
+			}
+			managedGroups = append(managedGroups, principal)
+		case strings.HasPrefix(principal, globals.LdapManagedGroupPrefix):
 			if managedGroups == nil {
 				managedGroups = make([]string, 0, len(principals))
 			}

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -17,7 +20,7 @@ func (r *Repository) lookupClientStore(ctx context.Context, publicId string) (*c
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	ps := allocClientStore()
-	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ?", []interface{}{publicId}); err != nil {
+	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ?", []any{publicId}); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
@@ -153,7 +156,7 @@ func (ps *clientStore) client(ctx context.Context) (vaultClient, error) {
 
 	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(ps.WorkerFilter))
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
 	}
 	return client, nil
 }

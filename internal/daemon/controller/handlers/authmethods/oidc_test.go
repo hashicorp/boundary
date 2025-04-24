@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authmethods_test
 
 import (
@@ -13,8 +16,12 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 
+	am "github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -54,8 +61,11 @@ type setup struct {
 	iamRepo                     *iam.Repository
 	iamRepoFn                   common.IamRepoFactory
 	oidcRepoFn                  common.OidcAuthRepoFactory
+	ldapRepoFn                  common.LdapAuthRepoFactory
 	pwRepoFn                    common.PasswordAuthRepoFactory
 	atRepoFn                    common.AuthTokenRepoFactory
+	authMethodRepoFn            common.AuthMethodRepoFactory
+	maxPageSize                 int
 	org                         *iam.Scope
 	proj                        *iam.Scope
 	databaseWrapper             wrapping.Wrapper
@@ -88,18 +98,35 @@ func getSetup(t *testing.T) setup {
 	ret.oidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
 	}
+	ret.ldapRepoFn = func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
+	}
 	ret.pwRepoFn = func() (*password.Repository, error) {
-		return password.NewRepository(ret.rw, ret.rw, ret.kmsCache)
+		return password.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
 	}
 	ret.atRepoFn = func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ret.rw, ret.rw, ret.kmsCache)
+		return authtoken.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
 	}
+	ret.authMethodRepoFn = func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
+	}
+	ret.maxPageSize = 1000
 
 	ret.org, ret.proj = iam.TestScopes(t, ret.iamRepo)
 	ret.databaseWrapper, err = ret.kmsCache.GetWrapper(ret.ctx, ret.org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(err)
 
-	ret.authMethodService, err = authmethods.NewService(ret.kmsCache, ret.pwRepoFn, ret.oidcRepoFn, ret.iamRepoFn, ret.atRepoFn)
+	ret.authMethodService, err = authmethods.NewService(
+		ret.ctx,
+		ret.kmsCache,
+		ret.pwRepoFn,
+		ret.oidcRepoFn,
+		ret.iamRepoFn,
+		ret.atRepoFn,
+		ret.ldapRepoFn,
+		ret.authMethodRepoFn,
+		uint(ret.maxPageSize),
+	)
 	require.NoError(err)
 
 	ret.testProvider = capoidc.StartTestProvider(t)
@@ -119,6 +146,7 @@ func getSetup(t *testing.T) setup {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, ret.testController.URL)[0]),
 		oidc.WithSigningAlgs(oidc.Alg(ret.testProviderAlg)),
 		oidc.WithCertificates(ret.testProviderCaCert...),
+		oidc.WithPrompts(oidc.Consent),
 	)
 
 	ret.testProviderAllowedRedirect = fmt.Sprintf(oidc.CallbackEndpoint, ret.testController.URL)
@@ -145,21 +173,27 @@ func TestList_FilterNonPublic(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kmsCache)
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kmsCache)
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
 
-	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
 	// 1 Public
@@ -181,7 +215,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 	}
 
-	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new auth_method service.")
 
 	req := &pbs.ListAuthMethodsRequest{
@@ -196,7 +230,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 	}{
 		{
 			name:      "unauthenticated",
-			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)),
+			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)),
 			respCount: 1,
 		},
 		{
@@ -236,7 +270,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 }
 
 func TestUpdate_OIDC(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -247,16 +281,22 @@ func TestUpdate_OIDC(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -266,6 +306,7 @@ func TestUpdate_OIDC(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
+	tpPrompt := capoidc.None
 
 	defaultAttributes := &pb.AuthMethod_OidcAuthMethodsAttributes{
 		OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
@@ -275,6 +316,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			ApiUrlPrefix:      wrapperspb.String("https://example.com"),
 			IdpCaCerts:        []string{tp.CACert()},
 			SigningAlgorithms: []string{string(tpAlg)},
+			Prompts:           []string{string(tpPrompt)},
 		},
 	}
 	defaultReadAttributes := &pb.AuthMethod_OidcAuthMethodsAttributes{
@@ -287,6 +329,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			CallbackUrl:       "https://example.com/v1/auth-methods/oidc:authenticate:callback",
 			IdpCaCerts:        []string{tp.CACert()},
 			SigningAlgorithms: []string{string(tpAlg)},
+			Prompts:           []string{string(tpPrompt)},
 		},
 	}
 
@@ -450,9 +493,9 @@ func TestUpdate_OIDC(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Only non-existant paths in Mask",
+			name: "Only non-existent paths in Mask",
 			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
@@ -576,7 +619,7 @@ func TestUpdate_OIDC(t *testing.T) {
 		{
 			name: "Update a Non Existing AuthMethod",
 			req: &pbs.UpdateAuthMethodRequest{
-				Id: password.AuthMethodPrefix + "_DoesntExis",
+				Id: globals.PasswordAuthMethodPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -594,7 +637,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.AuthMethod{
-					Id:          password.AuthMethodPrefix + "_somethinge",
+					Id:          globals.PasswordAuthMethodPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -980,6 +1023,53 @@ func TestUpdate_OIDC(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Unsupported Prompts",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.prompts"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							Prompts: []string{string("invalid")},
+						},
+					},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Update Prompt With Valid Values",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.prompts"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							Prompts: []string{string(oidc.Consent), string(oidc.SelectAccount)},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        oidc.Subtype.String(),
+					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
+						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
+						f.Prompts = []string{string(oidc.Consent), string(oidc.SelectAccount)}
+						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
+					}(),
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1010,7 +1100,15 @@ func TestUpdate_OIDC(t *testing.T) {
 			if tc.res == nil {
 				require.Nil(got)
 			}
-			cmpOptions := []cmp.Option{protocmp.Transform()}
+			cmpOptions := []cmp.Option{
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			}
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -1055,11 +1153,17 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kmsCache)
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -1114,7 +1218,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		},
 	}
 
-	tested, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	tested, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 	cases := []struct {
 		name    string
@@ -1210,11 +1314,32 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Empty(t, cmp.Diff(dryUpdated.GetItem(), tc.want, protocmp.Transform(), protocmp.SortRepeatedFields(dryUpdated)))
+			assert.Empty(t, cmp.Diff(
+				dryUpdated.GetItem(),
+				tc.want,
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(dryUpdated),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			))
 
 			got, err := tested.GetAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.GetAuthMethodRequest{Id: tc.id})
 			require.NoError(t, err)
-			assert.Empty(t, cmp.Diff(got.GetItem(), wireAuthMethod, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got.GetItem(),
+				wireAuthMethod,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			))
 		})
 	}
 }
@@ -1231,11 +1356,17 @@ func TestChangeState_OIDC(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kmsCache)
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -1260,7 +1391,7 @@ func TestChangeState_OIDC(t *testing.T) {
 	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "different_client_id", oidc.ClientSecret(tpClientSecret),
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
-	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	wantTemplate := &pb.AuthMethod{
@@ -1471,7 +1602,18 @@ func TestChangeState_OIDC(t *testing.T) {
 			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
 			assert.Empty(
-				cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url")),
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url"),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+					cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+						return a.String() < b.String()
+					}),
+				),
 				"ChangeState() got response %q, wanted %q", got, tc.res,
 			)
 		})
@@ -1482,9 +1624,10 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 	s := getSetup(t)
 
 	cases := []struct {
-		name    string
-		request *pbs.AuthenticateRequest
-		wantErr error
+		name       string
+		request    *pbs.AuthenticateRequest
+		beforeTest func(t *testing.T)
+		wantErr    error
 	}{
 		{
 			name: "no command",
@@ -1515,6 +1658,57 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 				AuthMethodId: s.authMethod.GetPublicId(),
 			},
 		},
+		{
+			name: "auth method does not exist",
+			request: &pbs.AuthenticateRequest{
+				Command:      "start",
+				AuthMethodId: "amoidc_1234",
+				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
+					OidcStartAttributes: &pbs.OidcStartAttributes{
+						RoundtripPayload: func() *structpb.Struct {
+							ret, err := structpb.NewStruct(map[string]any{
+								"foo": "bar",
+								"baz": true,
+							})
+							require.NoError(t, err)
+							return ret
+						}(),
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "auth method is inactive",
+			beforeTest: func(t *testing.T) {
+				r, err := s.oidcRepoFn()
+				require.NoError(t, err)
+				_, err = r.MakeInactive(s.ctx, s.authMethod.GetPublicId(), 2)
+				require.NoError(t, err)
+
+				t.Cleanup(func() {
+					_, err = r.MakePublic(s.ctx, s.authMethod.GetPublicId(), 3)
+					require.NoError(t, err)
+				})
+			},
+			request: &pbs.AuthenticateRequest{
+				Command:      "start",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
+					OidcStartAttributes: &pbs.OidcStartAttributes{
+						RoundtripPayload: func() *structpb.Struct {
+							ret, err := structpb.NewStruct(map[string]any{
+								"foo": "bar",
+								"baz": true,
+							})
+							require.NoError(t, err)
+							return ret
+						}(),
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.FailedPrecondition),
+		},
 		// NOTE: We can't really test bad roundtrip payload attributes because
 		// any type structpb lets us use in creation will be valid for JSON, and
 		// attempting to force with e.g. json.RawMessage causes structpb to
@@ -1535,7 +1729,7 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
 					OidcStartAttributes: &pbs.OidcStartAttributes{
 						RoundtripPayload: func() *structpb.Struct {
-							ret, err := structpb.NewStruct(map[string]interface{}{
+							ret, err := structpb.NewStruct(map[string]any{
 								"foo": "bar",
 								"baz": true,
 							})
@@ -1550,6 +1744,10 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.beforeTest != nil {
+				tc.beforeTest(t)
+			}
+
 			assert, require := assert.New(t), require.New(t)
 			got, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()), tc.request)
 			if tc.wantErr != nil {
@@ -1570,8 +1768,9 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 }
 
 func TestAuthenticate_OIDC_Token(t *testing.T) {
+	ctx := context.Background()
 	s := getSetup(t)
-	testAtRepo, err := authtoken.NewRepository(s.rw, s.rw, s.kmsCache)
+	testAtRepo, err := authtoken.NewRepository(ctx, s.rw, s.rw, s.kmsCache)
 	require.NoError(t, err)
 
 	// a reusable test authmethod for the unit tests
@@ -1618,7 +1817,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 				Command:      "token",
 				AuthMethodId: s.authMethod.GetPublicId(),
 			},
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "success",
@@ -1628,7 +1827,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
 					OidcAuthMethodAuthenticateTokenRequest: &pb.OidcAuthMethodAuthenticateTokenRequest{
 						TokenId: func() string {
-							tokenPublicId, err := authtoken.NewAuthTokenId()
+							tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, 200*time.Second, tokenPublicId)
@@ -1645,7 +1844,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
 					OidcAuthMethodAuthenticateTokenRequest: &pb.OidcAuthMethodAuthenticateTokenRequest{
 						TokenId: func() string {
-							tokenPublicId, err := authtoken.NewAuthTokenId()
+							tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, -20*time.Second, tokenPublicId)
@@ -1653,7 +1852,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 					},
 				},
 			},
-			wantErrMatch: errors.T(errors.AuthAttemptExpired),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
 		},
 		{
 			name: "invalid-token-id-not-encoded-encrypted-proto",
@@ -1666,7 +1865,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 					},
 				},
 			},
-			wantErrMatch: errors.T(errors.Unknown),
+			wantErr: handlers.ApiErrorWithCode(codes.Internal),
 		},
 	}
 	for _, tc := range cases {

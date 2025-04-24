@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 -- host_plugin_host_set_with_value_obj is useful for reading a plugin host set with its
@@ -28,7 +31,7 @@ create view host_plugin_host_set_with_value_obj as
     left outer join host_plugin_set_member hpsm        on hs.public_id = hpsm.set_id
   group by hs.public_id, hc.plugin_id;
 comment on view host_plugin_host_set_with_value_obj is
-'host plugin host set with its associated value objects';
+  'host plugin host set with its associated value objects';
 
 -- REPLACED in 10_plugin_host_secrets_hmac.up.sql
 create view host_plugin_catalog_with_secret as

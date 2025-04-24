@@ -1,10 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +22,7 @@ var _ MappingOverride = unknownMapper(0)
 func TestValidMappingOverrides(t *testing.T) {
 	tests := []struct {
 		m    MappingOverride
-		ct   credential.Type
+		ct   globals.CredentialType
 		want bool
 	}{
 		{
@@ -29,42 +32,42 @@ func TestValidMappingOverrides(t *testing.T) {
 		},
 		{
 			m:    nil,
-			ct:   credential.UnspecifiedType,
+			ct:   globals.UnspecifiedCredentialType,
 			want: true,
 		},
 		{
 			m:    nil,
-			ct:   credential.UsernamePasswordType,
+			ct:   globals.UsernamePasswordCredentialType,
 			want: true,
 		},
 		{
 			m:    unknownMapper(1),
-			ct:   credential.UnspecifiedType,
+			ct:   globals.UnspecifiedCredentialType,
 			want: false,
 		},
 		{
 			m:    unknownMapper(1),
-			ct:   credential.UsernamePasswordType,
+			ct:   globals.UsernamePasswordCredentialType,
 			want: false,
 		},
 		{
 			m:    allocUsernamePasswordOverride(),
-			ct:   credential.UnspecifiedType,
+			ct:   globals.UnspecifiedCredentialType,
 			want: false,
 		},
 		{
 			m:    allocUsernamePasswordOverride(),
-			ct:   credential.UsernamePasswordType,
+			ct:   globals.UsernamePasswordCredentialType,
 			want: true,
 		},
 		{
 			m:    allocSshPrivateKeyOverride(),
-			ct:   credential.UnspecifiedType,
+			ct:   globals.UnspecifiedCredentialType,
 			want: false,
 		},
 		{
 			m:    allocSshPrivateKeyOverride(),
-			ct:   credential.SshPrivateKeyType,
+			ct:   globals.SshPrivateKeyCredentialType,
 			want: true,
 		},
 	}

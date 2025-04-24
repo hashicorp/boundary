@@ -1,0 +1,223 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package worker.servers.services.v1;
+
+import "controller/api/resources/hostcatalogs/v1/host_catalog.proto";
+import "controller/api/resources/hostsets/v1/host_set.proto";
+import "controller/api/resources/plugins/v1/plugin.proto";
+import "google/protobuf/struct.proto";
+import "plugin/v1/host_plugin_service.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/worker/servers/services;services";
+
+// HostService describes the service for host plugins.
+service HostService {
+  // NormalizeCatalogData is a hook that passes attributes to the plugin and
+  // allows those values to be normalized prior to creating or updating those
+  // values in the host catalog data.
+  //
+  // NormalizeCatalogData is useful for converting the values of attributes from
+  // a certain format/type to an expected value format/type. This is useful
+  // during migration of values.
+  //
+  // NormalizeCatalogData is called before the values of attributes are persisted.
+  // All normalized values will be persisted in Boundary and returned
+  // to all clients.
+  //
+  // NormalizeCatalogData could affect other clients. For example, on Terraform,
+  // if data is passed to Boundary and then normalized into a new data
+  // structure, it could cause diffs in Terraform for unchanged values.
+  // This is because, the data structure in Terraform's state will now be
+  // different from the normalized data structure returned from Boundary.
+  //
+  // NormalizeCatalogData is called before:
+  // * OnCreateCatalog
+  // * OnUpdateCatalog
+  rpc NormalizeCatalogData(NormalizeCatalogDataRequest) returns (NormalizeCatalogDataResponse);
+
+  // OnCreateCatalog is a hook that runs when a
+  // host catalog is created.
+  rpc OnCreateCatalog(OnCreateCatalogRequest) returns (OnCreateCatalogResponse);
+
+  // OnUpdateCatalog is a hook that runs when a host catalog is
+  // updated.
+  rpc OnUpdateCatalog(OnUpdateCatalogRequest) returns (OnUpdateCatalogResponse);
+
+  // OnDeleteCatalog is a hook that runs when a host catalog is
+  // deleted.
+  rpc OnDeleteCatalog(OnDeleteCatalogRequest) returns (OnDeleteCatalogResponse);
+
+  // NormalizeSetData is a hook that passes attributes to the plugin and
+  // allows those values to be normalized prior to creating or updating those
+  // values in the host set data.
+  //
+  // NormalizeSetData is useful for converting the values of attributes from
+  // a certain format/type to an expected value format/type. This is useful
+  // during migration of values.
+  //
+  // NormalizeSetData is called before the values of attributes are persisted.
+  // All normalized values will be persisted in Boundary and returned
+  // to all clients.
+  //
+  // NormalizeSetData could affect other clients. For example, on Terraform,
+  // if data is passed to Boundary and then normalized into a new data
+  // structure, it could cause diffs in Terraform for unchanged values.
+  // This is because, the data structure in Terraform's state will now be
+  // different from the normalized data structure returned from Boundary.
+  //
+  // NormalizeSetData is called before:
+  // * OnCreateSet
+  // * OnUpdateSet
+  rpc NormalizeSetData(NormalizeSetDataRequest) returns (NormalizeSetDataResponse);
+
+  // OnCreateSet is a hook that runs when a host set is created.
+  rpc OnCreateSet(OnCreateSetRequest) returns (OnCreateSetResponse);
+
+  // OnUpdateSet is a hook that runs when a host set is updated.
+  rpc OnUpdateSet(OnUpdateSetRequest) returns (OnUpdateSetResponse);
+
+  // OnDeleteSet is a hook that runs when a host set is deleted.
+  rpc OnDeleteSet(OnDeleteSetRequest) returns (OnDeleteSetResponse);
+
+  // ListHosts looks up all the hosts in the provided host sets.
+  rpc ListHosts(ListHostsRequest) returns (ListHostsResponse);
+}
+
+message NormalizeCatalogDataRequest {
+  // The incoming attributes in the create or update request.
+  google.protobuf.Struct attributes = 100;
+
+  // The plugin information for this request.
+  controller.api.resources.plugins.v1.PluginInfo plugin = 110;
+}
+
+message NormalizeCatalogDataResponse {
+  // Outgoing attributes. If nil, no changes will be recorded. If non-nil, the
+  // values here will be used in place of the original set of attributes.
+  google.protobuf.Struct attributes = 100;
+}
+
+message OnCreateCatalogRequest {
+  // The host catalog to create. The request may contain optional
+  // secret data to help authenticate the request against a cloud
+  // API.
+  controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
+}
+
+message OnCreateCatalogResponse {
+  // Secret data to persist encrypted within Boundary. This should be used to
+  // store authentication data and other necessary configuration to be used in
+  // later hooks and calls. Returning an error from the call will cause this
+  // data to not be persisted. If this is nil, nothing is written.
+  plugin.v1.HostCatalogPersisted persisted = 10;
+}
+
+message OnUpdateCatalogRequest {
+  // The existing state of the catalog.
+  controller.api.resources.hostcatalogs.v1.HostCatalog current_catalog = 10;
+
+  // The requested new state of the catalog. This field may contain optional
+  // secret data that may have been updated from old authentication data
+  // contained within the persisted state.
+  controller.api.resources.hostcatalogs.v1.HostCatalog new_catalog = 20;
+
+  // The existing persisted secret data.
+  plugin.v1.HostCatalogPersisted persisted = 30;
+}
+
+message OnUpdateCatalogResponse {
+  // The updated secret data to persist encrypted within Boundary. If an error
+  // is returned, the update of the persisted data is aborted. If this is nil,
+  // no changes are written. To remove all values, simply return an allocated
+  // but empty map.
+  plugin.v1.HostCatalogPersisted persisted = 10;
+}
+
+message OnDeleteCatalogRequest {
+  // The existing state of the catalog to delete.
+  controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
+
+  // The host sets contained in the catalog being deleted.
+  repeated controller.api.resources.hostsets.v1.HostSet sets = 20;
+
+  // The existing persisted secret data.
+  plugin.v1.HostCatalogPersisted persisted = 30;
+}
+
+message OnDeleteCatalogResponse {}
+
+message NormalizeSetDataRequest {
+  // The incoming attributes in the create or update request.
+  google.protobuf.Struct attributes = 100;
+
+  // The plugin information for this request.
+  controller.api.resources.plugins.v1.PluginInfo plugin = 110;
+}
+
+message NormalizeSetDataResponse {
+  // Outgoing attributes. If nil, no changes will be recorded. If non-nil, the
+  // values here will be used in place of the original set of attributes.
+  google.protobuf.Struct attributes = 100;
+}
+
+message OnCreateSetRequest {
+  // The host catalog that the set belongs to.
+  controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
+
+  // The host set to create.
+  controller.api.resources.hostsets.v1.HostSet set = 20;
+
+  // The persisted data for the host catalog that the set belongs to.
+  plugin.v1.HostCatalogPersisted persisted = 30;
+}
+
+message OnCreateSetResponse {}
+
+message OnUpdateSetRequest {
+  // The host catalog that the set belongs to.
+  controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
+
+  // The existing state of the host set.
+  controller.api.resources.hostsets.v1.HostSet current_set = 20;
+
+  // The requested new state of the host set.
+  controller.api.resources.hostsets.v1.HostSet new_set = 30;
+
+  // The persisted data for the host catalog that the set belongs to.
+  plugin.v1.HostCatalogPersisted persisted = 40;
+}
+
+message OnUpdateSetResponse {}
+
+message OnDeleteSetRequest {
+  // The host catalog that the set belongs to.
+  controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
+
+  // The host set to delete.
+  controller.api.resources.hostsets.v1.HostSet set = 20;
+
+  // The persisted data for the host catalog that the set belongs to.
+  plugin.v1.HostCatalogPersisted persisted = 30;
+}
+
+message OnDeleteSetResponse {}
+
+message ListHostsRequest {
+  // The host catalog that the supplied host sets belong to.
+  controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
+
+  // The host sets to look up hosts for.
+  repeated controller.api.resources.hostsets.v1.HostSet sets = 20;
+
+  // The persisted data for the host catalog that the supplied host
+  // sets belong to.
+  plugin.v1.HostCatalogPersisted persisted = 30;
+}
+
+message ListHostsResponse {
+  // The hosts to return.
+  repeated plugin.v1.ListHostsResponseHost hosts = 10;
+}

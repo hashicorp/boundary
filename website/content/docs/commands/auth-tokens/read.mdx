@@ -1,0 +1,65 @@
+---
+layout: docs
+page_title: auth-tokens read - Command
+description: >-
+  The "auth-tokens read" command retrieves the details for an auth token resource.
+---
+
+# auth-tokens read
+
+Command: `boundary auth-tokens read`
+
+The `auth-tokens read` command reads an auth token given its ID.
+
+## Examples
+
+The following example reads the auth token details for an auth token with the ID `at_Gvd3jsqSO2`:
+
+```shell-session
+$ boundary auth-tokens read -id at_Gvd3jsqSO2
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Auth Token information:
+  Approximate Last Used Time:   Sun, 13 Aug 2023 18:04:34 PDT
+  Auth Method ID:               ampw_1234567890
+  Created Time:                 Sun, 13 Aug 2023 18:04:34 PDT
+  Expiration Time:              Sun, 20 Aug 2023 18:04:34 PDT
+  ID:                           at_Gvd3jsqSO2
+  Updated Time:                 Sun, 13 Aug 2023 18:04:34 PDT
+  User ID:                      u_1234567890
+
+  Scope:
+    ID:                         global
+    Name:                       global
+    Type:                       global
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    delete
+    delete:self
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-tokens read [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the auth token to read.
+
+@include 'cmd-option-note.mdx'

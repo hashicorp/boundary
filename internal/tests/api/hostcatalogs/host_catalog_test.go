@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package hostcatalogs_test
 
 import (
@@ -7,8 +10,8 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,18 +147,23 @@ func TestCrud(t *testing.T) {
 	hcClient := hostcatalogs.NewClient(client)
 
 	hc, err := hcClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
+	require.NoError(err)
 	checkCatalog("create", hc.Item, err, "foo", 1)
 
 	hc, err = hcClient.Read(tc.Context(), hc.Item.Id)
+	require.NoError(err)
 	checkCatalog("read", hc.Item, err, "foo", 1)
 
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("foo"))
+	require.NoError(err)
 	checkCatalog("update", hc.Item, err, "foo", 1)
 
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
+	require.NoError(err)
 	checkCatalog("update", hc.Item, err, "bar", 2)
 
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.DefaultName())
+	require.NoError(err)
 	checkCatalog("update", hc.Item, err, "", 3)
 
 	_, err = hcClient.Delete(tc.Context(), hc.Item.Id)
@@ -169,12 +177,12 @@ func TestCrud(t *testing.T) {
 
 	// Plugin catalogs
 	c, err := hcClient.Create(tc.Context(), "plugin", proj.GetPublicId(), hostcatalogs.WithName("pluginfoo"), hostcatalogs.WithPluginId("pl_1234567890"),
-		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
+		hostcatalogs.WithAttributes(map[string]any{"foo": "bar"}))
 	require.NoError(err)
 
 	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.WithName("bar"),
-		hostcatalogs.WithAttributes(map[string]interface{}{"key": "val", "foo": nil}),
-		hostcatalogs.WithSecrets(map[string]interface{}{"secretkey": "secretval"}))
+		hostcatalogs.WithAttributes(map[string]any{"key": "val", "foo": nil}),
+		hostcatalogs.WithSecrets(map[string]any{"secretkey": "secretval"}))
 	checkCatalog("update", c.Item, err, "bar", 2)
 	assert.Contains(c.Item.Attributes, "key")
 	assert.NotContains(c.Item.Attributes, "foo")
@@ -184,7 +192,7 @@ func TestCrud(t *testing.T) {
 	checkCatalog("update", c.Item, err, "", 3)
 
 	c, err = hcClient.Update(tc.Context(), c.Item.Id, 0, hostcatalogs.WithAutomaticVersioning(true),
-		hostcatalogs.WithSecrets(map[string]interface{}{
+		hostcatalogs.WithSecrets(map[string]any{
 			"key1": "val1",
 			"key2": "val2",
 		}))
@@ -239,7 +247,7 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, err = pc.Read(tc.Context(), static.HostCatalogPrefix+"_doesntexis")
+	_, err = pc.Read(tc.Context(), globals.StaticHostCatalogPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

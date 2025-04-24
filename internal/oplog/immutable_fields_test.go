@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oplog
 
 import (
@@ -5,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/hashicorp/boundary/internal/oplog/store"
@@ -13,12 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func Test_ImmutableFields(t *testing.T) {
 	testCtx := context.Background()
-	db := setup(t)
-	cipherer := testWrapper(t)
+	db, wrapper := setup(testCtx, t)
 
 	writer := &Writer{db}
 	id := testId(t)
@@ -47,7 +49,7 @@ func Test_ImmutableFields(t *testing.T) {
 			"deployment": []string{"amex"},
 			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
-		cipherer,
+		wrapper,
 		ticketer,
 	)
 	require.NoError(t, err)
@@ -56,8 +58,7 @@ func Test_ImmutableFields(t *testing.T) {
 		&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 	require.NoError(t, err)
 
-	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-	require.NoError(t, err)
+	future := timestamppb.New(time.Now().Add(time.Hour))
 
 	tests := []struct {
 		name      string

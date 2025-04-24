@@ -1,0 +1,109 @@
+---
+layout: docs
+page_title: auth-methods - Command
+description: >-
+  The "auth-methods" command performs operations on Boundary authentication method resources. Auth methods let users authenticate to Boundary.
+---
+
+# auth-methods
+
+Command: `boundary auth-methods`
+
+The `auth-methods` command lets you manage the auth method resource in Boundary. The auth
+method resource provides a mechanism for users to authenticate to
+Boundary. An auth method contains accounts which link an individual user to a
+set of credentials. They also contain managed groups which group accounts that satisfy
+specific criteria, and can be used as principals in roles.
+
+## Examples
+
+The following example configures an OIDC auth method where the Boundary cluster
+address is stored in the `BOUNDARY_ADDR`, the OIDC provider's client ID is
+stored in the `CLIENT_ID`, and the client secret is stored in the
+`CLIENT_SECRET` environment variables.
+
+```shell-session
+$ boundary auth-methods create oidc \
+   -issuer "https://dev-1sdl8c0z.us.auth0.com" \
+   -client-id "$CLIENT_ID" \
+   -client-secret "$CLIENT_SECRET" \
+   -signing-algorithm RS256 \
+   -api-url-prefix "$BOUNDARY_ADDR" \
+   -name "auth0"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Auth Method information:
+  Created Time:         Fri, 09 Sep 2022 11:11:55 MDT
+  ID:                   amoidc_40fr5jkLpk
+  Name:                 auth0
+  Type:                 oidc
+  Updated Time:         Fri, 09 Sep 2022 11:11:55 MDT
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud
+    callback_url:       https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback
+    client_id:          zaxJLTZh3n14WqSQ7qQ9onuIVRDaZdzz
+    client_secret_hmac: Qc3i8NdnTP6rl4JANIg-a2GXgRW5rEKTp2ReIK_BOng
+    issuer:             https://dev-1sdl8c0z.us.auth0.com
+    signing_algorithms: [RS256]
+    state:              inactive
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary auth-methods [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    change-state
+    create          Create an auth method
+    delete          Delete an auth method
+    list            List an auth method
+    read            Read an auth method
+    update          Update an auth method
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [change-state](/boundary/docs/commands/auth-methods/change-state)
+- [create](/boundary/docs/commands/auth-methods/create)
+- [delete](/boundary/docs/commands/auth-methods/delete)
+- [list](/boundary/docs/commands/auth-methods/list)
+- [read](/boundary/docs/commands/auth-methods/read)
+- [update](/boundary/docs/commands/auth-methods/update)

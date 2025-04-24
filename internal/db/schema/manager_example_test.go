@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package schema_test
 
 import (
@@ -23,7 +26,7 @@ func ExampleManager_hooks() {
 
 	d, err := common.SqlOpen(dialect, u)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 	editions := edition.Editions{
 		{
@@ -84,6 +87,9 @@ func ExampleManager_hooks() {
 								}
 								invalid = append(invalid, fmt.Sprintf("%d:%s", id, name))
 							}
+							if err := rows.Err(); err != nil {
+								return nil, err
+							}
 
 							if len(invalid) > 0 {
 								return append([]string{"invalid foos:"}, invalid...), nil
@@ -113,6 +119,9 @@ func ExampleManager_hooks() {
 								}
 								invalid = append(invalid, fmt.Sprintf("%d:%s", id, name))
 							}
+							if err := rows.Err(); err != nil {
+								return nil, err
+							}
 
 							if len(invalid) > 0 {
 								return append([]string{"deleted foos:"}, invalid...), nil
@@ -137,7 +146,7 @@ func ExampleManager_hooks() {
 		schema.WithEditions(editions),
 	)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 	_, err = m.ApplyMigrations(ctx)
 	checkErr, _ := err.(schema.MigrationCheckError)
@@ -162,7 +171,7 @@ func ExampleManager_hooks() {
 
 	logs, err := m.ApplyMigrations(ctx)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 	for _, log := range logs {
 		fmt.Printf("%s:%d:\n", log.Edition, log.Version)

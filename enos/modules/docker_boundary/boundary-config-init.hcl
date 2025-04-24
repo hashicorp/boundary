@@ -1,0 +1,53 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
+disable_mlock = true
+
+controller {
+  name        = "docker-controller"
+
+  database {
+    url = "env://BOUNDARY_POSTGRES_URL"
+  }
+}
+
+kms "aead" {
+  purpose   = "root"
+  aead_type = "aes-gcm"
+  key       = "sP1fnF5Xz85RrXyELHFeZg9Ad2qt4Z4bgNHVGtD6ung="
+  key_id    = "global_root"
+}
+
+# This key_id needs to match the corresponding downstream worker's
+# "worker-auth" kms
+kms "aead" {
+  purpose   = "worker-auth"
+  aead_type = "aes-gcm"
+  key       = "OLFhJNbEb3umRjdhY15QKNEmNXokY1Iq"
+  key_id    = "global_worker-auth"
+}
+
+kms "aead" {
+  purpose   = "recovery"
+  aead_type = "aes-gcm"
+  key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+  key_id    = "global_recovery"
+}
+
+events {
+  audit_enabled        = true
+  observations_enabled = true
+  sysevents_enabled    = true
+
+  sink "stderr" {
+    name        = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format      = "cloudevents-json"
+
+    deny_filters = [
+      "\"/data/request_info/method\" contains \"Status\"",
+      "\"/data/request_info/path\" contains \"/health\"",
+    ]
+  }
+}

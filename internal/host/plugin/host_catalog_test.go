@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
@@ -10,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/mr-tron/base58"
@@ -26,7 +29,7 @@ func TestHostCatalog_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 
 	type args struct {
 		pluginId  string
@@ -141,6 +144,24 @@ func TestHostCatalog_Create(t *testing.T) {
 				return hc
 			}(),
 		},
+		{
+			name: "valid-with-worker-filter",
+			args: args{
+				pluginId:  plg.GetPublicId(),
+				projectId: prj.GetPublicId(),
+				opts: []Option{
+					WithWorkerFilter(`"test" in "/tags/type"`),
+				},
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					PluginId:     plg.GetPublicId(),
+					ProjectId:    prj.GetPublicId(),
+					Attributes:   []byte{},
+					WorkerFilter: `"test" in "/tags/type"`,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -184,8 +205,8 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	_, prj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test1")
-	plg2 := host.TestPlugin(t, conn, "test2")
+	plg := plugin.TestPlugin(t, conn, "test1")
+	plg2 := plugin.TestPlugin(t, conn, "test2")
 
 	got, err := NewHostCatalog(ctx, prj.GetPublicId(), plg.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
@@ -217,7 +238,7 @@ func TestHostCatalog_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	ignoredCat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	_ = ignoredCat
@@ -268,7 +289,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-project", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := host.TestPlugin(t, conn, "deletescope")
+		plg := plugin.TestPlugin(t, conn, "deletescope")
 		cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 		deleted, err := w.Delete(ctx, prj)
@@ -282,7 +303,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-plugin", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := host.TestPlugin(t, conn, "deleteplugin")
+		plg := plugin.TestPlugin(t, conn, "deleteplugin")
 		cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 		deleted, err := w.Delete(ctx, plg)
@@ -340,7 +361,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	plg := host.TestPlugin(t, conn, "testplugin")
+	plg := plugin.TestPlugin(t, conn, "testplugin")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 	// stableValue checks that HMACing the same value returns the same result.
@@ -368,7 +389,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "valid",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.Secrets = mustStruct(map[string]any{"foo": "bar"})
 				cat.SecretsHmac = nil
 				return cat
 			},
@@ -378,7 +399,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "valid-different-val",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"zip": "zap"})
+				cat.Secrets = mustStruct(map[string]any{"zip": "zap"})
 				cat.SecretsHmac = nil
 				return cat
 			},
@@ -387,7 +408,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "valid-original-val",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.Secrets = mustStruct(map[string]any{"foo": "bar"})
 				cat.SecretsHmac = nil
 				return cat
 			},
@@ -397,7 +418,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "hmac-missing-wrapper",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.Secrets = mustStruct(map[string]any{"foo": "bar"})
 				cat.SecretsHmac = []byte("foobar")
 				return cat
 			},
@@ -406,7 +427,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "hmac-bad-wrapper",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.Secrets = mustStruct(map[string]any{"foo": "bar"})
 				cat.SecretsHmac = nil
 				return cat
 			},
@@ -440,4 +461,24 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCatalogAgg(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, db.TestWrapper(t)))
+	plg := plugin.TestPlugin(t, conn, "test")
+	hc := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+
+	ca := catalogAgg{}
+	ca.PublicId = hc.GetPublicId()
+	require.NoError(t, rw.LookupByPublicId(ctx, &ca))
+
+	outHc, _ := ca.toCatalogAndPersisted()
+	require.NotNil(t, outHc)
+	require.Empty(t, cmp.Diff(hc, outHc, protocmp.Transform()))
+
+	require.NotNil(t, ca.plugin())
+	require.Empty(t, cmp.Diff(plg, ca.plugin(), protocmp.Transform()))
 }

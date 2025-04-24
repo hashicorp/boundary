@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package kms
 
 // KeyPurpose allows an application to specify the reason they need a key; this
@@ -45,6 +48,9 @@ const (
 
 	// KeyPurposeRootKey is used as the root key
 	KeyPurposeRootKey
+
+	// KeyPurpose is used for wrapping BSR keys
+	KeyPurposeBsr
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -71,6 +77,8 @@ func (k KeyPurpose) String() string {
 		return "audit"
 	case KeyPurposeRootKey:
 		return "rootKey"
+	case KeyPurposeBsr:
+		return "bsr"
 	default:
 		return "unknown"
 	}

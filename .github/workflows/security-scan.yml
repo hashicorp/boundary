@@ -1,0 +1,85 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'website/**'
+      
+jobs:
+  scan:
+    runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
+    if: |
+      ! github.event.pull_request.head.repo.fork &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'hc-github-team-secure-boundary'
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+    - name: Determine Go version
+      id: get-go-version
+      # We use .go-version as our source of truth for current Go
+      # version, because "goenv" can react to it automatically.
+      run: |
+        echo "Building with Go $(cat .go-version)"
+        echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Go
+      uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+      with:
+        go-version: "${{ steps.get-go-version.outputs.go-version }}"
+        cache: false
+
+    - name: Set up Python
+      uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+      with:
+        python-version: 3.x
+
+    - name: Clone Security Scanner repo
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        repository: hashicorp/security-scanner
+        token: ${{ secrets.PRODSEC_SCANNER_READ_ONLY }}
+        path: security-scanner
+        ref: main
+
+    - name: Install dependencies
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mkdir "$HOME/.bin"
+        cd "$GITHUB_WORKSPACE/security-scanner/pkg/sdk/examples/scan-plugin-semgrep"
+        go build -o scan-plugin-semgrep .
+        mv scan-plugin-semgrep "$HOME/.bin"
+
+        cd "$GITHUB_WORKSPACE/security-scanner/pkg/sdk/examples/scan-plugin-codeql"
+        go build -o scan-plugin-codeql .
+        mv scan-plugin-codeql "$HOME/.bin"
+
+        # Semgrep
+        python3 -m pip install semgrep==1.45.0
+
+        # CodeQL
+        LATEST=$(gh release list --repo https://github.com/github/codeql-action | cut -f 3 | grep codeql-bundle- | sort --version-sort | tail -n1)
+        gh release download --repo https://github.com/github/codeql-action --pattern codeql-bundle-linux64.tar.gz "$LATEST"
+        tar xf codeql-bundle-linux64.tar.gz -C "$HOME/.bin"
+
+        # Add to PATH
+        echo "$HOME/.bin" >> "$GITHUB_PATH"
+        echo "$HOME/.bin/codeql" >> "$GITHUB_PATH"
+
+    - name: Scan
+      id: scan
+      uses: ./security-scanner
+      with:
+        repository: "$PWD"
+
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@7e3036b9cd87fc26dd06747b7aa4b96c27aaef3a # codeql-bundle-v2.20.3
+      with:
+        sarif_file: results.sarif
+

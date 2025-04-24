@@ -1,0 +1,64 @@
+---
+layout: docs
+page_title: authenticate - Command
+description: >-
+  The "authenticate" command authenticates the CLI client using the specified auth method.
+---
+
+# authenticate
+
+Command: `boundary authenticate`
+
+The `authenticate` command authenticates the Boundary command line client using the auth method that you specify.
+
+
+## Examples
+
+The following example authenticates the Boundary CLI using a configured OIDC auth method where the auth method ID is `amoidc_q7jAdI1QgA`:
+
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_oztPFBFesH
+  Auth Method ID:  amoidc_oHt4HQFCrN
+  Expiration Time: Thu, 13 May 2021 17:01:11 MDT
+  User ID:         u_JCRQP3ID7l
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary authenticate [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    ldap        Invoke the ldap auth method to authenticate with Boundary
+    oidc        Invoke the OIDC auth method to authenticate with Boundary
+    password    Invoke the password auth method to authenticate with Boundary
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [ldap](/boundary/docs/commands/authenticate/ldap)
+- [oidc](/boundary/docs/commands/authenticate/oidc)
+- [password](/boundary/docs/commands/authenticate/password)

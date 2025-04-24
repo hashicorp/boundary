@@ -1,0 +1,46 @@
+---
+layout: docs
+page_title: host-catalogs - Command
+description: >-
+  The "host-catalogs" command performs operations on Boundary host catalog resources. Host catalogs contain hosts and host sets.
+---
+
+# host-catalogs
+
+Command: `boundary host-catalogs`
+
+The `host-catalogs` command lets you perform operations on Boundary host catalog resources.
+
+## Example
+
+The following example reads the information from a host catalog with the ID `hcst_1234567890`:
+
+```shell-session
+$ boundary host-catalogs read -id hcst_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary host-catalogs <subcommand> [options] [args]
+  # ...
+Subcommands:
+    create    Create a host catalog
+    delete    Delete a host catalog
+    list      List a host catalog
+    read      Read a host catalog
+    update    Update a host catalog
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/host-catalogs/create)
+- [delete](/boundary/docs/commands/host-catalogs/delete)
+- [list](/boundary/docs/commands/host-catalogs/list)
+- [read](/boundary/docs/commands/host-catalogs/read)
+- [update](/boundary/docs/commands/host-catalogs/update)

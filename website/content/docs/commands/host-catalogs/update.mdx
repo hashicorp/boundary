@@ -1,0 +1,150 @@
+---
+layout: docs
+page_title: host-catalogs update - Command
+description: >-
+  The "host-catalogs update" command updates an existing host catalog resource.
+---
+
+# host-catalogs update
+
+Command: `host-catalogs update`
+
+The `host-catalogs update` command lets you update an existing host catalog.
+
+## Example
+
+This example updates a static host catalog with the ID `hcst_1234567890` to add the name `devops` and the description `For DevOps usage`:
+
+```shell-session
+$ boundary host-catalogs update static -id hcst_1234567890 -name devops -description "For DevOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-catalogs update [type] <subcommand> [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    plugin    Update a plugin-type host catalog
+    static    Update a static-type host catalog
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can update plugin or static host set types.
+
+<Tabs>
+<Tab heading="Plugin">
+
+The `boundary host-catalogs update plugin` command lets you update a plugin type host catalog.
+
+#### Example
+
+This example updates a plugin type host catalog with the ID `hc_1234567890` to add the name `devops` and the description `Plugin host-catalog for DevOps`.
+
+```shell-session
+$ boundary host-catalogs update plugin -id hc_1234567890 -name "devops" -description "Plugin host-catalog for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-catalogs update plugin [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the plugin host catalog.
+- `-id=<string>` - The ID of the plugin type host catalog to update.
+- `-name=<string>` - The name to set on the plugin host catalog.
+- `-version=<int>` - The version of the plugin host catalog to update.
+If you do not specify a version, the command automatically performs a check-and-set.
+
+#### Attribute options
+
+- `-attr` - A key=value pair to add to the request's attribute map.
+This option can also be a key value only, which sets a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can override the type using `-string-attr`, `-bool-attr`, or `-num-attr`.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-attributes=<string>` - A JSON map value that you can use as the entirety of the request's attributes map.
+Usually this value is sourced from a file using the `file://` syntax.
+This option is exclusive with other `attr` flags.
+- `-bool-attr` - A key=value Boolean value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-num-attr` - A key=value numeric value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This attribute supports referencing values from files using `file://` and environment variables using `env://`.
+- `-string-attr` - A key=value string value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+
+### Secrets options
+
+- `-bool-secret` - A key=value Boolean value that you can add to the request's secrets map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-num-secret` - A key=value numeric value that you can add to the request's secrets map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-secret` - A key=value pair that you can add to the request's secrets map.
+This option can also be a key value only, which sets a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can override the type using `-string-secret`, `-bool-secret`, or `-num-secret`.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-secrets=<string>` - A JSON map value that you can use as the entirety of the request's secrets map.
+Usually this value is sourced from file using `file://` syntax.
+This option is exclusive with other secret flags.
+- `-string-secret` - A key=value string value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+
+</Tab>
+
+<Tab heading="Static">
+
+The `boundary host-catalogs update static` command lets you update a static type host catalog.
+
+#### Example
+
+This example updates a static type host catalog with the ID `hcst_1234567890` to add the name `devops` and the description `Static host-catalog for DevOps`:
+
+```shell-session
+$ boundary host-catalogs update static -id hcst_1234567890 -name "devops" -description "Static host-catalog for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-catalogs update static [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the static host catalog.
+- `-id=<string>` - The ID of the static type host catalog you want to update.
+- `-name=<string>` - The name to set on the static host catalog.
+- `-version=<int>` - The version of the static type host catalog you want to update.
+If you do not specify a version, the command automatically performs a check-and-set.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

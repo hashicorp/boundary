@@ -1,0 +1,61 @@
+---
+layout: docs
+page_title: policies create - Command
+description: >-
+  The "policies create" command creates new policy resources.
+---
+
+# policies create
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary policies create`
+
+The `boundary policies create` command lets you create Boundary policies.
+
+Storage policies codify how long session recordings must be kept and when they should be deleted.
+For more information, refer to the [storage policies](/boundary/docs/concepts/domain-model/storage-policy) documentation.
+
+## Example
+
+This example creates a storage policy with the name `prod` and the description `Prod Storage Policy`.
+The policy has a retention period of 10 days, and it will be deleted after 20 days:
+
+```shell-session
+$ boundary policies create storage -name prod -description "Prod Storage Policy" -retain-for-days 10 -delete-after-days 20
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary policies create storage [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Subcommands
+
+- `storage` - Creates a storage type policy.
+
+### Command options
+
+- `-description=<string>` - The description to set for the policy.
+- `-name=<string>` -The name to set on the policy.
+The name is optional, but if you set it, it must be unique within the scope ID.
+If you do not provide a name, Boundary uses the storage policy ID as the default name.
+- `-scope-id=<string>` - Scope in which to create the policy.
+The default scope is global.
+You can also specify a scope using the **BOUNDARY_SCOPE_ID** environment variable.
+
+### Storage policy options
+
+- `-delete-after-days=<string>` - The number of days after which Boundary will delete a session recording.
+- `-delete-after-overridable=<string>` - Whether the policy's deletion period can be overridden by downstream policies.
+The value can be `true` or `false`.
+- `-retain-for-days=<string>` - The number of days a session recording should be retained for.
+- `-retain-for-overridable=<string>` - Whether the policy's retention period can be overriden by downstream storage policies.
+The value can be `true` or `false`.
+
+@include 'cmd-option-note.mdx'

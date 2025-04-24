@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -8,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/mitchellh/mapstructure"
@@ -25,6 +30,7 @@ type vaultClient interface {
 	get(context.Context, string) (*vault.Secret, error)
 	post(context.Context, string, []byte) (*vault.Secret, error)
 	capabilities(context.Context, []string) (pathCapabilities, error)
+	headers(ctx context.Context) (http.Header, error)
 }
 
 var vaultClientFactoryFn = vaultClientFactory
@@ -77,12 +83,16 @@ func newClient(ctx context.Context, c *clientConfig) (*client, error) {
 	}
 	vc := vault.DefaultConfig()
 	vc.Address = c.Addr
+	tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
+	tlsConfig.InsecureSkipVerify = c.TlsSkipVerify
+	if c.TlsServerName != "" {
+		tlsConfig.ServerName = c.TlsServerName
+	}
+
 	if len(c.CaCert) > 0 {
 		rootConfig := &rootcerts.Config{
 			CACertificate: c.CaCert,
 		}
-		tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
-		tlsConfig.InsecureSkipVerify = c.TlsSkipVerify
 		if err := rootcerts.ConfigureTLS(tlsConfig, rootConfig); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -107,6 +117,10 @@ func newClient(ctx context.Context, c *clientConfig) (*client, error) {
 
 	if c.Namespace != "" {
 		vClient.SetNamespace(c.Namespace)
+	}
+
+	if correlationId, ok := event.CorrelationIdFromContext(ctx); ok {
+		vClient.AddHeader(globals.CorrelationIdKey, correlationId)
 	}
 
 	return &client{
@@ -237,25 +251,12 @@ func (c *client) capabilities(ctx context.Context, paths []string) (pathCapabili
 	if len(paths) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty paths")
 	}
-	body := map[string]string{
+	body := map[string]any{
 		"paths": strings.Join(paths, ","),
 	}
-	reqPath := "/v1/sys/capabilities-self"
+	reqPath := "sys/capabilities-self"
 
-	r := c.cl.NewRequest("POST", reqPath)
-	if err := r.SetJSONBody(body); err != nil {
-		return nil, err
-	}
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.cl.RawRequestWithContext(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	secret, err := vault.ParseSecret(resp.Body)
+	secret, err := c.cl.Logical().WriteWithContext(ctx, reqPath, body)
 	if err != nil {
 		return nil, err
 	}
@@ -269,4 +270,9 @@ func (c *client) capabilities(ctx context.Context, paths []string) (pathCapabili
 	}
 
 	return newPathCapabilities(res), nil
+}
+
+// headers returns the underlying Vault Client http headers
+func (c *client) headers(_ context.Context) (http.Header, error) {
+	return c.cl.Headers(), nil
 }

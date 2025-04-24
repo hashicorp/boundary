@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package scheduler
 
 import (
@@ -17,6 +20,7 @@ import (
 
 func TestScheduler_New(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -24,13 +28,12 @@ func TestScheduler_New(t *testing.T) {
 	iam.TestRepo(t, conn, wrapper)
 
 	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(rw, rw, kmsCache)
+		return job.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	type args struct {
 		serverId        string
 		jobRepo         jobRepoFactory
-		runLimit        int
 		runInterval     time.Duration
 		monitorInterval time.Duration
 	}
@@ -66,7 +69,6 @@ func TestScheduler_New(t *testing.T) {
 			},
 			want: args{
 				serverId:        "test-server",
-				runLimit:        defaultRunJobsLimit,
 				runInterval:     defaultRunJobsInterval,
 				monitorInterval: defaultMonitorInterval,
 			},
@@ -82,7 +84,6 @@ func TestScheduler_New(t *testing.T) {
 			},
 			want: args{
 				serverId:        "test-server",
-				runLimit:        defaultRunJobsLimit,
 				monitorInterval: defaultMonitorInterval,
 				runInterval:     time.Hour,
 			},
@@ -93,12 +94,9 @@ func TestScheduler_New(t *testing.T) {
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
 			},
-			opts: []Option{
-				WithRunJobsLimit(-1),
-			},
+			opts: []Option{},
 			want: args{
 				serverId:        "test-server",
-				runLimit:        -1,
 				runInterval:     defaultRunJobsInterval,
 				monitorInterval: defaultMonitorInterval,
 			},
@@ -109,12 +107,9 @@ func TestScheduler_New(t *testing.T) {
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
 			},
-			opts: []Option{
-				WithRunJobsLimit(20),
-			},
+			opts: []Option{},
 			want: args{
 				serverId:        "test-server",
-				runLimit:        20,
 				runInterval:     defaultRunJobsInterval,
 				monitorInterval: defaultMonitorInterval,
 			},
@@ -130,7 +125,6 @@ func TestScheduler_New(t *testing.T) {
 			},
 			want: args{
 				serverId:        "test-server",
-				runLimit:        defaultRunJobsLimit,
 				runInterval:     defaultRunJobsInterval,
 				monitorInterval: time.Hour,
 			},
@@ -143,12 +137,10 @@ func TestScheduler_New(t *testing.T) {
 			},
 			opts: []Option{
 				WithRunJobsInterval(time.Hour),
-				WithRunJobsLimit(20),
 				WithMonitorInterval(2 * time.Hour),
 			},
 			want: args{
 				serverId:        "test-server",
-				runLimit:        20,
 				runInterval:     time.Hour,
 				monitorInterval: 2 * time.Hour,
 			},
@@ -159,7 +151,7 @@ func TestScheduler_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := New(tt.args.serverId, tt.args.jobRepo, tt.opts...)
+			got, err := New(ctx, tt.args.serverId, tt.args.jobRepo, tt.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -170,7 +162,6 @@ func TestScheduler_New(t *testing.T) {
 			require.NoError(err)
 
 			assert.Equal(tt.want.serverId, got.serverId)
-			assert.Equal(tt.want.runLimit, got.runJobsLimit)
 			assert.Equal(tt.want.runInterval, got.runJobsInterval)
 			assert.Equal(tt.want.monitorInterval, got.monitorInterval)
 			assert.NotNil(got.jobRepoFn)
@@ -247,7 +238,7 @@ func TestScheduler_RegisterJob(t *testing.T) {
 
 			// Verify job has been persisted
 			var dbJob job.Job
-			err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tt.job.Name()})
+			err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tt.job.Name()})
 			require.NoError(err)
 			require.NotNil(dbJob)
 			assert.Equal(tt.job.Name(), dbJob.Name)
@@ -344,14 +335,14 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 
 		// get job from repo
 		var dbJob job.Job
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		previousNextRun := dbJob.NextScheduledRun.AsTime()
 
 		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, time.Hour)
 		require.NoError(err)
 
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		// Verify job run time in repo is at least 1 hour before than the previous run time
 		assert.Equal(previousNextRun.Add(-1*time.Hour).Round(time.Minute), dbJob.NextScheduledRun.AsTime().Round(time.Minute))
@@ -369,14 +360,14 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 
 		// get job from repo
 		var dbJob job.Job
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		previousNextRun := dbJob.NextScheduledRun.AsTime()
 
 		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 4*time.Hour)
 		require.NoError(err)
 
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		// Job should not have updated next run time, since its later than the already scheduled time
 		assert.Equal(previousNextRun, dbJob.NextScheduledRun.AsTime())
@@ -384,7 +375,7 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, time.Hour)
 		require.NoError(err)
 
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		// Verify job run time in repo is at least 1 hour before than the previous run time
 		assert.Equal(previousNextRun.Add(-1*time.Hour).Round(time.Minute), dbJob.NextScheduledRun.AsTime().Round(time.Minute))

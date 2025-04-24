@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package kms
 
 import (
@@ -40,6 +43,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithKeyId("100"))
 		testOpts := getDefaultOptions()
 		testOpts.withKeyId = "100"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithRewrap", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithRewrap(true))
+		testOpts := getDefaultOptions()
+		testOpts.withRewrap = true
 		assert.Equal(opts, testOpts)
 	})
 }

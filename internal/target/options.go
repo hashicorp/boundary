@@ -1,10 +1,17 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package target
 
 import (
+	"net"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 // GetOpts - iterate the inbound Options and return a struct
@@ -24,12 +31,13 @@ type options struct {
 	WithName                   string
 	WithDescription            string
 	WithDefaultPort            uint32
+	WithDefaultClientPort      uint32
 	WithLimit                  int
 	WithProjectId              string
 	WithProjectIds             []string
 	WithProjectName            string
 	WithUserId                 string
-	WithType                   subtypes.Subtype
+	WithType                   globals.Subtype
 	WithHostSources            []string
 	WithCredentialLibraries    []*CredentialLibrary
 	WithStaticCredentials      []*StaticCredential
@@ -38,7 +46,16 @@ type options struct {
 	WithPermissions            []perms.Permission
 	WithPublicId               string
 	WithWorkerFilter           string
+	WithTestWorkerFilter       string
+	WithEgressWorkerFilter     string
+	WithIngressWorkerFilter    string
 	WithTargetIds              []string
+	WithAddress                string
+	WithStorageBucketId        string
+	WithEnableSessionRecording bool
+	WithNetResolver            intglobals.NetIpResolver
+	WithStartPageAfterItem     pagination.Item
+	withAliases                []*talias.Alias
 }
 
 func getDefaultOptions() options {
@@ -47,6 +64,7 @@ func getDefaultOptions() options {
 		WithDescription:            "",
 		WithLimit:                  0,
 		WithDefaultPort:            0,
+		WithDefaultClientPort:      0,
 		WithProjectId:              "",
 		WithProjectIds:             nil,
 		WithProjectName:            "",
@@ -60,6 +78,11 @@ func getDefaultOptions() options {
 		WithPermissions:            nil,
 		WithPublicId:               "",
 		WithWorkerFilter:           "",
+		WithTestWorkerFilter:       "",
+		WithEgressWorkerFilter:     "",
+		WithIngressWorkerFilter:    "",
+		WithAddress:                "",
+		WithNetResolver:            net.DefaultResolver,
 	}
 }
 
@@ -93,6 +116,13 @@ func WithDefaultPort(p uint32) Option {
 	}
 }
 
+// WithDefaultClientPort provides an option to specify the default client listening port.
+func WithDefaultClientPort(p uint32) Option {
+	return func(o *options) {
+		o.WithDefaultClientPort = p
+	}
+}
+
 // WithProjectId provides an option to search by a project id
 func WithProjectId(projectId string) Option {
 	return func(o *options) {
@@ -122,7 +152,7 @@ func WithUserId(userId string) Option {
 }
 
 // WithType provides an option to search by a target type
-func WithType(t subtypes.Subtype) Option {
+func WithType(t globals.Subtype) Option {
 	return func(o *options) {
 		o.WithType = t
 	}
@@ -175,6 +205,27 @@ func WithWorkerFilter(filter string) Option {
 	}
 }
 
+// WithTestWorkerFilter provides an optional worker filter used only in testing
+func WithTestWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.WithTestWorkerFilter = filter
+	}
+}
+
+// WithEgressWorkerFilter provides an optional egress worker filter
+func WithEgressWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.WithEgressWorkerFilter = filter
+	}
+}
+
+// WithIngressWorkerFilter provides an optional ingress worker filter
+func WithIngressWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.WithIngressWorkerFilter = filter
+	}
+}
+
 // WithTargetIds provides an option to search by specific target IDs
 func WithTargetIds(with []string) Option {
 	return func(o *options) {
@@ -187,5 +238,49 @@ func WithTargetIds(with []string) Option {
 func WithPermissions(perms []perms.Permission) Option {
 	return func(o *options) {
 		o.WithPermissions = perms
+	}
+}
+
+// WithAddress provides an optional network address
+func WithAddress(address string) Option {
+	return func(o *options) {
+		o.WithAddress = address
+	}
+}
+
+// WithEnableSessionRecording provides an option to enable session recording on
+// the target
+func WithEnableSessionRecording(enable bool) Option {
+	return func(o *options) {
+		o.WithEnableSessionRecording = enable
+	}
+}
+
+// WithStorageBucketId provides an option to set a storage bucket on a target
+func WithStorageBucketId(id string) Option {
+	return func(o *options) {
+		o.WithStorageBucketId = id
+	}
+}
+
+// WithNetResolver provides an option to specify a custom DNS resolver
+func WithNetResolver(resolver intglobals.NetIpResolver) Option {
+	return func(o *options) {
+		o.WithNetResolver = resolver
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.WithStartPageAfterItem = item
+	}
+}
+
+// WithAliases provides an option to provide aliases.
+func WithAliases(in []*talias.Alias) Option {
+	return func(o *options) {
+		o.withAliases = in
 	}
 }

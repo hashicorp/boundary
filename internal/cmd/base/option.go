@@ -1,13 +1,17 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package base
 
 import (
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-// getOpts - iterate the inbound Options and return a struct.
-func getOpts(opt ...Option) Options {
+// GetOpts - iterate the inbound Options and return a struct.
+func GetOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		if o != nil {
@@ -22,25 +26,31 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope                   bool
-	withNoTokenValue                   bool
-	withSkipDatabaseDestruction        bool
-	withSkipAuthMethodCreation         bool
-	withSkipOidcAuthMethodCreation     bool
-	withSkipScopesCreation             bool
-	withSkipHostResourcesCreation      bool
-	withSkipTargetCreation             bool
-	withContainerImage                 string
-	withDialect                        string
-	withDatabaseTemplate               string
-	withEventerConfig                  *event.EventerConfig
-	withEventFlags                     *EventFlags
-	withEventWrapper                   wrapping.Wrapper
-	withAttributeFieldPrefix           string
-	withStatusCode                     int
-	withHostPlugin                     func() (string, plugin.HostPluginServiceClient)
-	withEventGating                    bool
-	withSkipWorkerAuthKmsInstantiation bool
+	withNoTokenScope                        bool
+	withNoTokenValue                        bool
+	withSkipDefaultRoleCreation             bool
+	withSkipDatabaseDestruction             bool
+	withSkipAuthMethodCreation              bool
+	withSkipOidcAuthMethodCreation          bool
+	withSkipLdapAuthMethodCreation          bool
+	withSkipScopesCreation                  bool
+	withSkipHostResourcesCreation           bool
+	withSkipTargetCreation                  bool
+	withContainerImage                      string
+	withDialect                             string
+	withDatabaseTemplate                    string
+	withEventerConfig                       *event.EventerConfig
+	withEventFlags                          *EventFlags
+	withEventWrapper                        wrapping.Wrapper
+	withAttributeFieldPrefix                string
+	withStatusCode                          int
+	withHostPlugin                          func() (string, plugin.HostPluginServiceClient)
+	withEventGating                         bool
+	withImplicitId                          string
+	WithSkipScopeIdFlag                     bool
+	WithInterceptedToken                    *string
+	withAuthUserTargetAuthorizeSessionGrant bool
+	withIamOptions                          []iam.Option
 }
 
 func getDefaultOptions() Options {
@@ -75,6 +85,14 @@ func WithNoTokenValue() Option {
 	}
 }
 
+// WithSkipDefaultRoleCreation tells the command not to instantiate the default
+// global role
+func WithSkipDefaultRoleCreation() Option {
+	return func(o *Options) {
+		o.withSkipDefaultRoleCreation = true
+	}
+}
+
 // WithSkipAuthMethodCreation tells the command not to instantiate any auth
 // method on first run.
 func WithSkipAuthMethodCreation() Option {
@@ -88,6 +106,14 @@ func WithSkipAuthMethodCreation() Option {
 func WithSkipOidcAuthMethodCreation() Option {
 	return func(o *Options) {
 		o.withSkipOidcAuthMethodCreation = true
+	}
+}
+
+// WithSkipLdapAuthMethodCreation tells the command not to instantiate an LDAP auth
+// method on first run, useful in some tests.
+func WithSkipLdapAuthMethodCreation() Option {
+	return func(o *Options) {
+		o.withSkipLdapAuthMethodCreation = true
 	}
 }
 
@@ -190,10 +216,43 @@ func WithEventGating(with bool) Option {
 	}
 }
 
-// WithSkipWorkerAuthKmsInstantiation causes KMS methods used for worker-auth to
-// not be processed, useful for dev mode
-func WithSkipWorkerAuthKmsInstantiation(with bool) Option {
+// WithImplicitId is used when creating the command if we are implicitly
+// overriding the ID via a top-level read/update/delete command
+func WithImplicitId(with string) Option {
 	return func(o *Options) {
-		o.withSkipWorkerAuthKmsInstantiation = with
+		o.withImplicitId = with
+	}
+}
+
+// WithSkipScopeIdFlag tells a command to not create a scope ID flag (usually
+// because it's already been defined)
+func WithSkipScopeIdFlag(with bool) Option {
+	return func(o *Options) {
+		o.WithSkipScopeIdFlag = with
+	}
+}
+
+// WithInterceptedToken provides a string pointer that will have the token
+// assigned to it when performing an authenticate command.
+func WithInterceptedToken(s *string) Option {
+	return func(o *Options) {
+		o.WithInterceptedToken = s
+	}
+}
+
+// WithAuthUserTargetAuthorizeSessionGrant indicates that we should add an
+// authorize-session grant to the global authenticated user role. This is the
+// default for dev mode.
+func WithAuthUserTargetAuthorizeSessionGrant(with bool) Option {
+	return func(o *Options) {
+		o.withAuthUserTargetAuthorizeSessionGrant = with
+	}
+}
+
+// WithIamOptions provides options to pass through to the IAM package when
+// creating initial resources
+func WithIamOptions(with ...iam.Option) Option {
+	return func(o *Options) {
+		o.withIamOptions = with
 	}
 }

@@ -1,0 +1,80 @@
+---
+layout: docs
+page_title: groups set-members - Command
+description: >-
+  The "groups set-members" command configures a complete set of users as members in a group resource.
+---
+
+# groups set-members
+
+Command: `boundary groups set-members`
+
+The `groups set-members` command lets you configure the complete set of users in a group.
+
+## Examples
+
+The following example set users with the IDs, "`u_ad8tbsXHJP`" and "`u_J5l9FWB7yq`" as group members in a group with the group ID `g_FNVVhAd0on`:
+
+```shell-session
+$ boundary groups set-members -id g_FNVVhAd0on \
+   -member u_ad8tbsXHJP \
+   -member u_J5l9FWB7yq
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Group information:
+  Created Time:        Thu, 24 Aug 2023 13:58:23 PDT
+  Description:         Web dev group
+  ID:                  g_FNVVhAd0on
+  Name:                webdev
+  Updated Time:        Thu, 24 Aug 2023 14:12:35 PDT
+  Version:             2
+
+  Scope:
+    ID:                o_R0wbo0H6Zl
+    Name:              quick-start-org
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-members
+    set-members
+    remove-members
+
+  Members:
+    ID:                u_ad8tbsXHJP
+    Scope ID:          o_R0wbo0H6Zl
+
+    ID:                u_J5l9FWB7yq
+    Scope ID:          o_R0wbo0H6Z
+```
+
+</CodeBlockConfig>
+
+The output displays the group information.
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary groups set-members [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the group on which to set members.
+- `-member` `(string: "")` - The ID of the user or users you want to add to the group.
+You can specify the `-member` flag multiple times.
+
+@include 'cmd-option-note.mdx'

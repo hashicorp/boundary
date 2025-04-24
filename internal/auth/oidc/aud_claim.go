@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -47,11 +50,11 @@ func NewAudClaim(ctx context.Context, authMethodId string, audClaim string) (*Au
 }
 
 // validate the AudClaim.  On success, it will return nil.
-func (a *AudClaim) validate(ctx context.Context, caller errors.Op) error {
-	if a.OidcMethodId == "" {
+func (c *AudClaim) validate(ctx context.Context, caller errors.Op) error {
+	if c.OidcMethodId == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
-	if a.Aud == "" {
+	if c.Aud == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing aud claim")
 	}
 	return nil

@@ -1,9 +1,13 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 -- Updating definition from 16/05_wh_credential_dimension.up.sql
 -- Remove call to wh_rollup_connections(new.session_id) from function
 drop trigger wh_insert_session_connection on session_connection;
 drop function wh_insert_session_connection();
 
+-- Updated in 90/01_remove_session_connection_state
 create function wh_insert_session_connection() returns trigger
 as $$
 declare

@@ -1,9 +1,11 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
   -- _wtt_load_widgets_iam populates all iam_ tables for the widgets persona.
   -- iam does not depend on any other aggregates, but others depend on it,
   -- as such is it should be first in the list.
-  create function _wtt_load_widgets_iam()
-    returns void
+  create function _wtt_load_widgets_iam() returns void
   as $$
   begin
     -- Add organizations
@@ -53,14 +55,22 @@ begin;
       ('g___ws-group', 'u_____waylon');
 
     insert into iam_role
-      (scope_id, grant_scope_id, public_id, name)
+      (scope_id, public_id, name)
     values
-            -- ('global', 'global',       'r_gg_____buy', 'Purchaser'),
-            -- ('global', 'global',       'r_gg____shop', 'Shopper'),
-      ('p____bwidget', 'p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
-      ('p____swidget', 'p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
-      ('o_____widget', 'p____swidget', 'r_op_sw__eng', 'Small Widget Engineer'),
-      ('o_____widget', 'o_____widget', 'r_oo_____eng', 'Widget Engineer');
+            -- ('global', 'r_gg_____buy', 'Purchaser'),
+            -- ('global', 'r_gg____shop', 'Shopper'),
+      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
+      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
+      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer'),
+      ('o_____widget', 'r_oo_____eng', 'Widget Engineer');
+
+    insert into iam_role_grant_scope
+      (role_id,        scope_id_or_special)
+    values
+      ('r_pp_bw__bld', 'p____bwidget'),
+      ('r_pp_sw__bld', 'this'),
+      ('r_op_sw__eng', 'p____swidget'),
+      ('r_oo_____eng', 'o_____widget');
 
     insert into iam_role_grant
       (role_id, canonical_grant, raw_grant)
@@ -91,8 +101,7 @@ begin;
 
   -- _wtt_load_kms populates all kms_ tables for the widgets persona.
   -- kms depends on iam.
-  create function _wtt_load_widgets_kms()
-    returns void
+  create function _wtt_load_widgets_kms() returns void
   as $$
   begin
     insert into kms_root_key
@@ -115,13 +124,22 @@ begin;
     values
       ('kdkv___widget', 'kdk____widget', 'krkv___widget',     'kdk____widget'::bytea);
 
+    insert into kms_data_key_version_destruction_job
+      (key_id)
+    values
+      ('kdkv___widget');
+
+    insert into kms_data_key_version_destruction_job_run
+      (key_id, table_name, total_count)
+    values
+      ('kdkv___widget', 'auth_token', 100);
+
   end;
   $$ language plpgsql;
 
   -- _wtt_load_widgets_auth populates all auth_ tables for the widgets persona.
   -- auth depends on iam, and kms.
-  create function _wtt_load_widgets_auth()
-    returns void
+  create function _wtt_load_widgets_auth() returns void
   as $$
   begin
     insert into auth_password_conf
@@ -154,13 +172,13 @@ begin;
     update auth_account set iam_user_id = 'u_____wilson' where public_id = 'apa___wilson';
 
     insert into auth_token
-      (key_id, auth_account_id, public_id, token)
+      (key_id,          auth_account_id, public_id,      token,                 expiration_time,            status)
     values
-      ('key', 'apa___walter', 'tok___walter', 'tok___walter'::bytea),
-      ('key', 'apa1__walter', 'tok1__walter', 'tok1__walter'::bytea),
-      ('key', 'apa___warren', 'tok___warren', 'tok___warren'::bytea),
-      ('key', 'apa___waylon', 'tok___waylon', 'tok___waylon'::bytea),
-      ('key', 'apa___wilson', 'tok___wilson', 'tok___wilson'::bytea);
+      ('kdkv___widget', 'apa___walter',  'tok___walter', 'tok___walter'::bytea, now() + interval '15 days', 'token issued'),
+      ('kdkv___widget', 'apa1__walter',  'tok1__walter', 'tok1__walter'::bytea, now() + interval '15 days', 'token issued'),
+      ('kdkv___widget', 'apa___warren',  'tok___warren', 'tok___warren'::bytea, now() + interval '15 days', 'token issued'),
+      ('kdkv___widget', 'apa___waylon',  'tok___waylon', 'tok___waylon'::bytea, now() + interval '15 days', 'token issued'),
+      ('kdkv___widget', 'apa___wilson',  'tok___wilson', 'tok___wilson'::bytea, now() + interval '15 days', 'auth token pending');
 
     insert into auth_oidc_method
       (scope_id,       public_id,      client_id,      name,          state,            key_id,          issuer)
@@ -179,16 +197,39 @@ begin;
     insert into auth_token
       (key_id, auth_account_id, public_id, token)
     values
-      ('key', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea),
-      ('key', 'aoa___warren', 'oidc__warren', 'oidc__warren'::bytea);
+      ('kdkv___widget', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea),
+      ('kdkv___widget', 'aoa___warren', 'oidc__warren', 'oidc__warren'::bytea);
+
+    insert into auth_ldap_method
+      (scope_id,       public_id,      name,          state)
+    values
+      ('o_____widget', 'alm___widget', 'Widget LDAP', 'active-private');
+    insert into auth_ldap_url
+      (ldap_method_id, url,             connection_priority)
+    values
+      ('alm___widget', 'ldaps://ldap1', 1);
+
+    insert into auth_ldap_account
+      (auth_method_id, public_id,      name,             description,           full_name, email,                login_name)
+    values
+      ('alm___widget', 'ala___walter', 'walter account', 'Walter LDAP Account', 'Walter',  'walter@widget.test', 'walter'),
+      ('alm___widget', 'ala___warren', 'warren account', 'Warren LDAP Account', null,      null,                 'warren');
+
+    update auth_account set iam_user_id = 'u_____walter' where public_id = 'ala___walter';
+    update auth_account set iam_user_id = 'u_____warren' where public_id = 'ala___warren';
+
+    insert into auth_token
+      (key_id, auth_account_id, public_id, token)
+    values
+      ('kdkv___widget', 'ala___walter', 'ldap__walter', 'ldap__walter'::bytea),
+      ('kdkv___widget', 'ala___warren', 'ldap__warren', 'ldap__warren'::bytea);
 
   end;
   $$ language plpgsql;
 
   -- _wtt_load_widgets_hosts populates all host_ tables for the widgets persona.
   -- hosts depend on iam.
-  create function _wtt_load_widgets_hosts()
-    returns void
+  create function _wtt_load_widgets_hosts() returns void
   as $$
   begin
     insert into static_host_catalog
@@ -237,16 +278,21 @@ begin;
      where h.catalog_id = s.catalog_id
        and h.address like '%.widget';
 
-    insert into plugin_host
+    insert into plugin
       (scope_id, public_id, name)
     values
       ('global', 'plg___wb-hplg', 'Short Host Plugin');
 
-    insert into host_plugin_catalog
-      (project_id, public_id, plugin_id, name, attributes)
+    insert into plugin_host_supported
+      (public_id)
     values
-      ('p____bwidget', 'c___wb-plghcl', 'plg___wb-hplg', 'Big Widget Plugin Catalog', ''),
-      ('p____swidget', 'c___ws-plghcl', 'plg___wb-hplg',  'Small Widget Plugin Catalog', '');
+      ('plg___wb-hplg');
+
+    insert into host_plugin_catalog
+      (project_id, public_id, plugin_id, name, attributes, worker_filter)
+    values
+      ('p____bwidget', 'c___wb-plghcl', 'plg___wb-hplg', 'Big Widget Plugin Catalog', '', '"test" in "/tags/type"'),
+      ('p____swidget', 'c___ws-plghcl', 'plg___wb-hplg',  'Small Widget Plugin Catalog', '', null);
 
     insert into host_plugin_host
       (catalog_id, public_id, external_id)
@@ -296,21 +342,23 @@ begin;
     select h.public_id, s.public_id, s.catalog_id
       from host_plugin_host as h,
            host_plugin_set as s
-     where h.catalog_id = s.catalog_id;
+     where h.catalog_id = s.catalog_id
+       and h.external_id like '%widget';
   end;
   $$ language plpgsql;
 
   -- _wtt_load_widgets_targets populates all target_ tables for the widgets persona.
   -- targets depend on iam, auth, hosts.
-  create function _wtt_load_widgets_targets()
-    returns void
+  create function _wtt_load_widgets_targets() returns void
   as $$
   begin
     insert into target_tcp
       (project_id, public_id, name)
     values
       ('p____bwidget', 't_________wb', 'Big Widget Target'),
-      ('p____swidget', 't_________ws', 'Small Widget Target');
+      ('p____swidget', 't_________ws', 'Small Widget Target'),
+      ('p____swidget', 't________ws2', 'Small Widget Target 2'),
+      ('p____swidget', 't________ws3', 'Small Widget Target 3');
 
     insert into target_host_set
       (project_id, target_id, host_set_id)
@@ -322,19 +370,21 @@ begin;
       ('p____bwidget', 't_________wb', 's___1wb-plghs'),
       ('p____bwidget', 't_________wb', 's___2wb-plghs'),
       ('p____swidget', 't_________ws', 's___1ws-plghs'),
-      ('p____swidget', 't_________ws', 's___2ws-plghs');
+      ('p____swidget', 't_________ws', 's___2ws-plghs'),
+      ('p____swidget', 't________ws2', 's___1ws-sths'),
+      ('p____swidget', 't________ws3', 's___1ws-sths');
 
   end;
   $$ language plpgsql;
 
-  create function _wtt_load_widgets_credentials()
-    returns void
+  create function _wtt_load_widgets_credentials() returns void
   as $$
   begin
     insert into credential_vault_store
-      (project_id,       public_id,      name,                 description, vault_address,          namespace)
+      (project_id,     public_id,      name,                       description, vault_address,                namespace)
     values
-      ('p____bwidget', 'vs_______wvs', 'widget vault store', 'None',      'https://vault.widget', 'default');
+      ('p____bwidget', 'vs_______wvs', 'widget vault store',       'None',      'https://vault.widget',       'default'),
+      ('p____swidget', 'vs______swvs', 'small widget vault store', 'None',      'https://small.vault.widget', 'default');
 
     insert into credential_vault_token
       (store_id,       key_id,          status,   token_hmac,   token,         last_renewal_time, expiration_time)
@@ -397,13 +447,23 @@ begin;
     values
       ('vl______wvl12', 'my_username',      'my_private_key',     'my_passphrase');
 
+    insert into credential_vault_ssh_cert_library
+      (store_id,       public_id,      name,                    description, vault_path,         username, key_type,  key_bits)
+    values
+      ('vs______swvs', 'vscl____wvl1', 'widget ssh admin cert', 'None',      '/ssh/issue/admin', 'admin',  'rsa',     4096),
+      ('vs______swvs', 'vscl____wvl2', 'widget ssh ecdsa',      'None',      '/ssh/sign/user',   'user',   'ecdsa',   521),
+      ('vs______swvs', 'vscl____wvl3', 'widget ssh ed25519',    'None',      '/ssh/sign/user',   'user',   'ed25519', 0);
+
     insert into target_credential_library
       (project_id,     target_id,      credential_library_id, credential_purpose)
     values
       ('p____bwidget', 't_________wb', 'vl______wvl1',        'brokered'),
       ('p____bwidget', 't_________wb', 'vl______wvl2',        'brokered'),
       ('p____bwidget', 't_________wb', 'vl______wvl3',        'brokered'),
-      ('p____bwidget', 't_________wb', 'vl______wvl3',        'injected_application');
+      ('p____bwidget', 't_________wb', 'vl______wvl3',        'injected_application'),
+      ('p____bwidget', 't_________ws', 'vscl____wvl1',        'injected_application'),
+      ('p____bwidget', 't________ws2', 'vscl____wvl2',        'injected_application'),
+      ('p____bwidget', 't________ws3', 'vscl____wvl3',        'injected_application');
 
     insert into credential_static_store
       (project_id,     public_id,      name,                  description)
@@ -424,14 +484,13 @@ begin;
   end;
   $$ language plpgsql;
 
-create function _wtt_load_widgets_sessions()
-    returns void
+create function _wtt_load_widgets_sessions() returns void
 as $$
 begin
     insert into session
-    ( project_id        ,  target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
+      (project_id,     target_id,      user_id,        auth_token_id,  certificate,  endpoint, public_id)
     values
-        ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__01' , 'u_____warren' , 'tok___warren' , 'abc'::bytea , 'ep1'    , 's1____warren');
+      ('p____swidget', 't_________wb', 'u_____warren', 'tok___warren', 'abc'::bytea, 'ep1',    's1____warren');
 end;
 $$ language plpgsql;
 

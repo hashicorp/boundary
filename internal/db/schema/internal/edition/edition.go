@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package edition provides internal structs for the schema package for
 // defining and organizing database migration editions.
 package edition
@@ -75,6 +78,9 @@ func (e Editions) Sort() {
 //	   01_add_new_table.up.sql
 //	   02_refactor_views.up.sql
 func New(name string, dialect Dialect, m embed.FS, priority int, opt ...Option) (Edition, error) {
+	const beginStmt = "begin;"
+	const commitStmt = "commit;"
+
 	var largestSchemaVersion int
 	migrations := make(migration.Migrations)
 
@@ -118,11 +124,11 @@ func New(name string, dialect Dialect, m embed.FS, priority int, opt ...Option) 
 		}
 
 		contents := strings.TrimSpace(string(cbts))
-		if strings.ToLower(contents[:len("begin;")]) == "begin;" {
-			contents = contents[len("begin;"):]
+		if beginIdx := strings.Index(contents, beginStmt); beginIdx != -1 {
+			contents = contents[beginIdx+len(beginStmt):]
 		}
-		if strings.ToLower(contents[len(contents)-len("commit;"):]) == "commit;" {
-			contents = contents[:len(contents)-len("commit;")]
+		if strings.ToLower(contents[len(contents)-len(commitStmt):]) == commitStmt {
+			contents = contents[:len(contents)-len(commitStmt)]
 		}
 		contents = strings.TrimSpace(contents)
 

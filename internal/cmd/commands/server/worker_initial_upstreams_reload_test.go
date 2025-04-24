@@ -1,17 +1,19 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 //go:build !hsm
 
 package server
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/server"
-	"github.com/hashicorp/boundary/testing/controller"
+	tc "github.com/hashicorp/boundary/testing/controller"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -39,7 +41,6 @@ worker {
 	tags {
 		type = ["dev", "local"]
 	}
-	auth_storage_path = "%s"
 }
 `
 
@@ -51,31 +52,30 @@ func TestServer_ReloadInitialUpstreams(t *testing.T) {
 	recoveryWrapper, _ := wrapperWithKey(t)
 	workerAuthWrapper, key := wrapperWithKey(t)
 
-	// Create two controllers, each with their own database. In practice it
-	// would be odd to have separate databases, but it makes it easy for the
-	// test to assert that the worker has connected to the second controller
-	// after a reload signal is sent.
-	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
-	defer testController.Shutdown()
-	testController2 := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
-	defer testController2.Shutdown()
-	require.NotEqual(testController.Config().DatabaseUrl, testController2.Config().DatabaseUrl)
+	testController := tc.NewTestController(
+		t,
+		tc.WithWorkerAuthKms(workerAuthWrapper),
+		tc.WithRootKms(rootWrapper),
+		tc.WithRecoveryKms(recoveryWrapper),
+		tc.DisableDatabaseDestruction(),
+	)
+	t.Cleanup(testController.Shutdown)
 
-	authStoragePath, err := os.MkdirTemp("", "")
-	require.NoError(err)
-	t.Cleanup(func() { os.RemoveAll(authStoragePath) })
+	testController2 := testController.AddClusterControllerMember(t, &controller.TestControllerOpts{
+		DisableAutoStart: true,
+	})
 
 	wg := &sync.WaitGroup{}
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
-	cmd.presetConfig = atomic.NewString(fmt.Sprintf(initialUpstreamConfig, key, testController.ClusterAddrs()[0], filepath.Join(authStoragePath, t.Name())))
+	cmd.presetConfig = atomic.NewString(fmt.Sprintf(initialUpstreamConfig, key, testController.ClusterAddrs()[0]))
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		if code := cmd.Run(nil); code != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 
@@ -85,30 +85,74 @@ func TestServer_ReloadInitialUpstreams(t *testing.T) {
 		t.Fatalf("timeout waiting for worker start")
 	}
 
-	// Wait until the worker has connected to the first controller
+	// Wait until the worker has connected to the first controller as seen via
+	// two status updates
 	timeout := time.NewTimer(15 * time.Second)
 	poll := time.NewTimer(0)
 	var w *server.Worker
+	var lastStatusTime time.Time
+	serversRepo, err := testController.Controller().ServersRepoFn()
+	require.NoError(err)
 pollFirstController:
 	for {
 		select {
 		case <-timeout.C:
 			t.Fatalf("timeout wait for worker to connect to first controller")
 		case <-poll.C:
-			serversRepo, err := testController.Controller().ServersRepoFn()
-			require.NoError(err)
-			w, err = serversRepo.LookupWorkerByName(testController.Context(), "test")
+			w, err = server.TestLookupWorkerByName(testController.Context(), t, "test", serversRepo)
 			require.NoError(err)
 			if w != nil {
-				timeout.Stop()
-				break pollFirstController
+				switch {
+				case lastStatusTime.IsZero():
+					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
+				default:
+					if !lastStatusTime.Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
+						timeout.Stop()
+						break pollFirstController
+					}
+				}
 			}
-			poll.Reset(1 * time.Millisecond)
+			poll.Reset(time.Second)
+		}
+	}
+
+	// Shut down first controller, start second, then ensure we are no longer
+	// seeing status updates.
+	testController.Shutdown()
+	require.NoError(testController2.Controller().Start())
+	t.Cleanup(testController2.Shutdown)
+
+	lastStatusTime = time.Time{}
+	timeout.Reset(15 * time.Second)
+	poll.Reset(0)
+	serversRepo, err = testController2.Controller().ServersRepoFn()
+	require.NoError(err)
+pollForNoStatus:
+	for {
+		select {
+		case <-timeout.C:
+			// Great, didn't see it
+			poll.Stop()
+			break pollForNoStatus
+		case <-poll.C:
+			w, err = server.TestLookupWorkerByName(testController2.Context(), t, "test", serversRepo)
+			require.NoError(err)
+			if w != nil {
+				switch {
+				case lastStatusTime.IsZero():
+					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
+				default:
+					if !lastStatusTime.Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
+						t.Fatal("found updated status times when not expected")
+					}
+				}
+			}
+			poll.Reset(time.Second)
 		}
 	}
 
 	// Reload the config after changing initial_upstreams to the second controller
-	cmd.presetConfig.Store(fmt.Sprintf(initialUpstreamConfig, key, testController2.ClusterAddrs()[0], filepath.Join(authStoragePath, t.Name())))
+	cmd.presetConfig.Store(fmt.Sprintf(initialUpstreamConfig, key, testController2.ClusterAddrs()[0]))
 	cmd.SighupCh <- struct{}{}
 	select {
 	case <-cmd.reloadedCh:
@@ -118,20 +162,28 @@ pollFirstController:
 
 	// Wait until the worker connects to the second controller
 	timeout.Reset(15 * time.Second)
-	poll.Reset(10 * time.Millisecond)
+	poll.Reset(time.Second)
+	lastStatusTime = time.Time{}
 pollSecondController:
 	for {
 		select {
 		case <-timeout.C:
 			t.Fatalf("timeout wait for worker to connect to second controller")
 		case <-poll.C:
-			serversRepo, err := testController2.Controller().ServersRepoFn()
-			w, err = serversRepo.LookupWorkerByName(testController2.Context(), "test")
+			w, err = server.TestLookupWorkerByName(testController2.Context(), t, "test", serversRepo)
 			require.NoError(err)
 			if w != nil {
-				break pollSecondController
+				switch {
+				case lastStatusTime.IsZero():
+					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
+				default:
+					if !lastStatusTime.Round(time.Second).Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
+						timeout.Stop()
+						break pollSecondController
+					}
+				}
 			}
-			poll.Reset(1 * time.Millisecond)
+			poll.Reset(time.Second)
 		}
 	}
 

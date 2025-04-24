@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package targets_test
 
 import (
@@ -64,7 +67,7 @@ func TestTargets(t *testing.T) {
 					},
 					SessionMaxSeconds:           &wrapperspb.UInt32Value{Value: 0},
 					SessionConnectionLimit:      &wrapperspb.Int32Value{Value: 0},
-					WorkerFilter:                &wrapperspb.StringValue{Value: "worker-filter"},
+					EgressWorkerFilter:          &wrapperspb.StringValue{Value: "egress-worker-filter"},
 					BrokeredCredentialSourceIds: []string{"brokered-credential-source-id"},
 					BrokeredCredentialSources: []*pb.CredentialSource{
 						{
@@ -89,7 +92,8 @@ func TestTargets(t *testing.T) {
 					},
 					Attrs: &pb.Target_TcpTargetAttributes{
 						TcpTargetAttributes: &pb.TcpTargetAttributes{
-							DefaultPort: &wrapperspb.UInt32Value{Value: 26},
+							DefaultPort:       &wrapperspb.UInt32Value{Value: 26},
+							DefaultClientPort: &wrapperspb.UInt32Value{Value: 27},
 						},
 					},
 					AuthorizedActions: []string{"action-1"},
@@ -125,7 +129,7 @@ func TestTargets(t *testing.T) {
 					},
 					SessionMaxSeconds:           &wrapperspb.UInt32Value{Value: 0},
 					SessionConnectionLimit:      &wrapperspb.Int32Value{Value: 0},
-					WorkerFilter:                &wrapperspb.StringValue{Value: "worker-filter"},
+					EgressWorkerFilter:          &wrapperspb.StringValue{Value: "egress-worker-filter"},
 					BrokeredCredentialSourceIds: []string{"brokered-credential-source-id"},
 					BrokeredCredentialSources: []*pb.CredentialSource{
 						{
@@ -150,7 +154,8 @@ func TestTargets(t *testing.T) {
 					},
 					Attrs: &pb.Target_TcpTargetAttributes{
 						TcpTargetAttributes: &pb.TcpTargetAttributes{
-							DefaultPort: &wrapperspb.UInt32Value{Value: 26},
+							DefaultPort:       &wrapperspb.UInt32Value{Value: 26},
+							DefaultClientPort: &wrapperspb.UInt32Value{Value: 27},
 						},
 					},
 					AuthorizedActions: []string{"action-1"},

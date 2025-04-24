@@ -1,0 +1,54 @@
+---
+layout: docs
+page_title: database - Command
+description: >-
+  The "database" command performs operations on Boundary's database. You can initialize or migrate the database.
+---
+
+# database
+
+Command: `boundary database`
+
+The `database` command lets you perform operations on Boundary's database.
+
+Boundary manages its state and configuration in a relational database management system (RDBMS), namely PostgreSQL.
+You must create, set up, and make the PostgreSQL database accessible to the Boundary controller nodes before you configure the nodes themselves.
+
+## Examples
+
+The following example initializes the Boundary database:
+
+```shell-session
+$ boundary database init \
+   -skip-auth-method-creation \
+   -skip-host-resources-creation \
+   -skip-scopes-creation \
+   -skip-target-creation \
+   -config /etc/boundary.d/controller.hcl
+```
+
+Before you can start Boundary, you must initialize the database from one Boundary controller.
+This operation is only required once.
+It will execute the required database migrations for the Boundary cluster to operate.
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary database [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    init       Initialize Boundary's database
+    migrate    Migrate Boundary's database to the most recent schema supported by this binary.
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [init](/boundary/docs/commands/database/init)
+- [migrate](/boundary/docs/commands/database/migrate)

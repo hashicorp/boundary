@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Controller/Worker - Events
+page_title: Controller/worker - events
 description: |-
   The events stanza configures events-specific parameters.
 ---
 
-# `events` Stanza
+# `events` stanza
 
 The `events` stanza configures Boundary events-specific parameters.
 
@@ -15,6 +15,7 @@ Example:
 events {
   observations_enabled = true
   sysevents_enabled = true
+  telemetry_enabled = false
   sink "stderr" {
     name = "all-events"
     description = "All events sent to stderr"
@@ -34,18 +35,21 @@ events {
 }
 ```
 
-- `audit_enabled` - Specifies if audit events should be emitted.  
+- `audit_enabled` - Specifies if audit events should be emitted.
 
 - `observations_enabled` - Specifies if observation events should be emitted.
 
 - `sysevents_enabled` - Specifies if system events should be emitted.
 
+- `telemetry_enabled` - Specifies if telemetry events should be emitted.
+To receive telemetry events, you must also set `observations_enabled` to `true`.
+
 - `sink` - Specifies the configuration of an event sink. Currently, two types of
-  sink are supported: [file](/docs/configuration/events/file) and [stderr](/docs/configuration/events/stderr). If no sinks are configured then all
-  events will be sent to a default [stderr](/docs/configuration/events/stderr) sink. Events may be sent to multiple
+  sink are supported: [file](/boundary/docs/configuration/events/file) and [stderr](/boundary/docs/configuration/events/stderr). If no sinks are configured then all
+  events will be sent to a default [stderr](/boundary/docs/configuration/events/stderr) sink. Events may be sent to multiple
   sinks.
 
-## Default Events Stanza
+## Default events stanza
 
 If no event stanza is specified then the following default is used:
 
@@ -54,6 +58,7 @@ events {
   audit_enabled = false
   observations_enabled = true
   sysevents_enabled = true
+  telemetry_enabled = false
   sink "stderr" {
     name = "default"
     event_types = ["*"]

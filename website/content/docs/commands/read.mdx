@@ -1,0 +1,41 @@
+---
+layout: docs
+page_title: read - Command
+description: >-
+  The "read" command retrieves details about existing Boundary resources using the resource's ID.
+---
+
+# read
+
+Command: `boundary read`
+
+The `boundary read` command lets you read Boundary resources.
+It is a generic command that runs a read operation on a Boundary resource using the resource's ID.
+
+When you run this command, Boundary interprets it as the type-specific command.
+For example, if you enter the `read` command with a storage bucket ID, Boundary runs the `storage-buckets read` command.
+Help, error, or cURL output from the command may show the full command syntax.
+
+## Example
+
+This example reads a storage bucket with the ID `sb_1234567890`:
+
+```shell-session
+$ boundary read -id sb_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary read [resource ID] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the resource you want to read.
+
+@include 'cmd-option-note.mdx'

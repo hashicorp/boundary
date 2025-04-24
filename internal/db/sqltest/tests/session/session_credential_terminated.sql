@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- session_credential tests:
 --   the following triggers
 --    delete_session_credentials

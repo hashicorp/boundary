@@ -1,11 +1,21 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authmethods_test
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
+	am "github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -14,12 +24,15 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -41,16 +54,22 @@ func TestUpdate_Password(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -162,9 +181,9 @@ func TestUpdate_Password(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Only non-existant paths in Mask",
+			name: "Only non-existent paths in Mask",
 			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
@@ -281,7 +300,7 @@ func TestUpdate_Password(t *testing.T) {
 		{
 			name: "Update a Non Existing AuthMethod",
 			req: &pbs.UpdateAuthMethodRequest{
-				Id: password.AuthMethodPrefix + "_DoesntExis",
+				Id: globals.PasswordAuthMethodPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -299,7 +318,7 @@ func TestUpdate_Password(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.AuthMethod{
-					Id:          password.AuthMethodPrefix + "_somethinge",
+					Id:          globals.PasswordAuthMethodPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -444,7 +463,15 @@ func TestUpdate_Password(t *testing.T) {
 				require.Nil(got)
 			}
 
-			cmpOptions := []cmp.Option{protocmp.Transform()}
+			cmpOptions := []cmp.Option{
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			}
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
 
@@ -478,17 +505,23 @@ func TestAuthenticate_Password(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
 	}
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, am.PublicId)
 
-	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))
+	acct, err := password.NewAccount(ctx, am.GetPublicId(), password.WithLoginName(testLoginName))
 	require.NoError(t, err)
 
 	pwRepo, err := pwRepoFn()
@@ -497,9 +530,23 @@ func TestAuthenticate_Password(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, acct)
 
+	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", event.TestWithObservationSink(t))
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	c.EventerConfig.TelemetryEnabled = true
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Authenticate", event.WithEventerConfig(&c.EventerConfig)))
+	sinkFileName := c.ObservationEvents.Name()
+	t.Cleanup(func() {
+		require.NoError(t, os.Remove(sinkFileName))
+	})
+
 	cases := []struct {
 		name            string
 		request         *pbs.AuthenticateRequest
+		actions         []string
 		wantType        string
 		wantErr         error
 		wantErrContains string
@@ -608,15 +655,31 @@ func TestAuthenticate_Password(t *testing.T) {
 			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
 			wantErrContains: `Details: {{name: "attributes", desc: "This is a required field."}}`,
 		},
+		{
+			name:    "with-callback-action",
+			actions: []string{"callback"},
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				TokenType:    "token",
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: `Details: {{name: "request_path", desc: "callback is not a valid action for this auth method."}}`,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err)
 
-			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
+			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithActions(tc.actions)), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
@@ -637,6 +700,20 @@ func TestAuthenticate_Password(t *testing.T) {
 			assert.Equal(acct.GetPublicId(), aToken.GetAccountId())
 			assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
 			assert.Equal(tc.wantType, resp.GetType())
+
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := os.ReadFile(sinkFileName)
+			require.NoError(err)
+			gotRes := &cloudevents.Event{}
+			err = json.Unmarshal(b, gotRes)
+			require.NoErrorf(err, "json: %s", string(b))
+			details, ok := gotRes.Data.(map[string]any)["details"]
+			require.True(ok)
+			for _, key := range details.([]any) {
+				assert.Contains(key.(map[string]any)["payload"], "user_id")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_start")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
+			}
 		})
 	}
 }
@@ -656,15 +733,21 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
 	}
 
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))
+	acct, err := password.NewAccount(ctx, am.GetPublicId(), password.WithLoginName(testLoginName))
 	require.NoError(err)
 
 	pwRepo, err := pwRepoFn()
@@ -679,7 +762,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acct.GetPublicId())
 	require.NoError(err)
 
-	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(err)
 	resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.AuthenticateRequest{
 		AuthMethodId: am.GetPublicId(),

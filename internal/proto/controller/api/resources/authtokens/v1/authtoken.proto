@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.resources.authtokens.v1;
@@ -10,7 +13,7 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 // AuthToken contains all fields related to an Auth Token resource
 message AuthToken {
   // Output only. The ID of the Auth Token.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The Scope in which this Auth Token was generated.
   string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`

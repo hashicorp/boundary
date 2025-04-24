@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: targets read - Command
+description: >-
+  The "targets read" command retrieves the details of a target resource.
+---
+
+# targets read
+
+Command: `targets read`
+
+The `targets read` command lets you read the details of a target with a given ID.
+
+## Example
+
+This example reads the details of a target with the ID `t_1234567890`:
+
+```shell-session
+$ boundary targets read -id t_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets read [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the target you want to read.
+
+@include 'cmd-option-note.mdx'

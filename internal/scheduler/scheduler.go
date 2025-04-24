@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package scheduler
 
 import (
@@ -7,7 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	ua "go.uber.org/atomic"
 )
@@ -29,7 +32,6 @@ type Scheduler struct {
 	runningJobs    *sync.Map
 	started        ua.Bool
 
-	runJobsLimit       int
 	runJobsInterval    time.Duration
 	monitorInterval    time.Duration
 	interruptThreshold time.Duration
@@ -42,15 +44,15 @@ type Scheduler struct {
 //
 // • jobRepoFn must be provided and is a function that returns the job repository
 //
-// WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
+// WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
 // the only valid options.
-func New(serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, error) {
+func New(ctx context.Context, serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
 	if serverId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing server id")
 	}
 	if jobRepoFn == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing job repo function")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing job repo function")
 	}
 
 	opts := getOpts(opt...)
@@ -59,7 +61,6 @@ func New(serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, 
 		jobRepoFn:          jobRepoFn,
 		registeredJobs:     new(sync.Map),
 		runningJobs:        new(sync.Map),
-		runJobsLimit:       opts.withRunJobsLimit,
 		runJobsInterval:    opts.withRunJobInterval,
 		monitorInterval:    opts.withMonitorInterval,
 		interruptThreshold: opts.withInterruptThreshold,
@@ -74,7 +75,7 @@ func New(serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, 
 // WithNextRunIn is the only valid options.
 func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error {
 	const op = "scheduler.(Scheduler).RegisterJob"
-	if err := validateJob(j); err != nil {
+	if err := validateJob(ctx, j); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
@@ -133,7 +134,7 @@ func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, 
 // need to be instantiated in order to begin scheduling again.
 func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	const op = "scheduler.(Scheduler).Start"
-	if !s.started.CAS(s.started.Load(), true) {
+	if !s.started.CompareAndSwap(s.started.Load(), true) {
 		event.WriteSysEvent(ctx, op, "scheduler already started, skipping")
 		return nil
 	}
@@ -187,7 +188,7 @@ func (s *Scheduler) start(ctx context.Context) {
 	event.WriteSysEvent(ctx, op, "scheduling loop running",
 		"server id", s.serverId,
 		"run interval", s.runJobsInterval.String(),
-		"run limit", s.runJobsLimit)
+	)
 	timer := time.NewTimer(0)
 	var wg sync.WaitGroup
 	for {
@@ -215,7 +216,7 @@ func (s *Scheduler) schedule(ctx context.Context, wg *sync.WaitGroup) {
 		return
 	}
 
-	runs, err := repo.RunJobs(ctx, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
+	runs, err := repo.RunJobs(ctx, s.serverId)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting jobs to run from repo"))
 		return
@@ -225,7 +226,7 @@ func (s *Scheduler) schedule(ctx context.Context, wg *sync.WaitGroup) {
 		err := s.runJob(ctx, wg, r)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
-			if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
+			if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0, 0); inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfoMsg("error updating failed job run"))
 			}
 		}
@@ -257,10 +258,8 @@ func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) 
 	go func() {
 		defer rj.cancelCtx()
 		defer wg.Done()
-		runErr := j.Run(jobContext)
+		runErr := j.Run(jobContext, s.interruptThreshold)
 
-		// Get final status report to update run progress with
-		status := j.Status()
 		var updateErr error
 		switch {
 		case ctx.Err() != nil:
@@ -270,10 +269,12 @@ func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) 
 			if inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfoMsg("error getting next run time", "name", j.Name()))
 			}
-			_, updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun, status.Completed, status.Total)
+			updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun)
 		default:
 			event.WriteError(ctx, op, runErr, event.WithInfoMsg("job run failed", "run id", r.PrivateId, "name", j.Name()))
-			_, updateErr = repo.FailRun(ctx, r.PrivateId, status.Completed, status.Total)
+
+			status := j.Status() // Get final status report to update run progress with
+			_, updateErr = repo.FailRun(ctx, r.PrivateId, status.Completed, status.Total, status.Retries)
 		}
 
 		if updateErr != nil {
@@ -300,7 +301,7 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 
 		case <-timer.C:
 			// Update progress of all running jobs
-			s.runningJobs.Range(func(_, v interface{}) bool {
+			s.runningJobs.Range(func(_, v any) bool {
 				err := s.updateRunningJobProgress(ctx, v.(*runningJob))
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error updating job progress"))
@@ -330,9 +331,9 @@ func (s *Scheduler) updateRunningJobProgress(ctx context.Context, j *runningJob)
 		return fmt.Errorf("error creating job repo %w", err)
 	}
 	status := j.status()
-	_, err = repo.UpdateProgress(ctx, j.runId, status.Completed, status.Total)
-	if errors.Match(errors.T(errors.InvalidJobRunState), err) {
-		// Job has been persisted with a final run status, cancel job context to trigger early exit.
+	_, err = repo.UpdateProgress(ctx, j.runId, status.Completed, status.Total, status.Retries)
+	if errors.Match(errors.T(errors.InvalidJobRunState), err) || errors.IsNotFoundError(err) {
+		// Job has been persisted with a final run status or deleted, cancel job context to trigger early exit.
 		j.cancelCtx()
 		return nil
 	}

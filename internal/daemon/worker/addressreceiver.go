@@ -1,24 +1,19 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package worker
 
 import (
-	"context"
-
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 )
 
-var extraAddressReceivers = noopAddressReceivers
-
-func noopAddressReceivers(context.Context, *Worker) ([]addressReceiver, error) {
-	return nil, nil
-}
-
 type receiverType uint
 
 const (
-	UnknownReceiverType         receiverType = 0
-	grpcResolverReceiverType    receiverType = 1
-	dialingListenerReceiverType receiverType = 2
+	UnknownReceiverType receiverType = iota
+	grpcResolverReceiverType
+	secondaryConnectionReceiverType
 )
 
 // String returns a string representation of the receiverType
@@ -26,7 +21,7 @@ func (s receiverType) String() string {
 	return [...]string{
 		"unknown",
 		"grpcResolver",
-		"dialingListener",
+		"secondaryConnections",
 	}[s]
 }
 
@@ -47,7 +42,7 @@ type grpcResolverReceiver struct {
 }
 
 // IsDialingListener always returns
-func (_ *grpcResolverReceiver) Type() receiverType {
+func (*grpcResolverReceiver) Type() receiverType {
 	return grpcResolverReceiverType
 }
 

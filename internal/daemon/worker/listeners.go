@@ -1,9 +1,12 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package worker
 
 import (
 	"context"
 	"crypto/tls"
-	stderrers "errors"
+	stderrors "errors"
 	"fmt"
 	"log"
 	"math"
@@ -13,27 +16,44 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
+	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/hashicorp/nodeenrollment/util/temperror"
+	"github.com/hashicorp/nodeenrollment/util/toggledlogger"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
+)
+
+const (
+	// the purpose strings used to identify listeners
+	reverseGrpcListenerPurpose            = "reverse-grpc"
+	multihopProxyDataplaneListenerPurpose = "multihop-proxy-dataplane"
+	grpcListenerPurpose                   = "grpc"
 )
 
 // the function that handles a secondary connection over a provided listener
-var handleSecondaryConnection = closeListener
+var handleSecondaryConnection = closeListeners
 
-func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
+// closeListeners handles the secondary connection listeners by closing them.
+// l is the grpc listener and l2 is the data plane listener.
+func closeListeners(_ context.Context, l, l2 net.Listener, _ any) error {
 	if l != nil {
-		return l.Close()
+		l.Close()
+	}
+	if l2 != nil {
+		l2.Close()
 	}
 	return nil
 }
@@ -97,17 +117,49 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	fetchCredsFn := func(
 		ctx context.Context,
-		_ nodee.Storage,
+		storage nodee.Storage,
 		req *types.FetchNodeCredentialsRequest,
-		_ ...nodee.Option,
+		opt ...nodee.Option,
 	) (*types.FetchNodeCredentialsResponse, error) {
+		switch {
+		case req == nil:
+			return nil, temperror.New(stderrors.New("nil request in multi-hop fetch function"))
+		case len(req.Bundle) == 0:
+			return nil, temperror.New(stderrors.New("empty bundle in multi-hop fetch function"))
+		}
+		// Check to see if there is encrypted registration info, if so we need
+		// to use our wrapper to decrypt it
+		reqInfo := new(types.FetchNodeCredentialsInfo)
+		if err := proto.Unmarshal(req.Bundle, reqInfo); err != nil {
+			return nil, temperror.New(fmt.Errorf("error unmarshaling request bundle in multi-hop fetch function: %w", err))
+		}
+		if len(reqInfo.WrappedRegistrationInfo) > 0 {
+			regInfo, err := registration.DecryptWrappedRegistrationInfo(ctx, reqInfo, opt...)
+			if err != nil {
+				return nil, temperror.New(fmt.Errorf("error during decryption of wrapped registration info in multi-hop fetch function: %w", err))
+			}
+			// We've successfully decrypted it using our registration wrapper;
+			// now we need to encrypt it to the server
+			nodeCreds, err := types.LoadNodeCredentials(ctx, storage, nodee.CurrentId, opt...)
+			if err != nil {
+				return nil, temperror.New(fmt.Errorf("error loading node credentials in multi-hop fetch function: %w", err))
+			}
+			req.RewrappingKeyId, err = nodee.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+			if err != nil {
+				return nil, temperror.New(fmt.Errorf("error deriving node credentials key id in multi-hop fetch function: %w", err))
+			}
+			req.RewrappedWrappingRegistrationFlowInfo, err = nodee.EncryptMessage(ctx, regInfo, nodeCreds)
+			if err != nil {
+				return nil, temperror.New(fmt.Errorf("error rewrapping registration information in multi-hop fetch function: %w", err))
+			}
+		}
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
-			return nil, temperror.New(stderrers.New("error fetching controller connection, client is nil"))
+			return nil, temperror.New(stderrors.New("error fetching controller connection, client is nil"))
 		}
 		multihopClient, ok := client.(multihop.MultihopServiceClient)
 		if !ok {
-			return nil, temperror.New(stderrers.New("client could not be understood as a multihop service client"))
+			return nil, temperror.New(stderrors.New("client could not be understood as a multihop service client"))
 		}
 		return multihopClient.FetchNodeCredentials(ctx, req)
 	}
@@ -120,13 +172,29 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	) (*types.GenerateServerCertificatesResponse, error) {
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
-			return nil, temperror.New(stderrers.New("error fetching controller connection, client is nil"))
+			return nil, temperror.New(stderrors.New("error fetching controller connection, client is nil"))
 		}
 		multihopClient, ok := client.(multihop.MultihopServiceClient)
 		if !ok {
-			return nil, temperror.New(stderrers.New("client could not be understood as a multihop service client"))
+			return nil, temperror.New(stderrors.New("client could not be understood as a multihop service client"))
 		}
 		return multihopClient.GenerateServerCertificates(ctx, req)
+	}
+
+	eventLogger, err := event.NewHclogLogger(w.baseContext, w.conf.Eventer)
+	if err != nil {
+		event.WriteError(w.baseContext, op, err)
+		return nil, errors.Wrap(w.baseContext, err, op)
+	}
+	// Give the log a prefix
+	eventLogger = eventLogger.Named(fmt.Sprintf("workerauth_listener"))
+	// Wrap the log in a toggle so we can turn it on and off via config and
+	// SIGHUP
+	eventLogger = toggledlogger.NewToggledLogger(eventLogger, w.conf.WorkerAuthDebuggingEnabled)
+
+	wrapperToUse := w.conf.WorkerAuthKms
+	if !util.IsNil(w.conf.DownstreamWorkerAuthKms) {
+		wrapperToUse = w.conf.DownstreamWorkerAuthKms
 	}
 
 	interceptingListener, err := protocol.NewInterceptingListener(
@@ -139,6 +207,11 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 			},
 			FetchCredsFunc:                 fetchCredsFn,
 			GenerateServerCertificatesFunc: generateServerCertificatesFn,
+			Options: []nodee.Option{
+				nodee.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
+				nodee.WithRegistrationWrapper(wrapperToUse),
+				nodee.WithLogger(eventLogger),
+			},
 		})
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
@@ -151,9 +224,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	}
 
 	// This handles connections coming in that are authenticated via
-	// nodeenrollment but not with any extra purpose; these are normal PKI
-	// worker connections
-	nodeeAuthListener, err := w.workerAuthSplitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto)
+	// nodeenrollment but not with any extra purpose; these are normal worker
+	// connections
+	nodeeAuthListener, err := w.workerAuthSplitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating worker split listener: %w", err)
 	}
@@ -167,9 +240,31 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	// Connections coming in here are authed by nodeenrollment and are for the
 	// reverse grpc purpose
-	reverseGrpcListener, err := w.workerAuthSplitListener.GetListener(common.ReverseGrpcConnectionAlpnValue)
+	reverseGrpcListener, err := w.workerAuthSplitListener.GetListener(common.ReverseGrpcConnectionAlpnValue, nodee.WithNativeConns(true))
 	if err != nil {
-		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
+		return nil, fmt.Errorf("error instantiating reverse grpc split listener: %w", err)
+	}
+
+	// This wraps the reverse grpc worker connections with a listener which adds
+	// the worker key id of the connections to the worker's downstream
+	// ConnManager.
+	revWorkerTrackingListener, err := cluster.NewTrackingListener(w.baseContext, reverseGrpcListener, w.downstreamConnManager, sourcePurpose(reverseGrpcListenerPurpose))
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating reverse grpc worker tracking listener: %w", op, err)
+	}
+
+	// Connections coming in here are authed by nodeenrollment and are for the
+	// multi-hop session-proxying
+	dataPlaneProxyListener, err := w.workerAuthSplitListener.GetListener(common.DataPlaneProxyAlpnValue, nodee.WithNativeConns(true))
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating websocket proxying split listener: %w", err)
+	}
+
+	// This wraps the web socket proxying worker connections with a listener which
+	// adds the worker key id of the connections to the worker's downstreamConnManager.
+	dataPlaneProxyTrackingListener, err := cluster.NewTrackingListener(w.baseContext, dataPlaneProxyListener, w.downstreamConnManager, sourcePurpose(multihopProxyDataplaneListenerPurpose))
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating websocket proxying tracking listener: %w", op, err)
 	}
 
 	statsHandler, err := metric.InstrumentClusterStatsHandler(w.baseContext)
@@ -188,20 +283,24 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		}
 	}
 
+	metric.InitializeConnectionCounters(w.conf.PrometheusRegisterer)
 	metric.InitializeClusterServerCollectors(w.conf.PrometheusRegisterer, downstreamServer)
 
 	ln.GrpcServer = downstreamServer
 
-	eventingListener, err := common.NewEventingListener(cancelCtx, nodeeAuthListener)
+	// This wraps the normal worker connections with a listener which adds the
+	// worker key id of the connections to the worker's downstreamConnManager.
+	workerTrackingListener, err := cluster.NewTrackingListener(cancelCtx, nodeeAuthListener, w.downstreamConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
-		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
+		return nil, fmt.Errorf("%s: error creating worker tracking listener: %w", op, err)
 	}
 
 	return func() {
+		handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revWorkerTrackingListener, reverseGrpcListenerPurpose),
+			metric.InstrumentWorkerClusterTrackingListener(dataPlaneProxyTrackingListener, multihopProxyDataplaneListenerPurpose), w.downstreamReceiver)
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
-		go ln.GrpcServer.Serve(eventingListener)
-		go handleSecondaryConnection(cancelCtx, reverseGrpcListener, w.downstreamRoutes, -1)
+		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(workerTrackingListener, grpcListenerPurpose))
 	}, nil
 }
 
@@ -211,13 +310,14 @@ func (w *Worker) stopServersAndListeners() error {
 	mg.Go(w.stopClusterGrpcServer)
 
 	stopErrors := mg.Wait()
+	convertedStopErrors := stopErrors.ErrorOrNil()
 
 	err := w.stopAnyListeners()
 	if err != nil {
-		stopErrors = multierror.Append(stopErrors, err)
+		convertedStopErrors = stderrors.Join(convertedStopErrors, err)
 	}
 
-	return stopErrors.ErrorOrNil()
+	return convertedStopErrors
 }
 
 func (w *Worker) stopHttpServer() error {
@@ -281,4 +381,8 @@ func listenerCloseErrorCheck(lnType string, err error) error {
 	}
 
 	return err
+}
+
+func sourcePurpose(purpose string) string {
+	return fmt.Sprintf("worker %s", purpose)
 }

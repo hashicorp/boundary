@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package job
 
 import (
@@ -5,8 +8,7 @@ import (
 )
 
 const (
-	defaultRunJobsLimit = 1
-	defaultPluginId     = "pi_system"
+	defaultPluginId = "pi_system"
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -24,16 +26,13 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withNextRunIn    time.Duration
-	withRunJobsLimit int
 	withLimit        int
 	withName         string
 	withControllerId string
 }
 
 func getDefaultOptions() options {
-	return options{
-		withRunJobsLimit: defaultRunJobsLimit,
-	}
+	return options{} // No default options.
 }
 
 // WithNextRunIn provides an option to provide the duration until the next run is scheduled.
@@ -42,18 +41,6 @@ func getDefaultOptions() options {
 func WithNextRunIn(d time.Duration) Option {
 	return func(o *options) {
 		o.withNextRunIn = d
-	}
-}
-
-// WithRunJobsLimit provides an option to provide the number of jobs to run.
-// If WithRunJobsLimit == 0, then default run jobs limit is used.
-// If WithRunJobsLimit < 0, then no limit is used.
-func WithRunJobsLimit(l int) Option {
-	return func(o *options) {
-		o.withRunJobsLimit = l
-		if o.withRunJobsLimit == 0 {
-			o.withRunJobsLimit = defaultRunJobsLimit
-		}
 	}
 }
 

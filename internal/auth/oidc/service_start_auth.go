@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -11,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/cap/oidc"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -52,6 +56,13 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	if am.OperationalState == string(InactiveState) {
 		return nil, "", errors.New(ctx, errors.AuthMethodInactive, op, "not allowed to start authentication attempt")
 	}
+	if len(am.Prompts) > 0 {
+		prompts := strutil.RemoveDuplicatesStable(am.Prompts, false)
+
+		if strutil.StrListContains(prompts, string(oidc.None)) && len(prompts) > 1 {
+			return nil, "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf(`prompts (%s) includes "none" with other values`, am.Prompts))
+		}
+	}
 
 	// get the provider from the cache (if possible)
 	provider, err := providerCache().get(ctx, am)
@@ -70,7 +81,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	now := time.Now()
 	createTime := timestamppb.New(now.Truncate(time.Second))
 	exp := timestamppb.New(now.Add(AttemptExpiration).Truncate(time.Second))
-	tokenRequestId, err := authtoken.NewAuthTokenId()
+	tokenRequestId, err := authtoken.NewAuthTokenId(ctx)
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op)
 	}
@@ -113,6 +124,11 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 
 	if len(am.ClaimsScopes) > 0 {
 		oidcOpts = append(oidcOpts, oidc.WithScopes(am.ClaimsScopes...))
+	}
+
+	if len(am.Prompts) > 0 {
+		prompts := convertToOIDCPrompts(ctx, am.Prompts)
+		oidcOpts = append(oidcOpts, oidc.WithPrompts(prompts...))
 	}
 
 	// a bare min oidc.Request needed for the provider.AuthURL(...) call.  We've intentionally not populated

@@ -1,0 +1,387 @@
+---
+layout: docs
+page_title: v0.16.0 release notes
+description: >-
+  Learn more about the new features included in the Boundary 0.16.0 release. Understand any deprecations, changes, and known issues.
+---
+
+# Boundary 0.16.0 release notes
+
+**GA date:** April 30, 2024
+
+@include 'release-notes/intro.mdx'
+
+## Important changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Change</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Role creation
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In a future version Boundary will no longer automatically create roles when new scopes are created. This was implemented prior to multi-scope grants to ensure administrators and users had default permissions in new scopes. Since Boundary 0.15, initial roles created for new clusters provide these permissions by default to all scopes using multi-scope grants.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Docker image no longer contains <code>curl</code>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.16.3 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary. The image now includes <code>wget</code>, which you can alternatively use to check the health endpoint for a worker. If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>.
+    <br /><br />
+    Learn more:&nbsp; <a href="#known-issues-and-breaking-changes">Known issues and breaking changes </a>
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+## New features
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Feature</th>
+      <th style={{verticalAlign: 'middle'}}>Update</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Aliases
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A new resource was introduced in this release. Aliases let you associate a string with a Boundary target. You can then establish a session to the target by referencing its alias, instead of having to provide a target ID or target name and scope ID.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/concepts/aliases">Aliases</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      MinIO support for session recording
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      You can now configure external MinIO storage to store recorded sessions. MinIO support provides an on-premises storage option for users who do not use AWS.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/configuration/session-recording">Session recording overview</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Admin UI enhanced search and filtering
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Enhanced search and filter support was added to the Boundary CLI and API through a new list pagination feature in release 0.15.0. This functionality has been extended to the Admin UI in release 0.16.0.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/api-clients/api/pagination">List pagination</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Local storage state health
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Storage state values have been created to monitor the health of any local workers used for session recording. Boundary monitors the worker's available disk space and compares it to the value you configured for recording capacity. If the worker does not have adequate storage, it cannot be used for session recording.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/configuration/session-recording/configure-worker-storage#local-storage">Local storage for session recording</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      X-Correlation-ID HTTP header
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      A new HTTP header was added to identify a transaction over a series of requests and responses. You can use the X-Correlation-ID header to correlate events between external systems and products. The initial release of the X-Correlation-ID header supports correlating events between Boundary and Vault.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/api-clients/api#http-headers">HTTP headers</a>.
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
+
+## Known issues and breaking changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Issue</th>
+      <th style={{verticalAligh: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Rotation of AWS access and secret keys during a session results in stale recordings
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In Boundary version 0.13.0+, when you rotate a storage bucket's secrets, any new sessions use the new credentials. However, previously established sessions continue to use the old credentials.
+    <br /><br />
+    As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+    Otherwise, you may end up with recordings that aren't stored in the remote storage bucket, and are unable to be played back.
+    </td>
+  </tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unsupported recovery workflow during worker failure
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If a worker fails during a recording, there is no way to recover the recording. This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.0)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Users cannot log in to Boundary Desktop
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A bug caused Boundary Desktop to incorrectly assume the controller was running an unsupported version. It would prevent users from being able to log in to the Desktop client.
+    <br /><br />
+    Learn more:&nbsp; <a href="https://github.com/hashicorp/boundary/issues/4370">Boundary Desktop issue #4370</a>
+    <br /><br />
+    This issue is fixed in Boundary version 0.16.0.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.1 for Community/Enterprise editions and 0.16.2 for HCP Boundary)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Controller dead lock with database connections stuck in <code>idle in transaction</code> state
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you configured a controller to have the maximum number of open connections and it was under enough load from worker requests, the controller could get stuck. Once the controller consumed all the database connections, it would leave them in an <code>idle in transaction</code> state. In extreme cases, this could cause Boundary clusters to become unresponsive.
+    <br /><br />
+    The cause of this problem was due to a combination of issues. There was no request timeout for worker-to-controller GRPC requests. Also, the session repository attempted to use a separate database connection to retrieve a KMS wrapper after already starting a database transaction.
+    <br /><br />
+    This issue is fixed in release 0.16.1 for the Community and Enterprise editions. It is fixed in release 0.16.2 for HCP Boundary.
+    <br /><br />
+    Boundary now sets a max request duration for GRPC requests based on the cluster's listener configuration. KMS operations now occur outside of the transaction.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    TLS handshake error
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When you rotated credentials for a worker, sometimes the request succeeded on the controller, but the worker did not receive the response. Because the controller and worker used different sets of credentials, the worker was unable to connect to the controller and you received a TLS handshake error.
+    <br /><br />
+    In release 0.16.2, we added a new NodeIDLoader interface. The worker uses the interface to check its key set and correct its stored credential set to match the controller, if necessary. This issue is now resolved.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    OIDC error codes
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In releases 0.16.0 and earlier, Boundary used internal error codes for OIDC errors. The internal error codes could cause confusion, since the codes were non-standard HTTP response codes.
+    <br /><br />
+    In release 0.16.2, we updated the OIDC request handlers to return standard gRPC status codes for errors. The 4xx status codes are more descriptive of the error.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.3+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Docker image no longer contains <code>curl</code>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    As of version 0.16.3 and later, the <code>curl</code> binary is no longer included in the published Docker container image for Boundary.
+    <br /><br />
+    The image now includes <code>wget</code>. You can use <code>wget</code> to check the health endpoint for workers.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/operations/health#check-the-health-endpoint-using-wget">Check the health endpoint using <code>wget</code></a>
+    <br /><br />
+    If your workflow depends on having <code>curl</code> in the image, you can dynamically install it using <code>apk</code>. Refer to the following commands for examples of using <code>apk</code> to install <code>curl</code>:
+    <br /><br />
+    <code>&lt;CONTAINER-ID&gt; apk add curl</code>
+    <br /><br />
+    or
+    <br /><br />
+    <code>kubectl exec -ti &lt;NAME&gt; -- apk add curl</code>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Using an invalid alias results in a 401 message
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you tried to connect to an invalid alias, Boundary returned a message with the 401 status code. The 401 status code could cause users to believe that they did not properly authenticate, rather than realizing the alias resource was invalid.
+    <br /><br />
+    This issue is fixed in Boundary version 0.16.3. If you use an invalid alias, Boundary now properly returns a 404 status code, indicating that it could not find the alias resource.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/concepts/aliases">Aliases</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />(Fixed in 0.16.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Session recording fails when you use Secure File Copy (SCP)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you tried to use SCP during a recorded session, the session recording details may shown the recording state as Failed, and you may not have been able to play back the session.
+    <br /><br />
+    This issue occurs when a recorded session file is too large. It can happen when you use SCP to transfer large files during a recorded session, In Boundary version 0.16.3, we have increased the maximum size for recorded session files to 5 GB. This issue should happen less often now, but be careful when you use SCP during a recorded session, because it can result in large recorded session files.
+    <br /><br />
+    Learn more:&nbsp; <a href="/boundary/docs/configuration/session-recording#storage-considerations">Session recording storage considerations</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.8.0 - 0.16.3
+    <br /><br />
+    (Fixed in Boundary Community Edition and Boundary Enterprise 0.16.4)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary controller incorrectly handles HTTP requests and stops prematurely (HCSEC-2024-28)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary Community Edition and Boundary Enterprise incorrectly handle HTTP requests while the Boundary controller is starting up, which may cause the controller to stop prematurely. Boundary is only vulnerable to this flaw during the controller's initialization, which usually occurs in milliseconds during Boundary's startup process.
+    <br /><br />
+    This vulnerability, HCSEC-2024-28, is fixed in Boundary Community Edition and Boundary Enterprise versions 0.16.4, 0.17.3, and 0.18.2.
+    <br /><br />
+    Learn more: <a href="https://discuss.hashicorp.com/t/hcsec-2024-28-boundary-controller-incorrectly-handles-http-requests-on-initialization-which-may-lead-to-a-denial-of-service">HCSEC-2024-28: Boundary controller incorrectly handles http requests on initialization which may lead to a denial of service</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
+
+## Feature deprecations and EOL
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>EOL</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>boundary daemon</code> command
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The <code>boundary daemon</code> command has been deprecated in favor of the new <code>boundary cache</code> command. The functionality remains the same.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/cache"><code>boundary cache</code></a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>include_terminated</code> field removed
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The <code>include_terminated</code> field from the <code>list sessions</code> command has been deprecated and will be removed in an upcoming release. Boundary will return terminated sessions in all list session responses, unless they are filtered out using the <code>filter</code> field. For more information, refer to the filter resource documentation.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/sessions/list#command-options"><code>sessions list</code> command options</a> and <a href="/boundary/docs/concepts/filtering/resource-listing">Filter resource listings</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>grant_scope_id</code> field removed from roles
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The <code>grant_scope_id</code> field, which was deprecated in release 0.15.0, has been removed from roles. You can now manage roles using the <code>add-grant-scopes</code>, <code>remove-grant-scopes</code>, and <code>set-grant-scopes</code> commands.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/roles/add-grant-scopes"><code>add-grant-scopes</code></a>, <a href="/boundary/docs/commands/roles/remove-grant-scopes"><code>remove-grant-scopes</code></a>, and <a href="/boundary/docs/commands/roles/set-grant-scopes"><code>set-grant-scopes</code></a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>

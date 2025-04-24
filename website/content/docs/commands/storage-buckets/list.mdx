@@ -1,0 +1,53 @@
+---
+layout: docs
+page_title: storage-buckets list - Command
+description: >-
+  The "storage-buckets list" command lists the available storage bucket resources within a scope or resource.
+---
+
+# storage-buckets list
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `storage-buckets list`
+
+The `storage-buckets list` command lets you list the storage buckets within a given scope or resource.
+
+## Example
+
+This example lists all storage buckets within the scope `s_1234567890`.
+The `recursive` option means Boundary runs the operation recursively on any child scopes, if applicable:
+
+```shell-session
+$ boundary storage-buckets list -scope-id s_1234567890 -recursive
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary storage-buckets list [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-filter=<string>` - If set, Boundary filters the list operation before the results are returned.
+The filter operates against each item in the list.
+We recommend that you use single quotes, because the filters contain double quotes.
+Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
+- `recursive` - If set, runs the list operation recursively on any child scopes, if the type supports it.
+The default value is `false`.
+- `scope-id=<string>` - The scope from which to list storage buckets.
+The default value is `global`.
+You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
+- `list_token` (optional) - An opaque token that is returned from the previous `list` response.
+If you do not supply a value, pagination starts from the beginning.
+- `page_size` (optional) - An unsigned integer that indicates the number of items that should be included on the page of search results.
+If you do not provide a value, or if you provide a value of `0`, Boundary uses the default page size of 1000 items.
+If you configure it, the `page_size` value overrides the default page size.
+Controller administrators can also configure a `max_page_size` option that constrains the maximum page size a user can request.
+
+@include 'cmd-option-note.mdx'

@@ -1,9 +1,16 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
+	"context"
+
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -16,9 +23,9 @@ type HostSet struct {
 // NewHostSet creates a new in memory HostSet assigned to catalogId.
 // Name and description are the only valid options. All other options are
 // ignored.
-func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
+func NewHostSet(ctx context.Context, catalogId string, opt ...Option) (*HostSet, error) {
 	if catalogId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, "static.NewHostSet", "no catalog id")
+		return nil, errors.New(ctx, errors.InvalidParameter, "static.NewHostSet", "no catalog id")
 	}
 
 	opts := getOpts(opt...)
@@ -44,6 +51,11 @@ func (s *HostSet) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (s *HostSet) SetTableName(n string) {
 	s.tableName = n
+}
+
+// GetResourceType returns the resource type of the HostSet
+func (s *HostSet) GetResourceType() resource.Type {
+	return resource.HostSet
 }
 
 func allocHostSet() *HostSet {
@@ -78,4 +90,14 @@ func newHostSetForMembers(setId string, version uint32) *HostSet {
 			Version:  version + 1,
 		},
 	}
+}
+
+type deletedHostSet struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (ds *deletedHostSet) TableName() string {
+	return "static_host_set_deleted"
 }

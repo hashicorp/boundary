@@ -1,16 +1,21 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package authmethods
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 )
 
 type AuthenticateResult struct {
-	Command       string                 `json:"-"`
-	Attributes    map[string]interface{} `json:"-"`
+	Command       string         `json:"-"`
+	Attributes    map[string]any `json:"-"`
 	attributesRaw json.RawMessage
 
 	response *api.Response
@@ -20,7 +25,7 @@ func (a *AuthenticateResult) MarshalJSON() ([]byte, error) {
 	// Note that a will not be nil per contract of the interface. Using a map
 	// here causes Go to sort the resulting JSON, which makes tests easier and
 	// output more predictable.
-	out := make(map[string]interface{})
+	out := make(map[string]any)
 	if a.Command != "" {
 		out["command"] = a.Command
 	}
@@ -41,23 +46,41 @@ func (a *AuthenticateResult) UnmarshalJSON(inBytes []byte) error {
 	}
 	a.Command = i.Command
 	a.attributesRaw = i.Attributes
-	a.Attributes = make(map[string]interface{})
+	a.Attributes = make(map[string]any)
 	if err := json.Unmarshal(i.Attributes, &a.Attributes); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (n AuthenticateResult) GetRawAttributes() json.RawMessage {
-	return n.attributesRaw
+func (a AuthenticateResult) GetRawAttributes() json.RawMessage {
+	return a.attributesRaw
 }
 
-func (n AuthenticateResult) GetResponse() *api.Response {
-	return n.response
+func (a AuthenticateResult) GetResponse() *api.Response {
+	return a.response
 }
 
-// Authenticate is a generic authenticate API call that returns a generic result.
-func (c *Client) Authenticate(ctx context.Context, authMethodId, command string, attributes map[string]interface{}, opt ...Option) (*AuthenticateResult, error) {
+// GetAuthToken converts this AuthenticateResult into an AuthToken struct
+func (a AuthenticateResult) GetAuthToken() (*authtokens.AuthToken, error) {
+	if a.attributesRaw == nil {
+		return nil, errors.New("AuthenticateResult does not have a populated raw attributes field")
+	}
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(a.GetRawAttributes(), token); err != nil {
+		return nil, err
+	}
+	return token, nil
+}
+
+// Authenticate is a generic authenticate API call that returns a generic
+// result. See the documentation for the attributes required for any given auth
+// method.
+//
+// Only some auth methods support multiple commands. If the documentation does
+// not specify what command to use when and with which attriubutes, use
+// "login".
+func (c *Client) Authenticate(ctx context.Context, authMethodId, command string, attributes map[string]any, opt ...Option) (*AuthenticateResult, error) {
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client in Authenticate request")
 	}
@@ -70,7 +93,7 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId, command string,
 
 	_, apiOpts := getOpts(opt...)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"command": command,
 	}
 	if attributes != nil {

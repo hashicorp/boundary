@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -6,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -18,6 +20,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -35,11 +38,11 @@ func Test_TokenRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	atRepoFn := func() (*authtoken.Repository, error) {
-		r, err := authtoken.NewRepository(rw, rw, kmsCache)
+		r, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
 		return r, nil
 	}
-	testAtRepo, err := authtoken.NewRepository(rw, rw, kmsCache)
+	testAtRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	// a reusable test authmethod for the unit tests
@@ -108,7 +111,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: "",
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId()
+				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
@@ -138,7 +141,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId()
+				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
@@ -152,7 +155,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId()
+				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 0, tokenPublicId)
@@ -168,7 +171,7 @@ func Test_TokenRequest(t *testing.T) {
 			},
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId()
+				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
@@ -185,6 +188,7 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, []byte("not-valid-request-token"), wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				require.NoError(t, err)
 				keyId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
@@ -207,7 +211,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId()
+				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 				require.NoError(t, err)
 				reqTk := request.Token{
 					RequestId: tokenPublicId,
@@ -217,6 +221,7 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				require.NoError(t, err)
 				keyId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
@@ -248,6 +253,7 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				require.NoError(t, err)
 				keyId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
@@ -280,6 +286,7 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				require.NoError(t, err)
 				keyId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
@@ -301,7 +308,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: "not-a-match",
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId()
+				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
@@ -315,7 +322,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId()
+				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)

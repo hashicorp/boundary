@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package auth_test
 
 import (
@@ -9,6 +12,8 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/api/roles"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
@@ -44,11 +49,31 @@ func TestFetchActionSetForId(t *testing.T) {
 		return tc.AuthTokenRepo(), nil
 	}
 
+	// Delete the global default role so it doesn't interfere with the
+	// permissions we're testing here
+	rolesClient := roles.NewClient(tc.Client())
+	rolesResp, err := rolesClient.List(tc.Context(), scope.Global.String())
+	require.NoError(t, err)
+	require.NotNil(t, rolesResp)
+	assert.Len(t, rolesResp.GetItems(), 3)
+	var adminRoleId string
+	for _, item := range rolesResp.GetItems() {
+		if strings.Contains(item.Name, "Authenticated User") ||
+			strings.Contains(item.Name, "Login") {
+			_, err := rolesClient.Delete(tc.Context(), item.Id)
+			require.NoError(t, err)
+		} else {
+			adminRoleId = item.Id
+		}
+	}
+	_, err = rolesClient.Delete(tc.Context(), adminRoleId)
+	require.NoError(t, err)
+
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=foo;actions=read,update")
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=bar;actions=read,update,delete,authorize-session")
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=role;actions=add-grants,remove-grants")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=ttcp_foo;actions=read,update")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=ttcp_bar;actions=read,update,delete,authorize-session")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=*;type=role;actions=add-grants,remove-grants")
 
 	cases := []struct {
 		name         string
@@ -63,13 +88,13 @@ func TestFetchActionSetForId(t *testing.T) {
 		{
 			name:  "no match",
 			id:    "zip",
-			avail: action.ActionSet{action.Read, action.Update},
+			avail: action.NewActionSet(action.Read, action.Update),
 		},
 		{
 			name:    "disjoint match",
-			id:      "bar",
-			avail:   action.ActionSet{action.Delete, action.AddGrants, action.Read, action.RemoveHostSets},
-			allowed: action.ActionSet{action.Delete, action.Read},
+			id:      "ttcp_bar",
+			avail:   action.NewActionSet(action.Delete, action.AddGrants, action.Read, action.RemoveHostSets),
+			allowed: action.NewActionSet(action.Delete, action.Read),
 		},
 		{
 			name:         "different type",
@@ -80,8 +105,8 @@ func TestFetchActionSetForId(t *testing.T) {
 			name:         "type match",
 			id:           "anything",
 			typeOverride: resource.Role,
-			avail:        action.ActionSet{action.Read, action.AddGrants},
-			allowed:      action.ActionSet{action.AddGrants},
+			avail:        action.NewActionSet(action.Read, action.AddGrants),
+			allowed:      action.NewActionSet(action.AddGrants),
 		},
 	}
 	for _, tt := range cases {
@@ -103,7 +128,7 @@ func TestFetchActionSetForId(t *testing.T) {
 				typ = tt.typeOverride
 			}
 			res := auth.Verify(ctx, []auth.Option{
-				auth.WithId("foo"),
+				auth.WithId("ttcp_foo"),
 				auth.WithAction(action.Read),
 				auth.WithScopeId(org.PublicId),
 				auth.WithType(typ),
@@ -119,6 +144,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		// Disable this to avoid having to deal with sorting them in the test
 		DisableOidcAuthMethodCreation: true,
+		DisableLdapAuthMethodCreation: true,
 	})
 	defer tc.Shutdown()
 
@@ -127,12 +153,27 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	token := tc.Token()
 	client.SetToken(token.Token)
 
+	// Delete the global default role so it doesn't interfere with the
+	// permissions we're testing here
+	rolesClient := roles.NewClient(tc.Client())
+	rolesResp, err := rolesClient.List(tc.Context(), scope.Global.String())
+	require.NoError(err)
+	require.NotNil(rolesResp)
+	assert.Len(rolesResp.GetItems(), 3)
+	for _, item := range rolesResp.GetItems() {
+		if strings.Contains(item.Name, "Authenticated User") ||
+			strings.Contains(item.Name, "Login") {
+			_, err := rolesClient.Delete(tc.Context(), item.Id)
+			require.NoError(err)
+		}
+	}
+
 	// Set some global permissions so we can read the auth method there. Here we
 	// will expect the defaults.
 	globalRole := iam.TestRole(t, conn, scope.Global.String())
 	iam.TestUserRole(t, conn, globalRole.PublicId, token.UserId)
-	iam.TestUserRole(t, conn, globalRole.PublicId, auth.AnonymousUserId)
-	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=list,no-op")
+	iam.TestUserRole(t, conn, globalRole.PublicId, globals.AnonymousUserId)
+	iam.TestRoleGrant(t, conn, globalRole.PublicId, "ids=*;type=auth-method;actions=list,no-op")
 
 	// Create some users at the org level, and some role grants for them
 	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
@@ -141,16 +182,16 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
 	// The first and second will actually not take effect for output
-	// grantsbecause it's a list and output fields are scoped by action. So we
+	// grants because it's a list and output fields are scoped by action. So we
 	// expect only name and scope_id for the auth methods in the scope, using
 	// two patterns below. However, since you need an action on the resource for
 	// list to return anything, those grants allow us to list the items, while
 	// also verifying that those output fields don't take effect for the wrong
 	// action.
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=id,version", orgAm1.GetPublicId()))
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=description", orgAm2.GetPublicId()))
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-method;output_fields=name")
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-method;actions=list;output_fields=scope_id")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("ids=%s;actions=read;output_fields=id,version", orgAm1.GetPublicId()))
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("ids=%s;actions=read;output_fields=description", orgAm2.GetPublicId()))
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=*;type=auth-method;output_fields=name")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=*;type=auth-method;actions=list;output_fields=scope_id")
 
 	amClient := authmethods.NewClient(tc.Client())
 	resp, err := amClient.List(tc.Context(), scope.Global.String(), authmethods.WithRecursive(true))
@@ -159,7 +200,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
 	assert.Len(resp.GetItems(), 3)
-	items := resp.GetResponse().Map["items"].([]interface{})
+	items := resp.GetResponse().Map["items"].([]any)
 	require.NotNil(items)
 
 	// The default generated roles don't have output field definitions for them,
@@ -171,7 +212,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	// auto generated one.
 	var globalAms, orgAms int
 	for _, item := range items {
-		m := item.(map[string]interface{})
+		m := item.(map[string]any)
 		require.NotNil(m)
 		switch m["scope_id"].(string) {
 		case scope.Global.String():
@@ -200,7 +241,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
 	assert.Len(resp.GetItems(), 1)
-	item := resp.GetResponse().Map["items"].([]interface{})[0].(map[string]interface{})
+	item := resp.GetResponse().Map["items"].([]any)[0].(map[string]any)
 	assert.NotContains(item, "created_time")
 	assert.NotContains(item, "attributes")
 }
@@ -211,11 +252,17 @@ func TestSelfReadingDifferentOutputFields(t *testing.T) {
 
 	conn := tc.DbConn()
 
-	s, err := authmethodsservice.NewService(tc.Kms(),
+	s, err := authmethodsservice.NewService(
+		tc.Context(),
+		tc.Kms(),
 		tc.Controller().PasswordAuthRepoFn,
 		tc.Controller().OidcRepoFn,
 		tc.Controller().IamRepoFn,
-		tc.Controller().AuthTokenRepoFn)
+		tc.Controller().AuthTokenRepoFn,
+		tc.Controller().LdapRepoFn,
+		tc.Controller().AuthMethodRepoFn,
+		1000,
+	)
 	require.NoError(t, err)
 
 	// Create two auth tokens belonging to different users in the org. Each will
@@ -239,8 +286,8 @@ func TestSelfReadingDifferentOutputFields(t *testing.T) {
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, user1.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, user2.GetPublicId())
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-token;actions=read:self;output_fields=account_id")
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-token;actions=read;output_fields=id,scope_id")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=*;type=auth-token;actions=read:self;output_fields=account_id")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "ids=*;type=auth-token;actions=read;output_fields=id,scope_id")
 
 	cases := []struct {
 		name     string

@@ -1,0 +1,37 @@
+---
+layout: docs
+page_title: sessions cancel - Command
+description: >-
+  The "sessions cancel" command cancels a session resource.
+---
+
+# sessions cancel
+
+Command: `boundary sessions cancel`
+
+The `boundary sessions cancel` command lets you cancel a Boundary session by providing the ID.
+If the session is already canceled, the command succeeds with no effect.
+
+## Example
+
+This example cancels a session with the ID `s_1234567890`:
+
+```shell-session
+$ boundary sessions cancel -id s_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary sessions cancel [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the session you want to cancel.
+
+@include 'cmd-option-note.mdx'

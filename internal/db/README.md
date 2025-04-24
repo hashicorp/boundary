@@ -39,6 +39,9 @@ Just some high-level usage highlights to get you started.  Read the godocs for a
         }
         // Do something with the Gorm user struct
     }
+    if err := rows.Err(); err != nil {
+        // do something with the err
+    }
 
     // DoTx is a writer function that wraps a TxHandler 
     // in a retryable transaction.  You simply implement a

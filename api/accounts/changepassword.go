@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package accounts
 
 import (
@@ -35,7 +38,7 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword,
 		version = existingTarget.Item.Version
 	}
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"version":          version,
 		"current_password": currentPassword,
 		"new_password":     newPassword,
@@ -60,6 +63,6 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword,
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

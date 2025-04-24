@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package base
 
 import (
@@ -7,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -24,16 +27,16 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	berrors "github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -44,25 +47,11 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc/grpclog"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
-	// defaultStatusGracePeriod is the default status grace period, or the period
-	// of time that we will go without a status report before we start
-	// disconnecting and marking connections as closed. This is tied to the
-	// server default liveness setting, a related value. See the server package
-	// for more details.
-	defaultStatusGracePeriod = server.DefaultLiveness
-
-	// statusGracePeriodEnvVar is the environment variable that can be used to
-	// configure the status grace period. This setting is provided in seconds,
-	// and can never be lower than the default status grace period defined above.
-	//
-	// TODO: This value is temporary, it will be removed once we have a better
-	// story/direction on attributes and system defaults.
-	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
-
 	// File name to use for storing workerAuth requests
 	WorkerAuthReqFile = "auth_request_token"
 )
@@ -87,12 +76,19 @@ type Server struct {
 	StderrLock *sync.Mutex
 	Eventer    *event.Eventer
 
-	RootKms              wrapping.Wrapper
-	WorkerAuthKms        wrapping.Wrapper
-	WorkerAuthStorageKms wrapping.Wrapper
-	RecoveryKms          wrapping.Wrapper
-	Kms                  *kms.Kms
-	SecureRandomReader   io.Reader
+	// NOTE: Unlike the other wrappers below, if set, DownstreamWorkerAuthKms
+	// should always be a PooledWrapper, so that we can allow multiple KMSes to
+	// accept downstream connections. As such it's made explicit here.
+	DownstreamWorkerAuthKms *multi.PooledWrapper
+	RootKms                 wrapping.Wrapper
+	WorkerAuthKms           wrapping.Wrapper
+	WorkerAuthStorageKms    wrapping.Wrapper
+	RecoveryKms             wrapping.Wrapper
+	BsrKms                  wrapping.Wrapper
+	Kms                     *kms.Kms
+	SecureRandomReader      io.Reader
+
+	WorkerAuthDebuggingEnabled *atomic.Bool
 
 	PrometheusRegisterer prometheus.Registerer
 
@@ -105,6 +101,7 @@ type Server struct {
 
 	DevPasswordAuthMethodId          string
 	DevOidcAuthMethodId              string
+	DevLdapAuthMethodId              string
 	DevLoginName                     string
 	DevPassword                      string
 	DevUserId                        string
@@ -120,21 +117,24 @@ type Server struct {
 	DevHostCatalogId                 string
 	DevHostSetId                     string
 	DevHostId                        string
-	DevTargetId                      string
-	DevHostAddress                   string
-	DevTargetDefaultPort             int
-	DevTargetSessionMaxSeconds       int
-	DevTargetSessionConnectionLimit  int
-	DevLoopbackHostPluginId          string
-
-	// DevUsePkiForUpstream is a hint that we are in dev mode and have a worker
-	// auth KMS but want to use PKI for upstream connections
-	DevUsePkiForUpstream bool
+	DevTargetId                      string // Target using address.
+	DevSecondaryTargetId             string // Target using host sources.
+	DevHostAddress                   string // Host address for target using host sources.
+	DevTargetAddress                 string // Network address for target with address.
+	DevTargetDefaultPort             uint16
+	DevTargetSessionMaxSeconds       int64
+	DevTargetSessionConnectionLimit  int64
+	DevLoopbackPluginId              string
 
 	EnabledPlugins []EnabledPlugin
 	HostPlugins    map[string]plgpb.HostPluginServiceClient
 
 	DevOidcSetup oidcSetup
+	DevLdapSetup ldapSetup
+
+	SkipPlugins             bool // Useful when running on platforms that we can't easily compile plugins on, like Windows
+	SkipAliasTargetCreation bool
+	WorkerDnsServer         string
 
 	DatabaseUrl                     string
 	DatabaseMaxOpenConnections      int
@@ -144,46 +144,42 @@ type Server struct {
 	DevDatabaseCleanupFunc func() error
 
 	Database *db.DB
-
-	// StatusGracePeriodDuration represents the period of time (as a
-	// duration) that the controller will wait before marking
-	// connections from a disconnected worker as invalid.
-	StatusGracePeriodDuration time.Duration
 }
 
 // NewServer creates a new Server.
 func NewServer(cmd *Command) *Server {
 	return &Server{
-		Command:              cmd,
-		ServerSideShutdownCh: make(chan struct{}),
-		InfoKeys:             make([]string, 0, 20),
-		Info:                 make(map[string]string),
-		SecureRandomReader:   rand.Reader,
-		ReloadFuncsLock:      new(sync.RWMutex),
-		ReloadFuncs:          make(map[string][]reloadutil.ReloadFunc),
-		StderrLock:           new(sync.Mutex),
-		PrometheusRegisterer: prometheus.DefaultRegisterer,
+		Command:                    cmd,
+		ServerSideShutdownCh:       make(chan struct{}),
+		InfoKeys:                   make([]string, 0, 20),
+		Info:                       make(map[string]string),
+		SecureRandomReader:         rand.Reader,
+		ReloadFuncsLock:            new(sync.RWMutex),
+		ReloadFuncs:                make(map[string][]reloadutil.ReloadFunc),
+		StderrLock:                 new(sync.Mutex),
+		WorkerAuthDebuggingEnabled: new(atomic.Bool),
+		PrometheusRegisterer:       prometheus.DefaultRegisterer,
 	}
 }
 
 // SetupEventing will setup the server's eventer and initialize the "system
 // wide" eventer with a pointer to the same eventer
-func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mutex, serverName string, opt ...Option) error {
+func (b *Server) SetupEventing(ctx context.Context, logger hclog.Logger, serializationLock *sync.Mutex, serverName string, opt ...Option) error {
 	const op = "base.(Server).SetupEventing"
 
 	if logger == nil {
-		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing logger")
+		return berrors.New(ctx, berrors.InvalidParameter, op, "missing logger")
 	}
 	if serializationLock == nil {
-		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing serialization lock")
+		return berrors.New(ctx, berrors.InvalidParameter, op, "missing serialization lock")
 	}
 	if serverName == "" {
-		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing server name")
+		return berrors.New(ctx, berrors.InvalidParameter, op, "missing server name")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	if opts.withEventerConfig != nil {
 		if err := opts.withEventerConfig.Validate(); err != nil {
-			return berrors.WrapDeprecated(err, op, berrors.WithMsg("invalid eventer config"))
+			return berrors.Wrap(ctx, err, op, berrors.WithMsg("invalid eventer config"))
 		}
 	}
 	if opts.withEventerConfig == nil {
@@ -192,7 +188,7 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 
 	if opts.withEventFlags != nil {
 		if err := opts.withEventFlags.Validate(); err != nil {
-			return berrors.WrapDeprecated(err, op, berrors.WithMsg("invalid event flags"))
+			return berrors.Wrap(ctx, err, op, berrors.WithMsg("invalid event flags"))
 		}
 		if opts.withEventFlags.Format != "" {
 			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
@@ -207,6 +203,9 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		}
 		if opts.withEventFlags.SysEventsEnabled != nil {
 			opts.withEventerConfig.SysEventsEnabled = *opts.withEventFlags.SysEventsEnabled
+		}
+		if opts.withEventFlags.TelemetryEnabled != nil {
+			opts.withEventerConfig.TelemetryEnabled = *opts.withEventFlags.TelemetryEnabled
 		}
 		if len(opts.withEventFlags.AllowFilters) > 0 {
 			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
@@ -231,12 +230,12 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		event.WithAuditWrapper(opts.withEventWrapper),
 		event.WithGating(opts.withEventGating))
 	if err != nil {
-		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
+		return berrors.Wrap(ctx, err, op, berrors.WithMsg("unable to create eventer"))
 	}
 	b.Eventer = e
 
 	if err := event.InitSysEventer(logger, serializationLock, serverName, event.WithEventer(e)); err != nil {
-		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to initialize system eventer"))
+		return berrors.Wrap(ctx, err, op, berrors.WithMsg("unable to initialize system eventer"))
 	}
 
 	return nil
@@ -246,11 +245,11 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 func (b *Server) AddEventerToContext(ctx context.Context) (context.Context, error) {
 	const op = "base.(Server).AddEventerToContext"
 	if b.Eventer == nil {
-		return nil, berrors.NewDeprecated(berrors.InvalidParameter, op, "missing server eventer")
+		return nil, berrors.New(ctx, berrors.InvalidParameter, op, "missing server eventer")
 	}
 	e, err := event.NewEventerContext(ctx, b.Eventer)
 	if err != nil {
-		return nil, berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to add eventer to context"))
+		return nil, berrors.Wrap(ctx, err, op, berrors.WithMsg("unable to add eventer to context"))
 	}
 	return e, nil
 }
@@ -285,10 +284,8 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 
 	// create GRPC logger
 	namedGRPCLogFaker := b.Logger.Named("grpclogfaker")
-	grpclog.SetLogger(&GRPCLogFaker{
-		Logger: namedGRPCLogFaker,
-		Log:    os.Getenv("BOUNDARY_GRPC_LOGGING") != "",
-	})
+	grpcLogFaker.SetLogOnOff(os.Getenv("BOUNDARY_GRPC_LOGGING") != "")
+	grpcLogFaker.SetLogger(namedGRPCLogFaker)
 
 	b.Info["log level"] = logLevel.String()
 	b.InfoKeys = append(b.InfoKeys, "log level")
@@ -413,7 +410,7 @@ func (b *Server) PrintInfo(ui cli.Ui) {
 		ui.Output(fmt.Sprintf(
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
-			strings.Title(k),
+			cases.Title(language.AmericanEnglish).String(k),
 			b.Info[k]))
 	}
 	ui.Output("")
@@ -560,22 +557,25 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 // SetupKMSes takes in a parsed config, does some minor checking on purposes,
 // and sends each off to configutil to instantiate a wrapper.
 func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config, opt ...Option) error {
-	opts := getOpts(opt...)
-
 	sharedConfig := config.SharedConfig
 	var pluginLogger hclog.Logger
 	var err error
+	var previousRootKms wrapping.Wrapper
+	purposeCount := map[string]uint{}
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
+			purposeCount[purpose] = purposeCount[purpose] + 1
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case globals.KmsPurposeWorkerAuth:
-				if opts.withSkipWorkerAuthKmsInstantiation {
-					continue
-				}
-			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerAuthStorage:
+			case globals.KmsPurposeRoot,
+				globals.KmsPurposePreviousRoot,
+				globals.KmsPurposeConfig,
+				globals.KmsPurposeWorkerAuth,
+				globals.KmsPurposeDownstreamWorkerAuth,
+				globals.KmsPurposeWorkerAuthStorage,
+				globals.KmsPurposeBsr:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
@@ -605,7 +605,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
 					pluginutil.WithPluginExecutionDirectory(config.Plugins.ExecutionDir),
 				),
-				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
+				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", fmt.Sprintf("%s-%d", purpose, purposeCount[purpose]))),
 			)
 			if wrapperConfigError != nil {
 				return fmt.Errorf(
@@ -636,20 +636,77 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 
 			kms.Purpose = origPurpose
 			switch purpose {
+			case globals.KmsPurposePreviousRoot:
+				if previousRootKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
+				previousRootKms = wrapper
 			case globals.KmsPurposeRoot:
+				if b.RootKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
+				if b.WorkerAuthKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.WorkerAuthKms = wrapper
+			case globals.KmsPurposeDownstreamWorkerAuth:
+				if b.DownstreamWorkerAuthKms == nil {
+					b.DownstreamWorkerAuthKms, err = multi.NewPooledWrapper(ctx, wrapper)
+					if err != nil {
+						return fmt.Errorf("Error instantiating pooled wrapper for downstream worker auth: %w.", err)
+					}
+				} else {
+					added, err := b.DownstreamWorkerAuthKms.AddWrapper(ctx, wrapper)
+					if err != nil {
+						return fmt.Errorf("Error adding additional wrapper to downstream worker auth wrapper pool: %w.", err)
+					}
+					if !added {
+						return fmt.Errorf("Wrapper already added to downstream worker auth wrapper pool.")
+					}
+				}
 			case globals.KmsPurposeWorkerAuthStorage:
+				if b.WorkerAuthStorageKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.WorkerAuthStorageKms = wrapper
+			case globals.KmsPurposeBsr:
+				if b.BsrKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
+				b.BsrKms = wrapper
 			case globals.KmsPurposeRecovery:
+				if b.RecoveryKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:
 				// Do nothing, can be set in same file but not needed at runtime
+				continue
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
 		}
+	}
+
+	// Handle previous root KMS
+	if previousRootKms != nil {
+		if util.IsNil(b.RootKms) {
+			return fmt.Errorf("KMS block contains '%s' without '%s'", globals.KmsPurposePreviousRoot, globals.KmsPurposeRoot)
+		}
+		mw, err := multi.NewPooledWrapper(ctx, previousRootKms)
+		if err != nil {
+			return fmt.Errorf("failed to create multi wrapper: %w", err)
+		}
+		ok, err := mw.SetEncryptingWrapper(ctx, b.RootKms)
+		if err != nil {
+			return fmt.Errorf("failed to set root wrapper as active in multi wrapper: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("KMS blocks with purposes '%s' and '%s' must have different key IDs", globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot)
+		}
+		b.RootKms = mw
 	}
 
 	// prepare a secure random reader
@@ -669,13 +726,13 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 }
 
 func (b *Server) RunShutdownFuncs() error {
-	var mErr *multierror.Error
+	var mErr error
 	for _, f := range b.ShutdownFuncs {
 		if err := f(); err != nil {
-			mErr = multierror.Append(mErr, err)
+			mErr = errors.Join(mErr, err)
 		}
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 // OpenAndSetServerDatabase calls OpenDatabase and sets its result *db.DB to the Server's
@@ -778,16 +835,15 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		}
 	}
 
-	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
+	host, port, err := util.SplitHostPort(conf.Worker.PublicAddr)
 	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9202"
-			host = conf.Worker.PublicAddr
-		} else {
-			return fmt.Errorf("Error splitting public adddress host/port: %w", err)
-		}
+		return fmt.Errorf("Error splitting public adddress host/port: %w", err)
 	}
-	conf.Worker.PublicAddr = net.JoinHostPort(host, port)
+	if port == "" {
+		port = "9202"
+	}
+	conf.Worker.PublicAddr = util.JoinHostPort(host, port)
+
 	return nil
 }
 
@@ -806,49 +862,4 @@ func MakeSighupCh() chan struct{} {
 		}
 	}()
 	return resultCh
-}
-
-// SetStatusGracePeriodDuration sets the value for
-// StatusGracePeriodDuration.
-//
-// The grace period is the length of time we allow connections to run
-// on a worker in the event of an error sending status updates. The
-// period is defined the length of time since the last successful
-// update.
-//
-// The setting is derived from one of the following, in order:
-//
-//   - Via the supplied value if non-zero.
-//   - BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
-//     integer value to define the setting.
-//   - If either of these is missing, the default is used. See the
-//     defaultStatusGracePeriod value for the default value.
-//
-// The minimum setting for this value is the default setting. Values
-// below this will be reset to the default.
-func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
-	const op = "base.(Server).SetStatusGracePeriodDuration"
-	ctx := context.TODO()
-	var result time.Duration
-	switch {
-	case value > 0:
-		result = value
-	case os.Getenv(statusGracePeriodEnvVar) != "":
-		// TODO: See the description of the constant for more details on
-		// this env var
-		v := os.Getenv(statusGracePeriodEnvVar)
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read status grace period setting", "envvar", statusGracePeriodEnvVar, "value", v))
-			break
-		}
-
-		result = time.Second * time.Duration(n)
-	}
-
-	if result < defaultStatusGracePeriod {
-		result = defaultStatusGracePeriod
-	}
-
-	s.StatusGracePeriodDuration = result
 }

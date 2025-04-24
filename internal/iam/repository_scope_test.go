@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -6,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	iam_store "github.com/hashicorp/boundary/internal/iam/store"
@@ -15,10 +17,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func Test_Repository_Scope_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -28,15 +32,15 @@ func Test_Repository_Scope_Create(t *testing.T) {
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
-		s, err := NewOrg(WithName(id))
+		s, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
-		s, err = repo.CreateScope(context.Background(), s, "")
+		s, err = repo.CreateScope(ctx, s, "")
 		require.NoError(err)
 		require.NotNil(s)
 		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), id)
 
-		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err := repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.True(proto.Equal(foundScope, s))
 
@@ -45,16 +49,16 @@ func Test_Repository_Scope_Create(t *testing.T) {
 	})
 	t.Run("valid-scope-withPublicId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		publicId, err := newScopeId(scope.Org)
+		publicId, err := newScopeId(ctx, scope.Org)
 		require.NoError(err)
-		s, err := NewOrg()
+		s, err := NewOrg(ctx)
 		require.NoError(err)
 
-		s, err = repo.CreateScope(context.Background(), s, "", WithPublicId(publicId))
+		s, err = repo.CreateScope(ctx, s, "", WithPublicId(publicId))
 		require.NoError(err)
 		require.NotNil(s)
 		assert.Equal(publicId, s.GetPublicId())
-		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err := repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.True(proto.Equal(foundScope, s))
 
@@ -65,7 +69,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
 
-		s, err := NewOrg(WithName(id))
+		s, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
 
 		s, err = repo.CreateScope(context.Background(), s, "")
@@ -74,7 +78,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), id)
 
-		s2, err := NewOrg(WithName(id))
+		s2, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
 		s2, err = repo.CreateScope(context.Background(), s2, "")
 		require.Error(err)
@@ -84,7 +88,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
 
-		s, err := NewOrg(WithName(id))
+		s, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s, "")
 		require.NoError(err)
@@ -92,13 +96,13 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), id)
 
-		p, err := NewProject(s.PublicId, WithName(id))
+		p, err := NewProject(ctx, s.PublicId, WithName(id))
 		require.NoError(err)
 		p, err = repo.CreateScope(context.Background(), p, "")
 		require.NoError(err)
 		require.NotEmpty(p.PublicId)
 
-		p2, err := NewProject(s.PublicId, WithName(id))
+		p2, err := NewProject(ctx, s.PublicId, WithName(id))
 		require.NoError(err)
 		p2, err = repo.CreateScope(context.Background(), p2, "")
 		assert.Error(err)
@@ -108,7 +112,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		t.Run(fmt.Sprintf("skipping-role-creation-%t", skipCreate), func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			id := testId(t)
-			s, err := NewOrg(WithName(id))
+			s, err := NewOrg(ctx, WithName(id))
 			require.NoError(err)
 			s, err = repo.CreateScope(context.Background(), s, user.GetPublicId(), WithSkipAdminRoleCreation(skipCreate), WithSkipDefaultRoleCreation(skipCreate))
 			require.NoError(err)
@@ -120,7 +124,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(foundScope, s))
 
-			foundRoles, err := repo.ListRoles(context.Background(), []string{foundScope.GetPublicId()})
+			foundRoles, _, err := repo.listRoles(context.Background(), []string{foundScope.GetPublicId()})
 			require.NoError(err)
 			numFound := 2
 			if skipCreate {
@@ -133,6 +137,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 
 func Test_Repository_Scope_Update(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -144,25 +149,26 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		s := testOrg(t, repo, id, "")
 		assert.Equal(id, s.Name)
 
-		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err := repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.Empty(foundScope.GetDescription()) // should  be "" after update in db
 		assert.True(proto.Equal(foundScope, s))
+		assert.Empty(s.StoragePolicyId)
 
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		require.NoError(err)
 
 		s.Name = "foo" + id
 		s.Description = "desc-id" // not in the field mask paths
-		s, updatedRows, err := repo.UpdateScope(context.Background(), s, 1, []string{"Name"})
+		s, updatedRows, err := repo.UpdateScope(ctx, s, s.Version, []string{"Name"})
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 		require.NotNil(s)
 		assert.Equal("foo"+id, s.GetName())
+		assert.Empty(s.StoragePolicyId)
 		// TODO: This isn't empty because of ICU-490 -- when that is resolved, fix this
 		// assert.Empty(s.GetDescription())
-
-		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err = repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 		assert.Empty(foundScope.GetDescription())
@@ -172,7 +178,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 
 		s.Name = "test2"
 		s.Description = "desc-id-2"
-		s, updatedRows, err = repo.UpdateScope(context.Background(), s, 2, []string{"Name", "Description"})
+		s, updatedRows, err = repo.UpdateScope(ctx, s, s.Version, []string{"Name", "Description"})
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 		require.NotNil(s)
@@ -186,14 +192,14 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		s := testOrg(t, repo, id, "")
 		assert.Equal(id, s.Name)
 
-		project, err := NewProject(s.PublicId)
+		project, err := NewProject(ctx, s.PublicId)
 		require.NoError(err)
-		project, err = repo.CreateScope(context.Background(), project, "")
+		project, err = repo.CreateScope(ctx, project, "")
 		require.NoError(err)
 		require.NotNil(project)
 
 		project.ParentId = project.PublicId
-		project, updatedRows, err := repo.UpdateScope(context.Background(), project, 1, []string{"ParentId"})
+		project, updatedRows, err := repo.UpdateScope(ctx, project, 1, []string{"ParentId"})
 		require.Error(err)
 		assert.Nil(project)
 		assert.Equal(0, updatedRows)
@@ -217,6 +223,7 @@ func Test_Repository_Scope_Lookup(t *testing.T) {
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
 		assert.True(proto.Equal(foundScope, s))
+		assert.Empty(s.StoragePolicyId)
 
 		invalidId := testId(t)
 		notFoundById, err := repo.LookupScope(context.Background(), invalidId)
@@ -263,7 +270,7 @@ func Test_Repository_Scope_Delete(t *testing.T) {
 
 func TestRepository_UpdateScope(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 	id := testId(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -448,7 +455,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			for _, f := range tt.wantNullFields {
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), &foundScope, where, []interface{}{org.PublicId})
+			err = rw.LookupWhere(context.Background(), &foundScope, where, []any{org.PublicId})
 			require.NoError(err)
 			assert.Equal(org.PublicId, foundScope.PublicId)
 			assert.Equal(tt.wantName, foundScope.Name)
@@ -492,15 +499,6 @@ func Test_Repository_ListScopes(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "no-limit",
-			createCnt: repo.defaultLimit + 1,
-			args: args{
-				opt: []Option{WithLimit(-1)},
-			},
-			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
-		},
-		{
 			name:      "default-limit",
 			createCnt: repo.defaultLimit + 1,
 			args:      args{},
@@ -520,22 +518,117 @@ func Test_Repository_ListScopes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocScope(); ; return &i }(), "type = 'org'")
+			db.TestDeleteWhere(t, conn, func() any {
+				i := AllocScope()
+				return &i
+			}(), "type = 'org'")
 
 			testOrgs := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
 				testOrgs = append(testOrgs, testOrg(t, repo, "", ""))
 			}
 			assert.Equal(tt.createCnt, len(testOrgs))
-			got, err := repo.ListScopes(context.Background(), []string{"global"}, tt.args.opt...)
+			got, ttime, err := repo.listScopes(context.Background(), []string{"global"}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
+
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+
+		// Create 10 projects in a new org
+		org := testOrg(t, repo, "", "")
+		for i := 0; i < 10; i++ {
+			_ = testProject(t, repo, org.GetPublicId())
+		}
+
+		page1, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page1[1]))
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page2[1]))
+		require.NoError(err)
+		require.Len(page3, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page3[1]))
+		require.NoError(err)
+		assert.Len(page4, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page4[1]))
+		require.NoError(err)
+		assert.Len(page5, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page5[1]))
+		require.NoError(err)
+		assert.Empty(page6)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		// Create 2 new Scopes
+		newP1 := testProject(t, repo, org.GetPublicId())
+		newP2 := testProject(t, repo, org.GetPublicId())
+
+		// since it will return newest to oldest, we get page1[1] first
+		page7, ttime, err := repo.listScopesRefresh(
+			ctx,
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), newP2.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		page8, ttime, err := repo.listScopesRefresh(
+			context.Background(),
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+			WithStartPageAfterItem(page7[0]),
+		)
+		require.NoError(err)
+		require.Len(page8, 1)
+		require.Equal(page8[0].GetPublicId(), newP1.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
 }
 
 func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
@@ -544,7 +637,7 @@ func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 
-	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocScope(); return &i }(), "public_id != 'global'")
+	db.TestDeleteWhere(t, conn, func() any { i := AllocScope(); return &i }(), "public_id != 'global'")
 
 	const numPerScope = 10
 	var total int
@@ -560,7 +653,7 @@ func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
 	// Add global to the mix
 	scopeIds = append(scopeIds, "global")
 
-	got, err := repo.ListScopes(context.Background(), scopeIds)
+	got, _, err := repo.listScopes(context.Background(), scopeIds)
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }
@@ -614,4 +707,78 @@ func Test_Repository_ListRecursive(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func Test_listDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org := TestOrg(t, repo)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listScopeDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Transaction time should be within ~10 seconds of now
+	now := time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Delete a scope
+	p := TestProject(t, repo, org.GetPublicId())
+	_, err = repo.DeleteScope(ctx, p.PublicId)
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listScopeDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{p.PublicId}, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listScopeDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+}
+
+func Test_estimatedScopeCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 1 (global)
+	numItems, err := repo.estimatedScopeCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Create a scope, expect 2 entries
+	org := TestOrg(t, repo)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedScopeCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 2, numItems)
+
+	// Delete the scope, expect 1 again
+	_, err = repo.DeleteScope(ctx, org.PublicId)
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedScopeCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
 }

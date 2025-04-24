@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
@@ -13,6 +16,7 @@ import (
 
 func TestConnection_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -27,23 +31,24 @@ func TestConnection_Create(t *testing.T) {
 		userClientIp       string
 	}
 	tests := []struct {
-		name          string
-		args          args
-		want          *Connection
-		wantErr       bool
-		wantIsErr     errors.Code
-		create        bool
-		wantCreateErr bool
+		name           string
+		args           args
+		want           *Connection
+		wantErr        bool
+		wantIsErr      errors.Code
+		create         bool
+		wantCreateErr  bool
+		expectedErrMsg string
 	}{
 		{
-			name: "valid",
+			name: "valid-ipv4",
 			args: args{
 				sessionId:          s.PublicId,
 				clientTcpAddress:   "127.0.0.1",
 				clientTcpPort:      22,
 				endpointTcpAddress: "127.0.0.1",
 				endpointTcpPort:    2222,
-				userClientIp:       "::1",
+				userClientIp:       "127.0.0.2",
 			},
 			want: &Connection{
 				SessionId:          s.PublicId,
@@ -51,9 +56,133 @@ func TestConnection_Create(t *testing.T) {
 				ClientTcpPort:      22,
 				EndpointTcpAddress: "127.0.0.1",
 				EndpointTcpPort:    2222,
-				UserClientIp:       "::1",
+				UserClientIp:       "127.0.0.2",
 			},
 			create: true,
+		},
+		{
+			name: "valid-ipv6",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "2001:4860:4860:0:0:0:0:8887",
+				clientTcpPort:      22,
+				endpointTcpAddress: "2001:4860:4860:0:0:0:0:8886",
+				endpointTcpPort:    2222,
+				userClientIp:       "2001:4860:4860:0:0:0:0:8885",
+			},
+			want: &Connection{
+				SessionId:          s.PublicId,
+				ClientTcpAddress:   "2001:4860:4860:0:0:0:0:8887",
+				ClientTcpPort:      22,
+				EndpointTcpAddress: "2001:4860:4860:0:0:0:0:8886",
+				EndpointTcpPort:    2222,
+				UserClientIp:       "2001:4860:4860:0:0:0:0:8885",
+			},
+			create: true,
+		},
+		{
+			name: "valid-abbreviated-ipv6",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "2001:4860:4860::8887",
+				clientTcpPort:      22,
+				endpointTcpAddress: "2001:4860:4860::8886",
+				endpointTcpPort:    2222,
+				userClientIp:       "2001:4860:4860::8885",
+			},
+			want: &Connection{
+				SessionId:          s.PublicId,
+				ClientTcpAddress:   "2001:4860:4860::8887",
+				ClientTcpPort:      22,
+				EndpointTcpAddress: "2001:4860:4860::8886",
+				EndpointTcpPort:    2222,
+				UserClientIp:       "2001:4860:4860::8885",
+			},
+			create: true,
+		},
+		{
+			name: "invalid-[ipv6]-client-tcp-address",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "[2001:4860:4860:0:0:0:0:8887]",
+				clientTcpPort:      22,
+				endpointTcpAddress: "2001:4860:4860:0:0:0:0:8886",
+				endpointTcpPort:    2222,
+				userClientIp:       "2001:4860:4860:0:0:0:0:8885",
+			},
+			wantErr:        true,
+			wantIsErr:      errors.InvalidParameter,
+			expectedErrMsg: "given client tcp address is not an ip address",
+		},
+		{
+			name: "invalid-[ipv6]-endpoint-tcp-address",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "2001:4860:4860:0:0:0:0:8887",
+				clientTcpPort:      22,
+				endpointTcpAddress: "[2001:4860:4860:0:0:0:0:8886]",
+				endpointTcpPort:    2222,
+				userClientIp:       "2001:4860:4860:0:0:0:0:8885",
+			},
+			wantErr:        true,
+			wantIsErr:      errors.InvalidParameter,
+			expectedErrMsg: "given endpoint tcp address is not an ip address",
+		},
+		{
+			name: "invalid-[ipv6]-user-client-ip",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "2001:4860:4860:0:0:0:0:8887",
+				clientTcpPort:      22,
+				endpointTcpAddress: "2001:4860:4860:0:0:0:0:8886",
+				endpointTcpPort:    2222,
+				userClientIp:       "[2001:4860:4860:0:0:0:0:8885]",
+			},
+			wantErr:        true,
+			wantIsErr:      errors.InvalidParameter,
+			expectedErrMsg: "given user client ip is not an ip address",
+		},
+		{
+			name: "invalid-abbreviated-[ipv6]-client-tcp-address",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "[2001:4860:4860::8887]",
+				clientTcpPort:      22,
+				endpointTcpAddress: "2001:4860:4860::8886",
+				endpointTcpPort:    2222,
+				userClientIp:       "2001:4860:4860::8885",
+			},
+			wantErr:        true,
+			wantIsErr:      errors.InvalidParameter,
+			expectedErrMsg: "given client tcp address is not an ip address",
+		},
+		{
+			name: "invalid-abbreviated-[ipv6]-endpoint-tcp-address",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "2001:4860:4860::8887",
+				clientTcpPort:      22,
+				endpointTcpAddress: "[2001:4860:4860::8886]",
+				endpointTcpPort:    2222,
+				userClientIp:       "2001:4860:4860::8885",
+			},
+			wantErr:        true,
+			wantIsErr:      errors.InvalidParameter,
+			expectedErrMsg: "given endpoint tcp address is not an ip address",
+		},
+		{
+			name: "invalid-abbreviated-[ipv6]-user-client-ip",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "2001:4860:4860::8887",
+				clientTcpPort:      22,
+				endpointTcpAddress: "2001:4860:4860::8886",
+				endpointTcpPort:    2222,
+				userClientIp:       "[2001:4860:4860::8885]",
+			},
+			wantErr:        true,
+			wantIsErr:      errors.InvalidParameter,
+			expectedErrMsg: "given user client ip is not an ip address",
 		},
 		{
 			name: "empty-session-id",
@@ -132,6 +261,7 @@ func TestConnection_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewConnection(
+				ctx,
 				tt.args.sessionId,
 				tt.args.clientTcpAddress,
 				tt.args.clientTcpPort,
@@ -142,15 +272,18 @@ func TestConnection_Create(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
+				if tt.expectedErrMsg != "" {
+					assert.ErrorContains(err, tt.expectedErrMsg)
+				}
 				return
 			}
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := db.NewPublicId(ConnectionPrefix)
+				id, err := db.NewPublicId(ctx, ConnectionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				err = db.New(conn).Create(context.Background(), got)
+				err = db.New(conn).Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
 					return
@@ -164,6 +297,7 @@ func TestConnection_Create(t *testing.T) {
 
 func TestConnection_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -187,7 +321,7 @@ func TestConnection_Delete(t *testing.T) {
 			name: "bad-id",
 			connection: func() *Connection {
 				c := AllocConnection()
-				id, err := db.NewPublicId(ConnectionPrefix)
+				id, err := db.NewPublicId(ctx, ConnectionPrefix)
 				require.NoError(t, err)
 				c.PublicId = id
 				return &c

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- account tests triggers:
 --  insert_auth_account_subtype
 --  delete_auth_account_subtype

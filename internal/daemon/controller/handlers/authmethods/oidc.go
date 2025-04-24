@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authmethods
 
 import (
@@ -12,8 +15,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"google.golang.org/grpc/codes"
@@ -43,24 +46,25 @@ const (
 	codeField                              = "attributes.code"
 	claimsScopesField                      = "attributes.claims_scopes"
 	accountClaimMapsField                  = "attributes.account_claim_maps"
+	promptsField                           = "attributes.prompts"
 )
 
 var oidcMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&oidcstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.OidcAuthMethodAttributes{}}); err != nil {
+	if oidcMaskManager, err = handlers.NewMaskManager(context.Background(), handlers.MaskDestination{&oidcstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.OidcAuthMethodAttributes{}}); err != nil {
 		panic(err)
 	}
 
-	IdActions[oidc.Subtype] = action.ActionSet{
+	IdActions[oidc.Subtype] = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.ChangeState,
 		action.Authenticate,
-	}
+	)
 }
 
 type oidcState uint
@@ -164,7 +168,7 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcStart"
 	if req == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request.", nil)
 	}
 
 	var opts []oidc.Option
@@ -174,11 +178,16 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	}
 
 	authUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
-	if err != nil {
-		// this event.WriteError(...) may cause a dup error to be emitted...
-		// it should be removed if that's the case.
+	switch {
+	case errors.Match(errors.T(errors.AuthMethodInactive), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Cannot start authentication against an inactive OIDC auth method")
+	case errors.Match(errors.T(errors.RecordNotFound), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "Auth method %s was not found", req.GetAuthMethodId())
+	case errors.Match(errors.T(errors.InvalidParameter), err):
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
+	case err != nil:
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error starting the oidc authentication flow"))
-		return nil, errors.New(ctx, errors.Internal, op, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
 	}
 
 	return &pbs.AuthenticateResponse{
@@ -204,22 +213,22 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	//   in the redirect URL once we start looking at the url used for this
 	//   request instead of requiring the API URL to be set on the auth method.
 	if req == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request.", nil)
 	}
 
 	repo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, err.Error())
 	}
 	am, err := repo.LookupAuthMethod(ctx, req.GetAuthMethodId())
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, err.Error())
 	}
 	if am == nil {
-		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("Auth method %s not found.", req.GetAuthMethodId()))
+		return nil, handlers.NotFoundErrorf("Auth method %s not found.", req.GetAuthMethodId())
 	}
 	if am.GetApiUrl() == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Auth method doesn't have API URL defined.")
+		return nil, handlers.InvalidArgumentErrorf("Auth method doesn't have API URL defined.", nil)
 	}
 
 	errRedirectBase := fmt.Sprintf(oidc.AuthenticationErrorsEndpoint, am.GetApiUrl())
@@ -228,7 +237,8 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		pbErr := handlers.ToApiError(err)
 		out, err := handlers.JSONMarshaler().Marshal(pbErr)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal the error for callback"))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to marshal the error for callback"))
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "unable to marshal the error for callback")
 		}
 		u.Add("error", string(out))
 		errRedirect := fmt.Sprintf("%s?%s", errRedirectBase, u.Encode())
@@ -274,38 +284,33 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcToken"
 	if req == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request.", nil)
 	}
 	if authResults == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil auth results.")
+		return nil, handlers.InvalidArgumentErrorf("Nil auth results.", nil)
 	}
 	if req.GetOidcAuthMethodAuthenticateTokenRequest() == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request attributes.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request attributes.", nil)
 	}
 
 	attrs := req.GetOidcAuthMethodAuthenticateTokenRequest()
 	if attrs.TokenId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token ID in request attributes.")
+		return nil, handlers.InvalidArgumentErrorf("Empty token ID in request attributes.", nil)
 	}
 
 	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, req.GetAuthMethodId(), attrs.TokenId)
 	if err != nil {
 		switch {
 		case errors.Match(errors.T(errors.Forbidden), err):
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Forbidden."))
+			return nil, handlers.ForbiddenError()
 		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Forbidden."))
+			return nil, handlers.ForbiddenError()
 		default:
-			// this event.WriteError(...) may cause a dup error to be emitted...
-			// it should be removed if that's the case.
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error generating parameters for token request"))
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Error generating parameters for token request. See the controller's log for more information."))
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Error generating parameters for token request. See the controller's log for more information.")
 		}
 	}
 	if token == nil {
-		if err != nil {
-			return nil, errors.New(ctx, errors.Internal, op, "Error generating response attributes.", errors.WithWrap(err))
-		}
 		return &pbs.AuthenticateResponse{
 			Command: req.Command,
 			Attrs: &pbs.AuthenticateResponse_OidcAuthMethodAuthenticateTokenResponse{
@@ -321,12 +326,13 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		token,
 	)
 	if err != nil {
-		return nil, errors.New(ctx, errors.Internal, op, "Error converting response to proper format.", errors.WithWrap(err))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error converting response to proper format."))
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Error converting response to proper format. See the controller's log for more information.")
 	}
 	return s.convertToAuthenticateResponse(ctx, req, authResults, responseToken)
 }
 
-func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticateOidcRequest(_ context.Context, req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
 	switch req.GetCommand() {
@@ -395,7 +401,7 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, dryRun, forced bool, err error) {
 	const op = "authmethod_service.toStorageOidcAuthMethod"
 	if in == nil {
-		return nil, false, false, errors.NewDeprecated(errors.InvalidParameter, op, "nil auth method.")
+		return nil, false, false, errors.New(ctx, errors.InvalidParameter, op, "nil auth method.")
 	}
 	attrs := in.GetOidcAuthMethodsAttributes()
 	clientId := attrs.GetClientId().GetValue()
@@ -415,14 +421,14 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 		iss = strings.SplitN(iss, ".well-known/", 2)[0]
 		issuer, err := url.Parse(iss)
 		if err != nil {
-			return nil, false, false, errors.WrapDeprecated(err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
+			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
 		apiU, err := url.Parse(apiUrl)
 		if err != nil {
-			return nil, false, false, errors.WrapDeprecated(err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
+			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
@@ -441,6 +447,13 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 	}
 	if len(signAlgs) > 0 {
 		opts = append(opts, oidc.WithSigningAlgs(signAlgs...))
+	}
+	var prompts []oidc.PromptParam
+	for _, a := range attrs.GetPrompts() {
+		prompts = append(prompts, oidc.PromptParam(a))
+	}
+	if len(prompts) > 0 {
+		opts = append(opts, oidc.WithPrompts(prompts...))
 	}
 	if len(attrs.GetAllowedAudiences()) > 0 {
 		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))
@@ -463,17 +476,17 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 		for _, v := range attrs.GetAccountClaimMaps() {
 			acm, err := oidc.ParseAccountClaimMaps(ctx, v)
 			if err != nil {
-				return nil, false, false, errors.WrapDeprecated(err, op)
+				return nil, false, false, errors.Wrap(ctx, err, op)
 			}
 			if len(acm) > 1 {
-				return nil, false, false, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", v))
+				return nil, false, false, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", v))
 			}
 			var m oidc.ClaimMap
 			for _, m = range acm {
 			}
 			to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
 			if err != nil {
-				return nil, false, false, errors.WrapDeprecated(err, op)
+				return nil, false, false, errors.Wrap(ctx, err, op)
 			}
 			claimsMap[m.From] = to
 		}

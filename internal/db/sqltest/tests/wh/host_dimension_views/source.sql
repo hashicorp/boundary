@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- source tests the whx_host_dimension_source view.
 begin;
   select plan(3);

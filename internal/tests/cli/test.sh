@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
 
 # TERM isn't set automatically in CI so we need to make sure it's always there.
 export TERM=${TERM:=dumb}
@@ -15,7 +18,7 @@ which bats     || die "missing bats"
 which nc       || die "missing nc"
 
 echo "starting boundary dev in background"
-boundary dev &>/dev/null &
+boundary dev --create-loopback-plugin &>/dev/null &
 boundary_pid=$!
 
 function cleanup {
@@ -29,8 +32,14 @@ function cleanup {
 
 trap cleanup EXIT
 
+max=120
+c=0
 until boundary scopes list; do
     echo 'waiting for boundary to be up'
+    ((c+=1))
+    if [[ $c -ge $max ]]; then
+        die "timeout waiting for boundary controller to get healthy"
+    fi
     sleep 1
 done
 

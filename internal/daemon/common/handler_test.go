@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package common
 
 import (
@@ -5,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -16,8 +18,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
@@ -261,7 +263,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.kms, testListenerCfg)
+			got, err := WrapWithEventsHandler(context.Background(), tt.h, tt.e, tt.kms, testListenerCfg)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(got)
@@ -283,7 +285,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			{ // test that the got observation is what we wanted.
 				require.NotNil(c.ObservationEvents)
 				defer func() { _ = os.WriteFile(c.ObservationEvents.Name(), nil, 0o666) }()
-				b, err := ioutil.ReadFile(c.ObservationEvents.Name())
+				b, err := os.ReadFile(c.ObservationEvents.Name())
 				assert.NoError(err)
 
 				if tt.noEventJson {
@@ -302,13 +304,13 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				info := event.RequestInfo{
 					Method: "GET",
 					Path:   "/greeting",
-					Id:     got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
+					Id:     got.Data.(map[string]any)["request_info"].(map[string]any)["id"].(string),
 				}
-				hdr := map[string]interface{}{
+				hdr := map[string]any{
 					"status":     http.StatusTeapot,
-					"start":      got.Data.(map[string]interface{})["start"].(string),
-					"stop":       got.Data.(map[string]interface{})["stop"].(string),
-					"latency-ms": got.Data.(map[string]interface{})["latency-ms"].(float64),
+					"start":      got.Data.(map[string]any)["start"].(string),
+					"stop":       got.Data.(map[string]any)["stop"].(string),
+					"latency-ms": got.Data.(map[string]any)["latency-ms"].(float64),
 				}
 				wantJson := testJson(t, event.ObservationType, &info, event.Op(tt.name), got, hdr, nil)
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -317,7 +319,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			{ // test that the got audit is what we wanted.
 				require.NotNil(c.AuditEvents)
 				defer func() { _ = os.WriteFile(c.AuditEvents.Name(), nil, 0o666) }()
-				b, err := ioutil.ReadFile(c.AuditEvents.Name())
+				b, err := os.ReadFile(c.AuditEvents.Name())
 				assert.NoError(err)
 
 				got := &cloudevents.Event{}
@@ -333,12 +335,12 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 					Method: "GET",
 					Path:   "/greeting",
 					// Id:     got.Data.(map[string]interface{})["id"].(string),
-					Id: got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
+					Id: got.Data.(map[string]any)["request_info"].(map[string]any)["id"].(string),
 				}
-				hdr := map[string]interface{}{
-					"id":        got.Data.(map[string]interface{})["id"].(string),
-					"timestamp": got.Data.(map[string]interface{})["timestamp"].(string),
-					"response":  got.Data.(map[string]interface{})["response"].(map[string]interface{}),
+				hdr := map[string]any{
+					"id":        got.Data.(map[string]any)["id"].(string),
+					"timestamp": got.Data.(map[string]any)["timestamp"].(string),
+					"response":  got.Data.(map[string]any)["response"].(map[string]any),
 				}
 				wantJson := testJson(t, event.AuditType, &info, event.Op(tt.name), got, hdr, nil)
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -466,7 +468,7 @@ type testMockBroker struct {
 	errorOnFlush           bool
 }
 
-func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
+func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload any) (eventlogger.Status, error) {
 	const op = "common.(testMockBroker).Send"
 	_, isGateable := payload.(gated.Gateable)
 	switch {
@@ -479,21 +481,35 @@ func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payl
 	}
 	return eventlogger.Status{}, nil
 }
-func (b *testMockBroker) Reopen(ctx context.Context) error                                { return nil }
-func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline) error                 { return nil }
-func (b *testMockBroker) StopTimeAt(t time.Time)                                          {}
-func (b *testMockBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.Node) error { return nil }
+func (b *testMockBroker) Reopen(ctx context.Context) error { return nil }
+func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline, opt ...eventlogger.Option) error {
+	return nil
+}
+func (b *testMockBroker) StopTimeAt(t time.Time) {}
+
+func (b *testMockBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.Node, opt ...eventlogger.Option) error {
+	return nil
+}
+
+func (b *testMockBroker) RemoveNode(ctx context.Context, id eventlogger.NodeID) error {
+	return nil
+}
+
+func (b *testMockBroker) RemovePipelineAndNodes(ctx context.Context, t eventlogger.EventType, id eventlogger.PipelineID) (bool, error) {
+	return true, nil
+}
+
 func (b *testMockBroker) SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error {
 	return nil
 }
 
 type eventJson struct {
-	CreatedAt string                 `json:"created_at"`
-	EventType string                 `json:"event_type"`
-	Payload   map[string]interface{} `json:"payload"`
+	CreatedAt string         `json:"created_at"`
+	EventType string         `json:"event_type"`
+	Payload   map[string]any `json:"payload"`
 }
 
-func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, caller event.Op, got *cloudevents.Event, hdr, details map[string]interface{}) []byte {
+func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, caller event.Op, got *cloudevents.Event, hdr, details map[string]any) []byte {
 	t.Helper()
 	const (
 		testAuditVersion       = "v0.1"
@@ -503,10 +519,10 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 
 	require := require.New(t)
 
-	var payload map[string]interface{}
+	var payload map[string]any
 	switch eventType {
 	case event.ObservationType:
-		payload = map[string]interface{}{
+		payload = map[string]any{
 			event.RequestInfoField: reqInfo,
 			event.VersionField:     testObservationVersion,
 		}
@@ -514,8 +530,8 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 			payload[k] = v
 		}
 	case event.AuditType:
-		payload = map[string]interface{}{
-			event.IdField:          got.Data.(map[string]interface{})[event.IdField].(string),
+		payload = map[string]any{
+			event.IdField:          got.Data.(map[string]any)[event.IdField].(string),
 			event.RequestInfoField: reqInfo,
 			event.VersionField:     testAuditVersion,
 			event.TypeField:        event.ApiRequest,
@@ -536,11 +552,11 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 
 	if details != nil {
 		details[event.OpField] = string(caller)
-		d := got.Data.(map[string]interface{})[event.DetailsField].([]interface{})[0].(map[string]interface{})
-		j.Data.(map[string]interface{})[event.DetailsField] = []struct {
-			CreatedAt string                 `json:"created_at"`
-			Type      string                 `json:"type"`
-			Payload   map[string]interface{} `json:"payload"`
+		d := got.Data.(map[string]any)[event.DetailsField].([]any)[0].(map[string]any)
+		j.Data.(map[string]any)[event.DetailsField] = []struct {
+			CreatedAt string         `json:"created_at"`
+			Type      string         `json:"type"`
+			Payload   map[string]any `json:"payload"`
 		}{
 			{
 				CreatedAt: d[event.CreatedAtField].(string),

@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
 	"context"
+	"net"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -10,7 +14,7 @@ import (
 )
 
 const (
-	defaultConnectionTableName = "session_connection"
+	defaultConnectionTableName = "session_connection_with_status_view" // "session_connection"
 )
 
 // Connection contains information about session's connection to a target
@@ -30,9 +34,9 @@ type Connection struct {
 	// EndpointTcpPort of the connection
 	EndpointTcpPort uint32 `json:"endpoint_tcp_port,omitempty" gorm:"default:null"`
 	// BytesUp of the connection
-	BytesUp uint64 `json:"bytes_up,omitempty" gorm:"default:null"`
+	BytesUp int64 `json:"bytes_up,omitempty" gorm:"default:null"`
 	// BytesDown of the connection
-	BytesDown uint64 `json:"bytes_down,omitempty" gorm:"default:null"`
+	BytesDown int64 `json:"bytes_down,omitempty" gorm:"default:null"`
 	// ClosedReason of the connection
 	ClosedReason string `json:"closed_reason,omitempty" gorm:"default:null"`
 	// CreateTime from the RDBMS
@@ -41,6 +45,8 @@ type Connection struct {
 	UpdateTime *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// Version of the connection
 	Version uint32 `json:"version,omitempty" gorm:"default:null"`
+	// Status is a field derived from connected_time_range
+	Status string `json:"status,omitempty" gorm:"default:null"`
 
 	tableName string `gorm:"-"`
 }
@@ -56,7 +62,7 @@ var (
 
 // NewConnection creates a new in memory connection.  No options
 // are currently supported.
-func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string, _ ...Option) (*Connection, error) {
+func NewConnection(ctx context.Context, sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string, _ ...Option) (*Connection, error) {
 	const op = "session.NewConnection"
 	c := Connection{
 		SessionId:          sessionID,
@@ -66,8 +72,8 @@ func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, end
 		EndpointTcpPort:    endpointTcpPort,
 		UserClientIp:       userClientIp,
 	}
-	if err := c.validateNewConnection(); err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+	if err := c.validateNewConnection(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &c, nil
 }
@@ -78,7 +84,7 @@ func AllocConnection() Connection {
 }
 
 // Clone creates a clone of the Connection.
-func (c *Connection) Clone() interface{} {
+func (c *Connection) Clone() any {
 	clone := &Connection{
 		PublicId:           c.PublicId,
 		SessionId:          c.SessionId,
@@ -91,6 +97,7 @@ func (c *Connection) Clone() interface{} {
 		BytesDown:          c.BytesDown,
 		ClosedReason:       c.ClosedReason,
 		Version:            c.Version,
+		Status:             c.Status,
 	}
 	if c.CreateTime != nil {
 		clone.CreateTime = &timestamp.Timestamp{
@@ -121,7 +128,7 @@ func (c *Connection) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpT
 	}
 	switch opType {
 	case db.CreateOp:
-		if err := c.validateNewConnection(); err != nil {
+		if err := c.validateNewConnection(ctx); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	case db.UpdateOp:
@@ -135,7 +142,7 @@ func (c *Connection) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpT
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
 			return errors.New(ctx, errors.InvalidParameter, op, "update time is immutable")
 		case contains(opts.WithFieldMaskPaths, "ClosedReason"):
-			if _, err := convertToClosedReason(c.ClosedReason); err != nil {
+			if _, err := convertToClosedReason(ctx, c.ClosedReason); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		}
@@ -159,25 +166,34 @@ func (c *Connection) SetTableName(n string) {
 }
 
 // validateNewConnection checks everything but the connection's PublicId
-func (c *Connection) validateNewConnection() error {
+func (c *Connection) validateNewConnection(ctx context.Context) error {
 	const op = "session.(Connection).validateNewConnection"
 	if c.SessionId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
 	if c.ClientTcpAddress == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client address")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing client address")
 	}
 	if c.ClientTcpPort == 0 {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client port")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing client port")
 	}
 	if c.EndpointTcpAddress == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint address")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing endpoint address")
 	}
 	if c.EndpointTcpPort == 0 {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint port")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing endpoint port")
 	}
 	if c.UserClientIp == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing user client ip")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing user client ip")
+	}
+	if ip := net.ParseIP(c.ClientTcpAddress); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given client tcp address is not an ip address")
+	}
+	if ip := net.ParseIP(c.EndpointTcpAddress); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given endpoint tcp address is not an ip address")
+	}
+	if ip := net.ParseIP(c.UserClientIp); ip == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "given user client ip is not an ip address")
 	}
 	return nil
 }

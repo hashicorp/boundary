@@ -1,4 +1,10 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
+
+  -- Comments for the functions below were incorrectly overridden in
+  -- 12/01_timestamp_sub_funcs.up.sql but fixed in 58/01_fix_comments.up.sql.
 
     create function wt_add_seconds(sec integer, ts timestamp with time zone) returns timestamp with time zone
     as $$
@@ -7,7 +13,7 @@ begin;
         stable
         returns null on null input;
     comment on function wt_add_seconds is
-        'wt_add_seconds returns ts + sec.';
+      'wt_add_seconds returns ts + sec.';
 
     create function wt_add_seconds_to_now(sec integer) returns timestamp with time zone
     as $$
@@ -16,6 +22,6 @@ begin;
         stable
         returns null on null input;
     comment on function wt_add_seconds_to_now is
-        'wt_add_seconds_to_now returns current_timestamp + sec.';
+      'wt_add_seconds_to_now returns current_timestamp + sec.';
 
 commit;

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package groups
 
 import (
@@ -13,12 +16,15 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -29,7 +35,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
@@ -37,44 +43,56 @@ var (
 		action.AddMembers,
 		action.SetMembers,
 		action.RemoveMembers,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Group{}}, handlers.MaskSource{&pb.Group{}}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.Group{}},
+		handlers.MaskSource{&pb.Group{}},
+	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.Group, IdActions, CollectionActions)
 }
 
 // Service handles request as described by the pbs.GroupServiceServer interface.
 type Service struct {
 	pbs.UnsafeGroupServiceServer
 
-	repoFn common.IamRepoFactory
+	repoFn      common.IamRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.GroupServiceServer = (*Service)(nil)
 
 // NewService returns a group service which handles group related requests to boundary.
-func NewService(repo common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.IamRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "groups.NewService"
 	if repo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{repoFn: repo}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(globals.DefaultMaxPageSize)
+	}
+	return Service{repoFn: repo, maxPageSize: maxPageSize}, nil
 }
 
 // ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	const op = "groups.(Service).ListGroups"
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -96,55 +114,116 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
-		return &pbs.ListGroupsResponse{}, nil
+
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
 
-	gl, err := s.listFromRepo(ctx, scopeIds)
-	if err != nil {
-		return nil, err
-	}
-	if len(gl) == 0 {
-		return &pbs.ListGroupsResponse{}, nil
-	}
-
-	filter, err := handlers.NewFilter(req.GetFilter())
-	if err != nil {
-		return nil, err
-	}
-	finalItems := make([]*pb.Group, 0, len(gl))
-	res := perms.Resource{
-		Type: resource.Group,
-	}
-	for _, item := range gl {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-
-		item, err := toProto(ctx, item, nil, outputOpts...)
+	var filterItemFn func(ctx context.Context, item *iam.Group) (bool, error)
+	switch {
+	case req.GetFilter() != "":
+		// Only use a filter if we need to
+		filter, err := handlers.NewFilter(ctx, req.GetFilter())
 		if err != nil {
 			return nil, err
 		}
-
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
+		filterItemFn = func(ctx context.Context, item *iam.Group) (bool, error) {
+			outputOpts, ok := newOutputOpts(ctx, item, scopeInfoMap, authResults)
+			if !ok {
+				return false, nil
+			}
+			pbItem, err := toProto(ctx, item, nil, outputOpts...)
+			if err != nil {
+				return false, err
+			}
+			return filter.Match(pbItem), nil
+		}
+	default:
+		filterItemFn = func(ctx context.Context, item *iam.Group) (bool, error) {
+			return true, nil
 		}
 	}
-	return &pbs.ListGroupsResponse{Items: finalItems}, nil
+
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var listResp *pagination.ListResponse[*iam.Group]
+	var sortBy string
+	if req.GetListToken() == "" {
+		sortBy = "created_time"
+		listResp, err = iam.ListGroups(ctx, grantsHash, pageSize, filterItemFn, repo, scopeIds)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.Group, grantsHash)
+		if err != nil {
+			return nil, err
+		}
+		switch st := listToken.Subtype.(type) {
+		case *listtoken.PaginationToken:
+			sortBy = "created_time"
+			listResp, err = iam.ListGroupsPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.StartRefreshToken:
+			sortBy = "updated_time"
+			listResp, err = iam.ListGroupsRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.RefreshToken:
+			sortBy = "updated_time"
+			listResp, err = iam.ListGroupsRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
+		}
+	}
+
+	finalItems := make([]*pb.Group, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, scopeInfoMap, authResults)
+		if !ok {
+			continue
+		}
+		item, err := toProto(ctx, item, nil, outputOpts...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListGroupsResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       sortBy,
+		SortDir:      "desc",
+	}
+	if listResp.ListToken != nil {
+		resp.ListToken, err = handlers.MarshalListToken(ctx, listResp.ListToken, pbs.ResourceType_RESOURCE_TYPE_GROUP)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, nil
 }
 
 // GetGroups implements the interface pbs.GroupServiceServer.
@@ -169,7 +248,7 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -207,7 +286,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -245,7 +324,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -299,7 +378,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -337,7 +416,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -375,7 +454,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -416,7 +495,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := iam.NewGroup(scopeId, opts...)
+	u, err := iam.NewGroup(ctx, scopeId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build group for creation: %v.", err)
 	}
@@ -444,7 +523,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
 	version := item.GetVersion()
-	g, err := iam.NewGroup(scopeId, opts...)
+	g, err := iam.NewGroup(ctx, scopeId, opts...)
 	if err != nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build group for update: %v.", err)
 	}
@@ -481,19 +560,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete group"))
 	}
 	return rows > 0, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Group, error) {
-	const op = "groups.(Service).listFromRepo"
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	gl, err := repo.ListGroups(ctx, scopeIds)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return gl, nil
 }
 
 func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*iam.Group, []*iam.GroupMember, error) {
@@ -655,7 +721,7 @@ func toProto(ctx context.Context, in *iam.Group, members []*iam.GroupMember, opt
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetGroupRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.GroupPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.GroupPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateGroupRequest) error {
@@ -671,21 +737,21 @@ func validateCreateRequest(req *pbs.CreateGroupRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
-	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, iam.GroupPrefix)
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, globals.GroupPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, iam.GroupPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.GroupPrefix)
 }
 
-func validateListRequest(req *pbs.ListGroupsRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListGroupsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		!handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Incorrectly formatted identifier."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
@@ -696,7 +762,7 @@ func validateListRequest(req *pbs.ListGroupsRequest) error {
 
 func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -706,11 +772,11 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
-		if id == "u_recovery" {
+		if id == globals.RecoveryUserId {
 			badFields["member_ids"] = "u_recovery cannot be assigned to a group."
 			break
 		}
@@ -723,18 +789,18 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 
 func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
-		if id == "u_recovery" {
+		if id == globals.RecoveryUserId {
 			badFields["member_ids"] = "u_recovery cannot be assigned to a group."
 			break
 		}
@@ -747,7 +813,7 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 
 func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -757,7 +823,7 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
@@ -766,4 +832,28 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
+}
+
+func newOutputOpts(ctx context.Context, item *iam.Group, scopeInfoMap map[string]*scopes.ScopeInfo, authResults auth.VerifyResults) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		Type: resource.Group,
+	}
+	res.Id = item.GetPublicId()
+	res.ScopeId = item.GetScopeId()
+	res.ParentScopeId = scopeInfoMap[item.GetScopeId()].GetParentScopeId()
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res))
+	if len(authorizedActions) == 0 {
+		return nil, false
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
+	}
+	return outputOpts, true
 }

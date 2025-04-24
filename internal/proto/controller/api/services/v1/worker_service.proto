@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.services.v1;
@@ -11,6 +14,14 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service WorkerService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Worker service"
+    description:
+      "A worker is a service that acts as a network proxy for Boundary sessions. "
+      "It functions as a bridge between users and the target resources they need to access. "
+      "The worker service provides endpoints that let you manage workers in Boundary."
+  };
+
   // GetWorker returns a stored Worker if present.  The provided request
   // must include the Worker ID for the Worker being retrieved. If
   // that ID is missing, malformed or reference a non existing
@@ -20,9 +31,7 @@ service WorkerService {
       get: "/v1/workers/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Worker."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Worker."};
   }
 
   // ListWorkers returns a list of stored Workers which exist inside the provided
@@ -30,12 +39,8 @@ service WorkerService {
   // If the scope ID is missing, malformed, or reference a non existing scope,
   // an error is returned.
   rpc ListWorkers(ListWorkersRequest) returns (ListWorkersResponse) {
-    option (google.api.http) = {
-      get: "/v1/workers"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Workers."
-    };
+    option (google.api.http) = {get: "/v1/workers"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Workers."};
   }
 
   // CreateWorkerLed creates and stores a Worker in Boundary. The provided
@@ -49,9 +54,7 @@ service WorkerService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Worker."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Worker."};
   }
 
   // CreateControllerLed creates and stores a Worker in Boundary and returns an
@@ -67,9 +70,7 @@ service WorkerService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Worker."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Worker."};
   }
 
   // UpdateWorker updates an existing Worker in boundary.  The provided
@@ -86,20 +87,14 @@ service WorkerService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Worker."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Worker."};
   }
 
   // DeleteWorker removes a Worker from Boundary. If the provided Worker ID
   // is malformed or not provided an error is returned.
   rpc DeleteWorker(DeleteWorkerRequest) returns (DeleteWorkerResponse) {
-    option (google.api.http) = {
-      delete: "/v1/workers/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Worker."
-    };
+    option (google.api.http) = {delete: "/v1/workers/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Worker."};
   }
 
   // AddWorkerTags adds api tags to an existing Worker. If missing, malformed,
@@ -110,9 +105,7 @@ service WorkerService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds api tags to an existing Worker."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds api tags to an existing Worker."};
   }
 
   // SetWorkerTags sets api tags for an existing Worker. Any existing tags are overridden
@@ -124,9 +117,7 @@ service WorkerService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Sets api tags for an existing Worker."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets api tags for an existing Worker."};
   }
 
   // RemoveWorkerTags removes api tags from an existing Worker. If missing, malformed,
@@ -137,9 +128,7 @@ service WorkerService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes api tags from an existing Worker."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes api tags from an existing Worker."};
   }
 
   // ReadCertificateAuthority returns the current and next set of root certificates
@@ -148,9 +137,7 @@ service WorkerService {
       get: "/v1/workers:read-certificate-authority"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Retrieves root certificates used for worker authentication."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Retrieves root certificates used for worker authentication."};
   }
 
   // ReinitializeCas removes both current and next root certs and replaces them with a new set
@@ -159,14 +146,12 @@ service WorkerService {
       post: "/v1/workers:reinitialize-certificate-authority"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Reinitializes root certificates used for worker authentication."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Reinitializes root certificates used for worker authentication."};
   }
 }
 
 message GetWorkerRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetWorkerResponse {
@@ -174,8 +159,8 @@ message GetWorkerResponse {
 }
 
 message ListWorkersRequest {
-  string scope_id = 1; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
 }
 
@@ -188,7 +173,7 @@ message CreateWorkerLedRequest {
 }
 
 message CreateWorkerLedResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.workers.v1.Worker item = 2;
 }
 
@@ -197,7 +182,7 @@ message CreateControllerLedRequest {
 }
 
 message CreateControllerLedResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.workers.v1.Worker item = 2;
 }
 
@@ -218,7 +203,7 @@ message DeleteWorkerRequest {
 message DeleteWorkerResponse {}
 
 message AddWorkerTagsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -230,7 +215,7 @@ message AddWorkerTagsResponse {
 }
 
 message SetWorkerTagsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -242,7 +227,7 @@ message SetWorkerTagsResponse {
 }
 
 message RemoveWorkerTagsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`

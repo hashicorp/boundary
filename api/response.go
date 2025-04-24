@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package api
 
 import (
@@ -14,7 +17,14 @@ type Response struct {
 	resp *http.Response
 
 	Body *bytes.Buffer
-	Map  map[string]interface{}
+	Map  map[string]any
+}
+
+// NewResponse returns a new *Response based on the provided http.Response.
+// Just as when constructing the Response directly, Body and Map will be
+// populated after Decode is called.
+func NewResponse(r *http.Response) *Response {
+	return &Response{resp: r}
 }
 
 // HttpResponse returns the underlying HTTP response
@@ -27,7 +37,7 @@ func (r *Response) StatusCode() int {
 	return r.resp.StatusCode
 }
 
-func (r *Response) Decode(inStruct interface{}) (*Error, error) {
+func (r *Response) Decode(inStruct any) (*Error, error) {
 	if r == nil || r.resp == nil {
 		return nil, fmt.Errorf("nil response, cannot decode")
 	}
@@ -57,7 +67,7 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 			reader := bytes.NewReader(r.Body.Bytes())
 			dec := json.NewDecoder(reader)
 			dec.UseNumber()
-			r.Map = make(map[string]interface{})
+			r.Map = make(map[string]any)
 			if err := dec.Decode(&r.Map); err != nil {
 				return nil, fmt.Errorf("error decoding response to map: %w; response was %s", err, r.Body.String())
 			}

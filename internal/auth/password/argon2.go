@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package password
 
 import (
@@ -13,6 +16,26 @@ import (
 	"golang.org/x/crypto/argon2"
 	"google.golang.org/protobuf/proto"
 )
+
+// hashingPermitPool is the global permit pool used to restrict concurrent
+// password hashing. It can be resized with SetHashingPermits.
+var hashingPermitPool *resizablePermitPool
+
+func init() {
+	hashingPermitPool = newResizablePermitPool(1)
+}
+
+// SetHashingPermits sets the number of concurrent password hashing operations permitted.
+func SetHashingPermits(n int) error {
+	const op = "password.SetHashingPermits"
+	if n <= 0 {
+		return errors.New(context.Background(), errors.InvalidParameter, op, "n must be greater than 0")
+	}
+	if err := hashingPermitPool.SetPermits(n); err != nil {
+		return err
+	}
+	return nil
+}
 
 // Argon2Configuration is a configuration for using the argon2id key
 // derivation function. It is owned by an AuthMethod.
@@ -42,28 +65,28 @@ func NewArgon2Configuration() *Argon2Configuration {
 	}
 }
 
-func (c *Argon2Configuration) validate() error {
+func (c *Argon2Configuration) validate(ctx context.Context) error {
 	const op = "password.(Argon2Configuration).validate"
 	if c == nil {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing config")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing config")
 	}
 	if c.Argon2Configuration == nil {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing embedded config")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing embedded config")
 	}
 	if c.Iterations == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing iterations")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing iterations")
 	}
 	if c.Memory == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing memory")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing memory")
 	}
 	if c.Threads == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing threads")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing threads")
 	}
 	if c.SaltLength == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing salt length")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing salt length")
 	}
 	if c.KeyLength == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing key length")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing key length")
 	}
 	return nil
 }
@@ -108,9 +131,9 @@ func (c *Argon2Configuration) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-func (c *Argon2Configuration) whereDup() (string, []interface{}) {
+func (c *Argon2Configuration) whereDup() (string, []any) {
 	var where []string
-	var args []interface{}
+	var args []any
 
 	where, args = append(where, "password_method_id = ?"), append(args, c.PasswordMethodId)
 	where, args = append(where, "iterations = ?"), append(args, c.Iterations)
@@ -129,21 +152,21 @@ type Argon2Credential struct {
 	tableName string
 }
 
-func newArgon2Credential(accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
+func newArgon2Credential(ctx context.Context, accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
 	const op = "password.newArgon2Credential"
 	if accountId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing accountId")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing accountId")
 	}
 	if password == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing password")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing password")
 	}
 	if conf == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing argon2 configuration")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing argon2 configuration")
 	}
 
-	id, err := newArgon2CredentialId()
+	id, err := newArgon2CredentialId(ctx)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	c := &Argon2Credential{
@@ -157,10 +180,18 @@ func newArgon2Credential(accountId string, password string, conf *Argon2Configur
 
 	salt := make([]byte, conf.SaltLength)
 	if _, err := rand.Read(salt); err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Io))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
 	}
 	c.Salt = salt
-	c.DerivedKey = argon2.IDKey([]byte(password), c.Salt, conf.Iterations, conf.Memory, uint8(conf.Threads), conf.KeyLength)
+
+	// Limit the number of concurrent calls to the argon2 hashing function,
+	// since each call consumes a significant amount of CPU and memory.
+	if err := hashingPermitPool.Do(ctx, func() {
+		c.DerivedKey = argon2.IDKey([]byte(password), c.Salt, conf.Iterations, conf.Memory, uint8(conf.Threads), conf.KeyLength)
+	}); err != nil {
+		// Context was canceled while waiting for a permit
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("context canceled while waiting for hashing permit"))
+	}
 	return c, nil
 }
 
@@ -187,7 +218,7 @@ func (c *Argon2Credential) SetTableName(n string) {
 func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "password.(Argon2Credential).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
@@ -200,7 +231,7 @@ func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper)
 func (c *Argon2Credential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "password.(Argon2Credential).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

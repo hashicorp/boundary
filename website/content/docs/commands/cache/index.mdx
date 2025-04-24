@@ -1,0 +1,43 @@
+---
+layout: docs
+page_title: cache - Command
+description: >-
+  The "cache" command performs operations on a local cache that facilitates searches and protects your system resources from being overwhelmed.
+---
+
+# cache
+
+Command: `boundary cache`
+
+The `cache` command lets you manage the Boundary cache and perform operations on the local cache of information.
+
+## Example
+
+The following command starts the Boundary cache in the background:
+
+```shell-session
+$ boundary cache start -background
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary cache <subcommand> [options] [args]
+  # ...
+Subcommands:
+    add-token   Add an auth token to a Boundary cache that is currently running.
+    start       Starts the Boundary cache.
+    status      Gets the status information of a Boundary cache that is currently running.
+    stop        Stops the Boundary cache.
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name of the subcommand in the sidebar or one of the links below:
+
+- [add-token](/boundary/docs/commands/cache/add-token)
+- [start](/boundary/docs/commands/cache/start)
+- [status](/boundary/docs/commands/cache/status)
+- [stop](/boundary/docs/commands/cache/stop)

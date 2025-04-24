@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
@@ -7,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/kms"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/kms"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -59,7 +62,7 @@ func NewConnectionRepository(ctx context.Context, r db.Reader, w db.Writer, kms 
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit.  Supports WithOrder option.
-func (r *ConnectionRepository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+func (r *ConnectionRepository) list(ctx context.Context, resources any, where string, args []any, opt ...Option) error {
 	const op = "session.(ConnectionRepository).list"
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -81,6 +84,49 @@ func (r *ConnectionRepository) list(ctx context.Context, resources interface{}, 
 	return nil
 }
 
+func (r *ConnectionRepository) updateBytesUpBytesDown(ctx context.Context, conns ...*Connection) error {
+	const op = "session.(ConnectionRepository).updateBytesUpBytesDown"
+	if len(conns) == 0 {
+		return nil
+	}
+
+	updateMask := []string{"BytesUp", "BytesDown"}
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			for _, c := range conns {
+				_, err := w.Update(
+					ctx,
+					&Connection{PublicId: c.PublicId, BytesUp: c.BytesUp, BytesDown: c.BytesDown},
+					updateMask,
+					nil,
+					// The last update to these two fields should come from our
+					// connection closure logic, which does not use this
+					// function (see the closeConnections func). Therefore, here
+					// we shouldn't update bytes up and down if the connection
+					// has already been closed. This also guards against
+					// potential data races where a connection closure request
+					// and a worker statistics update happen close to each other in
+					// terms of timing.
+					db.WithWhere("closed_reason is null"),
+				)
+				if err != nil {
+					// Returning an error will rollback the entire transaction.
+					// We don't want to bail out of an update batch if just one
+					// of the connections fails to update, but we still log it.
+					event.WriteError(ctx, op, fmt.Errorf("failed to update bytes up and down for connection id %q: %w", c.GetPublicId(), err))
+					continue
+				}
+			}
+
+			return nil
+		})
+
+	return err
+}
+
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,
 // that authorization checks:
 // * the hasn't expired based on the session.Expiration
@@ -88,25 +134,24 @@ func (r *ConnectionRepository) list(ctx context.Context, resources interface{}, 
 // If authorization is success, it creates/stores a new connection in the repo
 // and returns it, along with its states.  If the authorization fails, it
 // an error with Code InvalidSessionState.
-func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionId, workerId string) (*Connection, []*ConnectionState, error) {
+func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionId, workerId string) (*Connection, error) {
 	const op = "session.(ConnectionRepository).AuthorizeConnection"
 	if sessionId == "" {
-		return nil, nil, errors.Wrap(ctx, status.Error(codes.FailedPrecondition, "missing session id"), op, errors.WithCode(errors.InvalidParameter))
+		return nil, errors.Wrap(ctx, status.Error(codes.FailedPrecondition, "missing session id"), op, errors.WithCode(errors.InvalidParameter))
 	}
-	connectionId, err := newConnectionId()
+	connectionId, err := newConnectionId(ctx)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	connection := AllocConnection()
 	connection.PublicId = connectionId
-	var connectionStates []*ConnectionState
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{
+			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []any{
 				sql.Named("session_id", sessionId),
 				sql.Named("public_id", connectionId),
 				sql.Named("worker_id", workerId),
@@ -120,31 +165,26 @@ func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionI
 			if err := reader.LookupById(ctx, &connection); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for session %s", sessionId)))
 			}
-			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	return &connection, connectionStates, nil
+	return &connection, nil
 }
 
 // LookupConnection will look up a connection in the repository and return the connection
-// with its states. If the connection is not found, it will return nil, nil, nil.
+// with its state. If the connection is not found, it will return nil, nil.
 // No options are currently supported.
-func (r *ConnectionRepository) LookupConnection(ctx context.Context, connectionId string, _ ...Option) (*Connection, []*ConnectionState, error) {
+func (r *ConnectionRepository) LookupConnection(ctx context.Context, connectionId string, _ ...Option) (*Connection, error) {
 	const op = "session.(ConnectionRepository).LookupConnection"
 	if connectionId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing connectionId id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing connectionId id")
 	}
 	connection := AllocConnection()
 	connection.PublicId = connectionId
-	var states []*ConnectionState
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -153,20 +193,16 @@ func (r *ConnectionRepository) LookupConnection(ctx context.Context, connectionI
 			if err := read.LookupById(ctx, &connection); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", connectionId)))
 			}
-			var err error
-			if states, err = fetchConnectionStates(ctx, read, connectionId, db.WithOrder("start_time desc")); err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return &connection, states, nil
+	return &connection, nil
 }
 
 // ListConnectionsBySessionId will list connections by session ID. Supports the
@@ -177,7 +213,7 @@ func (r *ConnectionRepository) ListConnectionsBySessionId(ctx context.Context, s
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no session ID supplied")
 	}
 	var connections []*Connection
-	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
+	err := r.list(ctx, &connections, "session_id = ?", []any{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -185,14 +221,13 @@ func (r *ConnectionRepository) ListConnectionsBySessionId(ctx context.Context, s
 }
 
 // ConnectConnection updates a connection in the repo with a state of "connected".
-func (r *ConnectionRepository) ConnectConnection(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
+func (r *ConnectionRepository) ConnectConnection(ctx context.Context, c ConnectWith) (*Connection, error) {
 	const op = "session.(ConnectionRepository).ConnectConnection"
 	// ConnectWith.validate will check all the fields...
-	if err := c.validate(); err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+	if err := c.validate(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	var connection Connection
-	var connectionStates []*ConnectionState
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -220,31 +255,33 @@ func (r *ConnectionRepository) ConnectConnection(ctx context.Context, c ConnectW
 				// return err, which will result in a rollback of the update
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
-			newState, err := NewConnectionState(connection.PublicId, StatusConnected)
+			// Set the lower bound of the connected_time_range to indicate the connection is connected
+			rowsUpdated, err = w.Exec(ctx, connectConnection, []any{
+				sql.Named("public_id", c.ConnectionId),
+			})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			if err := w.Create(ctx, newState); err != nil {
-				return errors.Wrap(ctx, err, op)
+			if rowsUpdated != 1 {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to connect connection %s", c.ConnectionId)))
 			}
-			connectionStates, err = fetchConnectionStates(ctx, reader, c.ConnectionId, db.WithOrder("start_time desc"))
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
+			if err := reader.LookupById(ctx, &connection); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for connection %s", c.ConnectionId)))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return &connection, connectionStates, nil
+	return &connection, nil
 }
 
 // closeConnectionResp is just a wrapper for the response from CloseConnections.
-// It wraps the connection and its states for each connection closed.
+// It wraps the connection and its state for each connection closed.
 type closeConnectionResp struct {
-	Connection       *Connection
-	ConnectionStates []*ConnectionState
+	Connection      *Connection
+	ConnectionState ConnectionStatus
 }
 
 // closeConnections set's a connection's state to "closed" in the repo.  It's
@@ -256,7 +293,7 @@ func (r *ConnectionRepository) closeConnections(ctx context.Context, closeWith [
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing connections")
 	}
 	for _, cw := range closeWith {
-		if err := cw.validate(); err != nil {
+		if err := cw.validate(ctx); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s was invalid", cw.ConnectionId)))
 		}
 	}
@@ -272,8 +309,8 @@ func (r *ConnectionRepository) closeConnections(ctx context.Context, closeWith [
 				updateConnection.BytesUp = cw.BytesUp
 				updateConnection.BytesDown = cw.BytesDown
 				updateConnection.ClosedReason = cw.ClosedReason.String()
-				// updating the ClosedReason will trigger an insert into the
-				// session_connection_state with a state of closed.
+				// updating the ClosedReason will trigger the session_connection to set the
+				// upper limit of connection_time_range to indicate the connection is closed.
 				rowsUpdated, err := w.Update(
 					ctx,
 					&updateConnection,
@@ -286,13 +323,9 @@ func (r *ConnectionRepository) closeConnections(ctx context.Context, closeWith [
 				if rowsUpdated != 1 {
 					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("%d would have been updated for connection %s", rowsUpdated, cw.ConnectionId))
 				}
-				states, err := fetchConnectionStates(ctx, reader, cw.ConnectionId, db.WithOrder("start_time desc"))
-				if err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
 				resp = append(resp, closeConnectionResp{
-					Connection:       &updateConnection,
-					ConnectionStates: states,
+					Connection:      &updateConnection,
+					ConnectionState: StatusClosed,
 				})
 
 			}
@@ -345,13 +378,13 @@ func (r *ConnectionRepository) DeleteConnection(ctx context.Context, publicId st
 	return rowsDeleted, nil
 }
 
-// closeOrphanedConnections looks for connections that are still active, but where not reported by the worker.
+// closeOrphanedConnections looks for connections that are still active, but were not reported by the worker.
 func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, workerId string, reportedConnections []string) ([]string, error) {
 	const op = "session.(ConnectionRepository).closeOrphanedConnections"
 
 	var orphanedConns []string
 
-	args := make([]interface{}, 0, len(reportedConnections)+2)
+	args := make([]any, 0, len(reportedConnections)+2)
 	args = append(args, sql.Named("worker_id", workerId))
 	args = append(args, sql.Named("worker_state_delay_seconds", r.workerStateDelay.Seconds()))
 
@@ -366,12 +399,13 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 		notInClause = fmt.Sprintf(notInClause, strings.Join(params, ","))
 	}
 
+	query := fmt.Sprintf(closeOrphanedConnections, notInClause)
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			rows, err := r.reader.Query(ctx, fmt.Sprintf(orphanedConnectionsCte, notInClause), args)
+		func(_ db.Reader, w db.Writer) error {
+			rows, err := w.Query(ctx, query, args)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -384,6 +418,9 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 				}
 				orphanedConns = append(orphanedConns, connectionId)
 			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error getting next row"))
+			}
 			return nil
 		},
 	)
@@ -391,16 +428,4 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error comparing state"))
 	}
 	return orphanedConns, nil
-}
-
-func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) ([]*ConnectionState, error) {
-	const op = "session.fetchConnectionStates"
-	var states []*ConnectionState
-	if err := r.SearchWhere(ctx, &states, "connection_id = ?", []interface{}{connectionId}, opt...); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if len(states) == 0 {
-		return nil, nil
-	}
-	return states, nil
 }

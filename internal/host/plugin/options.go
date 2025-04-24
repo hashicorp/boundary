@@ -1,6 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
-import "google.golang.org/protobuf/types/known/structpb"
+import (
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/pagination"
+	"google.golang.org/protobuf/types/known/structpb"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -19,6 +26,7 @@ type options struct {
 	withPublicId            string
 	withPluginId            string
 	withName                string
+	withExternalName        string
 	withDescription         string
 	withAttributes          *structpb.Struct
 	withSecrets             *structpb.Struct
@@ -29,6 +37,10 @@ type options struct {
 	withLimit               int
 	withSetIds              []string
 	withSecretsHmac         []byte
+	withStartPageAfterItem  pagination.Item
+	withWorkerFilter        string
+	WithReader              db.Reader
+	withWriter              db.Writer
 }
 
 func getDefaultOptions() options {
@@ -62,6 +74,13 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithExternalName provides an optional external name for the plugin host.
+func WithExternalName(externalName string) Option {
+	return func(o *options) {
+		o.withExternalName = externalName
 	}
 }
 
@@ -128,5 +147,30 @@ func WithSetIds(with []string) Option {
 func WithSecretsHmac(secretsHmac []byte) Option {
 	return func(o *options) {
 		o.withSecretsHmac = secretsHmac
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
+	}
+}
+
+// WithWorkerFilter provides an option to set a plugin host catalog worker
+// filter.
+func WithWorkerFilter(wf string) Option {
+	return func(o *options) {
+		o.withWorkerFilter = wf
+	}
+}
+
+// WithReaderWriter is used to share the same database reader
+// and writer when executing sql within a transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.WithReader = r
+		o.withWriter = w
 	}
 }

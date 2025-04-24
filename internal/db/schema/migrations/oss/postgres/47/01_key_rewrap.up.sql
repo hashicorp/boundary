@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- make the required schema changes to upgrade the dependency:
 -- github.com/hashicorp/go-kms-wrapping/extras/kms/v2
 -- this migration is from:
@@ -17,6 +20,7 @@ create trigger kms_immutable_columns before update on kms_root_key_version
 -- rewrapping the data key version.
 drop trigger kms_immutable_columns on kms_data_key_version;
 
+-- trigger updated again in migration 56 file 04
 create trigger kms_immutable_columns before update on kms_data_key_version
   for each row execute procedure kms_immutable_columns('private_id', 'data_key_id', 'root_key_version_id', 'create_time');
 

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
   create table credential_vault_store (
@@ -64,6 +67,8 @@ begin;
   -- and an update contains a value for delete_time different from the current
   -- value, this trigger will raise an error with error code 23602 which is a
   -- class 23 integrity constraint violation: set_once_violation.
+  --
+  -- Deleted in 66/02_use_set_once_columns.up.sql
   create function before_soft_delete_credential_vault_store() returns trigger
   as $$
   begin
@@ -80,6 +85,7 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- Replaced in 66/02_use_set_once_columns.up.sql
   create trigger before_soft_delete_credential_vault_store before update on credential_vault_store
     for each row execute procedure before_soft_delete_credential_vault_store();
 
@@ -190,6 +196,7 @@ begin;
   create trigger default_create_time_column before insert on credential_vault_token
     for each row execute procedure default_create_time();
 
+  -- this trigger is updated in 56/05_mutable_ciphertext_columns.up.sql
   create trigger immutable_columns before update on credential_vault_token
     for each row execute procedure immutable_columns('token_hmac', 'token', 'store_id','create_time');
 

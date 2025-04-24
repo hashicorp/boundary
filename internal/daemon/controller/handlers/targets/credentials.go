@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package targets
 
 import (
@@ -6,13 +9,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -33,7 +36,16 @@ func dynamicToWorkerCredential(ctx context.Context, cred credential.Dynamic) (se
 				},
 			},
 		}
-
+	case credential.SshCertificate:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_SshCertificate{
+				SshCertificate: &serverpb.SshCertificate{
+					Username:    c.Username(),
+					PrivateKey:  string(c.PrivateKey()),
+					Certificate: string(c.Certificate()),
+				},
+			},
+		}
 	case credential.SshPrivateKey:
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_SshPrivateKey{
@@ -67,14 +79,14 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 	}
 	var sSecret *structpb.Struct
 	switch secret.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		// In this case we actually have to re-decode it. The proto wrappers
 		// choke on json.Number and at the time I'm writing this I don't
 		// have time to write a walk function to dig through with reflect
 		// and find all json.Numbers and replace them. So we eat the
 		// inefficiency. So note that we are specifically _not_ using a
 		// decoder with UseNumber here.
-		var dSecret map[string]interface{}
+		var dSecret map[string]any
 		if err := json.Unmarshal(jSecret, &dSecret); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("decoding json for proto marshaling"))
 		}
@@ -86,12 +98,13 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 
 	var credType string
 	var credData *structpb.Struct
-	if l.CredentialType() != credential.UnspecifiedType {
+	if l.CredentialType() != globals.UnspecifiedCredentialType {
 		credType = string(l.CredentialType())
 
 		switch c := cred.(type) {
 		case credential.UsernamePassword:
 			credData, err = handlers.ProtoToStruct(
+				ctx,
 				&pb.UsernamePasswordCredential{
 					Username: c.Username(),
 					Password: string(c.Password()),
@@ -103,6 +116,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 
 		case credential.SshPrivateKey:
 			credData, err = handlers.ProtoToStruct(
+				ctx,
 				&pb.SshPrivateKeyCredential{
 					Username:             c.Username(),
 					PrivateKey:           string(c.PrivateKey()),
@@ -124,7 +138,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 			Name:              l.GetName(),
 			Description:       l.GetDescription(),
 			CredentialStoreId: l.GetStoreId(),
-			Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
+			Type:              globals.ResourceInfoFromPrefix(l.GetPublicId()).Subtype.String(),
 			CredentialType:    credType,
 		},
 		Secret: &pb.SessionSecret{
@@ -178,18 +192,19 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	var credType string
 	var credData *structpb.Struct
-	var secret map[string]interface{}
+	var secret map[string]any
 	switch c := cred.(type) {
 	case *credstatic.UsernamePasswordCredential:
 		var err error
-		credType = string(credential.UsernamePasswordType)
+		credType = string(globals.UsernamePasswordCredentialType)
 		credData, err = handlers.ProtoToStruct(
+			ctx,
 			&pb.UsernamePasswordCredential{
 				Username: c.GetUsername(),
 				Password: string(c.GetPassword()),
 			},
 		)
-		secret = map[string]interface{}{
+		secret = map[string]any{
 			"username": c.GetUsername(),
 			"password": string(c.GetPassword()),
 		}
@@ -199,15 +214,16 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	case *credstatic.SshPrivateKeyCredential:
 		var err error
-		credType = string(credential.SshPrivateKeyType)
+		credType = string(globals.SshPrivateKeyCredentialType)
 		credData, err = handlers.ProtoToStruct(
+			ctx,
 			&pb.SshPrivateKeyCredential{
 				Username:             c.GetUsername(),
 				PrivateKey:           string(c.GetPrivateKey()),
 				PrivateKeyPassphrase: string(c.GetPrivateKeyPassphrase()),
 			},
 		)
-		secret = map[string]interface{}{
+		secret = map[string]any{
 			"username":    c.GetUsername(),
 			"private_key": string(c.GetPrivateKey()),
 		}
@@ -220,8 +236,8 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	case *credstatic.JsonCredential:
 		var err error
-		credType = string(credential.JsonType)
-		object := map[string]interface{}{}
+		credType = string(globals.JsonCredentialType)
+		object := map[string]any{}
 		err = json.Unmarshal(c.GetObject(), &object)
 		if err != nil {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "unmarshalling json")

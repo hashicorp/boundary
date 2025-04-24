@@ -1,19 +1,42 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package config_test
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"net/http"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoad(t *testing.T) {
+	apiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+	uiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+
 	cases := []struct {
 		name        string
 		expected    *config.Config
@@ -26,7 +49,7 @@ func TestLoad(t *testing.T) {
 					EntSharedConfig: configutil.EntSharedConfig{},
 					Listeners: []*listenerutil.ListenerConfig{
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "api",
 								"tls_disable": true,
@@ -91,9 +114,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       []string{"*"},
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "cluster",
 								"tls_disable": true,
@@ -158,9 +183,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "proxy",
 								"tls_disable": true,
@@ -225,9 +252,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "ops",
 								"tls_disable": true,
@@ -292,6 +321,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 					},
 					Seals: []*configutil.KMS{
@@ -347,17 +378,17 @@ func TestLoad(t *testing.T) {
 					ClusterName:                  "",
 				},
 				Worker: &config.Worker{
-					Name:                               "worker0",
-					Description:                        "A worker",
-					PublicAddr:                         "",
-					InitialUpstreams:                   []string{"boundary:9201"},
-					InitialUpstreamsRaw:                []interface{}{"boundary:9201"},
-					ControllersRaw:                     nil,
-					Tags:                               nil,
-					TagsRaw:                            nil,
-					StatusGracePeriodDuration:          0,
-					AuthStoragePath:                    "",
-					ControllerGeneratedActivationToken: "",
+					Name:                "worker0",
+					Description:         "A worker",
+					PublicAddr:          "",
+					InitialUpstreams:    []string{"boundary:9201"},
+					InitialUpstreamsRaw: []any{"boundary:9201"},
+					Tags:                nil,
+					TagsRaw:             nil,
+					SuccessfulControllerRPCGracePeriodDuration: 0,
+					ControllerRPCCallTimeoutDuration:           0,
+					AuthStoragePath:                            "",
+					ControllerGeneratedActivationToken:         "",
 				},
 				Controller: &config.Controller{
 					Name:        "controller0",
@@ -373,21 +404,30 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:            "",
-					Scheduler:                    nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:          nil,
 					AuthTokenTimeToLiveDuration:  0,
 					AuthTokenTimeToStale:         nil,
 					AuthTokenTimeToStaleDuration: 0,
 					GracefulShutdownWait:         nil,
 					GracefulShutdownWaitDuration: 0,
-					StatusGracePeriodDuration:    0,
+					WorkerRPCGracePeriodDuration: 0,
+					LivenessTimeToStaleDuration:  0,
+					ApiRateLimits:                make(ratelimit.Configs, 0),
+					ApiRateLimiterMaxQuotas:      ratelimit.DefaultLimiterMaxQuotas(),
+					MaxPageSizeRaw:               nil,
+					MaxPageSize:                  0,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
 				DevWorkerAuthStorageKey: "",
+				DevBsrKey:               "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
 					AuditEnabled:        false,
@@ -420,6 +460,11 @@ func TestLoad(t *testing.T) {
 					ExecutionDir: "",
 				},
 				HcpbClusterId: "",
+				Reporting: config.Reporting{
+					License: config.License{
+						Enabled: false,
+					},
+				},
 			},
 			nil,
 		},
@@ -430,7 +475,7 @@ func TestLoad(t *testing.T) {
 					EntSharedConfig: configutil.EntSharedConfig{},
 					Listeners: []*listenerutil.ListenerConfig{
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "api",
 								"tls_disable": true,
@@ -495,9 +540,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       []string{"*"},
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "cluster",
 								"tls_disable": true,
@@ -562,9 +609,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "ops",
 								"tls_disable": true,
@@ -629,9 +678,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "proxy",
 								"tls_disable": true,
@@ -696,6 +747,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 					},
 					Seals: []*configutil.KMS{
@@ -751,17 +804,17 @@ func TestLoad(t *testing.T) {
 					ClusterName:                  "",
 				},
 				Worker: &config.Worker{
-					Name:                               "worker0",
-					Description:                        "A worker",
-					PublicAddr:                         "",
-					InitialUpstreams:                   []string{"boundary:9201"},
-					InitialUpstreamsRaw:                []interface{}{"boundary:9201"},
-					ControllersRaw:                     nil,
-					Tags:                               nil,
-					TagsRaw:                            nil,
-					StatusGracePeriodDuration:          0,
-					AuthStoragePath:                    "",
-					ControllerGeneratedActivationToken: "",
+					Name:                "worker0",
+					Description:         "A worker",
+					PublicAddr:          "",
+					InitialUpstreams:    []string{"boundary:9201"},
+					InitialUpstreamsRaw: []any{"boundary:9201"},
+					Tags:                nil,
+					TagsRaw:             nil,
+					SuccessfulControllerRPCGracePeriodDuration: 0,
+					ControllerRPCCallTimeoutDuration:           0,
+					AuthStoragePath:                            "",
+					ControllerGeneratedActivationToken:         "",
 				},
 				Controller: &config.Controller{
 					Name:        "controller0",
@@ -777,20 +830,29 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:            "",
-					Scheduler:                    nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:          nil,
 					AuthTokenTimeToLiveDuration:  0,
 					AuthTokenTimeToStale:         nil,
 					AuthTokenTimeToStaleDuration: 0,
 					GracefulShutdownWait:         nil,
 					GracefulShutdownWaitDuration: 0,
-					StatusGracePeriodDuration:    0,
+					WorkerRPCGracePeriodDuration: 0,
+					LivenessTimeToStaleDuration:  0,
+					ApiRateLimits:                make(ratelimit.Configs, 0),
+					ApiRateLimiterMaxQuotas:      ratelimit.DefaultLimiterMaxQuotas(),
+					MaxPageSizeRaw:               nil,
+					MaxPageSize:                  0,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -834,7 +896,7 @@ func TestLoad(t *testing.T) {
 					EntSharedConfig: configutil.EntSharedConfig{},
 					Listeners: []*listenerutil.ListenerConfig{
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "api",
 								"tls_disable": true,
@@ -899,9 +961,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       []string{"*"},
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "cluster",
 								"tls_disable": true,
@@ -966,9 +1030,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "ops",
 								"tls_disable": true,
@@ -1033,9 +1099,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "proxy",
 								"tls_disable": true,
@@ -1100,6 +1168,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 					},
 					Seals: []*configutil.KMS{
@@ -1155,17 +1225,17 @@ func TestLoad(t *testing.T) {
 					ClusterName:                  "",
 				},
 				Worker: &config.Worker{
-					Name:                               "worker0",
-					Description:                        "A worker",
-					PublicAddr:                         "",
-					InitialUpstreams:                   []string{"boundary:9201"},
-					InitialUpstreamsRaw:                []interface{}{"boundary:9201"},
-					ControllersRaw:                     nil,
-					Tags:                               nil,
-					TagsRaw:                            nil,
-					StatusGracePeriodDuration:          0,
-					AuthStoragePath:                    "",
-					ControllerGeneratedActivationToken: "",
+					Name:                "worker0",
+					Description:         "A worker",
+					PublicAddr:          "",
+					InitialUpstreams:    []string{"boundary:9201"},
+					InitialUpstreamsRaw: []any{"boundary:9201"},
+					Tags:                nil,
+					TagsRaw:             nil,
+					SuccessfulControllerRPCGracePeriodDuration: 0,
+					ControllerRPCCallTimeoutDuration:           0,
+					AuthStoragePath:                            "",
+					ControllerGeneratedActivationToken:         "",
 				},
 				Controller: &config.Controller{
 					Name:        "controller0",
@@ -1181,20 +1251,48 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:            "",
-					Scheduler:                    nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:          nil,
 					AuthTokenTimeToLiveDuration:  0,
 					AuthTokenTimeToStale:         nil,
 					AuthTokenTimeToStaleDuration: 0,
 					GracefulShutdownWait:         nil,
 					GracefulShutdownWaitDuration: 0,
-					StatusGracePeriodDuration:    0,
+					WorkerRPCGracePeriodDuration: 0,
+					LivenessTimeToStaleDuration:  0,
+					ApiRateLimits: ratelimit.Configs{
+						{
+							Resources: []string{"*"},
+							Actions:   []string{"*"},
+							Per:       "total",
+							Limit:     50,
+							PeriodHCL: "1m",
+							Period:    time.Minute,
+							Unlimited: false,
+						},
+						{
+							Resources: []string{"*"},
+							Actions:   []string{"list"},
+							Per:       "total",
+							Limit:     20,
+							PeriodHCL: "1m",
+							Period:    time.Minute,
+							Unlimited: false,
+						},
+					},
+					ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
+					MaxPageSizeRaw:          nil,
+					MaxPageSize:             0,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1238,7 +1336,7 @@ func TestLoad(t *testing.T) {
 					EntSharedConfig: configutil.EntSharedConfig{},
 					Listeners: []*listenerutil.ListenerConfig{
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "api",
 								"tls_disable": true,
@@ -1303,9 +1401,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       []string{"*"},
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "cluster",
 								"tls_disable": true,
@@ -1370,9 +1470,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "proxy",
 								"tls_disable": true,
@@ -1437,9 +1539,11 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "ops",
 								"tls_disable": true,
@@ -1504,6 +1608,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 					},
 					Seals: []*configutil.KMS{
@@ -1559,17 +1665,17 @@ func TestLoad(t *testing.T) {
 					ClusterName:                  "",
 				},
 				Worker: &config.Worker{
-					Name:                               "worker0",
-					Description:                        "A worker",
-					PublicAddr:                         "",
-					InitialUpstreams:                   []string{"boundary:9201"},
-					InitialUpstreamsRaw:                []interface{}{"boundary:9201"},
-					ControllersRaw:                     nil,
-					Tags:                               nil,
-					TagsRaw:                            nil,
-					StatusGracePeriodDuration:          0,
-					AuthStoragePath:                    "",
-					ControllerGeneratedActivationToken: "",
+					Name:                "worker0",
+					Description:         "A worker",
+					PublicAddr:          "",
+					InitialUpstreams:    []string{"boundary:9201"},
+					InitialUpstreamsRaw: []any{"boundary:9201"},
+					Tags:                nil,
+					TagsRaw:             nil,
+					SuccessfulControllerRPCGracePeriodDuration: 0,
+					ControllerRPCCallTimeoutDuration:           0,
+					AuthStoragePath:                            "",
+					ControllerGeneratedActivationToken:         "",
 				},
 				Controller: &config.Controller{
 					Name:        "controller0",
@@ -1585,20 +1691,29 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:            "",
-					Scheduler:                    nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:          nil,
 					AuthTokenTimeToLiveDuration:  0,
 					AuthTokenTimeToStale:         nil,
 					AuthTokenTimeToStaleDuration: 0,
 					GracefulShutdownWait:         nil,
 					GracefulShutdownWaitDuration: 0,
-					StatusGracePeriodDuration:    0,
+					WorkerRPCGracePeriodDuration: 0,
+					LivenessTimeToStaleDuration:  0,
+					ApiRateLimits:                make(ratelimit.Configs, 0),
+					ApiRateLimiterMaxQuotas:      ratelimit.DefaultLimiterMaxQuotas(),
+					MaxPageSizeRaw:               nil,
+					MaxPageSize:                  0,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1669,20 +1784,29 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:            "",
-					Scheduler:                    nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:          nil,
 					AuthTokenTimeToLiveDuration:  0,
 					AuthTokenTimeToStale:         nil,
 					AuthTokenTimeToStaleDuration: 0,
 					GracefulShutdownWait:         nil,
 					GracefulShutdownWaitDuration: 0,
-					StatusGracePeriodDuration:    0,
+					WorkerRPCGracePeriodDuration: 0,
+					LivenessTimeToStaleDuration:  0,
+					ApiRateLimits:                make(ratelimit.Configs, 0),
+					ApiRateLimiterMaxQuotas:      ratelimit.DefaultLimiterMaxQuotas(),
+					MaxPageSizeRaw:               nil,
+					MaxPageSize:                  0,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1722,14 +1846,14 @@ func TestLoad(t *testing.T) {
 		{
 			"MultiFileMix",
 			nil,
-			fmt.Errorf("Error parsing KMS HCL: At 30:1: expected: IDENT | STRING got: LBRACE"),
+			fmt.Errorf("expected: IDENT | STRING got: LBRACE"),
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var paths []string
-			files, err := ioutil.ReadDir(fmt.Sprintf("testdata/%s", t.Name()))
+			files, err := os.ReadDir(fmt.Sprintf("testdata/%s", t.Name()))
 			require.NoError(t, err)
 			for _, file := range files {
 				if !file.IsDir() {
@@ -1740,7 +1864,7 @@ func TestLoad(t *testing.T) {
 			ctx := context.Background()
 			cfg, err := config.Load(ctx, paths, "")
 			if tc.expectedErr != nil {
-				require.Equal(t, tc.expectedErr.Error(), err.Error())
+				require.Contains(t, err.Error(), tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)
 			}

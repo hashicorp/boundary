@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 syntax = "proto3";
 
 package controller.storage.target.targettest.store.v1;
@@ -51,6 +54,13 @@ message Target {
     that: "attributes.default_port"
   }];
 
+  // default client port of the tcp.Target
+  // @inject_tag: `gorm:"default:null"`
+  uint32 default_client_port = 85 [(custom_options.v1.mask_mapping) = {
+    this: "DefaultClientPort"
+    that: "attributes.default_client_port"
+  }];
+
   // Maximum total lifetime of a created session, in seconds
   // @inject_tag: `gorm:"default:null"`
   uint32 session_max_seconds = 100 [(custom_options.v1.mask_mapping) = {
@@ -70,5 +80,19 @@ message Target {
   string worker_filter = 120 [(custom_options.v1.mask_mapping) = {
     this: "WorkerFilter"
     that: "worker_filter"
+  }];
+
+  // A boolean expression that allows filtering the egress workers that can handle a session
+  // @inject_tag: `gorm:"default:null"`
+  string egress_worker_filter = 130 [(custom_options.v1.mask_mapping) = {
+    this: "EgressWorkerFilter"
+    that: "egress_worker_filter"
+  }];
+
+  // A boolean expression that allows filtering the ingress workers that can handle a session
+  // @inject_tag: `gorm:"default:null"`
+  string ingress_worker_filter = 140 [(custom_options.v1.mask_mapping) = {
+    this: "IngressWorkerFilter"
+    that: "ingress_worker_filter"
   }];
 }

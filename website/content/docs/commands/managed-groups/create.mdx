@@ -1,0 +1,110 @@
+---
+layout: docs
+page_title: managed-groups create - Command
+description: >-
+  The "managed-groups create" command creates a new managed group resource.
+---
+
+# managed-groups create
+
+Command: `managed-groups create`
+
+The `managed-groups create` command lets you create a new managed group.
+
+## Example
+
+This example creates a managed group with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary managed-groups create -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups create [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    ldap    Create an ldap managed group
+    oidc    Create an oidc managed group
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can create LDAP or OIDC managed groups.
+
+<Tabs>
+<Tab heading="LDAP">
+
+The `boundary managed-groups create ldap` command lets you create LDAP managed groups.
+
+#### Example
+
+This example creates a LDAP managed group using the LDAP group name `admin` and the description `Ldap managed group for ProdOps`:
+
+```shell-session
+$ boundary managed-groups create ldap -group-names admin -description "Ldap managed group for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups create ldap [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-auth-method-id=<string>` - The auth-method resource to use for creating the managed group.
+You can also specify the auth-method resource using the **BOUNDARY_AUTH_METHOD_ID** environment variable.
+- `-description=<string>` - The description to set for the LDAP managed group.
+- `-group-names=<string>` - The LDAP group names against which an LDAP account's associated groups are evaluated to determine membership.
+Boundary evaluates managed group membership when you log in.
+You can specify multiple group names.
+- `-name=<string>` - The name for the LDAP managed group.
+
+</Tab>
+<Tab heading="OIDC">
+
+The `boundary managed-groups create oidc` command lets you create OIDC managed groups.
+
+#### Example
+
+This example creates a OIDC managed group using a filter and the description `Oidc managed group for ProdOps`:
+
+```shell-session
+$ boundary managed-groups create oidc -filter '"/token/email" == "doe@example.com"' -description "Oidc managed group for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups create oidc [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-auth-method-id=<string>` - The auth-method resource to use for creating the managed group.
+You can also specify the auth-method resource using the **BOUNDARY_AUTH_METHOD_ID** environment variable.
+- `-description=<string>` - The description to set for the OIDC managed group.
+- `-filter=<string>` - The filter that defines the criteria against which an account's OIDC token and user info are evaluated to determine if it is a member of the OIDC managed group.
+Boundary evaluates managed group membership when you log in.
+- `-name=<string>` - The name to set for the OIDC managed group.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

@@ -1,9 +1,0 @@
-jobs:
-  - build
-  - test-api
-  - test-sdk
-  - test-sql:
-      matrix:
-        parameters:
-          postgres-version: ["latest", "11-alpine", "12-alpine", "13-alpine"]
-  - make-gen-deltas

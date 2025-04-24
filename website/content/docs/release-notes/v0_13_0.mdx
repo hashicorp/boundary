@@ -1,0 +1,154 @@
+---
+layout: docs
+page_title: v0.13.0 release notes
+description: >-
+  Learn more about the new features included in the Boundary 0.13.0 release. Understand any deprecations, changes, and known issues.
+---
+
+# Boundary v0.13.0
+
+The release notes below contain information about new functionality available in the Boundary v0.13.0 release.
+To see a granular record of when each item was merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md).
+To learn about what Boundary consists of, we highly recommend you review the [Getting Started Page](/boundary/docs/getting-started).
+
+For instructions on how to upgrade an existing Boundary deployment to v0.13.0, refer to Boundary's [general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
+
+## Boundary v0.13.0 highlights
+
+The 0.13.0 release adds major new functionality to Boundary.
+Highlights include:
+
+- Boundary Enterprise version
+- SSH session recording
+- LDAP authentication method (beta)
+- HCP Boundary maintenance window
+- OIDC authentication improvements
+- Shared KMS workers
+- Static ports for targets
+- Dynamic host catalog external name
+
+## New features
+
+**Boundary Enterprise**: Organizations are now able to deploy Boundary Enterprise within their self-managed infrastructure to let their teams securely access hosts and services consistently across any environment.
+The introduction of Boundary Enterprise allows organizations in highly regulated industries who are prohibited from adopting cloud based solutions to leverage Boundary's secure remote access functionalities.
+Boundary Enterprise has the same feature set as HCP Boundary and seamless migrations from Community Edition deployments are supported as well.
+
+For more information, refer to [Boundary Enterprise](/boundary/docs/enterprise).
+
+<Note>
+
+The version of Go that was used in Boundary Enterprise release 0.13.0 contained CVE-2023-39326.
+Refer to the [advisory](https://github.com/advisories/GHSA-9f76-wg39-x86h) for more information.
+The issue was fixed in Go versions 1.21.5. Boundary was updated to use the new Go versions in Boundary Enterprise release 0.13.5.
+You should [upgrade Boundary](/boundary/tutorials/self-managed-deployment/upgrade-version) to version 0.13.5 or later.
+
+Community users should upgrade to version 0.14.3 or later.
+
+</Note>
+
+**SSH session recording <sup>HCP/ENT</sup>**: A fundamental challenge of securing access to sensitive computing resources is creating a system of record around users' access and actions over remote sessions.
+This release introduces session recording to help you address your compliance and threat management needs.
+
+When you enable session recording for a target, any sessions in which a user requests access to that target are recorded.
+Recorded sessions are stored in an external data store so that you can access and manage them outside of Boundary for long-lasting data retention.
+You can view recorded sessions using a session player that runs in a browser.
+
+For more information, refer to [Auditing](/boundary/docs/concepts/auditing).
+To configure session recording for targets, refer to the session recording [overview](/boundary/docs/configuration/session-recording).
+
+**LDAP authentication method <sup>Beta</sup>**: This release introduces a new Lightweight Directory Access Protocol (LDAP) authentication method as a preview feature.
+LDAP is an open, vendor-neutral application protocol for accessing and maintaining directory information.
+
+You can now configure Boundary to delegate authentication to an LDAP directory.
+The first time a user successfully authenticates using an LDAP auth method, a new LDAP account is created.
+LDAP-managed groups let you assign roles in Boundary based on the LDAP account's group memberships.
+
+Create, read, update, and delete (CRUD) support for the new LDAP features is available through the CLI, API, and SDK, as well as HashiCorp Terraform.
+You can use LDAP to log in through any of the Boundary clients, including the CLI, Boundary Desktop, and the Boundary admin UI.
+Support for LDAP CRUD operations via the Boundary admin UI is planned for an upcoming release.
+
+For more information, refer to the LDAP domain model documentation:
+
+- [Accounts](/boundary/docs/concepts/domain-model/accounts#ldap-account-attributes-beta)
+- [Auth methods](/boundary/docs/concepts/domain-model/auth-methods#ldap-auth-method-attributes-beta)
+- [Managed groups](/boundary/docs/concepts/domain-model/managed-groups#ldap-managed-group-information-and-attributes-beta)
+
+**HCP Boundary maintenance window <sup>HCP only</sup>**: HCP Boundary automatically updates your environment when a new version of Boundary is released.
+You can now schedule when that maintenance occurs to ensure that it does not interrupt peak work hours.
+When you schedule a maintenance window, HCP Boundary waits util the day and time window you selected to apply any patch or major version updates.
+
+For more information, refer to [Maintenance windows](/hcp/docs/boundary/maintenance-window).
+
+**OIDC authentication improvements**: The Boundary CLI now supports user authentication against an OIDC source in locked down environments where a browser may not be available to complete the auth flow.
+During authentication, the CLI will output the auth URL which can be used to complete the flow on another device and the resulting token is automatically passed to the CLI.
+
+**Shared KMS workers**: KMS workers now have feature parity with PKI workers.
+You can use more than one KMS for registering downstreams across different networks.
+
+For more information, refer to the [worker configuration](/boundary/docs/configuration/worker) documentation.
+
+**Static ports for targets**: Administrators can now configure a default, static port for clients when connecting to targets using the optional `default_client_port` attribute.
+Any workers that connect to a target will use the default port, if one is specified, unless overidden by the client attribute `-listen-port`.
+
+**Dynamic host catalog external name**: You can now view the AWS or Azure host name when listing hosts in CLI, admin console, and desktop client.
+
+## Deprecations and changes
+
+Boundary version 0.13.0 has the following deprecations and changes:
+
+- Due to the update to KMS workers, the previous KMS worker registration method is deprecated.
+You must opt in to use it.
+You should only use the deprecated behavior if compatibility with workers running a version less than 0.13.0 is required.
+To opt in, add `use_deprecated_kms_auth_method = true` to the `worker` configuration block.
+
+   Note that when a worker using KMS and running version 0.13.0 or later connects to a controller using KMS and running version 0.13.0 or later, they transition to the new method automatically.
+   To revert to the previous method after that, you must delete the worker and recreate it with the `use_deprecated_kms_auth_method` field specified.
+
+- Boundary now performs additional validity checking when you add grants to roles.
+The checks are designed to reject grants that are not properly configured.
+Previously, these would have been accepted without error, but the permissions would not be granted.
+An error message is provided now, with hints for resolution.
+
+- `WithAutomaticVersioning` for auth tokens from the Go SDK was incorrectly being generated for auth token resources, which do not support versioning.
+It has now been removed.
+
+- With the introduction of new plugin services, the Azure and AWS Host plugin repositories have been renamed to drop the word `host`:
+
+   - The https://github.com/hashicorp/boundary-plugin-host-aws repository was renamed to https://github.com/hashicorp/boundary-plugin-aws.
+
+   - The https://github.com/hashicorp/boundary-plugin-host-azure repository was renamed to https://github.com/hashicorp/boundary-plugin-azure.
+
+- PostgreSQL 12 or greater is now required.
+PostgreSQL 11 is no longer supported.
+
+## Known issues
+
+**Vulnerability to session hijacking through TLS certificate tampering**: Boundary and Boundary Enterprise since version 0.8.0 are vulnerable to session hijacking through TLS certificate tampering.
+
+An attacker who has privileges to enumerate active or pending sessions, obtain a private key pertaining to a session, and obtain a valid trust on first use or TOFU token may exploit the vulnerability.
+It allows the attacker to create a TLS certificate that hijacks an active session to gain access to the underlying service or application.
+The vulnerability, CVE-2024-1052, is fixed in Boundary version 0.15.0 and patched in Boundary Enterprise versions 0.13.6 and 0.14.4.
+
+Boundary Enterprise users should upgrade to Boundary Enterprise 0.13.6 or 0.14.4.
+Community users should evaluate the risk associated with this issue and consider upgrading to Boundary 0.15.0 or later.
+
+For more information, refer to [HCSEC-2024-02 - Boundary vulnerable to session hijacking through TLS certificate tampering](https://discuss.hashicorp.com/t/hcsec-2024-02-boundary-vulnerable-to-session-hijacking-through-tls-certificate-tampering/62458).
+
+[Upgrade to the latest version of Boundary](/boundary/tutorials/self-managed-deployment/upgrade-version)
+
+**Rotation of AWS access and secret keys during a session results in stale recordings**: In Boundary version 0.13.0, when you rotate a storage bucket's secrets, any new sessions use the new credentials.
+However, previously established sessions continue to use the old credentials.
+
+As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+Otherwise, you may end up with recordings that aren't stored in the remote storage bucket and are unable to be played back.
+
+**Unsupported recovery workflow during worker failure**: If a worker fails during a recording, there is no way to recover the recording.
+This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+There are a number of currently unsupported failure cases, including when the worker:
+
+- Crashes and restarts while servicing connections and channels for session to an SSH target
+- Crashes and restarts while closing a channel, before all files are synced to remote storage
+- Crashes and restarts while closing a connection recorder, before all files are synced to remote storage
+- Crashes and restarts while closing a session recorder, before all files are synced to remote storage
+- Crashes and never restarts or is seen again while closing a channel/connection recorer/session recorder
+- Loses its connection to the controller and cancels sessions, it must resend the information when communication resumes

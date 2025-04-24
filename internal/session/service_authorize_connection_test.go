@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
@@ -92,14 +95,14 @@ func TestService_AuthorizeConnection(t *testing.T) {
 
 				targetRepo, err := target.NewRepository(ctx, rw, rw, testKms)
 				require.NoError(t, err)
-				_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+				_, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 				require.NoError(t, err)
 
 				authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
 				acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 				user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
 
-				authTokenRepo, err := authtoken.NewRepository(rw, rw, testKms)
+				authTokenRepo, err := authtoken.NewRepository(ctx, rw, rw, testKms)
 				require.NoError(t, err)
 				at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
@@ -135,7 +138,7 @@ func TestService_AuthorizeConnection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			c, cs, authzInfo, err := AuthorizeConnection(context.Background(), repo, connRepo, tt.session.PublicId, testServer)
+			c, authzInfo, err := AuthorizeConnection(context.Background(), repo, connRepo, tt.session.PublicId, testServer)
 			if tt.wantErr {
 				require.Error(err)
 				// TODO (jimlambrt 9/2020): add in tests for errorsIs once we
@@ -147,8 +150,8 @@ func TestService_AuthorizeConnection(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(c)
-			require.NotNil(cs)
-			assert.Equal(StatusAuthorized, cs[0].Status)
+			require.NotNil(c.Status)
+			assert.Equal(StatusAuthorized, ConnectionStatusFromString(c.Status))
 
 			assert.True(authzInfo.ExpirationTime.GetTimestamp().AsTime().Sub(tt.wantAuthzInfo.ExpirationTime.GetTimestamp().AsTime()) < 10*time.Millisecond)
 			tt.wantAuthzInfo.ExpirationTime = authzInfo.ExpirationTime

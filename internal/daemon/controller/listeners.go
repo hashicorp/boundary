@@ -1,8 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package controller
 
 import (
 	"context"
-	"crypto/tls"
+	stderrors "errors"
 	"fmt"
 	"math"
 	"net"
@@ -12,20 +15,30 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
+	nodee "github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
+	"github.com/hashicorp/nodeenrollment/util/toggledlogger"
 	"google.golang.org/grpc"
+)
+
+const (
+	// the purpose strings used to identify listeners
+	reverseGrpcListenerPurpose = "reverse-grpc"
+	grpcListenerPurpose        = "grpc"
 )
 
 // the function that handles a secondary connection over a provided listener
 var handleSecondaryConnection = closeListener
 
-func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
+func closeListener(_ context.Context, l net.Listener, _ any) error {
 	if l != nil {
 		return l.Close()
 	}
@@ -33,9 +46,11 @@ func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
 }
 
 func (c *Controller) startListeners() error {
+	const op = "controller.startListeners"
+
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
-	grpcServer, gwTicket, err := newGrpcServer(c.baseContext, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, c.conf.Eventer)
+	grpcServer, gwTicket, err := newGrpcServer(c.baseContext, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn, c.AliasRepoFn, c.kms, c.conf.Eventer)
 	if err != nil {
 		return fmt.Errorf("failed to create new grpc server: %w", err)
 	}
@@ -49,7 +64,13 @@ func (c *Controller) startListeners() error {
 
 	c.apiGrpcServerListener = newGrpcServerListener()
 	servers = append(servers, func() {
-		go c.apiGrpcServer.Serve(c.apiGrpcServerListener)
+		go func() {
+			if err := c.apiGrpcServer.Serve(c.apiGrpcServerListener); err != nil {
+				// Use a background context as we might be shutting down and the
+				// base context might be canceled.
+				event.WriteError(context.Background(), op, fmt.Errorf("api grpc server returned with non-nil err: %w", err))
+			}
+		}()
 	})
 
 	for i := range c.apiListeners {
@@ -122,16 +143,32 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		return nil, fmt.Errorf("error fetching worker auth storage: %w", err)
 	}
 
+	eventLogger, err := event.NewHclogLogger(c.baseContext, c.conf.Eventer)
+	if err != nil {
+		event.WriteError(c.baseContext, op, err)
+		return nil, errors.Wrap(c.baseContext, err, op)
+	}
+	// Give the log a prefix
+	eventLogger = eventLogger.Named(fmt.Sprintf("workerauth_listener"))
+	// Wrap the log in a toggle so we can turn it on and off via config and
+	// SIGHUP
+	eventLogger = toggledlogger.NewToggledLogger(eventLogger, c.conf.WorkerAuthDebuggingEnabled)
+
+	wrapperToUse := c.conf.WorkerAuthKms
+	if !util.IsNil(c.conf.DownstreamWorkerAuthKms) {
+		wrapperToUse = c.conf.DownstreamWorkerAuthKms
+	}
+
 	// The cluster listener is shut down at server shutdown time so we do not
 	// need to handle individual listener shutdown.
-	var l net.Listener
-	l, err = protocol.NewInterceptingListener(
+	interceptingListener, err := protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
 			Context:      c.baseContext,
 			Storage:      workerAuthStorage,
 			BaseListener: ln.ClusterListener,
-			BaseTlsConfiguration: &tls.Config{
-				GetConfigForClient: c.validateWorkerTls,
+			Options: []nodee.Option{
+				nodee.WithLogger(eventLogger),
+				nodee.WithRegistrationWrapper(wrapperToUse),
 			},
 		})
 	if err != nil {
@@ -139,7 +176,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	}
 
 	// Create split listener
-	splitListener, err := nodeenet.NewSplitListener(l)
+	splitListener, err := nodeenet.NewSplitListener(interceptingListener)
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating split listener: %w", err)
 	}
@@ -147,49 +184,30 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	// This handles connections coming in on the cluster port that are
 	// authenticated via nodeenrollment but not with any extra purpose; these
 	// are normal worker connections
-	nodeeAuthedListener, err := splitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto)
+	nodeeAuthedListener, err := splitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node enrollment authed split listener: %w", err)
 	}
-	// This wraps the normal worker connections with something that events with
-	// the worker ID on successful auth/connection
-	eventingAuthedListener, err := common.NewEventingListener(c.baseContext, nodeeAuthedListener)
+
+	// This wraps connections with a listener which adds the worker key id of
+	// the connections to the controller's nodeeConnManager.
+	workerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, nodeeAuthedListener, c.downstreamConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
-		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
-	}
-	// Create a multiplexer to unify connections between PKI and KMS
-	multiplexingAuthedListener, err := nodeenet.NewMultiplexingListener(c.baseContext, nodeeAuthedListener.Addr())
-	if err != nil {
-		return nil, fmt.Errorf("error instantiating authed multiplexed listener: %w", err)
-	}
-	if err := multiplexingAuthedListener.IngressListener(eventingAuthedListener); err != nil {
-		return nil, fmt.Errorf("error adding authed evented listener to multiplexed listener: %w", err)
-	}
-	// Connections that came in on the cluster listener that are not authed via
-	// PKI need to be sent for KMS routing
-	nodeeUnauthedListener, err := splitListener.GetListener(nodeenet.UnauthenticatedNextProto)
-	if err != nil {
-		return nil, fmt.Errorf("error instantiating node enrollment unauthed split listener: %w", err)
+		return nil, fmt.Errorf("%s: error creating node enrollment worker tracking listener: %w", op, err)
 	}
 
 	// Connections coming in here are authed by nodeenrollment and are for the
 	// reverse grpc purpose
-	reverseGrpcListener, err := splitListener.GetListener(common.ReverseGrpcConnectionAlpnValue)
+	reverseGrpcListener, err := splitListener.GetListener(common.ReverseGrpcConnectionAlpnValue, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating reverse gprc connection split listener: %w", err)
 	}
-	// Create a multiplexer to unify reverse grpc connections between PKI and KMS
-	multiplexingReverseGrpcListener, err := nodeenet.NewMultiplexingListener(c.baseContext, reverseGrpcListener.Addr())
-	if err != nil {
-		return nil, fmt.Errorf("error instantiating reverse grpc multiplexed listener: %w", err)
-	}
-	if err := multiplexingReverseGrpcListener.IngressListener(reverseGrpcListener); err != nil {
-		return nil, fmt.Errorf("error adding reverse grpc listener to multiplexed listener: %w", err)
-	}
 
-	// Start routing KMS connections
-	if err := startKmsConnRouter(c.baseContext, c, nodeeUnauthedListener, multiplexingAuthedListener, multiplexingReverseGrpcListener); err != nil {
-		return nil, errors.Wrap(c.baseContext, err, op)
+	// This wraps the reverse grpc connections with a listener which adds the
+	// worker key id of the connections to the nodeeConnManager.
+	revWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, reverseGrpcListener, c.downstreamConnManager, sourcePurpose(reverseGrpcListenerPurpose))
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating reverse grpc worker tracking listener: %w", op, err)
 	}
 
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
@@ -208,8 +226,9 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				workerReqInterceptor,
-				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
-				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
+				requestMaxDurationInterceptor(c.baseContext, ln.Config.MaxRequestDuration),
+				eventsRequestInterceptor(c.baseContext),  // before we get started, send the required events with the request
+				eventsResponseInterceptor(c.baseContext), // as we finish, send the required events with the response
 			),
 		),
 	)
@@ -220,27 +239,27 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		}
 	}
 
+	metric.InitializeConnectionCounters(c.conf.PrometheusRegisterer)
 	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)
 
 	ln.GrpcServer = workerServer
 
 	return func() {
+		err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(revWorkerTrackingListener, reverseGrpcListenerPurpose),
+			c.downstreamConns)
+		if err != nil {
+			event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
+		}
 		go func() {
 			err := splitListener.Start()
-			if err != nil {
+			if err != nil && !errors.Is(err, net.ErrClosed) {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("splitListener.Start() error"))
 			}
 		}()
 		go func() {
-			err := handleSecondaryConnection(c.baseContext, multiplexingReverseGrpcListener, c.downstreamRoutes, -1)
-			if err != nil {
-				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
-			}
-		}()
-		go func() {
-			err := ln.GrpcServer.Serve(multiplexingAuthedListener)
-			if err != nil {
-				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("multiplexingAuthedListener error"))
+			err := ln.GrpcServer.Serve(metric.InstrumentClusterTrackingListener(workerTrackingListener, grpcListenerPurpose))
+			if err != nil && !errors.Is(err, net.ErrClosed) {
+				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("workerTrackingListener error"))
 			}
 		}()
 	}, nil
@@ -253,13 +272,14 @@ func (c *Controller) stopServersAndListeners() error {
 	mg.Go(c.stopApiGrpcServerAndListener)
 
 	stopErrors := mg.Wait()
+	convertedStopErrors := stopErrors.ErrorOrNil()
 
 	err := c.stopAnyListeners()
 	if err != nil {
-		stopErrors = multierror.Append(stopErrors, err)
+		convertedStopErrors = stderrors.Join(convertedStopErrors, err)
 	}
 
-	return stopErrors.ErrorOrNil()
+	return convertedStopErrors
 }
 
 func (c *Controller) stopClusterGrpcServerAndListener() error {
@@ -279,7 +299,7 @@ func (c *Controller) stopClusterGrpcServerAndListener() error {
 }
 
 func (c *Controller) stopHttpServersAndListeners() error {
-	var closeErrors *multierror.Error
+	var closeErrors error
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
 		if ln.HTTPServer == nil {
@@ -293,28 +313,29 @@ func (c *Controller) stopHttpServersAndListeners() error {
 		err := ln.ApiListener.Close() // The HTTP Shutdown call should close this, but just in case.
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
-			multierror.Append(closeErrors, err)
+			closeErrors = stderrors.Join(closeErrors, err)
 		}
 	}
 
-	return closeErrors.ErrorOrNil()
+	return closeErrors
 }
 
 func (c *Controller) stopApiGrpcServerAndListener() error {
 	if c.apiGrpcServer == nil {
 		return nil
 	}
-
 	c.apiGrpcServer.GracefulStop()
-	err := c.apiGrpcServerListener.Close()
-	return listenerCloseErrorCheck("ch", err) // apiGrpcServerListener is just a channel, so the type here is not important.
+	if c.apiGrpcServerListener != nil {
+		return listenerCloseErrorCheck("ch", c.apiGrpcServerListener.Close()) // apiGrpcServerListener is just a channel, so the type here is not important.
+	}
+	return nil
 }
 
 // stopAnyListeners does a final once over the known
 // listeners to make sure we didn't miss any;
 // expected to run at the end of stopServersAndListeners.
 func (c *Controller) stopAnyListeners() error {
-	var closeErrors *multierror.Error
+	var closeErrors error
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
 		if ln == nil || ln.ApiListener == nil {
@@ -324,11 +345,11 @@ func (c *Controller) stopAnyListeners() error {
 		err := ln.ApiListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
-			multierror.Append(closeErrors, err)
+			closeErrors = stderrors.Join(closeErrors, err)
 		}
 	}
 
-	return closeErrors.ErrorOrNil()
+	return closeErrors
 }
 
 // listenerCloseErrorCheck does some validation on an error returned
@@ -350,4 +371,8 @@ func listenerCloseErrorCheck(lnType string, err error) error {
 	}
 
 	return err
+}
+
+func sourcePurpose(purpose string) string {
+	return fmt.Sprintf("controller %s", purpose)
 }

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- wtt_load tests the wtt_load test helper function.
 begin;
   select plan(6);

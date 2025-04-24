@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package auth
 
 import (
@@ -17,6 +20,9 @@ type AuthMethod interface {
 type Account interface {
 	boundary.Resource
 	GetAuthMethodId() string
+	GetLoginName() string
+	GetEmail() string
+	GetSubject() string
 }
 
 type ManagedGroup interface {

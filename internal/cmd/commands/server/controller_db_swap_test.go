@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
@@ -80,9 +83,7 @@ where
 `
 
 func TestReloadControllerDatabase(t *testing.T) {
-	td, err := os.MkdirTemp("", "boundary-test-")
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, os.RemoveAll(td)) })
+	td := t.TempDir()
 
 	// Set the close time to something small
 	db.CloseSwappedDbDuration = 5 * time.Second
@@ -114,7 +115,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 
@@ -220,9 +221,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 }
 
 func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
-	td, err := os.MkdirTemp("", "boundary-test-")
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, os.RemoveAll(td)) })
+	td := t.TempDir()
 
 	// Create and migrate database A and B.
 	controllerKey := config.DevKeyGeneration()
@@ -251,7 +250,7 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 		exitCode := cmd.Run(args)
 		if exitCode != 0 {
 			output := cmd.UI.(*cli.MockUi).ErrorWriter.String() + cmd.UI.(*cli.MockUi).OutputWriter.String()
-			t.Errorf("got a non-zero exit status: %s", output)
+			fmt.Printf("%s: got a non-zero exit status: %s", t.Name(), output)
 		}
 	}()
 

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package job
 
 import (
@@ -15,6 +18,7 @@ import (
 
 func TestJobWorkflow(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -25,50 +29,49 @@ func TestJobWorkflow(t *testing.T) {
 
 	server := testController(t, conn, wrapper)
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 
-	job, err := repo.UpsertJob(context.Background(), "job1", "description")
+	job, err := repo.UpsertJob(ctx, "job1", "description")
 	require.NoError(err)
 	require.NotNil(job)
 	assert.Equal(defaultPluginId, job.PluginId)
 
-	runs, err := repo.RunJobs(context.Background(), server.PrivateId)
+	runs, err := repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	assert.Len(runs, 1)
 	run := runs[0]
 	assert.NotEmpty(run.PrivateId)
 	assert.Equal(job.Name, run.JobName)
 
-	run, err = repo.UpdateProgress(context.Background(), run.PrivateId, 100, 110)
+	run, err = repo.UpdateProgress(ctx, run.PrivateId, 100, 110, 0)
 	require.NoError(err)
 	assert.Equal(uint32(100), run.CompletedCount)
 	assert.Equal(uint32(110), run.TotalCount)
 
 	// The only available job is already running, a request for work should return nil
-	newRuns, err := repo.RunJobs(context.Background(), server.PrivateId)
+	newRuns, err := repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	assert.Nil(newRuns)
 
-	run, err = repo.CompleteRun(context.Background(), run.PrivateId, time.Hour, 0, 0)
+	err = repo.CompleteRun(ctx, run.PrivateId, time.Hour)
 	require.NoError(err)
-	assert.Equal(Completed.string(), run.Status)
 
-	job, err = repo.LookupJob(context.Background(), job.Name)
+	job, err = repo.LookupJob(ctx, job.Name)
 	require.NoError(err)
 	assert.NotNil(job)
 
 	// The only available job has a next run in the future, a request for work should return nil
-	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
+	newRuns, err = repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	assert.Nil(newRuns)
 
 	// Update job next run to time in past
-	job, err = repo.UpdateJobNextRunInAtLeast(context.Background(), job.Name, 0)
+	job, err = repo.UpdateJobNextRunInAtLeast(ctx, job.Name, 0)
 	require.NoError(err)
 
 	// Now that next scheduled time is in past, a request for work should return a Run
-	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
+	newRuns, err = repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	require.Len(newRuns, 1)
 	newRun := newRuns[0]
@@ -77,16 +80,16 @@ func TestJobWorkflow(t *testing.T) {
 	assert.NotEqual(run.PrivateId, newRun.PrivateId)
 
 	// The only available job is already running, a request for work should return nil
-	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
+	newRuns, err = repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	assert.Nil(newRuns)
 
-	newRun, err = repo.FailRun(context.Background(), newRun.PrivateId, 0, 0)
+	newRun, err = repo.FailRun(ctx, newRun.PrivateId, 0, 0, 0)
 	require.NoError(err)
 	assert.Equal(Failed.string(), newRun.Status)
 
 	// Run failed so the job should be available for work immediately
-	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
+	newRuns, err = repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	assert.Len(newRuns, 1)
 }
@@ -100,7 +103,7 @@ func TestPlugin(t *testing.T) {
 		conn, _ := db.TestSetup(t, "postgres")
 		rw := db.New(conn)
 
-		rows, err := rw.Query(context.Background(), upsertJobQuery, []interface{}{
+		rows, err := rw.Query(context.Background(), upsertJobQuery, []any{
 			sql.Named("plugin_id", defaultPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
@@ -115,11 +118,12 @@ func TestPlugin(t *testing.T) {
 		for rows.Next() {
 			numRows++
 		}
+		require.NoError(rows.Err())
 		_ = rows.Close()
 		require.Equal(1, numRows)
 
 		// Calling upsertJob with same name and pluginId should not insert a new job
-		rows, err = rw.Query(context.Background(), upsertJobQuery, []interface{}{
+		rows, err = rw.Query(context.Background(), upsertJobQuery, []any{
 			sql.Named("plugin_id", defaultPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
@@ -135,17 +139,18 @@ func TestPlugin(t *testing.T) {
 		for rows.Next() {
 			numRows++
 		}
+		require.NoError(rows.Err())
 		_ = rows.Close()
 		require.Equal(1, numRows)
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err = rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
+		numRows, err = rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []any{testPluginId})
 		require.NoError(err)
 		assert.Equal(1, numRows)
 
 		// Calling upsertJob with the same name and different pluginId should create a new job
-		rows, err = rw.Query(context.Background(), upsertJobQuery, []interface{}{
+		rows, err = rw.Query(context.Background(), upsertJobQuery, []any{
 			sql.Named("plugin_id", testPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
@@ -161,6 +166,7 @@ func TestPlugin(t *testing.T) {
 		for rows.Next() {
 			numRows++
 		}
+		require.NoError(rows.Err())
 		_ = rows.Close()
 		require.Equal(2, numRows)
 	})
@@ -172,12 +178,12 @@ func TestPlugin(t *testing.T) {
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []any{testPluginId})
 		assert.NoError(err)
 		assert.Equal(1, numRows)
 
 		newPluginId := "pi_newtest1234"
-		numUpdated, err := rw.Exec(context.Background(), "update plugin set public_id = ? where public_id = ?", []interface{}{newPluginId, testPluginId})
+		numUpdated, err := rw.Exec(context.Background(), "update plugin set public_id = ? where public_id = ?", []any{newPluginId, testPluginId})
 		require.Error(err)
 		assert.Equal("db.Exec: immutable column: plugin.public_id: integrity violation: error #1003", err.Error())
 		assert.Equal(0, numUpdated)
@@ -188,18 +194,18 @@ func TestPlugin(t *testing.T) {
 		conn, _ := db.TestSetup(t, "postgres")
 		rw := db.New(conn)
 
-		numDeleted, err := rw.Exec(context.Background(), "delete from plugin where public_id = ?", []interface{}{defaultPluginId})
+		numDeleted, err := rw.Exec(context.Background(), "delete from plugin where public_id = ?", []any{defaultPluginId})
 		require.Error(err)
 		assert.Equal("db.Exec: deletion of system plugin not allowed: integrity violation: error #1104", err.Error())
 		assert.Equal(0, numDeleted)
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []any{testPluginId})
 		assert.NoError(err)
 		assert.Equal(1, numRows)
 
-		numDeleted, err = rw.Exec(context.Background(), "delete from plugin where public_id = ?", []interface{}{testPluginId})
+		numDeleted, err = rw.Exec(context.Background(), "delete from plugin where public_id = ?", []any{testPluginId})
 		assert.NoError(err)
 		assert.Equal(1, numDeleted)
 	})

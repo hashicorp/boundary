@@ -1,9 +1,14 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
 	"context"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/nodeenrollment/types"
 )
 
@@ -19,38 +24,55 @@ func GetOpts(opt ...Option) options {
 // Option - how Options are passed as arguments
 type Option func(*options)
 
+// StorageBucketCredentialInfo defines the parameters to pass into the
+// WithFilterWorkersByStorageBucketCredentialState option.
+type StorageBucketCredentialInfo struct {
+	CredentialId string
+	Filters      []FilterStorageBucketCredentialStateFn
+}
+
 // options = how options are represented
 type options struct {
-	withName                               string
-	withPublicId                           string
-	withDescription                        string
-	withAddress                            string
-	withLimit                              int
-	withLiveness                           time.Duration
-	withUpdateTags                         bool
-	withWorkerTags                         []*Tag
-	withWorkerKeyIdentifier                string
-	withWorkerKeys                         WorkerKeys
-	withControllerEncryptionPrivateKey     []byte
-	withKeyId                              string
-	withNonce                              []byte
-	withNewIdFunc                          func(context.Context) (string, error)
-	WithFetchNodeCredentialsRequest        *types.FetchNodeCredentialsRequest
-	withTestPkiWorkerAuthorized            bool
-	withTestPkiWorkerKeyId                 *string
-	withWorkerType                         WorkerType
-	withRoot                               string
-	withStopAfter                          uint
-	WithCreateControllerLedActivationToken bool
-	withReleaseVersion                     string
-	withOperationalState                   string
-	withActiveWorkers                      bool
+	withName                                        string
+	withPublicId                                    string
+	withDescription                                 string
+	withAddress                                     string
+	withLimit                                       int
+	withLiveness                                    time.Duration
+	withUpdateTags                                  bool
+	withWorkerTags                                  []*Tag
+	withWorkerKeyIdentifier                         string
+	withWorkerKeys                                  WorkerKeys
+	withControllerEncryptionPrivateKey              []byte
+	withKeyId                                       string
+	withNonce                                       []byte
+	withNewIdFunc                                   func(context.Context) (string, error)
+	WithFetchNodeCredentialsRequest                 *types.FetchNodeCredentialsRequest
+	withTestPkiWorkerAuthorized                     bool
+	withTestPkiWorkerKeyId                          *string
+	withTestUseInputTagsAsApiTags                   bool
+	withWorkerType                                  WorkerType
+	withRoot                                        RootInfo
+	withStopAfter                                   uint
+	WithCreateControllerLedActivationToken          bool
+	withReleaseVersion                              string
+	withOperationalState                            string
+	withLocalStorageState                           string
+	withActiveWorkers                               bool
+	withFeature                                     version.Feature
+	withDirectlyConnected                           bool
+	withWorkerPool                                  []string
+	withFilterWorkersByStorageBucketCredentialState *StorageBucketCredentialInfo
+	withFilterWorkersByLocalStorageState            bool
+	WithReader                                      db.Reader
+	WithWriter                                      db.Writer
 }
 
 func getDefaultOptions() options {
 	return options{
-		withNewIdFunc:        newWorkerId,
-		withOperationalState: ActiveOperationalState.String(),
+		withNewIdFunc:         newWorkerId,
+		withOperationalState:  ActiveOperationalState.String(),
+		withLocalStorageState: UnknownWorkerType.String(),
 	}
 }
 
@@ -112,7 +134,15 @@ func WithUpdateTags(updateTags bool) Option {
 // WithWorkerTags provides worker tags.
 func WithWorkerTags(tags ...*Tag) Option {
 	return func(o *options) {
-		o.withWorkerTags = tags
+		newTags := []*Tag{}
+		for _, tag := range tags {
+			if tag != nil {
+				newTags = append(newTags, tag)
+			}
+		}
+		if len(newTags) > 0 {
+			o.withWorkerTags = newTags
+		}
 	}
 }
 
@@ -172,6 +202,15 @@ func WithTestPkiWorkerAuthorizedKeyId(id *string) Option {
 	}
 }
 
+// WithTestUseInputTagsAsApiTags tells NewWorker to set the set of input tags as
+// the api tags as well. This is useful for allowing a worker to have canonical
+// tags without having to store worker information in the database.
+func WithTestUseInputTagsAsApiTags(with bool) Option {
+	return func(o *options) {
+		o.withTestUseInputTagsAsApiTags = with
+	}
+}
+
 // WithWorkerType allows specifying a particular type of worker (kms, pki)
 // during lookup or listing
 func WithWorkerType(with WorkerType) Option {
@@ -180,10 +219,10 @@ func WithWorkerType(with WorkerType) Option {
 	}
 }
 
-// WithRoot provides an optional root worker id.
-func WithRoot(workerId string) Option {
+// WithRoot provides an optional root node
+func WithRoot(root RootInfo) Option {
 	return func(o *options) {
-		o.withRoot = workerId
+		o.withRoot = root
 	}
 }
 
@@ -219,5 +258,60 @@ func WithOperationalState(state string) Option {
 func WithActiveWorkers(withActive bool) Option {
 	return func(o *options) {
 		o.withActiveWorkers = withActive
+	}
+}
+
+// WithFeature provides an option to specify a filter
+func WithFeature(feature version.Feature) Option {
+	return func(o *options) {
+		o.withFeature = feature
+	}
+}
+
+// WithDirectlyConnected provides an option to limit graph search to only directly connected workers
+func WithDirectlyConnected(conn bool) Option {
+	return func(o *options) {
+		o.withDirectlyConnected = conn
+	}
+}
+
+// WithWorkerPool provides a slice of worker ids.
+func WithWorkerPool(workerIds []string) Option {
+	return func(o *options) {
+		o.withWorkerPool = workerIds
+	}
+}
+
+// WithLocalStorageState provides an optional local storage state.
+func WithLocalStorageState(state string) Option {
+	return func(o *options) {
+		o.withLocalStorageState = state
+	}
+}
+
+// WithFilterWorkersByStorageBucketCredentialState receives a storage bucket
+// credential id and filters to apply and calls
+// FilterWorkersByStorageBucketCredentialState in supported repository
+// functions.
+func WithFilterWorkersByStorageBucketCredentialState(ci *StorageBucketCredentialInfo) Option {
+	return func(o *options) {
+		o.withFilterWorkersByStorageBucketCredentialState = ci
+	}
+}
+
+// WithFilterWorkersByLocalStorageState controls whether
+// FilterWorkersByLocalStorageState is called in supported repository functions.
+func WithFilterWorkersByLocalStorageState(filter bool) Option {
+	return func(o *options) {
+		o.withFilterWorkersByLocalStorageState = filter
+	}
+}
+
+// WithReaderWriter is used to share the same database reader
+// and writer when executing sql within a transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.WithReader = r
+		o.WithWriter = w
 	}
 }

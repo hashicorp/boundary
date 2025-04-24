@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oplog
 
 import (
@@ -22,12 +25,15 @@ func (w *Writer) hasTable(ctx context.Context, tableName string) (bool, error) {
 	}
 	var count int64
 	rw := dbw.New(w.DB)
-	rows, err := rw.Query(context.Background(), "select count(*) from information_schema.tables where table_name = ? and table_type = ?", []interface{}{tableName, "BASE TABLE"})
+	rows, err := rw.Query(context.Background(), "select count(*) from information_schema.tables where table_name = ? and table_type = ?", []any{tableName, "BASE TABLE"})
 	if err != nil {
 		return false, errors.Wrap(ctx, err, op)
 	}
 	if ok := rows.Next(); ok {
 		rw.ScanRows(rows, &count)
+	}
+	if err := rows.Err(); err != nil {
+		return false, errors.Wrap(ctx, err, op)
 	}
 	return count > 0, nil
 }
@@ -37,10 +43,10 @@ func (w *Writer) hasTable(ctx context.Context, tableName string) (bool, error) {
 func (w *Writer) createTableLike(ctx context.Context, existingTableName string, newTableName string) error {
 	const op = "oplog.(Writer).createTableLike"
 	if existingTableName == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing existing table name")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing existing table name")
 	}
 	if newTableName == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing new table name")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing new table name")
 	}
 
 	sql := fmt.Sprintf(

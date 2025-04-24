@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package config
 
 import (
@@ -18,7 +21,10 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
+	"github.com/hashicorp/boundary/internal/storage"
+	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
@@ -32,6 +38,8 @@ import (
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
 )
+
+var extraParsingFuncs []func(*Config) error
 
 const (
 	desktopCorsOrigin = "serve://boundary"
@@ -66,6 +74,13 @@ kms "aead" {
 }
 
 kms "aead" {
+	purpose = "bsr"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_bsr"
+}
+
+kms "aead" {
 	purpose = "recovery"
 	aead_type = "aes-gcm"
 	key = "%s"
@@ -86,6 +101,84 @@ listener "tcp" {
 listener "tcp" {
 	purpose = "ops"
 	tls_disable = true
+}
+`
+
+	devIpv6ControllerExtraConfig = `
+controller {
+	name = "dev-controller"
+	description = "A default controller created in dev mode"
+}
+
+kms "aead" {
+	purpose = "root"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_root"
+}
+
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_worker-auth"
+}
+
+kms "aead" {
+	purpose = "bsr"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_bsr"
+}
+
+kms "aead" {
+	purpose = "recovery"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_recovery"
+}
+
+listener "tcp" {
+	address = "[::1]"
+	purpose = "api"
+	tls_disable = true
+	cors_enabled = true
+	cors_allowed_origins = ["*"]
+}
+
+listener "tcp" {
+	address = "[::1]"
+	purpose = "cluster"
+}
+
+listener "tcp" {
+	address = "[::1]"
+	purpose = "ops"
+	tls_disable = true
+}
+`
+
+	devIpv6WorkerExtraConfig = `
+listener "tcp" {
+	address = "[::1]"
+	purpose = "proxy"
+}
+
+worker {
+	name = "w_1234567890"
+	description = "A default worker created in dev mode"
+	public_addr = "[::1]"
+	initial_upstreams = ["[::1]"]
+	tags {
+		type = ["dev", "local"]
+	}
+}
+
+kms "aead" {
+    purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "worker-auth-storage"
 }
 `
 
@@ -110,6 +203,11 @@ kms "aead" {
 	key_id = "worker-auth-storage"
 }
 `
+
+	// We use a custom Content-Security-Policy because we need to add wasm-unsafe-eval
+	// as a script-src to support asciinema playback on the Admin UI. Users can still
+	// override this value via the configuration.
+	defaultCsp = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"
 )
 
 // Config is the configuration for the boundary controller
@@ -125,6 +223,7 @@ type Config struct {
 	DevControllerKey        string `hcl:"-"`
 	DevWorkerAuthKey        string `hcl:"-"`
 	DevWorkerAuthStorageKey string `hcl:"-"`
+	DevBsrKey               string `hcl:"-"`
 	DevRecoveryKey          string `hcl:"-"`
 
 	// Eventing configuration for the controller
@@ -133,41 +232,102 @@ type Config struct {
 	// Plugin-related options
 	Plugins Plugins `hcl:"plugins"`
 
-	// Internal field for use with HCP deployments. Used if controllers/ initial_upstreams is not set
+	// Internal field for use with HCP deployments. Used if controllers/
+	// initial_upstreams is not set.
 	HcpbClusterId string `hcl:"hcp_boundary_cluster_id"`
+
+	// Whether to log information from the worker authentication process. This
+	// shouldn't divulge any secrets but may contain information considered
+	// sensitive. This should only be enabled for debugging purposes, and can be
+	// toggled with SIGHUP.
+	EnableWorkerAuthDebugging bool `hcl:"enable_worker_auth_debugging"`
+
+	// For opting out of license utilization reporting
+	Reporting Reporting `hcl:"reporting"`
 }
 
 type Controller struct {
-	Name              string     `hcl:"name"`
-	Description       string     `hcl:"description"`
-	Database          *Database  `hcl:"database"`
-	PublicClusterAddr string     `hcl:"public_cluster_addr"`
-	Scheduler         *Scheduler `hcl:"scheduler"`
+	Name              string    `hcl:"name"`
+	Description       string    `hcl:"description"`
+	Database          *Database `hcl:"database"`
+	PublicClusterAddr string    `hcl:"public_cluster_addr"`
+	Scheduler         Scheduler `hcl:"scheduler"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
-	AuthTokenTimeToLive         interface{} `hcl:"auth_token_time_to_live"`
-	AuthTokenTimeToLiveDuration time.Duration
+	AuthTokenTimeToLive         any           `hcl:"auth_token_time_to_live"`
+	AuthTokenTimeToLiveDuration time.Duration `hcl:"-"`
 
 	// AuthTokenTimeToStale is the total time a token can go unused before becoming invalid
 	// denoted by time.Duration
-	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
-	AuthTokenTimeToStaleDuration time.Duration
+	AuthTokenTimeToStale         any           `hcl:"auth_token_time_to_stale"`
+	AuthTokenTimeToStaleDuration time.Duration `hcl:"-"`
 
 	// GracefulShutdownWait is the amount of time that we'll wait before actually
 	// starting the Controller shutdown. This allows the health endpoint to
 	// return a status code to indicate that the instance is shutting down.
-	GracefulShutdownWait         interface{} `hcl:"graceful_shutdown_wait_duration"`
-	GracefulShutdownWaitDuration time.Duration
+	GracefulShutdownWait         any           `hcl:"graceful_shutdown_wait_duration"`
+	GracefulShutdownWaitDuration time.Duration `hcl:"-"`
 
-	// StatusGracePeriod represents the period of time (as a duration) that the
-	// controller will wait before marking connections from a disconnected worker
-	// as invalid.
+	// WorkerRPCGracePeriod represents the period of time (as a duration)
+	// that the controller will wait before deciding a worker is disconnected
+	// and marking connections from it as canceling. It is also used to evaluate
+	// whether a worker is available for routing based on the time since its last routing info report.
+	// For backwards compatibility this is still called worker_status_grace_period,
+	// though it is now used with both the SessionInfo and RoutingInfo RPCs.
+	//
+	// TODO: This isn't documented (on purpose) because the right place for this
+	// is central configuration so you can't drift across controllers, but we
+	// don't have that yet.
+	WorkerRPCGracePeriod         any           `hcl:"worker_status_grace_period"`
+	WorkerRPCGracePeriodDuration time.Duration `hcl:"-"`
+
+	// LivenessTimeToStale represents the period of time (as a duration) after
+	// which it will consider other controllers to be no longer accessible,
+	// based on time since their last status update in the database
+	//
+	// TODO: This isn't documented (on purpose) because the right place for this
+	// is central configuration so you can't drift across controllers, but we
+	// don't have that yet.
+	LivenessTimeToStale         any           `hcl:"liveness_time_to_stale"`
+	LivenessTimeToStaleDuration time.Duration `hcl:"-"`
+
+	// TODO: This isn't documented (on purpose) because the right place for this
+	// is central configuration so you can't drift across controllers and workers
+	// but we don't have that yet.
+	GetDownstreamWorkersTimeout         any           `hcl:"get_downstream_workers_timeout"`
+	GetDownstreamWorkersTimeoutDuration time.Duration `hcl:"-"`
+
+	// SchedulerRunJobInterval is the time interval between waking up the
+	// scheduler to run pending jobs.
 	//
 	// TODO: This field is currently internal.
-	StatusGracePeriodDuration time.Duration `hcl:"-"`
+	SchedulerRunJobInterval time.Duration `hcl:"-"`
+
+	ApiRateLimits           ratelimit.Configs `hcl:"-"`
+	ApiRateLimiterMaxQuotas int               `hcl:"api_rate_limit_max_quotas"`
+	ApiRateLimitDisable     bool              `hcl:"api_rate_limit_disable"`
+
+	// License is the license used by HCP builds
+	License string `hcl:"license"`
+
+	// MaxPageSize overrides the default and max page size.
+	// The default page size is what is used when the page size
+	// is not explicitly provided by the user. The max page size
+	// is the greatest number the page size can be set to before
+	// it is rejected by the controller.
+	MaxPageSizeRaw any  `hcl:"max_page_size"`
+	MaxPageSize    uint `hcl:"-"`
+
+	// ConcurrentPasswordHashWorkers controls the number of concurrent password
+	// hashing workers is allowed. The default value is 1. Increasing this number
+	// will increase the authentication throughput of all userpass auth methods,
+	// but at the cost of bursty memory and CPU use. Can also be controlled via
+	// the environment variable BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS.
+	ConcurrentPasswordHashWorkersRaw any  `hcl:"concurrent_password_hash_workers"`
+	ConcurrentPasswordHashWorkers    uint `hcl:"-"`
 }
 
-func (c *Controller) InitNameIfEmpty() error {
+func (c *Controller) InitNameIfEmpty(ctx context.Context) error {
 	if c == nil {
 		return fmt.Errorf("controller config is empty")
 	}
@@ -176,7 +336,7 @@ func (c *Controller) InitNameIfEmpty() error {
 	}
 
 	var err error
-	c.Name, err = db.NewPublicId("c")
+	c.Name, err = db.NewPublicId(ctx, "c")
 	if err != nil {
 		return fmt.Errorf("error auto-generating controller name: %w", err)
 	}
@@ -195,41 +355,82 @@ type Worker struct {
 	InitialUpstreams    []string `hcl:"-"`
 	InitialUpstreamsRaw any      `hcl:"initial_upstreams"`
 
-	// The ControllersRaw field is deprecated and users should use InitialUpstreamsRaw instead.
-	// TODO: remove this field when support is discontinued.
-	ControllersRaw interface{} `hcl:"controllers"`
-
 	// We use a raw interface for parsing so that people can use JSON-like
 	// syntax that maps directly to the filter input or possibly more familiar
 	// key=value syntax, as well as accepting a string denoting an env or file
 	// pointer. This is trued up in the Parse function below.
 	Tags    map[string][]string `hcl:"-"`
-	TagsRaw interface{}         `hcl:"tags"`
+	TagsRaw any                 `hcl:"tags"`
 
-	// StatusGracePeriod represents the period of time (as a duration) that the
-	// worker will wait before disconnecting connections if it cannot make a
-	// status report to a controller.
+	// ControllerRPCCallTimeout represents the period of time (as a duration) that
+	// the worker will allow the SessionInfo, RoutingInfo and Statistics RPC calls to
+	// attempt to finish before canceling them to try again.
+	// For backwards compatibility this is still called status_call_timeout,
+	// though it is now used to control the SessionInfo, Statistics and RoutingInfo RPCs.
 	//
-	// TODO: This field is currently internal.
-	StatusGracePeriodDuration time.Duration `hcl:"-"`
+	// TODO: This is currently not documented and considered internal.
+	ControllerRPCCallTimeout         any           `hcl:"status_call_timeout"`
+	ControllerRPCCallTimeoutDuration time.Duration `hcl:"-"`
+
+	// GetDownstreamWorkersTimeout represents the period of time (as a duration) timeout
+	// for GetDownstreamWorkers call in DownstreamWorkerTicker
+	//
+	// TODO: This is currently not documented and considered internal.
+	GetDownstreamWorkersTimeout         any           `hcl:"get_downstream_workers_timeout"`
+	GetDownstreamWorkersTimeoutDuration time.Duration `hcl:"-"`
+
+	// SuccessfulControllerRPCGracePeriod represents the period of time (as a duration)
+	// that the worker will wait before closing connections if it cannot
+	// successfully complete a session info report to a controller. It is also used
+	// to evaluate whether the upstreams need to be recalculated in case of repeated
+	// routing info report failures. This cannot be less than ControllerRPCCallTimeout.
+	// For backwards compatibility this is still called successful_status_grace_period,
+	// though it is now used to control the SessionInfo and RoutingInfo RPCs.
+	//
+	// TODO: This is currently not documented and considered internal.
+	SuccessfulControllerRPCGracePeriod         any           `hcl:"successful_status_grace_period"`
+	SuccessfulControllerRPCGracePeriodDuration time.Duration `hcl:"-"`
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
+
+	// RecordingStoragePath represents the location a worker caches session recordings before
+	// they are sync'ed to the corresponding storage bucket. The path must already exist.
+	RecordingStoragePath string `hcl:"recording_storage_path"`
+
+	// RecordingStorageMinimumAvailableCapacity represents the minimum amount of available
+	// disk space a worker needs in the path defined by RecordingStoragePath for processing
+	// sessions with recording enabled. The expected input value for this field is a
+	// “capacity string“. Supported suffixes are kb, kib, mb, mib, gb, gib, tb, tib, which
+	// are not case sensitive. We use a raw interface for parsing so that users can input a
+	// "capacity string" which is converted into a uint64 value that is measured in bytes.
+	RecordingStorageMinimumAvailableCapacity  any    `hcl:"recording_storage_minimum_available_capacity"`
+	RecordingStorageMinimumAvailableDiskSpace uint64 `hcl:"-"`
 
 	// ControllerGeneratedActivationToken is a controller-generated activation
 	// token used to register this worker to the cluster. It can be a path, env
 	// var, or direct value.
 	ControllerGeneratedActivationToken string `hcl:"controller_generated_activation_token"`
+
+	// UseDeprecatedKmsAuthMethod indicates that the worker should use the
+	// pre-0.13 method of using KMSes to authenticate. This is currently only
+	// supported to throw an error if used telling people they need to upgrade.
+	UseDeprecatedKmsAuthMethod bool `hcl:"use_deprecated_kms_auth_method"`
+
+	// TestWorkerRPCInterval represents the base period of time that
+	// the worker will wait between invoking the controller RPCs.
+	// This is not exposed to users and only used in tests.
+	TestWorkerRPCInterval time.Duration `hcl:"-"`
 }
 
 type Database struct {
 	Url                     string         `hcl:"url"`
 	MigrationUrl            string         `hcl:"migration_url"`
 	MaxOpenConnections      int            `hcl:"-"`
-	MaxOpenConnectionsRaw   interface{}    `hcl:"max_open_connections"`
+	MaxOpenConnectionsRaw   any            `hcl:"max_open_connections"`
 	MaxIdleConnections      *int           `hcl:"-"`
-	MaxIdleConnectionsRaw   interface{}    `hcl:"max_idle_connections"`
-	ConnMaxIdleTime         interface{}    `hcl:"max_idle_time"`
+	MaxIdleConnectionsRaw   any            `hcl:"max_idle_connections"`
+	ConnMaxIdleTime         any            `hcl:"max_idle_time"`
 	ConnMaxIdleTimeDuration *time.Duration `hcl:"-"`
 
 	// SkipSharedLockAcquisition allows skipping grabbing the database shared
@@ -244,13 +445,13 @@ type Scheduler struct {
 	// JobRunInterval is the time interval between waking up the
 	// scheduler to run pending jobs.
 	//
-	JobRunInterval         interface{} `hcl:"job_run_interval"`
+	JobRunInterval         any `hcl:"job_run_interval"`
 	JobRunIntervalDuration time.Duration
 
 	// MonitorInterval is the time interval between waking up the
 	// scheduler to monitor for jobs that are defunct.
 	//
-	MonitorInterval         interface{} `hcl:"monitor_interval"`
+	MonitorInterval         any `hcl:"monitor_interval"`
 	MonitorIntervalDuration time.Duration
 }
 
@@ -258,15 +459,35 @@ type Plugins struct {
 	ExecutionDir string `hcl:"execution_dir"`
 }
 
+type Reporting struct {
+	License License `hcl:"license"`
+}
+
+type License struct {
+	Enabled bool `hcl:"enabled"`
+}
+
 // DevWorker is a Config that is used for dev mode of Boundary
-// workers
-func DevWorker() (*Config, error) {
+// workers. Supported options: WithObservationsEnabled, WithSysEventsEnabled,
+// WithAuditEventsEnabled, TestWithErrorEventsEnabled
+func DevWorker(opt ...Option) (*Config, error) {
 	workerAuthStorageKey := DevKeyGeneration()
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing options: %w", err)
+	}
 	hclStr := fmt.Sprintf(devConfig+devWorkerExtraConfig, workerAuthStorageKey)
+	if opts.withIPv6Enabled {
+		hclStr = fmt.Sprintf(devConfig+devIpv6WorkerExtraConfig, workerAuthStorageKey)
+	}
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
+	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
+	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
+	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled
+	parsed.Eventing.ErrorEventsDisabled = !opts.testWithErrorEventsEnabled
 	return parsed, nil
 }
 
@@ -283,18 +504,27 @@ func DevKeyGeneration() string {
 	if n != numBytes {
 		panic(fmt.Errorf("expected to read 32 bytes, read %d", n))
 	}
-	devKey := base64.StdEncoding.EncodeToString(randBuf.Bytes())[:numBytes]
+	devKey := base64.StdEncoding.EncodeToString(randBuf.Bytes())
 	return devKey
 }
 
 // DevController is a Config that is used for dev mode of Boundary
 // controllers
-func DevController() (*Config, error) {
+func DevController(opt ...Option) (*Config, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing options: %w", err)
+	}
+
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
+	bsrKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
 
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey)
+	if opts.withIPv6Enabled {
+		hclStr = fmt.Sprintf(devConfig+devIpv6ControllerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey)
+	}
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -302,16 +532,31 @@ func DevController() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
+	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
+	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
+	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled
+	parsed.Eventing.ErrorEventsDisabled = !opts.testWithErrorEventsEnabled
 	return parsed, nil
 }
 
-func DevCombined() (*Config, error) {
+func DevCombined(opt ...Option) (*Config, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing options: %w", err)
+	}
+
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
 	workerAuthStorageKey := DevKeyGeneration()
+	bsrKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, recoveryKey, workerAuthStorageKey)
+
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey, workerAuthStorageKey)
+	if opts.withIPv6Enabled {
+		hclStr = fmt.Sprintf(devConfig+devIpv6ControllerExtraConfig+devIpv6WorkerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey, workerAuthStorageKey)
+	}
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -320,6 +565,7 @@ func DevCombined() (*Config, error) {
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
 	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
+	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
@@ -480,21 +726,91 @@ func Parse(d string) (*Config, error) {
 			result.Controller.GracefulShutdownWaitDuration = t
 		}
 
-		if result.Controller.Scheduler != nil {
-			if result.Controller.Scheduler.JobRunInterval != "" {
-				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.JobRunInterval)
-				if err != nil {
-					return result, err
-				}
-				result.Controller.Scheduler.JobRunIntervalDuration = t
+		if result.Controller.Scheduler.JobRunInterval != "" {
+			t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.JobRunInterval)
+			if err != nil {
+				return result, err
 			}
+			result.Controller.Scheduler.JobRunIntervalDuration = t
+		}
 
-			if result.Controller.Scheduler.MonitorInterval != "" {
-				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.MonitorInterval)
-				if err != nil {
-					return result, err
+		if result.Controller.Scheduler.MonitorInterval != "" {
+			t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.MonitorInterval)
+			if err != nil {
+				return result, err
+			}
+			result.Controller.Scheduler.MonitorIntervalDuration = t
+		}
+
+		workerRPCGracePeriod := result.Controller.WorkerRPCGracePeriod
+		if util.IsNil(workerRPCGracePeriod) {
+			// For backwards compatibility this is still called BOUNDARY_CONTROLLER_WORKER_STATUS_GRACE_PERIOD,
+			// though it is now used to control the SessionInfo and RoutingInfo RPCs.
+			workerRPCGracePeriod = os.Getenv("BOUNDARY_CONTROLLER_WORKER_STATUS_GRACE_PERIOD")
+		}
+		if workerRPCGracePeriod != nil {
+			t, err := parseutil.ParseDurationSecond(workerRPCGracePeriod)
+			if err != nil {
+				return result, err
+			}
+			result.Controller.WorkerRPCGracePeriodDuration = t
+		}
+		if result.Controller.WorkerRPCGracePeriodDuration < 0 {
+			return nil, errors.New("Controller worker RPC grace period value is negative")
+		}
+
+		livenessTimeToStale := result.Controller.LivenessTimeToStale
+		if util.IsNil(livenessTimeToStale) {
+			livenessTimeToStale = os.Getenv("BOUNDARY_CONTROLLER_LIVENESS_TIME_TO_STALE")
+		}
+		if livenessTimeToStale != nil {
+			t, err := parseutil.ParseDurationSecond(livenessTimeToStale)
+			if err != nil {
+				return result, err
+			}
+			result.Controller.LivenessTimeToStaleDuration = t
+		}
+		if result.Controller.LivenessTimeToStaleDuration < 0 {
+			return nil, errors.New("Controller liveness time to stale value is negative")
+		}
+
+		getDownstreamWorkersTimeout := result.Controller.GetDownstreamWorkersTimeout
+		if util.IsNil(getDownstreamWorkersTimeout) {
+			getDownstreamWorkersTimeout = os.Getenv("BOUNDARY_CONTROLLER_GET_DOWNSTREAM_WORKERS_TIMEOUT")
+		}
+		if getDownstreamWorkersTimeout != nil {
+			t, err := parseutil.ParseDurationSecond(getDownstreamWorkersTimeout)
+			if err != nil {
+				return result, fmt.Errorf("error trying to parse controller get_downstream_workers_timeout: %w", err)
+			}
+			result.Controller.GetDownstreamWorkersTimeoutDuration = t
+		}
+		if result.Controller.GetDownstreamWorkersTimeoutDuration < 0 {
+			return nil, errors.New("get downstream workers timeout must be greater than 0")
+		}
+
+		if result.Controller.MaxPageSizeRaw != nil {
+			switch t := result.Controller.MaxPageSizeRaw.(type) {
+			case string:
+				maxPageSizeString, err := parseutil.ParsePath(t)
+				if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+					return nil, fmt.Errorf("Error parsing max page size: %w", err)
 				}
-				result.Controller.Scheduler.MonitorIntervalDuration = t
+				pageSize, err := strconv.Atoi(maxPageSizeString)
+				if err != nil {
+					return nil, fmt.Errorf("Max page size value is not an int: %w", err)
+				}
+				if pageSize <= 0 {
+					return nil, fmt.Errorf("Max page size value must be at least 1, was %d", pageSize)
+				}
+				result.Controller.MaxPageSize = uint(pageSize)
+			case int:
+				if t <= 0 {
+					return nil, fmt.Errorf("Max page size value must be at least 1, was %d", t)
+				}
+				result.Controller.MaxPageSize = uint(t)
+			default:
+				return nil, fmt.Errorf("Max page size: unsupported type %q", reflect.TypeOf(t).String())
 			}
 		}
 
@@ -553,12 +869,55 @@ func Parse(d string) (*Config, error) {
 						reflect.TypeOf(t).String())
 				}
 			}
+		}
 
+		result.Controller.ApiRateLimits, err = parseApiRateLimits(obj.Node)
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Controller.ApiRateLimiterMaxQuotas <= 0 {
+			result.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
+		}
+
+		switch t := result.Controller.ConcurrentPasswordHashWorkersRaw.(type) {
+		case string:
+			concurrentPasswordWorkersString, err := parseutil.ParsePath(t)
+			if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+				return nil, fmt.Errorf("Error parsing concurrent password hash workers: %w", err)
+			}
+			concurrentWorkers, err := strconv.Atoi(concurrentPasswordWorkersString)
+			if err != nil {
+				return nil, fmt.Errorf("Concurrent password hash workers value is not an int: %w", err)
+			}
+			if concurrentWorkers <= 0 {
+				return nil, fmt.Errorf("Concurrent password hash workers value must be at least 1, was %d", concurrentWorkers)
+			}
+			result.Controller.ConcurrentPasswordHashWorkers = uint(concurrentWorkers)
+		case int:
+			if t <= 0 {
+				return nil, fmt.Errorf("Concurrent password hash workers value must be at least 1, was %d", t)
+			}
+			result.Controller.ConcurrentPasswordHashWorkers = uint(t)
+		case nil:
+			if envVal := os.Getenv("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS"); envVal != "" {
+				concurrentPasswordWorkers, err := strconv.Atoi(envVal)
+				if err != nil {
+					return nil, fmt.Errorf("BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS value is not an int: %w", err)
+				}
+				result.Controller.ConcurrentPasswordHashWorkers = uint(concurrentPasswordWorkers)
+			}
+		default:
+			return nil, fmt.Errorf("Concurrent password hash workers: unsupported type %q", reflect.TypeOf(t).String())
 		}
 	}
 
 	// Parse worker tags
 	if result.Worker != nil {
+		if result.Worker.UseDeprecatedKmsAuthMethod {
+			return nil, fmt.Errorf("The flag 'use_deprecated_auth_method' is unsupported as of version 0.15.")
+		}
+
 		result.Worker.Name, err = parseutil.ParsePath(result.Worker.Name)
 		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing worker name: %w", err)
@@ -583,6 +942,81 @@ func Parse(d string) (*Config, error) {
 			return nil, fmt.Errorf("Error parsing worker activation token: %w", err)
 		}
 
+		statusCallTimeoutDuration := result.Worker.ControllerRPCCallTimeout
+		if util.IsNil(statusCallTimeoutDuration) {
+			// For backwards compatibility this is still called BOUNDARY_WORKER_STATUS_CALL_TIMEOUT,
+			// though it is now used to control the SessionInfo, Statistics and RoutingInfo RPCs.
+			statusCallTimeoutDuration = os.Getenv("BOUNDARY_WORKER_STATUS_CALL_TIMEOUT")
+		}
+		if statusCallTimeoutDuration != nil {
+			t, err := parseutil.ParseDurationSecond(statusCallTimeoutDuration)
+			if err != nil {
+				return result, err
+			}
+			result.Worker.ControllerRPCCallTimeoutDuration = t
+		}
+		if result.Worker.ControllerRPCCallTimeoutDuration < 0 {
+			return nil, errors.New("Controller RPC timeout value is negative")
+		}
+
+		getDownstreamWorkersTimeoutDuration := result.Worker.GetDownstreamWorkersTimeout
+		if util.IsNil(getDownstreamWorkersTimeoutDuration) {
+			getDownstreamWorkersTimeoutDuration = os.Getenv("BOUNDARY_WORKER_GET_DOWNSTREAM_WORKERS_TIMEOUT")
+		}
+		if getDownstreamWorkersTimeoutDuration != nil {
+			t, err := parseutil.ParseDurationSecond(getDownstreamWorkersTimeoutDuration)
+			if err != nil {
+				return result, fmt.Errorf("error trying to parse worker get_downstream_workers_timeout: %w", err)
+			}
+			result.Worker.GetDownstreamWorkersTimeoutDuration = t
+		}
+		if result.Worker.GetDownstreamWorkersTimeoutDuration < 0 {
+			return nil, errors.New("get downstream workers timeout must be greater than 0")
+		}
+
+		successfulControllerRPCGracePeriod := result.Worker.SuccessfulControllerRPCGracePeriod
+		if util.IsNil(successfulControllerRPCGracePeriod) {
+			// For backwards compatibility this is still called BOUNDARY_WORKER_SUCCESSFUL_STATUS_GRACE_PERIOD,
+			// though it is now used to control the SessionInfo and RoutingInfo RPCs.
+			successfulControllerRPCGracePeriod = os.Getenv("BOUNDARY_WORKER_SUCCESSFUL_STATUS_GRACE_PERIOD")
+		}
+		if successfulControllerRPCGracePeriod != nil {
+			t, err := parseutil.ParseDurationSecond(successfulControllerRPCGracePeriod)
+			if err != nil {
+				return result, err
+			}
+			result.Worker.SuccessfulControllerRPCGracePeriodDuration = t
+		}
+		if result.Worker.SuccessfulControllerRPCGracePeriodDuration < 0 {
+			return nil, errors.New("Successful controller RPC grace period value is negative")
+		}
+
+		if !util.IsNil(result.Worker.RecordingStorageMinimumAvailableCapacity) {
+			if result.Worker.RecordingStoragePath == "" {
+				return nil, errors.New("recording_storage_path cannot be empty when providing recording_storage_minimum_available_capacity")
+			}
+			recordingStorageMinimumAvailableDiskSpace, err := parseutil.ParseCapacityString(result.Worker.RecordingStorageMinimumAvailableCapacity)
+			if err != nil {
+				return result, err
+			}
+			result.Worker.RecordingStorageMinimumAvailableDiskSpace = recordingStorageMinimumAvailableDiskSpace
+		}
+		// RecordingStorageMinimumAvailableDiskSpace defaults to 500MiB when not set by the user
+		if result.Worker.RecordingStoragePath != "" && result.Worker.RecordingStorageMinimumAvailableDiskSpace == 0 {
+			result.Worker.RecordingStorageMinimumAvailableDiskSpace = storage.DefaultMinimumAvailableDiskSpace
+		}
+
+		switch {
+		case result.Worker.ControllerRPCCallTimeoutDuration == 0 && result.Worker.SuccessfulControllerRPCGracePeriodDuration == 0:
+			// Nothing
+		case result.Worker.ControllerRPCCallTimeoutDuration != 0 && result.Worker.SuccessfulControllerRPCGracePeriodDuration != 0:
+			if result.Worker.ControllerRPCCallTimeoutDuration > result.Worker.SuccessfulControllerRPCGracePeriodDuration {
+				return nil, fmt.Errorf("Worker setting for controller rpc timeout duration must be less than or equal to successful controller rpc grace period duration")
+			}
+		default:
+			return nil, fmt.Errorf("Worker settings for controller rpc call timeout duration and successful controller rpc grace period duration must either both be set or both be empty")
+		}
+
 		if result.Worker.TagsRaw != nil {
 			switch t := result.Worker.TagsRaw.(type) {
 			// We allow `tags` to be a simple string containing a URL with schema.
@@ -593,7 +1027,7 @@ func Parse(d string) (*Config, error) {
 					return nil, fmt.Errorf("Error parsing worker tags: %w", err)
 				}
 
-				var temp []map[string]interface{}
+				var temp []map[string]any
 				err = hcl.Decode(&temp, rawTags)
 				if err != nil {
 					return nil, fmt.Errorf("Error decoding raw worker tags: %w", err)
@@ -606,7 +1040,7 @@ func Parse(d string) (*Config, error) {
 			// HCL allows multiple labeled blocks with the same name, turning it
 			// into a slice of maps, hence the slice here. This format is the
 			// one that ends up matching the JSON that we use in the expression.
-			case []map[string]interface{}:
+			case []map[string]any:
 				for _, m := range t {
 					for k, v := range m {
 						// We allow the user to pass in only the keys in HCL, and
@@ -642,7 +1076,7 @@ func Parse(d string) (*Config, error) {
 
 			// However for those that are used to other systems, we also accept
 			// key=value pairs
-			case []interface{}:
+			case []any:
 				var strs []string
 				if err := mapstructure.WeakDecode(t, &strs); err != nil {
 					return nil, fmt.Errorf("Error decoding the worker's %q section: %w", "tags", err)
@@ -697,7 +1131,13 @@ func Parse(d string) (*Config, error) {
 		}
 	}
 
-	sharedConfig, err := configutil.ParseConfig(d)
+	// Now that we can have multiple KMSes for downstream workers, allow an
+	// unlimited number of KMS blocks as we don't know how many might be defined
+	sharedConfig, err := configutil.ParseConfig(
+		d,
+		configutil.WithMaxKmsBlocks(-1),
+		configutil.WithListenerOptions(listenerutil.WithDefaultUiContentSecurityPolicyHeader(defaultCsp)),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -750,37 +1190,60 @@ func Parse(d string) (*Config, error) {
 		}
 	}
 
+	for _, f := range extraParsingFuncs {
+		if err := f(result); err != nil {
+			return nil, err
+		}
+	}
+
 	return result, nil
 }
 
-// supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated. Errors when both fields are populated.
-func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, error) {
-	switch {
-	case initialUpstreamsRaw == nil && controllersRaw != nil:
-		return controllersRaw, nil
-	case initialUpstreamsRaw != nil && controllersRaw != nil:
-		return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated")
+func parseApiRateLimits(node ast.Node) (ratelimit.Configs, error) {
+	list, ok := node.(*ast.ObjectList)
+	if !ok {
+		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
 	}
-	return initialUpstreamsRaw, nil
+	controllerList := list.Filter("controller")
+
+	configs := make(ratelimit.Configs, 0)
+	for _, item := range controllerList.Items {
+		controller, ok := item.Val.(*ast.ObjectType)
+		if !ok {
+			return nil, fmt.Errorf("error parsing: file doesn't contain controller object")
+		}
+		apiRateLimitsList := controller.List.Filter("api_rate_limit")
+
+		var err error
+		for i, item := range apiRateLimitsList.Items {
+			var a ratelimit.Config
+			if err := hcl.DecodeObject(&a, item.Val); err != nil {
+				return nil, fmt.Errorf("error decoding controller api_rate_limit entry %d", i)
+			}
+			a.Period, err = parseutil.ParseDurationSecond(a.PeriodHCL)
+			if err != nil {
+				return nil, fmt.Errorf("error decoding controller api_rate_limit period for entry %d", i)
+			}
+			configs = append(configs, &a)
+		}
+	}
+
+	return configs, nil
 }
 
 func parseWorkerUpstreams(c *Config) ([]string, error) {
 	if c == nil || c.Worker == nil {
 		return nil, fmt.Errorf("config or worker field is nil")
 	}
-	if c.Worker.InitialUpstreamsRaw == nil && c.Worker.ControllersRaw == nil {
+	if c.Worker.InitialUpstreamsRaw == nil {
 		// return nil here so that other address sources can be provided outside of config
 		return nil, nil
 	}
-	rawUpstreams, err := supportControllersRawConfig(c.Worker.InitialUpstreamsRaw, c.Worker.ControllersRaw)
-	if err != nil {
-		return nil, err
-	}
 
-	switch t := rawUpstreams.(type) {
-	case []interface{}: // An array was configured directly in Boundary's HCL Config file.
+	switch t := c.Worker.InitialUpstreamsRaw.(type) {
+	case []any:
 		var upstreams []string
-		err := mapstructure.WeakDecode(rawUpstreams, &upstreams)
+		err := mapstructure.WeakDecode(c.Worker.InitialUpstreamsRaw, &upstreams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode worker initial_upstreams block into config field: %w", err)
 		}
@@ -887,14 +1350,14 @@ func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
 // Specifically, the fields that this method strips are:
 // - KMS.Config
 // - Telemetry.CirconusAPIToken
-func (c *Config) Sanitized() map[string]interface{} {
+func (c *Config) Sanitized() map[string]any {
 	// Create shared config if it doesn't exist (e.g. in tests) so that map
 	// keys are actually populated
 	if c.SharedConfig == nil {
 		c.SharedConfig = new(configutil.SharedConfig)
 	}
 	sharedResult := c.SharedConfig.Sanitized()
-	result := map[string]interface{}{}
+	result := map[string]any{}
 	for k, v := range sharedResult {
 		result[k] = v
 	}
@@ -939,16 +1402,15 @@ func (c *Config) SetupControllerPublicClusterAddress(flagValue string) error {
 		}
 	}
 
-	host, port, err := net.SplitHostPort(c.Controller.PublicClusterAddr)
+	host, port, err := util.SplitHostPort(c.Controller.PublicClusterAddr)
 	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9201"
-			host = c.Controller.PublicClusterAddr
-		} else {
-			return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
-		}
+		return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
 	}
-	c.Controller.PublicClusterAddr = net.JoinHostPort(host, port)
+	if port == "" {
+		port = "9201"
+	}
+	c.Controller.PublicClusterAddr = util.JoinHostPort(host, port)
+
 	return nil
 }
 
@@ -1001,11 +1463,7 @@ func (c *Config) SetupWorkerInitialUpstreams() error {
 			break
 		}
 		// Best effort see if it's a domain name and if not assume it must match
-		host, _, err := net.SplitHostPort(c.Worker.InitialUpstreams[0])
-		if err != nil && strings.Contains(err.Error(), "missing port in address") {
-			err = nil
-			host = c.Worker.InitialUpstreams[0]
-		}
+		host, _, err := util.SplitHostPort(c.Worker.InitialUpstreams[0])
 		if err == nil {
 			ip := net.ParseIP(host)
 			if ip == nil {

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
@@ -10,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -24,7 +27,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 	type args struct {
@@ -66,7 +69,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 			args: args{
 				catalogId: cat.GetPublicId(),
 				attrs: func() *structpb.Struct {
-					st, err := structpb.NewStruct(map[string]interface{}{"foo": "bar"})
+					st, err := structpb.NewStruct(map[string]any{"foo": "bar"})
 					require.NoError(t, err)
 					return st
 				}(),
@@ -75,7 +78,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 				HostCatalogSecret: &store.HostCatalogSecret{
 					CatalogId: cat.GetPublicId(),
 					Secret: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{"foo": "bar"})
+						st, err := structpb.NewStruct(map[string]any{"foo": "bar"})
 						require.NoError(t, err)
 						b, err := proto.Marshal(st)
 						require.NoError(t, err)
@@ -124,11 +127,11 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	ctx := context.Background()
 
-	secret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), mustStruct(map[string]interface{}{
+	secret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), mustStruct(map[string]any{
 		"foo": "bar",
 	}))
 	require.NoError(t, err)
@@ -145,7 +148,7 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	require.NoError(t, w.Create(ctx, secret))
 
 	// Upsert
-	newStructUpsert := mustMarshal(map[string]interface{}{
+	newStructUpsert := mustMarshal(map[string]any{
 		"baz": "qux",
 	})
 	newSecretUpsert := secret.clone()
@@ -166,7 +169,7 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	assert.Empty(t, cmp.Diff(newStructUpsert, found.Secret, protocmp.Transform()))
 
 	// Update
-	newStructUpdate := mustMarshal(map[string]interface{}{
+	newStructUpdate := mustMarshal(map[string]any{
 		"one": "two",
 	})
 	newSecretUpdate := newSecretUpsert.clone()

@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: managed-groups delete - Command
+description: >-
+  The "managed-groups delete" command deletes an existing managed group resource.
+---
+
+# managed-groups delete
+
+Command: `managed-groups delete`
+
+The `managed-groups delete` command lets you delete an existing managed group by providing the ID.
+
+## Example
+
+This example deletes a managed group with the ID `_1234567890`:
+
+```shell-session
+$ boundary managed-groups delete -id _1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the managed group you want to delete.
+
+@include 'cmd-option-note.mdx'

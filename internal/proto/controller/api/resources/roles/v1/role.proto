@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.resources.roles.v1;
@@ -11,18 +14,22 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message Principal {
   // Output only. The ID of the principal.
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The type of the principal.
-  string type = 2; // @gotags: `class:"public"`
+  string type = 2; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Scope of the principal.
-  string scope_id = 3 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 3 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GrantJson {
   // Output only. The ID, if set.
-  string id = 1; // @gotags: `class:"public"`
+  // Deprecated: use "ids" instead.
+  string id = 1 [deprecated = true]; // @gotags: `class:"public"`
+
+  // Output only. The IDs, if set.
+  repeated string ids = 4; // @gotags: `class:"public"`
 
   // Output only. The type, if set.
   string type = 2; // @gotags: `class:"public"`
@@ -44,11 +51,15 @@ message Grant {
 
 // Role contains all fields related to a Role resource
 message Role {
+  // Used to be "grant_scope_id", replaced with "grant_scope_ids".
+  reserved 90;
+  reserved "grant_scope_id";
+
   // Output only. The ID of the Role.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope containing this Role.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -72,27 +83,26 @@ message Role {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
-  // The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project.
-  google.protobuf.StringValue grant_scope_id = 90 [
-    json_name = "grant_scope_id",
-    (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = {
-      this: "grant_scope_id"
-      that: "GrantScopeId"
-    }
-  ]; // @gotags: `class:"public"`
+  // Output only. The IDs of Scopes the grants will apply to. This can include
+  // the role's own scope ID, or "this" for the same behavior; specific IDs of
+  // scopes that are children of the role's scope; the value "children" to match
+  // all direct child scopes of the role's scope; or the value "descendants" to
+  // match all descendant scopes (e.g. child scopes, children of child scopes;
+  // only valid at "global" scope since it is the only one with children of
+  // children).
+  repeated string grant_scope_ids = 91 [json_name = "grant_scope_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The IDs (only) of principals that are assigned to this role.
-  repeated string principal_ids = 100 [json_name = "principal_ids"]; // @gotags: `class:"public"`
+  repeated string principal_ids = 100 [json_name = "principal_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The principals that are assigned to this role.
   repeated Principal principals = 110;

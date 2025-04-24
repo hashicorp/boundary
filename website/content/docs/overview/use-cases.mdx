@@ -1,0 +1,33 @@
+---
+layout: docs
+page_title: Use cases
+description: >-
+    Learn how HashiCorp Boundary can help you with zero trust access, multi-cloud access, single-sign on with integrated secrets management, and session monitoring.
+---
+
+# Use cases
+
+Before understanding use cases, it's useful to know [what Boundary is](/boundary/docs/overview/what-is-boundary). This page lists some concrete use cases for Boundary, but the possible use cases are much broader than what we cover.
+
+
+## Zero trust access
+
+Boundary’s access-on-demand workflow securely connects trusted identities to infrastructure services based on granular, admin-defined permission grants. Boundary removes the need to create or store credentials when accessing services. In this way, Boundary can be used to extend or replace many traditional access solutions like VPNs.
+
+Traditional access solutions do not employ the Zero-Trust philosophy - meaning they fail to authenticate and authorize users’ access and actions continuously, and often lack granular access controls.
+
+## Multi-cloud access
+
+Having different access workflows for various infrastructure and identity providers doesn’t scale well for administrators or users. Multi-cloud organizations have a growing need to standardize access through a single workflow. Boundary creates a centralized layer of identity-based authentication and authorization to manage access to the infrastructure, regardless of the platform on which it resides.
+
+## Single sign-on with integrated secrets management
+
+Boundary enables a single sign-on access model with authentication from trusted identity providers, such as Azure Active Directory, Auth0, and Okta. Once authenticated, users may create sessions with integrated credential management from HashiCorp Vault without the need to re-authenticate.
+
+## Session monitoring
+
+Boundary provides session monitoring capabilities that give security administrators visibility into user access. Sessions are logged and consumable via the Boundary administrator UI as well as business intelligence (BI) and security information and event management (SIEM) tools.
+
+Further, administrators can enable session recording on targets.
+When you enable session recording on a target, a worker records any sessions that access that target from the time the user requests access to when that access is terminated.
+Administrators can view the recordings later using a session player that runs in a browser.

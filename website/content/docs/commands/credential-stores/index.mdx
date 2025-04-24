@@ -1,0 +1,70 @@
+---
+layout: docs
+page_title: credential-stores - Command
+description: >-
+  The "credential-stores" command performs operations on credential store resources. Credential stores can manage credentials of differing types and access levels.
+---
+
+# credential-stores
+
+Command: `boundary credential-stores`
+
+The `credential-stores` command lets you manage Boundary credential store resources.
+
+A credential store is a resource that can retrieve, store, and potentially generate credentials of differing types and differing access levels.
+They belong to projects and support the principle of least privilege by limiting the credentials that can be accessed to the minimum necessary for the project.
+A credential store can also contain credential libraries.
+
+## Examples
+
+The following example lists all credential stores for a scope with the ID `p_tnqESc86qE`:
+
+```shell-session
+$ boundary credential-stores list -scope-id p_tnqESc86qE
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Credential Store information:
+  ID:                    csvlt_5fvkRjCjou
+    Version:             1
+    Type:                vault
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary credential-stores [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    create    Create a credential store
+    delete    Delete a credential store
+    list      List a credential store
+    read      Read a credential store
+    update    Update a credential store
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/credential-stores/create)
+- [delete](/boundary/docs/commands/credential-stores/delete)
+- [list](/boundary/docs/commands/credential-stores/list)
+- [read](/boundary/docs/commands/credential-stores/read)
+- [update](/boundary/docs/commands/credential-stores/update)

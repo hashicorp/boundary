@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package common
 
 import (
@@ -30,6 +33,12 @@ func ClientIpFromRequest(ctx context.Context, listenerCfg *listenerutil.Listener
 		ip, err := ipFromRequestRemoteAddr(ctx, r)
 		if err != nil {
 			return "", errors.Wrap(ctx, err, op)
+		}
+		if listenerCfg.Type == "unix" && ip == "" {
+			// Some platforms (Linux) use "@" in this case but some like Mac
+			// leave it empty which causes issues with the rate limiting logic,
+			// so standardize on "@" in this case.
+			return "@", nil
 		}
 		return ip, nil
 	case trustedForwardedFor == nil && remoteAddr != nil:

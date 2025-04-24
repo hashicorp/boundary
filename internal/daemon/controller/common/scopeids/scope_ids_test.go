@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package scopeids_test
 
 import (
@@ -27,6 +30,7 @@ import (
 // behavior that used role permissions instead of the resource type under test
 // is fixed.
 func TestListingScopeIds(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -36,19 +40,18 @@ func TestListingScopeIds(t *testing.T) {
 		return iamRepo, nil
 	}
 	authTokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kms)
+		return server.NewRepository(ctx, rw, rw, kms)
 	}
-	s, err := groups.NewService(iamRepoFn)
+	s, err := groups.NewService(ctx, iamRepoFn, 1000)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	sessionsRepoFn := func(opt ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
-	sess, err := sessions.NewService(sessionsRepoFn, iamRepoFn)
+	sess, err := sessions.NewService(ctx, sessionsRepoFn, iamRepoFn, 1000)
 	require.NoError(t, err)
 
 	tcs := []struct {
@@ -81,25 +84,25 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on global, no groups",
-			globalGrants: []string{"id=*;type=group;actions=list,no-op"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGrants: []string{"ids=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			recurseFrom:  "global",
 		},
 		{
 			name:        "perms on org, no groups",
-			orgGrants:   []string{"id=*;type=group;actions=list,no-op"},
-			projGrants:  []string{"id=*;type=group;actions=read"},
+			orgGrants:   []string{"ids=*;type=group;actions=list,no-op"},
+			projGrants:  []string{"ids=*;type=group;actions=read"},
 			recurseFrom: "org",
 		},
 		{
 			name:        "perms on project, no groups",
-			projGrants:  []string{"id=*;type=group;actions=list,no-op"},
+			projGrants:  []string{"ids=*;type=group;actions=list,no-op"},
 			recurseFrom: "project",
 		},
 		{
 			name:         "perms on global, none in org",
-			globalGrants: []string{"id=*;type=group;actions=list,no-op"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGrants: []string{"ids=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -108,8 +111,8 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on global, none in org, start at org",
-			globalGrants: []string{"id=*;type=group;actions=list,no-op"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGrants: []string{"ids=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -118,9 +121,9 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on global, with org",
-			globalGrants: []string{"id=*;type=group;actions=list,no-op"},
-			orgGrants:    []string{"id=*;type=group;actions=read"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGrants: []string{"ids=*;type=group;actions=list,no-op"},
+			orgGrants:    []string{"ids=*;type=group;actions=read"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -129,9 +132,9 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on global, with org, start at org",
-			globalGrants: []string{"id=*;type=group;actions=list,no-op"},
-			orgGrants:    []string{"id=*;type=group;actions=read"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGrants: []string{"ids=*;type=group;actions=list,no-op"},
+			orgGrants:    []string{"ids=*;type=group;actions=read"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -140,9 +143,9 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on global, start at project",
-			globalGrants: []string{"id=*;type=group;actions=list,no-op"},
-			orgGrants:    []string{"id=*;type=group;actions=read"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGrants: []string{"ids=*;type=group;actions=list,no-op"},
+			orgGrants:    []string{"ids=*;type=group;actions=read"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -151,8 +154,8 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on org, start at global, no read on org",
-			orgGrants:    []string{"id=*;type=group;actions=list"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			orgGrants:    []string{"ids=*;type=group;actions=list"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -161,8 +164,8 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on org, start at global, read on org",
-			orgGrants:    []string{"id=*;type=group;actions=list,no-op"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			orgGrants:    []string{"ids=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -171,8 +174,8 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on org, start at org",
-			orgGrants:    []string{"id=*;type=group;actions=list,no-op"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			orgGrants:    []string{"ids=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -181,8 +184,8 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on org, start at project",
-			orgGrants:    []string{"id=*;type=group;actions=list,no-op"},
-			projGrants:   []string{"id=*;type=group;actions=read"},
+			orgGrants:    []string{"ids=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=read"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -191,7 +194,7 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on proj",
-			projGrants:   []string{"id=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=list,no-op"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -200,7 +203,7 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on proj, start at org",
-			projGrants:   []string{"id=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=list,no-op"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,
@@ -209,7 +212,7 @@ func TestListingScopeIds(t *testing.T) {
 		},
 		{
 			name:         "perms on proj, start at global",
-			projGrants:   []string{"id=*;type=group;actions=list,no-op"},
+			projGrants:   []string{"ids=*;type=group;actions=list,no-op"},
 			globalGroups: 1,
 			orgGroups:    3,
 			projGroups:   5,

@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: session-recordings reapply-storage-policy - Command
+description: >-
+  The "session-recordings reapply-storage-policy" command reapplies a storage policy to a session recording resource.
+---
+
+# session-recordings reapply-storage-policy
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `session-recordings reapplly-storage-policy`
+
+The `session-recordings reapply-storage-policy` command lets you reapply a storage policy to a session recording.
+
+## Example
+
+This example reapplies a storage policy to a session recording with the ID `sr_1234567890`:
+
+```shell-session
+$ boundary session-recordings reapply-storage-policy -id sr_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary session-recordings delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the session recording you want to reapply the storage policy to.
+
+@include 'cmd-option-note.mdx'

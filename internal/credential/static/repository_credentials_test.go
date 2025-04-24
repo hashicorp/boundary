@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -40,11 +43,10 @@ func TestRepository_Retrieve(t *testing.T) {
 		string(testdata.PEMEncryptedKeys[0].PEMBytes), staticStore.GetPublicId(), prj.GetPublicId(),
 		WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
 
-	obj, _, err := TestJsonObject()
-	assert.NoError(err)
+	obj, _ := TestJsonObject(t)
 
 	secondObj := credential.JsonObject{
-		structpb.Struct{
+		Struct: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"username": structpb.NewStringValue("new-user"),
 				"password": structpb.NewStringValue("new-password"),

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package schema
 
 import (
@@ -22,6 +25,7 @@ func MigrateStore(ctx context.Context, dialect Dialect, url string, opt ...Optio
 	if err != nil {
 		return false, errors.Wrap(ctx, err, op)
 	}
+	defer sMan.Close(ctx)
 
 	st, err := sMan.CurrentState(ctx)
 	if err != nil {

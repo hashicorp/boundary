@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
@@ -53,14 +56,14 @@ func TestServiceCloseConnections(t *testing.T) {
 
 		targetRepo, err := target.NewRepository(ctx, rw, rw, testKms)
 		require.NoError(t, err)
-		_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+		_, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 		require.NoError(t, err)
 
 		authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
 		acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 		user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
 
-		authTokenRepo, err := authtoken.NewRepository(rw, rw, testKms)
+		authTokenRepo, err := authtoken.NewRepository(ctx, rw, rw, testKms)
 		require.NoError(t, err)
 		at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 		require.NoError(t, err)
@@ -128,8 +131,8 @@ func TestServiceCloseConnections(t *testing.T) {
 
 			for _, r := range resp {
 				require.NotNil(r.Connection)
-				require.NotNil(r.ConnectionStates)
-				assert.Equal(StatusClosed, r.ConnectionStates[0].Status)
+				require.NotNil(r.ConnectionState)
+				assert.Equal(StatusClosed, r.ConnectionState)
 			}
 
 			// Ensure session is in the state we want- terminated if all conns closed, else active

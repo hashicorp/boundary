@@ -1,81 +1,62 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package tcp
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net"
-	"net/url"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"nhooyr.io/websocket"
+	"github.com/hashicorp/boundary/internal/errors"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func init() {
-	err := proxy.RegisterHandler("tcp", handleProxy)
+	err := proxy.RegisterHandler(proxy.TcpHandlerName, handleProxy)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// handleProxy creates a tcp proxy between the incoming websocket conn and the
-// connection it creates with the remote endpoint. handleTcpProxyV1 sets the connectionId
-// as connected in the repository.
+// handleProxy creates a tcp proxy between the incoming conn and the
+// connection created by the ProxyDialer.
 //
-// handleProxy blocks until an error (EOF on happy path) is received on either
-// connection.
-//
-// All options are ignored.
-func handleProxy(ctx context.Context, conf proxy.Config, _ ...proxy.Option) error {
-	conn := conf.ClientConn
-	sessionUrl, err := url.Parse(conf.RemoteEndpoint)
+// handleProxy returns a ProxyConnFn which starts the copy between the
+// connections and blocks until an error (EOF on happy path) is received on
+// either connection.
+func handleProxy(controlCtx context.Context, _ context.Context, _ proxy.DecryptFn, conn net.Conn, out *proxy.ProxyDialer, connId string, _ *anypb.Any, _ proxy.RecordingManager) (proxy.ProxyConnFn, error) {
+	const op = "tcp.HandleProxy"
+	switch {
+	case conn == nil:
+		return nil, errors.New(controlCtx, errors.InvalidParameter, op, "conn is nil")
+	case out == nil:
+		return nil, errors.New(controlCtx, errors.InvalidParameter, op, "proxy dialer is nil")
+	case len(connId) == 0:
+		return nil, errors.New(controlCtx, errors.InvalidParameter, op, "connection id is empty")
+	}
+	remoteConn, err := out.Dial(controlCtx)
 	if err != nil {
-		return fmt.Errorf("error parsing endpoint information: %w", err)
-	}
-	if sessionUrl.Scheme != "tcp" {
-		return fmt.Errorf("invalid scheme for tcp proxy: %v", sessionUrl.Scheme)
-	}
-	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
-	if err != nil {
-		return fmt.Errorf("error dialing endpoint: %w", err)
-	}
-	// Assert this for better Go 1.11 splice support
-	tcpRemoteConn := remoteConn.(*net.TCPConn)
-
-	endpointAddr := tcpRemoteConn.RemoteAddr().(*net.TCPAddr)
-	connectionInfo := &pbs.ConnectConnectionRequest{
-		ConnectionId:       conf.ConnectionId,
-		ClientTcpAddress:   conf.ClientAddress.IP.String(),
-		ClientTcpPort:      uint32(conf.ClientAddress.Port),
-		EndpointTcpAddress: endpointAddr.IP.String(),
-		EndpointTcpPort:    uint32(endpointAddr.Port),
-		Type:               "tcp",
-		UserClientIp:       conf.UserClientIp.String(),
+		return nil, err
 	}
 
-	if err := conf.Session.RequestConnectConnection(ctx, connectionInfo); err != nil {
-		return fmt.Errorf("error marking connection as connected: %w", err)
-	}
-
-	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(ctx, conn, websocket.MessageBinary)
-
-	connWg := new(sync.WaitGroup)
-	connWg.Add(2)
-	go func() {
-		defer connWg.Done()
-		_, _ = io.Copy(netConn, tcpRemoteConn)
-		_ = netConn.Close()
-		_ = tcpRemoteConn.Close()
-	}()
-	go func() {
-		defer connWg.Done()
-		_, _ = io.Copy(tcpRemoteConn, netConn)
-		_ = tcpRemoteConn.Close()
-		_ = netConn.Close()
-	}()
-	connWg.Wait()
-	return nil
+	return func() {
+		connWg := new(sync.WaitGroup)
+		connWg.Add(2)
+		go func() {
+			defer connWg.Done()
+			_, _ = io.Copy(conn, remoteConn)
+			_ = conn.Close()
+			_ = remoteConn.Close()
+		}()
+		go func() {
+			defer connWg.Done()
+			_, _ = io.Copy(remoteConn, conn)
+			_ = remoteConn.Close()
+			_ = conn.Close()
+		}()
+		connWg.Wait()
+	}, nil
 }

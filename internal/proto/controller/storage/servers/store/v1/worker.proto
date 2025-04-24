@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 syntax = "proto3";
 
 package controller.storage.servers.store.v1;
@@ -62,11 +65,25 @@ message Worker {
   // The state of the worker, to indicate if the worker is active or in shutdown.
   // @inject_tag: `gorm:"not_null"`
   string operational_state = 150;
+
+  // The local_storage_state indicates the state of the local disk space of the worker.
+  // Possible values are:
+  // - available: The worker local storage state is at an acceptable state
+  // - low storage: The worker is below the minimum threshold for local storage
+  // - critically low storage: The worker local storage state is below the critical minimum threshold for local storage
+  // - out of storage: The worker is out of local disk space
+  // - not configured: The worker does not have a local storage path configured
+  // - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known
+  // @inject_tag: `gorm:"not_null"`
+  string local_storage_state = 160;
 }
 
 // WorkerTag is a tag for a worker.  The primary key is comprised of the
 // worker_id, key, value, and source.
+// WorkerTag is deprecated- use ApiTag and ConfigTag instead.
 message WorkerTag {
+  option deprecated = true;
+
   // worker_id is the public key that key of the worker this tag is for.
   // @inject_tag: `gorm:"primary_key"`
   string worker_id = 10;
@@ -82,4 +99,74 @@ message WorkerTag {
   // source is the source of the tag. Either 'configuration' or 'api'.
   // @inject_tag: `gorm:"primary_key"`
   string source = 40;
+}
+
+// ApiTag is an API tag for a worker. The primary key is comprised of the
+// worker_id, key, and value
+message ApiTag {
+  // worker_id is the public key that key of the worker this tag is for.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // key is the key of the tag. This must be set.
+  // @inject_tag: `gorm:"primary_key"`
+  string key = 20;
+
+  // value is the value
+  // @inject_tag: `gorm:"primary_key"`
+  string value = 30;
+}
+
+// ConfigTag is a configuration tag for a worker. The primary key is comprised of the
+// worker_id, key, and value
+message ConfigTag {
+  // worker_id is the public key that key of the worker this tag is for.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // key is the key of the tag. This must be set.
+  // @inject_tag: `gorm:"primary_key"`
+  string key = 20;
+
+  // value is the value
+  // @inject_tag: `gorm:"primary_key"`
+  string value = 30;
+}
+
+// WorkerStorageBucketCredentialState is a state for a storage bucket credential for a worker.
+// The primary key is comprised of the worker_id, storage_bucket_credential_id, permission_type.
+message WorkerStorageBucketCredentialState {
+  // worker_id is the public key of the worker.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // storage_bucket_credential_id is the public key of the storage bucket credential.
+  // @inject_tag: `gorm:"primary_key"`
+  string storage_bucket_credential_id = 20;
+
+  // permission_type is a enum that defines the permission type.
+  // @inject_tag: `gorm:"primary_key"`
+  string permission_type = 30;
+
+  // state is a enum that defines the permission state.
+  // @inject_tag: `gorm:"not_null"`
+  string state = 40;
+
+  // error_details is the error message returned from the external object store service.
+  string error_details = 50;
+
+  // checked_at is the utc timestamp of when the permission was tested.
+  // @inject_tag: `gorm:"not_null"`
+  timestamp.v1.Timestamp checked_at = 60;
+}
+
+// WorkerSessionInfoRequest contains information about a worker and its SessionInfo requests.
+message WorkerSessionInfoRequest {
+  // worker_id is the public id of the worker.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // The last_request_time is the last time a worker has reported its session information.
+  // @inject_tag: `gorm:"default:null"`
+  timestamp.v1.Timestamp last_request_time = 20;
 }

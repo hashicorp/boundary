@@ -1,0 +1,81 @@
+---
+layout: docs
+page_title: auth-methods read - Command
+description: >-
+  The "auth-methods read" command retrieves the details for an auth method resource.
+---
+
+# auth-methods read
+
+Command: `boundary auth-methods read`
+
+The `auth-methods read` command reads an auth method given its ID.
+
+## Examples
+
+The following example reads the auth method details for an auth method with the ID `amoidc_AliCbVihqv`.
+
+```shell-session
+$ boundary auth-methods read -id amoidc_AliCbVihqv
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Auth Method information:
+  Created Time:         Thu, 13 May 2021 17:01:02 MDT
+  Description:          OIDC auth method for Auth0
+  ID:                   amoidc_AliCbVihqv
+  Name:                 Auth0
+  Type:                 oidc
+  Updated Time:         Thu, 13 May 2021 17:01:02 MDT
+  Version:              2
+
+  Scope:
+    ID:                 o_1234567890
+    Name:               Generated org scope
+    Parent Scope ID:    global
+    Type:               org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     http://localhost:9200
+    callback_url:       http://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+    client_id:          zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx
+    client_secret_hmac: AhyxTBqlZpnny78iA9M7QHKAKocI17bjwvS70B1ccg0
+    issuer:             https://dev-1vdl8c0q.us.auth0.com/
+    signing_algorithms: [RS256]
+    state:              active-public
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods read [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the auth method to read.
+
+@include 'cmd-option-note.mdx'

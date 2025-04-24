@@ -1,10 +1,16 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
+	"crypto/rand"
+	"io"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 )
 
@@ -22,23 +28,26 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit             int
-	withOrderByCreateTime db.OrderBy
-	withProjectIds        []string
-	withUserId            string
-	withExpirationTime    *timestamp.Timestamp
-	withTestTofu          []byte
-	withListingConvert    bool
-	withSessionIds        []string
-	withDbOpts            []db.Option
-	withWorkerStateDelay  time.Duration
-	withTerminated        bool
-	withPermissions       *perms.UserPermissions
+	withLimit                    int
+	withOrderByCreateTime        db.OrderBy
+	withProjectIds               []string
+	withUserId                   string
+	withExpirationTime           *timestamp.Timestamp
+	withTestTofu                 []byte
+	withSessionIds               []string
+	withDbOpts                   []db.Option
+	withWorkerStateDelay         time.Duration
+	withTerminated               bool
+	withPermissions              *perms.UserPermissions
+	withIgnoreDecryptionFailures bool
+	withRandomReader             io.Reader
+	withStartPageAfterItem       pagination.Item
 }
 
 func getDefaultOptions() options {
 	return options{
 		withWorkerStateDelay: 10 * time.Second,
+		withRandomReader:     rand.Reader,
 	}
 }
 
@@ -95,12 +104,6 @@ func WithSessionIds(ids ...string) Option {
 	}
 }
 
-func withListingConvert(withListingConvert bool) Option {
-	return func(o *options) {
-		o.withListingConvert = withListingConvert
-	}
-}
-
 // WithDbOpts passes through given DB options to the DB layer
 func WithDbOpts(opts ...db.Option) Option {
 	return func(o *options) {
@@ -128,5 +131,31 @@ func WithTerminated(withTerminated bool) Option {
 func WithPermissions(p *perms.UserPermissions) Option {
 	return func(o *options) {
 		o.withPermissions = p
+	}
+}
+
+// WithIgnoreDecryptionFailures is used to ignore decryption
+// failures when doing lookups. This should be used sparingly.
+// It is currently only used to allow a user to cancel a session
+// in the presence of a undecryptable TOFU token.
+func WithIgnoreDecryptionFailures(ignoreFailures bool) Option {
+	return func(o *options) {
+		o.withIgnoreDecryptionFailures = ignoreFailures
+	}
+}
+
+// WithRandomReader is used to configure the random source
+// to use when generating secrets. Defaults to crypto/rand.Reader.
+func WithRandomReader(rand io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = rand
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }

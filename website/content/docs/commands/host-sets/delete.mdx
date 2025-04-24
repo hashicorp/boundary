@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: host-sets delete - Command
+description: >-
+  The "host-sets delete" command deletes a existing host set resource.
+---
+
+# host-sets delete
+
+Command: `host-sets delete`
+
+The `host-sets delete` command lets you delete an existing host set by providing the ID.
+
+## Example
+
+This example deletes a host set with the ID `_1234567890`:
+
+```shell-session
+$ boundary host-sets delete -id _1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-sets delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the host set you want to delete.
+
+@include 'cmd-option-note.mdx'

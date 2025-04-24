@@ -1,0 +1,39 @@
+---
+layout: docs
+page_title: accounts delete - Command
+description: >-
+  The "accounts delete" command deletes an existing account resource.
+---
+
+# accounts delete
+
+Command: `boundary accounts delete`
+
+The `accounts delete` command lets you delete an existing account.
+
+
+## Examples
+
+The following example deletes an account with the ID `acctpw_0987654321`.
+
+```shell-session
+$ boundary accounts delete -id=acctpw_0987654321
+The delete operation completed successfully.
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the account you want to delete.
+
+@include 'cmd-option-note.mdx'

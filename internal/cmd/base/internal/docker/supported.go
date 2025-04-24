@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 //go:build linux || darwin || windows
 // +build linux darwin windows
 
@@ -8,8 +11,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db/common"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ory/dockertest/v3"
 )
 
@@ -37,6 +41,16 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 		}
 	}
 
+	runOpts := &dockertest.RunOptions{
+		Tag: tag,
+		Env: []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"},
+		Cmd: []string{
+			// JIT seems to cause noticeable overhead without providing noticeable benefit.
+			// See: ICU-12283
+			"-c", "jit=off",
+		},
+	}
+
 	switch dialect {
 	case "postgres", "pgx":
 		switch {
@@ -44,13 +58,15 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 			url = os.Getenv("BOUNDARY_TESTING_PG_URL")
 			return func() error { return nil }, url, "", nil
 		case repository != "":
-			resource, err = pool.Run(repository, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			runOpts.Repository = repository
+			resource, err = pool.RunWithOptions(runOpts)
 			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
 			if err == nil {
 				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
 			}
 		default:
-			resource, err = pool.Run(dialect, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			runOpts.Repository = dialect
+			resource, err = pool.RunWithOptions(runOpts)
 			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
 			if err == nil {
 				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
@@ -110,7 +126,7 @@ func splitImage(opts Options) (string, string, error) {
 	switch separatedlen {
 	case 1:
 		if separated[0] == "postgres" {
-			return separated[0], "11", nil
+			return separated[0], globals.MinimumSupportedPostgresVersion, nil
 		}
 		return "", "", fmt.Errorf("valid reference format is repo:tag, if"+
 			" no tag provided then repo must be postgres, got: %s", opts.withContainerImage)

@@ -1,0 +1,54 @@
+---
+layout: docs
+page_title: users - Command
+description: >-
+  The "users" command performs operations on Boundary user resources. Users represent an individual or entity for the purposes of access control.
+---
+
+# users
+
+Command: `boundary users`
+
+The `users` command lets you perform operations on Boundary user resources.
+
+## Example
+
+The following command creates a user with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary users create -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary users <subcommand> [options] [args]
+
+  # ...
+
+Subcommands:
+    add-accounts       Add accounts to a user within Boundary
+    create             Create a user
+    delete             Delete a user
+    list               List a user
+    read               Read a user
+    remove-accounts    Remove accounts from a user within Boundary
+    set-accounts       Set the full contents of the accounts on a user within Boundary
+    update             Update a user
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [add-accounts](/boundary/docs/commands/users/add-accounts)
+- [create](/boundary/docs/commands/users/create)
+- [delete](/boundary/docs/commands/users/delete)
+- [list](/boundary/docs/commands/users/list)
+- [read](/boundary/docs/commands/users/read)
+- [remove-accounts](/boundary/docs/commands/users/remove-accounts)
+- [set-accounts](/boundary/docs/commands/users/set-accounts)
+- [update](/boundary/docs/commands/users/update)

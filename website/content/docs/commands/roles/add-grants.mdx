@@ -1,0 +1,46 @@
+---
+layout: docs
+page_title: roles add-grants - Command
+description: >-
+  The "roles add-grants" command adds grants to an existing role resource.
+---
+
+# roles add-grants
+
+Command: `roles add-grants`
+
+The `roles add-grants` command lets you add grants to a role.
+You can specify multiple grants per role.
+
+## Example
+
+This example adds a grant which permits read permissions to a role with the ID `r_1234567890`:
+
+```shell-session
+$ boundary roles add-grants -id r_1234567890 -grant "ids=*;type=*;actions=read"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary roles add-grants [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-grant=<string>` - The grants you want to add.
+You can specify grants in compact string format or JSON.
+If you use JSON, be sure to escape it properly.
+You can optionally specify multiple grants.
+- `-ids=<string>` - The IDs of the roles you want to add grants to.
+You can specify one or more IDs.
+If you specify multiple IDs using text, use commas to separate the IDs.
+If you specify multiple IDs using JSON, use an array.
+- `-version=<int>` The version of the role to add grants to.
+If you do not specify a version, the command performs a check-and-set automatically.
+
+@include 'cmd-option-note.mdx'

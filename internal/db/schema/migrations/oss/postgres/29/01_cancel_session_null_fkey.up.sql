@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 drop function cancel_session(in sessionId text);
@@ -6,6 +9,7 @@ drop function cancel_session(in sessionId text);
 -- Sessions can progress directly to terminated without going through the canceling state
 -- cancel_session will insert a cancel state for the session, if there's isn't
 -- a canceled or terminated state already.  It's used by cancel_session_with_null_fk.
+-- Replaced in 92/03_cancel_session_trigger.up.sql
 create function cancel_session(in sessionId text) returns void
 as $$
 declare

@@ -1,0 +1,41 @@
+---
+layout: docs
+page_title: update - Command
+description: >-
+  The "update" command updates existing Boundary resources.
+---
+
+# update
+
+Command: `boundary update`
+
+The `boundary update` command lets you update Boundary resources.
+It is a generic command that runs an update operation on a Boundary resource using the resource's ID.
+
+When you run this command, Boundary interprets it as the type-specific command.
+For example, if you enter the `update` command with a storage bucket ID, Boundary runs the `storage-buckets update` command.
+Help, error, or cURL output from the command may show the full command syntax.
+
+## Example
+
+This example updates a storage bucket with the ID `sb_1234567890` to add the name `devops` and the description `storage bucket for DevOps`:
+
+```shell-session
+$ boundary update -id sb_1234567890 -name devops -description "storage bucket for DevOps"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary update [resource ID] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the resource you want to update.
+
+@include 'cmd-option-note.mdx'

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package schema is used to apply sql migrations to modify the state of a
 // database instance.  It also provides functionality to report on the state of
 // a database instance and how it compares with the migration editions in the

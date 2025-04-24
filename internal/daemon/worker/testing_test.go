@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package worker
 
 import (
@@ -15,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -126,8 +128,7 @@ func TestTestWorker_WorkerAuthStorageKms(t *testing.T) {
 	}
 }
 
-func TestNewTestMultihopWorkers(t *testing.T) {
-	ctx := context.Background()
+func TestNewAuthorizedPkiTestWorker(t *testing.T) {
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
@@ -137,38 +138,39 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 		Config: conf,
 		Logger: logger.Named("controller"),
 	})
-	t.Cleanup(c.Shutdown)
-	pkiTags := map[string][]string{"connected": {"directly"}}
-	childPkiTags := map[string][]string{"connected": {"multihop"}}
+	tw, id := NewAuthorizedPkiTestWorker(t, c.ServersRepo(), "test", c.ClusterAddrs())
+	assert.NotNil(t, tw)
+	assert.NotEmpty(t, id)
 
-	kmsWorker, pkiWorker, childPkiWorker := NewTestMultihopWorkers(t, logger, c.Context(), c.ClusterAddrs(),
-		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, pkiTags, childPkiTags)
+	w, err := c.ServersRepo().LookupWorker(context.Background(), id)
+	assert.NoError(t, err)
+	assert.NotNil(t, w)
+	assert.Equal(t, "pki", w.GetType())
+	assert.Equal(t, "test", w.GetName())
+}
 
-	srvRepo, err := c.Controller().ServersRepoFn()
-	workers, err := srvRepo.ListWorkers(ctx, []string{"global"})
-	assert.Len(t, workers, 3)
-	require.NoError(t, err)
-	var kmsW, pkiW, childPkiW *server.Worker
-	for _, w := range workers {
-		switch w.GetAddress() {
-		case kmsWorker.ProxyAddrs()[0]:
-			kmsW = w
-		case pkiWorker.ProxyAddrs()[0]:
-			pkiW = w
-		case childPkiWorker.ProxyAddrs()[0]:
-			childPkiW = w
-		}
+func TestWorkerIPv6(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	w := NewTestWorker(t, &TestWorkerOpts{
+		EnableIPv6: true,
+	})
+	require.NotNil(w)
+	validateIPv6 := func(addr, name string) {
+		host, _, err := net.SplitHostPort(addr)
+		require.NoError(err)
+		require.NotEmpty(host, "missing host")
+		ip := net.ParseIP(host)
+		assert.NotNil(ip, "failed to parse %s", name)
+		assert.NotNil(ip.To16(), "%s is not IPv6 %s", name, addr)
 	}
-	assert.NotNil(t, kmsW)
-	assert.NotNil(t, pkiW)
-	assert.NotNil(t, childPkiW)
-
-	assert.NotZero(t, kmsW.GetLastStatusTime())
-	assert.NotZero(t, pkiW.GetLastStatusTime())
-	assert.NotZero(t, childPkiW.GetLastStatusTime())
-
-	assert.Equal(t, pkiTags, pkiW.GetConfigTags())
-	assert.Equal(t, childPkiTags, childPkiW.GetConfigTags())
+	for _, addr := range w.addrs {
+		validateIPv6(addr, "worker addr")
+	}
+	for _, addr := range w.ProxyAddrs() {
+		validateIPv6(addr, "proxy addr")
+	}
+	require.NotNil(w.Worker().proxyListener)
+	validateIPv6(w.Worker().proxyListener.ProxyListener.Addr().String(), "proxy listener addr")
 }
 
 func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey) {

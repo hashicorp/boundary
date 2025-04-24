@@ -1,25 +1,39 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package roles_test
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/version"
 	"github.com/kr/pretty"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
@@ -33,7 +47,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"}
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants", "add-grant-scopes", "set-grant-scopes", "remove-grant-scopes"}
 
 func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam.Repository, error)) {
 	t.Helper()
@@ -45,7 +59,7 @@ func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam
 	}
 
 	o, p := iam.TestScopes(t, iamRepo)
-	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeIds([]string{p.GetPublicId()}))
 	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return or, pr, repoFn
 }
@@ -87,7 +101,7 @@ func TestGet(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Name:              &wrapperspb.StringValue{Value: or.GetName()},
 		Description:       &wrapperspb.StringValue{Value: or.GetDescription()},
-		GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+		GrantScopeIds:     []string{pr.GetScopeId()},
 		CreatedTime:       or.CreateTime.GetTimestamp(),
 		UpdatedTime:       or.UpdateTime.GetTimestamp(),
 		Version:           or.GetVersion(),
@@ -100,7 +114,7 @@ func TestGet(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: or.GetScopeId()},
 		Name:              &wrapperspb.StringValue{Value: pr.GetName()},
 		Description:       &wrapperspb.StringValue{Value: pr.GetDescription()},
-		GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+		GrantScopeIds:     []string{globals.GrantScopeThis},
 		CreatedTime:       pr.CreateTime.GetTimestamp(),
 		UpdatedTime:       pr.UpdateTime.GetTimestamp(),
 		Version:           pr.GetVersion(),
@@ -121,8 +135,8 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetRoleResponse{Item: wantOrgRole},
 		},
 		{
-			name: "Get a non existant Role",
-			req:  &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
+			name: "Get a non existent Role",
+			req:  &pbs.GetRoleRequest{Id: globals.RolePrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -134,7 +148,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetRoleRequest{Id: iam.RolePrefix + "_1 23456789"},
+			req:  &pbs.GetRoleRequest{Id: globals.RolePrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -145,9 +159,9 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetRoleResponse{Item: wantProjRole},
 		},
 		{
-			name:    "Project Scoped Get a non existant Role",
+			name:    "Project Scoped Get a non existent Role",
 			scopeId: pr.GetScopeId(),
-			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
+			req:     &pbs.GetRoleRequest{Id: globals.RolePrefix + "_DoesntExis"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -161,7 +175,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "Project Scoped space in id",
 			scopeId: pr.GetScopeId(),
-			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_1 23456789"},
+			req:     &pbs.GetRoleRequest{Id: globals.RolePrefix + "_1 23456789"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -171,7 +185,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(repoFn)
+			s, err := roles.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Couldn't create new role service.")
 
 			got, gErr := s.GetRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -179,12 +193,20 @@ func TestGet(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetRole(%+v) got error %v, wanted %v", req, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetRole(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetRole(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
 
 func TestList(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -198,15 +220,16 @@ func TestList(t *testing.T) {
 	var totalRoles []*pb.Role
 	for i := 0; i < 10; i++ {
 		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
+		_ = iam.TestRoleGrantScope(t, conn, or.GetPublicId(), globals.GrantScopeChildren)
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
 			Id:                or.GetPublicId(),
 			ScopeId:           or.GetScopeId(),
 			Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			CreatedTime:       or.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       or.GetUpdateTime().GetTimestamp(),
-			GrantScopeId:      &wrapperspb.StringValue{Value: or.GetGrantScopeId()},
 			Version:           or.GetVersion(),
 			AuthorizedActions: testAuthorizedActions,
+			GrantScopeIds:     []string{"this", "children"},
 		})
 		totalRoles = append(totalRoles, wantOrgRoles[i])
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
@@ -216,12 +239,22 @@ func TestList(t *testing.T) {
 			Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: oNoRoles.GetPublicId()},
 			CreatedTime:       pr.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       pr.GetUpdateTime().GetTimestamp(),
-			GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
 			Version:           pr.GetVersion(),
 			AuthorizedActions: testAuthorizedActions,
+			GrantScopeIds:     []string{"this"},
 		})
 		totalRoles = append(totalRoles, wantProjRoles[i])
 	}
+
+	slices.Reverse(wantOrgRoles)
+	slices.Reverse(wantProjRoles)
+	slices.Reverse(totalRoles)
+
+	// Run analyze to update postgres estimates
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	cases := []struct {
 		name string
@@ -232,58 +265,117 @@ func TestList(t *testing.T) {
 		{
 			name: "List Many Role",
 			req:  &pbs.ListRolesRequest{ScopeId: oWithRoles.GetPublicId()},
-			res:  &pbs.ListRolesResponse{Items: wantOrgRoles},
+			res: &pbs.ListRolesResponse{
+				Items:        wantOrgRoles,
+				EstItemCount: uint32(len(wantOrgRoles)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List No Roles",
 			req:  &pbs.ListRolesRequest{ScopeId: oNoRoles.GetPublicId()},
-			res:  &pbs.ListRolesResponse{},
+			res: &pbs.ListRolesResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
+		},
+		{
+			name: "Paginate listing",
+			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true, PageSize: 2},
+			res: &pbs.ListRolesResponse{
+				Items:        totalRoles[:2],
+				EstItemCount: uint32(len(totalRoles)),
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List Many Project Role",
 			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId()},
-			res:  &pbs.ListRolesResponse{Items: wantProjRoles},
+			res: &pbs.ListRolesResponse{
+				Items:        wantProjRoles,
+				EstItemCount: uint32(len(wantProjRoles)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List No Project Roles",
 			req:  &pbs.ListRolesRequest{ScopeId: pNoRoles.GetPublicId()},
-			res:  &pbs.ListRolesResponse{},
+			res: &pbs.ListRolesResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List proj roles recursively",
 			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId(), Recursive: true},
 			res: &pbs.ListRolesResponse{
-				Items: wantProjRoles,
+				Items:        wantProjRoles,
+				EstItemCount: uint32(len(wantProjRoles)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
 			},
 		},
 		{
 			name: "List org roles recursively",
 			req:  &pbs.ListRolesRequest{ScopeId: oNoRoles.GetPublicId(), Recursive: true},
 			res: &pbs.ListRolesResponse{
-				Items: wantProjRoles,
+				Items:        wantProjRoles,
+				EstItemCount: uint32(len(wantProjRoles)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
 			},
 		},
 		{
 			name: "List global roles recursively",
 			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true},
 			res: &pbs.ListRolesResponse{
-				Items: totalRoles,
+				Items:        totalRoles,
+				EstItemCount: uint32(len(totalRoles)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
 			},
 		},
 		{
 			name: "Filter to org roles",
 			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithRoles.GetPublicId())},
-			res:  &pbs.ListRolesResponse{Items: wantOrgRoles},
+			res: &pbs.ListRolesResponse{
+				Items:        wantOrgRoles,
+				EstItemCount: uint32(len(wantOrgRoles)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter to proj roles",
 			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, pWithRoles.GetPublicId())},
-			res:  &pbs.ListRolesResponse{Items: wantProjRoles},
+			res: &pbs.ListRolesResponse{
+				Items:        wantProjRoles,
+				EstItemCount: uint32(len(wantProjRoles)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter to no roles",
 			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
-			res:  &pbs.ListRolesResponse{},
+			res: &pbs.ListRolesResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -294,7 +386,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := roles.NewService(repoFn)
+			s, err := roles.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test the non-anon case
@@ -305,10 +397,18 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test the anon case
-			got, gErr = s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -324,10 +424,376 @@ func TestList(t *testing.T) {
 	}
 }
 
+func roleToProto(r *iam.Role, scope *scopes.ScopeInfo, authorizedActions []string) *pb.Role {
+	ret := &pb.Role{
+		Id:                r.GetPublicId(),
+		ScopeId:           r.GetScopeId(),
+		Scope:             scope,
+		CreatedTime:       r.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       r.GetUpdateTime().GetTimestamp(),
+		Version:           r.GetVersion(),
+		AuthorizedActions: testAuthorizedActions,
+	}
+	for _, r := range r.GrantScopes {
+		ret.GrantScopeIds = append(ret.GrantScopeIds, r.ScopeIdOrSpecial)
+	}
+	return ret
+}
+
+func TestListPagination(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	tokenRepo, err := tokenRepoFn()
+	require.NoError(t, err)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	oNoRoles, pWithRoles := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
+	oWithRoles, pNoRoles := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
+
+	authMethod := password.TestAuthMethods(t, conn, "global", 1)[0]
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test_user")
+	u := iam.TestUser(t, iamRepo, "global", iam.WithAccountIds(acct.PublicId))
+
+	var allRoles []*pb.Role
+	for _, scope := range []*iam.Scope{oWithRoles, oNoRoles, pWithRoles, pNoRoles} {
+		allowedRole := iam.TestRole(t, conn, scope.GetPublicId())
+		iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "ids=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, allowedRole.GetPublicId(), u.GetPublicId())
+		allRoles = append(allRoles, roleToProto(allowedRole,
+			&scopes.ScopeInfo{
+				Id:            scope.GetPublicId(),
+				ParentScopeId: scope.GetParentId(),
+				Type:          scope.GetType(),
+			},
+			testAuthorizedActions,
+		))
+	}
+
+	at, err := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+	require.NoError(t, err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	var safeToDeleteRole string
+	orgScopeInfo := &scopes.ScopeInfo{Id: oWithRoles.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}
+	projScopeInfo := &scopes.ScopeInfo{Id: pWithRoles.GetPublicId(), Type: scope.Project.String(), ParentScopeId: pWithRoles.GetParentId()}
+	for i := 0; i < 10; i++ {
+		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
+		allRoles = append(allRoles, roleToProto(or, orgScopeInfo, testAuthorizedActions))
+		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
+		allRoles = append(allRoles, roleToProto(pr, projScopeInfo, testAuthorizedActions))
+		safeToDeleteRole = pr.GetPublicId()
+	}
+	slices.Reverse(allRoles)
+
+	a, err := roles.NewService(ctx, iamRepoFn, 1000)
+	require.NoError(t, err, "Couldn't create new user service.")
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(context.Background(), "analyze")
+	require.NoError(t, err)
+
+	itemCount := uint32(len(allRoles))
+	testPageSize := int((itemCount - 2) / 2)
+	// Start paginating, recursively
+	req := &pbs.ListRolesRequest{
+		ScopeId:   "global",
+		Recursive: true,
+		Filter:    "",
+		ListToken: "",
+		PageSize:  uint32(testPageSize),
+	}
+	got, err := a.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), testPageSize)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        allRoles[0:testPageSize],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				// In addition to the added roles, there are the roles added
+				// by the test setup when specifying the permissions of the
+				// requester
+				EstItemCount: itemCount,
+			},
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+		),
+	)
+
+	// Request second page
+	req.ListToken = got.ListToken
+	got, err = a.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), testPageSize)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        allRoles[testPageSize : testPageSize*2],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+		),
+	)
+
+	// Request rest of results
+	req.ListToken = got.ListToken
+	req.PageSize = 10
+	got, err = a.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        allRoles[testPageSize*2:],
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+		),
+	)
+
+	// Update 2 roles and see them in the refresh
+	r1 := allRoles[len(allRoles)-1]
+	r1.Description = wrapperspb.String("updated1")
+	resp1, err := a.UpdateRole(ctx, &pbs.UpdateRoleRequest{
+		Id:         r1.GetId(),
+		Item:       &pb.Role{Description: r1.GetDescription(), Version: r1.GetVersion()},
+		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
+	})
+	require.NoError(t, err)
+	r1.UpdatedTime = resp1.GetItem().GetUpdatedTime()
+	r1.Version = resp1.GetItem().GetVersion()
+	allRoles = append([]*pb.Role{r1}, allRoles[:len(allRoles)-1]...)
+
+	r2 := allRoles[len(allRoles)-1]
+	r2.Description = wrapperspb.String("updated2")
+	resp2, err := a.UpdateRole(ctx, &pbs.UpdateRoleRequest{
+		Id:         r2.GetId(),
+		Item:       &pb.Role{Description: r2.GetDescription(), Version: r2.GetVersion()},
+		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
+	})
+	require.NoError(t, err)
+	r2.UpdatedTime = resp2.GetItem().GetUpdatedTime()
+	r2.Version = resp2.GetItem().GetVersion()
+	allRoles = append([]*pb.Role{r2}, allRoles[:len(allRoles)-1]...)
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Request updated results
+	req.ListToken = got.ListToken
+	req.PageSize = 1
+	got, err = a.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        []*pb.Role{allRoles[0]},
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+		),
+	)
+
+	// Get next page
+	req.ListToken = got.ListToken
+	got, err = a.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        []*pb.Role{allRoles[1]},
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.ListToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allRoles[len(allRoles)-2].Id, allRoles[len(allRoles)-1].Id)
+	got, err = a.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        []*pb.Role{allRoles[len(allRoles)-2]},
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+		),
+	)
+	req.ListToken = got.ListToken
+	// Get the second page
+	got, err = a.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        []*pb.Role{allRoles[len(allRoles)-1]},
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+		),
+	)
+
+	_, err = iamRepo.DeleteRole(ctx, safeToDeleteRole)
+	require.NoError(t, err)
+	req.ListToken = got.ListToken
+	got, err = a.ListRoles(ctx, req)
+	require.NoError(t, err)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        nil,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   []string{safeToDeleteRole},
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "list_token"),
+		),
+	)
+
+	// Create unauthenticated user
+	unauthAt := authtoken.TestAuthToken(t, conn, kms, oWithRoles.GetPublicId())
+	unauthR := iam.TestRole(t, conn, pWithRoles.GetPublicId())
+	_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+	// Make a request with the unauthenticated user,
+	// ensure the response contains the pagination parameters.
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    unauthAt.GetPublicId(),
+		Token:       unauthAt.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	_, err = a.ListRoles(ctx, &pbs.ListRolesRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, handlers.ForbiddenError(), err)
+}
+
 func TestDelete(t *testing.T) {
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	cases := []struct {
@@ -348,7 +814,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete bad role id",
 			scopeId: or.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
-				Id: iam.RolePrefix + "_doesntexis",
+				Id: globals.RolePrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -371,7 +837,7 @@ func TestDelete(t *testing.T) {
 			name:    "Project Scoped Delete bad Role id",
 			scopeId: pr.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
-				Id: iam.RolePrefix + "_doesntexis",
+				Id: globals.RolePrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -393,7 +859,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(err, "Error when getting new role service")
 	req := &pbs.DeleteRoleRequest{
 		Id: or.GetPublicId(),
@@ -430,20 +896,19 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Role",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
-				ScopeId:      defaultOrgRole.GetScopeId(),
-				Name:         &wrapperspb.StringValue{Value: "name"},
-				Description:  &wrapperspb.StringValue{Value: "desc"},
-				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+				ScopeId:     defaultOrgRole.GetScopeId(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
+				Uri: fmt.Sprintf("roles/%s_", globals.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           defaultOrgRole.GetScopeId(),
 					Scope:             &scopes.ScopeInfo{Id: defaultOrgRole.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
-					Version:           1,
+					GrantScopeIds:     []string{globals.GrantScopeThis},
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -451,20 +916,19 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Global Role",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
-				ScopeId:      scope.Global.String(),
-				Name:         &wrapperspb.StringValue{Value: "name"},
-				Description:  &wrapperspb.StringValue{Value: "desc"},
-				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+				ScopeId:     scope.Global.String(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
+				Uri: fmt.Sprintf("roles/%s_", globals.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           scope.Global.String(),
 					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
-					Version:           1,
+					GrantScopeIds:     []string{globals.GrantScopeThis},
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -479,36 +943,23 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
+				Uri: fmt.Sprintf("roles/%s_", globals.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           defaultProjRole.GetScopeId(),
 					Scope:             &scopes.ScopeInfo{Id: defaultProjRole.GetScopeId(), Type: scope.Project.String(), ParentScopeId: defaultOrgRole.GetScopeId()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
-					Version:           1,
+					GrantScopeIds:     []string{globals.GrantScopeThis},
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
 		{
-			name: "Invalid grant scope ID",
-			req: &pbs.CreateRoleRequest{
-				Item: &pb.Role{
-					ScopeId:      defaultProjRole.GetScopeId(),
-					Name:         &wrapperspb.StringValue{Value: "name"},
-					Description:  &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId: &wrapperspb.StringValue{Value: defaultOrgRole.GetScopeId()},
-				},
-			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
 			name: "Can't specify Id",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				ScopeId: defaultProjRole.GetScopeId(),
-				Id:      iam.RolePrefix + "_notallowed",
+				Id:      globals.RolePrefix + "_notallowed",
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -538,7 +989,7 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(repoFn)
+			s, err := roles.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Error when getting new role service.")
 
 			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), req)
@@ -548,7 +999,7 @@ func TestCreate(t *testing.T) {
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.RolePrefix+"_"), "Expected %q to have the prefix %q", got.GetItem().GetId(), iam.RolePrefix+"_")
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.RolePrefix+"_"), "Expected %q to have the prefix %q", got.GetItem().GetId(), globals.RolePrefix+"_")
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a role created after the test setup's default role
@@ -560,14 +1011,22 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateRole(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateRole(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
 
 func TestUpdate(t *testing.T) {
-	grantString := "id=*;type=*;actions=*"
-	g, err := perms.Parse("global", grantString)
+	ctx := context.Background()
+	grantString := "ids=*;type=*;actions=*"
+	g, err := perms.Parse(context.Background(), perms.GrantTuple{RoleScopeId: "global", GrantScopeId: "global", Grant: grantString})
 	require.NoError(t, err)
 	_, actions := g.Actions()
 	grant := &pb.Grant{
@@ -575,6 +1034,7 @@ func TestUpdate(t *testing.T) {
 		Canonical: g.CanonicalString(),
 		Json: &pb.GrantJson{
 			Id:      g.Id(),
+			Ids:     g.Ids(),
 			Type:    g.Type().String(),
 			Actions: actions,
 		},
@@ -589,7 +1049,7 @@ func TestUpdate(t *testing.T) {
 	o, p := iam.TestScopes(t, iamRepo)
 	u := iam.TestUser(t, iamRepo, o.GetPublicId())
 
-	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeIds([]string{p.GetPublicId()}))
 	_ = iam.TestRoleGrant(t, conn, or.GetPublicId(), grantString)
 	_ = iam.TestUserRole(t, conn, or.GetPublicId(), u.GetPublicId())
 
@@ -603,25 +1063,23 @@ func TestUpdate(t *testing.T) {
 		ScopeId: u.GetScopeId(),
 	}
 
-	var orVersion uint32 = 1
-	var prVersion uint32 = 1
+	orVersion := or.Version
+	prVersion := pr.Version
 
-	tested, err := roles.NewService(repoFn)
+	tested, err := roles.NewService(ctx, repoFn, 0)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	resetRoles := func(proj bool) {
 		repo, err := repoFn()
 		require.NoError(t, err, "Couldn't get a new repo")
 		if proj {
-			prVersion++
-			pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
+			pr, _, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the role")
-			prVersion++
+			prVersion = pr.Version
 		} else {
-			orVersion++
-			or, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
+			or, _, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the role")
-			orVersion++
+			orVersion = or.Version
 		}
 	}
 
@@ -642,12 +1100,11 @@ func TestUpdate(t *testing.T) {
 			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description", "grant_scope_id"},
+					Paths: []string{"name", "description"},
 				},
 				Item: &pb.Role{
-					Name:         &wrapperspb.StringValue{Value: "new"},
-					Description:  &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			res: &pbs.UpdateRoleResponse{
@@ -658,7 +1115,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -687,7 +1144,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -717,7 +1174,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetScopeId()},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -747,7 +1204,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetScopeId()},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -779,10 +1236,10 @@ func TestUpdate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "Only non-existant paths in Mask",
+			name:    "Only non-existent paths in Mask",
 			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
@@ -808,7 +1265,7 @@ func TestUpdate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -837,7 +1294,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -866,7 +1323,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -878,7 +1335,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing Role",
 			req: &pbs.UpdateRoleRequest{
-				Id: iam.RolePrefix + "_DoesntExis",
+				Id: globals.RolePrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -896,7 +1353,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.Role{
-					Id:          iam.RolePrefix + "_somethinge",
+					Id:          globals.RolePrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -969,15 +1426,6 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			// Test with bad version (too high, too low)
-			req.Item.Version = ver + 2
-			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
-			require.Error(gErr)
-			req.Item.Version = ver - 1
-			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
-			require.Error(gErr)
-			req.Item.Version = ver
-
 			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
@@ -995,18 +1443,30 @@ func TestUpdate(t *testing.T) {
 				// Verify it is a role updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated role should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
-				// Clear all values which are hard to compare against.
+				// Clear or set all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+				tc.res.Item.Version = got.Item.Version
 
-				assert.Equal(ver+1, got.GetItem().GetVersion())
-				tc.res.Item.Version = ver + 1
+				if req.Id == or.PublicId {
+					orVersion = got.Item.Version
+				} else {
+					prVersion = got.Item.Version
+				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateRole(%q) got response\n%q,\nwanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateRole(%q) got response\n%q,\nwanted\n%q", req, got, tc.res)
 		})
 	}
 }
 
 func TestAddPrincipal(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -1014,10 +1474,9 @@ func TestAddPrincipal(t *testing.T) {
 		return iamRepo, nil
 	}
 	o, p := iam.TestScopes(t, iamRepo)
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(ctx, repoFn, 0)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -1029,6 +1488,9 @@ func TestAddPrincipal(t *testing.T) {
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
+
+	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
 
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1124,9 +1586,17 @@ func TestAddPrincipal(t *testing.T) {
 			resultManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
 		},
 		{
+			name: "Add ldap managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			addManagedGroups:    []string{ldapManagedGroup.GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId(), ldapManagedGroup.GetPublicId()},
+		},
+		{
 			name:     "Add invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
-			addUsers: []string{"u_recovery"},
+			addUsers: []string{globals.RecoveryUserId},
 			wantErr:  true,
 		},
 	}
@@ -1185,7 +1655,7 @@ func TestAddPrincipal(t *testing.T) {
 			req: &pbs.AddRolePrincipalsRequest{
 				Id:           role.GetPublicId(),
 				Version:      role.GetVersion(),
-				PrincipalIds: []string{"u_recovery"},
+				PrincipalIds: []string{globals.RecoveryUserId},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1209,7 +1679,7 @@ func TestSetPrincipal(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -1226,6 +1696,9 @@ func TestSetPrincipal(t *testing.T) {
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
+
+	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
 
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1314,9 +1787,17 @@ func TestSetPrincipal(t *testing.T) {
 			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
 		},
 		{
+			name: "Set LDAP managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			setManagedGroups:    []string{ldapManagedGroup.GetPublicId()},
+			resultManagedGroups: []string{ldapManagedGroup.GetPublicId()},
+		},
+		{
 			name:     "Set invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
-			setUsers: []string{"u_recovery"},
+			setUsers: []string{globals.RecoveryUserId},
 			wantErr:  true,
 		},
 	}
@@ -1375,7 +1856,7 @@ func TestSetPrincipal(t *testing.T) {
 			req: &pbs.SetRolePrincipalsRequest{
 				Id:           role.GetPublicId(),
 				Version:      role.GetVersion(),
-				PrincipalIds: []string{"u_recovery"},
+				PrincipalIds: []string{globals.RecoveryUserId},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1393,18 +1874,18 @@ func TestSetPrincipal(t *testing.T) {
 }
 
 func TestRemovePrincipal(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(ctx, repoFn, 0)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
 
-	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -1416,6 +1897,9 @@ func TestRemovePrincipal(t *testing.T) {
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
+
+	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
 
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1550,6 +2034,15 @@ func TestRemovePrincipal(t *testing.T) {
 			removeManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
 			resultManagedGroups: []string{},
 		},
+		{
+			name: "Remove LDAP managed groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), ldapManagedGroup.GetPublicId())
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			removeManagedGroups: []string{ldapManagedGroup.GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId()},
+		},
 	}
 
 	for _, tc := range addCases {
@@ -1627,8 +2120,14 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 	require, assert := require.New(t), assert.New(t)
 	require.Equal(len(expected), len(got.GrantStrings))
 	require.Equal(len(expected), len(got.Grants))
+
+	// sort expected and got to ensure they are in the same order
+	sort.Strings(expected)
+	sort.Slice(got.GrantStrings, func(i, j int) bool {
+		return got.GrantStrings[i] < got.GrantStrings[j]
+	})
 	for i, v := range expected {
-		parsed, err := perms.Parse("o_abc123", v)
+		parsed, err := perms.Parse(context.Background(), perms.GrantTuple{RoleScopeId: "o_abc123", GrantScopeId: "o_abc123", Grant: v})
 		require.NoError(err)
 		assert.Equal(expected[i], got.GrantStrings[i])
 		assert.Equal(expected[i], got.Grants[i].GetRaw())
@@ -1636,6 +2135,7 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 		j := got.Grants[i].GetJson()
 		require.NotNil(j)
 		assert.Equal(parsed.Id(), j.GetId())
+		assert.Equal(parsed.Ids(), j.GetIds())
 		assert.Equal(parsed.Type().String(), j.GetType())
 		_, acts := parsed.Actions()
 		assert.Equal(acts, j.GetActions())
@@ -1649,7 +2149,7 @@ func TestAddGrants(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	addCases := []struct {
@@ -1662,33 +2162,42 @@ func TestAddGrants(t *testing.T) {
 	}{
 		{
 			name:   "Add grant on empty role",
-			add:    []string{"id=*;type=*;actions=delete"},
-			result: []string{"id=*;type=*;actions=delete"},
+			add:    []string{"ids=*;type=*;actions=delete"},
+			result: []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant on role with grant",
-			existing: []string{"id=1;actions=read"},
-			add:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read"},
+			add:      []string{"ids=*;type=*;actions=delete"},
+			result:   []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add duplicate grant on role with grant",
-			existing: []string{"id=aA1;actions=read"},
-			add:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
-			result:   []string{"id=aA1;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_fooaA1;actions=read"},
+			add:      []string{"ids=*;type=*;actions=delete", "ids=*;type=*;actions=delete"},
+			result:   []string{"ids=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant matching existing grant",
-			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
-			add:      []string{"id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
+			add:      []string{"ids=*;type=*;actions=delete"},
 			wantErr:  true,
 		},
 		{
-			name:            "Check deprecation",
-			existing:        []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
-			add:             []string{"id=*;type=target;actions=add-host-sets"},
+			name:            "Check add-host-sets deprecation",
+			existing:        []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
+			add:             []string{"ids=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
+		},
+		{
+			name:     "Check id field deprecation",
+			existing: []string{"id=u_fooaA1;actions=read"},
+			add:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=u_fooaA1;actions=read", "id=*;type=*;actions=delete"},
+			wantErr: func() bool {
+				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
+			}(),
 		},
 	}
 
@@ -1735,7 +2244,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create"},
+				GrantStrings: []string{"ids=*;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -1744,7 +2253,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"id=*;type=*;actions=create"},
+				GrantStrings: []string{"ids=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1753,7 +2262,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Unparseable Grant",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", "unparseable"},
+				GrantStrings: []string{"ids=*;type=*;actions=create", "unparseable"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1762,7 +2271,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Empty Grant",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", ""},
+				GrantStrings: []string{"ids=*;type=*;actions=create", ""},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1788,7 +2297,7 @@ func TestSetGrants(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	setCases := []struct {
@@ -1801,39 +2310,48 @@ func TestSetGrants(t *testing.T) {
 	}{
 		{
 			name:   "Set grant on empty role",
-			set:    []string{"id=*;type=*;actions=delete"},
-			result: []string{"id=*;type=*;actions=delete"},
+			set:    []string{"ids=*;type=*;actions=delete"},
+			result: []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant on role with grant",
-			existing: []string{"id=1;actions=read"},
-			set:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read"},
+			set:      []string{"ids=*;type=*;actions=delete"},
+			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant matching existing grant",
-			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
-			set:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
+			set:      []string{"ids=*;type=*;actions=delete"},
+			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set duplicate grant matching existing grant",
-			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
-			set:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
-			result:   []string{"id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
+			set:      []string{"ids=*;type=*;actions=delete", "ids=*;type=*;actions=delete"},
+			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set empty on role",
-			existing: []string{"id=1;type=*;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=hcst_foo;type=*;actions=read", "ids=*;type=*;actions=delete"},
 			set:      nil,
 			result:   nil,
 		},
 		{
-			name:            "Check deprecation",
-			existing:        []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
-			set:             []string{"id=*;type=target;actions=add-host-sets"},
+			name:            "Check add-host-sets deprecation",
+			existing:        []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
+			set:             []string{"ids=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
+		},
+		{
+			name:     "Check id field deprecation",
+			existing: []string{"id=u_fooaA1;actions=read"},
+			set:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=*;type=*;actions=delete"},
+			wantErr: func() bool {
+				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
+			}(),
 		},
 	}
 
@@ -1881,7 +2399,7 @@ func TestSetGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create"},
+				GrantStrings: []string{"ids=*;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -1890,7 +2408,7 @@ func TestSetGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"id=*;type=*;actions=create"},
+				GrantStrings: []string{"ids=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1899,7 +2417,7 @@ func TestSetGrants(t *testing.T) {
 			name: "Unparsable grant",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", "unparseable"},
+				GrantStrings: []string{"ids=*;type=*;actions=create", "unparseable"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1924,7 +2442,7 @@ func TestRemoveGrants(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	removeCases := []struct {
@@ -1936,31 +2454,31 @@ func TestRemoveGrants(t *testing.T) {
 	}{
 		{
 			name:     "Remove all",
-			existing: []string{"id=1;type=*;actions=read"},
-			remove:   []string{"id=1;type=*;actions=read"},
+			existing: []string{"ids=hcst_1;type=*;actions=read"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
 		},
 		{
 			name:     "Remove partial",
-			existing: []string{"id=1;type=*;actions=read", "id=2;type=*;actions=delete"},
-			remove:   []string{"id=1;type=*;actions=read"},
-			result:   []string{"id=2;type=*;actions=delete"},
+			existing: []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove duplicate",
-			existing: []string{"id=1;type=*;actions=read", "id=2;type=*;actions=delete"},
-			remove:   []string{"id=1;type=*;actions=read", "id=1;type=*;actions=read"},
-			result:   []string{"id=2;type=*;actions=delete"},
+			existing: []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
-			name:     "Remove non existant",
-			existing: []string{"id=2;type=*;actions=delete"},
-			remove:   []string{"id=1;type=*;actions=read"},
-			result:   []string{"id=2;type=*;actions=delete"},
+			name:     "Remove non existent",
+			existing: []string{"ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove from empty role",
 			existing: []string{},
-			remove:   []string{"id=1;type=*;actions=read"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
 			result:   nil,
 		},
 	}
@@ -2008,7 +2526,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=2;type=*;actions=create"},
+				GrantStrings: []string{"ids=hcst_2;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -2017,7 +2535,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"id=*;type=*;actions=create"},
+				GrantStrings: []string{"ids=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -2026,7 +2544,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Empty Grant",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", ""},
+				GrantStrings: []string{"ids=*;type=*;actions=create", ""},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -2035,7 +2553,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Unparseable Grant",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", ";unparsable=2"},
+				GrantStrings: []string{"ids=*;type=*;actions=create", ";unparsable=2"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -2048,6 +2566,836 @@ func TestRemoveGrants(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestAddGrantScopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, iamRepo)
+	o2, p2 := iam.TestScopes(t, iamRepo)
+
+	addCases := []struct {
+		name            string
+		scopeId         string
+		existing        []string
+		add             []string
+		result          []string
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name:    "Add grant scopes on empty role - global",
+			scopeId: scope.Global.String(),
+			add:     []string{"this", "descendants"},
+			result:  []string{"this", "descendants"},
+		},
+		{
+			name:     "Add grant scopes on role with grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"global", o.PublicId},
+			add:      []string{"children", p.PublicId},
+			result:   []string{"global", o.PublicId, p.PublicId, "children"},
+		},
+		{
+			name:     "Add duplicate grant on role with grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{"children", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Add other org/proj scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{o2.PublicId, p2.PublicId},
+			result:   []string{"this", o2.PublicId, p2.PublicId},
+		},
+		{
+			name:     "Add grant scope matching existing grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{"this", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add this to scope grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{scope.Global.String()},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{scope.Global.String()},
+			wantErr:  true,
+		},
+		{
+			name:     "Add children when descendants exists - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"descendants"},
+			add:      []string{"children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add descendants when children exists - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"children"},
+			add:      []string{"descendants"},
+			wantErr:  true,
+		},
+		{
+			name:    "Add grant scopes on empty role - org",
+			scopeId: o.PublicId,
+			add:     []string{"this", "children"},
+			result:  []string{"this", "children"},
+		},
+		{
+			name:     "Add grant scopes on role with grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId, p.PublicId},
+			add:      []string{"children"},
+			result:   []string{o.PublicId, p.PublicId, "children"},
+		},
+		{
+			name:     "Add duplicate grant on role with grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{"children", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Add grant scope matching existing grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{"this", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - org - descendants",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{"descendants", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add this to scope grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{o.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Add other org/proj scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{p2.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:    "Add grant scopes on empty role - proj with id",
+			scopeId: p.PublicId,
+			add:     []string{p.PublicId},
+			result:  []string{p.PublicId},
+		},
+		{
+			name:    "Add grant scopes on empty role - proj with this",
+			scopeId: p.PublicId,
+			add:     []string{"this"},
+			result:  []string{"this"},
+		},
+		{
+			name:    "Add duplicate scopes on empty role - proj",
+			scopeId: p.PublicId,
+			add:     []string{"this", "this"},
+			result:  []string{"this"},
+		},
+		{
+			name:     "Add invalid grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{"p_foobar1234"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - proj - descendants",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{"descendants"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - proj - children",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{"children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add this to scope grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{p.PublicId},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{p.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Add other org/proj scopes - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			add:      []string{p2.PublicId},
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range addCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
+			for _, e := range tc.existing {
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+			}
+			req := &pbs.AddRoleGrantScopesRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+			}
+			req.GrantScopeIds = tc.add
+			got, err := s.AddRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			if tc.wantErr {
+				assert.Error(err)
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.ElementsMatch(tc.result, got.GetItem().GetGrantScopeIds())
+		})
+	}
+
+	_, p = iam.TestScopes(t, iamRepo)
+	role := iam.TestRole(t, conn, p.GetPublicId(), iam.WithGrantScopeIds([]string{"testing-none"}))
+	failCases := []struct {
+		name string
+		req  *pbs.AddRoleGrantScopesRequest
+		err  error
+	}{
+		{
+			name: "Bad Version",
+			req: &pbs.AddRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.AddRoleGrantScopesRequest{
+				Id:            "bad id",
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid scope ID",
+			req: &pbs.AddRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"p_foobar1234"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Grant Scope ID",
+			req: &pbs.AddRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this", ""},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.AddRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddRoleGrantScopes(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestSetGrantScopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, iamRepo)
+	o2, p2 := iam.TestScopes(t, iamRepo)
+
+	setCases := []struct {
+		name            string
+		scopeId         string
+		existing        []string
+		set             []string
+		result          []string
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name:    "Set grant scopes on empty role - global",
+			scopeId: scope.Global.String(),
+			set:     []string{"this", "descendants"},
+			result:  []string{"this", "descendants"},
+		},
+		{
+			name:     "Set grant scopes on role with grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"global", o.PublicId},
+			set:      []string{"children", p.PublicId},
+			result:   []string{"children", p.PublicId},
+		},
+		{
+			name:     "Set duplicate grant on role with grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"children", "children"},
+			result:   []string{"children"},
+		},
+		{
+			name:     "Set grant scope matching existing grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set this to scope grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{scope.Global.String()},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set scope to this grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{scope.Global.String(), "children"},
+			result:   []string{scope.Global.String(), "children"},
+		},
+		{
+			name:     "Set other org/proj scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"this", o2.PublicId, p2.PublicId},
+			result:   []string{"this", o2.PublicId, p2.PublicId},
+		},
+		{
+			name:     "Set invalid grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{scope.Global.String(), "children", "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{"this", scope.Global.String(), "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set children and descendants - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{"children", "descendants"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set descendants and children- global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{"descendants", "children"},
+			wantErr:  true,
+		},
+		{
+			name:    "Set grant scopes on empty role - org",
+			scopeId: o.PublicId,
+			set:     []string{"this", "children"},
+			result:  []string{"this", "children"},
+		},
+		{
+			name:     "Set grant scopes on role with grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId, p.PublicId},
+			set:      []string{"children"},
+			result:   []string{"children"},
+		},
+		{
+			name:     "Set duplicate grant on role with grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{p.PublicId, "children", "children"},
+			result:   []string{p.PublicId, "children"},
+		},
+		{
+			name:     "Set grant scope matching existing grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set this to scope grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set scope to this grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{o.PublicId, "children"},
+			result:   []string{o.PublicId, "children"},
+		},
+		{
+			name:     "Set invalid grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set invalid grant scope - org - descendants",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"descendants", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{},
+			set:      []string{o.PublicId, "children", "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{},
+			set:      []string{"this", o.PublicId, "children"},
+			wantErr:  true,
+		},
+		{
+			name:    "Set grant scopes on empty role - proj with id",
+			scopeId: p.PublicId,
+			set:     []string{p.PublicId},
+			result:  []string{p.PublicId},
+		},
+		{
+			name:    "Set grant scopes on empty role - proj with this",
+			scopeId: p.PublicId,
+			set:     []string{"this"},
+			result:  []string{"this"},
+		},
+		{
+			name:    "Set duplicate scopes on empty role - proj",
+			scopeId: p.PublicId,
+			set:     []string{"this", "this"},
+			result:  []string{"this"},
+		},
+		{
+			name:     "Set this to scope grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{p.PublicId},
+			set:      []string{"this"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Set scope to this grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{p.PublicId},
+			result:   []string{p.PublicId},
+		},
+		{
+			name:     "Set other org/proj scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"this", p2.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Set invalid grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{"p_foobar1234"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set invalid grant scope - proj - descendants",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{"descendants"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set invalid grant scope - proj - children",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{"children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{p.PublicId, "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{"this", p.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Set other org/proj scopes - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{p2.PublicId},
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range setCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
+			for _, e := range tc.existing {
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+			}
+			req := &pbs.SetRoleGrantScopesRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+			}
+			req.GrantScopeIds = tc.set
+			got, err := s.SetRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			if tc.wantErr {
+				assert.Error(err)
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.ElementsMatch(tc.result, got.GetItem().GetGrantScopeIds())
+		})
+	}
+
+	role := iam.TestRole(t, conn, p.GetPublicId(), iam.WithGrantScopeIds([]string{"testing-none"}))
+	failCases := []struct {
+		name string
+		req  *pbs.SetRoleGrantScopesRequest
+		err  error
+	}{
+		{
+			name: "Bad Version",
+			req: &pbs.SetRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.SetRoleGrantScopesRequest{
+				Id:            "bad id",
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid scope ID",
+			req: &pbs.SetRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"p_foobar1234"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Grant Scope ID",
+			req: &pbs.SetRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this", ""},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.SetRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "SetRoleGrantScopes(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestRemoveGrantScopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, iamRepo)
+
+	removeCases := []struct {
+		name     string
+		scopeId  string
+		existing []string
+		remove   []string
+		result   []string
+		wantErr  bool
+	}{
+		{
+			name:     "Remove all - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this", "descendants"},
+			remove:   []string{"this", "descendants"},
+		},
+		{
+			name:     "Remove partial - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this", o.PublicId, "descendants", p.PublicId},
+			remove:   []string{o.PublicId, p.PublicId},
+			result:   []string{"this", "descendants"},
+		},
+		{
+			name:     "Remove duplicate - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this", "children", o.PublicId},
+			remove:   []string{"children", o.PublicId, "children"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Remove non existent - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this", "descendants"},
+			remove:   []string{"p_foobar1234"},
+			result:   []string{"this", "descendants"},
+		},
+		{
+			name:     "Remove from empty role - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			remove:   []string{"this"},
+			result:   nil,
+		},
+		{
+			name:     "Remove all - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this", "children"},
+			remove:   []string{"this", "children"},
+		},
+		{
+			name:     "Remove partial - org",
+			scopeId:  o.PublicId,
+			existing: []string{"children", o.PublicId, p.PublicId},
+			remove:   []string{"children"},
+			result:   []string{o.PublicId, p.PublicId},
+		},
+		{
+			name:     "Remove duplicate - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this", p.PublicId, "children"},
+			remove:   []string{"children", p.PublicId, "children"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Remove non existent - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this", "children"},
+			remove:   []string{"p_foobar1234"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Remove from empty role - org",
+			scopeId:  o.PublicId,
+			existing: []string{},
+			remove:   []string{"this"},
+			result:   nil,
+		},
+		{
+			name:     "Remove all - proj",
+			scopeId:  p.PublicId,
+			existing: []string{p.PublicId},
+			remove:   []string{p.PublicId},
+		},
+		{
+			name:     "Remove duplicate - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			remove:   []string{"this", "this"},
+			result:   []string{},
+		},
+		{
+			name:     "Remove non existent - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			remove:   []string{"p_foobar1234"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Remove from empty role - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			remove:   []string{"this"},
+			result:   nil,
+		},
+	}
+
+	for _, tc := range removeCases {
+		t.Run(tc.name+"_", func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
+			for _, e := range tc.existing {
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+			}
+			req := &pbs.RemoveRoleGrantScopesRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+			}
+			req.GrantScopeIds = tc.remove
+			got, err := s.RemoveRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			s, ok := status.FromError(err)
+			assert.True(ok)
+			require.NoError(err, "Got error %v", s)
+			require.ElementsMatch(tc.result, got.GetItem().GetGrantScopeIds())
+		})
+	}
+
+	role := iam.TestRole(t, conn, p.GetPublicId(), iam.WithGrantScopeIds([]string{"testing-none"}))
+	failCases := []struct {
+		name string
+		req  *pbs.RemoveRoleGrantScopesRequest
+
+		err error
+	}{
+		{
+			name: "Bad Version",
+			req: &pbs.RemoveRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.RemoveRoleGrantScopesRequest{
+				Id:            "bad id",
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Grant Scope ID",
+			req: &pbs.RemoveRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this", ""},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid Grant Scope ID",
+			req: &pbs.RemoveRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"r_foobar1234"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.RemoveRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "RemoveRoleGrantScopes(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}

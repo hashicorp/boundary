@@ -1,0 +1,53 @@
+---
+layout: docs
+page_title: targets authorize-session - Command
+description: >-
+  The "targets authorize-session" command fetches session authorization credentials for a target resource.
+---
+
+# targets authorize-session
+
+Command: `targets authorize-session`
+
+The `targets authorize-session` command lets you fetch session authorization credentials for a target so that you can start a session later.
+
+## Examples
+
+This example fetches authorization credentials for a target with the ID `ttcp_wtXnow8Krb` and a specific host with the ID `hst_DHei2VpkBH`:
+
+```shell-session
+$ boundary targets authorize-session -id=ttcp_wtXnow8Krb -host-id=hst_DHei2VpkBH
+```
+
+You can also request an authorized session using the scope ID and target name.
+This example requests authorization credentials using the scope ID `o_1234567890` and the target name `prod-ssh`:
+
+```shell-session
+$ boundary targets authorize-session -scope-id o_1234567890 -name prod-ssh
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets authorize-session [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-host-id=<string>` -  The ID of a host from the target's host sets.
+If you specify a host, Boundary uses that specific host for the connection.
+If you do not specify a host, Boundary chooses one at random.
+- `-id=<string>` - The ID of the target you want to authorize a session for.
+- `-name=<string>` - The name of the target you want to fetch credentials for, if you want to authorize the session using scope parameters and target name.
+- `-scope-id=<string>` - The scope ID of the target you want to fetch credentials for, if you want to authorize the session using scope parameters and target name.
+Alternatively, you can specify a scope ID using the **BOUNDARY_SCOPE_ID** environment variable.
+You cannot specify a scope ID if you specify a `-scope-name<string>`.
+- `-scope-name=<string>` - The scope name of the target you want to fetch credentials for, if you want to authorize the session using scope parameters and target name.
+Alternatively, you can specify a scope name using the **BOUNDARY_SCOPE_NAME** environment variable.
+You cannot specify a scope name if you specify a `-scope-id<string>`.
+
+@include 'cmd-option-note.mdx'

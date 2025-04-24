@@ -6,7 +6,11 @@ THIS_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/boundary
 
+TEST_PACKAGE ?= ./...
+TEST_TIMEOUT ?= 30m
+
 CGO_ENABLED?=0
+GO_PATH = $(shell go env GOPATH)
 
 export GEN_BASEPATH := $(shell pwd)
 
@@ -19,18 +23,26 @@ cli:
 	$(MAKE) --environment-overrides -C internal/cmd/gencli cli
 
 .PHONY: tools
-tools:
+tools: golangci-lint
 	go generate -tags tools tools/tools.go
-	go install github.com/bufbuild/buf/cmd/buf@v1.3.1
-	go install github.com/mfridman/tparse@v0.10.3
+	go install github.com/bufbuild/buf/cmd/buf@v1.27.2
+	go install github.com/mfridman/tparse@v0.13.1
+	go install github.com/hashicorp/copywrite@v0.16.6
+
+# golangci-lint recommends installing the binary directly, instead of using go get
+# See the note: https://golangci-lint.run/usage/install/#install-from-source
+.PHONY: golangci-lint
+golangci-lint:
+	$(eval GOLINT_INSTALLED := $(shell which golangci-lint))
+
+	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
+		curl -sSfL \
+			https://raw.githubusercontent.com/golangci/golangci-lint/3f6f9043a8d0048ec075d2ace970b256cdf37a96/install.sh | sh -s -- -b $(GO_PATH)/bin v1.64.7; \
+	fi;
 
 .PHONY: cleangen
 cleangen:
 	@rm -f $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR} -name '*.pb.go' && find ${THIS_DIR} -name '*.pb.gw.go')
-
-.PHONY: install-no-plugins
-install-no-plugins: export SKIP_PLUGIN_BUILD=1
-install-no-plugins: install
 
 .PHONY: dev
 dev:
@@ -50,6 +62,10 @@ build: build-ui-ifne
 install: export BOUNDARY_INSTALL_BINARY=1
 install: build
 
+.PHONY: install-no-plugins
+install-no-plugins: export SKIP_PLUGIN_BUILD=1
+install-no-plugins: install
+
 .PHONY: build-memprof
 build-memprof: BUILD_TAGS+=memprofiler
 build-memprof:
@@ -63,13 +79,23 @@ fmt:
 	grep -L -R "^\/\/ Code generated .* DO NOT EDIT\.$$" --exclude-dir=.git --include="*.go" . | xargs gofumpt -w
 	buf format -w
 
+lint:
+	golangci-lint run --timeout 10m
+
+ifndef LINT_DIFF_BRANCH
+override LINT_DIFF_BRANCH = main
+endif
+
+lint-diff:
+	@echo "Checking for lint compared to $(LINT_DIFF_BRANCH)"
+	golangci-lint run --timeout 10m --new-from-rev=$(LINT_DIFF_BRANCH)
+
 # Set env for all UI targets.
 UI_TARGETS := update-ui-version build-ui build-ui-ifne clean-ui
 # Note the extra .tmp path segment in UI_CLONE_DIR is significant and required.
 $(UI_TARGETS): export UI_CLONE_DIR      := internal/ui/.tmp/boundary-ui
 $(UI_TARGETS): export UI_VERSION_FILE   := internal/ui/VERSION
 $(UI_TARGETS): export UI_DEFAULT_BRANCH := main
-$(UI_TARGETS): export UI_CURRENT_COMMIT := $(shell head -n1 < "$(UI_VERSION_FILE)" | cut -d' ' -f1)
 $(UI_TARGETS): export UI_COMMITISH ?=
 
 .PHONY: update-ui-version
@@ -84,13 +110,11 @@ update-ui-version:
 
 .PHONY: build-ui
 build-ui:
-	@if [ -z "$(UI_COMMITISH)" ]; then \
-		echo "==> Building default UI version from $(UI_VERSION_FILE): $(UI_CURRENT_COMMIT)"; \
-		export UI_COMMITISH="$(UI_CURRENT_COMMIT)"; \
-	else \
-		echo "==> Building custom UI version $(UI_COMMITISH)"; \
-	fi; \
 	./scripts/build-ui.sh
+
+.PHONY: build-plugins
+build-plugins:
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/plugins.sh'"
 
 .PHONY: clean-ui
 clean-ui:
@@ -110,7 +134,7 @@ perms-table:
 	@go run internal/website/permstable/permstable.go
 
 .PHONY: gen
-gen: cleangen proto api cli perms-table fmt
+gen: cleangen proto api cli perms-table fmt copywrite
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -119,12 +143,13 @@ proto: protolint protobuild
 
 .PHONY: protobuild
 protobuild:
-	@buf generate -o "${TMP_DIR}"
+	@buf generate -o "${TMP_DIR}" internal/proto
 
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* ${THIS_DIR}
 
-	@buf generate --template buf.openapiv2.gen.yaml --path internal/proto/controller/api/services/v1/
+	@buf generate --template buf.openapiv2.gen.yaml --path internal/proto/controller/api/services/v1/ --path internal/proto/controller/api/v1/
+	cd internal/bsr/ && buf generate proto/
 
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
@@ -132,6 +157,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/principal_role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_grant_scope.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/user.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/scope.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group.pb.go
@@ -139,7 +165,6 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/host/store/host.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/host/plugin/store/host.pb.go
-	@protoc-go-inject-tag -input=./internal/plugin/host/store/plugin.pb.go
 	@protoc-go-inject-tag -input=./internal/plugin/store/plugin.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/store/account.pb.go
@@ -151,6 +176,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_run.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_progress.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_run_allowed_table_name.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/controller.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/worker.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/root_certificate.pb.go
@@ -164,11 +193,18 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/ldap/store/ldap.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/upstream_message_service.pb.go
+	@protoc-go-inject-tag -input=./internal/storage/plugin/store/storage.pb.go
+	@protoc-go-inject-tag -input=./internal/policy/storage/store/policy.pb.go
+	@protoc-go-inject-tag -input=./internal/policy/store/policy.pb.go
+	@protoc-go-inject-tag -input=./internal/alias/target/store/alias.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authmethods/auth_method.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/scopes/scope.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/scope_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/session_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/targets/target.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/target_service.pb.go
@@ -181,6 +217,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/host_catalog_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/hostsets/host_set.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/host_set_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/storagebuckets/storage_bucket.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/storage_bucket_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authtokens/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/authtokens_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/managedgroups/managed_group.pb.go
@@ -201,13 +239,25 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/user_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/workers/worker.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/worker_service.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/session_recording_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/session_recordings/session_recording.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/alias_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/aliases/alias.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/server_coordination_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/servers.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/policies/policy.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/policy_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/billing/billing.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/billing_service.pb.go
 
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
 	@buf generate --template buf.testing.gen.yaml --path internal/proto/testing/event/v1/
+
+	@go run ./scripts/remove-gotags-comments/ -path ./internal/gen/controller.swagger.json
+	# Avoid use of -i to be compatible between GNU and BSD sed
+	@sed -e 's/placeholder-version/$(shell cat ./version/VERSION)/g' ./internal/gen/controller.swagger.json > controller.swagger.json.tmp && mv controller.swagger.json.tmp ./internal/gen/controller.swagger.json
 
 	@rm -R ${TMP_DIR}
 
@@ -222,6 +272,16 @@ protolint:
 	# Next check all protos for WIRE compatibility. WIRE is a subset of WIRE_JSON so we don't need to exclude any files.
 	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
 		--config buf.breaking.wire.yaml
+
+.PHONY: copywrite
+copywrite:
+	copywrite headers
+	# In the protobuf API directories, remove the BUSL headers
+	# and rerun copywrite with the directory specific configuration.
+	cd internal/proto/controller/api && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
+	cd internal/proto/controller/custom_options && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
+	cd internal/proto/plugin && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
+	cd internal/proto/worker/proxy/v1 && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
 
 .PHONY: website
 # must have nodejs and npm installed
@@ -247,19 +307,13 @@ test-database-down:
 generate-database-dumps:
 	@$(MAKE) -C testing/dbtest/docker generate-database-dumps
 
-.PHONY: test-ci
-test-ci: export CI_BUILD=1
-test-ci:
-	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	~/.go/bin/go test ./... -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
-
 .PHONY: test-sql
 test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
 
 .PHONY: test
 test:
-	go test ./... -timeout 30m -json -cover | tparse -follow
+	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
 
 .PHONY: test-sdk
 test-sdk:
@@ -298,7 +352,7 @@ REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
 VERSION?=0.7.4
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
-IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
+IMAGE_TAG_DEV?=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 
 .PHONY: docker
 docker: docker-build
@@ -343,18 +397,13 @@ docker-build-dev: build
 
 .NOTPARALLEL:
 
-.PHONY: ci-config
-ci-config:
-	@$(MAKE) -C .circleci ci-config
-
-.PHONY: ci-verify
-ci-verify:
-	@$(MAKE) -C .circleci ci-verify
-
 .PHONY: version
 # This is used for release builds by .github/workflows/build.yml
 version:
-	@go run ./cmd/boundary version | awk '/Version Number:/ { print $$3 }'
+	@go run \
+		-ldflags "-X 'github.com/hashicorp/boundary/version.Version=$(shell cat version/VERSION)'" \
+		./cmd/boundary version \
+		| awk '/Version Number:/ { print $$3 }'
 
 EDITION?=
 .PHONY: edition

@@ -1,29 +1,41 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package host_sets_test
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
+	pluginstore "github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -40,13 +52,51 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = map[subtypes.Subtype][]string{
-	static.Subtype: {"no-op", "read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
-	plugin.Subtype: {"no-op", "read", "update", "delete"},
+var testAuthorizedActions = map[globals.Subtype][]string{
+	static.Subtype:     {"no-op", "read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+	hostplugin.Subtype: {"no-op", "read", "update", "delete"},
+}
+
+func pluginSetToProto(hs *hostplugin.HostSet, plg *plugin.Plugin, proj *iam.Scope, prefEndpoints []string) *pb.HostSet {
+	pbHs := &pb.HostSet{
+		HostCatalogId: hs.GetCatalogId(),
+		Id:            hs.GetPublicId(),
+		CreatedTime:   hs.CreateTime.GetTimestamp(),
+		UpdatedTime:   hs.UpdateTime.GetTimestamp(),
+		Type:          hostplugin.Subtype.String(),
+		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
+		Plugin: &plugins.PluginInfo{
+			Id:          plg.GetPublicId(),
+			Name:        plg.GetName(),
+			Description: plg.GetDescription(),
+		},
+		Version:            hs.Version,
+		PreferredEndpoints: prefEndpoints,
+		AuthorizedActions:  testAuthorizedActions[hostplugin.Subtype],
+	}
+	if hs.SyncIntervalSeconds != 0 {
+		pbHs.SyncIntervalSeconds = &wrappers.Int32Value{Value: hs.SyncIntervalSeconds}
+	}
+	return pbHs
+}
+
+func staticSetToProto(hs *static.HostSet, proj *iam.Scope, hostIds []string) *pb.HostSet {
+	return &pb.HostSet{
+		HostCatalogId:     hs.GetCatalogId(),
+		Id:                hs.GetPublicId(),
+		CreatedTime:       hs.CreateTime.GetTimestamp(),
+		UpdatedTime:       hs.UpdateTime.GetTimestamp(),
+		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
+		Version:           hs.Version,
+		Type:              static.Subtype.String(),
+		HostIds:           hostIds,
+		AuthorizedActions: testAuthorizedActions[static.Subtype],
+	}
 }
 
 func TestGet_Static(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -57,14 +107,14 @@ func TestGet_Static(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	org, proj := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -75,16 +125,7 @@ func TestGet_Static(t *testing.T) {
 
 	toMerge := &pbs.GetHostSetRequest{}
 
-	pHost := &pb.HostSet{
-		HostCatalogId:     hc.GetPublicId(),
-		Id:                hs.GetPublicId(),
-		CreatedTime:       hs.CreateTime.GetTimestamp(),
-		UpdatedTime:       hs.UpdateTime.GetTimestamp(),
-		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-		Type:              "static",
-		HostIds:           hIds,
-		AuthorizedActions: testAuthorizedActions[static.Subtype],
-	}
+	set := staticSetToProto(hs, proj, hIds)
 
 	cases := []struct {
 		name string
@@ -95,11 +136,11 @@ func TestGet_Static(t *testing.T) {
 		{
 			name: "Get an Existing Host",
 			req:  &pbs.GetHostSetRequest{Id: hs.GetPublicId()},
-			res:  &pbs.GetHostSetResponse{Item: pHost},
+			res:  &pbs.GetHostSetResponse{Item: set},
 		},
 		{
 			name: "Get a non existing Host Set",
-			req:  &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostSetRequest{Id: globals.StaticHostSetPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -111,7 +152,7 @@ func TestGet_Static(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostSetRequest{Id: static.HostPrefix + "_1 23456789"},
+			req:  &pbs.GetHostSetRequest{Id: globals.StaticHostPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -122,7 +163,7 @@ func TestGet_Static(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostSetRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_sets.NewService(repoFn, pluginRepoFn)
+			s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn, 1000)
 			require.NoError(err, "Couldn't create a new host set service.")
 
 			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -134,13 +175,21 @@ func TestGet_Static(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostSet(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetHostSet(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
 
 func TestGet_Plugin(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -151,45 +200,29 @@ func TestGet_Plugin(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	org, proj := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
 
 	name := "test"
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
-	plg := hostplugin.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, plgm)
 	}
 
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1))
-	hsPrev := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", plugin.PreviousHostSetPrefix)))
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hs := hostplugin.TestSet(t, conn, kms, sche, hc, plgm, hostplugin.WithPreferredEndpoints(prefEndpoints), hostplugin.WithSyncIntervalSeconds(-1))
+	hsPrev := hostplugin.TestSet(t, conn, kms, sche, hc, plgm, hostplugin.WithPreferredEndpoints(prefEndpoints), hostplugin.WithSyncIntervalSeconds(-1), hostplugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostSetPreviousPrefix)))
 
 	toMerge := &pbs.GetHostSetRequest{}
-
-	pHostSet := &pb.HostSet{
-		HostCatalogId: hc.GetPublicId(),
-		Id:            hs.GetPublicId(),
-		CreatedTime:   hs.CreateTime.GetTimestamp(),
-		UpdatedTime:   hs.UpdateTime.GetTimestamp(),
-		Type:          plugin.Subtype.String(),
-		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-		Plugin: &plugins.PluginInfo{
-			Id:          plg.GetPublicId(),
-			Name:        plg.GetName(),
-			Description: plg.GetDescription(),
-		},
-		PreferredEndpoints:  prefEndpoints,
-		SyncIntervalSeconds: &wrappers.Int32Value{Value: -1},
-		AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
-	}
+	pHostSet := pluginSetToProto(hs, plg, proj, prefEndpoints)
 
 	cases := []struct {
 		name string
@@ -215,7 +248,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "Get a non existing Host Set",
-			req:  &pbs.GetHostSetRequest{Id: plugin.HostSetPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostSetRequest{Id: globals.PluginHostSetPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -227,7 +260,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostSetRequest{Id: plugin.HostSetPrefix + "_1 23456789"},
+			req:  &pbs.GetHostSetRequest{Id: globals.PluginHostSetPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -238,7 +271,7 @@ func TestGet_Plugin(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostSetRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_sets.NewService(repoFn, pluginRepoFn)
+			s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn, 1000)
 			require.NoError(err, "Couldn't create a new host set service.")
 
 			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -252,12 +285,20 @@ func TestGet_Plugin(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got.GetItem(), tc.res.GetItem(), protocmp.Transform()), "GetHostSet(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got.GetItem(),
+				tc.res.GetItem(),
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetHostSet(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
 
 func TestList_Static(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -268,31 +309,24 @@ func TestList_Static(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	org, proj := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
 
 	var wantHs []*pb.HostSet
-	for _, h := range static.TestSets(t, conn, hc.GetPublicId(), 10) {
-		wantHs = append(wantHs, &pb.HostSet{
-			Id:                h.GetPublicId(),
-			HostCatalogId:     h.GetCatalogId(),
-			Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-			CreatedTime:       h.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
-			Version:           h.GetVersion(),
-			Type:              static.Subtype.String(),
-			AuthorizedActions: testAuthorizedActions[static.Subtype],
-		})
+	for _, hs := range static.TestSets(t, conn, hc.GetPublicId(), 10) {
+		wantHs = append(wantHs, staticSetToProto(hs, proj, nil))
 	}
+	// Since we sort by created_time descending, we need to reverse the slice
+	slices.Reverse(wantHs)
 
 	cases := []struct {
 		name string
@@ -303,22 +337,42 @@ func TestList_Static(t *testing.T) {
 		{
 			name: "List Many Host Sets",
 			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId()},
-			res:  &pbs.ListHostSetsResponse{Items: wantHs},
+			res: &pbs.ListHostSetsResponse{
+				Items:        wantHs,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				EstItemCount: 10,
+			},
 		},
 		{
 			name: "List No Host Sets",
 			req:  &pbs.ListHostSetsRequest{HostCatalogId: hcNoHosts.GetPublicId()},
-			res:  &pbs.ListHostSetsResponse{},
+			res: &pbs.ListHostSetsResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter To One Host Set",
 			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantHs[1].GetId())},
-			res:  &pbs.ListHostSetsResponse{Items: wantHs[1:2]},
+			res: &pbs.ListHostSetsResponse{
+				Items:        wantHs[1:2],
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				EstItemCount: 1,
+			},
 		},
 		{
 			name: "Filter To No Host Sets",
 			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: `"/item/name"=="doesnt match"`},
-			res:  &pbs.ListHostSetsResponse{},
+			res: &pbs.ListHostSetsResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -329,7 +383,7 @@ func TestList_Static(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := host_sets.NewService(repoFn, pluginRepoFn)
+			s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn, 1000)
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test with non-anon user
@@ -340,10 +394,18 @@ func TestList_Static(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			))
 
 			// Test with anon user
-			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -357,6 +419,7 @@ func TestList_Static(t *testing.T) {
 }
 
 func TestList_Plugin(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -367,45 +430,31 @@ func TestList_Plugin(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	org, proj := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, plgm)
 	}
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hcNoHosts := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hcNoHosts := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	preferredEndpoints := []string{"cidr:1.2.3.4", "dns:*.foobar.com"}
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
-		h := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints), plugin.WithSyncIntervalSeconds(5))
-		wantHs = append(wantHs, &pb.HostSet{
-			Id:            h.GetPublicId(),
-			HostCatalogId: h.GetCatalogId(),
-			Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-			Plugin: &plugins.PluginInfo{
-				Id:          plg.GetPublicId(),
-				Name:        plg.GetName(),
-				Description: plg.GetDescription(),
-			},
-			CreatedTime:         h.GetCreateTime().GetTimestamp(),
-			UpdatedTime:         h.GetUpdateTime().GetTimestamp(),
-			Version:             h.GetVersion(),
-			Type:                plugin.Subtype.String(),
-			AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
-			PreferredEndpoints:  preferredEndpoints,
-			SyncIntervalSeconds: &wrappers.Int32Value{Value: 5},
-		})
+		hs := hostplugin.TestSet(t, conn, kms, sche, hc, plgm, hostplugin.WithPreferredEndpoints(preferredEndpoints), hostplugin.WithSyncIntervalSeconds(5))
+		wantHs = append(wantHs, pluginSetToProto(hs, plg, proj, preferredEndpoints))
 	}
+	// Since we sort by created_time descending, we need to reverse the slice
+	slices.Reverse(wantHs)
 
 	cases := []struct {
 		name string
@@ -416,22 +465,42 @@ func TestList_Plugin(t *testing.T) {
 		{
 			name: "List Many Host Sets",
 			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId()},
-			res:  &pbs.ListHostSetsResponse{Items: wantHs},
+			res: &pbs.ListHostSetsResponse{
+				Items:        wantHs,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				EstItemCount: 10,
+			},
 		},
 		{
 			name: "List No Host Sets",
 			req:  &pbs.ListHostSetsRequest{HostCatalogId: hcNoHosts.GetPublicId()},
-			res:  &pbs.ListHostSetsResponse{},
+			res: &pbs.ListHostSetsResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter To One Host Set",
 			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantHs[1].GetId())},
-			res:  &pbs.ListHostSetsResponse{Items: wantHs[1:2]},
+			res: &pbs.ListHostSetsResponse{
+				Items:        wantHs[1:2],
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				EstItemCount: 1,
+			},
 		},
 		{
 			name: "Filter To No Host Sets",
 			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: `"/item/name"=="doesnt match"`},
-			res:  &pbs.ListHostSetsResponse{},
+			res: &pbs.ListHostSetsResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -442,7 +511,7 @@ func TestList_Plugin(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := host_sets.NewService(repoFn, pluginRepoFn)
+			s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn, 1000)
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test with non-anon user
@@ -453,10 +522,18 @@ func TestList_Plugin(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			))
 
 			// Test with anon user
-			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -469,8 +546,594 @@ func TestList_Plugin(t *testing.T) {
 	}
 }
 
+func TestListPagination(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
+	}
+
+	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, plgm)
+	}
+	staticRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kms)
+	}
+	staticRepo, err := staticRepoFn()
+	require.NoError(t, err)
+	pluginRepo, err := pluginRepoFn()
+	require.NoError(t, err)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
+	phc := hostplugin.TestCatalogs(t, conn, proj.GetPublicId(), plg.GetPublicId(), 1)[0]
+	shc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+
+	var staticPbHostSets []*pb.HostSet
+	for _, set := range static.TestSets(t, conn, shc.GetPublicId(), 10) {
+		staticPbHostSets = append(staticPbHostSets, staticSetToProto(set, proj, nil))
+	}
+	var pluginPbHostSets []*pb.HostSet
+	for i := 0; i < 10; i++ {
+		set := hostplugin.TestSet(t, conn, kms, sche, phc, plgm)
+		pluginPbHostSets = append(pluginPbHostSets, pluginSetToProto(set, plg, proj, nil))
+	}
+
+	// Since we sort by create_time descending, we need to reverse the order
+	slices.Reverse(staticPbHostSets)
+	slices.Reverse(pluginPbHostSets)
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	s, err := host_sets.NewService(ctx, staticRepoFn, pluginRepoFn, 1000)
+	require.NoError(t, err)
+
+	t.Run("static-host-sets", func(t *testing.T) {
+		// Start paginating, recursively
+		req := &pbs.ListHostSetsRequest{
+			HostCatalogId: shc.GetPublicId(),
+			Filter:        "",
+			ListToken:     "",
+			PageSize:      2,
+		}
+		got, err := s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        staticPbHostSets[0:2],
+					ResponseType: "delta",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Request second page
+		req.ListToken = got.ListToken
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        staticPbHostSets[2:4],
+					ResponseType: "delta",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Request rest of results
+		req.ListToken = got.ListToken
+		req.PageSize = 10
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 6)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        staticPbHostSets[4:],
+					ResponseType: "complete",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Create another set
+		staticHostSet := static.TestSets(t, conn, shc.GetPublicId(), 1)[0]
+		// Add to the front since it's most recently updated
+		staticPbHostSets = append([]*pb.HostSet{staticSetToProto(staticHostSet, proj, nil)}, staticPbHostSets...)
+
+		// Delete one of the other sets
+		_, err = staticRepo.DeleteSet(ctx, proj.GetPublicId(), staticPbHostSets[len(staticPbHostSets)-1].Id)
+		require.NoError(t, err)
+		deletedHostSet := staticPbHostSets[len(staticPbHostSets)-1]
+		staticPbHostSets = staticPbHostSets[:len(staticPbHostSets)-1]
+
+		// Update another of the sets
+		staticPbHostSets[1].Name = wrapperspb.String("new-name")
+		staticPbHostSets[1].Version = 2
+		hs := &static.HostSet{
+			HostSet: &store.HostSet{
+				PublicId:  staticPbHostSets[1].Id,
+				CatalogId: staticPbHostSets[1].HostCatalogId,
+				Name:      staticPbHostSets[1].Name.GetValue(),
+			},
+		}
+		newSet, _, _, err := staticRepo.UpdateSet(ctx, proj.PublicId, hs, 1, []string{"name"})
+		require.NoError(t, err)
+		staticPbHostSets[1].UpdatedTime = newSet.GetUpdateTime().GetTimestamp()
+		staticPbHostSets[1].Version = newSet.GetVersion()
+		// Add to the front of the slice since it's most recently updated
+		staticPbHostSets = append(
+			[]*pb.HostSet{staticPbHostSets[1]},
+			append(
+				[]*pb.HostSet{staticPbHostSets[0]},
+				staticPbHostSets[2:]...,
+			)...,
+		)
+
+		// Run analyze to update postgres estimates
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// Request updated results
+		req.ListToken = got.ListToken
+		req.PageSize = 1
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        []*pb.HostSet{staticPbHostSets[0]},
+					ResponseType: "delta",
+					ListToken:    "",
+					SortBy:       "updated_time",
+					SortDir:      "desc",
+					// Should contain the deleted Host set
+					RemovedIds:   []string{deletedHostSet.Id},
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Get next page
+		req.ListToken = got.ListToken
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        []*pb.HostSet{staticPbHostSets[1]},
+					ResponseType: "complete",
+					ListToken:    "",
+					SortBy:       "updated_time",
+					SortDir:      "desc",
+					// Should be empty again
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Request new page with filter requiring looping
+		// to fill the page.
+		req.ListToken = ""
+		req.PageSize = 1
+		req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, staticPbHostSets[len(staticPbHostSets)-2].Id, staticPbHostSets[len(staticPbHostSets)-1].Id)
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        []*pb.HostSet{staticPbHostSets[len(staticPbHostSets)-2]},
+					ResponseType: "delta",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Get the second page
+		req.ListToken = got.ListToken
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        []*pb.HostSet{staticPbHostSets[len(staticPbHostSets)-1]},
+					ResponseType: "complete",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Create unauthenticated user
+		unauthAt := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+		unauthR := iam.TestRole(t, conn, proj.GetPublicId())
+		_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+		// Make a request with the unauthenticated user,
+		// ensure the response contains the pagination parameters.
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    unauthAt.GetPublicId(),
+			Token:       unauthAt.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+		_, err = s.ListHostSets(ctx, &pbs.ListHostSetsRequest{
+			HostCatalogId: shc.GetPublicId(),
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, handlers.ForbiddenError(), err)
+	})
+
+	t.Run("plugin-host-sets", func(t *testing.T) {
+		// Start paginating, recursively
+		req := &pbs.ListHostSetsRequest{
+			HostCatalogId: phc.GetPublicId(),
+			Filter:        "",
+			ListToken:     "",
+			PageSize:      2,
+		}
+		got, err := s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        pluginPbHostSets[0:2],
+					ResponseType: "delta",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Request second page
+		req.ListToken = got.ListToken
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        pluginPbHostSets[2:4],
+					ResponseType: "delta",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Request rest of results
+		req.ListToken = got.ListToken
+		req.PageSize = 10
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 6)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        pluginPbHostSets[4:],
+					ResponseType: "complete",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Create another Host set
+		pluginHost := hostplugin.TestSet(t, conn, kms, sche, phc, plgm)
+		pluginPbHostSets = append([]*pb.HostSet{pluginSetToProto(pluginHost, plg, proj, nil)}, pluginPbHostSets...)
+
+		// Delete one of the other sets
+		_, err = pluginRepo.DeleteSet(ctx, proj.GetPublicId(), pluginPbHostSets[len(pluginPbHostSets)-1].Id)
+		require.NoError(t, err)
+		deletedHostSet := pluginPbHostSets[len(pluginPbHostSets)-1]
+		pluginPbHostSets = pluginPbHostSets[:len(pluginPbHostSets)-1]
+
+		// Update another of the sets
+		pluginPbHostSets[1].Name = wrapperspb.String("new-name")
+		pluginPbHostSets[1].Version = 2
+		hs := &hostplugin.HostSet{
+			HostSet: &pluginstore.HostSet{
+				PublicId:  pluginPbHostSets[1].Id,
+				CatalogId: pluginPbHostSets[1].HostCatalogId,
+				Name:      pluginPbHostSets[1].Name.GetValue(),
+			},
+		}
+		newSet, _, _, _, err := pluginRepo.UpdateSet(ctx, proj.PublicId, hs, 1, []string{"name"})
+		require.NoError(t, err)
+		pluginPbHostSets[1].UpdatedTime = newSet.GetUpdateTime().GetTimestamp()
+		pluginPbHostSets[1].Version = newSet.GetVersion()
+		// Add to the front of the slice since it's most recently updated
+		pluginPbHostSets = append(
+			[]*pb.HostSet{pluginPbHostSets[1]},
+			append(
+				[]*pb.HostSet{pluginPbHostSets[0]},
+				pluginPbHostSets[2:]...,
+			)...,
+		)
+
+		// Run analyze to update postgres estimates
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// Request updated results
+		req.ListToken = got.ListToken
+		req.PageSize = 1
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        []*pb.HostSet{pluginPbHostSets[0]},
+					ResponseType: "delta",
+					ListToken:    "",
+					SortBy:       "updated_time",
+					SortDir:      "desc",
+					// Should contain the deleted host set
+					RemovedIds:   []string{deletedHostSet.Id},
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Get next page
+		req.ListToken = got.ListToken
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		// Compare without comparing the list token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        []*pb.HostSet{pluginPbHostSets[1]},
+					ResponseType: "complete",
+					ListToken:    "",
+					SortBy:       "updated_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Request new page with filter requiring looping
+		// to fill the page.
+		req.ListToken = ""
+		req.PageSize = 1
+		req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, pluginPbHostSets[len(pluginPbHostSets)-2].Id, pluginPbHostSets[len(pluginPbHostSets)-1].Id)
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        []*pb.HostSet{pluginPbHostSets[len(pluginPbHostSets)-2]},
+					ResponseType: "delta",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					// Should be empty again
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+		req.ListToken = got.ListToken
+		// Get the second page
+		got, err = s.ListHostSets(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListHostSetsResponse{
+					Items:        []*pb.HostSet{pluginPbHostSets[len(pluginPbHostSets)-1]},
+					ResponseType: "complete",
+					ListToken:    "",
+					SortBy:       "created_time",
+					SortDir:      "desc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
+			),
+		)
+
+		// Create unauthenticated user
+		unauthAt := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+		unauthR := iam.TestRole(t, conn, proj.GetPublicId())
+		_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+		// Make a request with the unauthenticated user,
+		// ensure the response contains the pagination parameters.
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    unauthAt.GetPublicId(),
+			Token:       unauthAt.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+		_, err = s.ListHostSets(ctx, &pbs.ListHostSetsRequest{
+			HostCatalogId: phc.GetPublicId(),
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, handlers.ForbiddenError(), err)
+	})
+}
+
 func TestDelete_Static(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -485,15 +1148,15 @@ func TestDelete_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := host_sets.NewService(repoFn, pluginRepoFn)
+	s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
@@ -514,7 +1177,7 @@ func TestDelete_Static(t *testing.T) {
 			name:      "Delete bad id Host Set",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: static.HostSetPrefix + "_doesntexis",
+				Id: globals.StaticHostSetPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -522,7 +1185,7 @@ func TestDelete_Static(t *testing.T) {
 			name:      "Bad Host Id formatting",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: static.HostSetPrefix + "_bad_format",
+				Id: globals.StaticHostSetPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -535,13 +1198,21 @@ func TestDelete_Static(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				tc.res,
+				got,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "DeleteHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete_Plugin(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -556,21 +1227,21 @@ func TestDelete_Plugin(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	h := plugin.TestSet(t, conn, kms, sche, hc, plgm)
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	h := hostplugin.TestSet(t, conn, kms, sche, hc, plgm)
 
-	s, err := host_sets.NewService(repoFn, pluginRepoFn)
+	s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
@@ -591,7 +1262,7 @@ func TestDelete_Plugin(t *testing.T) {
 			name:      "Delete bad id Host Set",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: plugin.HostSetPrefix + "_doesntexis",
+				Id: globals.PluginHostSetPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -599,7 +1270,7 @@ func TestDelete_Plugin(t *testing.T) {
 			name:      "Bad Host Id formatting",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: plugin.HostSetPrefix + "_bad_format",
+				Id: globals.PluginHostSetPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -612,13 +1283,21 @@ func TestDelete_Plugin(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				tc.res,
+				got,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "DeleteHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete_twice(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -634,20 +1313,20 @@ func TestDelete_twice(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := host_sets.NewService(repoFn, plgRepoFn)
+	s, err := host_sets.NewService(ctx, repoFn, plgRepoFn, 1000)
 	require.NoError(err, "Couldn't create a new host set service.")
 	req := &pbs.DeleteHostSetRequest{
 		Id: h.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
+	ctx = auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 	_, gErr := s.DeleteHostSet(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteHostSet(ctx, req)
@@ -657,6 +1336,7 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate_Static(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -671,10 +1351,10 @@ func TestCreate_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
@@ -696,7 +1376,7 @@ func TestCreate_Static(t *testing.T) {
 				Type:          "static",
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", static.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.StaticHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -736,7 +1416,7 @@ func TestCreate_Static(t *testing.T) {
 				Description:   &wrappers.StringValue{Value: "no type desc"},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", static.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.StaticHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -779,7 +1459,7 @@ func TestCreate_Static(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := host_sets.NewService(repoFn, plgRepoFn)
+			s, err := host_sets.NewService(ctx, repoFn, plgRepoFn, 1000)
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -789,7 +1469,7 @@ func TestCreate_Static(t *testing.T) {
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostSetPrefix), got.GetItem().GetId())
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.StaticHostSetPrefix), got.GetItem().GetId())
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -806,13 +1486,21 @@ func TestCreate_Static(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestCreate_Plugin(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -827,22 +1515,22 @@ func TestCreate_Plugin(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name)
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{
+	plg := plugin.TestPlugin(t, conn, name)
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginHostServer{
 				OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					return nil, nil
 				},
 			}),
 		})
 	}
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"int":         1,
 		"zero int":    0,
 		"string":      "foo",
@@ -851,7 +1539,7 @@ func TestCreate_Plugin(t *testing.T) {
 		"zero bytes":  nil,
 		"bool":        true,
 		"zero bool":   false,
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"int":         1,
 			"zero int":    0,
 			"string":      "foo",
@@ -866,7 +1554,7 @@ func TestCreate_Plugin(t *testing.T) {
 	require.NoError(t, err)
 	// The result should clear out all keys with nil values...
 	delete(attrs, "zero bytes")
-	delete(attrs["nested"].(map[string]interface{}), "zero bytes")
+	delete(attrs["nested"].(map[string]any), "zero bytes")
 	testOutputAttrs, err := structpb.NewStruct(attrs)
 	require.NoError(t, err)
 
@@ -886,11 +1574,11 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:       hc.GetPublicId(),
 				Name:                &wrappers.StringValue{Value: "No Attributes"},
 				Description:         &wrappers.StringValue{Value: "desc"},
-				Type:                plugin.Subtype.String(),
+				Type:                hostplugin.Subtype.String(),
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.PluginHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -901,8 +1589,8 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:                &wrappers.StringValue{Value: "No Attributes"},
 					Description:         &wrappers.StringValue{Value: "desc"},
-					Type:                plugin.Subtype.String(),
-					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+					Type:                hostplugin.Subtype.String(),
+					AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 				},
 			},
@@ -913,14 +1601,14 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:       hc.GetPublicId(),
 				Name:                &wrappers.StringValue{Value: "With Attributes"},
 				Description:         &wrappers.StringValue{Value: "desc"},
-				Type:                plugin.Subtype.String(),
+				Type:                hostplugin.Subtype.String(),
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
 				Attrs: &pb.HostSet_Attributes{
 					Attributes: testInputAttrs,
 				},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.PluginHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -931,9 +1619,9 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:                &wrappers.StringValue{Value: "With Attributes"},
 					Description:         &wrappers.StringValue{Value: "desc"},
-					Type:                plugin.Subtype.String(),
+					Type:                hostplugin.Subtype.String(),
 					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
-					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+					AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 					Attrs: &pb.HostSet_Attributes{
 						Attributes: testOutputAttrs,
 					},
@@ -946,11 +1634,11 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               plugin.Subtype.String(),
+				Type:               hostplugin.Subtype.String(),
 				PreferredEndpoints: prefEndpoints,
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.PluginHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -961,9 +1649,9 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:               &wrappers.StringValue{Value: "name"},
 					Description:        &wrappers.StringValue{Value: "desc"},
-					Type:               plugin.Subtype.String(),
+					Type:               hostplugin.Subtype.String(),
 					PreferredEndpoints: prefEndpoints,
-					AuthorizedActions:  testAuthorizedActions[plugin.Subtype],
+					AuthorizedActions:  testAuthorizedActions[hostplugin.Subtype],
 				},
 			},
 		},
@@ -973,7 +1661,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               plugin.Subtype.String(),
+				Type:               hostplugin.Subtype.String(),
 				PreferredEndpoints: append(prefEndpoints, "foobar:1.2.3.4"),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -996,7 +1684,7 @@ func TestCreate_Plugin(t *testing.T) {
 				Description:   &wrappers.StringValue{Value: "no type desc"},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.PluginHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -1007,8 +1695,8 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:              &wrappers.StringValue{Value: "no type name"},
 					Description:       &wrappers.StringValue{Value: "no type desc"},
-					Type:              plugin.Subtype.String(),
-					AuthorizedActions: testAuthorizedActions[plugin.Subtype],
+					Type:              hostplugin.Subtype.String(),
+					AuthorizedActions: testAuthorizedActions[hostplugin.Subtype],
 				},
 			},
 		},
@@ -1044,7 +1732,7 @@ func TestCreate_Plugin(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := host_sets.NewService(repoFn, plgRepoFn)
+			s, err := host_sets.NewService(ctx, repoFn, plgRepoFn, 1000)
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -1056,7 +1744,7 @@ func TestCreate_Plugin(t *testing.T) {
 			require.NoError(gErr)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), plugin.HostSetPrefix), got.GetItem().GetId())
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.PluginHostSetPrefix), got.GetItem().GetId())
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -1073,13 +1761,21 @@ func TestCreate_Plugin(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestUpdate_Static(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1094,7 +1790,7 @@ func TestUpdate_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create new static repo.")
@@ -1104,9 +1800,9 @@ func TestUpdate_Static(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
 	hIds := []string{h[0].GetPublicId(), h[1].GetPublicId()}
 
-	hs, err := static.NewHostSet(hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
+	hs, err := static.NewHostSet(ctx, hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
 	require.NoError(t, err)
-	hs, err = repo.CreateSet(context.Background(), proj.GetPublicId(), hs)
+	hs, err = repo.CreateSet(ctx, proj.GetPublicId(), hs)
 	require.NoError(t, err)
 
 	static.TestSetMembers(t, conn, hs.GetPublicId(), h)
@@ -1115,7 +1811,7 @@ func TestUpdate_Static(t *testing.T) {
 
 	resetHostSet := func() {
 		version++
-		_, _, _, err = repo.UpdateSet(context.Background(), proj.GetPublicId(), hs, version, []string{"Name", "Description"})
+		_, _, _, err = repo.UpdateSet(ctx, proj.GetPublicId(), hs, version, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset host.")
 		version++
 	}
@@ -1125,10 +1821,10 @@ func TestUpdate_Static(t *testing.T) {
 		Id: hs.GetPublicId(),
 	}
 
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	tested, err := host_sets.NewService(repoFn, plgRepoFn)
+	tested, err := host_sets.NewService(ctx, repoFn, plgRepoFn, 1000)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
@@ -1225,9 +1921,9 @@ func TestUpdate_Static(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Only non-existant paths in Mask",
+			name: "Only non-existent paths in Mask",
 			req: &pbs.UpdateHostSetRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.HostSet{
 					Name:        &wrappers.StringValue{Value: "updated name"},
 					Description: &wrappers.StringValue{Value: "updated desc"},
@@ -1334,7 +2030,7 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "Update a Non Existing Host Set",
 			req: &pbs.UpdateHostSetRequest{
-				Id: static.HostSetPrefix + "_DoesntExis",
+				Id: globals.StaticHostSetPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -1454,13 +2150,21 @@ func TestUpdate_Static(t *testing.T) {
 				})
 			}
 
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHostSet(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateHostSet(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
 
 func TestUpdate_Plugin(t *testing.T) {
 	t.Parallel()
+	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1470,28 +2174,28 @@ func TestUpdate_Plugin(t *testing.T) {
 	rw := db.New(conn)
 
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(testCtx, rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(testCtx, rw, rw, kms, sche, plgm)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	tested, err := host_sets.NewService(repoFn, pluginHostRepo)
+	tested, err := host_sets.NewService(testCtx, repoFn, pluginHostRepo, 1000)
 	require.NoError(t, err, "Failed to create a new host catalog service.")
 
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 
 	freshSet := func(t *testing.T) *pb.HostSet {
-		attr, err := structpb.NewStruct(map[string]interface{}{
+		attr, err := structpb.NewStruct(map[string]any{
 			"foo": "bar",
 		})
 		require.NoError(t, err)
@@ -1499,7 +2203,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			HostCatalogId: hc.GetPublicId(),
 			Name:          wrapperspb.String("default"),
 			Description:   wrapperspb.String("default"),
-			Type:          plugin.Subtype.String(),
+			Type:          hostplugin.Subtype.String(),
 			Attrs: &pb.HostSet_Attributes{
 				Attributes: attr,
 			},
@@ -1578,7 +2282,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			changes: []updateFn{
 				clearReadOnlyFields(),
 				updateAttrs(func() *structpb.Struct {
-					attr, err := structpb.NewStruct(map[string]interface{}{
+					attr, err := structpb.NewStruct(map[string]any{
 						"newkey": "newvalue",
 						"foo":    nil,
 					})
@@ -1587,7 +2291,7 @@ func TestUpdate_Plugin(t *testing.T) {
 				}()),
 			},
 			check: func(t *testing.T, in *pb.HostSet) {
-				assert.Equal(t, map[string]interface{}{"newkey": "newvalue"}, in.GetAttributes().AsMap())
+				assert.Equal(t, map[string]any{"newkey": "newvalue"}, in.GetAttributes().AsMap())
 			},
 		},
 		{
@@ -1672,8 +2376,8 @@ func TestUpdate_Plugin(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:  "Only non-existant paths in Mask",
-			masks: []string{"nonexistant_field"},
+			name:  "Only non-existent paths in Mask",
+			masks: []string{"nonexistent_field"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
 				updateName(wrapperspb.String("new")),
@@ -1799,6 +2503,7 @@ func TestUpdate_Plugin(t *testing.T) {
 }
 
 func TestAddHostSetHosts(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1813,12 +2518,12 @@ func TestAddHostSetHosts(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	s, err := host_sets.NewService(repoFn, plgRepoFn)
+	s, err := host_sets.NewService(ctx, repoFn, plgRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -1920,6 +2625,7 @@ func TestAddHostSetHosts(t *testing.T) {
 }
 
 func TestSetHostSetHosts(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1934,12 +2640,12 @@ func TestSetHostSetHosts(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	s, err := host_sets.NewService(repoFn, plgRepoFn)
+	s, err := host_sets.NewService(ctx, repoFn, plgRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -2037,6 +2743,7 @@ func TestSetHostSetHosts(t *testing.T) {
 }
 
 func TestRemoveHostSetHosts(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -2051,12 +2758,12 @@ func TestRemoveHostSetHosts(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	s, err := host_sets.NewService(repoFn, plgRepoFn)
+	s, err := host_sets.NewService(ctx, repoFn, plgRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]

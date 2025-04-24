@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package hostcatalogscmd
 
 import (
@@ -108,6 +111,11 @@ func (c *Command) printListTable(items []*hostcatalogs.HostCatalog) string {
 				fmt.Sprintf("    Description:         %s", m.Description),
 			)
 		}
+		if m.WorkerFilter != "" {
+			output = append(output,
+				fmt.Sprintf("    Worker Filter:       %s", m.WorkerFilter),
+			)
+		}
 		if len(m.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -120,7 +128,7 @@ func (c *Command) printListTable(items []*hostcatalogs.HostCatalog) string {
 }
 
 func printItemTable(item *hostcatalogs.HostCatalog, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -147,6 +155,9 @@ func printItemTable(item *hostcatalogs.HostCatalog, resp *api.Response) string {
 	}
 	if item.SecretsHmac != "" {
 		nonAttributeMap["Secrets HMAC"] = item.SecretsHmac
+	}
+	if item.WorkerFilter != "" {
+		nonAttributeMap["Worker Filter"] = item.WorkerFilter
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)

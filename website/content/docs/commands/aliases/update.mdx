@@ -1,0 +1,76 @@
+---
+layout: docs
+page_title: aliases update - Command
+description: >-
+  The "aliases update" command updates an existing alias resource with new information.
+---
+
+# aliases update
+
+Command: `aliases update`
+
+The `aliases update` command lets you update an alias.
+
+## Example
+
+This example updates a target-type alias with the ID `alt_1234567890` to add the name `devops`:
+
+```shell-session
+$ boundary aliases update target -id alt_1234567890 -name devops
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary aliases update [type] [sub command] [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    target    Update a target type alias
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+At this time, you can only create aliases for targets.
+
+The `aliases update target` command lets you update aliases for targets.
+
+#### Example
+
+This example updates a target-type alias with the ID `alt_1234567890` to add the name `devops`:
+
+```shell-session
+$ boundary aliases update target -id alt_1234567890 -name devops
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary aliases update target [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - Specifies the optional description you want to use to describe the alias for identification purposes.
+- `-destination-id=<string>` - Specifies the ID of the target that the alias points to.
+- `-name=<string>` - Specifies the optional name you want to use to describe the alias for identification purposes.
+- `-scope-id=<string>` - Scope in which the alias resides. The default is `global`.
+You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+At this time, aliases are only supported for the global scope.
+- `-value=<string>` - The string that you want to use as the alias to represent the target.
+The `value` must comply with DNS naming rules.
+
+#### Target alias options
+
+- `-authorize-session-host-id=<string>` - Indicates the host ID to use when you use the alias to authorize a session.
+
+@include 'cmd-option-note.mdx'

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -144,8 +147,8 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (c *Host) testCloneHost() *Host {
-	cp := proto.Clone(c.Host)
+func (h *Host) testCloneHost() *Host {
+	cp := proto.Clone(h.Host)
 	return &Host{
 		Host: cp.(*store.Host),
 	}
@@ -218,8 +221,8 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (c *HostSet) testCloneHostSet() *HostSet {
-	cp := proto.Clone(c.HostSet)
+func (s *HostSet) testCloneHostSet() *HostSet {
+	cp := proto.Clone(s.HostSet)
 	return &HostSet{
 		HostSet: cp.(*store.HostSet),
 	}
@@ -227,6 +230,7 @@ func (c *HostSet) testCloneHostSet() *HostSet {
 
 func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -236,9 +240,9 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	sets := TestSets(t, conn, cat.GetPublicId(), 1)
 	hosts := TestHosts(t, conn, cat.GetPublicId(), 1)
 
-	new, err := NewHostSetMember(sets[0].PublicId, hosts[0].PublicId)
+	new, err := NewHostSetMember(ctx, sets[0].PublicId, hosts[0].PublicId)
 	require.NoError(t, err)
-	err = w.Create(context.Background(), new)
+	err = w.Create(ctx, new)
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -270,15 +274,15 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.testCloneHostSetMember()
-			err = w.LookupWhere(context.Background(), orig, "host_id = ? and set_id = ?", []interface{}{orig.HostId, orig.SetId})
+			err = w.LookupWhere(context.Background(), orig, "host_id = ? and set_id = ?", []any{orig.HostId, orig.SetId})
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			rowsUpdated, err := w.Update(ctx, tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.testCloneHostSetMember()
-			err = w.LookupWhere(context.Background(), after, "host_id = ? and set_id = ?", []interface{}{after.HostId, after.SetId})
+			err = w.LookupWhere(ctx, after, "host_id = ? and set_id = ?", []any{after.HostId, after.SetId})
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
@@ -286,8 +290,8 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (c *HostSetMember) testCloneHostSetMember() *HostSetMember {
-	cp := proto.Clone(c.HostSetMember)
+func (m *HostSetMember) testCloneHostSetMember() *HostSetMember {
+	cp := proto.Clone(m.HostSetMember)
 	return &HostSetMember{
 		HostSetMember: cp.(*store.HostSetMember),
 	}

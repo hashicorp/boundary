@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 syntax = "proto3";
 
 package controller.servers.services.v1;
@@ -5,6 +8,7 @@ package controller.servers.services.v1;
 import "controller/api/resources/targets/v1/target.proto";
 import "controller/servers/services/v1/credential.proto";
 import "controller/servers/services/v1/server_coordination_service.proto";
+import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
@@ -32,10 +36,10 @@ service SessionService {
 
 message LookupSessionRequest {
   // The session ID from the client
-  string session_id = 10; // @gotags: `class:"public"`
+  string session_id = 10; // @gotags: `class:"public" eventstream:"observation"`
   // The id of the requesting worker, used for filtering to ensure this worker
   // can handle this session
-  string worker_id = 20; // @gotags: `class:"public"`
+  string worker_id = 20; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 // LookupSessionResponse contains information necessary for a client to
@@ -45,58 +49,69 @@ message LookupSessionResponse {
   string tofu_token = 20; // @gotags: `class:"secret"`
   uint32 version = 30; // @gotags: `class:"public"`
   string endpoint = 40; // @gotags: `class:"public"`
-  google.protobuf.Timestamp expiration = 50; // @gotags: `class:"public"`
-  controller.servers.services.v1.SESSIONSTATUS status = 60; // @gotags: `class:"public"`
+  google.protobuf.Timestamp expiration = 50; // @gotags: `class:"public" eventstream:"observation"`
+  controller.servers.services.v1.SESSIONSTATUS status = 60; // @gotags: `class:"public" eventstream:"observation"`
   int32 connection_limit = 70; // @gotags: `class:"public"`
   int32 connections_left = 80; // @gotags: `class:"public"`
-  string host_id = 90; // @gotags: `class:"public"`
-  string host_set_id = 100; // @gotags: `class:"public"`
-  string target_id = 110; // @gotags: `class:"public"`
-  string user_id = 120; // @gotags: `class:"public"`
-  repeated Credential credentials = 130; // @gotags: `class:"secret"`
-  repeated bytes pkcs8_host_keys = 140; // @gotags: `class:"secret"`
+  string host_id = 90; // @gotags: `class:"public" eventstream:"observation"`
+  string host_set_id = 100; // @gotags: `class:"public" eventstream:"observation"`
+  string target_id = 110; // @gotags: `class:"public" eventstream:"observation"`
+  string user_id = 120; // @gotags: `class:"public" eventstream:"observation"`
+
+  // credentials is deprecated on this response message.  Instead use the
+  // credentials field inside the ProtocolContext message.
+  repeated Credential credentials = 130 [deprecated = true]; // @gotags: `class:"secret"`
+  // pkcs8_host_keys is deprecated on this response message.
+  repeated bytes pkcs8_host_keys = 140 [deprecated = true]; // @gotags: `class:"secret"`
 }
 
 message ActivateSessionRequest {
   reserved 40;
   reserved "worker_id";
 
-  string session_id = 10; // @gotags: `class:"public"`
+  string session_id = 10; // @gotags: `class:"public" eventstream:"observation"`
   string tofu_token = 20; // @gotags: `class:"secret"`
   uint32 version = 30; // @gotags: `class:"public"`
-  controller.servers.services.v1.SESSIONSTATUS status = 50; // @gotags: `class:"public"`
+  controller.servers.services.v1.SESSIONSTATUS status = 50; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message ActivateSessionResponse {
-  controller.servers.services.v1.SESSIONSTATUS status = 10; // @gotags: `class:"public"`
+  controller.servers.services.v1.SESSIONSTATUS status = 10; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message CancelSessionRequest {
-  string session_id = 10; // @gotags: `class:"public"`
+  string session_id = 10; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message CancelSessionResponse {
-  controller.servers.services.v1.SESSIONSTATUS status = 10; // @gotags: `class:"public"`
+  controller.servers.services.v1.SESSIONSTATUS status = 10; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AuthorizeConnectionRequest {
-  string session_id = 10; // @gotags: `class:"public"`
-  string worker_id = 20; // @gotags: `class:"public"`
+  string session_id = 10; // @gotags: `class:"public" eventstream:"observation"`
+  string worker_id = 20; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AuthorizeConnectionResponse {
-  string connection_id = 10; // @gotags: `class:"public"`
-  controller.servers.services.v1.CONNECTIONSTATUS status = 20; // @gotags: `class:"public"`
+  string connection_id = 10; // @gotags: `class:"public" eventstream:"observation"`
+  controller.servers.services.v1.CONNECTIONSTATUS status = 20; // @gotags: `class:"public" eventstream:"observation"`
   int32 connections_left = 30; // @gotags: `class:"public"`
+
+  // protocol_context contains information specific to the protocol being
+  // proxied.  This is not needed to be set for tcp sessions.
+  google.protobuf.Any protocol_context = 40; // @gotags: `class:"public"`
+
+  // route specifies the workers the connection will be sent through
+  repeated string route = 50;
 }
 
 message ConnectConnectionRequest {
-  string connection_id = 10; // @gotags: `class:"public"`
+  string connection_id = 10; // @gotags: `class:"public" eventstream:"observation"`
   string client_tcp_address = 20; // @gotags: `class:"public"`
   uint32 client_tcp_port = 30; // @gotags: `class:"public"`
   string endpoint_tcp_address = 40; // @gotags: `class:"public"`
   uint32 endpoint_tcp_port = 50; // @gotags: `class:"public"`
-  string type = 60; // @gotags: `class:"public"`
+  string type = 60; // @gotags: `class:"public" eventstream:"observation"`
 
   // user_client_ip is the user's client ip for the connection as determined by
   // the inbound http request handler
@@ -104,25 +119,25 @@ message ConnectConnectionRequest {
 }
 
 message ConnectConnectionResponse {
-  controller.servers.services.v1.CONNECTIONSTATUS status = 10; // @gotags: `class:"public"`
+  controller.servers.services.v1.CONNECTIONSTATUS status = 10; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message CloseConnectionRequestData {
-  string connection_id = 10; // @gotags: `class:"public"`
-  uint64 bytes_up = 20; // @gotags: `class:"public"`
-  uint64 bytes_down = 30; // @gotags: `class:"public"`
-  string reason = 40; // @gotags: `class:"public"`
+  string connection_id = 10; // @gotags: `class:"public" eventstream:"observation"`
+  int64 bytes_up = 20; // @gotags: `class:"public"`
+  int64 bytes_down = 30; // @gotags: `class:"public"`
+  string reason = 40; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message CloseConnectionRequest {
-  repeated CloseConnectionRequestData close_request_data = 10; // @gotags: `class:"public"`
+  repeated CloseConnectionRequestData close_request_data = 10; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message CloseConnectionResponseData {
   string connection_id = 10;
-  controller.servers.services.v1.CONNECTIONSTATUS status = 20; // @gotags: `class:"public"`
+  controller.servers.services.v1.CONNECTIONSTATUS status = 20; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message CloseConnectionResponse {
-  repeated CloseConnectionResponseData close_response_data = 10; // @gotags: `class:"public"`
+  repeated CloseConnectionResponseData close_response_data = 10; // @gotags: `class:"public" eventstream:"observation"`
 }

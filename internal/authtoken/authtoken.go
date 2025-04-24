@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authtoken
 
 import (
@@ -9,9 +12,11 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -53,8 +58,8 @@ type AuthToken struct {
 	tableName string `gorm:"-"`
 }
 
-func (s *AuthToken) clone() *AuthToken {
-	cp := proto.Clone(s.AuthToken)
+func (at *AuthToken) clone() *AuthToken {
+	cp := proto.Clone(at.AuthToken)
 	return &AuthToken{
 		AuthToken: cp.(*store.AuthToken),
 	}
@@ -74,7 +79,7 @@ func (at *AuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	const op = "authtoken.(writableAuthToken).encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
@@ -89,35 +94,34 @@ func (at *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	const op = "authtoken.(AuthToken).decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
 
 const (
-	AuthTokenPrefix = "at"
 	// The version prefix is used to differentiate token versions just for future proofing.
 	TokenValueVersionPrefix = "0"
 	tokenLength             = 24
 )
 
 // NewAuthTokenId creates a new id for an auth token.
-func NewAuthTokenId() (string, error) {
+func NewAuthTokenId(ctx context.Context) (string, error) {
 	const op = "authtoken.newAuthTokenId"
-	id, err := db.NewPublicId(AuthTokenPrefix)
+	id, err := db.NewPublicId(ctx, globals.AuthTokenPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op)
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }
 
 // newAuthToken generates a new in-memory token.  The WithStatus option is
 // support and all other options are ignored.
-func newAuthToken(opt ...Option) (*AuthToken, error) {
+func newAuthToken(ctx context.Context, opt ...Option) (*AuthToken, error) {
 	const op = "authtoken.newAuthToken"
 	token, err := base62.Random(tokenLength)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Io))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
 	}
 	opts := getOpts(opt...)
 
@@ -143,25 +147,66 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 
 	marshaledS1Info, err := proto.Marshal(s1Info)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	tokenWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeTokens)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to get wrapper"))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to get wrapper"))
 	}
 
 	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), wrapping.WithAad([]byte(publicId)))
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
 	}
 
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	encoded := base58.FastBase58Encoding(marshaledBlob)
 
 	return globals.ServiceTokenV1 + encoded, nil
+}
+
+// GetResourceType returns the resource type of the AuthToken
+func (at AuthToken) GetResourceType() resource.Type {
+	return resource.AuthToken
+}
+
+func (at AuthToken) GetUpdateTime() *timestamp.Timestamp {
+	return at.UpdateTime
+}
+
+func (at AuthToken) GetCreateTime() *timestamp.Timestamp {
+	return at.CreateTime
+}
+
+// GetDescription returns an empty string so that
+// AuthToken will satisfy resource requirements
+func (at AuthToken) GetDescription() string {
+	return ""
+}
+
+// GetName returns an empty string so that
+// AuthToken will satisfy resource requirements
+func (at AuthToken) GetName() string {
+	return ""
+}
+
+// GetVersion returns 0 so that
+// AuthToken will satisfy resource requirements
+func (at AuthToken) GetVersion() uint32 {
+	return 0
+}
+
+type deletedAuthToken struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (at *deletedAuthToken) TableName() string {
+	return "auth_token_deleted"
 }

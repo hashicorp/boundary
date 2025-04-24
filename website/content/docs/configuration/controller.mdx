@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Controller - Configuration
-description: |-
-  The controller stanza configures controller-specifc parameters.
+page_title: Controller configuration
+description: >-
+  Learn about configuring controller-specific parameters. Understand how to configure the required KMS stanzas, and view a complete configuration example.
 ---
 
-# `controller` Stanza
+# `controller` stanza
 
 The `controller` stanza configures Boundary controller-specific parameters.
 
@@ -37,6 +37,8 @@ description will be read.
     your connection string, such as `url = "postgresql://postgres:boundary@192.168.1.1:5432/boundary?sslmode=disable"`
     This value can refer to a file on disk (file://) from which a URL will be read; an env
     var (env://) from which the URL will be read; or a direct database URL (postgres://).
+    Since 0.10.5, this value is re-read on `SIGHUP` to support rotation of the database
+    credential.
   - `migration_url` - Can be used to specify a different URL for migrations, as that
     usually requires higher privileges.
     This value can refer to a file on disk (file://) from which a URL will be read; an env
@@ -74,12 +76,13 @@ description will be read.
 - `public_cluster_addr` - Specifies the public host or IP address (and
   optionally port) at which the controller can be reached _by workers_. This will
   be used by workers after initial connection to controllers via the worker's
-  `controllers` block. This defaults to the address of the listener marked for
-  `cluster` purpose. This is especially useful for cloud environments that do not
+  `initial_upstreams` block. This defaults to the address of the listener marked for
+  `cluster` purpose. It is used if there is a load balancer in front of multiple Boundary controllers. This is also especially useful for cloud environments that do not
   bind a publicly accessible IP to a NIC on the host directly, such as an Amazon
   EIP. This value can be a direct address string, can refer to a file on disk (file://)
   from which an address will be read; an env var (env://) from which the
   address will be read; or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template).
+  Note that the address should not include the protocol prefixes like `http://` or `https://`.
 
 - `auth_token_time_to_live` - Maximum time to live (TTL) for all auth tokens globally (pertains
   to all tokens from all auth methods). Valid time units are anything specified by Golang's
@@ -106,7 +109,48 @@ description will be read.
   are anything specified by Go's [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Only
   used when an `ops` listener is set and the Controller is present. Default is 0 seconds.
 
-## KMS Configuration
+- `api_rate_limit` - Sets limits on the rate of requests for controller API endpoints.
+This setting can help prevent resources from being overwhelmed with too many requests at a time.
+The `api_rate_limit` configuration stanza contains the following fields:
+
+  - `resources` - Specifies the Boundary resource you want to limit rates for.
+  The resource can be `target` or `credential-library`, for example.
+  You can include all resources by using the wildcard `"*"`.
+  - `actions` - Specifies the actions you want to limit on the resource.
+  The actions could be `create`, `list`, or `authorize-session`, for example.
+  You can include all actions by using the wildcard `"*"`.
+  - `per` - Specifies how the limit is allocated.
+  You can choose from the following values:
+     - `total` - Counts all requests, regardless of auth token or IP address.
+     - `ip-address` - Counts requests per IP address.
+     This value lets you limit requests per IP address.
+     - `auth-token` - Counts requests per the user's auth token.
+     This value lets you limit requests per auth token.
+
+  You can also use the wildcard `"*"` to include all values, but only when `unlimited` is also configured.
+  - `limit` - Specifies the number of requests that are allowed within the `period`.
+  - `period` - Specifies the time window for the `limit`.
+  The limit resets after this period of time has passed.
+  - `unlimited` - Indicates that the corresponding resources and actions should not be rate limited.
+  If you set this value to `true`, you should not specify values for the `limit` and `period` or you will receive an error.
+
+ For more information about how API rate limiting works, refer to the [API rate limiting](/boundary/docs/api-clients/api#rate-limiting) documentation.
+
+- `api_rate_limit_disable` - Disables API rate limiting, if set to `true`.
+If `api_rate_limit_disable` is set to `true`, and you have provided any `api_rate_limit` stanzas, you will receive an error.
+- `api_rate_limit_max_quotas` - Specifies the maximum number of API rate limiting quotas that Boundary allows.
+
+- `max_page_size` - The max allowed page size when paginating. If a user specifies a page size greater than
+  this number, it will be truncated to this number. This is also used as the default page size for any requests
+  that don't explicitly specify a page size. Default is 1000.
+
+## Signals
+
+The `SIGHUP` signal causes a controller to reload its configuration file to pick up any updates to the `database url` value. Any other updated values are ignored.
+
+The `SIGTERM` and `SIGINT` signals initiate a graceful shutdown on a controller. A graceful shutdown closes listeners and servers before shutting down the controller.
+
+## KMS configuration
 
 The controller requires two KMS stanzas for `root` and `worker-auth` purposes:
 
@@ -150,16 +194,30 @@ And optionally, a KMS stanza for configuration encryption purpose:
 # Configuration encryption block: decrypts sensitive values in the
 # configuration file. See `boundary config [encrypt|decrypt] -h`.
 kms "aead" {
-  purpose   = "config"`
+  purpose = "config"
   aead_type = "aes-gcm"
-  key       = "7xtkEoS5EXPbgynwd+dDLHopaCqK8cq0Rpep4eooaTs="
+  key = "7xtkEoS5EXPbgynwd+dDLHopaCqK8cq0Rpep4eooaTs="
+}
+```
+
+And optionally, a KMS stanza to enable the session recording feature:
+
+```hcl
+# BSR encryption block: encrypts data and checks the integrity
+# of session recordings. If you do not add a BSR key to your
+# controller configuration, you cannot enable session recording.
+kms "aead" {
+  purpose = "bsr"
+  aead_type = "aes-gcm"
+  key = "8Vg!XCbS.fzNKB@Uu.ccB588H#4iyHAd:TpgjuwC/;J;"
+  key_id = "session_recording"
 }
 ```
 
 Boundary supports many kinds of KMS integrations. For a complete guide to all available
-KMS types, see our [KMS documentation](/docs/configuration/kms).
+KMS types, see our [KMS documentation](/boundary/docs/configuration/kms).
 
-# Complete Configuration Example
+## Complete configuration example
 
 ```hcl
 # Disable memory lock: https://www.man7.org/linux/man-pages/man2/mlock.2.html
@@ -180,6 +238,35 @@ controller {
   # that contains the URL.
   database {
 	  url = "postgresql://boundary:boundarydemo@postgres.yourdomain.com:5432/boundary"
+  }
+
+  # Rate limiting examples to conserve controller resources
+  # total limit for all resources and actions
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per     = "total"
+    limit   = 500
+    period  = "1s"
+  }
+
+  # Limit for ip addresses to all resources+actions to prevent a malicious
+  # host that is fabricating tokens, or spamming unauthed endpoints
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per     = "ip-address"
+    limit   = 100
+    period  = "1s"
+  }
+
+  # Limit of all authed requests, to prevent one user consuming all of the total limit
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per     = "auth-token"
+    limit   = 100
+    period  = "1s"
   }
 }
 
@@ -242,5 +329,15 @@ kms "aead" {
   aead_type = "aes-gcm"
   key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
   key_id = "global_recovery"
+}
+
+# BSR encryption block: encrypts data and checks the integrity
+# of session recordings. If you do not add a BSR key to your
+# controller configuration, you cannot enable session recording.
+kms "aead" {
+  purpose = "bsr"
+  aead_type = "aes-gcm"
+  key = "8Vg!XCbS.fzNKB@Uu.ccB588H#4iyHAd:TpgjuwC/;J;"
+  key_id = "session_recording"
 }
 ```

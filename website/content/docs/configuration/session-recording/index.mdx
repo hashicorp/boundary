@@ -1,0 +1,60 @@
+---
+layout: docs
+page_title: Session recording overview
+description: >-
+  Learn about using session recording to audit user sessions for compliance and threat management. Understand considerations for local and remote storage.
+---
+
+# Overview
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
+
+Boundary provides auditing capabilities using a feature called session recording.
+
+In Boundary, a session represents a set of connections between a user and a host from a target. The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+
+When you enable session recording on a target, a worker records any sessions that access that target. The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated.
+
+Session recordings are stored in the [BSR (Boundary Session Recording)](/boundary/docs/concepts/auditing/#bsr-directory-structure) format. Any credentials needed to access the external object store are passed from the controller to the recording worker when the session is established.
+You can view the recordings later with a session player that runs in a web browser.
+
+## Storage considerations
+
+The BSR captures all the data transmitted between a user and a target during a single session. As a result, the size of a BSR is dependent on user activity. At a minimum, a BSR for a session with one connection requires 8KB of space for its file for BSR keys, checksums, and metadata.
+
+Determining how much storage you need to allocate on workers and the external storage provider for recordings depends on user activity, but the following two examples are provided to help with storage estimates:
+
+- For one minute of simple shell activity, a BSR can be around 20KB in size. The storage requirements for 1,000 such sessions would be 20MB.
+
+- Sending 50MB of data results in a BSR around 50.1MB in size. The storage requirements for 1,000 such sessions would be 50.1 GB.
+
+When you estimate worker storage requirements, consider the number of concurrent sessions that will be recorded on that worker. Boundary writes the BSR to the worker's local storage while the session is active, and then moves it to the remote storage bucket when the session is closed.
+
+When you estimate storage requirements for the external storage provider, consider your [storage policy](/boundary/docs/concepts/domain-model/storage-policy) and how long a BSR will be retained in the external storage bucket.
+
+<Warning>
+
+Boundary supports recorded session files up to 5 GB in size.
+If a recorded session file is over 5 GB, the session details show the recording state as `Failed` and you may not be able to play back the session.
+Be careful when you use Secure File Copy (SCP) to transfer large files during a recorded session because it can result in large recorded session files.
+
+</Warning>
+
+## Enable session recording
+
+To enable session recording, you must:
+
+1. [Configure workers for local storage](/boundary/docs/configuration/session-recording/configure-worker-storage)
+1. Configure an external storage provider:
+   - [Amazon S3](/boundary/docs/configuration/session-recording/storage-providers/configure-s3)
+   - [MinIO](/boundary/docs/configuration/session-recording/storage-providers/configure-minio)
+   - [S3-compliant](/boundary/docs/configuration/session-recording/storage-providers/configure-s3-compliant)
+1. [Create a storage bucket](/boundary/docs/configuration/session-recording/create-storage-bucket)
+1. [Enable session recording on a target](/boundary/docs/configuration/session-recording/enable-session-recording)
+
+## Configure recording retention policies
+
+After enabling session recording, you can configure retention policies for recorded sessions:
+
+1. [Configure storage policies](/boundary/docs/configuration/session-recording/configure-storage-policy)
+1. [Update storage policies](/boundary/docs/configuration/session-recording/update-storage-policy)

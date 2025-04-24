@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
@@ -27,7 +30,7 @@ const (
 
 // AddNonce adds a nonce
 func (r *Repository) AddNonce(ctx context.Context, nonce, purpose string, opt ...Option) error {
-	const op = "server.AddNonce"
+	const op = "server.(Repository).AddNonce"
 	if nonce == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "empty nonce")
 	}
@@ -67,7 +70,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 // ListNonces lists nonces. Used only for tests at the moment.
 func (r *Repository) ListNonces(ctx context.Context, purpose string, opt ...Option) ([]*Nonce, error) {
 	var nonces []*Nonce
-	if err := r.reader.SearchWhere(ctx, &nonces, "purpose = ?", []interface{}{purpose}, db.WithLimit(-1)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &nonces, "purpose = ?", []any{purpose}, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, "server.ListNonces")
 	}
 	return nonces, nil

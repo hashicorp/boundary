@@ -1,17 +1,18 @@
 ---
 layout: docs
-page_title: Overview/Top-Level Parameters
-description: Boundary configuration reference.
+page_title: Top-level configuration parameters
+description: >-
+  Learn about the parameters that make up the Boundary HCL configuration file. View parameters for HCP and self-managed installations.
 ---
 
 # Configuration
 
-[listener]: /docs/configuration/listener
-[controller]: /docs/configuration/controller
-[worker]: /docs/configuration/worker
-[kms]: /docs/configuration/kms
-[plugins]: /docs/configuration/plugins
-[events]: /docs/configuration/events
+[listener]: /boundary/docs/configuration/listener
+[controller]: /boundary/docs/configuration/controller
+[worker]: /boundary/docs/configuration/worker
+[kms]: /boundary/docs/configuration/kms
+[plugins]: /boundary/docs/configuration/plugins
+[events]: /boundary/docs/configuration/events
 
 Outside of development mode, Boundary controllers and workers are configured
 using a file. The format of this file is
@@ -21,32 +22,32 @@ configuration block examples for Boundary controllers and workers.
 After the configuration is written, use the `-config` flag to specify a local
 path to the file.
 
-## HCP Boundary-Only Parameters
+## HCP Boundary-only parameters
 
 - `hcp_boundary_cluster_id` `(string)` - The ID of an HCP Boundary cluster.
   Setting this allows discovery of upstream addresses for self-managed workers
   to connect to the cluster.
 
-## Shared OSS and HCP Boundary Parameters
+## Shared self-managed and HCP Boundary parameters
 
-- [`worker`](/docs/configuration/worker): Worker specific configuration. If
+- [`worker`](/boundary/docs/configuration/worker): Worker specific configuration. If
   present, `boundary server` will start a Worker subprocess.
 
-- [`listener`](/docs/configuration/listener): Configures the listeners on which
+- [`listener`](/boundary/docs/configuration/listener): Configures the listeners on which
   Boundary serves traffic (API, cluster, and proxy).
 
   Controllers must have at least two listener blocks defined: one marked for
-  `api` purpose and the other marked for `cluster` purpose. 
+  `api` purpose and the other marked for `cluster` purpose.
 
   Workers will have only one listener, marked for `proxy` purpose.
 
   Optionally, the `ops` purpose listener block serves as a higher-level listener
   where Boundary's operational endpoints live (eg: /health).
 
-- [`kms`](/docs/configuration/kms): Configures KMS blocks [for various
-  purposes](/docs/concepts/security/data-encryption).
+- [`kms`](/boundary/docs/configuration/kms): Configures KMS blocks [for various
+  purposes](/boundary/docs/concepts/security/data-encryption).
 
-- [`events`](/docs/configuration/events): Configures event (observability,
+- [`events`](/boundary/docs/configuration/events): Configures event (observability,
   audit, error) handling.
 
 - `disable_mlock` `(bool: false)` – Disables the server from executing the
@@ -80,15 +81,26 @@ path to the file.
   Specifies the log format to use; overridden by CLI and env var parameters.
   Supported log formats: `"standard"`, `"json"`.
 
-## OSS-Only Parameters
+## Self-managed Boundary-only parameters
 
-- [`controller`](/docs/configuration/controller): Controller specific
+- [`controller`](/boundary/docs/configuration/controller): Controller specific
   configuration. If present, `boundary server` will start a Controller subprocess.
 
-- [`plugins`](/docs/configuration/plugins): Configures options for plugins.
+- [`plugins`](/boundary/docs/configuration/plugins): Configures options for plugins.
 
-## Example Configurations
+## Signals
+
+The `SIGHUP` signal causes worker and controller processes to reload their configuration files to pick up updated values.
+
+~> **Note:** You cannot reload all configuration values using the `SIGHUP` signal. Refer to the configuration pages for
+[workers](/boundary/docs/configuration/worker/) and [controllers](/boundary/docs/configuration/controller) for details
+on which values can be reloaded on `SIGHUP`.
+
+The `SIGTERM` and `SIGINT` signals cause worker and controller processes to enter graceful shutdown. A graceful shutdown for a controller closes listeners and servers before shutting down the controller. A graceful shutdown for a worker waits for any sessions to drain
+before shutting down the worker. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
+
+## Example configurations
 
 For complete example configurations see the sections for
-[controller](/docs/configuration/controller) and
-[worker](/docs/configuration/worker).
+[controller](/boundary/docs/configuration/controller) and
+[worker](/boundary/docs/configuration/worker).

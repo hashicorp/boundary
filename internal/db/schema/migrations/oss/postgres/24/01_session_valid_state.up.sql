@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 -- Remove invalid (states with no prior end time) rows
@@ -42,7 +45,7 @@ create table session_valid_state(
     primary key (prior_state, current_state)
 );
 comment on table session_valid_state is
-    'session_valid_state entries define valid prior_state and current_state pairs to define valid state transitions';
+  'session_valid_state entries define valid prior_state and current_state pairs to define valid state transitions';
 
 insert into session_valid_state (prior_state, current_state)
 values

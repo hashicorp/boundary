@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oss_test
 
 import (
@@ -248,6 +251,7 @@ func loadKeks(t *testing.T, rw *db.Db) []kek {
 		require.NoError(t, rw.ScanRows(context.Background(), rows, &key))
 		keks = append(keks, key)
 	}
+	require.NoError(t, rows.Err())
 	return keks
 }
 
@@ -263,6 +267,7 @@ func loadKekVersions(t *testing.T, rw *db.Db) []kekVersion {
 		require.NoError(t, rw.ScanRows(context.Background(), rows, &v))
 		kekVersions = append(kekVersions, v)
 	}
+	require.NoError(t, rows.Err())
 	return kekVersions
 }
 
@@ -278,6 +283,7 @@ func loadNewDeks(t *testing.T, rw *db.Db) []dek {
 		require.NoError(t, rw.ScanRows(context.Background(), rows, &key))
 		deks = append(deks, key)
 	}
+	require.NoError(t, rows.Err())
 	return deks
 }
 
@@ -312,6 +318,7 @@ func loadCurrentDeks(t *testing.T, rw *db.Db) []dek {
 			require.NoError(t, rw.ScanRows(context.Background(), rows, &key))
 			deks = append(deks, key)
 		}
+		require.NoError(t, rows.Err())
 	}
 	return deks
 }
@@ -328,6 +335,7 @@ func loadNewDekVersions(t *testing.T, rw *db.Db) []dekVersion {
 		require.NoError(t, rw.ScanRows(context.Background(), rows, &v))
 		dekVersions = append(dekVersions, v)
 	}
+	require.NoError(t, rows.Err())
 	return dekVersions
 }
 
@@ -356,7 +364,7 @@ func loadCurrentDekVersions(t *testing.T, rw *db.Db) []dekVersion {
 		require.NoError(t, err)
 		require.NoError(t, err)
 		for rows.Next() {
-			result := map[string]interface{}{}
+			result := map[string]any{}
 			require.NoError(t, rw.ScanRows(context.Background(), rows, &result))
 			var v dekVersion
 			switch versionType {
@@ -417,27 +425,28 @@ func loadCurrentDekVersions(t *testing.T, rw *db.Db) []dekVersion {
 			}
 			dekVersions = append(dekVersions, v)
 		}
+		require.NoError(t, rows.Err())
 	}
 	return dekVersions
 }
 
 func testId(t testing.TB, prefix string) string {
 	t.Helper()
-	id, err := db.NewPublicId(prefix)
+	id, err := db.NewPublicId(context.Background(), prefix)
 	require.NoError(t, err)
 	return id
 }
 
 func testScope(t *testing.T, rw *db.Db) *iam.Scope {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
-	testCtx := context.Background()
 
-	s, err := iam.NewOrg()
+	s, err := iam.NewOrg(ctx)
 	require.NoError(err)
 	s.PublicId = testId(t, "o")
 
-	require.NoError(rw.Create(testCtx, &s))
+	require.NoError(rw.Create(ctx, &s))
 	return s
 }
 
@@ -465,6 +474,7 @@ type dek struct {
 	CreateTime time.Time
 	Purpose    string
 }
+
 type dekVersion struct {
 	PrivateId        string
 	DataKeyId        string

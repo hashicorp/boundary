@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package tcp provides a Target subtype for a TCP Target.
 // Importing this package will register it with the target package and
 // allow the target.Repository to support tcp.Targets.
@@ -8,26 +11,33 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp/store"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
 	defaultTableName = "target_tcp"
-	Subtype          = subtypes.Subtype("tcp")
+	Subtype          = globals.Subtype("tcp")
 )
 
 // Target is a resources that represets a networked service
 // that can be accessed via TCP. It is a subtype of target.Target.
 type Target struct {
 	*store.Target
-	tableName string `gorm:"-"`
+	// Network address assigned to the Target.
+	Address           string                    `json:"address,omitempty" gorm:"-"`
+	tableName         string                    `gorm:"-"`
+	HostSource        []target.HostSource       `gorm:"-"`
+	CredentialSources []target.CredentialSource `gorm:"-"`
+	Aliases           []*talias.Alias           `gorm:"-"`
 }
 
 // Ensure Target implements interfaces
@@ -39,11 +49,11 @@ var (
 
 // NewTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
-func (h targetHooks) NewTarget(projectId string, opt ...target.Option) (target.Target, error) {
+func (h targetHooks) NewTarget(ctx context.Context, projectId string, opt ...target.Option) (target.Target, error) {
 	const op = "tcp.NewTarget"
 	opts := target.GetOpts(opt...)
 	if projectId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing project id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	t := &Target{
 		Target: &store.Target{
@@ -51,10 +61,14 @@ func (h targetHooks) NewTarget(projectId string, opt ...target.Option) (target.T
 			Name:                   opts.WithName,
 			Description:            opts.WithDescription,
 			DefaultPort:            opts.WithDefaultPort,
+			DefaultClientPort:      opts.WithDefaultClientPort,
 			SessionConnectionLimit: opts.WithSessionConnectionLimit,
 			SessionMaxSeconds:      opts.WithSessionMaxSeconds,
 			WorkerFilter:           opts.WithWorkerFilter,
+			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
+			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
+		Address: opts.WithAddress,
 	}
 	return t, nil
 }
@@ -70,7 +84,11 @@ func (h targetHooks) AllocTarget() target.Target {
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
-		Target: cp.(*store.Target),
+		Target:            cp.(*store.Target),
+		Address:           t.Address,
+		HostSource:        t.HostSource,
+		CredentialSources: t.CredentialSources,
+		Aliases:           t.Aliases,
 	}
 }
 
@@ -118,8 +136,32 @@ func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-func (t *Target) GetType() subtypes.Subtype {
+func (t *Target) GetType() globals.Subtype {
 	return Subtype
+}
+
+func (t *Target) GetAddress() string {
+	return t.Address
+}
+
+func (t *Target) GetAliases() []*talias.Alias {
+	return t.Aliases
+}
+
+func (t *Target) GetHostSources() []target.HostSource {
+	return t.HostSource
+}
+
+func (t *Target) GetCredentialSources() []target.CredentialSource {
+	return t.CredentialSources
+}
+
+func (t *Target) GetEnableSessionRecording() bool {
+	return false
+}
+
+func (t *Target) GetStorageBucketId() string {
+	return ""
 }
 
 func (t *Target) SetPublicId(ctx context.Context, publicId string) error {
@@ -144,12 +186,21 @@ func (t *Target) SetDescription(description string) {
 	t.Description = description
 }
 
+// GetResourceType returns the resource type of the Target
+func (t *Target) GetResourceType() resource.Type {
+	return resource.Target
+}
+
 func (t *Target) SetVersion(v uint32) {
 	t.Version = v
 }
 
 func (t *Target) SetDefaultPort(port uint32) {
 	t.DefaultPort = port
+}
+
+func (t *Target) SetDefaultClientPort(port uint32) {
+	t.DefaultClientPort = port
 }
 
 func (t *Target) SetCreateTime(ts *timestamp.Timestamp) {
@@ -171,3 +222,30 @@ func (t *Target) SetSessionConnectionLimit(limit int32) {
 func (t *Target) SetWorkerFilter(filter string) {
 	t.WorkerFilter = filter
 }
+
+func (t *Target) SetEgressWorkerFilter(filter string) {
+	t.EgressWorkerFilter = filter
+}
+
+func (t *Target) SetIngressWorkerFilter(filter string) {
+	t.IngressWorkerFilter = filter
+}
+
+func (t *Target) SetAddress(address string) {
+	t.Address = address
+}
+
+func (t *Target) SetAliases(aliases []*talias.Alias) {
+	t.Aliases = aliases
+}
+
+func (t *Target) SetHostSources(sources []target.HostSource) {
+	t.HostSource = sources
+}
+
+func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
+	t.CredentialSources = sources
+}
+
+func (t *Target) SetEnableSessionRecording(_ bool) {}
+func (t *Target) SetStorageBucketId(_ string)      {}

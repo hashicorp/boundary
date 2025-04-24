@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -8,6 +11,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -22,6 +26,7 @@ import (
 )
 
 func TestRepository_CreateHost(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -65,7 +70,22 @@ func TestRepository_CreateHost(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "valid-no-options",
+			name: "valid-dns-name",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "www.google.com",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "www.google.com",
+				},
+			},
+		},
+		{
+			name: "valid-ipv4-address",
 			in: &Host{
 				Host: &store.Host{
 					CatalogId: catalog.PublicId,
@@ -76,6 +96,96 @@ func TestRepository_CreateHost(t *testing.T) {
 				Host: &store.Host{
 					CatalogId: catalog.PublicId,
 					Address:   "127.0.0.1",
+				},
+			},
+		},
+		{
+			name: "invalid-ipv4-address-with-port",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "127.0.0.1:80",
+				},
+			},
+			wantIsErr: errors.InvalidAddress,
+		},
+		{
+			name: "valid-abbreviated-ipv6-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "2001:4860:4860::8888",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "2001:4860:4860::8888",
+				},
+			},
+		},
+		{
+			name: "invalid-abbreviated-ipv6-address-with-port",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860::8888]:80",
+				},
+			},
+			wantIsErr: errors.InvalidAddress,
+		},
+		{
+			name: "valid-ipv6-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "2001:4860:4860:0:0:0:0:8888",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "2001:4860:4860:0:0:0:0:8888",
+				},
+			},
+		},
+		{
+			name: "invalid-ipv6-address-with-port",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860:0:0:0:0:8888]:80",
+				},
+			},
+			wantIsErr: errors.InvalidAddress,
+		},
+		{
+			name: "valid-abbreviated-[ipv6]-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860::8888]",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860::8888]",
+				},
+			},
+		},
+		{
+			name: "valid-[ipv6]-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860:0:0:0:0:8888]",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860:0:0:0:0:8888]",
 				},
 			},
 		},
@@ -159,10 +269,10 @@ func TestRepository_CreateHost(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
+			got, err := repo.CreateHost(ctx, prj.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -171,7 +281,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, HostPrefix, got.PublicId)
+			assertPublicId(t, globals.StaticHostPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -182,7 +292,7 @@ func TestRepository_CreateHost(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -197,23 +307,23 @@ func TestRepository_CreateHost(t *testing.T) {
 			},
 		}
 
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateHost(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostPrefix, got.PublicId)
+		assertPublicId(t, globals.StaticHostPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got2, err := repo.CreateHost(ctx, prj.GetPublicId(), in)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
 
 	t.Run("valid-duplicate-names-diff-catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -231,20 +341,20 @@ func TestRepository_CreateHost(t *testing.T) {
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateHost(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostPrefix, got.PublicId)
+		assertPublicId(t, globals.StaticHostPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.CatalogId = catalogB.PublicId
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in2)
+		got2, err := repo.CreateHost(ctx, prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, HostPrefix, got2.PublicId)
+		assertPublicId(t, globals.StaticHostPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -540,7 +650,23 @@ func TestRepository_UpdateHost(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "change-address",
+			name: "change-dns-name",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "www.google.com",
+				},
+			},
+			chgFn: changeAddress("www.hashicorp.com"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "www.hashicorp.com",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-ipv4-address",
 			orig: &Host{
 				Host: &store.Host{
 					Address: "127.0.0.1",
@@ -551,6 +677,103 @@ func TestRepository_UpdateHost(t *testing.T) {
 			want: &Host{
 				Host: &store.Host{
 					Address: "10.0.0.1",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-invalid-ipv4-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn:     changeAddress("10.0.0.1:80"),
+			masks:     []string{"Address"},
+			wantIsErr: errors.InvalidAddress,
+		},
+		{
+			name: "change-invalid-abbreviated-ipv6-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn:     changeAddress("[2001:4860:4860::8888]:80"),
+			masks:     []string{"Address"},
+			wantIsErr: errors.InvalidAddress,
+		},
+		{
+			name: "change-invalid-ipv6-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn:     changeAddress("[2001:4860:4860:0:0:0:0:8888]:80"),
+			masks:     []string{"Address"},
+			wantIsErr: errors.InvalidAddress,
+		},
+		{
+			name: "change-abbreviated-ipv6-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn: changeAddress("2001:4860:4860::8888"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "2001:4860:4860::8888",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-ipv6-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn: changeAddress("2001:4860:4860:0:0:0:0:8888"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "2001:4860:4860:0:0:0:0:8888",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-abbreviated-[ipv6]-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn: changeAddress("[2001:4860:4860::8888]"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "[2001:4860:4860::8888]",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-[ipv6]-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn: changeAddress("[2001:4860:4860:0:0:0:0:8888]"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "[2001:4860:4860:0:0:0:0:8888]",
 				},
 			},
 			wantCount: 1,
@@ -594,7 +817,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -602,7 +825,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 			tt.orig.CatalogId = catalog.PublicId
-			orig, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.orig)
+			orig, err := repo.CreateHost(ctx, prj.GetPublicId(), tt.orig)
 			assert.NoError(err)
 			require.NotNil(orig)
 
@@ -613,7 +836,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
+			got, gotCount, err := repo.UpdateHost(ctx, prj.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -623,7 +846,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, HostPrefix, got.PublicId)
+			assertPublicId(t, globals.StaticHostPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.CatalogId, got.CatalogId)
@@ -649,7 +872,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -661,7 +884,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		hA, hB := hs[0], hs[1]
 
 		hA.Name = name
-		got1, gotCount1, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hA, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateHost(ctx, prj.GetPublicId(), hA, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -669,7 +892,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, hA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
 		hB.Name = name
-		got2, gotCount2, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hB, 1, []string{"name"})
+		got2, gotCount2, err := repo.UpdateHost(ctx, prj.GetPublicId(), hB, 1, []string{"name"})
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -680,7 +903,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-Catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -698,21 +921,21 @@ func TestRepository_UpdateHost(t *testing.T) {
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateHost(ctx, prj.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostPrefix, got.PublicId)
+		assertPublicId(t, globals.StaticHostPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 
 		in2.CatalogId = catalogB.PublicId
 		in2.Name = "first-name"
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in2)
+		got2, err := repo.CreateHost(ctx, prj.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), got2, 1, []string{"name"})
+		got3, gotCount3, err := repo.UpdateHost(ctx, prj.GetPublicId(), got2, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -724,7 +947,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -753,6 +976,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 }
 
 func TestRepository_LookupHost(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -763,7 +987,7 @@ func TestRepository_LookupHost(t *testing.T) {
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	host := TestHosts(t, conn, catalog.PublicId, 1)[0]
 
-	hostId, err := newHostId()
+	hostId, err := newHostId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name      string
@@ -790,10 +1014,10 @@ func TestRepository_LookupHost(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupHost(context.Background(), tt.in)
+			got, err := repo.LookupHost(ctx, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -806,6 +1030,7 @@ func TestRepository_LookupHost(t *testing.T) {
 }
 
 func TestRepository_LookupHost_HostSets(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -855,10 +1080,11 @@ func TestRepository_LookupHost_HostSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupHost(context.Background(), tt.in)
+			got, err := repo.LookupHost(ctx, tt.in)
+			require.NoError(err)
 			assert.Empty(
 				cmp.Diff(
 					tt.want,
@@ -872,6 +1098,7 @@ func TestRepository_LookupHost_HostSets(t *testing.T) {
 }
 
 func TestRepository_ListHosts(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -911,10 +1138,10 @@ func TestRepository_ListHosts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(context.Background(), tt.in, tt.opts...)
+			got, ttime, err := repo.listHosts(ctx, tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -926,11 +1153,15 @@ func TestRepository_ListHosts(t *testing.T) {
 				protocmp.Transform(),
 			}
 			assert.Empty(cmp.Diff(tt.want, got, opts...))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
 
 func TestRepository_ListHosts_HostSets(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -984,10 +1215,10 @@ func TestRepository_ListHosts_HostSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(context.Background(), tt.in)
+			got, ttime, err := repo.listHosts(ctx, tt.in)
 			require.NoError(err)
 			assert.Empty(
 				cmp.Diff(
@@ -1000,11 +1231,15 @@ func TestRepository_ListHosts_HostSets(t *testing.T) {
 					}),
 				),
 			)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
 
 func TestRepository_ListHosts_Limits(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1032,19 +1267,9 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 			wantLen:  3,
 		},
 		{
-			name:     "With negative repo limit",
-			repoOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
 			name:     "With List limit",
 			listOpts: []Option{WithLimit(3)},
 			wantLen:  3,
-		},
-		{
-			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
 		},
 		{
 			name:     "With repo smaller than list limit",
@@ -1064,17 +1289,181 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(context.Background(), hosts[0].CatalogId, tt.listOpts...)
+			got, ttime, err := repo.listHosts(ctx, hosts[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
 
+func Test_listDeletedHostIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	catalog := TestCatalogs(t, conn, proj1.GetPublicId(), 1)[0]
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listDeletedHostIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a host
+	h := TestHosts(t, conn, catalog.GetPublicId(), 1)[0]
+	_, err = repo.DeleteHost(ctx, proj1.GetPublicId(), h.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listDeletedHostIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{h.GetPublicId()}, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedHostIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedHostCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	catalog := TestCatalogs(t, conn, proj1.GetPublicId(), 1)[0]
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedHostCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a host, expect 1 entries
+	h := TestHosts(t, conn, catalog.GetPublicId(), 1)[0]
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedHostCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the host, expect 0 again
+	_, err = repo.DeleteHost(ctx, proj1.GetPublicId(), h.GetPublicId())
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedHostCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}
+
+func TestRepository_ListHosts_Pagination(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	catalog := TestCatalogs(t, conn, proj1.GetPublicId(), 1)[0]
+
+	total := 5
+	TestHosts(t, conn, catalog.GetPublicId(), total)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	t.Run("no-options", func(t *testing.T) {
+		got, ttime, err := repo.listHosts(ctx, catalog.GetPublicId())
+		require.NoError(t, err)
+		assert.Equal(t, total, len(got))
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+	})
+
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		page1, ttime, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+		)
+		require.NoError(err)
+		require.Len(page1, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page1[1]),
+		)
+		require.NoError(err)
+		require.Len(page2, 2)
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page3, ttime, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page2[1]),
+		)
+		require.NoError(err)
+		require.Len(page3, 1)
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+		}
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page4, ttime, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page3[0]),
+		)
+		require.NoError(err)
+		require.Empty(page4, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
+}
+
 func TestRepository_DeleteHost(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1085,7 +1474,7 @@ func TestRepository_DeleteHost(t *testing.T) {
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	host := TestHosts(t, conn, catalog.PublicId, 1)[0]
 
-	newHostId, err := newHostId()
+	newHostId, err := newHostId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name      string
@@ -1113,10 +1502,10 @@ func TestRepository_DeleteHost(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteHost(context.Background(), catalog.ProjectId, tt.in)
+			got, err := repo.DeleteHost(ctx, catalog.ProjectId, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)

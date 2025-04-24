@@ -1,0 +1,71 @@
+---
+layout: docs
+page_title: credential-libraries read - Command
+description: >-
+  The "credential-libraries read" command retrieves the details of a credential library.
+---
+
+# credential-libraries read
+
+Command: `boundary credential-libraries read`
+
+The `credential-libraries read` command reads the credential library information for a specific credential library ID.
+
+
+## Examples
+
+The following example retrieves credential library information for a credential library with the ID `clvlt_QYnQPAjA24`:
+
+```shell-session
+$ boundary credential-libraries read -id clvlt_QYnQPAjA24
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Credential Library information:
+  Created Time:          Fri, 18 Aug 2023 16:22:29 PDT
+  Credential Store ID:   csvlt_5fvkRjCjou
+  ID:                    clvlt_QYnQPAjA24
+  Name:                  northwind dba
+  Type:                  vault-generic
+  Updated Time:          Fri, 18 Aug 2023 16:22:29 PDT
+  Version:               1
+
+  Scope:
+    ID:                  p_tnqESc86qE
+    Name:                db-project
+    Parent Scope ID:     o_4VUR6ZATqW
+    Type:                project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    HTTP Method:         GET
+    Path:                database/creds/dba
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-libraries read [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the credential library from which to read information.
+
+@include 'cmd-option-note.mdx'

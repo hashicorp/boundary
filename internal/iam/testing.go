@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -5,6 +8,7 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -19,14 +23,15 @@ import (
 // ensures that the global scope contains a valid root key.
 func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Option) *Repository {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
-	wrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeOplog)
+	wrapper, err := kmsCache.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
 	if err != nil {
-		err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+		err = kmsCache.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(rand.Reader))
 		require.NoError(err)
-		wrapper, err = kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeOplog)
+		wrapper, err = kmsCache.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
 		if err != nil {
 			panic(err)
 		}
@@ -34,7 +39,7 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 	require.NoError(err)
 	require.NotNil(wrapper)
 
-	repo, err := NewRepository(rw, rw, kmsCache, opt...)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache, opt...)
 	require.NoError(err)
 	return repo
 }
@@ -57,20 +62,21 @@ func TestSetPrimaryAuthMethod(t testing.TB, repo *Repository, s *Scope, authMeth
 // TestScopes creates an org and project suitable for testing.
 func TestScopes(t testing.TB, repo *Repository, opt ...Option) (org *Scope, prj *Scope) {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
 	opts := getOpts(opt...)
 
-	org, err := NewOrg(opt...)
+	org, err := NewOrg(ctx, opt...)
 	require.NoError(err)
-	org, err = repo.CreateScope(context.Background(), org, opts.withUserId, opt...)
+	org, err = repo.CreateScope(ctx, org, opts.withUserId, opt...)
 	require.NoError(err)
 	require.NotNil(org)
 	require.NotEmpty(org.GetPublicId())
 
-	prj, err = NewProject(org.GetPublicId(), opt...)
+	prj, err = NewProject(ctx, org.GetPublicId(), opt...)
 	require.NoError(err)
-	prj, err = repo.CreateScope(context.Background(), prj, opts.withUserId, opt...)
+	prj, err = repo.CreateScope(ctx, prj, opts.withUserId, opt...)
 	require.NoError(err)
 	require.NotNil(prj)
 	require.NotEmpty(prj.GetPublicId())
@@ -80,13 +86,14 @@ func TestScopes(t testing.TB, repo *Repository, opt ...Option) (org *Scope, prj 
 
 func TestOrg(t testing.TB, repo *Repository, opt ...Option) *Scope {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
 	opts := getOpts(opt...)
 
-	org, err := NewOrg(opt...)
+	org, err := NewOrg(ctx, opt...)
 	require.NoError(err)
-	org, err = repo.CreateScope(context.Background(), org, opts.withUserId, opt...)
+	org, err = repo.CreateScope(ctx, org, opts.withUserId, opt...)
 	require.NoError(err)
 	require.NotNil(org)
 	require.NotEmpty(org.GetPublicId())
@@ -96,13 +103,14 @@ func TestOrg(t testing.TB, repo *Repository, opt ...Option) *Scope {
 
 func TestProject(t testing.TB, repo *Repository, orgId string, opt ...Option) *Scope {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
 	opts := getOpts(opt...)
 
-	proj, err := NewProject(orgId, opt...)
+	proj, err := NewProject(ctx, orgId, opt...)
 	require.NoError(err)
-	proj, err = repo.CreateScope(context.Background(), proj, opts.withUserId, opt...)
+	proj, err = repo.CreateScope(ctx, proj, opts.withUserId, opt...)
 	require.NoError(err)
 	require.NotNil(proj)
 	require.NotEmpty(proj.GetPublicId())
@@ -112,11 +120,12 @@ func TestProject(t testing.TB, repo *Repository, orgId string, opt ...Option) *S
 
 func testOrg(t testing.TB, repo *Repository, name, description string) (org *Scope) {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
-	o, err := NewOrg(WithDescription(description), WithName(name))
+	o, err := NewOrg(ctx, WithDescription(description), WithName(name))
 	require.NoError(err)
-	o, err = repo.CreateScope(context.Background(), o, "")
+	o, err = repo.CreateScope(ctx, o, "")
 	require.NoError(err)
 	require.NotNil(o)
 	require.NotEmpty(o.GetPublicId())
@@ -126,11 +135,12 @@ func testOrg(t testing.TB, repo *Repository, name, description string) (org *Sco
 
 func testProject(t testing.TB, repo *Repository, orgId string, opt ...Option) *Scope {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
-	p, err := NewProject(orgId, opt...)
+	p, err := NewProject(ctx, orgId, opt...)
 	require.NoError(err)
-	p, err = repo.CreateScope(context.Background(), p, "")
+	p, err = repo.CreateScope(ctx, p, "")
 	require.NoError(err)
 	require.NotNil(p)
 	require.NotEmpty(p.GetPublicId())
@@ -147,7 +157,7 @@ func testId(t testing.TB) string {
 
 func testPublicId(t testing.TB, prefix string) string {
 	t.Helper()
-	publicId, err := db.NewPublicId(prefix)
+	publicId, err := db.NewPublicId(context.Background(), prefix)
 	require.NoError(t, err)
 	return publicId
 }
@@ -156,39 +166,90 @@ func testPublicId(t testing.TB, prefix string) string {
 // WithName, WithDescription and WithAccountIds.
 func TestUser(t testing.TB, repo *Repository, scopeId string, opt ...Option) *User {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
-	user, err := NewUser(scopeId, opt...)
+	user, err := NewUser(ctx, scopeId, opt...)
 	require.NoError(err)
-	user, err = repo.CreateUser(context.Background(), user)
+	user, err = repo.CreateUser(ctx, user)
 	require.NoError(err)
 	require.NotEmpty(user.PublicId)
 	opts := getOpts(opt...)
 	if len(opts.withAccountIds) > 0 {
-		_, err := repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, opts.withAccountIds)
+		_, err := repo.AddUserAccounts(ctx, user.PublicId, user.Version, opts.withAccountIds)
+		require.NoError(err)
+		// now that we have updated user accounts, we need to re-fetch the user
+		// to get the updated version and update time
+		user, err = repo.lookupUser(ctx, user.GetPublicId())
 		require.NoError(err)
 	}
 	return user
 }
 
-// TestRole creates a role suitable for testing.
+// TestRole creates a role suitable for testing. It will use a default grant
+// scope ID unless WithGrantScopeId is used. To prevent a grant scope from being
+// created, pass in a grant scope ID option with the value "testing-none".
 func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	t.Helper()
+	opts := getOpts(opt...)
+
+	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
 
-	role, err := NewRole(scopeId, opt...)
+	role, err := NewRole(ctx, scopeId, opt...)
 	require.NoError(err)
-	id, err := newRoleId()
+	id, err := newRoleId(ctx)
 	require.NoError(err)
 	role.PublicId = id
-	err = rw.Create(context.Background(), role)
-	require.NoError(err)
+	require.NoError(rw.Create(ctx, role))
 	require.NotEmpty(role.PublicId)
 
-	opts := getOpts(opt...)
+	grantScopeIds := opts.withGrantScopeIds
+	if len(grantScopeIds) == 0 {
+		grantScopeIds = []string{globals.GrantScopeThis}
+	}
+	for _, gsi := range grantScopeIds {
+		if gsi == "testing-none" {
+			continue
+		}
+		gs, err := NewRoleGrantScope(ctx, id, gsi)
+		require.NoError(err)
+		require.NoError(rw.Create(ctx, gs))
+		role.GrantScopes = append(role.GrantScopes, gs)
+	}
 	require.Equal(opts.withDescription, role.Description)
 	require.Equal(opts.withName, role.Name)
+	return role
+}
+
+// TestRoleWithGrants creates a role suitable for testing along with grants
+// Functional options for GrantScopeIDs aren't used to express that
+// this function does not provide any default grant scope unlike TestRole
+func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
+	t.Helper()
+
+	ctx := context.Background()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	role, err := NewRole(ctx, scopeId)
+	require.NoError(err)
+	id, err := newRoleId(ctx)
+	require.NoError(err)
+	role.PublicId = id
+	require.NoError(rw.Create(ctx, role))
+	require.NotEmpty(role.PublicId)
+
+	for _, gsi := range grantScopeIDs {
+		gs, err := NewRoleGrantScope(ctx, id, gsi)
+		require.NoError(err)
+		require.NoError(rw.Create(ctx, gs))
+		role.GrantScopes = append(role.GrantScopes, gs)
+	}
+	for _, g := range grants {
+		_ = TestRoleGrant(t, conn, role.PublicId, g)
+	}
 	return role
 }
 
@@ -197,25 +258,37 @@ func TestRoleGrant(t testing.TB, conn *db.DB, roleId, grant string, opt ...Optio
 	require := require.New(t)
 	rw := db.New(conn)
 
-	g, err := NewRoleGrant(roleId, grant, opt...)
+	g, err := NewRoleGrant(context.Background(), roleId, grant, opt...)
 	require.NoError(err)
 	err = rw.Create(context.Background(), g)
 	require.NoError(err)
 	return g
 }
 
-// TestGroup creates a group suitable for testing.
-func TestGroup(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Group {
+func TestRoleGrantScope(t testing.TB, conn *db.DB, roleId, grantScopeId string, opt ...Option) *RoleGrantScope {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 
-	grp, err := NewGroup(scopeId, opt...)
+	gs, err := NewRoleGrantScope(context.Background(), roleId, grantScopeId, opt...)
 	require.NoError(err)
-	id, err := newGroupId()
+	require.NoError(rw.Create(context.Background(), gs))
+	return gs
+}
+
+// TestGroup creates a group suitable for testing.
+func TestGroup(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Group {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	grp, err := NewGroup(ctx, scopeId, opt...)
+	require.NoError(err)
+	id, err := newGroupId(ctx)
 	require.NoError(err)
 	grp.PublicId = id
-	err = rw.Create(context.Background(), grp)
+	err = rw.Create(ctx, grp)
 	require.NoError(err)
 	require.NotEmpty(grp.PublicId)
 	return grp
@@ -223,12 +296,13 @@ func TestGroup(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Group 
 
 func TestGroupMember(t testing.TB, conn *db.DB, groupId, userId string, opt ...Option) *GroupMemberUser {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
-	gm, err := NewGroupMemberUser(groupId, userId)
+	gm, err := NewGroupMemberUser(ctx, groupId, userId)
 	require.NoError(err)
 	require.NotNil(gm)
-	err = rw.Create(context.Background(), gm)
+	err = rw.Create(ctx, gm)
 	require.NoError(err)
 	require.NotEmpty(gm.CreateTime)
 	return gm
@@ -236,12 +310,13 @@ func TestGroupMember(t testing.TB, conn *db.DB, groupId, userId string, opt ...O
 
 func TestUserRole(t testing.TB, conn *db.DB, roleId, userId string, opt ...Option) *UserRole {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
-	r, err := NewUserRole(roleId, userId, opt...)
+	r, err := NewUserRole(ctx, roleId, userId, opt...)
 	require.NoError(err)
 
-	err = rw.Create(context.Background(), r)
+	err = rw.Create(ctx, r)
 	require.NoError(err)
 	return r
 }
@@ -250,7 +325,7 @@ func TestGroupRole(t testing.TB, conn *db.DB, roleId, grpId string, opt ...Optio
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	r, err := NewGroupRole(roleId, grpId, opt...)
+	r, err := NewGroupRole(context.Background(), roleId, grpId, opt...)
 	require.NoError(err)
 
 	err = rw.Create(context.Background(), r)
@@ -262,7 +337,7 @@ func TestManagedGroupRole(t testing.TB, conn *db.DB, roleId, managedGrpId string
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	r, err := NewManagedGroupRole(roleId, managedGrpId, opt...)
+	r, err := NewManagedGroupRole(context.Background(), roleId, managedGrpId, opt...)
 	require.NoError(err)
 
 	err = rw.Create(context.Background(), r)
@@ -301,7 +376,7 @@ func testAccount(t testing.TB, conn *db.DB, scopeId, authMethodId, userId string
 	require.NoError(err)
 	require.Equal(1, count)
 
-	id, err := db.NewPublicId(accountPrefix)
+	id, err := db.NewPublicId(ctx, accountPrefix)
 	require.NoError(err)
 
 	acct := &authAccount{
@@ -332,14 +407,15 @@ func testAuthMethod(t testing.TB, conn *db.DB, scopeId string) string {
 		authMethodPrefix = "am_"
 	)
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	require.NotNil(conn)
 	require.NotEmpty(scopeId)
-	id, err := db.NewPublicId(authMethodPrefix)
+	id, err := db.NewPublicId(ctx, authMethodPrefix)
 	require.NoError(err)
 
 	rw := db.New(conn)
-	_, err = rw.Exec(context.Background(), insertAuthMethod, []interface{}{id, scopeId})
+	_, err = rw.Exec(ctx, insertAuthMethod, []any{id, scopeId})
 	require.NoError(err)
 	return id
 }

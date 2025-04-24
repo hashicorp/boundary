@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -33,11 +37,11 @@ var (
 // NewUser creates a new in memory user and allows options:
 // WithName - to specify the user's friendly name and WithDescription - to
 // specify a user description
-func NewUser(scopeId string, opt ...Option) (*User, error) {
+func NewUser(ctx context.Context, scopeId string, opt ...Option) (*User, error) {
 	const op = "iam.NewUser"
 	opts := getOpts(opt...)
 	if scopeId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	u := &User{
 		User: &store.User{
@@ -57,7 +61,7 @@ func AllocUser() User {
 }
 
 // Clone creates a clone of the User
-func (u *User) Clone() interface{} {
+func (u *User) Clone() any {
 	cp := proto.Clone(u.User)
 	return &User{
 		User: cp.(*store.User),
@@ -86,8 +90,8 @@ func (u *User) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, u)
 }
 
-// ResourceType returns the type of the User
-func (*User) ResourceType() resource.Type { return resource.User }
+// GetResourceType returns the type of the User
+func (*User) GetResourceType() resource.Type { return resource.User }
 
 // Actions returns the  available actions for Users
 func (*User) Actions() map[string]action.Type {
@@ -116,6 +120,13 @@ type userAccountInfo struct {
 	tableName string `gorm:"-"`
 }
 
+// allocUserAccountInfo will allocate an empty userAccountInfo
+func allocUserAccountInfo() *userAccountInfo {
+	return &userAccountInfo{
+		User: &store.User{},
+	}
+}
+
 func (u *userAccountInfo) shallowConversion() *User {
 	return &User{
 		User: u.User,
@@ -139,4 +150,14 @@ func (u *userAccountInfo) SetTableName(n string) {
 	default:
 		u.tableName = n
 	}
+}
+
+type deletedUser struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (u *deletedUser) TableName() string {
+	return "iam_user_deleted"
 }

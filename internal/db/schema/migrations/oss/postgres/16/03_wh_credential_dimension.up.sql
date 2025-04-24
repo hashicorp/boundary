@@ -1,9 +1,13 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
   -- wh_upsert_credential_dimension compares the current vaules in the wh_credential_dimension
   -- with the current values in the operational tables for the given parameters. IF the values
   -- between operational tables and the wh_credential_dimension differ, a new row is inserted in
   -- the wh_credential_dimension to match the current values in the operational tables.
+  -- Replaced in 63/03_wh_ssh_cert_library.up.sql
   create function wh_upsert_credential_dimension(p_session_id wt_public_id, p_library_id wt_public_id, p_credential_purpose wh_dim_text) returns wh_dim_key
   as $$
   declare
@@ -90,6 +94,7 @@ begin;
   -- wh_upsert_credentail_group determines if a new wh_credential_group needs to be
   -- created due to changes to the coresponding wh_credential_dimensions. It then
   -- updates the wh_session_accumulating_fact to associate it with the correct wh_credential_group.
+  -- Replaced in 61/01_fix_wh_upsert_credential_group
   create function wh_upsert_credentail_group() returns trigger
   as $$
   declare

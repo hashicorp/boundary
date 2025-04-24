@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
   -- drop constraint so we can migrate enm values
@@ -34,7 +37,6 @@ begin;
           'injected_application'
         )
       );
-
   -- update comment on table   
   comment on table credential_purpose_enm is
     'credential_purpose_enm is an enumeration table for credential purposes. '

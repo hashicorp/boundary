@@ -1,0 +1,33 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
+begin;
+  select plan(10);
+
+  -- Verify the trigger functions exist and are declared properly
+  select has_function('update_credential_static_table_update_time');
+  select volatility_is('update_credential_static_table_update_time', 'volatile');
+  select isnt_strict('update_credential_static_table_update_time');
+  select has_trigger('credential_static_json_credential', 'update_credential_static_table_update_time');
+  select has_trigger('credential_static_ssh_private_key_credential', 'update_credential_static_table_update_time');
+  select has_trigger('credential_static_username_password_credential', 'update_credential_static_table_update_time');
+  select has_index('credential_static', 'credential_static_create_time_public_id_idx', array['create_time', 'public_id']);
+  select has_index('credential_static', 'credential_static_update_time_public_id_idx', array['update_time', 'public_id']);
+
+  -- To test that the trigger that sets the create_time of the base table
+  -- when an insert into a subtype table happens works, we check that the
+  -- create time of the entries in both tables match
+  prepare credential_static_create_time as select create_time from credential_static where public_id='csj__bcolors';
+  prepare credential_static_json_credential_create_time as select create_time from credential_static_json_credential where public_id='csj__bcolors';
+  select results_eq('credential_static_create_time','credential_static_json_credential_create_time');
+  -- To test the trigger that updates the update_time of the base table,
+  -- we update one of the existing creds and check that the base table
+  -- entry has the same update_time as the subtype one.
+  update credential_static_json_credential set name='Blue black json cred' where public_id='csj__bcolors';
+  prepare credential_static_update_time as select update_time from credential_static where public_id='csj__bcolors';
+  prepare credential_static_json_credential_update_time as select update_time from credential_static_json_credential where public_id='csj__bcolors';
+  select results_eq('credential_static_update_time','credential_static_json_credential_update_time');
+
+  select * from finish();
+
+rollback;

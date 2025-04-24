@@ -1,6 +1,10 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
+	"context"
 	"reflect"
 	"time"
 
@@ -10,14 +14,8 @@ import (
 )
 
 const (
-	// DefaultLiveness is the setting that controls the server "liveness" time,
-	// or the maximum allowable time that a worker can't send a status update to
-	// the controller for. After this, the server is considered dead, and it will
-	// be taken out of the rotation for allowable workers for connections, and
-	// connections will possibly start to be terminated and marked as closed
-	// depending on the grace period setting (see
-	// base.Server.StatusGracePeriodDuration). This value serves as the default
-	// and minimum allowable setting for the grace period.
+	// DefaultLiveness is a default used for various timing parameters, such as
+	// grace period for status updates, server liveness, etc.
 	DefaultLiveness = 15 * time.Second
 )
 
@@ -32,16 +30,16 @@ type Repository struct {
 
 // NewRepository creates a new server Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "server.NewRepository"
 	if r == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
 	}
 
 	opts := GetOpts(opt...)
@@ -57,7 +55,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	}, nil
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}

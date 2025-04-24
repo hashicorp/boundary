@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package auth
 
 import (
@@ -30,6 +33,7 @@ type options struct {
 	withRecoveryTokenNotAllowed bool
 	withAnonymousUserNotAllowed bool
 	withResource                *perms.Resource
+	withActions                 []string
 }
 
 func getDefaultOptions() options {
@@ -90,9 +94,16 @@ func WithAnonymousUserNotAllowed(notAllowed bool) Option {
 	}
 }
 
-// WithResource specifies a resouce to use
+// WithResource specifies a resource to use
 func WithResource(resource *perms.Resource) Option {
 	return func(o *options) {
 		o.withResource = resource
+	}
+}
+
+// WithActions specifies a list of actions in the request
+func WithActions(actions []string) Option {
+	return func(o *options) {
+		o.withActions = actions
 	}
 }

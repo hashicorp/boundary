@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package database
 
 import (
@@ -10,9 +13,9 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
-	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
-	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
+	"github.com/hashicorp/boundary/internal/event"
+	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
+	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
@@ -162,6 +165,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 	}
 	serverName = fmt.Sprintf("%s/boundary-database-migrate", serverName)
 	if err := c.srv.SetupEventing(
+		c.Context,
 		c.srv.Logger,
 		c.srv.StderrLock,
 		serverName,
@@ -176,14 +180,14 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	_, awsCleanup, err := external_host_plugins.CreateHostPlugin(
+	_, plgCleanup, err := external_plugins.CreateHostPlugin(
 		c.Context,
-		"aws",
-		external_host_plugins.WithPluginOptions(
+		"azure",
+		external_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
-			pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+			pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 		),
-		external_host_plugins.WithLogger(pluginLogger.Named("aws")),
+		external_plugins.WithLogger(pluginLogger.Named("azure")),
 	)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
@@ -211,7 +215,7 @@ plugins {
 				"We are committed to resolving any issues as quickly as possible."))
 		return base.CommandCliError
 	}
-	if err := awsCleanup(); err != nil {
+	if err := plgCleanup(); err != nil {
 		c.UI.Error(fmt.Errorf("Error running plugin cleanup function: %w", err).Error())
 		return base.CommandCliError
 	}
@@ -224,7 +228,7 @@ plugins {
 			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
 				"syscall to prevent memory from being swapped to disk is not " +
 				"supported on this system. For better security, only run Boundary on " +
-				"systems where this call is supported. If you are running Boundary" +
+				"systems where this call is supported. If you are running Boundary " +
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 

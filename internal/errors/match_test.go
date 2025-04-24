@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package errors
 
 import (
@@ -13,12 +16,12 @@ func TestT(t *testing.T) {
 	stdErr := stderrors.New("test error")
 	tests := []struct {
 		name string
-		args []interface{}
+		args []any
 		want *Template
 	}{
 		{
 			name: "all fields",
-			args: []interface{}{
+			args: []any{
 				"test error msg",
 				Op("alice.Bob"),
 				InvalidParameter,
@@ -37,7 +40,7 @@ func TestT(t *testing.T) {
 		},
 		{
 			name: "Kind only",
-			args: []interface{}{
+			args: []any{
 				Integrity,
 			},
 			want: &Template{
@@ -46,7 +49,7 @@ func TestT(t *testing.T) {
 		},
 		{
 			name: "multiple Kinds",
-			args: []interface{}{
+			args: []any{
 				Search,
 				Integrity,
 			},
@@ -56,7 +59,7 @@ func TestT(t *testing.T) {
 		},
 		{
 			name: "ignore",
-			args: []interface{}{
+			args: []any{
 				32,
 			},
 			want: &Template{},
@@ -277,6 +280,36 @@ func TestMatch(t *testing.T) {
 				WithWrap(stdErr),
 			),
 			want: true,
+		},
+		{
+			name:     "match on go multi error",
+			template: T(errInvalidFieldMask),
+			err:      stderrors.Join(stdErr, errInvalidFieldMask),
+			want:     true,
+		},
+		{
+			name:     "match on go multi error for specific code",
+			template: T(InvalidFieldMask),
+			err:      stderrors.Join(stdErr, errInvalidFieldMask),
+			want:     true,
+		},
+		{
+			name:     "match on go multi error both boundary errors",
+			template: T(errInvalidFieldMask),
+			err:      stderrors.Join(errNotUnique, errInvalidFieldMask),
+			want:     true,
+		},
+		{
+			name:     "match on hashicorp multi error",
+			template: T(errInvalidFieldMask),
+			err:      stderrors.Join(stdErr, errInvalidFieldMask),
+			want:     true,
+		},
+		{
+			name:     "match on hashicorp multi error for specific code",
+			template: T(InvalidFieldMask),
+			err:      stderrors.Join(stdErr, errInvalidFieldMask),
+			want:     true,
 		},
 		{
 			name:     "no match on Wrapped only stderror",

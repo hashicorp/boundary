@@ -1,0 +1,45 @@
+---
+layout: docs
+page_title: billing - Command
+description: >-
+  The "billing" command retrieves the number of active users to help you predict user-based pricing.
+---
+
+# billing
+
+Command: `boundary billing`
+
+The `billing` command retrieves the number of active Boundary users in your organization to help you predict billing information.
+
+An active user is any unique Boundary user resource that has performed at least one authenticated action during the relevant billing period.
+Users perform authenticated actions when they call API endpoints that require a valid auth token.
+Boundary provides auth tokens to users when they authenticate using an auth method.
+
+## Examples
+
+The following command retrieves the number of monthly active users between September 2023 and February 2024:
+
+```shell-session
+$ boundary billing monthly-active-users /
+     -start-time="2023-09" /
+     -end-time="2024-02"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary billing [sub command] [options] [args]
+
+  # ...
+
+Subcommand:
+    monthly-active-users       Display the number of monthly active users
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name of the subcommand in the sidebar or the link below:
+
+- [monthly-active-users](/boundary/docs/commands/billing/monthly-active-users)

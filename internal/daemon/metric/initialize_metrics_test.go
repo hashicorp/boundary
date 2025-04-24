@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package metric
 
 import (
@@ -16,17 +19,35 @@ func Test_AppendServicesAndMethods(t *testing.T) {
 	cases := []struct {
 		name     string
 		pkg      protoreflect.FileDescriptor
+		filter   func(string, string) bool
 		expected map[string][]string
 	}{
 		{
 			name:     "basic",
 			pkg:      protooptions.File_testing_options_v1_service_proto,
+			filter:   func(string, string) bool { return false },
+			expected: map[string][]string{"testing.options.v1.TestService": {"TestMethod"}},
+		},
+		{
+			name: "filter-out",
+			pkg:  protooptions.File_testing_options_v1_service_proto,
+			filter: func(_ string, m string) bool {
+				return m == "TestMethod"
+			},
+			expected: map[string][]string{},
+		},
+		{
+			name: "filter-allow",
+			pkg:  protooptions.File_testing_options_v1_service_proto,
+			filter: func(_ string, m string) bool {
+				return m != "TestMethod"
+			},
 			expected: map[string][]string{"testing.options.v1.TestService": {"TestMethod"}},
 		},
 	}
 	for _, tc := range cases {
 		m := make(map[string][]string, 0)
-		appendServicesAndMethods(m, tc.pkg)
+		appendServicesAndMethods(m, tc.pkg, tc.filter)
 		assert.Equal(t, tc.expected, m)
 	}
 }

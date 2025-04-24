@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package password
 
 import (
@@ -16,7 +19,7 @@ import (
 // the only configuration type.
 type Configuration interface {
 	AuthMethodId() string
-	validate() error
+	validate(context.Context) error
 }
 
 // GetConfiguration returns the current configuration for authMethodId.
@@ -50,7 +53,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 	if c.AuthMethodId() == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
-	if err := c.validate(); err != nil {
+	if err := c.validate(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
@@ -70,7 +73,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 	const op = "password.(Repository).setArgon2Conf"
 	c = c.clone()
 
-	id, err := newArgon2ConfigurationId()
+	id, err := newArgon2ConfigurationId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -134,7 +137,7 @@ func (c *currentConfig) TableName() string {
 func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*currentConfig, error) {
 	const op = "password.(Repository).currentConfig"
 	var cc currentConfig
-	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", []interface{}{authMethodId}); err != nil {
+	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", []any{authMethodId}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &cc, nil
@@ -144,7 +147,7 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 	const op = "password.(Repository).currentConfigForAccount"
 	var confs []currentConfig
 
-	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{sql.Named("public_id", accountId)})
+	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []any{sql.Named("public_id", accountId)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -156,7 +159,9 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 		}
 		confs = append(confs, conf)
 	}
-
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	var cc currentConfig
 	switch {
 	case len(confs) == 0:

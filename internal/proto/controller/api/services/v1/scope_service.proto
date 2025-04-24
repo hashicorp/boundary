@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.services.v1;
@@ -8,15 +11,20 @@ import "google/protobuf/field_mask.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
-option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
-  info: {
-    title: "Boundary Controller HTTP API"
-  }
-  schemes: HTTPS
-  schemes: HTTP
-};
 
 service ScopeService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Scope service"
+    description:
+      "A scope acts as a permission Boundary modeled using the concept of a container. "
+      "It creates a hierarchical structure that lets you organize your resources and manage access control within Boundary. "
+      "The scope service provides endpoints to let you manage scopes in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes";
+      description: "Read about scopes in the Boundary domain model";
+    }
+  };
+
   // GetScope returns a stored Scope if present.  The provided request
   // must include the scope ID for the scope being retrieved. If
   // that ID is missing, malformed or references a non existing
@@ -26,20 +34,14 @@ service ScopeService {
       get: "/v1/scopes/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Scope."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Scope."};
   }
 
   // ListScopes returns a list of stored Scopes which exist inside the provided
   // parent Scope id.
   rpc ListScopes(ListScopesRequest) returns (ListScopesResponse) {
-    option (google.api.http) = {
-      get: "/v1/scopes"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Scopes within the Scope provided in the request."
-    };
+    option (google.api.http) = {get: "/v1/scopes"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Scopes within the Scope provided in the request."};
   }
 
   // CreateScope creates and stores a Scope in boundary.  The provided request
@@ -53,9 +55,7 @@ service ScopeService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Scope."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Scope."};
   }
 
   // UpdateScope updates an existing Scope in boundary.  The provided
@@ -72,25 +72,85 @@ service ScopeService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Scope."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Scope."};
   }
 
   // DeleteScope remotes a Scope and all child resources from Boundary. If the
   // provided Scope IDs are malformed or not provided an error is returned.
   rpc DeleteScope(DeleteScopeRequest) returns (DeleteScopeResponse) {
+    option (google.api.http) = {delete: "/v1/scopes/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Scope."};
+  }
+
+  // ListKeys lists all the keys found in the scope specified. If the scope
+  // is not found an error is returned.
+  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {
+    option (google.api.http) = {get: "/v1/scopes/{id}:list-keys"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "List all keys in a Scope."};
+  }
+
+  // RotateKeys rotates and optionally rewraps all the keys found in the
+  // scope specified. If the scope is not found an error is returned. If
+  // the scope is empty, the global scope is used.
+  rpc RotateKeys(RotateKeysRequest) returns (RotateKeysResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/{id}"
+      post: "/v1/scopes:rotate-keys"
+      body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Scope."
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Rotate all keys in a Scope."};
+  }
+
+  // ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
+  rpc ListKeyVersionDestructionJobs(ListKeyVersionDestructionJobsRequest) returns (ListKeyVersionDestructionJobsResponse) {
+    option (google.api.http) = {get: "/v1/scopes/{scope_id}:list-key-version-destruction-jobs"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all pending key version destruction jobs in a Scope."};
+  }
+
+  // DestroyKeyVersion destroys the specified key version. If this requires re-encrypting
+  // existing data, it will start an asynchronous process to complete this operation
+  // before destroying the key. Use ListKeyVersionDestructionJobs to monitor pending destruction jobs.
+  rpc DestroyKeyVersion(DestroyKeyVersionRequest) returns (DestroyKeyVersionResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes:destroy-key-version"
+      body: "*"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."};
+  }
+
+  // AttachStoragePolicy sets the Scope's Storage Policy. Any existing Storage
+  // Policy on the Scope will be overwritten. The provided request must include
+  // the Scope ID and the Storage Policy ID on which the Storage Policy will be
+  // set. A Storage Policy created under the global scope may be attached to any
+  // global or org scope. A Storage Policy created under a org scope may be attached
+  // to the same org scope. If any ID is missing, malformed, or references a
+  // non-existing resource, an error is returned.
+  rpc AttachStoragePolicy(AttachStoragePolicyRequest) returns (AttachStoragePolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/{id}:attach-storage-policy"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Attaches the specified Storage Policy to the Scope."};
+  }
+
+  // DetachStoragePolicy removes the Storage Policy from the specified Scope.
+  // The provided request must include the Scope ID for the Scope from which
+  // the Storage Policy will be removed. If the ID is missing, malformed, or
+  // references a non-existing scope, an error is returned. An error is returned
+  // if a Storage Policy is attempted to be removed from the Scope when the Scope
+  // does not have the Storage Policy attached to it.
+  rpc DetachStoragePolicy(DetachStoragePolicyRequest) returns (DetachStoragePolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/{id}:detach-storage-policy"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Detaches the specified Storage Policy from the Scope."};
   }
 }
 
 message GetScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetScopeResponse {
@@ -98,28 +158,60 @@ message GetScopeResponse {
 }
 
 message ListScopesRequest {
-  string scope_id = 1;
-  bool recursive = 20 [json_name = "recursive"];
-  string filter = 30 [json_name = "filter"];
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing iteration or
+  // request updated items. If paginating, use this token in the
+  // next list request.
+  string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The maximum size of a page in this iteration.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
+  uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListScopesResponse {
+  // The items returned in this page.
   repeated resources.scopes.v1.Scope items = 1;
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+  // A list of item IDs that have been removed since they were returned
+  // as part of an pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message CreateScopeRequest {
-  bool skip_admin_role_creation = 1;
-  bool skip_default_role_creation = 2;
+  bool skip_admin_role_creation = 1; // @gotags: `class:"public"`
+  bool skip_default_role_creation = 2; // @gotags: `class:"public"`
   resources.scopes.v1.Scope item = 3;
 }
 
 message CreateScopeResponse {
-  string uri = 1;
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.scopes.v1.Scope item = 2;
 }
 
 message UpdateScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.scopes.v1.Scope item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -129,7 +221,65 @@ message UpdateScopeResponse {
 }
 
 message DeleteScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteScopeResponse {}
+
+message ListKeysRequest {
+  string id = 1; // @gotags: `class:"public"`
+}
+
+message ListKeysResponse {
+  repeated resources.scopes.v1.Key items = 1;
+}
+
+message RotateKeysRequest {
+  string scope_id = 1; // @gotags: `class:"public"`
+  bool rewrap = 2; // @gotags: `class:"public"`
+}
+
+message RotateKeysResponse {}
+
+message ListKeyVersionDestructionJobsRequest {
+  string scope_id = 1; // @gotags: `class:"public"`
+}
+
+message ListKeyVersionDestructionJobsResponse {
+  repeated resources.scopes.v1.KeyVersionDestructionJob items = 1;
+}
+
+message DestroyKeyVersionRequest {
+  string scope_id = 1; // @gotags: `class:"public"`
+  string key_version_id = 2; // @gotags: `class:"public"`
+}
+
+message DestroyKeyVersionResponse {
+  // Destruction state. One of "pending" or "completed".
+  // Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs
+  // to monitor pending destruction jobs.
+  string state = 1; // @gotags: `class:"public"`
+}
+
+message AttachStoragePolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string storage_policy_id = 2; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 3; // @gotags: `class:"public"`
+}
+
+message AttachStoragePolicyResponse {
+  api.resources.scopes.v1.Scope item = 1;
+}
+
+message DetachStoragePolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+}
+
+message DetachStoragePolicyResponse {
+  api.resources.scopes.v1.Scope item = 1;
+}

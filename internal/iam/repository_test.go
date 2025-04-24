@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -6,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	iam_store "github.com/hashicorp/boundary/internal/iam/store"
@@ -17,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestNewRepository(t *testing.T) {
@@ -89,7 +92,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
+			got, err := NewRepository(context.Background(), tt.args.r, tt.args.w, tt.args.kms)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrString, err.Error())
@@ -103,6 +106,7 @@ func TestNewRepository(t *testing.T) {
 
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -111,31 +115,31 @@ func Test_Repository_create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
 
-		s, err := NewOrg(WithName("fname-" + id))
+		s, err := NewOrg(ctx, WithName("fname-"+id))
 		assert.NoError(err)
-		s.PublicId, err = newScopeId(scope.Org)
+		s.PublicId, err = newScopeId(ctx, scope.Org)
 		require.NoError(err)
-		retScope, err := repo.create(context.Background(), s)
+		retScope, err := repo.create(ctx, s)
 		require.NoError(err)
 		require.NotNil(retScope)
 		assert.NotEmpty(retScope.GetPublicId())
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err := repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.True(proto.Equal(foundScope, retScope.(*Scope)))
 
 		var metadata store.Metadata
-		err = rw.LookupWhere(context.Background(), &metadata, "key = ? and value = ?", []interface{}{"resource-public-id", s.PublicId})
+		err = rw.LookupWhere(ctx, &metadata, "key = ? and value = ?", []any{"resource-public-id", s.PublicId})
 		require.NoError(err)
 
 		var foundEntry oplog.Entry
-		err = rw.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId})
+		err = rw.LookupWhere(ctx, &foundEntry, "id = ?", []any{metadata.EntryId})
 		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		resource, err := repo.create(context.Background(), nil)
+		resource, err := repo.create(ctx, nil)
 		require.Error(err)
 		assert.Nil(resource)
 		assert.Equal("iam.(Repository).create: missing resource: parameter violation: error #100", err.Error())
@@ -174,7 +178,7 @@ func Test_Repository_delete(t *testing.T) {
 
 func TestRepository_update(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 	id := testId(t)
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
@@ -315,7 +319,7 @@ func TestRepository_update(t *testing.T) {
 			for _, f := range tt.args.setToNullPaths {
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), &foundResource, where, []interface{}{tt.args.resource.GetPublicId()})
+			err = rw.LookupWhere(context.Background(), &foundResource, where, []any{tt.args.resource.GetPublicId()})
 			require.NoError(err)
 			assert.Equal(tt.args.resource.GetPublicId(), foundResource.GetPublicId())
 			assert.Equal(tt.wantName, foundResource.GetName())

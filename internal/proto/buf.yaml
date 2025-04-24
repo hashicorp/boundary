@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
 version: v1
 name: buf.build/hashicorp/boundary
 deps:
@@ -10,3 +13,6 @@ lint:
     FIELD_LOWER_SNAKE_CASE:
       - controller/api/v1/error.proto
       - controller/custom_options/v1/testing.proto
+    RPC_RESPONSE_STANDARD_NAME:
+      # Ignore use of google.api.HttpBody for raw HTTP responses
+      - controller/api/services/v1/session_recording_service.proto

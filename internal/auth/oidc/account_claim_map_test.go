@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -127,7 +130,7 @@ func TestAccountClaimMap_Create(t *testing.T) {
 					assert.NoError(err)
 				}
 				found := AllocAccountClaimMap()
-				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and to_claim = ?", []interface{}{tt.args.authMethodId, tt.args.to}))
+				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and to_claim = ?", []any{tt.args.authMethodId, tt.args.to}))
 				assert.Equal(got, &found)
 			}
 		})
@@ -208,7 +211,7 @@ func TestAccountClaimMap_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := AllocAccountClaimMap()
-			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and to_claim = ?", []interface{}{tt.AccountClaimMap.OidcMethodId, tt.AccountClaimMap.ToClaim})
+			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and to_claim = ?", []any{tt.AccountClaimMap.OidcMethodId, tt.AccountClaimMap.ToClaim})
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}

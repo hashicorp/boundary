@@ -1,13 +1,20 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -26,16 +33,31 @@ type Host struct {
 // Supported options: WithName, WithDescription, WithIpAddresses, WithDnsNames,
 // WithPluginId, WithPublicId. Others ignored.
 func NewHost(ctx context.Context, catalogId, externalId string, opt ...Option) *Host {
+	const op = "plugin.NewHost"
 	opts := getOpts(opt...)
+
+	// This check is the logical counterpart of the database constraints on the
+	// external_name field. By replicating the checks as closely as possible in
+	// code, we reduce the risk of SetSyncJob failing due to a bad external
+	// name.
+	if !strutil.Printable(opts.withExternalName) || len(opts.withExternalName) > 256 {
+		event.WriteError(ctx, op,
+			fmt.Errorf("ignoring host id %q external name %q due to its length (greater than 256 characters) or the presence of unsupported unicode characters",
+				opts.withPublicId,
+				opts.withExternalName),
+		)
+		opts.withExternalName = ""
+	}
 
 	h := &Host{
 		PluginId: opts.withPluginId,
 		Host: &store.Host{
-			PublicId:    opts.withPublicId,
-			CatalogId:   catalogId,
-			ExternalId:  externalId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
+			PublicId:     opts.withPublicId,
+			CatalogId:    catalogId,
+			ExternalId:   externalId,
+			ExternalName: opts.withExternalName,
+			Name:         opts.withName,
+			Description:  opts.withDescription,
 		},
 	}
 	if len(opts.withIpAddresses) > 0 {
@@ -56,17 +78,22 @@ func (h *Host) GetAddress() string {
 }
 
 // TableName returns the table name for the host set.
-func (s *Host) TableName() string {
-	if s.tableName != "" {
-		return s.tableName
+func (h Host) TableName() string {
+	if h.tableName != "" {
+		return h.tableName
 	}
 	return "host_plugin_host"
 }
 
 // SetTableName sets the table name. If the caller attempts to
 // set the name to "" the name will be reset to the default name.
-func (s *Host) SetTableName(n string) {
-	s.tableName = n
+func (h *Host) SetTableName(n string) {
+	h.tableName = n
+}
+
+// GetResourceType returns the resource type of the Host
+func (h Host) GetResourceType() resource.Type {
+	return resource.Host
 }
 
 func allocHost() *Host {
@@ -112,19 +139,20 @@ func (h *Host) GetSetIds() []string {
 // hostAgg is a view that aggregates the host's value objects in to
 // string fields delimited with the aggregateDelimiter of "|"
 type hostAgg struct {
-	PublicId    string `gorm:"primary_key"`
-	CatalogId   string
-	ProjectId   string
-	ExternalId  string
-	PluginId    string
-	Name        string
-	Description string
-	CreateTime  *timestamp.Timestamp
-	UpdateTime  *timestamp.Timestamp
-	Version     uint32
-	IpAddresses string
-	DnsNames    string
-	SetIds      string
+	PublicId     string `gorm:"primary_key"`
+	CatalogId    string
+	ProjectId    string
+	ExternalId   string
+	ExternalName string
+	PluginId     string
+	Name         string
+	Description  string
+	CreateTime   *timestamp.Timestamp
+	UpdateTime   *timestamp.Timestamp
+	Version      uint32
+	IpAddresses  string
+	DnsNames     string
+	SetIds       string
 }
 
 func (agg *hostAgg) toHost() *Host {
@@ -133,6 +161,7 @@ func (agg *hostAgg) toHost() *Host {
 	h.PublicId = agg.PublicId
 	h.CatalogId = agg.CatalogId
 	h.ExternalId = agg.ExternalId
+	h.ExternalName = agg.ExternalName
 	h.PluginId = agg.PluginId
 	h.Name = agg.Name
 	h.Description = agg.Description
@@ -166,4 +195,14 @@ func (agg *hostAgg) TableName() string {
 // GetPublicId returns the host public id as a string
 func (agg *hostAgg) GetPublicId() string {
 	return agg.PublicId
+}
+
+type deletedHost struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedHost) TableName() string {
+	return "host_plugin_host_deleted"
 }

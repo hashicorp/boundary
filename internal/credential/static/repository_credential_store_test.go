@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -6,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -114,7 +118,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.store.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialStorePrefix, got.PublicId)
+			assertPublicId(t, globals.StaticCredentialStorePrefix, got.PublicId)
 			assert.NotSame(tt.store, got)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -148,6 +152,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 
 		// Creating credential in different project should not conflict
 		in3, err := NewCredentialStore(prj2.GetPublicId(), WithName("my-name"), WithDescription("desc"))
+		require.NoError(err)
 		got3, err := repo.CreateCredentialStore(ctx, in3)
 		require.NoError(err)
 		assert.Equal(in.Name, got3.Name)
@@ -503,7 +508,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialStorePrefix, got.PublicId)
+			assertPublicId(t, globals.StaticCredentialStorePrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ProjectId, got.ProjectId)
@@ -579,7 +584,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		got, err := repo.CreateCredentialStore(ctx, in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialStorePrefix, got.PublicId)
+		assertPublicId(t, globals.StaticCredentialStorePrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -624,75 +629,6 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		assert.Equal(orig.ProjectId, got1.ProjectId)
 		assert.Equal(1, gotCount1, "row count")
 	})
-}
-
-func TestRepository_ListCredentialStores(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(context.Background(), rw, rw, kms)
-	assert.NoError(err)
-	require.NotNil(repo)
-
-	const num = 10
-	var prjs []string
-	var total int
-	for i := 0; i < num; i++ {
-		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		prjs = append(prjs, prj.GetPublicId())
-		TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), num)
-		total += num
-	}
-
-	type args struct {
-		projectIds []string
-		opt        []Option
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantCnt int
-	}{
-		{
-			name: "no-limit",
-			args: args{
-				projectIds: prjs,
-				opt:        []Option{WithLimit(-1)},
-			},
-			wantCnt: total,
-		},
-		{
-			name: "default-limit",
-			args: args{
-				projectIds: prjs,
-			},
-			wantCnt: total,
-		},
-		{
-			name: "custom-limit",
-			args: args{
-				projectIds: prjs,
-				opt:        []Option{WithLimit(3)},
-			},
-			wantCnt: 3,
-		},
-		{
-			name: "bad-project",
-			args: args{
-				projectIds: []string{"bad-id"},
-			},
-			wantCnt: 0,
-		},
-	}
-	for _, tt := range tests {
-		got, err := repo.ListCredentialStores(context.Background(), tt.args.projectIds, tt.args.opt...)
-		require.NoError(err)
-		assert.Equal(tt.wantCnt, len(got))
-	}
 }
 
 func TestRepository_DeleteCredentialStore(t *testing.T) {

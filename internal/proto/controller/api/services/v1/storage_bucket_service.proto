@@ -1,0 +1,163 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "controller/api/resources/storagebuckets/v1/storage_bucket.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+option (custom_options.v1.domain) = "storage";
+
+service StorageBucketService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Storage bucket service"
+    description:
+      "A storage bucket is an external storage location used to store recordings of user access sessions. "
+      "The storage bucket service provides endpoints that let you manage storage buckets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets";
+      description: "Read about storage buckets in the Boundary domain model";
+    }
+  };
+
+  // GetStorageBucket returns a stored Storage Bucket if present.  The provided
+  // request must include the ID for the Storage Bucket being retrieved.
+  // If missing, malformed, or referencing a non-existing resource an error is
+  // returned.
+  rpc GetStorageBucket(GetStorageBucketRequest) returns (GetStorageBucketResponse) {
+    option (google.api.http) = {
+      get: "/v1/storage-buckets/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Storage Bucket."};
+  }
+
+  // ListStorageBuckets returns a list of stored Storage Buckets which exist inside
+  // the scope referenced in the request. The request must include the scope
+  // ID and if it is  missing, malformed, or references a non-existing resource
+  // an error is returned.
+  rpc ListStorageBuckets(ListStorageBucketsRequest) returns (ListStorageBucketsResponse) {
+    option (google.api.http) = {get: "/v1/storage-buckets"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a list of Storage Buckets."};
+  }
+
+  // CreateStorageBucket creates and stores a Storage Bucket in boundary.  The
+  // provided request must include the scope ID in which the Storage Bucket will be
+  // created. If any of these required fields are missing, malformed, or reference a
+  // non-existing parent resource an error is returned.
+  rpc CreateStorageBucket(CreateStorageBucketRequest) returns (CreateStorageBucketResponse) {
+    option (google.api.http) = {
+      post: "/v1/storage-buckets"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a Storage Bucket"};
+  }
+
+  // UpdateStorageBucket updates an existing Storage Bucket in Boundary. The
+  // provided Storage Bucket must not have any read only fields set. The update
+  // mask must be provided and include at least 1 mutable field. To unset a
+  // field's value include that field name in the update mask and don't set the
+  // field in the Storage Bucket.
+  rpc UpdateStorageBucket(UpdateStorageBucketRequest) returns (UpdateStorageBucketResponse) {
+    option (google.api.http) = {
+      patch: "/v1/storage-buckets/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Storage Bucket"};
+  }
+
+  // DeleteStorageBucket removes a Storage Bucket  from Boundary.
+  // If the provided Storage Bucket ID is malformed or not
+  // provided DeleteStorageBucket returns an error.
+  rpc DeleteStorageBucket(DeleteStorageBucketRequest) returns (DeleteStorageBucketResponse) {
+    option (google.api.http) = {delete: "/v1/storage-buckets/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Storage Bucket"};
+  }
+}
+
+message GetStorageBucketRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+message GetStorageBucketResponse {
+  api.resources.storagebuckets.v1.StorageBucket item = 1;
+}
+
+message ListStorageBucketsRequest {
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+  string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The maximum size of a page in this iteration.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
+  uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
+}
+
+message ListStorageBucketsResponse {
+  // The items returned in this page
+  repeated api.resources.storagebuckets.v1.StorageBucket items = 1;
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
+}
+
+message CreateStorageBucketRequest {
+  api.resources.storagebuckets.v1.StorageBucket item = 1;
+  // As an alternative to providing the plugin id in the provided StorageBucket,
+  // this field can be used to lookup the plugin using its name.
+  string plugin_name = 2 [json_name = "plugin_name"]; // @gotags: `class:"public"`
+}
+
+message CreateStorageBucketResponse {
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
+  api.resources.storagebuckets.v1.StorageBucket item = 2;
+}
+
+message UpdateStorageBucketRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  api.resources.storagebuckets.v1.StorageBucket item = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message UpdateStorageBucketResponse {
+  api.resources.storagebuckets.v1.StorageBucket item = 1;
+}
+
+message DeleteStorageBucketRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+message DeleteStorageBucketResponse {}

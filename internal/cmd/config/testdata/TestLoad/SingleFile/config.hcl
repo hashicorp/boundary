@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
 disable_mlock = true
 
 controller {
@@ -59,4 +62,10 @@ kms "aead" {
   aead_type = "aes-gcm"
   key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
   key_id    = "global_recovery"
+}
+
+reporting {
+	license {
+		enabled = false
+  }
 }

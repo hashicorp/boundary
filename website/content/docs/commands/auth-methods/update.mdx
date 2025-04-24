@@ -1,0 +1,308 @@
+---
+layout: docs
+page_title: auth-methods update - Command
+description: >-
+  The "auth-methods update" command updates existing auth method resources. You can update LDAP, OIDC, and password auth method types.
+---
+
+# auth-methods update
+
+Command: `boundary auth-methods update`
+
+The `auth-methods update` command lets you update Boundary auth method resources.
+
+## Examples
+
+The following example updates an auth method to set the `-max-age` option to `0`.
+This update forces the user to reauthenticate, if they are already logged in with the current browser session:
+
+```shell-session
+$ boundary auth-methods update oidc -id amoidc_oHt4HQFCrN \
+   -issuer "https://dev-1vdl8c0q.us.auth0.com/" \
+   -max-age 0
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Auth Method information:
+  Created Time:         Thu, 06 May 2021 16:39:33 MDT
+  ID:                   amoidc_oHt4HQFCrN
+  Name:                 auth0
+  Type:                 oidc
+  Updated Time:         Thu, 06 May 2021 16:58:21 MDT
+  Version:              2
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud
+    callback_url:       https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback
+    client_id:          zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx
+    client_secret_hmac: ayJRYSCphzxcHiKJvBrnDVtz1yiR958ejQuRGdQJMeM
+    issuer:             https://dev-1vdl8c0q.us.auth0.com/
+    max_age:            0
+    signing_algorithms: [RS256]
+    state:              inactive
+```
+
+</CodeBlockConfig>
+
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods update [type] [sub command] [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options:
+
+- `-description` `(string: "")` - The description to set on the auth method.
+- `-id` `(string: "")` - The ID of the auth method to update.
+- `-name` `(string: "")` - The name to set on the auth method.
+- `-version` `(int: 0)` - The version of the auth method to update.
+   If you do not specify a version, the command performs a check-and-set automatically.
+
+@include 'cmd-option-note.mdx'
+
+### Usages by type
+
+The available types are: `ldap`, `oidc`, and `password`.
+
+<Tabs>
+<Tab heading="LDAP">
+
+The `boundary auth-methods update ldap` command lets you update an LDAP auth method.
+
+#### Example
+
+The following example updates an LDAP auth method with the ID `amldap_1234567890` to add the name `devops` and the description `LDAP auth-method for DevOps`:
+
+```shell-session
+$ boundary auth-methods update ldap -id amldap_1234567890 \
+   -name "devops" \
+   -description "LDAP auth-method for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods update ldap [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### LDAP auth method options
+
+The following are LDAP-specific options in addition to the command
+options.
+
+- `-anon-group-search`  - Uses anon bind when performing LDAP
+   group searches (optional). The default value is `false`.
+
+- `-bind-dn` `(string: "")` - Uses the distinguished name of entry to bind when
+   performing user and group searches (optional).
+
+- `-bind-password` `(string: "")` - Indicates the password to use along with bind-dn
+  when performing user and group searches (optional).
+
+- `-certificate` `(string: "")` - Specifies a PEM-encoded X.509 CA certificate in ASN.1 DER
+   form that can be used as a trust anchor when connecting to an LDAP
+   server(optional). You can specify this value multiple times.
+
+- `-client-certificate` `(string: "")` - Specifies a PEM-encoded X.509 client certificate in
+   ASN.1 DER form that can be used to authenticate against an LDAP server
+   (optional).
+
+- `-client-certificate-key` `(string: "")` - Specifies a PEM-encoded X.509 client
+   certificate key in PKCS #8, ASN.1 DER form used with the client certificate
+   (optional).
+
+- `-discover-dn`  - Uses anon bind to discover the bind DN of a
+   user (optional). The default value is `false`.
+
+- `-enable-groups`  - Finds the authenticated user's groups during
+   authentication (optional). The default is `false`.
+
+- `-group-attr` `(string: "")` - Specifies the attribute that enumerates a user's group
+   membership from entries returned by a group search (optional).
+
+- `-group-dn` `(string: "")` - Specifies the base DN under which to perform group search.
+
+- `-group-filter` `(string: "")` - Indicates a go template used to construct a LDAP group
+   search filter (optional).
+
+- `-insecure-tls`  - Skips the LDAP server SSL certificate
+   validation (optional). Use this option with caution, it is insecure. The default value is    `false`.
+
+- `-start-tls`  - Issues the StartTLS command after connecting
+   (optional). The default is `false`.
+
+- `-state` `(string: "")` - Indicates the desired operational state of the auth method.
+
+- `-upn-domain` `(string: "")` - Indicates the userPrincipalDomain used to construct the
+   UPN string for the authenticating user (optional).
+
+- `-urls` `(string: "")` - Indicates the LDAP URLs that specify LDAP servers to connect to
+   (required). You may specify this value multiple times.
+
+- `-use-token-groups`  - Uses the Active Directory tokenGroups
+   constructed attribute of the user to find the group memberships (optional).
+   The default value is `false`.
+
+- `-user-attr` `(string: "")` - Indicates the attribute on user entry matching the
+   username that is passed during authentication (optional).
+
+- `-user-dn` `(string: "")` - Specifies the base DN under which to perform user search
+   (optional).
+
+- `-user-filter` `(string: "")` - Specifies a go template used to construct a LDAP user
+   search filter (optional).
+
+</Tab>
+<Tab heading="OIDC">
+
+The `boundary auth-methods update oidc` command lets you update OIDC auth methods.
+
+#### Example
+
+The following example updates an OIDC auth method with the ID `amoidc_1234567890` to add the name `devops` and the description `Oidc auth-method for DevOps`:
+
+```shell-session
+$ boundary auth-methods update oidc -id amoidc_1234567890 \
+   -name "devops" \
+   -description "Oidc auth-method for DevOps"
+```
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods update oidc [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### OIDC auth method options
+
+The following are options are specific to OIDC auth-methods in addition to the command options.
+
+- `-account-claim-maps` `(string: "")` - Indicates the optional account claim maps from
+   custom claims to the standard claims of sub, name and email. These maps are
+   represented as key=value where the key equals the Provider from-claim and the
+   value equals the Boundary to-claim. For example "oid=sub". You may specify this value
+   multiple times for different to-claims.
+
+- `-allowed-audience` `(string: "")` - Indicates the acceptable audience ("aud") claim.
+  You may specify this value multiple times.
+
+- `-api-url-prefix` `(string: "")` - Indicates the URL prefix used by the OIDC provider in
+  the authentication flow.
+
+- `-claims-scopes` `(tring: "")` - Specifies the optional claims scope requested. You may specify this value multiple times.
+
+- `-client-id` `(string: "")` - Indicates the OAuth 2.0 Client Identifier this auth method
+   should use with the provider.
+
+- `-client-secret` `(string: "")` - Indicates the corresponding client secret.
+
+- `-idp-ca-cert` `(string: "")` - Specifies an optional PEM-encoded X.509 CA certificate that
+   can be used as trust anchors when connecting to an OIDC provider. May be
+   specified multiple times.
+
+- `-disable-discovered-config-validation`  - Disables validating
+   the given auth method against configuration from the authorization server's
+   discovery URL. This must be specified every time an unvalidatable auth method
+   is updated or state changed; not specifying it is equivalent to setting it to
+   false. The default is false.
+
+- `-dry-run`  - Performs all completeness and validation checks
+   with any newly-provided values without persisting the changes. The default is
+   false.
+
+- `-idp-ca-cert` `(tring: "")` - Indicates an optional PEM-encoded X.509 CA certificate that
+   can be used as trust anchors when connecting to an OIDC provider. You may specify this value multiple times.
+
+- `-issuer` `(string: "")` - Indicates the provider's Issuer URL.
+
+- `-max-age` `(string: "")` - Indicates the OIDC "max_age" parameter sent to the provider.
+
+- `prompts` `(string: "")` - Indicates whether the OIDC authorization server should display reauthentication, account selection, or consent user interface prompts.
+You can optionally configure one or more of the following types of prompts to customize the behavior of the authentication process:
+   - `none` - The authorization server does not display any authentication or consent prompts.
+   - `login` - The authorization server prompts users for reauthentication before allowing them to log in.
+   - `consent` - The authorization server prompts users for consent before returning any information to Boundary.
+   - `select_account` - The authorization server prompts users to select a user account.
+   The `select_account` option can be helpful if your users have multiple accounts.
+
+<Note>
+
+Cloud providers implement `prompts` in different ways.
+You may notice differences in behavior if you configure OIDC authentication on multiple cloud providers.
+
+</Note>
+
+- `-signing-algorithm` `(string: "")` - Indicates the allowed signing algorithm. You may specify this value multiple times for multiple values.
+
+
+
+</Tab>
+<Tab heading="Password">
+
+The `boundary auth-methods update password` command lets you update a Password-type auth method.
+
+#### Example
+
+The following example updates a Password-type auth method with the ID `ampw_1234567890` to add the name `devops` and the description `Password auth-method for DevOps`:
+
+```shell-session
+$ boundary auth-methods update password -id ampw_1234567890 \
+   -name "devops" \
+   -description "Password auth-method for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods update password [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Password auth method options
+
+The following options are specific to the Passwor-type auth method in addition to the
+command options.
+
+- `-min-login-name-length` `(string: "")` - The minimum length of login names.
+
+- `-min-password-length` `(string: "")` - The minimum length of passwords.
+
+</Tab>
+</Tabs>

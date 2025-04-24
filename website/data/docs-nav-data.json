@@ -1,40 +1,413 @@
 [
   {
-    "title": "What is Boundary?",
-    "path": "what-is-boundary"
+    "title": "Introduction",
+    "routes": [
+      {
+        "title": "What is Boundary?",
+        "path": "overview/what-is-boundary"
+      },
+      {
+        "title": "Use cases",
+        "path": "overview/use-cases"
+      },
+      {
+        "title": "Boundary vs. other software",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "overview/vs/other-software"
+          },
+          {
+            "title": "Zero trust",
+            "path": "overview/vs/zero-trust"
+          },
+          {
+            "title": "Bastion hosts",
+            "path": "overview/vs/bastion-hosts"
+          },
+          {
+            "title": "VPNs",
+            "path": "overview/vs/vpn"
+          },
+          {
+            "title": "Privileged access management",
+            "path": "overview/vs/pam"
+          },
+          {
+            "title": "Software-defined perimeter",
+            "path": "overview/vs/sdp"
+          },
+          {
+            "title": "Secrets management tools",
+            "path": "overview/vs/secrets-management"
+          }
+        ]
+      }
+    ]
   },
   {
-    "title": "Use Cases",
-    "path": "use-cases"
-  },
-  {
-    "title": "Getting Started",
+    "title": "Get started",
     "routes": [
       {
         "title": "Overview",
         "path": "getting-started"
       },
       {
-        "title": "Installing",
-        "hidden": true,
+        "title": "HCP Boundary quick start",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started/"
+      },
+      {
+        "title": "Self-managed Boundary quick start",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
+      },
+      {
+        "title": "Dev mode quick start",
         "routes": [
           {
             "title": "Overview",
-            "path": "getting-started/installing"
+            "path": "getting-started/dev-mode/dev-mode"
           },
           {
-            "title": "Production",
-            "path": "getting-started/installing/production"
+            "title": "Run and log in",
+            "path": "getting-started/dev-mode/run-and-login"
+          },
+          {
+            "title": "Connect to a target",
+            "path": "getting-started/dev-mode/connect-to-dev-target"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Install Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "install-boundary"
+      },
+      {
+        "title": "Architecture",
+        "routes": [
+          {
+            "title": "System requirements",
+            "path": "install-boundary/architecture/system-requirements"
+          },
+          {
+            "title": "Recommended architecture",
+            "path": "install-boundary/architecture/recommended-architecture"
+          },
+          {
+            "title": "Fault tolerance",
+            "path": "install-boundary/architecture/fault-tolerance"
+          },
+          {
+            "title": "High availability",
+            "path": "install-boundary/architecture/high-availability"
           }
         ]
       },
       {
-        "title": "Deploy and Login",
-        "path": "getting-started/deploy-and-login"
+        "title": "Deploy Boundary",
+        "path": "install-boundary/deploy"
       },
       {
-        "title": "Connect to Target",
-        "path": "getting-started/connect-to-target"
+        "title": "Configure controllers",
+        "path": "install-boundary/configure-controllers"
+      },
+      {
+        "title": "Configure workers",
+        "path": "install-boundary/configure-workers"
+      },
+      {
+        "title": "Initialize Boundary",
+        "path": "install-boundary/initialize"
+      },
+      {
+        "title": "Install Boundary clients",
+        "path": "install-boundary/install-clients"
+      },
+      {
+        "title": "Systemd install",
+        "hidden": true,
+        "path": "install-boundary/systemd"
+      },
+      {
+        "title": "Terraform patterns",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "install-boundary/terraform-patterns"
+          },
+          {
+            "title": "Scopes",
+            "path": "install-boundary/terraform-patterns/terraform-scopes"
+          },
+          {
+            "title": "Users and auth methods",
+            "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
+          },
+          {
+            "title": "Groups and RBAC",
+            "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
+          },
+          {
+            "title": "Hosts and host management",
+            "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
+          },
+          {
+            "title": "Credentials and credential stores",
+            "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
+          },
+          {
+            "title": "Session recording",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "install-boundary/terraform-patterns/terraform-session-recording"
+          },
+          {
+            "title": "Targets",
+            "path": "install-boundary/terraform-patterns/terraform-targets"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Concepts",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "concepts"
+      },
+      {
+        "title": "Workers",
+        "path": "concepts/workers"
+      },
+      {
+        "title": "Identity and access management",
+        "path": "concepts/iam"
+      },
+      {
+        "title": "Credential management",
+        "path": "concepts/credential-management"
+      },
+      {
+        "title": "Aliases",
+        "path": "concepts/aliases"
+      },
+      {
+        "title": "Transparent sessions",
+        "badge": {
+          "text": "HCP/ENT BETA",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "concepts/transparent-sessions"
+      },
+      {
+        "title": "Auditing",
+        "path": "concepts/auditing"
+      },
+      {
+        "title": "Host discovery",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/host-discovery"
+          },
+          {
+            "title": "AWS dynamic hosts",
+            "path": "concepts/host-discovery/aws"
+          },
+          {
+            "title": "Azure dynamic hosts",
+            "path": "concepts/host-discovery/azure"
+          },
+          {
+            "title": "GCP dynamic hosts",
+            "path": "concepts/host-discovery/gcp"
+          }
+        ]
+      },
+      {
+        "title": "Connection workflows",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/connection-workflows"
+          },
+          {
+            "title": "Connect helpers",
+            "path": "concepts/connection-workflows/connect-helpers"
+          },
+          {
+            "title": "Exec flag",
+            "path": "concepts/connection-workflows/exec-flag"
+          },
+          {
+            "title": "SSH ProxyCommand",
+            "path": "concepts/connection-workflows/workflow-ssh-proxycommand"
+          },
+          {
+            "title": "Multi-hop sessions",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "concepts/connection-workflows/multi-hop"
+          }
+        ]
+      },
+      {
+        "title": "Security",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/security"
+          },
+          {
+            "title": "Data encryption",
+            "path": "concepts/security/data-encryption"
+          },
+          {
+            "title": "Connections/TLS",
+            "path": "concepts/security/connections-tls"
+          }
+        ]
+      },
+      {
+        "title": "Domain model",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/domain-model"
+          },
+          {
+            "title": "Accounts",
+            "path": "concepts/domain-model/accounts"
+          },
+          {
+            "title": "Aliases",
+            "path": "concepts/domain-model/aliases"
+          },
+          {
+            "title": "Auth methods",
+            "path": "concepts/domain-model/auth-methods"
+          },
+          {
+            "title": "Credentials",
+            "path": "concepts/domain-model/credentials"
+          },
+          {
+            "title": "Credential libraries",
+            "path": "concepts/domain-model/credential-libraries"
+          },
+          {
+            "title": "Credential stores",
+            "path": "concepts/domain-model/credential-stores"
+          },
+          {
+            "title": "Groups",
+            "path": "concepts/domain-model/groups"
+          },
+          {
+            "title": "Hosts",
+            "path": "concepts/domain-model/hosts"
+          },
+          {
+            "title": "Host catalogs",
+            "path": "concepts/domain-model/host-catalogs"
+          },
+          {
+            "title": "Host sets",
+            "path": "concepts/domain-model/host-sets"
+          },
+          {
+            "title": "Managed groups",
+            "path": "concepts/domain-model/managed-groups"
+          },
+          {
+            "title": "Scopes",
+            "path": "concepts/domain-model/scopes"
+          },
+          {
+            "title": "Sessions",
+            "path": "concepts/domain-model/sessions"
+          },
+          {
+            "title": "Session connections",
+            "path": "concepts/domain-model/session-connections"
+          },
+          {
+            "title": "Session recordings",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "concepts/domain-model/session-recordings"
+          },
+          {
+            "title": "Storage buckets",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "concepts/domain-model/storage-buckets"
+          },
+          {
+            "title": "Storage policies",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "concepts/domain-model/storage-policy"
+          },
+          {
+            "title": "Targets",
+            "path": "concepts/domain-model/targets"
+          },
+          {
+            "title": "Roles",
+            "path": "concepts/domain-model/roles"
+          },
+          {
+            "title": "Users",
+            "path": "concepts/domain-model/users"
+          }
+        ]
+      },
+      {
+        "title": "Filtering",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/filtering"
+          },
+          {
+            "title": "Managed groups",
+            "path": "concepts/filtering/managed-groups"
+          },
+          {
+            "title": "Resource listing",
+            "path": "concepts/filtering/resource-listing"
+          },
+          {
+            "title": "Worker tags",
+            "path": "concepts/filtering/worker-tags"
+          },
+          {
+            "title": "Events",
+            "path": "concepts/filtering/events"
+          }
+        ]
       }
     ]
   },
@@ -42,33 +415,24 @@
     "title": "Configuration",
     "routes": [
       {
-        "title": "Overview/Top-Level Parameters",
+        "title": "Overview/top-level parameters",
         "path": "configuration"
       },
       {
-        "title": "worker",
+        "title": "Worker",
         "routes": [
           {
             "title": "Overview",
             "path": "configuration/worker"
           },
           {
-            "title": "PKI Workers",
-            "path": "configuration/worker/pki-worker"
-          },
-          {
-            "title": "KMS Workers",
-            "path": "configuration/worker/kms-worker",
-            "badge": {
-              "text": "OSS Only",
-              "type": "outlined",
-              "color": "neutral"
-            }
+            "title": "Configuration",
+            "path": "configuration/worker/worker-configuration"
           }
         ]
       },
       {
-        "title": "listener",
+        "title": "Listener",
         "routes": [
           {
             "title": "Overview",
@@ -116,196 +480,212 @@
             "path": "configuration/kms/ocikms"
           },
           {
-            "title": "Vault Transit",
+            "title": "Vault transit",
             "path": "configuration/kms/transit"
           }
         ]
       },
       {
-        "title": "events",
+        "title": "Credential management",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/credential-management"
+          },
+          {
+            "title": "Create a static credential store",
+            "path": "configuration/credential-management/static-cred-boundary"
+          },
+          {
+            "title": "Create a Vault credential store",
+            "path": "configuration/credential-management/static-cred-vault"
+          },
+          {
+            "title": "Configure targets with credential brokering",
+            "path": "configuration/credential-management/configure-credential-brokering"
+          },
+          {
+            "title": "Configure targets with credential injection",
+            "path": "configuration/credential-management/configure-credential-injection",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
+          }
+        ]
+      },
+      {
+        "title": "Identity and access management",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/identity-access-management"
+          },
+          {
+            "title": "Assignable permissions",
+            "path": "configuration/identity-access-management/assignable-permissions"
+          },
+          {
+            "title": "Permission grant formats",
+            "path": "configuration/identity-access-management/permission-grant-formats"
+          },
+          {
+            "title": "Manage roles",
+            "href": "common-workflows/manage-roles"
+          },
+          {
+            "title": "Resource table",
+            "path": "configuration/identity-access-management/resource-table"
+          }
+        ]
+      },
+      {
+        "title": "Session recordings",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/session-recording"
+          },
+          {
+            "title": "Configure workers for storage",
+            "path": "configuration/session-recording/configure-worker-storage"
+          },
+          {
+            "title": "Configure storage provider",
+            "routes": [
+              {
+                "title": "Amazon S3",
+                "path": "configuration/session-recording/storage-providers/configure-s3"
+              },
+              {
+                "title": "MinIO",
+                "path": "configuration/session-recording/storage-providers/configure-minio"
+              },
+              {
+                "title": "S3-compliant",
+                "path": "configuration/session-recording/storage-providers/configure-s3-compliant"
+              }
+            ]
+          },
+          {
+            "title": "Create storage buckets",
+            "path": "configuration/session-recording/create-storage-bucket"
+          },
+          {
+            "title": "Enable session recording",
+            "path": "configuration/session-recording/enable-session-recording"
+          },
+          {
+            "title": "Configure storage policies",
+            "path": "configuration/session-recording/configure-storage-policy"
+          },
+          {
+            "title": "Update storage policies",
+            "path": "configuration/session-recording/update-storage-policy"
+          }
+        ]
+      },
+      {
+        "title": "Aliases and transparent sessions",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/target-aliases"
+          },
+          {
+            "title": "Create a target alias",
+            "path": "configuration/target-aliases/create-target-alias"
+          },
+          {
+            "title": "Connect using a target alias",
+            "path": "configuration/target-aliases/connect-target-alias"
+          },
+          {
+            "title": "Connect using transparent sessions",
+            "badge": {
+              "text": "HCP/ENT BETA",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "configuration/target-aliases/transparent-sessions"
+          }
+        ]
+      },
+      {
+        "title": "Events",
         "routes": [
           {
             "title": "Overview",
             "path": "configuration/events"
           },
           {
-            "title": "Common Sink Parameters",
+            "title": "Common sink parameters",
             "path": "configuration/events/common"
           },
           {
-            "title": "File Sink",
+            "title": "File sink",
             "path": "configuration/events/file"
           },
           {
-            "title": "Stderr Sink",
+            "title": "Stderr sink",
             "path": "configuration/events/stderr"
           }
         ]
       },
       {
-        "title": "controller",
-        "path": "configuration/controller",
-        "badge": {
-          "text": "OSS Only",
-          "type": "outlined",
-          "color": "neutral"
-        }
+        "title": "Controller",
+        "path": "configuration/controller"
       },
       {
-        "title": "plugins",
-        "path": "configuration/plugins",
-        "badge": {
-          "text": "OSS Only",
-          "type": "outlined",
-          "color": "neutral"
-        }
+        "title": "Plugins",
+        "path": "configuration/plugins"
       }
     ]
   },
   {
-    "title": "Concepts",
+    "title": "Operations",
     "routes": [
       {
         "title": "Overview",
-        "path": "concepts"
+        "path": "operations"
       },
       {
-        "title": "Service Discovery",
-        "path": "concepts/service-discovery"
+        "title": "Metrics",
+        "path": "operations/metrics"
       },
       {
-        "title": "Security",
+        "title": "Health endpoint",
+        "path": "operations/health"
+      },
+      {
+        "title": "Session recordings",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
         "routes": [
           {
             "title": "Overview",
-            "path": "concepts/security"
+            "path": "operations/session-recordings"
           },
           {
-            "title": "Permissions",
-            "routes": [
-              {
-                "title": "Overview",
-                "path": "concepts/security/permissions"
-              },
-              {
-                "title": "Assignable Permissions",
-                "path": "concepts/security/permissions/assignable-permissions"
-              },
-              {
-                "title": "Permission Grant Formats",
-                "path": "concepts/security/permissions/permission-grant-formats"
-              },
-              {
-                "title": "Resource Table",
-                "path": "concepts/security/permissions/resource-table"
-              }
-            ]
+            "title": "Find and view recorded sessions",
+            "path": "operations/session-recordings/manage-recorded-sessions"
           },
           {
-            "title": "Data Encryption",
-            "path": "concepts/security/data-encryption"
+            "title": "Validate recorded sessions",
+            "path": "operations/session-recordings/validate-session-recordings"
           },
           {
-            "title": "Connections/TLS",
-            "path": "concepts/security/connections-tls"
-          }
-        ]
-      },
-      {
-        "title": "Domain Model",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/domain-model"
-          },
-          {
-            "title": "Accounts",
-            "path": "concepts/domain-model/accounts"
-          },
-          {
-            "title": "Auth Methods",
-            "path": "concepts/domain-model/auth-methods"
-          },
-          {
-            "title": "Credentials",
-            "path": "concepts/domain-model/credentials"
-          },
-          {
-            "title": "Credential Libraries",
-            "path": "concepts/domain-model/credential-libraries"
-          },
-          {
-            "title": "Credential Stores",
-            "path": "concepts/domain-model/credential-stores"
-          },
-          {
-            "title": "Groups",
-            "path": "concepts/domain-model/groups"
-          },
-          {
-            "title": "Hosts",
-            "path": "concepts/domain-model/hosts"
-          },
-          {
-            "title": "Host Catalogs",
-            "path": "concepts/domain-model/host-catalogs"
-          },
-          {
-            "title": "Host Sets",
-            "path": "concepts/domain-model/host-sets"
-          },
-          {
-            "title": "Managed Groups",
-            "path": "concepts/domain-model/managed-groups"
-          },
-          {
-            "title": "Scopes",
-            "path": "concepts/domain-model/scopes"
-          },
-          {
-            "title": "Sessions",
-            "path": "concepts/domain-model/sessions"
-          },
-          {
-            "title": "Session Connections",
-            "path": "concepts/domain-model/session-connections"
-          },
-          {
-            "title": "Targets",
-            "path": "concepts/domain-model/targets"
-          },
-          {
-            "title": "Roles",
-            "path": "concepts/domain-model/roles"
-          },
-          {
-            "title": "Users",
-            "path": "concepts/domain-model/users"
-          }
-        ]
-      },
-      {
-        "title": "Filtering",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/filtering"
-          },
-          {
-            "title": "OIDC Managed Groups",
-            "path": "concepts/filtering/oidc-managed-groups"
-          },
-          {
-            "title": "Resource Listing",
-            "path": "concepts/filtering/resource-listing"
-          },
-          {
-            "title": "Worker Tags",
-            "path": "concepts/filtering/worker-tags"
-          },
-          {
-            "title": "Events",
-            "path": "concepts/filtering/events"
+            "title": "Validate external data store",
+            "path": "operations/session-recordings/validate-data-store"
           }
         ]
       }
@@ -315,21 +695,26 @@
     "title": "Troubleshoot",
     "routes": [
       {
-        "title": "Common Error Messages",
+        "title": "Common error messages",
         "path": "troubleshoot/common-errors"
       },
       {
         "title": "FAQ",
         "path": "troubleshoot/faq"
+      },
+      {
+        "title": "Recorded sessions",
+        "path": "troubleshoot/troubleshoot-recorded-sessions",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
       }
     ]
   },
   {
-    "title": "Common Workflows",
-    "href": "https://learn.hashicorp.com/boundary"
-  },
-  {
-    "title": "Common Workflows",
+    "title": "Common workflows",
     "hidden": true,
     "routes": [
       {
@@ -337,33 +722,948 @@
         "path": "common-workflows"
       },
       {
-        "title": "Manage Roles",
+        "title": "Manage roles",
         "path": "common-workflows/manage-roles"
       },
       {
-        "title": "Manage Scopes",
+        "title": "Manage scopes",
         "path": "common-workflows/manage-scopes"
       },
       {
-        "title": "Manage Sessions",
+        "title": "Manage sessions",
         "path": "common-workflows/manage-sessions"
       },
       {
-        "title": "Manage Targets",
+        "title": "Manage targets",
         "path": "common-workflows/manage-targets"
       },
       {
-        "title": "Manage Users and Groups",
+        "title": "Manage users and groups",
         "path": "common-workflows/manage-users-groups"
-      },
-      {
-        "title": "Workflow SSH Proxy",
-        "path": "common-workflows/workflow-ssh-proxycommand"
       }
     ]
   },
   {
-    "title": "API/Clients",
+    "title": "Commands (CLI)",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "commands"
+      },
+      {
+        "title": "accounts",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/accounts"
+          },
+          {
+            "title": "change-password",
+            "path": "commands/accounts/change-password"
+          },
+          {
+            "title": "create",
+            "path": "commands/accounts/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/accounts/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/accounts/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/accounts/read"
+          },
+          {
+            "title": "set-password",
+            "path": "commands/accounts/set-password"
+          },
+          {
+            "title": "update",
+            "path": "commands/accounts/update"
+          }
+        ]
+      },
+      {
+        "title": "aliases",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/aliases"
+          },
+          {
+            "title": "create",
+            "path": "commands/aliases/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/aliases/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/aliases/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/aliases/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/aliases/update"
+          }
+        ]
+      },
+      {
+        "title": "auth-methods",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/auth-methods"
+          },
+          {
+            "title": "change-state",
+            "path": "commands/auth-methods/change-state"
+          },
+          {
+            "title": "create",
+            "path": "commands/auth-methods/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/auth-methods/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/auth-methods/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/auth-methods/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/auth-methods/update"
+          }
+        ]
+      },
+      {
+        "title": "auth-tokens",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/auth-tokens"
+          },
+          {
+            "title": "delete",
+            "path": "commands/auth-tokens/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/auth-tokens/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/auth-tokens/read"
+          }
+        ]
+      },
+      {
+        "title": "billing",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/billing"
+          },
+          {
+            "title": "monthly-active-users",
+            "path": "commands/billing/monthly-active-users"
+          }
+        ]
+      },
+      {
+        "title": "authenticate",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/authenticate"
+          },
+          {
+            "title": "ldap",
+            "path": "commands/authenticate/ldap"
+          },
+          {
+            "title": "oidc",
+            "path": "commands/authenticate/oidc"
+          },
+          {
+            "title": "password",
+            "path": "commands/authenticate/password"
+          }
+        ]
+      },
+      {
+        "title": "config",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/config"
+          },
+          {
+            "title": "autocomplete",
+            "path": "commands/config/autocomplete"
+          },
+          {
+            "title": "decrypt",
+            "path": "commands/config/decrypt"
+          },
+          {
+            "title": "encrypt",
+            "path": "commands/config/encrypt"
+          },
+          {
+            "title": "get-token",
+            "path": "commands/config/get-token"
+          }
+        ]
+      },
+      {
+        "title": "connect",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/connect"
+          },
+          {
+            "title": "http",
+            "path": "commands/connect/http"
+          },
+          {
+            "title": "kube",
+            "path": "commands/connect/kube"
+          },
+          {
+            "title": "postgres",
+            "path": "commands/connect/postgres"
+          },
+          {
+            "title": "rdp",
+            "path": "commands/connect/rdp"
+          },
+          {
+            "title": "ssh",
+            "path": "commands/connect/ssh"
+          }
+        ]
+      },
+      {
+        "title": "credential-libraries",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/credential-libraries"
+          },
+          {
+            "title": "create",
+            "path": "commands/credential-libraries/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/credential-libraries/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/credential-libraries/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/credential-libraries/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/credential-libraries/update"
+          }
+        ]
+      },
+      {
+        "title": "credential-stores",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/credential-stores"
+          },
+          {
+            "title": "create",
+            "path": "commands/credential-stores/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/credential-stores/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/credential-stores/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/credential-stores/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/credential-stores/update"
+          }
+        ]
+      },
+      {
+        "title": "credentials",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/credentials"
+          },
+          {
+            "title": "create",
+            "path": "commands/credentials/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/credentials/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/credentials/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/credentials/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/credentials/update"
+          }
+        ]
+      },
+      {
+        "title": "cache",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/cache"
+          },
+          {
+            "title": "add-token",
+            "path": "commands/cache/add-token"
+          },
+          {
+            "title": "start",
+            "path": "commands/cache/start"
+          },
+          {
+            "title": "status",
+            "path": "commands/cache/status"
+          },
+          {
+            "title": "stop",
+            "path": "commands/cache/stop"
+          }
+        ]
+      },
+      {
+        "title": "database",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/database"
+          },
+          {
+            "title": "init",
+            "path": "commands/database/init"
+          },
+          {
+            "title": "migrate",
+            "path": "commands/database/migrate"
+          }
+        ]
+      },
+      {
+        "title": "delete",
+        "path": "commands/delete"
+      },
+      {
+        "title": "dev",
+        "path": "commands/dev"
+      },
+      {
+        "title": "groups",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/groups"
+          },
+          {
+            "title": "add-members",
+            "path": "commands/groups/add-members"
+          },
+          {
+            "title": "create",
+            "path": "commands/groups/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/groups/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/groups/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/groups/read"
+          },
+          {
+            "title": "remove-members",
+            "path": "commands/groups/remove-members"
+          },
+          {
+            "title": "set-members",
+            "path": "commands/groups/set-members"
+          },
+          {
+            "title": "update",
+            "path": "commands/groups/update"
+          }
+        ]
+      },
+      {
+        "title": "host-catalogs",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/host-catalogs"
+          },
+          {
+            "title": "create",
+            "path": "commands/host-catalogs/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/host-catalogs/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/host-catalogs/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/host-catalogs/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/host-catalogs/update"
+          }
+        ]
+      },
+      {
+        "title": "host-sets",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/host-sets"
+          },
+          {
+            "title": "add-hosts",
+            "path": "commands/host-sets/add-hosts"
+          },
+          {
+            "title": "create",
+            "path": "commands/host-sets/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/host-sets/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/host-sets/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/host-sets/read"
+          },
+          {
+            "title": "remove-hosts",
+            "path": "commands/host-sets/remove-hosts"
+          },
+          {
+            "title": "set-hosts",
+            "path": "commands/host-sets/set-hosts"
+          },
+          {
+            "title": "update",
+            "path": "commands/host-sets/update"
+          }
+        ]
+      },
+      {
+        "title": "hosts",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/hosts"
+          },
+          {
+            "title": "create",
+            "path": "commands/hosts/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/hosts/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/hosts/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/hosts/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/hosts/update"
+          }
+        ]
+      },
+      {
+        "title": "logout",
+        "path": "commands/logout"
+      },
+      {
+        "title": "managed-groups",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/managed-groups"
+          },
+          {
+            "title": "create",
+            "path": "commands/managed-groups/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/managed-groups/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/managed-groups/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/managed-groups/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/managed-groups/update"
+          }
+        ]
+      },
+      {
+        "title": "policies",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/policies"
+          },
+          {
+            "title": "create",
+            "path": "commands/policies/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/policies/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/policies/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/policies/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/policies/update"
+          }
+        ]
+      },
+      {
+        "title": "read",
+        "path": "commands/read"
+      },
+      {
+        "title": "roles",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/roles"
+          },
+          {
+            "title": "add-grant-scopes",
+            "path": "commands/roles/add-grant-scopes"
+          },
+          {
+            "title": "add-grants",
+            "path": "commands/roles/add-grants"
+          },
+          {
+            "title": "add-principals",
+            "path": "commands/roles/add-principals"
+          },
+          {
+            "title": "create",
+            "path": "commands/roles/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/roles/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/roles/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/roles/read"
+          },
+          {
+            "title": "remove-grant-scopes",
+            "path": "commands/roles/remove-grant-scopes"
+          },
+          {
+            "title": "remove-grants",
+            "path": "commands/roles/remove-grants"
+          },
+          {
+            "title": "remove-principals",
+            "path": "commands/roles/remove-principals"
+          },
+          {
+            "title": "set-grant-scopes",
+            "path": "commands/roles/set-grant-scopes"
+          },
+          {
+            "title": "set-grants",
+            "path": "commands/roles/set-grants"
+          },
+          {
+            "title": "set-principals",
+            "path": "commands/roles/set-principals"
+          },
+          {
+            "title": "update",
+            "path": "commands/roles/update"
+          }
+        ]
+      },
+      {
+        "title": "scopes",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/scopes"
+          },
+          {
+            "title": "create",
+            "path": "commands/scopes/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/scopes/delete"
+          },
+          {
+            "title": "destroy-key-version",
+            "path": "commands/scopes/destroy-key-version"
+          },
+          {
+            "title": "list",
+            "path": "commands/scopes/list"
+          },
+          {
+            "title": "list-key-version-destruction-jobs",
+            "path": "commands/scopes/list-key-version-destruction-jobs"
+          },
+          {
+            "title": "list-keys",
+            "path": "commands/scopes/list-keys"
+          },
+          {
+            "title": "read",
+            "path": "commands/scopes/read"
+          },
+          {
+            "title": "rotate-keys",
+            "path": "commands/scopes/rotate-keys"
+          },
+          {
+            "title": "update",
+            "path": "commands/scopes/update"
+          }
+        ]
+      },
+      {
+        "title": "search",
+        "path": "commands/search"
+      },
+      {
+        "title": "server",
+        "path": "commands/server"
+      },
+      {
+        "title": "session-recordings",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/session-recordings"
+          },
+          {
+            "title": "delete",
+            "path": "commands/session-recordings/delete"
+          },
+          {
+            "title": "download",
+            "path": "commands/session-recordings/download"
+          },
+          {
+            "title": "list",
+            "path": "commands/session-recordings/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/session-recordings/read"
+          },
+          {
+            "title": "reapply-storage-policy",
+            "path": "commands/session-recordings/reapply-storage-policy"
+          }
+        ]
+      },
+      {
+        "title": "sessions",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/sessions"
+          },
+          {
+            "title": "cancel",
+            "path": "commands/sessions/cancel"
+          },
+          {
+            "title": "list",
+            "path": "commands/sessions/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/sessions/read"
+          }
+        ]
+      },
+      {
+        "title": "storage-buckets",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/storage-buckets"
+          },
+          {
+            "title": "create",
+            "path": "commands/storage-buckets/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/storage-buckets/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/storage-buckets/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/storage-buckets/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/storage-buckets/update"
+          }
+        ]
+      },
+      {
+        "title": "targets",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/targets"
+          },
+          {
+            "title": "add-credential-sources",
+            "path": "commands/targets/add-credential-sources"
+          },
+          {
+            "title": "add-host-sources",
+            "path": "commands/targets/add-host-sources"
+          },
+          {
+            "title": "authorize-session",
+            "path": "commands/targets/authorize-session"
+          },
+          {
+            "title": "create",
+            "path": "commands/targets/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/targets/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/targets/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/targets/read"
+          },
+          {
+            "title": "remove-credential-source",
+            "path": "commands/targets/remove-credential-sources"
+          },
+          {
+            "title": "remove-host-sources",
+            "path": "commands/targets/remove-host-sources"
+          },
+          {
+            "title": "set-credential-sources",
+            "path": "commands/targets/set-credential-sources"
+          },
+          {
+            "title": "set-host-sources",
+            "path": "commands/targets/set-host-sources"
+          },
+          {
+            "title": "update",
+            "path": "commands/targets/update"
+          }
+        ]
+      },
+      {
+        "title": "update",
+        "path": "commands/update"
+      },
+      {
+        "title": "users",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/users"
+          },
+          {
+            "title": "add-accounts",
+            "path": "commands/users/add-accounts"
+          },
+          {
+            "title": "create",
+            "path": "commands/users/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/users/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/users/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/users/read"
+          },
+          {
+            "title": "remove-accounts",
+            "path": "commands/users/remove-accounts"
+          },
+          {
+            "title": "set-accounts",
+            "path": "commands/users/set-accounts"
+          },
+          {
+            "title": "update",
+            "path": "commands/users/update"
+          }
+        ]
+      },
+      {
+        "title": "workers",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/workers"
+          },
+          {
+            "title": "add-worker-tags",
+            "path": "commands/workers/add-worker-tags"
+          },
+          {
+            "title": "certificate-authority",
+            "path": "commands/workers/certificate-authority"
+          },
+          {
+            "title": "create",
+            "path": "commands/workers/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/workers/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/workers/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/workers/read"
+          },
+          {
+            "title": "remove-worker-tags",
+            "path": "commands/workers/remove-worker-tags"
+          },
+          {
+            "title": "set-worker-tags",
+            "path": "commands/workers/set-worker-tags"
+          },
+          {
+            "title": "update",
+            "path": "commands/workers/update"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "API and clients",
     "routes": [
       {
         "title": "Overview",
@@ -371,11 +1671,29 @@
       },
       {
         "title": "API",
-        "path": "api-clients/api"
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "api-clients/api"
+          },
+          {
+            "title": "Rate limiting",
+            "path": "api-clients/api/rate-limiting"
+          },
+          {
+            "title": "List pagination",
+            "path": "api-clients/api/pagination"
+          }
+        ]
       },
       {
-        "title": "CLI",
-        "path": "api-clients/cli"
+        "title": "Client Agent",
+        "badge": {
+          "text": "HCP/ENT BETA",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "api-clients/client-agent"
       },
       {
         "title": "Go SDK",
@@ -389,93 +1707,40 @@
       {
         "title": "Desktop",
         "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
+      },
+      {
+        "title": "Client cache",
+        "path": "api-clients/client-cache"
       }
     ]
   },
   {
-    "divider": true
-  },
-  {
-    "title": "Boundary OSS",
+    "title": "Integrations",
     "routes": [
       {
         "title": "Overview",
-        "path": "oss"
+        "path": "integrations"
       },
       {
-        "title": "Installation",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/installing"
-          },
-          {
-            "title": "Dev Mode",
-            "path": "oss/installing/dev-mode"
-          },
-          {
-            "title": "Run and Login",
-            "path": "oss/installing/run-and-login"
-          },
-          {
-            "title": "Connect to Dev Target",
-            "path": "oss/installing/connect-to-dev-target"
-          },
-          {
-            "title": "Non-Dev Environments",
-            "path": "oss/installing/no-gen-resources"
-          },
-          {
-            "title": "Systemd Install",
-            "path": "oss/installing/systemd"
-          },
-          {
-            "title": "Postgres Install",
-            "path": "oss/installing/postgres"
-          },
-          {
-            "title": "High Availability Install",
-            "path": "oss/installing/high-availability"
-          },
-          {
-            "title": "Reference Architectures",
-            "path": "oss/installing/reference-architectures"
-          }
-        ]
+        "title": "Vault",
+        "path": "integrations/vault"
+      }
+    ]
+  },
+  {
+    "title": "Develop Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "developing"
       },
       {
-        "title": "Operations",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/operations"
-          },
-          {
-            "title": "Metrics",
-            "path": "oss/operations/metrics"
-          },
-          {
-            "title": "Health Endpoint",
-            "path": "oss/operations/health"
-          }
-        ]
+        "title": "Build Boundary",
+        "path": "developing/building"
       },
       {
-        "title": "Developing Boundary",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/developing"
-          },
-          {
-            "title": "Building",
-            "path": "oss/developing/building"
-          },
-          {
-            "title": "Developing the UI",
-            "path": "oss/developing/ui"
-          }
-        ]
+        "title": "Develop the UI",
+        "path": "developing/ui"
       }
     ]
   },
@@ -483,16 +1748,106 @@
     "divider": true
   },
   {
-    "title": "Roadmap",
-    "path": "roadmap",
-    "hidden": true
+    "title": "Boundary Community Edition",
+    "hidden": true,
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "community"
+      }
+    ]
   },
   {
-    "title": "Release Notes",
+    "title": "HCP Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "hcp"
+      },
+      {
+        "title": "Get started",
+        "routes": [
+          {
+            "title": "Deploy and login",
+            "path": "hcp/get-started/deploy-and-login"
+          },
+          {
+            "title": "Connect to target",
+            "path": "hcp/get-started/connect-to-target"
+          }
+        ]
+      },
+      {
+        "title": "Documentation",
+        "href": "https://cloud.hashicorp.com/docs/boundary/"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "title": "Boundary Enterprise",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "enterprise"
+      },
+      {
+        "title": "Licensing",
+        "path": "enterprise/licensing"
+      },
+      {
+        "title": "Automated license reporting",
+        "path": "enterprise/automated-license-reporting"
+      },
+      {
+        "title": "Supported versions policy",
+        "path": "enterprise/supported-versions"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "title": "Release notes",
     "routes": [
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.19.0",
+        "path": "release-notes/v0_19_0"
+      },
+      {
+        "title": "v0.18.0",
+        "path": "release-notes/v0_18_0"
+      },
+      {
+        "title": "v0.17.0",
+        "path": "release-notes/v0_17_0"
+      },
+      {
+        "title": "v0.16.0",
+        "path": "release-notes/v0_16_0"
+      },
+      {
+        "title": "v0.15.0",
+        "path": "release-notes/v0_15_0"
+      },
+      {
+        "title": "v0.14.0",
+        "path": "release-notes/v0_14_0"
+      },
+      {
+        "title": "v0.13.0",
+        "path": "release-notes/v0_13_0"
+      },
+      {
+        "title": "v0.12.0",
+        "path": "release-notes/v0_12_0"
       },
       {
         "title": "v0.11.0",

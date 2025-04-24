@@ -1,0 +1,224 @@
+---
+layout: docs
+page_title: Connect helpers
+description: >-
+  Learn how to use connect helpers to automatically accept host key prompts and facilitate connections for HTTP, Kubernetes, PostgreSQL, RDP, and SSH.
+---
+
+# Connect helpers
+
+Boundary includes connect helpers that automatically accept host key prompts for you to help facilitate connections.
+These are written as `boundary connect <subcommand>` and are supported for the following connection types:
+
+- HTTP
+- Kubernetes
+- PostgreSQL
+- RDP
+- SSH
+
+If you want to pass additional flags to the client, you can add them to the command line separated by a double dash.
+Boundary passes anything after the double dash to the executed client.
+For example, the following command uses the SSH connect helper to pass `-l some-other-user` to the SSH client:
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_1234567890 -- -l some-other-user
+```
+
+Connect helpers also support a `-style` flag that lets you override the default client and format arguments in a different style.
+For example, besides the default style `ssh`, the SSH connect helper supports a `-style putty` option that lets you pass connection information to PuTTY.
+
+One advantage to styles is that Boundary can provide information to the client in a format that makes sense.
+For example, the `-username` flag is used to specify a username other than the currently logged-in user.
+This ensures that regardless of the `-style` you choose, the username is properly passed to the executed client, and you don't have to figure out the syntax for yourself.
+
+## HTTP connect helper
+
+The HTTP connect helper executes `curl`, and passes information such as the HTTP path, method, and verb.
+It can be useful to call API endpoints through the Boundary proxy.
+
+The following example calls a weather API endpoint to get the rain forecast for New York:
+
+```shell-session
+$ boundary connect http -target-id ttcp_VlpkajEuuf -path '/v1/forecast?latitude=40.7143&longitude=-74.006&daily=precipitation_sum&timezone=America%2FNew_York'
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689278326-boundary-http-connect.mov"
+  />
+</video>
+
+The HTTP helper supports the following flags:
+
+- `host`: Specifies the host value to use, and overrides the endpoint address from the session information.
+- `method`: Specifies the method to use.
+If you do not set this value, the helper uses the client's default method.
+- `path`: Specifies a path that Boundary appends to the generated URL.
+- `scheme`: Specifies the scheme to use.
+The default scheme is `https`.
+- `style`: Specifies how the CLI attempts to invoke an HTTP client.
+The only supported style for the HTTP helper is `curl`.
+
+For more information, refer to the [`connect http` command documenatation](/boundary/docs/commands/connect/http).
+
+## Kubernetes connect helper
+
+The Kubernetes connect helper executes `kubectl` by proxying the call through Boundary.
+It can be useful to access a Kubernetes cluster that does not publicly expose its API server.
+To pass subcommands to `kubectl`, use `--` followed by the command you want to pass.
+The following example calls `kubectl top node`:
+
+```shell-session
+$ boundary connect kube -target-id ttcp_Yq0QCUMSe2 -- top node
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689288553-boundary-kube-connect.mov"
+  />
+</video>
+
+The Kubernetes helper supports the following flags:
+
+- `host`: Specifies the host value to use, and overrides the endpoint address from the session information.
+- `scheme`: Specifies the scheme to use.
+The default scheme is `https`.
+- `style`: Specifies how the CLI attempts to invoke a Kubernetes client.
+The only supported style for the Kubernetes helper is `kubectl`.
+
+For more information, refer to the [`connect kube` command documenatation](/boundary/docs/commands/connect/kube).
+
+## PostgreSQL connect helper
+
+The PostgreSQL helper executes `psql`, and passes information such as the username and database name from the command line.
+
+The following example connects to a PostgreSQL database named `boundary`:
+
+```shell-session
+$ boundary connect postgres -target-id ttcp_eTcZMueUYv -username admin -dbname postgres
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689253770-boundary-postgres-connect.mov"
+  />
+</video>
+
+The PostgreSQL helper automatically injects brokered credentials, allowing you
+to access the PostgreSQL instance without knowing the username and password.
+
+```shell-session
+$ boundary connect postgres -target-id ttcp_eTcZMueUYv -dbname postgres
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689278343-boundary-passwordless-postgres-connect.mov"
+  />
+</video>
+
+The PostgreSQL helper supports the following flags:
+
+- `dbname`: Specifies the database name you want to pass through to the client.
+- `style`: Specifies how the CLI attempts to inovke a PostgreSQL client.
+The only supported style for the PostgreSQL helper is `psql`.
+- `username`: Specifies the username you want to pass through to the client.
+
+For more information, refer to the [`connect postgres` command documenatation](/boundary/docs/commands/connect/postgres).
+
+## RDP connect helper
+
+The RDP helper determines which RDP client to use depending on your operating system.
+On Windows, it uses `mstsc.exe`.
+On Mac, it uses `open`.
+Other operating systems are not currently supported.
+
+The following command executes the RDP client and establishes the connection through Boundary:
+
+```shell-session
+$ boundary connect rdp -target-id ttcp_eTcZMueUYv
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689201572-boundary-rdp-connect.mov"
+  />
+</video>
+
+The RDP helper supports the following flag:
+
+- `style`: Specifies how the CLI attempts to inovke an RDP client.
+The RDP helper supports the styles `mstsc` and `open`.
+
+For more information, refer to the [`connect rdp` command documenatation](/boundary/docs/commands/connect/rdp).
+
+## SSH connect helper
+
+The SSH helper automatically executes SSH and passes connection information.
+An expected host ID is set to avoid warnings on future connections when a different port is allocated automatically.
+You must still accept a host key upon the first connection.
+
+The following command connects to a target and automatically fills in the local address and port:
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_1234567890
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689253766-boundary-ssh-connect.mov"
+  />
+</video>
+
+The SSH helper supports the following flags:
+
+- `remote-command`: Specifies a command you want to run on the remote host.
+You can specify a complete command line, or you may include additonal arguments.
+If you include additional arguments, you must append them to the command and separate them using spaces.
+- `style`: Specifies how the CLI attempts to inovke an SSH client.
+The SSH helper supports the styles `ssh` and `putty`.
+- `username`: Specifies the username you want to pass through to the client.
+
+For more information, refer to the [`connect ssh` command documenatation](/boundary/docs/commands/connect/ssh).

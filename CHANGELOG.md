@@ -4,6 +4,973 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved 
+
+* Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
+  ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
+* Adds support to parse User-Agent headers and emit them in telemetry events
+  ([PR](https://github.com/hashicorp/boundary/pull/5645)).
+
+### Bug fixes
+
+* Fixed an issue in the worker where closing an SSH channel failed to exit a
+  loop, which would cause a massive spike in CPU usage over time. This change
+  only affects Enterprise.
+
+## 0.19.0 (2025/02/10)
+### New and Improved
+
+* Introduces soft-delete for users within the client cache.
+  ([PR](https://github.com/hashicorp/boundary/pull/5173)).
+* GCP dynamic host catalog: Add dynamic host catalog support for 
+  discovering GCP Compute Engine VM Instances.
+  ([PR](https://github.com/hashicorp/boundary/pull/5229)).
+* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and 
+maintainability of worker queries, and improve DB performance. ([PR](https://github.com/hashicorp/boundary/pull/5338)).
+* Adds support for dual-stack networking for AWS operations.
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52)) 
+  * **Note**: As a consequence of updating AWS SDK dependencies to enable
+    dual-stack support, this Boundary release may consume more memory. From our
+    testing, the increase seems to be around 1.6x, however this
+    may vary depending on your deployment architecture.
+* The worker <-> controller communications have been refactored to improve performance
+  and reliability at large scale. Workers older than v0.19.0 will remain supported
+  until the release of v0.20.0, in accordance with
+  [our worker/controller compatiblity policy](https://developer.hashicorp.com/boundary/docs/enterprise/supported-versions#control-plane-and-worker-compatibility).
+* Add concurrency limit on the password hashing of all password auth methods.
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/5437)).
+
+  This avoids bursty memory and CPU use during concurrent password auth method
+  authentication attempts. The number of concurrent hashing operations
+  can be set with the new `concurrent_password_hash_workers` configuration
+  value in the controller stanza, or the new
+  `BOUNDARY_CONTROLLER_CONCURRENT_PASSWORD_HASH_WORKERS` environment variable.
+  The default limit is 1.
+* ui: Improve worker filter workflow for targets, vault credential-stores, and storage-buckets. ([PR](https://github.com/hashicorp/boundary-ui/pull/2614)).
+
+### Bug fixes
+
+* Fix bug in applying BOUNDARY_MAX_RETRIES for boundary cli. Previously
+  setting this environment variable would result in a max retries of 2,
+  regardless of the value set.
+  ([PR](https://github.com/hashicorp/boundary/pull/5385)).
+* Fix bug in parsing IPv6 addresses. Previously setting a target address or the
+  initial upstream address in the config file would result in a malformed value.
+  ([PR](https://github.com/hashicorp/boundary/pull/5221)).
+* Fix an issue where, when starting a session, the connection limit always displays 0.
+  ([PR](https://github.com/hashicorp/boundary/pull/5396)).
+* Fix bug which caused the `children` keyword not to apply the appropriate
+  permissions for a number of resources.
+    ([PR](https://github.com/hashicorp/boundary/pull/5418)).
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5405).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5354)).
+
+## 0.18.3 (2025/02/10) (Enterprise only)
+### Bug fixes
+
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5406).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5365)).
+
+## 0.17.4 (2025/02/10) (Enterprise only)
+### Bug fixes
+
+* Fix bug where database transactions were not using the correct reader & writer functions
+  and context.
+    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
+* Remove unnecessary subquery from alias refresh
+    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
+
+### Security
+
+* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
+    ([PR])(https://github.com/hashicorp/boundary/pull/5528).
+* Go Cryptography dependency update to address CVE-2024-45337
+    ([PR](https://github.com/hashicorp/boundary/pull/5366)).
+
+## 0.18.2 (2024/12/12)
+### Bug fixes
+
+* Fixed an issue where session recordings would fail when large numbers of
+  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
+* Fixed an issue where the controller would incorrectly handle HTTP requests
+  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
+
+## 0.17.3 (2024/12/12)
+### Bug fixes
+
+* Fixed an issue where session recordings would fail when large numbers of
+  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
+* Fixed an issue where the controller would incorrectly handle HTTP requests
+  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
+
+## 0.18.1 (2024/11/21)
+### New and Improved
+
+* Delete terminated sessions in batches to avoid long running jobs.
+  ([PR](https://github.com/hashicorp/boundary/pull/5201))
+
+### Bug fixes
+
+* Fix an issue where users would lose access to managed groups if
+  there are more than 10,000 managed groups in the auth method used.
+  ([PR](https://github.com/hashicorp/boundary/pull/5242))
+* Fix an issue where only the first 10,000 members of a managed group
+  are returned when getting the managed group, and a similar issue where
+  only the first 10,000 managed groups an account is part of is included
+  when getting the account.
+  ([PR](https://github.com/hashicorp/boundary/pull/5245))
+
+## 0.18.0 (2024/10/01)
+### New and Improved
+
+* Add support for dynamic host catalog plugins running in Boundary workers:
+  Boundary plugins that handle dynamic host catalog operations (such as the
+  [AWS](https://github.com/hashicorp/boundary-plugin-aws/tree/main/plugin/service/host)
+  and [Azure](https://github.com/hashicorp/boundary-plugin-azure) plugins) can
+  now run on workers. ([PR](https://github.com/hashicorp/boundary/pull/5137))
+
+* Dynamic host catalogs worker filter support (Enterprise and HCP Boundary
+  only): Operators can now set a worker filter when creating a dynamic host
+  catalog. When set, all of the plugin requests will be sent to the matching
+  worker for processing. ([PR](https://github.com/hashicorp/boundary/pull/5137))
+
+* AWS dynamic host catalogs `AssumeRole` authentication support: Operators can
+  now set-up AWS dynamic host catalogs using Amazon's `AssumeRole`
+  authentication paradigm by providing a valid Role ARN when creating the host
+  catalog. ([PR](https://github.com/hashicorp/boundary/pull/5137) and
+  [PR](https://github.com/hashicorp/boundary-plugin-aws/pull/49))
+
+* Improved MinIO storage plugin compatibility with other services by dropping
+  the checksum headers in `PutObject`.
+  ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/23))
+
+* ui: Add UI support for searching and pagination of aliases.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2498))
+
+* ui: Add UI support for filtering and pagination of session recordings.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2502))
+
+* ui: Improve multi-scope grants select/deselect process.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2435))
+
+### Bug Fixes
+
+* Prevented a data-race in Boundary's event logging system.
+  ([PR](https://github.com/hashicorp/boundary/pull/5139))
+
+* Update Storage Bucket type icon in Target view.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2503))
+
+* Allow user to retry with authentication is pending with OIDC.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2512))
+
+### Deprecations/Changes
+
+* Remove deprecated `controllers` field from the worker config, which was deprecated in 0.9.0 for
+`initial_upstreams`([PR](https://github.com/hashicorp/boundary/pull/5125))
+
+## 0.17.2 (2024/09/25)
+
+### New and Improved
+
+* Improve performance of grants query by reducing the number of rows that need
+  to be returned. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Add several indexes to database tables to improve performance of cascading
+  deletes/updates to session tables.
+  ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Reorder indexes on several join tables to improve performance of grants query.
+  ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Make client cache sqlite database persistent between restarts of the client
+  cache daemon. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Improve client cache performance by adding indexes, limiting results,
+  and insuring only one refresh is running at a time for a given user and
+  resource. ([PR](https://github.com/hashicorp/boundary/pull/5126))
+* Add pagination support to client API and use pagination when caching
+  resources in client cache.
+  ([PR](https://github.com/hashicorp/boundary/pull/5101) and
+  ([PR](https://github.com/hashicorp/boundary/pull/5107)
+
+### Bug Fixes
+
+* The Go API properly uses the passed in value for `WithRecursive` and
+  `WithSkipCurlOutput` instead of always setting to true regardless of the
+  passed-in value. ([PR](https://github.com/hashicorp/boundary/pull/5066))
+
+## 0.17.1 (2024/08/21)
+
+### New and Improved
+
+* Add `GetDownstreamWorkersTimeout` config option which represents the period of
+  time (as a duration) timeout for GetDownstreamWorkers call in
+  DownstreamWorkerTicker. This is currently not documented and considered
+  internal. ([PR](https://github.com/hashicorp/boundary/pull/5007))
+
+### Bug Fixes
+
+* Fixed issue where storage policies were not deleted when scopes are deleted
+  ([PR](https://github.com/hashicorp/boundary/pull/5014))
+* Contains Bug Fixes from 0.16.3
+
+### Security
+
+* Contains Security Fixes from 0.16.3
+
+## 0.16.3 (2024/08/21)
+
+### New and Improved
+
+* Add `GetDownstreamWorkersTimeout` config option which represents the period of
+  time (as a duration) timeout for GetDownstreamWorkers call in
+  DownstreamWorkerTicker. This is currently not documented and considered
+  internal. ([PR](https://github.com/hashicorp/boundary/pull/5007))
+
+### Bug Fixes
+
+* Minio large file support: Disable multipart uploads via minio to fix an issue
+  where the file checksum is set incorrectly on each part of the upload, causing
+  it to fail. This change fixes file uploads larger than 16MB and limits upload
+  sizes to 5GB. ([PR](https://github.com/hashicorp/boundary/pull/5013)) and
+  ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/21))
+* Resolved an issue where session authorization was returning a `401` if the
+  alias is non-existent or the alias does not resolve to anything. A `404`
+  status code is now returned.
+  ([PR](https://github.com/hashicorp/boundary/pull/5006)))
+
+### Security
+
+* curl (enterprise): The curl binary is no longer included in the published
+  Docker container images for Boundary Enterprise to address the CVE-2024-7264
+  vulnerability.
+  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)  
+
+## 0.17.0 (2024/07/17)
+
+### New and Improved
+
+* SBC (Storage Bucket Credential): This release introduces, SBC, a resource that
+represents credentials for authentication and authorization with an external
+object store. There are two SBC types, managed secret and environmental.
+([PR](https://github.com/hashicorp/boundary/pull/4933)),
+([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/18)) and
+([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/46))
+  * SBC State: This release introduces, SBC State, which represents the ability
+  for a worker to perform a specific action using the storage bucket. SBC
+  permission types (write, read, & delete) represent an action that is required
+  for the storage bucket to do as a routine task on an external object store.
+  Each permission type has a permission state (ok, error, unknown). 
+  * SBC Worker Filtering: For protocol aware workers that require interaction
+  with an external storage service, the workers will be filtered by the SBC
+  state depending on the action and permission required.
+* ui: Add multiple grant scope support for roles
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2388))
+* ui: Add API tags support for workers and improve worker filtering for targets
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2393))
+* Updated grpc to 1.61.1([PR](https://github.com/hashicorp/boundary/pull/4983))
+
+### Bug Fixes
+
+## 0.16.2 (2024/06/10)
+
+### New and Improved
+
+* Updated Minio plugin to allow for potential use with other S3-compatible
+storage providers.
+([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/16)) and
+([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/17))
+
+### Bug Fixes
+
+* Fixed a bug where a worker credential rotation request suceeded on the
+controller but the response to the worker was lost. This resulted in the
+controller using a separate set of credentials than the worker, causing the
+worker to be unable to connect to the controller. The fix implements the new
+nodeenrollment library NodeIdLoader interface, which ensures that on store, if
+worker NodeInformation has a previous key set, the worker will check and correct
+its stored credential set to match. LodeNodeInformation was also updated to fix
+a bug where in this split credential scenario, the current credential key was
+assumed to be the incoming worker key, which caused the wrong key information to
+be populated for the key id.
+([PR](https://github.com/hashicorp/boundary/pull/4870))
+
+### New and Improved
+
+* Allow descriptions to contain newlines and other whitespace
+  ([PR](https://github.com/hashicorp/boundary/pull/2599))
+* Listed roles contain grant scope ID information
+  ([PR](https://github.com/hashicorp/boundary/pull/4893))
+
+### Deprecations/Changes
+
+* The `grant_scope_id` field on roles, which was deprecated in 0.15.0, has been removed.
+  ([PR](https://github.com/hashicorp/boundary/pull/4886))
+
+## 0.16.1 (2024/05/30)
+
+### New and Improved
+
+* The observation tag was added to session recording and storage bucket proto messages for telemetry purposes. If you enable telemetry and observation events, Boundary will now collect data about session recording and storage buckets.
+([PR](https://github.com/hashicorp/boundary/pull/4824)) and ([PR](https://github.com/hashicorp/boundary/pull/4825))
+
+### Deprecations/Changes
+
+* The `boundary daemon` command has been deprecated in favor of the new
+  `boundary cache` command. The behavior remains the same. The `boundary search`
+  command is unchanged.
+  ([PR](https://github.com/hashicorp/boundary/pull/4808))
+* The include_terminated field in the list sessions request will be removed
+  in an upcoming release. After the deprecation process is complete and the
+  field is removed terminated sessions will be returned
+  in all list session responses unless filtered out using the filter field.
+  ([PR](https://github.com/hashicorp/boundary/pull/4602))
+
+### Bug Fixes
+
+* Fix a dead lock issue where the controller could get stuck with all of its
+  available database connections being stuck in `idle in transaction`.
+  If a controller is configured to have a `max_open_connections`, and was under
+  sufficient load in the form of requests from workers interacting with
+  sessions, like in the form of authorizing new session connections, the
+  controller could get stuck after consuming all of the database connections,
+  leaving them in the `idle in transaction` state. This was due to a
+  combination of issues, including the lack of a request timeout for worker to
+  controller grpc requests, and the session repository attempting to use a
+  separate database connection to retrieve a kms.Wrapper after already starting
+  a database transaction. The fixes move these kms operations outside of the
+  transaction and set a max request duration for the grpc requests based on
+  the cluster's listener configuration.
+  ([PR](https://github.com/hashicorp/boundary/pull/4803) and
+  [PR](https://github.com/hashicorp/boundary/pull/4805))
+* LDAP account attribute maps. Account attribute maps have been supported since
+  the introduction of LDAP authentication, however a bug was present where we
+  wouldn't take those into account upon authenticating (when receiving the
+  information from the LDAP server). This is now resolved
+  ([PR]((https://github.com/hashicorp/boundary/pull/4788))).
+
+## 0.16.0 (2024/04/30)
+
+### New and Improved
+
+* Target aliases have been added: You can now create an alias for a target. In
+  most situations where you would use a target id, you can now instead use the
+  alias value. Create an alias with `boundary aliases create target -value
+  example.boundary -destination-id ttcp_1234567890` and connect to a target
+  using an alias using `boundary connect example.boundary`
+* Worker local storage state: Self managed workers that are configured to be
+  used for session recordings will report the state of the its disk space. To
+  learn more about this new feature, refer to the
+  [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket#local-storage).
+* MinIO storage plugin: You can now create a storage bucket that allows Boundary
+  to interoperate with a MinIO cluster for Session Recording storage. This
+  includes some added functionality such as credential rotation and credential
+  management. To learn more about the plugin, refer to the
+  [readme](https://github.com/hashicorp/boundary-plugin-minio?tab=readme-ov-file#minio-plugin-for-hashicorp-boundary).
+  *Note:* Due to a library incompatibility, this release is not yet compatible
+  with the `netbsd` operating system. Please refer to the following
+  [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket)
+  to learn how to create a storage bucket.
+* ui: Add UI support for filtering and pagination
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2237))
+* ui: Add UI support for MinIO (Enterprise and HCP Boundary only)
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2248))
+
+### Added dependency
+
+* postgres `citext` dependency added to enable aliases to be globally unique in
+  a case insensitive way.
+
+## 0.15.4 (2024/04/09)
+
+### Security
+
+* Go version bumped to 1.22.2 to address
+  [CVE-2023-45288](https://github.com/advisories/GHSA-4v7x-pqxf-cx7m)
+
+## 0.15.3 (2024/03/21)
+
+### Bug Fixes
+
+* Fix a nil pointer error in the client cache daemon when a refresh was forced
+  performing a boundary search.
+  ([PR](https://github.com/hashicorp/boundary/pull/4503))
+* workers: Workers connecting over high latency connections, or to controllers
+  with high latency between the controller and the database, could time out and
+  throw errors that may not have been recoverable if it was during initial
+  registration ([PR](https://github.com/hashicorp/boundary/pull/4535))
+* Resolved an issue introduced in 0.14 where, after successfully deleting an AWS S3
+  Storage Bucket with credential rotation enabled, Boundary could not delete the
+  associated IAM Access Key resource
+
+### New and Improved
+
+* templating: A new templating function `coalesce` can be used to match a
+  template against multiple possible values, returning the first non-empty
+  value. As an example, this can be used in a credential library to allow a
+  username value that might be comprised of a name or login name depending on
+  the auth method, e.g. `{{ coalesce .Account.Name .Account.LoginName}}`
+  ([PR](https://github.com/hashicorp/boundary/pull/4492)))
+
+## 0.15.2 (2024/03/11)
+
+### Bug Fixes
+
+* Go version bump 1.21.8 to address (CVE-2024-24783, CVE-2023-45290,
+  CVE-2023-45289, CVE-2024-24785, CVE-2024-24784)
+
+* Protobuf Go update to address [CVE-2024-24786](https://github.com/advisories/GHSA-8r3f-844c-mc37)
+
+## 0.15.1 (2024/02/28)
+
+### Bug Fixes
+
+* cli: Update proxy listener to not close when the number of connections left
+  for the session is zero. The listener will refuse new connections when the
+  number of connections left is zero but existing connections will be active.
+  This fixes a CLI client issue where sessions with max connection count
+  configured were closed when the number of connections left hit 0.
+  ([Issue](https://github.com/hashicorp/boundary/issues/4364),
+  ([PR](https://github.com/hashicorp/boundary/pull/4389)))
+* Fix issue where the websocket connection was throwing closing errors during
+  the session teardown.
+  ([PR](https://github.com/hashicorp/boundary/pull/4389))
+
+### New and Improved
+
+* feat: support added for tracking and reporting monthly active users for
+  the purpose of billing. It adds a new API endpoint,
+  `/v1/billing:monthly-active-users` and new cli command,
+  `boundary billing monthly-active-users` that can be used to view the monthly
+  active user counts.
+
+## 0.15.0 (2024/01/30)
+
+### Deprecations/Changes
+
+* Per the note in Boundary 0.13.0, the previous `kms` worker method has been
+  removed. Since 0.13.0, unless the `use_deprecated_kms_auth_method` value was
+  set on the worker config, the new `kms` mechanism was already being used; this
+  is simply no longer an available option.
+* Per the notes in Boundary 0.12.0 and 0.14.0, it is now an error if an address
+  on a host or target contains a port. As of this release, this restriction also
+  affects existing addresses (not just creation/updating via the API) so any
+  existing addresses containing a port will not be able to be used as part of a
+  target's session authorization call.
+* The `grant_scope_id` field on roles is now deprecated in favor of the multiple
+  grant scope support.
+* Per the note in Boundary 0.13.1, the `id` field in grants has changed to `ids`
+  which allows multiple ids to be included; existing grants submitted to
+  Boundary will continue to work, but grants using "id" can no longer be added
+  to or set on a role.
+* All list endpoints except workers now return the first 1000 items instead
+  of all items if no parameters are provided. The number of items returned can
+  be configured through the new controller configuration value `max_page_size`.
+  The Admin UI, CLI and api package automatically paginate results.
+
+### New and Improved
+
+* Multiple grant scopes in roles: Roles now support multiple grant scopes, along
+  with the special values `this`, `children` (global/org only) to apply to all
+  direct children of a scope, and `descendants` (global only) to apply to all
+  descendants of a scope. These use the new actions `add-grant-scopes`,
+  `set-grant-scopes`, and `remove-grant-scopes` on roles. For now the
+  `grant_scope_id` field on roles will continue to be able to be set, which will
+  set a single grant scope, but this capability is now deprecated.
+* Policies (Enterprise and HCP Boundary only): This release introduces Policies, a
+  Boundary resource that represents a Governance Policy to enforce. The first
+  implementation targets Storage Policies, which enables administrators to automate
+  the process of retention and deletion of Session Recordings, ensuring that they're only
+  retaining data that is explicitly required from a security/compliance perspective.
+  * ui: Add full UI support for Storage Policies managing the lifecycle of Session Recordings.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2089))
+* New generic commands `read`, `update`, and `delete` have been added. These
+  allow operating on resources by directly specifying the ID of the resource as
+  the next parameter (e.g. `boundary update ttcp_1234567890`). Subtypes do not
+  need to be specified (e.g. that command is equivalent to `boundary targets
+  update tcp -id ttcp_1234567890`), and any flags given after the ID are passed
+  through to the type-specific subcommand. Once the ID has been entered,
+  autocomplete is also supported.
+  ([PR](https://github.com/hashicorp/boundary/pull/3992))
+* The `key_id` parameter within SSH Certificate Credential Libraries now accepts
+  the use of templated parameters
+  ([PR](https://github.com/hashicorp/boundary/pull/4215))
+* List endpoint pagination: All list endpoints except workers now support pagination.
+  * api: All list endpoints except workers have added support for pagination.
+    The api package automatically paginates until the end of the results. The new
+    `WithListToken`` option can be used to request a list of updated and deleted resources
+    relative to the last result received.
+  * config: add new controller field `max_page_size` for controlling the default and max size
+    of pages when paginating through results.
+* New command `search` has been added allowing quick searching of targets or
+  sessions. It utilizes a client side cache also added in this release. The
+  client side cache starts itself automatically in the background when successfully
+  executing any command that communicates with a Boundary controller. To disable
+  the client cache from starting automatically set the
+  `BOUNDARY_SKIP_CACHE_DAEMON` environment variable or pass the
+  `-skip-cache-daemon` flag when running a command that may start it.
+  Commands `daemon start`, `daemon stop`, `daemon status`, and `daemon add-token`
+  were added to help manage the cache. The cache does not currently work with
+  Boundary instances that require the use of client side certs.
+
+## 0.14.3 (2023/12/12)
+
+### New and Improved
+
+* Added the ability to enforce rate limits on the Controller API. This version
+  enables rate limits by default. For details on the default rate limits,
+  how to configure rate limits, and how to disable rate limiting see the
+  noted PR. ([PR](https://github.com/hashicorp/boundary/pull/4092))
+* Add support for OIDC prompts. Using prompts, the Relying Party (RP) can
+  customize the authentication and authorization flow to suit their specific
+  needs and improve the user experience. [OIDC Authentication request]
+  (https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) server.
+  ([PR](https://github.com/hashicorp/boundary/pull/4053))
+
+### Bug Fixes
+
+* Update go-kms-wrapping/extras/kms dependency to allow external wrappers
+  without a key id to be used within a KMS config stanza.  Note: this fix allows
+  GCP KMS keys to be again with Boundary, which had stopped working in v0.13.0.
+  ([PR](https://github.com/hashicorp/boundary/pull/4058))
+
+* Two Vault client settings were not being properly used when constructing a
+  Vault client. ([PR](https://github.com/hashicorp/boundary/pull/3973))
+
+  The `TLS Skip Verify` setting was only being set if a `CA Cert` was also
+  configured. This fix sets the `TLS Skip Verify` when configured regardless of
+  other settings.
+
+  The `TLS Server Name` setting was never being set. Bad programmers. This fix
+  now sets it on the Vault client if the Vault Credential Store has been
+  configured to use a value for this setting.
+
+### Security
+
+* deps: Bump Go version to v1.21.5. This is to address multiple security
+  vulnerabilities. Most notable for boundary is a fix in net/http to limit
+  chunked data overhead. See https://groups.google.com/g/golang-announce/c/iLGK3x6yuN
+
+## 0.14.2 (2023/11/2)
+
+### New and Improved
+
+* Expose Valid Principals for Vault SSH Signed Certs: Allow users to add
+  additional valid principals when creating a vault ssh signed cert credential
+  library ([PR](https://github.com/hashicorp/boundary/pull/3791)).
+
+### Bug Fixes
+
+* High CPU consumption: A background GRPC connection state check caused high CPU
+  utilization. This was caused by a long running loop that was checking for GRPC
+  connection state changes between a worker and an upstream connection address.
+  The loop was not correctly waiting for GRPC connection state changes before
+  running. The issue was fixed by correctly updating the state that determines
+  when the loop in GRPC connection state check should run.
+  ([PR](https://github.com/hashicorp/boundary/pull/3884))
+* LDAP auth methods: Fix encoding of mTLS client key which prevented Boundary
+  from making mTLS connections to an LDAP server
+  ([Issue](https://github.com/hashicorp/boundary/issues/3927),
+  [PR](https://github.com/hashicorp/boundary/pull/3929)).
+
+## 0.14.1 (2023/10/17)
+
+### Security
+
+* deps: Bump Go version to v1.21.3; gRPC to v1.58.3; golang.org/x/net to
+  v0.17.0. This is to address a security vulnerability in the HTTP stack where a
+  malicious HTTP/2 client which rapidly creates requests and immediately resets
+  them can cause excessive server resource consumption.
+
+## 0.14.0 (2023/10/10)
+
+### Deprecations/Changes
+
+* Per the note in Boundary 0.12.0, the `vault` credential library subtype has
+  now been removed in favor of `vault-generic`. For example, instead of
+  `boundary credential-libraries create vault`, you must use `boundary
+  credential-libraries create vault-generic`.
+* Per the note in Boundary 0.12.0, errors returned from the cli when using the
+  `-format=json` option will now only use the `status_code` field. The `status`
+  field has been removed.
+* Per the note in Boundary 0.12.0, targets require a default port value. Ports
+  defined as part of a host address were ignored but allowed as part of a target
+  definition; from 0.14.0 onwards, any port defined on a host address will now
+  become an error.
+* Targets: Per the note in Boundary 0.10.10, target Application Credentials has
+  been renamed to Brokered Credentials. `application-credential-source` has been
+  removed as a field. `brokered-credential-source` should be used instead.
+  ([PR](https://github.com/hashicorp/boundary/pull/3728), [deprecated
+  changelog](#0100-20220810)).
+
+### New and Improved
+
+* cli: Add support for specifying a command that will be executed on the remote host when
+  using the `boundary connect ssh` subcommand.
+  ([Issue](https://github.com/hashicorp/boundary/issues/3631),
+  [PR](https://github.com/hashicorp/boundary/pull/3633)).
+* feat: add API support for additional LDAP auth method fields:
+  `maximum_page_size` and `dereference_aliases`
+  ([PR](https://github.com/hashicorp/boundary/pull/3679)).
+* feat: add worker upstream connection status to ops health check
+  ([PR](https://github.com/hashicorp/boundary/pull/3650)).
+* feat: allow HCP cluster id to be sourced from file or env variable
+    ([PR](https://github.com/hashicorp/boundary/pull/3709)).
+* feat: add support for telemetry events via flag or Boundary configuration
+  (requires observation events to be enabled). Deny filter now filters
+  coordination worker status from observation events by default. (This behavior
+  is overridden by any user specified allow or deny filters)
+  ([PR](https://github.com/hashicorp/boundary/pull/3753)).
+* ui: Add full UI support for LDAP auth method
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1782))
+* ui: Add new attribute fields to storage bucket to support the assume role service in AWS.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1901))
+
+### Bug Fixes
+
+* LDAP auth methods: allow bind-dn and bind-password to be updated
+  independently. ([PR](https://github.com/hashicorp/boundary/pull/3511))
+* targets: Fix address field not being populated if the number of targets on a
+  list returns more than 10000 entries
+  ([PR](https://github.com/hashicorp/boundary/pull/3644))
+* cli: Fix issue when using the `authenticate` command against a password auth
+  method on Windows where the password would be swallowed when the login name is
+  submitted ([PR](https://github.com/hashicorp/boundary/pull/3800))
+* worker: Fix an issue that could cause intermittent startup issues on slow
+  systems ([PR](https://github.com/hashicorp/boundary/pull/3803))
+* cli: Remove websocket max message size. This fixes issues where large message
+  sizes are sent to the client from a worker which resulted in the connection
+  being terminated, as is the case with an scp download when using an SSH
+  Target. ([PR](https://github.com/hashicorp/boundary/pull/3808))
+
+## 0.13.5 (2023/12/12) (Enterprise and HCP Boundary only)
+
+### Security
+
+* deps: Bump Go version to v1.21.5. This is to address multiple security
+  vulnerabilities. Most notable for boundary is a fix in net/http to limit
+  chunked data overhead. See https://groups.google.com/g/golang-announce/c/iLGK3x6yuN
+
+## 0.13.1 (2023/07/10)
+
+### New and Improved
+
+* roles: In grants, the `id` field has been changed to `ids` (but `id` will
+  still be accepted for now, up until 0.15.0). In the `ids` field, multiple IDs
+  can now be specified in a grant, either via commas (text format) or array
+  (JSON format). ([PR](https://github.com/hashicorp/boundary/pull/3263)).
+* dev environment: When running `boundary dev` the initial LDAP auth-method with an
+  ID of `amldap_1234567890` is now in a public-active state, so it will be returned
+  in the response from `boundary auth-methods list`
+
+### Deprecations/Changes
+
+* Grants can now accept more than one ID per grant string (or entry in JSON) via
+  the `ids` parameter. In 0.15.0 the ability to add new grants via the `id`
+  parameter will be removed.
+
+### Bug Fixes
+
+* PKI worker authentication: A worker authentication record can be stored more than once, if it matches the
+  existing record for that worker auth key ID. Fixes an edge case where a worker attempted authorization
+  and the controller successfully stored the worker auth record but went down before returning authorization
+  details to the worker. ([PR](https://github.com/hashicorp/boundary/pull/3389))
+* LDAP managed groups: adding/setting/removing a principal to a role now works
+  properly when it's an LDAP managed group.
+  ([PR](https://github.com/hashicorp/boundary/pull/3361) and
+  [PR](https://github.com/hashicorp/boundary/pull/3363))
+
+## 0.13.0 (2023/06/13)
+
+### New and Improved
+
+* SSH Session Recordings (Enterprise and HCP Boundary only): SSH targets can now
+  be configured to record sessions. Recordings are signed and stored in a
+  Storage Bucket. Recordings can be played back in the admin UI.
+  * Storage Buckets: This release introduces Storage Buckets, a Boundary
+    resource that represents a bucket in an external object store. Storage
+    Buckets can be defined at the global or org scope. When associated with an
+    SSH target, the storage bucket is used to store session recordings. This
+    release includes support for AWS S3 only.
+  * BSR (Boundary Session Recording) file format: BSR is a new specification
+    that defines a hierarchical directory structure of files and a binary file
+    format. The contents of a BSR include all data transmitted between a user
+    and a target during a single session, relevant session metadata and summary
+    information. The BSR also includes checksum and signature files for
+    cryptographically verifying BSR contents, and a set of KMS wrapped keys for
+    use in BSR verification. The BSR format is intended to be extensible to
+    support various protocols. With this release BSR supports the SSH protocol.
+    It also supports converting an SSH channel recording into an
+    [asciicast](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md)
+    format that is playable by asciinema.
+  * To learn more about this new feature, refer to the
+    [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording).
+* KMS workers: KMS workers now have feature parity with PKI workers (they
+  support multi-hop and Vault private access) and support separate KMSes for
+  authenticating downstreams across different networks. See the [worker
+  configuration
+  documentation](https://developer.hashicorp.com/boundary/docs/configuration/worker)
+  for more information. ([PR](https://github.com/hashicorp/boundary/pull/3101))
+* roles: Perform additional validity checking on grants at submission time
+  ([PR](https://github.com/hashicorp/boundary/pull/3081))
+* targets: The new `default_client_port` field allows specifying the default
+  port to use on the client side when connecting to a target, unless overridden
+  by the client via `-listen-port`
+  ([PR](https://github.com/hashicorp/boundary/pull/2767))
+* cli/api/sdk: New LDAP auth method type added with support for create, read,
+  update, delete, and list (see new cli `ldap` subcommands available on CRUDL
+  operations for examples), as well as the ability to authenticate against it
+  via the SDK, CLI, admin UI, and desktop client.
+  ([PR](https://github.com/hashicorp/boundary/pull/2912))
+* ui: Display external names when listing dynamic hosts ([PR](https://github.com/hashicorp/boundary-ui/pull/1664))
+* ui: Add support for LDAP authentication ([PR](https://github.com/hashicorp/boundary-ui/pull/1645))
+* Dynamic Host Catalog: You can now view the AWS or Azure host name when listing hosts in CLI,
+  admin console, and desktop client. ([PR](https://github.com/hashicorp/boundary/pull/3074))
+* Add configuration for license reporting (Enterprise only)
+
+### Deprecations/Changes
+
+* With the introduction of the new KMS variant for worker registration (as
+  described below), using the deprecated behavior requires opting-in. This is
+  only recommended if compatibility with pre-0.13 workers using the KMS auth
+  method is required. Requiring opting in removes some potentially confusing
+  behavior for deciding when to use the old versus new mechanism. To opt in, add
+  `use_deprecated_kms_auth_method = true` to the `worker` config block. Note
+  that if a 0.13+ worker using KMS connects to a 0.13+ controller using KMS, the
+  transition to the new method will happen automatically. To go back to the old
+  method after that will require the worker to be deleted and re-added with the
+  `use_deprecated_kms_auth_method` config field specified.
+* When grants are added to roles additional validity checking is now performed.
+  This extra validity checking is designed to reject grants that are not
+  [documented grant
+  formats](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions/permission-grant-formats)
+  or are for combinations of IDs and types that cannot actually be used
+  together. These previously would have been accepted without error but would
+  never result in permissions being granted, causing confusion. As a result,
+  attempting to write such grants into roles may now result in an error; the
+  error message gives hints for resolution.
+* `WithAutomaticVersioning` for auth tokens in Go SDK: this option was
+  incorrectly being generated for auth token resources, which do not support
+  versioning. This is technically a breaking change, but it was a no-op option
+  anyways that there was no reason to be using. It has now been removed.
+* Plugins: With the introduction of the storage plugin service, the Azure and AWS Host plugin
+  repositories have been renamed to drop the `host` element of the repository name:
+
+   - https://github.com/hashicorp/boundary-plugin-host-aws -> https://github.com/hashicorp/boundary-plugin-aws
+   - https://github.com/hashicorp/boundary-plugin-host-azure -> https://github.com/hashicorp/boundary-plugin-azure
+
+  Similarly the `plugins/host` package has been renamed to `plugins/boundary`
+  ([PR1](https://github.com/hashicorp/boundary/pull/3262),
+  [PR2](https://github.com/hashicorp/boundary-plugin-aws/pull/24),
+  [PR3](https://github.com/hashicorp/boundary-plugin-azure/pull/12),
+  [PR4](https://github.com/hashicorp/boundary/pull/3266)).
+* PostgreSQL 12 or greater is now required. PostgreSQL 11 is no longer
+  supported.
+
+### Bug Fixes
+
+* targets: `authorize-session` now works properly when using a target's name as
+  the identifier and the target name contains one or more slashes
+  ([PR](https://github.com/hashicorp/boundary/pull/3249))
+* resource listing: API requests to list a resource (targets, sessions, users,
+  etc) now properly return all resources the callers has appropriate permission
+  to list ([PR](https://github.com/hashicorp/boundary/pull/3278))
+* sessions: Fix a bug that contributed to slow response times when listing
+  sessions that had a large number of connections
+  ([PR](https://github.com/hashicorp/boundary/pull/3280))
+* ui: Fix `client secret` bug for OIDC authentication methods([PR](https://github.com/hashicorp/boundary-ui/pull/1698))
+* ui: Fix linking to a Host from the Host Set screen of a Dynamic Host Catalog ([PR](https://github.com/hashicorp/boundary-ui/pull/1659))
+
+## 0.12.3 (2023/05/26)
+
+Note: As this issue currently only affected HCP Boundary customers, there is no
+open-source release of 0.12.3; the same fixes will be in 0.13.0 OSS.
+
+### Bug Fixes
+
+* workers: A bug in PKI worker auth rotation could mean that after a rotation
+  the controller (or upstream worker) and downstream worker side could pick
+  different certificate chains for authentication, with the only remedy being to
+  re-authorize the workers. This has been fixed. If this bug was previously hit,
+  in some specific cases updating only the worker to 0.12.3 will fix it;
+  otherwise reauthorization will be necessary.
+
+## 0.12.2 (2023/04/04)
+
+### Security
+
+* Boundary now uses Go 1.19.8 to address CVE-2023-24536. See the
+  [Go announcement](https://groups.google.com/g/golang-announce/c/Xdv6JL9ENs8) for
+  more details.
+
+## 0.12.1 (2023/03/13)
+
+### Bug Fixes
+
+* cli: Fix fallback parsing of un-typed credentials for `boundary connect`.
+  When using a vault credential library with no credential type set, boundary
+  will perform a best effort attempt to parse any brokered credentials. If the
+  credentials are successfully parsed, they can be used by the subprocess
+  spawned when using the connect subcommands, i.e. `ssh` or `psql`. With the
+  change to the vault credential library subtype, this fallback parsing would
+  fail. Note that if the credential library has a credential type, by using
+  `-credential-type` when creating the credential library, the credential was
+  correctly parsed. This fallback parsing is now fixed, but in order to support
+  older clients, credential libraries will need to be recreated with a
+  credential type. [PR](https://github.com/hashicorp/boundary/pull/2989)
+* ui: Fix credential library not saving correctly when trying to save it as a
+  generic secrets type. ([PR](https://github.com/hashicorp/boundary-ui/pull/1640))
+* sessions: Fix tofu token retrieval. ([PR](https://github.com/hashicorp/boundary/pull/3064))
+
+## 0.12.0 (2023/01/24)
+
+### Deprecations/Changes
+
+* In Boundary 0.9.0, targets were updated to require a default port value. This
+  had been the original intention; it was a mistake that it was optional.
+  Unfortunately, due to a separate defect in the update verification logic for
+  static hosts, it was possible for a host to be updated (but not created) with
+  a port. This meant that targets could use ports attached to host addresses,
+  which was not the intention and leads to confusing behavior across different
+  installations. In this version, updating static hosts will no longer allow
+  ports to be part of the address; when authorizing a session, any port on such
+  a host will be ignored in favor of the default port on the target. In Boundary
+  0.14.0, this will become an error instead. As a consequence, it means that the
+  fallback logic for targets that did not have a default port defined is no
+  longer in service; all targets must now have a default port defined.
+* With the introduction of `vault-ssh-certificate` credential libraries, the
+  `vault` credential library subtype is being renamed to `vault-generic` to
+  denote it as a credential library that can be used in a generalized way to
+  issue credentials from vault. Existing credential libraries with the
+  subtype of `vault` will be updated to `vault-generic`. The subtype of
+  `vault` will still be accepted as a valid subtype in API requests to the
+  credential libraries endpoints, but is deprecated. Instead `vault-generic`
+  should be used. In addition the `boundary credential-libraries create
+  vault` and `boundary credential-libraries update vault` subcommands will
+  still function, but are deprecated. Instead `boundary credential-libraries
+  create vault-generic` and `boundary credential-libraries update
+  vault-generic` should be used. Also note that any credential library created
+  using the subtype of `vault`, either via the API or via the deprecated
+  subcommand, will have the subtype set to `vault-generic`. The deprecated
+  subtype and subcommands will be removed in boundary 0.14.0, at which point
+  `vault-generic` must be used.
+* In Boundary 0.1.8 using the `-format=json` option with the cli would provide
+  a `status_code` for successful API requests from the cli. However, in the
+  case where an error was returned, the JSON would use `status` instead. This
+  inconsistency has been fixed, with `status_code` being used in both cases.
+  For error cases `status` will still be populated, but is deprecated and will
+  be removed in 0.14.0.
+
+### New and Improved
+
+* Direct Address Targets: You can now set an address directly on a target,
+  bypassing the need for host catalogs, host sets and hosts.
+  ([PR](https://github.com/hashicorp/boundary/pull/2613))
+* Custom Response Headers: Adds ability to set api and ui response headers based
+  on status code. Includes default secure CSP and other headers.
+  ([PR](https://github.com/hashicorp/boundary/pull/2587))
+* metrics: Adds accepted connections and closed connections counters to keep track
+  downstream connections for worker and controller servers.
+  ([PR](https://github.com/hashicorp/boundary/pull/2668))
+* Egress and Ingress worker filters: The target `worker_filter` field has been deprecated and
+ replaced with egress and ingress worker filters. Egress worker filters determine which workers are
+ used to access targets. Ingress worker filters (HCP Boundary only) determine which workers are
+ used to connect with a client to initiate a session. ([PR](https://github.com/hashicorp/boundary/pull/2654))
+* Multi-Hop Sessions (HCP Boundary only): Multi-hop PKI workers can communicate with each other to serve
+ 2 primary purposes: authentication and session proxying. This results in the ability to chain
+ multiple workers together to access services hidden under layers of network security. Multi-hop
+ workers can also establish a TCP session through multiple workers, with the ability to reverse
+ proxy and establish a connection.
+* Vault SSH certificate credential library: A new credential library that uses
+  the vault ssh secret engine to generate ssh private key and certificates. The
+  library can be used as an injected application credential source for targets
+  that support credential injection. ([PR](https://github.com/hashicorp/boundary/pull/2860))
+* ui: Add support for managed groups in add-principals list.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1548))
+
+### Bug Fixes
+
+* plugins: Ignore `SIGHUP` sent to parent process; some init systems, notably
+  `dumb-init`, would pass them along to the child processes and cause the
+  plugin to exit ([PR](https://github.com/hashicorp/boundary/pull/2677))
+* data warehouse: Fix bug that caused credential dimensions to not get
+    associated with session facts ([PR](https://github.com/hashicorp/boundary/pull/2787)).
+* sessions: Fix two authorizeSession race conditions in handleProxy. ([PR](https://github.com/hashicorp/boundary/pull/2795))
+* cli: When using `-format=json` the JSON was inconsistent in how it reported
+  status codes. In successful cases it would use `status_code`, but in error
+  cases it would use `status`. Now `status_code` is used in both cases. In
+  error cases `status` is still populated, see the deprecations above for
+  more details. ([PR](https://github.com/hashicorp/boundary/pull/2887))
+* database: Add job that automatically cleans up completed runs in the `job_run` table.
+  ([PR](https://github.com/hashicorp/boundary/pull/2866))
+* core: Linux packages now have vendor label and set the default label to HashiCorp.
+  This fix is implemented for any future releases, but will not be updated for historical releases.
+
+## 0.11.2 (2022/12/09)
+
+### Security
+
+* Boundary now uses Go 1.19.4 to address security vulnerability (CVE-2022-41717) See the
+  [Go announcement](https://groups.google.com/g/golang-announce/c/L_3rmdT0BMU) for
+  more details.
+
+## 0.11.1 (2022/11/30)
+
+### New and Improved
+
+* Vault Parameter Templating: In `vault` credential libraries, the paths and any
+  POST bodies can contain templated parameters using Go template syntax (similar
+  to Consul-Template). The following template parameters are supported (note
+  that account values are tied to the account associated with the token making
+  the call):
+    * `{{ .User.Id }}`: the user's ID
+    * `{{ .User.Name }}`: the user's name (from the user resource)
+    * `{{ .User.FullName }}`: the user's name (from the account corresponding to
+    the primary auth method in the user's scope; this may not be populated or
+    maybe different than the account name in the template)
+    * `{{ .User.Email }}`: the user's email address (same caveat as `FullName`)
+    * `{{ .Account.Id }}`: the account's ID
+    * `{{ .Account.Name }}`: the account's name (from the account resource)
+    * `{{ .Account.LoginName }}`: the account's login name (if used by that type
+    of account)
+    * `{{ .Account.Subject }}`: the account's subject (if used by that type
+    of account)
+    * `{{ .Account.Email }}`: the account's email (if used by that type
+    of account)
+
+    Additionally, there is currently a single function that strips the rest of a
+    string after a specified substring; this is useful for pulling an user/account name from an email address. In the following example it uses the account email can be any other parameter:
+
+    * `{{ truncateFrom .Account.Email "@" }}`: this would turn `foo@example.com` into `foo`
+* Per-scope key lifecycle management: You can now manage the lifecycles of both Key
+  Encryption Keys (KEKs) and Data Encryption Keys (DEKs) using the new key rotation
+  and key version destruction functionality. To learn more about this new feature,
+  refer to the
+  [documentation](https://developer.hashicorp.com/boundary/docs/concepts/security/data-encryption).
+
+  Upgrade notice: If the Database purpose DEK for a scope is destroyed, you must use
+  the API to cancel any sessions that predate the upgrade.
+  ([PR](https://github.com/hashicorp/boundary/pull/2477))
+* session: The amount of bytes received and transmitted over a session
+  is now recorded and persisted. ([PR](https://github.com/hashicorp/boundary/pull/2503))
+
 ### Bug Fixes
 
 * accounts: Deleted auth accounts would still show up as being associated with a
@@ -18,6 +985,23 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2544))
 * workers: Fixed a panic that can happen in certain situations
   ([PR](https://github.com/hashicorp/boundary/pull/2553))
+* sessions: Fixed a panic in a controller when a worker is deleted while
+  sessions are ongoing ([PR](https://github.com/hashicorp/boundary/pull/2612))
+* sessions: Fixed a panic in a worker when a user with an active
+  session is deleted ([PR](https://github.com/hashicorp/boundary/pull/2629))
+* sessions: Fixed a bug where reading a session after its associated project
+  had been deleted would result in an error
+  ([PR](https://github.com/hashicorp/boundary/pull/2615))
+* config: Fixed a bug where supplying multiple KMS blocks with the same purpose
+  would silently ignore all but the last block
+  ([PR](https://github.com/hashicorp/boundary/pull/2639))
+
+### Deprecations/Changes
+
+* In order to standardize on the templating format, [templates in
+  grants](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions/permission-grant-formats#templates)
+  now are documented to use the new capitalization and format; however, the
+  previous style will continue to work.
 
 ## 0.11.0 (2022/09/27)
 
@@ -48,8 +1032,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### New and Improved
 
 * vault: (HCP Boundary only): Private Vault clusters can be used with HCP Boundary by using PKI workers
-  deployed in the same network as a private cluster. Tags are used to control which PKI workers can manage private Vault 
-  requests by specifying a `worker_filter` attribute when configuring a Vault credential store. 
+  deployed in the same network as a private cluster. Tags are used to control which PKI workers can manage private Vault
+  requests by specifying a `worker_filter` attribute when configuring a Vault credential store.
 * credentials: There is now a `json` credential type supported by `static`
   credential stores that allows submitting a generic JSON object to Boundary for
   use with credential brokering workflows
@@ -570,7 +1554,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
 
 ### Deprecations/Changes
 
-* permissions: Fix bug in _Host Sets_ service that authenticated requests  
+* permissions: Fix bug in _Host Sets_ service that authenticated requests
   againist incorrect grant actions. This bug affects the _SetHosts_, _AddHosts_
   and _RemoveHosts_ paths that do not have wildcard (`*`) action grants.
   If affected, please update grant actions as follows:
@@ -696,7 +1680,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
   `audit`. All events are emitted as
   [cloudevents](https://github.com/cloudevents/spec/blob/v1.0.1/spec.md) and we
   support both a `cloudevents-json` format and custom Boundary
-  `cloudevents-text` format.   
+  `cloudevents-text` format.
 
   **Notes**:
   * There are still a few lingering hclog bits within Boundary. If you wish to
@@ -711,12 +1695,12 @@ isolate transactions and prevent resource contention that caused deadlocks.
   * Observation events are MVP and contain a minimal set of observations about a
     request. Observations are aggregated for each request, so only one
     observation event will be emitted per request. We anticipate that a rich set
-    of aggregate data about each request will be developed over time.   
+    of aggregate data about each request will be developed over time.
   * Audit events are a WIP and will only be emitted if they are both enabled
     and the env var `BOUNDARY_DEVELOPER_ENABLE_EVENTS` equals true.  We
     anticipate many changes for audit events before they are generally available
     including what data is included and different options for
-    redacting/encrypting that data.   
+    redacting/encrypting that data.
 
 
   PRs:

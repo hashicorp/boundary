@@ -1,0 +1,40 @@
+---
+layout: docs
+page_title: roles create - Command
+description: >-
+  The "roles create" command creates a new role resource.
+---
+
+# roles create
+
+Command: `roles create`
+
+The `roles create` command lets you create a new role.
+
+## Example
+
+This example creates a role with the name `prodops` and the description `Role for ProdOps`:
+
+```shell-session
+$ boundary roles create -name prodops -description "Role for ProdOps"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary roles create [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-description=<string>` - The description to assign to the role.
+- `-name=<string>` - The name to assign to the role.
+- `-scope-id=<string>` - The scope in which you want to create the role.
+The default is `global`.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
+
+@include 'cmd-option-note.mdx'

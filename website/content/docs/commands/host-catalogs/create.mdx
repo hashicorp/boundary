@@ -1,0 +1,153 @@
+---
+layout: docs
+page_title: host-catalogs create - Command
+description: >-
+  The "host-catalogs create" command creates a new host catalog resource. You can create plugin or static host catalog types.
+---
+
+# host-catalogs create
+
+Command: `host-catalogs create`
+
+The `host-catalogs create` command lets you create a new host catalog.
+
+## Example
+
+This example creates a static host catalog with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary host-catalogs create static -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-catalogs create [type] <subcommand> [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    plugin    Create a plugin-type host catalog
+    static    Create a static-type host catalog
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can create plugin or static host catalog types.
+
+<Tabs>
+<Tab heading="Plugin">
+
+The `boundary host-catalogs create plugin` command lets you create a plugin type host catalog.
+
+#### Example
+
+This example creates a plugin type host catalog with the name `prodops` and the description `Plugin host-catalog for ProdOps`, and adds it to a scope with the ID `p_1234567890`.
+
+```shell-session
+$ boundary host-catalogs create plugin -scope-id p_1234567890 -name prodops -description "Plugin host-catalog for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-catalogs create plugin [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the plugin host catalog.
+- `-name=<string>` - The name to set on the plugin host catalog.
+- `-plugin-id=<string>` - The ID of the plugin associated with the host catalog you want to create.
+- `-plugin-name=<string>` - The name of the plugin associated with the host catalog you want to create.
+- `-scope-id=<string>` - The scope in which you want to create the host catalog.
+The default scope is `global`.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
+- `-worker-filter=<string>` A boolean expression to filter which workers can handle dynamic host catalog commands for this host catalog.
+
+#### Attribute options
+
+- `-attr` - A key=value pair to add to the request's attribute map.
+This option can also be a key value only, which sets a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can override the type using `-string-attr`, `-bool-attr`, or `-num-attr`.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-attributes=<string>` - A JSON map value that you can use as the entirety of the request's attributes map.
+Usually this value is sourced from a file using the `file://` syntax.
+This option is exclusive with other `attr` flags.
+- `-bool-attr` - A key=value Boolean value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-num-attr` - A key=value numeric value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This attribute supports referencing values from files using `file://` and environment variables using `env://`.
+- `-string-attr` - A key=value string value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+
+#### Secrets options
+
+- `-bool-secret` - A key=value Boolean value that you can add to the request's secrets map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-num-secret` - A key=value numeric value that you can add to the request's secrets map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-secret` - A key=value pair that you can add to the request's secrets map.
+This option can also be a key value only, which sets a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can override the type using `-string-secret`, `-bool-secret`, or `-num-secret`.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-secrets=<string>` - A JSON map value that you can use as the entirety of the request's secrets map.
+Usually this value is sourced from file using `file://` syntax.
+This option is exclusive with other secret flags.
+- `-string-secret` - A key=value string value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+
+</Tab>
+
+<Tab heading="Static">
+
+The `boundary host-catalogs create static` command lets you create a static type host catalog.
+
+#### Example
+
+This example creates a static type host catalog with the name `prodops` and the description `Static host-catalog for ProdOps` and adds it to the scope `p_1234567890`:
+
+```shell-session
+$ boundary host-catalogs create static -scope-id p_1234567890 -name prodops -description "Static host-catalog for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-catalogs create static [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the static host catalog.
+- `-name=<string>` - The name to set on the static host catalog.
+- `-scope-id=<string>` - The scope in which to create the static host catalog.
+The default scope is `global`.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable,
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

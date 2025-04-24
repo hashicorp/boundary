@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -77,13 +80,13 @@ var (
 
 // NewUserRole creates a new user role in memory. No options are supported
 // currently.
-func NewUserRole(roleId, userId string, _ ...Option) (*UserRole, error) {
+func NewUserRole(ctx context.Context, roleId, userId string, _ ...Option) (*UserRole, error) {
 	const op = "iam.NewUserRole"
 	if roleId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	if userId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	return &UserRole{
 		UserRole: &store.UserRole{
@@ -100,7 +103,7 @@ func allocUserRole() UserRole {
 }
 
 // Clone creates a clone of the UserRole.
-func (r *UserRole) Clone() interface{} {
+func (r *UserRole) Clone() any {
 	cp := proto.Clone(r.UserRole)
 	return &UserRole{
 		UserRole: cp.(*store.UserRole),
@@ -108,12 +111,12 @@ func (r *UserRole) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface for user roles.
-func (role *UserRole) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+func (r *UserRole) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "iam.(UserRole).VetForWrite"
-	if role.RoleId == "" {
+	if r.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
-	if role.PrincipalId == "" {
+	if r.PrincipalId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	return nil
@@ -154,13 +157,13 @@ var (
 
 // NewGroupRole creates a new group role in memory. No options are supported
 // currently.
-func NewGroupRole(roleId, groupId string, opt ...Option) (*GroupRole, error) {
+func NewGroupRole(ctx context.Context, roleId, groupId string, opt ...Option) (*GroupRole, error) {
 	const op = "iam.NewGroupRole"
 	if roleId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	if groupId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	return &GroupRole{
 		GroupRole: &store.GroupRole{
@@ -177,7 +180,7 @@ func allocGroupRole() GroupRole {
 }
 
 // Clone creates a clone of the GroupRole.
-func (r *GroupRole) Clone() interface{} {
+func (r *GroupRole) Clone() any {
 	cp := proto.Clone(r.GroupRole)
 	return &GroupRole{
 		GroupRole: cp.(*store.GroupRole),
@@ -185,12 +188,12 @@ func (r *GroupRole) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface for group roles.
-func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (r *GroupRole) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(GroupRole).VetForWrite"
-	if role.RoleId == "" {
+	if r.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
-	if role.PrincipalId == "" {
+	if r.PrincipalId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	return nil
@@ -231,13 +234,13 @@ var (
 
 // NewGroupRole creates a new group role in memory. No options are supported
 // currently.
-func NewManagedGroupRole(roleId, managedGroupId string, opt ...Option) (*ManagedGroupRole, error) {
+func NewManagedGroupRole(ctx context.Context, roleId, managedGroupId string, opt ...Option) (*ManagedGroupRole, error) {
 	const op = "iam.NewManagedGroupRole"
 	if roleId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	if managedGroupId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing managed group id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing managed group id")
 	}
 	return &ManagedGroupRole{
 		ManagedGroupRole: &store.ManagedGroupRole{
@@ -256,7 +259,7 @@ func AllocManagedGroupRole() ManagedGroupRole {
 }
 
 // Clone creates a clone of the ManagedGroupRole.
-func (r *ManagedGroupRole) Clone() interface{} {
+func (r *ManagedGroupRole) Clone() any {
 	cp := proto.Clone(r.ManagedGroupRole)
 	return &ManagedGroupRole{
 		ManagedGroupRole: cp.(*store.ManagedGroupRole),
@@ -264,12 +267,12 @@ func (r *ManagedGroupRole) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface for managed group roles.
-func (role ManagedGroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (r ManagedGroupRole) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(ManagedGroupRole).VetForWrite"
-	if role.RoleId == "" {
+	if r.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
-	if role.PrincipalId == "" {
+	if r.PrincipalId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing managed group id")
 	}
 	return nil

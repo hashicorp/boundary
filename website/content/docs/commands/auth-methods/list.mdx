@@ -1,0 +1,105 @@
+---
+layout: docs
+page_title: auth-methods list - Command
+description: >-
+  The "auth-methods list" command lists the available auth method resources within a scope or resource.
+---
+
+# auth-methods list
+
+Command: `boundary auth-methods list`
+
+The `auth-methods list` command lists auth methods within an enclosing scope or
+resource.
+
+
+## Examples
+
+The following example lists auth methods from the default `global` scope recursively from any child scopes, if applicable:
+
+```shell-session
+$ boundary auth-methods list -recursive
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Auth Method information:
+  ID:                     amoidc_1234567890
+    Scope ID:             global
+    Version:              1
+    Type:                 oidc
+    Name:                 Generated global scope initial oidc auth method
+    Description:          Provides initial administrative and unprivileged authentication into Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      change-state
+      authenticate
+
+  ID:                     ampw_1234567890
+    Scope ID:             global
+    Version:              1
+    Type:                 password
+    Name:                 Generated global scope initial password auth method
+    Description:          Provides initial administrative and unprivileged authentication into Boundary
+    Is Primary For Scope: true
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      authenticate
+
+  ID:                     ampw_ZbB6UXpW3B
+    Scope ID:             o_u54jrD6ydN
+    Version:              1
+    Type:                 password
+    Name:                 org_auth_method
+    Description:          Org auth method
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      authenticate
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods list [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-filter` `(string: "")` - If set, the list operation is filtered before
+   being returned. The filter operates against each item in the list. We recommend using
+   single quotes, because filters contain double quotes.
+
+- `-recursive`  - If set, the list operation is applied
+   recursively into child scopes, if supported by the type. The default value is
+   `false`.
+
+- `-scope-id` `(string: "")` - The scope in which to make the request. The default
+   scope is `global`. You can also specify a scope using the **BOUNDARY_SCOPE_ID** environment
+   variable.
+
+- `list_token` (optional) - An opaque token that is returned from the previous `list` response.
+If you do not supply a value, pagination starts from the beginning.
+- `page_size` (optional) - An unsigned integer that indicates the number of items that should be included on the page of search results.
+If you do not provide a value, or if you provide a value of `0`, Boundary uses the default page size of 1000 items.
+If you configure it, the `page_size` value overrides the default page size.
+Controller administrators can also configure a `max_page_size` option that constrains the maximum page size a user can request.
+@include 'cmd-option-note.mdx'

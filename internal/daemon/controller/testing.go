@@ -1,15 +1,18 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package controller
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,25 +20,31 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -44,13 +53,14 @@ const (
 	DefaultProjectId                         = "p_1234567890"
 	DefaultTestPasswordAuthMethodId          = "ampw_1234567890"
 	DefaultTestOidcAuthMethodId              = "amoidc_1234567890"
+	DefaultTestLdapAuthMethodId              = globals.LdapAuthMethodPrefix + "_1234567890"
 	DefaultTestLoginName                     = "admin"
 	DefaultTestUnprivilegedLoginName         = "user"
 	DefaultTestPassword                      = "passpass"
 	DefaultTestUserId                        = "u_1234567890"
-	DefaultTestPasswordAccountId             = intglobals.NewPasswordAccountPrefix + "_1234567890"
+	DefaultTestPasswordAccountId             = globals.PasswordAccountPrefix + "_1234567890"
 	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
-	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
+	DefaultTestUnprivilegedPasswordAccountId = globals.PasswordAccountPrefix + "_0987654321"
 	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
 	DefaultTestPluginId                      = "pl_1234567890"
 )
@@ -131,6 +141,26 @@ func (tc *TestController) ConnectionsRepo() *session.ConnectionRepository {
 	return repo
 }
 
+func (tc *TestController) PluginHostRepo() *plugin.Repository {
+	repo, err := tc.c.PluginHostRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) VaultCredentialRepo() *vault.Repository {
+	repo, err := tc.c.VaultCredentialRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) Scheduler() *scheduler.Scheduler {
+	return tc.Controller().scheduler
+}
+
 func (tc *TestController) Cancel() {
 	tc.cancel()
 }
@@ -164,7 +194,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.Context(),
 		tc.b.DevPasswordAuthMethodId,
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": tc.b.DevLoginName,
 			"password":   tc.b.DevPassword,
 		},
@@ -190,7 +220,7 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 		tc.Context(),
 		tc.b.DevPasswordAuthMethodId,
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": tc.b.DevUnprivilegedLoginName,
 			"password":   tc.b.DevUnprivilegedPassword,
 		},
@@ -329,6 +359,9 @@ type TestControllerOpts struct {
 	// DefaultOidcAuthMethodId is the default OIDC method ID to use, if set.
 	DefaultOidcAuthMethodId string
 
+	// DefaultLdapAuthMethodId is the default LDAP method ID to use, if set.
+	DefaultLdapAuthMethodId string
+
 	// DefaultLoginName is the login name used when creating the default admin account.
 	DefaultLoginName string
 
@@ -338,8 +371,8 @@ type TestControllerOpts struct {
 	// DefaultPassword is the password used when creating the default accounts.
 	DefaultPassword string
 
-	// DisableInitialLoginRoleCreation can be set true to disable creating the
-	// global scope login role automatically.
+	// DisableInitialLoginRoleCreation can be set true to disable creating the global
+	// scope default role automatically.
 	DisableInitialLoginRoleCreation bool
 
 	// DisableAuthMethodCreation can be set true to disable creating an auth
@@ -349,6 +382,10 @@ type TestControllerOpts struct {
 	// DisableOidcAuthMethodCreation can be set true to disable the built-in
 	// OIDC listener. Useful for e.g. unix listener tests.
 	DisableOidcAuthMethodCreation bool
+
+	// DisableLdapAuthMethodCreation can be set true to disable the built-in
+	// ldap listener. Useful for e.g. unix listener tests.
+	DisableLdapAuthMethodCreation bool
 
 	// DisableScopesCreation can be set true to disable creating scopes
 	// automatically.
@@ -382,10 +419,16 @@ type TestControllerOpts struct {
 	// If true, the controller will not be started
 	DisableAutoStart bool
 
-	// DisableEventing, if true the test controller will not create events
-	// You must not run the test in parallel (no calls to t.Parallel) since the
-	// this option relies on modifying the system wide default eventer.
-	DisableEventing bool
+	// EnableEventing, if true the test controller will create sys and error
+	// events. You must not run the test in parallel (no calls to t.Parallel)
+	// since the this option relies on modifying the system wide default
+	// eventer.
+	EnableEventing bool
+
+	// EventerConfig allows specifying a custom event config. You must not run
+	// the test in parallel (no calls to t.Parallel) since the this option
+	// relies on modifying the system wide default eventer.
+	EventerConfig *event.EventerConfig
 
 	// DisableAuthorizationFailures will still cause authz checks to be
 	// performed but they won't cause 403 Forbidden. Useful for API-level
@@ -397,6 +440,12 @@ type TestControllerOpts struct {
 
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKms wrapping.Wrapper
+
+	// The downstream worker auth KMS to use, or one will be created
+	DownstreamWorkerAuthKms *multi.PooledWrapper
+
+	// The BSR wrapper to use, or one will be created
+	BsrKms wrapping.Wrapper
 
 	// The recovery KMS to use, or one will be created
 	RecoveryKms wrapping.Wrapper
@@ -423,13 +472,40 @@ type TestControllerOpts struct {
 	// (overrides address provided in config, if any)
 	PublicClusterAddr string
 
-	// The amount of time to wait before marking connections as closed when a
-	// worker has not reported in
-	StatusGracePeriodDuration time.Duration
+	// The amount of time to wait before marking connections as canceling when a
+	// worker has not reported in, and whether a worker is considered to be
+	// routable based on the last time it received a routing info report.
+	WorkerRPCGracePeriod time.Duration
 
-	// The amount of time between the scheduler waking up to run it's registered
-	// jobs.
+	// The period of time after which it will consider other controllers to be
+	// no longer accessible, based on time since their last status update in the
+	// database
+	LivenessTimeToStaleDuration time.Duration
+
+	// The amount of time between the scheduler waking up to run it's
+	// registered jobs.
+	//
+	// If t.Deadline() has a value and the value is under 1 minute, the
+	// default value is set to half the value of t.Deadline(). If
+	// t.Deadline() has a value and the value is 1 minute or more, the
+	// default value is set to 1 minute.
+	//
+	// Tests using the Vault test server should be aware that Vault
+	// Credential Stores only accept Vault tokens that have a TTL greater
+	// than the SchedulerRunJobInterval. The Vault test server, by default,
+	// creates Vault tokens with a TTL equal to the duration of time
+	// remaining until t.Deadline() is reached.
 	SchedulerRunJobInterval time.Duration
+
+	// The time to use for CA certificate lifetime for worker auth
+	WorkerAuthCaCertificateLifetime time.Duration
+
+	// Toggle worker auth debugging
+	WorkerAuthDebuggingEnabled *atomic.Bool
+
+	DisableRateLimiting bool
+
+	EnableIPv6 bool
 }
 
 func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
@@ -448,12 +524,12 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 		shutdownDoneCh: make(chan struct{}),
 		shutdownOnce:   new(sync.Once),
 	}
+	t.Cleanup(tc.Shutdown)
 
 	conf := TestControllerConfig(t, ctx, tc, opts)
 	var err error
 	tc.c, err = New(ctx, conf)
 	if err != nil {
-		tc.Shutdown()
 		t.Fatal(err)
 	}
 
@@ -476,7 +552,6 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 
 	if !opts.DisableAutoStart {
 		if err := tc.c.Start(); err != nil {
-			tc.Shutdown()
 			t.Fatal(err)
 		}
 	}
@@ -500,6 +575,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		ContextCancel: cancel,
 		ShutdownCh:    make(chan struct{}),
 	})
+	tc.b.WorkerAuthDebuggingEnabled = opts.WorkerAuthDebuggingEnabled
 
 	// Get dev config, or use a provided one
 	var err error
@@ -512,7 +588,8 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts.Config = cfg
 
 	case opts.Config == nil:
-		opts.Config, err = config.DevController()
+		cfgOpts := append([]config.Option{}, config.WithIPv6Enabled(true))
+		opts.Config, err = config.DevController(cfgOpts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -528,6 +605,11 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		tc.b.DevOidcAuthMethodId = opts.DefaultOidcAuthMethodId
 	} else {
 		tc.b.DevOidcAuthMethodId = DefaultTestOidcAuthMethodId
+	}
+	if opts.DefaultLdapAuthMethodId != "" {
+		tc.b.DevLdapAuthMethodId = opts.DefaultLdapAuthMethodId
+	} else {
+		tc.b.DevLdapAuthMethodId = DefaultTestLdapAuthMethodId
 	}
 	if opts.DefaultLoginName != "" {
 		tc.b.DevLoginName = opts.DefaultLoginName
@@ -552,9 +634,12 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
 	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId
 	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
-	tc.b.DevLoopbackHostPluginId = DefaultTestPluginId
+	tc.b.DevLoopbackPluginId = DefaultTestPluginId
 
-	tc.b.EnabledPlugins = append(tc.b.EnabledPlugins, base.EnabledPluginHostLoopback)
+	// Alias targets are only used as a dev example
+	tc.b.SkipAliasTargetCreation = true
+
+	tc.b.EnabledPlugins = append(tc.b.EnabledPlugins, base.EnabledPluginLoopback)
 
 	// Start a logger
 	tc.b.Logger = opts.Logger
@@ -570,50 +655,49 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts.Config.Controller = new(config.Controller)
 	}
 	if opts.Config.Controller.Name == "" {
-		require.NoError(t, opts.Config.Controller.InitNameIfEmpty())
+		require.NoError(t, opts.Config.Controller.InitNameIfEmpty(ctxTest))
 	}
 
-	if opts.Config.Controller.Scheduler == nil {
-		opts.Config.Controller.Scheduler = new(config.Scheduler)
+	if opts.SchedulerRunJobInterval == 0 {
+		if t, ok := t.(*testing.T); ok {
+			if deadline, ok := t.Deadline(); ok {
+				opts.SchedulerRunJobInterval = 1 * time.Minute
+				if time.Until(deadline) < opts.SchedulerRunJobInterval {
+					half := int64(time.Until(deadline) / 2)
+					opts.SchedulerRunJobInterval = time.Duration(half)
+				}
+			}
+		}
 	}
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
+	opts.Config.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
 
-	switch {
-	case opts.DisableEventing:
-		opts.Config.Eventing = &event.EventerConfig{
-			AuditEnabled:        false,
-			ObservationsEnabled: false,
-			SysEventsEnabled:    false,
-		}
-		testLogger := hclog.New(&hclog.LoggerOptions{
-			Mutex:  tc.b.StderrLock,
-			Output: io.Discard,
-		})
-		e, err := event.NewEventer(
-			testLogger,
-			tc.b.StderrLock,
-			opts.Config.Controller.Name,
-			*opts.Config.Eventing,
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tc.b.Eventer = e
-		event.TestWithoutEventing(t) // this ensures the sys eventer will also stop eventing
-	default:
-
-		serverName, err := os.Hostname()
-		if err != nil {
-			t.Fatal(err)
-		}
-		serverName = fmt.Sprintf("%s/controller", serverName)
-		if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
-			t.Fatal(err)
+	if opts.EnableEventing || opts.EventerConfig != nil {
+		opts.Config.Eventing = opts.EventerConfig
+		if opts.Config.Eventing == nil {
+			opts.Config.Eventing = &event.EventerConfig{
+				AuditEnabled:        true,
+				ObservationsEnabled: true,
+				SysEventsEnabled:    true,
+				ErrorEventsDisabled: true,
+			}
 		}
 	}
+	serverName, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverName = fmt.Sprintf("%s/controller", serverName)
+	if err := tc.b.SetupEventing(ctxTest, tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+		t.Fatal(err)
+	}
 
-	// Initialize status grace period
-	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
+	if opts.WorkerRPCGracePeriod != 0 {
+		opts.Config.Controller.WorkerRPCGracePeriodDuration = opts.WorkerRPCGracePeriod
+	}
+	if opts.LivenessTimeToStaleDuration != 0 {
+		opts.Config.Controller.LivenessTimeToStaleDuration = opts.LivenessTimeToStaleDuration
+	}
 
 	tc.name = opts.Config.Controller.Name
 
@@ -621,6 +705,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		suffix := opts.InitialResourcesSuffix
 		tc.b.DevPasswordAuthMethodId = "ampw_" + suffix
 		tc.b.DevOidcAuthMethodId = "amoidc_" + suffix
+		tc.b.DevLdapAuthMethodId = globals.LdapAuthMethodPrefix + "_" + suffix
 		tc.b.DevHostCatalogId = "hcst_" + suffix
 		tc.b.DevHostId = "hst_" + suffix
 		tc.b.DevHostSetId = "hsst_" + suffix
@@ -635,16 +720,20 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	tc.b.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
 
 	// Set up KMSes
-	switch {
-	case opts.RootKms != nil && opts.WorkerAuthKms != nil:
+	if err := tc.b.SetupKMSes(tc.b.Context, nil, opts.Config); err != nil {
+		t.Fatal(err)
+	}
+	if opts.RootKms != nil {
 		tc.b.RootKms = opts.RootKms
+	}
+	if opts.WorkerAuthKms != nil {
 		tc.b.WorkerAuthKms = opts.WorkerAuthKms
-	case opts.RootKms == nil && opts.WorkerAuthKms == nil:
-		if err := tc.b.SetupKMSes(tc.b.Context, nil, opts.Config); err != nil {
-			t.Fatal(err)
-		}
-	default:
-		t.Fatal("either controller and worker auth KMS must both be set, or neither")
+	}
+	if opts.DownstreamWorkerAuthKms != nil {
+		tc.b.DownstreamWorkerAuthKms = opts.DownstreamWorkerAuthKms
+	}
+	if opts.BsrKms != nil {
+		tc.b.BsrKms = opts.BsrKms
 	}
 	if opts.RecoveryKms != nil {
 		tc.b.RecoveryKms = opts.RecoveryKms
@@ -682,12 +771,20 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 				if _, err := tc.b.CreateInitialLoginRole(ctx); err != nil {
 					t.Fatal(err)
 				}
+				if _, err := tc.b.CreateInitialAuthenticatedUserRole(ctx); err != nil {
+					t.Fatal(err)
+				}
 				if !opts.DisableAuthMethodCreation {
 					if _, _, err := tc.b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 						t.Fatal(err)
 					}
 					if !opts.DisableOidcAuthMethodCreation {
 						if err := tc.b.CreateDevOidcAuthMethod(ctx); err != nil {
+							t.Fatal(err)
+						}
+					}
+					if !opts.DisableLdapAuthMethodCreation {
+						if err := tc.b.CreateDevLdapAuthMethod(ctx); err != nil {
 							t.Fatal(err)
 						}
 					}
@@ -700,7 +797,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 								t.Fatal(err)
 							}
 							if !opts.DisableTargetCreation {
-								if _, err := tc.b.CreateInitialTarget(ctx); err != nil {
+								if _, err := tc.b.CreateInitialTargetWithHostSources(ctx); err != nil {
 									t.Fatal(err)
 								}
 							}
@@ -711,11 +808,17 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
+		if opts.DisableInitialLoginRoleCreation {
+			createOpts = append(createOpts, base.WithSkipDefaultRoleCreation())
+		}
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}
 		if opts.DisableOidcAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
+		}
+		if opts.DisableOidcAuthMethodCreation {
+			createOpts = append(createOpts, base.WithSkipLdapAuthMethodCreation())
 		}
 		if !opts.DisableDatabaseTemplate {
 			createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
@@ -725,10 +828,15 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	}
 
+	if opts.DisableRateLimiting {
+		opts.Config.Controller.ApiRateLimitDisable = true
+	}
+
 	return &Config{
 		RawConfig:                    opts.Config,
 		Server:                       tc.b,
 		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
+		TestOverrideWorkerAuthCaCertificateLifetime: opts.WorkerAuthCaCertificateLifetime,
 	}
 }
 
@@ -738,20 +846,27 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		opts = new(TestControllerOpts)
 	}
 	nextOpts := &TestControllerOpts{
-		DatabaseUrl:                 tc.c.conf.DatabaseUrl,
-		DefaultPasswordAuthMethodId: tc.c.conf.DevPasswordAuthMethodId,
-		DefaultOidcAuthMethodId:     tc.c.conf.DevOidcAuthMethodId,
-		RootKms:                     tc.c.conf.RootKms,
-		WorkerAuthKms:               tc.c.conf.WorkerAuthKms,
-		RecoveryKms:                 tc.c.conf.RecoveryKms,
-		Name:                        opts.Name,
-		Logger:                      tc.c.conf.Logger,
-		DefaultLoginName:            tc.b.DevLoginName,
-		DefaultPassword:             tc.b.DevPassword,
-		DisableKmsKeyCreation:       true,
-		DisableAuthMethodCreation:   true,
-		PublicClusterAddr:           opts.PublicClusterAddr,
-		StatusGracePeriodDuration:   opts.StatusGracePeriodDuration,
+		DatabaseUrl:                     tc.c.conf.DatabaseUrl,
+		DefaultPasswordAuthMethodId:     tc.c.conf.DevPasswordAuthMethodId,
+		DefaultOidcAuthMethodId:         tc.c.conf.DevOidcAuthMethodId,
+		DefaultLdapAuthMethodId:         tc.c.conf.DevLdapAuthMethodId,
+		RootKms:                         tc.c.conf.RootKms,
+		WorkerAuthKms:                   tc.c.conf.WorkerAuthKms,
+		DownstreamWorkerAuthKms:         tc.c.conf.DownstreamWorkerAuthKms,
+		BsrKms:                          tc.c.conf.BsrKms,
+		RecoveryKms:                     tc.c.conf.RecoveryKms,
+		Name:                            opts.Name,
+		Logger:                          tc.c.conf.Logger,
+		DefaultLoginName:                tc.b.DevLoginName,
+		DefaultPassword:                 tc.b.DevPassword,
+		DisableKmsKeyCreation:           true,
+		DisableAuthMethodCreation:       true,
+		DisableAutoStart:                opts.DisableAutoStart,
+		PublicClusterAddr:               opts.PublicClusterAddr,
+		WorkerRPCGracePeriod:            opts.WorkerRPCGracePeriod,
+		LivenessTimeToStaleDuration:     opts.LivenessTimeToStaleDuration,
+		WorkerAuthCaCertificateLifetime: tc.c.conf.TestOverrideWorkerAuthCaCertificateLifetime,
+		WorkerAuthDebuggingEnabled:      tc.c.conf.WorkerAuthDebuggingEnabled,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
@@ -767,53 +882,45 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 	return NewTestController(t, nextOpts)
 }
 
-// WaitForNextWorkerStatusUpdate waits for the next status check from a worker to
-// come in. If it does not come in within the default status grace
+// WaitForNextWorkerRoutingInfoUpdate waits for the next routing info RPC from a worker to
+// come in. If it does not come in within the default worker RPC grace
 // period, this function returns an error.
-func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string) error {
-	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
-	ctx := context.TODO()
-	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerStatusName)
-	waitStatusStart := time.Now()
-	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
+func (tc *TestController) WaitForNextWorkerRoutingInfoUpdate(workerName string) error {
+	const op = "controller.(TestController).WaitForNextWorkerRoutingInfoUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(tc.ctx, time.Duration(tc.c.workerRPCGracePeriod.Load()))
 	defer cancel()
+	event.WriteSysEvent(ctx, op, "waiting for next routing info from worker", "worker", workerName)
 	var err error
 	for {
-		if err = func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-
-			case <-time.After(time.Second):
-				// pass
-			}
-
-			return nil
-		}(); err != nil {
+		select {
+		case <-ctx.Done():
 			break
+		case <-time.After(time.Second):
+			// pass
 		}
 
-		var waitStatusCurrent time.Time
-		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v interface{}) bool {
+		var waitCurrent time.Time
+		tc.Controller().WorkerRoutingInfoUpdateTimes().Range(func(k, v any) bool {
 			if k == nil || v == nil {
 				err = fmt.Errorf("nil key or value on entry: key=%#v value=%#v", k, v)
 				return false
 			}
 
-			workerStatusUpdateId, ok := k.(string)
+			workerUpdateId, ok := k.(string)
 			if !ok {
 				err = fmt.Errorf("unexpected type %T for key: key=%#v value=%#v", k, k, v)
 				return false
 			}
 
-			workerStatusUpdateTime, ok := v.(time.Time)
+			workerUpdateTime, ok := v.(time.Time)
 			if !ok {
 				err = fmt.Errorf("unexpected type %T for value: key=%#v value=%#v", k, k, v)
 				return false
 			}
 
-			if workerStatusUpdateId == workerStatusName {
-				waitStatusCurrent = workerStatusUpdateTime
+			if workerUpdateId == workerName {
+				waitCurrent = workerUpdateTime
 				return false
 			}
 
@@ -824,16 +931,16 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string)
 			break
 		}
 
-		if waitStatusCurrent.Sub(waitStatusStart) > 0 {
+		if waitCurrent.After(waitStart) {
 			break
 		}
 	}
 
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report from worker", "worker", workerStatusName))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next routing info RPC from worker", "worker", workerName))
 		return err
 	}
-	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerStatusName)
+	event.WriteSysEvent(ctx, op, "next routing info RPC from worker received successfully", "worker", workerName)
 	return nil
 }
 
@@ -869,7 +976,7 @@ func startTestGreeterService(t testing.TB, greeter interceptor.GreeterServiceSer
 
 	conn, _ := grpc.DialContext(dialCtx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
-	}), grpc.WithInsecure())
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	t.Cleanup(func() {
 		listener.Close()

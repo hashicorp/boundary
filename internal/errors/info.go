@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package errors
 
 // Info contains details of the specific error code
@@ -38,6 +41,10 @@ var errorCodeInfo = map[Code]Info{
 	},
 	KeyNotFound: {
 		Message: "key/version not found",
+		Kind:    Integrity,
+	},
+	InvalidTextRepresentation: {
+		Message: "invalid text representation",
 		Kind:    Integrity,
 	},
 	TicketAlreadyRedeemed: {
@@ -140,6 +147,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "error occurred during certification generation",
 		Kind:    Encryption,
 	},
+	Sign: {
+		Message: "error occurred during signing",
+		Kind:    Encryption,
+	},
+	Verify: {
+		Message: "error occurred during verification",
+		Kind:    Encryption,
+	},
 	Internal: {
 		Message: "internal error",
 		Kind:    Other,
@@ -151,6 +166,10 @@ var errorCodeInfo = map[Code]Info{
 	Unauthorized: {
 		Message: "unauthorized",
 		Kind:    Other,
+	},
+	Conflict: {
+		Message: "conflict",
+		Kind:    Integrity,
 	},
 	CheckConstraint: {
 		Message: "constraint check failed",
@@ -253,7 +272,7 @@ var errorCodeInfo = map[Code]Info{
 		Kind:    Integrity,
 	},
 	NoPathFound: {
-		Message: "unexpected number of rows affected",
+		Message: "no path found",
 		Kind:    State,
 	},
 	WorkerNotFound: {
@@ -272,6 +291,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "unsupported operation for a kms worker",
 		Kind:    State,
 	},
+	WorkerNotFoundForRequest: {
+		Message: "worker not found with all conditions required for request",
+		Kind:    State,
+	},
 	QueueIsFull: {
 		Message: "queue is full",
 		Kind:    State,
@@ -279,5 +302,57 @@ var errorCodeInfo = map[Code]Info{
 	RetryLimitExceeded: {
 		Message: "retry limit exceeded",
 		Kind:    State,
+	},
+	NotFound: {
+		Message: "not found",
+		Kind:    State,
+	},
+	StorageFileClosed: {
+		Message: "file is closed",
+		Kind:    State,
+	},
+	StorageContainerClosed: {
+		Message: "container is closed",
+		Kind:    State,
+	},
+	StorageFileReadOnly: {
+		Message: "file is read only",
+		Kind:    State,
+	},
+	StorageFileWriteOnly: {
+		Message: "file is write only",
+		Kind:    State,
+	},
+	StorageFileAlreadyExists: {
+		Message: "file already exists",
+		Kind:    State,
+	},
+	StorageContainerReadOnly: {
+		Message: "container is read only",
+		Kind:    State,
+	},
+	StorageContainerWriteOnly: {
+		Message: "container is write only",
+		Kind:    State,
+	},
+	Closed: {
+		Message: "closed",
+		Kind:    State,
+	},
+	ExternalPlugin: {
+		Message: "plugin error",
+		Kind:    External,
+	},
+	ChecksumMismatch: {
+		Message: "checksum mismatch",
+		Kind:    Integrity,
+	},
+	InvalidConfiguration: {
+		Message: "invalid configuration",
+		Kind:    Configuration,
+	},
+	InvalidListToken: {
+		Message: "invalid list token",
+		Kind:    Parameter,
 	},
 }

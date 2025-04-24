@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- Tests that the helper methods for network address dimension work as expected.
 begin;
 select plan(33);

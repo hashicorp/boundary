@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package base
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -12,9 +16,9 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/plugins"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
-	"github.com/pkg/errors"
 )
 
 // This is adapted from the code in the strings package for TrimSpace
@@ -24,7 +28,7 @@ func ScopeInfoForOutput(scp *scopes.ScopeInfo, maxLength int) string {
 	if scp == nil {
 		return "    <not included in response>"
 	}
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"ID":   scp.Id,
 		"Type": scp.Type,
 		"Name": scp.Name,
@@ -39,14 +43,14 @@ func PluginInfoForOutput(plg *plugins.PluginInfo, maxLength int) string {
 	if plg == nil {
 		return "    <not included in response>"
 	}
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"ID":   plg.Id,
 		"Name": plg.Name,
 	}
 	return WrapMap(4, maxLength, vals)
 }
 
-func MaxAttributesLength(nonAttributesMap, attributesMap map[string]interface{}, keySubstMap map[string]string) int {
+func MaxAttributesLength(nonAttributesMap, attributesMap map[string]any, keySubstMap map[string]string) int {
 	// We always print a scope ID and in some cases this particular key ends up
 	// being the longest key, so start with it as a baseline. It's always
 	// indented by 2 in addition to the normal offset so take that into account.
@@ -116,7 +120,7 @@ func WrapSlice(prefixSpaces int, input []string) string {
 	return strings.Join(ret, "\n")
 }
 
-func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) string {
+func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]any) string {
 	maxKeyLength := maxLengthOverride
 	if maxKeyLength == 0 {
 		for k := range input {
@@ -150,7 +154,7 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 
 		vOut := fmt.Sprintf("%v", v)
 		switch v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			buf, err := json.MarshalIndent(v, strings.Repeat(" ", prefixSpaces), "  ")
 			if err != nil {
 				vOut = "[Unable to Print]"
@@ -178,23 +182,39 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 // information, to the UI in the appropriate format.  WithAttributeFieldPrefix is
 // used, all other options are ignored.
 func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option) {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	switch Format(c.UI) {
 	case "json":
-		output := struct {
-			Context  string          `json:"context,omitempty"`
-			Status   int             `json:"status"`
-			ApiError json.RawMessage `json:"api_error"`
-		}{
-			Context:  contextStr,
-			Status:   in.Response().StatusCode(),
-			ApiError: in.Response().Body.Bytes(),
+		var b []byte
+		if version.SupportsFeature(version.Binary, version.IncludeStatusInCli) {
+			output := struct {
+				Context    string          `json:"context,omitempty"`
+				StatusCode int             `json:"status_code"`
+				Status     int             `json:"status"`
+				ApiError   json.RawMessage `json:"api_error"`
+			}{
+				Context:    contextStr,
+				StatusCode: in.Response().StatusCode(),
+				Status:     in.Response().StatusCode(),
+				ApiError:   in.Response().Body.Bytes(),
+			}
+			b, _ = JsonFormatter{}.Format(output)
+		} else {
+			output := struct {
+				Context    string          `json:"context,omitempty"`
+				StatusCode int             `json:"status_code"`
+				ApiError   json.RawMessage `json:"api_error"`
+			}{
+				Context:    contextStr,
+				StatusCode: in.Response().StatusCode(),
+				ApiError:   in.Response().Body.Bytes(),
+			}
+			b, _ = JsonFormatter{}.Format(output)
 		}
-		b, _ := JsonFormatter{}.Format(output)
 		c.UI.Error(string(b))
 
 	default:
-		nonAttributeMap := map[string]interface{}{
+		nonAttributeMap := map[string]any{
 			"Status":  in.Response().StatusCode(),
 			"Kind":    in.Kind,
 			"Message": in.Message,
@@ -290,7 +310,7 @@ func (c *Command) PrintJsonItem(resp *api.Response, opt ...Option) bool {
 
 // PrintJson prints the given raw JSON in our common format
 func (c *Command) PrintJson(input json.RawMessage, opt ...Option) bool {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	output := struct {
 		StatusCode int             `json:"status_code,omitempty"`
 		Item       json.RawMessage `json:"item,omitempty"`
@@ -346,7 +366,7 @@ func (c *Command) PrintJsonItems(resp *api.Response) bool {
 // An output formatter for json output of an object
 type JsonFormatter struct{}
 
-func (j JsonFormatter) Format(data interface{}) ([]byte, error) {
+func (j JsonFormatter) Format(data any) ([]byte, error) {
 	return json.Marshal(data)
 }
 

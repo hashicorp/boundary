@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package metric
 
 import (
@@ -225,7 +228,8 @@ func TestHijack_MultipleCalls(t *testing.T) {
 
 	n := 10
 	for i := 0; i < n; i++ {
-		mw.Hijack()
+		_, _, err := mw.Hijack()
+		require.NoError(t, err)
 	}
 	require.Equal(t, n, thh.hijackCalledN)
 	require.Equal(t, 1, tpg.incCalledN)

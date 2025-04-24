@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -10,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// MakeInactive will transision an OIDC auth method from either the
+// MakeInactive will transition an OIDC auth method from either the
 // ActivePrivateState or the ActivePublicState to the InactiveState.
 // No options are supported.
 func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, version uint32, _ ...Option) (*AuthMethod, error) {
@@ -22,7 +25,7 @@ func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, vers
 	return updated, nil
 }
 
-// MakePrivate will transision an OIDC auth method from either the
+// MakePrivate will transition an OIDC auth method from either the
 // InactiveState or the ActivePublicState to the ActivePrivateState.  If
 // transitioning from the InactiveState, the transition will only succeed if
 // the auth method is complete and the oidc.ValidateAuthMethod(...) succeeds.
@@ -37,7 +40,7 @@ func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, versi
 	return updated, nil
 }
 
-// MakePublic will transision an OIDC auth method from either the
+// MakePublic will transition an OIDC auth method from either the
 // InactiveState or the ActivePrivateState to the ActivePublicState.  If
 // transitioning from the InactiveState, the transition will only succeed if
 // the auth method is complete and the oidc.ValidateAuthMethod(...) succeeds.

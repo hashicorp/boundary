@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
   alter table session drop constraint session_scope_id_fkey;
@@ -12,6 +15,7 @@ begin;
   ;
 
   -- Replaces trigger from 01/50_session.up.sql
+  -- Replaced in 56/02_add_data_key_foreign_key_references
   create or replace function cancel_session_with_null_fk() returns trigger
   as $$
   begin
@@ -34,6 +38,7 @@ begin;
   $$ language plpgsql;
 
   -- Replaces trigger from 01/50_session.up.sql
+  -- Replaced trigger in 60/02_sessions.up.sql
   create or replace function insert_session() returns trigger
   as $$
   begin
@@ -59,6 +64,7 @@ begin;
   $$ language plpgsql;
 
   -- Replaces view from 34/04_views.up.sql
+  -- Replaced in 56/06_add_session_private_key_column
   drop view session_list;
   create view session_list as
   select

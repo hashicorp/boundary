@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package api
 
 import (
@@ -8,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -41,6 +45,9 @@ const (
 	EnvBoundaryToken         = "BOUNDARY_TOKEN"
 	EnvBoundaryRateLimit     = "BOUNDARY_RATE_LIMIT"
 	EnvBoundarySRVLookup     = "BOUNDARY_SRV_LOOKUP"
+
+	AsciiCastMimeType = "application/x-asciicast"
+	StreamChunkSize   = 1024 * 64 // stream chuck buffer size
 )
 
 // Config is used to configure the creation of the client
@@ -130,6 +137,26 @@ type TLSConfig struct {
 	Insecure bool
 }
 
+// RateLimitLinearJitterBackoff wraps the retryablehttp.LinearJitterBackoff.
+// It first checks if the response status code is http.StatusTooManyRequests
+// (HTTP Code 429) or http.StatusServiceUnavailable (HTTP Code 503). If it is
+// and the response contains a Retry-After response header, it will wait the
+// amount of time specified by the header. Otherwise, this calls
+// LinearJitterBackoff.
+// See: https://pkg.go.dev/github.com/hashicorp/go-retryablehttp#LinearJitterBackoff
+func RateLimitLinearJitterBackoff(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
+	if resp != nil {
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable {
+			if s, ok := resp.Header["Retry-After"]; ok {
+				if sleep, err := strconv.ParseInt(s[0], 10, 64); err == nil {
+					return time.Second * time.Duration(sleep)
+				}
+			}
+		}
+	}
+	return retryablehttp.LinearJitterBackoff(min, max, attemptNum, resp)
+}
+
 // DefaultConfig returns a default configuration for the client. It is
 // safe to modify the return value of this function.
 //
@@ -145,21 +172,20 @@ func DefaultConfig() (*Config, error) {
 		TLSConfig:  &TLSConfig{},
 	}
 
-	// We read the environment now; after DefaultClient returns we can override
-	// values from command line flags, which should take precedence.
-	if err := config.ReadEnvironment(); err != nil {
-		return config, fmt.Errorf("failed to read environment: %w", err)
-	}
-
 	transport := config.HttpClient.Transport.(*http.Transport)
 	transport.TLSHandshakeTimeout = 10 * time.Second
 	transport.TLSClientConfig = &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
 
-	config.Backoff = retryablehttp.LinearJitterBackoff
+	config.Backoff = RateLimitLinearJitterBackoff
 	config.MaxRetries = 2
 	config.Headers = make(http.Header)
+
+	// Read from environment last to ensure it takes precedence.
+	if err := config.ReadEnvironment(); err != nil {
+		return config, fmt.Errorf("failed to read environment: %w", err)
+	}
 
 	return config, nil
 }
@@ -281,6 +307,12 @@ func (c *Config) ReadEnvironment() error {
 		maxRetries, err := strconv.ParseUint(v, 10, 32)
 		if err != nil {
 			return err
+		}
+		// maxRetries is a 32-bit unsigned integer stored inside an uint64.
+		// c.MaxRetries is a signed integer that is at least 32 bits in size.
+		// Check bounds against lowest denominator before casting.
+		if maxRetries > math.MaxInt32 {
+			return fmt.Errorf("max retries must be less than or equal to %d", math.MaxInt32)
 		}
 		c.MaxRetries = int(maxRetries)
 	}
@@ -594,7 +626,7 @@ func copyHeaders(in http.Header) http.Header {
 // NewRequest creates a new raw request object to query the Boundary controller
 // configured for this client. This is an advanced method and generally
 // doesn't need to be called externally.
-func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body interface{}, opt ...Option) (*retryablehttp.Request, error) {
+func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body any, opt ...Option) (*retryablehttp.Request, error) {
 	if c == nil {
 		return nil, fmt.Errorf("client is nil")
 	}
@@ -602,7 +634,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	// Figure out what to do with the body. If it's already a reader it might
 	// be marshaled or raw bytes in a reader, so pass it through. Otherwise
 	// attempt JSON encoding and then pop in a bytes.Buffer.
-	var rawBody interface{}
+	var rawBody any
 	if body != nil {
 		switch t := body.(type) {
 		case io.ReadCloser, io.Reader:
@@ -644,8 +676,17 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		// be pointing to the protocol used in the application layer and not to
 		// the transport layer. Hence, setting the fields accordingly.
 		u.Scheme = "http"
-		u.Host = socket
 		u.Path = ""
+
+		// Go 1.21.0 introduced strict host header validation for clients.
+		// Using unix domain socket addresses in the Host header fails
+		// this validation. https://go.dev/issue/61431 details this problem.
+		// The error-on-domain-socket-host-header will be removed in a
+		// future release, but in the meantime, we need to set it to something
+		// that isn't the actual unix domain socket address. Following
+		// Docker's lead (https://github.com/moby/moby/pull/45942),
+		// use a localhost TLD.
+		u.Host = "api.boundary.localhost"
 	}
 
 	host := u.Host

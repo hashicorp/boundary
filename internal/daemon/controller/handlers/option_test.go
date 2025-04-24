@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package handlers
 
 import (
@@ -39,16 +42,14 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithOutputFields", func(t *testing.T) {
 		assert := assert.New(t)
-		require := require.New(t)
 
 		opts := GetOpts()
 		assert.Nil(opts.WithOutputFields)
 
-		var out perms.OutputFieldsMap
+		var out perms.OutputFields
 
 		opts = GetOpts(WithOutputFields(&out))
-		require.NotNil(opts.WithOutputFields)
-		assert.Nil(*opts.WithOutputFields)
+		assert.NotNil(opts.WithOutputFields)
 	})
 	t.Run("WithManagedGroupIds", func(t *testing.T) {
 		assert := assert.New(t)

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 create table iam_scope_type_enm (
@@ -220,6 +223,8 @@ begin
 end;
 $$ language plpgsql;
 
+-- Dropped in 83/01_iam_role_grant_scope since we moved to multiple scopes per
+-- role
 create or replace function grant_scope_id_valid() returns trigger
 as $$
 declare parent_scope_id text;

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
@@ -13,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/cmd/ops"
@@ -21,10 +25,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
@@ -37,6 +41,8 @@ var (
 	_ cli.Command             = (*Command)(nil)
 	_ cli.CommandAutocomplete = (*Command)(nil)
 )
+
+var extraSelfTerminationConditionFuncs []func(*Command, chan struct{})
 
 type Command struct {
 	*base.Server
@@ -51,15 +57,21 @@ type Command struct {
 	controller    *controller.Controller
 	worker        *worker.Worker
 
-	flagConfig      []string
-	flagConfigKms   string
-	flagLogLevel    string
-	flagLogFormat   string
-	flagCombineLogs bool
+	flagConfig                  []string
+	flagConfigKms               string
+	flagLogLevel                string
+	flagLogFormat               string
+	flagCombineLogs             bool
+	flagSkipPlugins             bool
+	flagSkipAliasTargetCreation bool
+	flagWorkerDnsServer         string
 
-	reloadedCh   chan struct{}  // for tests
-	startedCh    chan struct{}  // for tests
-	presetConfig *atomic.String // for tests
+	reloadedCh                           chan struct{}  // for tests
+	startedCh                            chan struct{}  // for tests
+	presetConfig                         *atomic.String // for tests
+	flagWorkerAuthWorkerRotationInterval time.Duration  // for tests
+	flagWorkerAuthCaCertificateLifetime  time.Duration  // for tests
+	flagWorkerAuthCaReinitialize         bool           // for tests
 }
 
 func (c *Command) Synopsis() string {
@@ -121,6 +133,35 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      `Log format, mostly as a fallback for events. Supported values are "standard" and "json".`,
 	})
 
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-worker-rotation-interval",
+		Target: &c.flagWorkerAuthWorkerRotationInterval,
+		Hidden: true,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-ca-certificate-lifetime",
+		Target: &c.flagWorkerAuthCaCertificateLifetime,
+		Hidden: true,
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "worker-auth-ca-reinitialize",
+		Target: &c.flagWorkerAuthCaReinitialize,
+		Hidden: true,
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-plugins",
+		Target: &c.flagSkipPlugins,
+		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
+		Hidden: true,
+	})
+	f.StringVar(&base.StringVar{
+		Name:   "worker-dns-server",
+		Target: &c.flagWorkerDnsServer,
+		Usage:  "Use a custom DNS server when workers resolve endpoints.",
+		Hidden: true,
+	})
+
 	return set
 }
 
@@ -164,7 +205,8 @@ func (c *Command) Run(args []string) int {
 	}
 	serverName = fmt.Sprintf("%s/%s", serverName, strings.Join(serverTypes, "+"))
 
-	if err := c.SetupEventing(c.Logger,
+	if err := c.SetupEventing(c.Context,
+		c.Logger,
 		c.StderrLock,
 		serverName,
 		base.WithEventerConfig(c.Config.Eventing),
@@ -172,10 +214,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-
-	// Initialize status grace period (0 denotes using env or default
-	// here)
-	c.SetStatusGracePeriodDuration(0)
+	c.WorkerAuthDebuggingEnabled.Store(c.Config.EnableWorkerAuthDebugging)
 
 	base.StartMemProfiler(c.Context)
 
@@ -199,7 +238,7 @@ func (c *Command) Run(args []string) int {
 				return base.CommandUserError
 			}
 			if c.Config.Worker.Name != "" || c.Config.Worker.Description != "" {
-				c.UI.Error("Worker config cannot contain name or description when using PKI-based worker authentication; it must be set via the API.")
+				c.UI.Error("Worker config cannot contain name or description when using activation-token-based worker authentication; it must be set via the API.")
 				return base.CommandUserError
 			}
 		default:
@@ -209,6 +248,16 @@ func (c *Command) Run(args []string) int {
 			}
 			if c.Config.Worker.ControllerGeneratedActivationToken != "" {
 				c.UI.Error("Worker has KMS auth info but also has a controller-generated activation token set, which is incompatible.")
+				return base.CommandUserError
+			}
+			if c.Config.Worker.AuthStoragePath != "" {
+				c.UI.Error("Worker has KMS auth info but also has an auth storage path set, which is incompatible.")
+				return base.CommandUserError
+			}
+		}
+		if c.Config.Controller != nil {
+			if c.Config.Worker.Name == c.Config.Controller.Name {
+				c.UI.Error("Controller and worker cannot be configured with the same name.")
 				return base.CommandUserError
 			}
 		}
@@ -229,6 +278,10 @@ func (c *Command) Run(args []string) int {
 				"systems where this call is supported. If you are running Boundary" +
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
+
+	c.SkipPlugins = c.flagSkipPlugins
+	c.SkipAliasTargetCreation = c.flagSkipAliasTargetCreation
+	c.WorkerDnsServer = c.flagWorkerDnsServer
 
 	// Perform controller-specific listener checks here before setup
 	var clusterAddr string
@@ -289,9 +342,6 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
 			return base.CommandUserError
 		}
-		if c.Config.Worker.ControllersRaw != nil {
-			c.UI.Warn("The \"controllers\" field for worker config is deprecated. Please use \"initial_upstreams\" instead.")
-		}
 
 		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
 			c.UI.Error(err.Error())
@@ -307,14 +357,10 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 		for _, upstream := range c.Config.Worker.InitialUpstreams {
-			host, _, err := net.SplitHostPort(upstream)
+			host, _, err := util.SplitHostPort(upstream)
 			if err != nil {
-				if strings.Contains(err.Error(), "missing port in address") {
-					host = upstream
-				} else {
-					c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
-					return base.CommandUserError
-				}
+				c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
+				return base.CommandUserError
 			}
 			ip := net.ParseIP(host)
 			if ip != nil {
@@ -333,9 +379,23 @@ func (c *Command) Run(args []string) int {
 		}
 
 		if c.Config.HcpbClusterId != "" {
-			_, err := uuid.ParseUUID(c.Config.HcpbClusterId)
+			if len(c.Config.Worker.InitialUpstreams) > 0 {
+				c.UI.Error(fmt.Errorf("Initial upstreams and HCPB cluster ID are mutually exclusive fields").Error())
+				return base.CommandUserError
+			}
+			clusterId, err := parseutil.ParsePath(c.Config.HcpbClusterId)
+			if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+				c.UI.Error(fmt.Errorf("Failed to parse HCP Boundary cluster ID %q: %w", clusterId, err).Error())
+				return base.CommandUserError
+			}
+			if strings.HasPrefix(clusterId, "int-") {
+				clusterId = strings.TrimPrefix(clusterId, "int-")
+			} else if strings.HasPrefix(clusterId, "dev-") {
+				clusterId = strings.TrimPrefix(clusterId, "dev-")
+			}
+			_, err = uuid.ParseUUID(clusterId)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Invalid HCP Boundary cluster id %q: %w", c.Config.HcpbClusterId, err).Error())
+				c.UI.Error(fmt.Errorf("Invalid HCP Boundary cluster ID %q: %w", clusterId, err).Error())
 				return base.CommandUserError
 			}
 		}
@@ -351,14 +411,10 @@ func (c *Command) Run(args []string) int {
 				if purpose != "cluster" {
 					continue
 				}
-				host, _, err := net.SplitHostPort(ln.Address)
+				host, _, err := util.SplitHostPort(ln.Address)
 				if err != nil {
-					if strings.Contains(err.Error(), "missing port in address") {
-						host = ln.Address
-					} else {
-						c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
-						return base.CommandUserError
-					}
+					c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
+					return base.CommandUserError
 				}
 				ip := net.ParseIP(host)
 				if ip != nil {
@@ -437,8 +493,12 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
+	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure, base.EnabledPluginGCP)
+	if base.MinioEnabled {
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginMinio)
+	}
+
 	if c.Config.Controller != nil {
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
@@ -463,7 +523,7 @@ func (c *Command) Run(args []string) int {
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 
 			// Write the WorkerAuth request to a file
-			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.Config.Worker.AuthStoragePath); err != nil {
 				// Shutdown on failure
 				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
 				if err := c.worker.Shutdown(); err != nil {
@@ -487,7 +547,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Logger, c.controller, c.worker, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Context, c.Logger, c.controller, c.worker, c.Listeners...)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
@@ -555,6 +615,7 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 			return nil, base.CommandUserError
 		}
 	}
+
 	return cfg, 0
 }
 
@@ -562,6 +623,8 @@ func (c *Command) StartController(ctx context.Context) error {
 	conf := &controller.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
+		TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
+		TestWorkerAuthCaReinitialize:                c.flagWorkerAuthCaReinitialize,
 	}
 
 	var err error
@@ -589,10 +652,11 @@ func (c *Command) StartWorker() error {
 	}
 
 	var err error
-	c.worker, err = worker.New(conf)
+	c.worker, err = worker.New(c.Context, conf)
 	if err != nil {
 		return fmt.Errorf("Error initializing worker: %w", err)
 	}
+	c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthWorkerRotationInterval
 
 	if err := c.worker.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting worker: %w", err)
@@ -603,12 +667,12 @@ func (c *Command) StartWorker() error {
 		return retErr
 	}
 
-	if c.WorkerAuthKms == nil || c.DevUsePkiForUpstream {
+	if c.WorkerAuthKms == nil {
 		if c.worker.WorkerAuthStorage == nil {
-			return fmt.Errorf("No worker auth storage found")
+			return fmt.Errorf("Chosen worker authentication method requires storage and no worker auth storage was configured")
 		}
 		c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
-		c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
+		c.Info["worker auth storage path"] = c.Config.Worker.AuthStoragePath
 	}
 
 	return nil
@@ -684,6 +748,10 @@ func (c *Command) WaitForInterrupt() int {
 		}
 	}
 
+	for _, f := range extraSelfTerminationConditionFuncs {
+		f(c, c.ServerSideShutdownCh)
+	}
+
 	for !shutdownCompleted.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
@@ -738,6 +806,8 @@ func (c *Command) WaitForInterrupt() int {
 				c.Logger.SetLevel(level)
 			}
 
+			c.WorkerAuthDebuggingEnabled.Store(newConf.EnableWorkerAuthDebugging)
+
 		RUNRELOADFUNCS:
 			if err := c.Reload(newConf); err != nil {
 				c.UI.Error(fmt.Errorf("Error(s) were encountered during reload: %w", err).Error())
@@ -759,19 +829,27 @@ func (c *Command) Reload(newConf *config.Config) error {
 	c.ReloadFuncsLock.RLock()
 	defer c.ReloadFuncsLock.RUnlock()
 
-	var reloadErrors *multierror.Error
+	var reloadErrors error
 
 	for _, relFunc := range c.ReloadFuncs["listeners"] {
 		if relFunc != nil {
 			if err := relFunc(); err != nil {
-				reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
+				reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
 			}
 		}
 	}
 
 	err := c.reloadControllerDatabase(newConf)
 	if err != nil {
-		reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
+		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
+	}
+
+	if err := c.reloadControllerRateLimits(newConf); err != nil {
+		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller api rate limits: %w", err))
+	}
+
+	if err := c.reloadControllerTimings(newConf); err != nil {
+		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller timings: %w", err))
 	}
 
 	if newConf != nil && c.worker != nil {
@@ -789,8 +867,12 @@ func (c *Command) Reload(newConf *config.Config) error {
 			return nil
 		}()
 		if workerReloadErr != nil {
-			reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
+			reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
 		}
+	}
+
+	if newConf != nil && newConf.Controller != nil && newConf.Controller.ConcurrentPasswordHashWorkers > 0 {
+		reloadErrors = stderrors.Join(reloadErrors, password.SetHashingPermits(int(newConf.Controller.ConcurrentPasswordHashWorkers)))
 	}
 
 	// Send a message that we reloaded. This prevents "guessing" sleep times
@@ -802,7 +884,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 		}
 	}
 
-	return reloadErrors.ErrorOrNil()
+	return reloadErrors
 }
 
 func verifyKmsSetup(dbase *db.DB) error {
@@ -883,6 +965,21 @@ func (c *Command) reloadControllerDatabase(newConfig *config.Config) error {
 	oldDbCloseFn(c.Context)
 
 	return nil
+}
+
+func (c *Command) reloadControllerRateLimits(newConfig *config.Config) error {
+	if c.controller == nil || newConfig == nil || newConfig.Controller == nil {
+		return nil
+	}
+	return c.controller.ReloadRateLimiter(newConfig)
+}
+
+func (c *Command) reloadControllerTimings(newConfig *config.Config) error {
+	if c.controller == nil || newConfig == nil || newConfig.Controller == nil {
+		return nil
+	}
+
+	return c.controller.ReloadTimings(newConfig)
 }
 
 // acquireSchemaManager returns a schema manager and generally acquires a shared lock on

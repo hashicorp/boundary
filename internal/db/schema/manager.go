@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package schema
 
 import (
@@ -14,7 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema/internal/provider"
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 )
 
 // driver provides functionality to a database.

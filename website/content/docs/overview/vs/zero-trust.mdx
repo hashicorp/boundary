@@ -1,0 +1,20 @@
+---
+layout: docs
+page_title: Boundary and zero trust
+description: >-
+    Learn how Boundary enables a zero trust approach to security in which all access transactions are authenticated and authorized based on trusted identity.
+---
+
+# Boundary and zero trust
+
+Malware lands on the machine of an engineer working for an HVAC vendor.
+Credentials are harvested, and many of them belong to external clients.
+The attackers use the vendor's system as an entry point into the large corporations they service.
+They move laterally throughout the client's network, eventually using the vendor's admin credentials to access a point-of-sale system that contains PII (personally identifiable information), and the credit card information of millions of customers.
+
+Zero trust was born out of the concept that people should have only the necessary levels of access to do their jobs, and all access transactions should be authenticated and authorized based on a trusted identity.
+Zero trust is not a specific solution or class of solutions, it's a design philosophy for how access to digital systems should be secured.
+Embracing a zero trust mindset assists an organization in reducing their attack surface.
+
+You can use Boundary and other HashiCorp tools such as Vault and Consul to create a zero trust access model for infrastructure endpoints in which all transactions are authenticated, authorized, and audited.
+Boundary focuses on giving developers a consistent workflow for zero trust access to their infrastructure, wherever it resides.

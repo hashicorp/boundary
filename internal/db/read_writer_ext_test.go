@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package db_test
 
 import (
@@ -16,14 +19,14 @@ import (
 
 func TestDb_Create_OnConflict(t *testing.T) {
 	ctx := context.Background()
-	wrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	oplogWrapper := db.TestOplogWrapper(t, conn)
 	rw := db.New(conn)
 	db.TestCreateTables(t, conn)
 
 	createInitialUser := func() *db_test.TestUser {
 		// create initial user for on conflict tests
-		id, err := db.NewPublicId("test-user")
+		id, err := db.NewPublicId(ctx, "test-user")
 		require.NoError(t, err)
 		initialUser, err := db_test.NewTestUser()
 		require.NoError(t, err)
@@ -57,7 +60,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			name: "set-column-values",
 			onConflict: db.OnConflict{
 				Target: db.Columns{"public_id"},
-				Action: db.SetColumnValues(map[string]interface{}{
+				Action: db.SetColumnValues(map[string]any{
 					"name":         db.Expr("md5(?)", "alice eve smith"),
 					"email":        "alice@gmail.com",
 					"phone_number": db.Expr("NULL"),
@@ -75,7 +78,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 				}
 				cv := db.SetColumns([]string{"name"})
 				cv = append(cv,
-					db.SetColumnValues(map[string]interface{}{
+					db.SetColumnValues(map[string]any{
 						"email":        "alice@gmail.com",
 						"phone_number": db.Expr("NULL"),
 					})...)
@@ -160,7 +163,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			initialUser := createInitialUser()
 			conflictUser, err := db_test.NewTestUser()
 			require.NoError(err)
-			userNameId, err := db.NewPublicId("test-user-name")
+			userNameId, err := db.NewPublicId(ctx, "test-user-name")
 			require.NoError(err)
 			conflictUser.PublicId = initialUser.PublicId
 			conflictUser.Name = userNameId
@@ -169,7 +172,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 			}
 			var rowsAffected int64
-			opts := []db.Option{db.WithOnConflict(&tt.onConflict), db.WithOplog(wrapper, md), db.WithReturnRowsAffected(&rowsAffected)}
+			opts := []db.Option{db.WithOnConflict(&tt.onConflict), db.WithOplog(oplogWrapper, md), db.WithReturnRowsAffected(&rowsAffected)}
 			if tt.additionalOpts != nil {
 				opts = append(opts, tt.additionalOpts...)
 			}
@@ -204,7 +207,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		initialUser := createInitialUser()
 		conflictUser, err := db_test.NewTestUser()
 		require.NoError(err)
-		userNameId, err := db.NewPublicId("test-user-name")
+		userNameId, err := db.NewPublicId(ctx, "test-user-name")
 		require.NoError(err)
 		conflictUser.PublicId = initialUser.PublicId
 		conflictUser.Name = userNameId
@@ -216,10 +219,10 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			Target: db.Constraint("db_test_user_public_id_key"),
 			Action: db.SetColumns([]string{"name"}),
 		}
-		users := []interface{}{}
+		users := []*db_test.TestUser{}
 		users = append(users, conflictUser)
 		var rowsAffected int64
-		err = rw.CreateItems(ctx, users, db.WithOnConflict(&onConflict), db.WithOplog(wrapper, md), db.WithReturnRowsAffected(&rowsAffected))
+		err = rw.CreateItems(ctx, users, db.WithOnConflict(&onConflict), db.WithOplog(oplogWrapper, md), db.WithReturnRowsAffected(&rowsAffected))
 		require.NoError(err)
 		foundUser, err := db_test.NewTestUser()
 		require.NoError(err)
@@ -231,4 +234,22 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		assert.Equal(conflictUser.Id, foundUser.Id)
 		assert.Equal(conflictUser.Name, foundUser.Name)
 	})
+}
+
+func TestRW_IsTx(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	assert, require := assert.New(t), require.New(t)
+
+	assert.False(rw.IsTx(testCtx))
+
+	_, err := rw.DoTx(context.Background(), 10, db.ExpBackoff{},
+		func(_ db.Reader, txWriter db.Writer) error {
+			assert.True(txWriter.IsTx(testCtx))
+			return nil
+		})
+	require.NoError(err)
 }

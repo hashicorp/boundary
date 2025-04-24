@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package job
 
 import (
@@ -17,21 +20,6 @@ func Test_GetOpts(t *testing.T) {
 		assert.NotEqual(opts, testOpts)
 		testOpts.withNextRunIn = time.Hour
 		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithRunJobsLimit", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithRunJobsLimit(10))
-		testOpts := getDefaultOptions()
-		assert.NotEqual(opts, testOpts)
-		testOpts.withRunJobsLimit = 10
-		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithZeroRunJobsLimit", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithRunJobsLimit(0))
-		testOpts := getDefaultOptions()
-		assert.Equal(opts, testOpts)
-		assert.Equal(defaultRunJobsLimit, opts.withRunJobsLimit)
 	})
 	t.Run("WithLimit", func(t *testing.T) {
 		assert := assert.New(t)

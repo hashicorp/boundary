@@ -34,14 +34,12 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/hashicorp/boundary/internal/db/schema/internal/log"
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
 	"github.com/hashicorp/boundary/internal/db/schema/migrations"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/go-multierror"
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // schemaAccessLockId is a Lock key used to ensure a single boundary binary is operating
@@ -197,7 +195,7 @@ func (p *Postgres) CommitRun(ctx context.Context) error {
 	}
 	if err := p.tx.Commit(); err != nil {
 		if errRollback := p.tx.Rollback(); errRollback != nil && errRollback != sql.ErrTxDone {
-			err = multierror.Append(err, errRollback)
+			err = stderrors.Join(err, errRollback)
 		}
 		return errors.Wrap(ctx, err, op)
 	}
@@ -214,7 +212,7 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int, ed
 		return errors.New(ctx, errors.MigrationIntegrity, op, "no pending transaction")
 	}
 
-	migr, err := ioutil.ReadAll(migration)
+	migr, err := io.ReadAll(migration)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -477,7 +475,7 @@ func (p *Postgres) GetMigrationLog(ctx context.Context, opt ...log.Option) ([]*l
 		entries = append(entries, e)
 	}
 	if rows.Err() != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, rows.Err(), op)
 	}
 	opts := log.GetOpts(opt...)
 	if opts.WithDeleteLog {

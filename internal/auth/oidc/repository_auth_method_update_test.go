@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -526,6 +529,71 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			version:      2, // since TestAuthMethod(...) did an update to get it to ActivePublicState
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
+		{
+			name: "update-with-prompt",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(
+					t,
+					conn,
+					databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice-rp",
+					"alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Prompts = []string{string(SelectAccount)}
+				return &am
+			},
+			fieldMasks: []string{PromptsField},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Prompts = updateWith.Prompts
+				return am
+			},
+		},
+		{
+			name: "update-with-existing-prompt",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(
+					t,
+					conn,
+					databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice-rp",
+					"alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithPrompts(Consent),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Prompts = []string{string(SelectAccount)}
+				return &am
+			},
+			fieldMasks: []string{PromptsField},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Prompts = updateWith.Prompts
+				return am
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -656,7 +724,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 	// do not run these tests with t.Parallel()
 	ctx := context.Background()
 
-	tp := oidc.StartTestProvider(t)
+	tp := oidc.StartTestProvider(t, oidc.WithTestHost("::1"))
 	tpClientId := "alice-rp"
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
@@ -676,7 +744,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	port := testutil.TestFreePort(t)
-	testAuthMethodCallback, err := url.Parse(fmt.Sprintf("http://localhost:%d/callback", port))
+	testAuthMethodCallback, err := url.Parse(fmt.Sprintf("http://[::1]:%d/callback", port))
 	require.NoError(t, err)
 	testAuthMethod := TestAuthMethod(t,
 		conn, databaseWrapper,
@@ -725,7 +793,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 			authMethod: func() *AuthMethod {
 				cp := testAuthMethod.Clone()
 				port := testutil.TestFreePort(t)
-				cp.Issuer = fmt.Sprintf("http://localhost:%d", port)
+				cp.Issuer = fmt.Sprintf("http://[::1]:%d", port)
 				return cp
 			}(),
 			withAuthMethod:  true,
@@ -784,8 +852,8 @@ func Test_valueObjectChanges(t *testing.T) {
 		old          []string
 		dbMask       []string
 		nullFields   []string
-		wantAdd      []interface{}
-		wantDel      []interface{}
+		wantAdd      []any
+		wantDel      []any
 		wantErrMatch *errors.Template
 	}{
 		{
@@ -795,21 +863,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"ES256", "ES384"},
 			old:    []string{"RS256", "RS384", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
-				return []interface{}{a, a2}
+				return []any{a, a2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
 				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 		},
 		{
@@ -819,17 +887,17 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{pem1, pem2},
 			old:    []string{pem3},
 			dbMask: []string{string(CertificateVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				c, err := NewCertificate(ctx, "am-public-id", pem1)
 				require.NoError(t, err)
 				c2, err := NewCertificate(ctx, "am-public-id", pem2)
 				require.NoError(t, err)
-				return []interface{}{c, c2}
+				return []any{c, c2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				c, err := NewCertificate(ctx, "am-public-id", pem3)
 				require.NoError(t, err)
-				return []interface{}{c}
+				return []any{c}
 			}(),
 		},
 		{
@@ -839,21 +907,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"new-aud1", "new-aud2"},
 			old:    []string{"old-aud1", "old-aud2", "old-aud3"},
 			dbMask: []string{string(AudClaimVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "new-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "new-aud2")
 				require.NoError(t, err)
-				return []interface{}{a, a2}
+				return []any{a, a2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
 				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 		},
 
@@ -864,14 +932,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:        nil,
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
 				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 		},
 		{
@@ -881,21 +949,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"new-scope1", "new-scope2"},
 			old:    []string{"old-scope1", "old-scope2", "old-scope3"},
 			dbMask: []string{string(ClaimsScopesVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				cs, err := NewClaimsScope(ctx, "am-public-id", "new-scope1")
 				require.NoError(t, err)
 				cs2, err := NewClaimsScope(ctx, "am-public-id", "new-scope2")
 				require.NoError(t, err)
-				return []interface{}{cs, cs2}
+				return []any{cs, cs2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				cs, err := NewClaimsScope(ctx, "am-public-id", "old-scope1")
 				require.NoError(t, err)
 				cs2, err := NewClaimsScope(ctx, "am-public-id", "old-scope2")
 				require.NoError(t, err)
 				cs3, err := NewClaimsScope(ctx, "am-public-id", "old-scope3")
 				require.NoError(t, err)
-				return []interface{}{cs, cs2, cs3}
+				return []any{cs, cs2, cs3}
 			}(),
 		},
 		{
@@ -905,14 +973,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:        nil,
 			old:        []string{"old-scope1", "old-scope2", "old-scope3"},
 			nullFields: []string{string(ClaimsScopesVO)},
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				cs, err := NewClaimsScope(ctx, "am-public-id", "old-scope1")
 				require.NoError(t, err)
 				cs2, err := NewClaimsScope(ctx, "am-public-id", "old-scope2")
 				require.NoError(t, err)
 				cs3, err := NewClaimsScope(ctx, "am-public-id", "old-scope3")
 				require.NoError(t, err)
-				return []interface{}{cs, cs2, cs3}
+				return []any{cs, cs2, cs3}
 			}(),
 		},
 		{
@@ -921,14 +989,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:        nil,
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
 				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -939,14 +1007,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:        nil,
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
 				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -957,21 +1025,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"ES256", "ES256"},
 			old:    []string{"RS256", "RS384", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
-				return []interface{}{a, a2}
+				return []any{a, a2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
 				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -982,21 +1050,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"ES256", "ES384"},
 			old:    []string{"RS256", "RS256", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
-				return []interface{}{a, a2}
+				return []any{a, a2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
 				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -1065,6 +1133,7 @@ func Test_validateFieldMask(t *testing.T) {
 				AudClaimsField,
 				CertificatesField,
 				ClaimsScopesField,
+				PromptsField,
 			},
 		},
 		{
@@ -1111,6 +1180,7 @@ func Test_applyUpdate(t *testing.T) {
 					AudClaims:        []string{"new-aud-1", "new-aud-2"},
 					Certificates:     []string{"new-pem1", "new-pem-2"},
 					ClaimsScopes:     []string{"new-scope1", "new-scope2"},
+					Prompts:          []string{string(SelectAccount)},
 				},
 			},
 			orig: &AuthMethod{
@@ -1127,6 +1197,7 @@ func Test_applyUpdate(t *testing.T) {
 					AudClaims:        []string{"orig-aud-1", "orig-aud-2"},
 					Certificates:     []string{"orig-pem1", "orig-pem-2"},
 					ClaimsScopes:     []string{"orig-scope1", "orig-scope2"},
+					Prompts:          []string{string(None)},
 				},
 			},
 			want: &AuthMethod{
@@ -1143,6 +1214,7 @@ func Test_applyUpdate(t *testing.T) {
 					AudClaims:        []string{"new-aud-1", "new-aud-2"},
 					Certificates:     []string{"new-pem1", "new-pem-2"},
 					ClaimsScopes:     []string{"new-scope1", "new-scope2"},
+					Prompts:          []string{string(SelectAccount)},
 				},
 			},
 			fieldMask: []string{
@@ -1157,6 +1229,7 @@ func Test_applyUpdate(t *testing.T) {
 				AudClaimsField,
 				CertificatesField,
 				ClaimsScopesField,
+				PromptsField,
 			},
 		},
 		{
@@ -1186,6 +1259,7 @@ func Test_applyUpdate(t *testing.T) {
 					AudClaims:        []string{"orig-aud-1", "orig-aud-2"},
 					Certificates:     []string{"orig-pem1", "orig-pem-2"},
 					ClaimsScopes:     []string{"orig-scope1", "orig-scope2"},
+					Prompts:          []string{string(SelectAccount)},
 				},
 			},
 			want: &AuthMethod{
@@ -1211,6 +1285,7 @@ func Test_applyUpdate(t *testing.T) {
 				AudClaimsField,
 				CertificatesField,
 				ClaimsScopesField,
+				PromptsField,
 			},
 		},
 	}
@@ -1252,7 +1327,7 @@ func Test_pingEndpoint(t *testing.T) {
 						}, nil
 					},
 				}
-				return client, http.MethodGet, "http://localhost/get"
+				return client, http.MethodGet, "http://[::1]/get"
 			},
 			wantStatus: 200,
 		},
@@ -1266,7 +1341,7 @@ func Test_pingEndpoint(t *testing.T) {
 						}, nil
 					},
 				}
-				return client, http.MethodGet, "http://localhost/get"
+				return client, http.MethodGet, "http://[::1]/get"
 			},
 			wantStatus: 500,
 		},
@@ -1278,7 +1353,7 @@ func Test_pingEndpoint(t *testing.T) {
 						return nil, fmt.Errorf("invalid request")
 					},
 				}
-				return client, http.MethodGet, "http://localhost/get"
+				return client, http.MethodGet, "http://[::1]/get"
 			},
 			wantErr: true,
 		},

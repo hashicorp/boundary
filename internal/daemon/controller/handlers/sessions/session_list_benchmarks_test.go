@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package sessions_test
 
 import (
@@ -81,16 +84,16 @@ func BenchmarkSessionList(b *testing.B) {
 			err = kmsThing.AddExternalWrappers(ctx, kms.WithRootWrapper(wrap))
 			require.NoError(b, err)
 
-			iamRepo, err := iam.NewRepository(rw, rw, kmsThing)
+			iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsThing)
 			require.NoError(b, err)
 
-			authTokenRepo, err := authtoken.NewRepository(rw, rw, kmsThing)
+			authTokenRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsThing)
 			require.NoError(b, err)
 
-			pwRepo, err := password.NewRepository(rw, rw, kmsThing)
+			pwRepo, err := password.NewRepository(ctx, rw, rw, kmsThing)
 			require.NoError(b, err)
 
-			serversRepo, err := server.NewRepository(rw, rw, kmsThing)
+			serversRepo, err := server.NewRepository(ctx, rw, rw, kmsThing)
 			require.NoError(b, err)
 
 			iamRepoFn := func() (*iam.Repository, error) {
@@ -106,7 +109,7 @@ func BenchmarkSessionList(b *testing.B) {
 				return serversRepo, nil
 			}
 
-			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
+			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn, 1000)
 			require.NoError(b, err)
 
 			var users []*userWithToken

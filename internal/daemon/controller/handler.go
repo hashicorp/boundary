@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package controller
 
 import (
@@ -6,10 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/textproto"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -19,8 +23,10 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/accounts"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/aliases"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/billing"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentials"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentialstores"
@@ -30,17 +36,21 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/managed_groups"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/policies"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/session_recordings"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/storage_buckets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -57,30 +67,49 @@ type HandlerProperties struct {
 	CancelCtx      context.Context
 }
 
+const uiPath = "/"
+
+// createMuxWithEndpoints performs all response logic for boundary, using isUiRequest
+// for unified logic between responses and headers.
+func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handler, func(req *http.Request) bool, error) {
+	grpcGwMux := newGrpcGatewayMux()
+	if err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...); err != nil {
+		return nil, nil, err
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/v1/", ratelimit.Handler(c.baseContext, c.getRateLimiter, grpcGwMux))
+	mux.Handle(uiPath, handleUi(c))
+
+	isUiRequest := func(req *http.Request) bool {
+		_, p := mux.Handler(req)
+		// check to see if the matched pattern is for the ui
+		return p == uiPath
+	}
+
+	return mux, isUiRequest, nil
+}
+
 // apiHandler returns an http.Handler for the services. This can be used on
 // its own to mount the Controller API within another web server.
 func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
-	mux := http.NewServeMux()
-
-	grpcGwMux := newGrpcGatewayMux()
-	err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...)
+	mux, isUiRequest, err := createMuxWithEndpoints(c, props)
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle("/v1/", grpcGwMux)
-	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
-	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
+	eventsHandler, err := common.WrapWithEventsHandler(c.baseContext, printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
 	if err != nil {
 		return nil, err
 	}
 	metricsHandler := metric.InstrumentApiHandler(eventsHandler)
 
-	return metricsHandler, nil
+	// This wrap MUST be performed last. If you add a new wrapper, do so above.
+	return listenerutil.WrapCustomHeadersHandler(metricsHandler, props.ListenerConfig, isUiRequest), nil
 }
 
 // GetHealthHandler returns a gRPC Gateway mux that is registered against the
@@ -98,7 +127,7 @@ func (c *Controller) GetHealthHandler(lcfg *listenerutil.ListenerConfig) (http.H
 	}
 
 	wrapped := wrapHandlerWithCommonFuncs(healthGrpcGwMux, c, HandlerProperties{lcfg, c.baseContext})
-	return common.WrapWithEventsHandler(wrapped, c.conf.Eventer, c.kms, lcfg)
+	return common.WrapWithEventsHandler(c.baseContext, wrapped, c.conf.Eventer, c.kms, lcfg)
 }
 
 func registerHealthGrpcGatewayEndpoint(ctx context.Context, gwMux *runtime.ServeMux, dialOptions ...grpc.DialOption) error {
@@ -111,60 +140,117 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 	currentServices := s.GetServiceInfo()
 
 	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
-		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn, c.HostPluginRepoFn, c.IamRepoFn)
+		hcs, err := host_catalogs.NewService(
+			c.baseContext,
+			c.StaticHostRepoFn,
+			c.PluginHostRepoFn,
+			c.PluginRepoFn,
+			c.IamRepoFn,
+			c.HostCatalogRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create host catalog handler service: %w", err)
 		}
 		services.RegisterHostCatalogServiceServer(s, hcs)
 	}
 	if _, ok := currentServices[services.HostSetService_ServiceDesc.ServiceName]; !ok {
-		hss, err := host_sets.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
+		hss, err := host_sets.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create host set handler service: %w", err)
 		}
 		services.RegisterHostSetServiceServer(s, hss)
 	}
 	if _, ok := currentServices[services.HostService_ServiceDesc.ServiceName]; !ok {
-		hs, err := hosts.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
+		hs, err := hosts.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create host handler service: %w", err)
 		}
 		services.RegisterHostServiceServer(s, hs)
 	}
 	if _, ok := currentServices[services.AccountService_ServiceDesc.ServiceName]; !ok {
-		accts, err := accounts.NewService(c.PasswordAuthRepoFn, c.OidcRepoFn)
+		accts, err := accounts.NewService(c.baseContext, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create account handler service: %w", err)
 		}
 		services.RegisterAccountServiceServer(s, accts)
 	}
 	if _, ok := currentServices[services.AuthMethodService_ServiceDesc.ServiceName]; !ok {
-		authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
+		authMethods, err := authmethods.NewService(
+			c.baseContext,
+			c.kms,
+			c.PasswordAuthRepoFn,
+			c.OidcRepoFn,
+			c.IamRepoFn,
+			c.AuthTokenRepoFn,
+			c.LdapRepoFn,
+			c.AuthMethodRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create auth method handler service: %w", err)
 		}
 		services.RegisterAuthMethodServiceServer(s, authMethods)
 	}
 	if _, ok := currentServices[services.AuthTokenService_ServiceDesc.ServiceName]; !ok {
-		authtoks, err := authtokens.NewService(c.AuthTokenRepoFn, c.IamRepoFn)
+		authtoks, err := authtokens.NewService(c.baseContext, c.AuthTokenRepoFn, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create auth token handler service: %w", err)
 		}
 		services.RegisterAuthTokenServiceServer(s, authtoks)
 	}
 	if _, ok := currentServices[services.ScopeService_ServiceDesc.ServiceName]; !ok {
-		os, err := scopes.NewService(c.IamRepoFn)
+		os, err := scopes.NewServiceFn(c.baseContext, c.IamRepoFn, c.kms, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create scope handler service: %w", err)
 		}
 		services.RegisterScopeServiceServer(s, os)
 	}
 	if _, ok := currentServices[services.UserService_ServiceDesc.ServiceName]; !ok {
-		us, err := users.NewService(c.IamRepoFn)
+		us, err := users.NewService(c.baseContext, c.IamRepoFn, c.TargetAliasRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create user handler service: %w", err)
 		}
 		services.RegisterUserServiceServer(s, us)
+	}
+	if _, ok := currentServices[services.StorageBucketService_ServiceDesc.ServiceName]; !ok {
+		sbs, err := storage_buckets.NewServiceFn(
+			c.baseContext,
+			c.PluginStorageBucketRepoFn,
+			c.IamRepoFn,
+			c.PluginRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+			c.ControllerExtension)
+		if err != nil {
+			return fmt.Errorf("failed to create storage bucket handler service: %w", err)
+		}
+		services.RegisterStorageBucketServiceServer(s, sbs)
+	}
+	if _, ok := currentServices[services.PolicyService_ServiceDesc.ServiceName]; !ok {
+		ps, err := policies.NewServiceFn(
+			c.baseContext,
+			c.IamRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+			c.ControllerExtension,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create policy handler service: %w", err)
+		}
+		services.RegisterPolicyServiceServer(s, ps)
+	}
+	if _, ok := currentServices[services.SessionRecordingService_ServiceDesc.ServiceName]; !ok {
+		srs, err := session_recordings.NewServiceFn(
+			c.baseContext,
+			c.IamRepoFn,
+			c.ServersRepoFn,
+			c.workerRPCGracePeriod,
+			c.kms,
+			c.conf.RawConfig.Controller.MaxPageSize,
+			c.ControllerExtension)
+		if err != nil {
+			return fmt.Errorf("failed to create session recording handler service: %w", err)
+		}
+		services.RegisterSessionRecordingServiceServer(s, srs)
 	}
 	if _, ok := currentServices[services.TargetService_ServiceDesc.ServiceName]; !ok {
 		ts, err := targets.NewService(
@@ -177,72 +263,115 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.PluginHostRepoFn,
 			c.StaticHostRepoFn,
 			c.VaultCredentialRepoFn,
-			c.StaticCredentialRepoFn)
+			c.StaticCredentialRepoFn,
+			c.TargetAliasRepoFn,
+			c.downstreamWorkers,
+			c.workerRPCGracePeriod,
+			c.conf.RawConfig.Controller.MaxPageSize,
+			c.ControllerExtension,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create target handler service: %w", err)
 		}
 		services.RegisterTargetServiceServer(s, ts)
 	}
 	if _, ok := currentServices[services.GroupService_ServiceDesc.ServiceName]; !ok {
-		gs, err := groups.NewService(c.IamRepoFn)
+		gs, err := groups.NewService(c.baseContext, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create group handler service: %w", err)
 		}
 		services.RegisterGroupServiceServer(s, gs)
 	}
 	if _, ok := currentServices[services.RoleService_ServiceDesc.ServiceName]; !ok {
-		rs, err := roles.NewService(c.IamRepoFn)
+		rs, err := roles.NewService(c.baseContext, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create role handler service: %w", err)
 		}
 		services.RegisterRoleServiceServer(s, rs)
 	}
 	if _, ok := currentServices[services.SessionService_ServiceDesc.ServiceName]; !ok {
-		ss, err := sessions.NewService(c.SessionRepoFn, c.IamRepoFn)
+		ss, err := sessions.NewService(c.baseContext, c.SessionRepoFn, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create session handler service: %w", err)
 		}
 		services.RegisterSessionServiceServer(s, ss)
 	}
 	if _, ok := currentServices[services.ManagedGroupService_ServiceDesc.ServiceName]; !ok {
-		mgs, err := managed_groups.NewService(c.OidcRepoFn)
+		mgs, err := managed_groups.NewService(c.baseContext, c.OidcRepoFn, c.LdapRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create managed groups handler service: %w", err)
 		}
 		services.RegisterManagedGroupServiceServer(s, mgs)
 	}
 	if _, ok := currentServices[services.CredentialStoreService_ServiceDesc.ServiceName]; !ok {
-		cs, err := credentialstores.NewService(c.baseContext, c.VaultCredentialRepoFn, c.StaticCredentialRepoFn, c.IamRepoFn)
+		cs, err := credentialstores.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.VaultCredentialRepoFn,
+			c.StaticCredentialRepoFn,
+			c.CredentialStoreRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential store handler service: %w", err)
 		}
 		services.RegisterCredentialStoreServiceServer(s, cs)
 	}
 	if _, ok := currentServices[services.CredentialLibraryService_ServiceDesc.ServiceName]; !ok {
-		cl, err := credentiallibraries.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
+		cl, err := credentiallibraries.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.VaultCredentialRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential library handler service: %w", err)
 		}
 		services.RegisterCredentialLibraryServiceServer(s, cl)
 	}
 	if _, ok := currentServices[services.WorkerService_ServiceDesc.ServiceName]; !ok {
-		ws, err := workers.NewService(c.baseContext, c.ServersRepoFn, c.IamRepoFn, c.WorkerAuthRepoStorageFn)
+		ws, err := workers.NewService(c.baseContext, c.ServersRepoFn, c.IamRepoFn, c.WorkerAuthRepoStorageFn,
+			c.downstreamWorkers)
 		if err != nil {
 			return fmt.Errorf("failed to create worker handler service: %w", err)
 		}
 		services.RegisterWorkerServiceServer(s, ws)
 	}
+	if _, ok := currentServices[services.AliasService_ServiceDesc.ServiceName]; !ok {
+		as, err := aliases.NewService(
+			c.baseContext,
+			c.TargetAliasRepoFn,
+			c.IamRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create alias handler service: %w", err)
+		}
+		services.RegisterAliasServiceServer(s, as)
+	}
 	if _, ok := currentServices[services.CredentialService_ServiceDesc.ServiceName]; !ok {
-		c, err := credentials.NewService(c.StaticCredentialRepoFn, c.IamRepoFn)
+		c, err := credentials.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.StaticCredentialRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential handler service: %w", err)
 		}
 		services.RegisterCredentialServiceServer(s, c)
 	}
-	if _, ok := s.GetServiceInfo()[opsservices.HealthService_ServiceDesc.ServiceName]; !ok {
+	if _, ok := currentServices[opsservices.HealthService_ServiceDesc.ServiceName]; !ok {
 		hs := health.NewService()
 		opsservices.RegisterHealthServiceServer(s, hs)
 		c.HealthService = hs
+	}
+	if _, ok := currentServices[services.BillingService_ServiceDesc.ServiceName]; !ok {
+		bs, err := billing.NewService(c.baseContext, c.BillingRepoFn)
+		if err != nil {
+			return fmt.Errorf("failed to create billing handler service: %w", err)
+		}
+		services.RegisterBillingServiceServer(s, bs)
 	}
 
 	return nil
@@ -302,6 +431,21 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	if err := services.RegisterCredentialServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register credential service handler: %w", err)
 	}
+	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register session recording service handler: %w", err)
+	}
+	if err := services.RegisterStorageBucketServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register storage bucket service handler: %w", err)
+	}
+	if err := services.RegisterAliasServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register alias service handler: %w", err)
+	}
+	if err := services.RegisterPolicyServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register policy handler: %w", err)
+	}
+	if err := services.RegisterBillingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register billing service handler: %w", err)
+	}
 
 	return nil
 }
@@ -348,12 +492,14 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		}
 
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
+		ctx = context.WithValue(ctx, globals.ContextAuthTokenPublicIdKey, requestInfo.PublicId)
 
 		if info, ok := event.RequestInfoFromContext(ctx); ok {
 			// piggyback some eventing fields with the auth info proto message
 			requestInfo.EventId = info.EventId
 			requestInfo.TraceId = info.Id
 			requestInfo.ClientIp = info.ClientIp
+			requestInfo.Actions = getActions(info.Path)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 			event.WriteError(ctx, op, errors.New("unable to read event request info from context"))
@@ -396,6 +542,12 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		"X-Requested-With",
 		"Authorization",
 	}, props.ListenerConfig.CorsAllowedHeaders...)
+
+	allowedResponseHeaders := strings.Join([]string{
+		"Retry-After",
+		"RateLimit",
+		"RateLimit-Policy",
+	}, ", ")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if props.ListenerConfig.CorsEnabled == nil || !*props.ListenerConfig.CorsEnabled {
@@ -446,6 +598,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Vary", "Origin")
+		w.Header().Set("Access-Control-Expose-Headers", allowedResponseHeaders)
 
 		// Apply headers for preflight requests
 		if req.Method == http.MethodOptions {
@@ -461,8 +614,8 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 }
 
 type cmdAttrs struct {
-	Command    string      `json:"command,omitempty"`
-	Attributes interface{} `json:"attributes,omitempty"`
+	Command    string `json:"command,omitempty"`
+	Attributes any    `json:"attributes,omitempty"`
 }
 
 func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Handler {
@@ -498,7 +651,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			return
 		}
 
-		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":callback")
+		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":"+auth.CallbackAction)
 
 		// How we get the parameters changes based on the method. Right now only
 		// GET is supported with query args, but this can support POST with JSON
@@ -526,7 +679,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		switch {
 		case useForm:
 			if len(req.Form) > 0 {
-				values := make(map[string]interface{}, len(req.Form))
+				values := make(map[string]any, len(req.Form))
 				// This won't handle repeated values. That's fine, at least for now.
 				// We can address that if needed, which seems unlikely.
 				for k := range req.Form {
@@ -577,7 +730,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 				}
 			}
 			bytesReader := bytes.NewReader(attrBytes)
-			req.Body = ioutil.NopCloser(bytesReader)
+			req.Body = io.NopCloser(bytesReader)
 			req.ContentLength = int64(bytesReader.Len())
 			req.Header.Set(textproto.CanonicalMIMEHeaderKey("content-type"), "application/json")
 			req.Method = http.MethodPost
@@ -587,92 +740,18 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 	})
 }
 
-/*
-func WrapForwardedForHandler(h http.Handler, authorizedAddrs []*sockaddr.SockAddrMarshaler, rejectNotPresent, rejectNonAuthz bool, hopSkips int) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		headers, headersOK := r.Header[textproto.CanonicalMIMEHeaderKey("X-Forwarded-For")]
-		if !headersOK || len(headers) == 0 {
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, fmt.Errorf("missing x-forwarded-for header and configured to reject when not present"))
-			return
-		}
+// getActions takes in a URL Path and returns the actions from the URL
+func getActions(urlPath string) []string {
+	// Remove any query parameters
+	urlPath = strings.Split(urlPath, "?")[0]
 
-		host, port, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			// If not rejecting treat it like we just don't have a valid
-			// header because we can't do a comparison against an address we
-			// can't understand
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, errwrap.Wrapf("error parsing client hostport: {{err}}", err))
-			return
-		}
+	lastPart := path.Base(urlPath)
 
-		addr, err := sockaddr.NewIPAddr(host)
-		if err != nil {
-			// We treat this the same as the case above
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, errwrap.Wrapf("error parsing client address: {{err}}", err))
-			return
-		}
+	_, rest, _ := strings.Cut(lastPart, ":")
+	if rest == "" {
+		return []string{}
+	}
 
-		var found bool
-		for _, authz := range authorizedAddrs {
-			if authz.Contains(addr) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			// If we didn't find it and aren't configured to reject, simply
-			// don't trust it
-			if !rejectNonAuthz {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, fmt.Errorf("client address not authorized for x-forwarded-for and configured to reject connection"))
-			return
-		}
-
-		// At this point we have at least one value and it's authorized
-
-		// Split comma separated ones, which are common. This brings it in line
-		// to the multiple-header case.
-		var acc []string
-		for _, header := range headers {
-			vals := strings.Split(header, ",")
-			for _, v := range vals {
-				acc = append(acc, strings.TrimSpace(v))
-			}
-		}
-
-		indexToUse := len(acc) - 1 - hopSkips
-		if indexToUse < 0 {
-			// This is likely an error in either configuration or other
-			// infrastructure. We could either deny the request, or we
-			// could simply not trust the value. Denying the request is
-			// "safer" since if this logic is configured at all there may
-			// be an assumption it can always be trusted. Given that we can
-			// deny accepting the request at all if it's not from an
-			// authorized address, if we're at this point the address is
-			// authorized (or we've turned off explicit rejection) and we
-			// should assume that what comes in should be properly
-			// formatted.
-			respondError(w, http.StatusBadRequest, fmt.Errorf("malformed x-forwarded-for configuration or request, hops to skip (%d) would skip before earliest chain link (chain length %d)", hopSkips, len(headers)))
-			return
-		}
-
-		r.RemoteAddr = net.JoinHostPort(acc[indexToUse], port)
-		h.ServeHTTP(w, r)
-		return
-	})
+	// Split the rest on ":", returning all actions and sub-actions
+	return strings.Split(rest, ":")
 }
-*/

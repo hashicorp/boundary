@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package controller
 
 import (
@@ -21,6 +24,7 @@ type option struct {
 	setDisableDatabaseDestruction  bool
 	setDefaultPasswordAuthMethodId bool
 	setDefaultOidcAuthMethodId     bool
+	setDefaultLdapAuthMethodId     bool
 	setDefaultLoginName            bool
 	setDefaultPassword             bool
 	setRootKms                     bool
@@ -28,6 +32,7 @@ type option struct {
 	setRecoveryKms                 bool
 	setDatabaseUrl                 bool
 	setEnableTemplatedDatabase     bool
+	setEnableEventing              bool
 }
 
 type Option func(*option) error
@@ -48,6 +53,7 @@ func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
 	var setDbParams bool
 	if opts.setDefaultPasswordAuthMethodId ||
 		opts.setDefaultOidcAuthMethodId ||
+		opts.setDefaultLdapAuthMethodId ||
 		opts.setDefaultLoginName ||
 		opts.setDefaultPassword {
 		setDbParams = true
@@ -144,6 +150,14 @@ func WithDefaultOidcAuthMethodId(id string) Option {
 	}
 }
 
+func WithDefaultLdapAuthMethodId(id string) Option {
+	return func(c *option) error {
+		c.setDefaultLdapAuthMethodId = true
+		c.tcOptions.DefaultLdapAuthMethodId = id
+		return nil
+	}
+}
+
 func WithDefaultLoginName(ln string) Option {
 	return func(c *option) error {
 		c.setDefaultLoginName = true
@@ -198,6 +212,14 @@ func WithDatabaseUrl(url string) Option {
 func WithEnableTemplatedDatabase(enable bool) Option {
 	return func(c *option) error {
 		c.setEnableTemplatedDatabase = enable
+		return nil
+	}
+}
+
+func WithEnableEventing() Option {
+	return func(c *option) error {
+		c.setEnableEventing = true
+		c.tcOptions.EnableEventing = true
 		return nil
 	}
 }

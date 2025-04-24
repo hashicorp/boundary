@@ -1,0 +1,57 @@
+---
+layout: docs
+page_title: connect rdp - Command
+description: >-
+  The "connect rdp" command command performs a target authorization or consumes an existing authorization token, and then launches a proxied RDP connection.
+---
+
+# connect rdp
+
+Command: `boundary connect rdp`
+
+The `connect rdp` command authorizes a session against a target and invokes an RDP client for the connection.
+The command fills in the local address and port.
+
+@include 'cmd-connect-env-vars.mdx'
+
+## Examples
+
+The following example authorizes a session to a target with the ID `ttcp_1234567890` and invokes an RDP session with the built-in Windows RDP client, `mstsc`:
+
+```shell-session
+$ boundary connect rdp \
+   -target-id ttcp_1234567890
+```
+
+The following example authorizes a session to a target with the ID `ttcp_123457890` and invokes a custom command for the RDP macOS client:
+
+```shell-session
+$ boundary connect rdp \
+   -target-id ttcp_1234567890
+   -exec bash \
+   -- -c "open rdp://full%20address=s={{boundary.addr}} && sleep 600"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect rdp [options] [args]
+```
+
+</CodeBlockConfig>
+
+This command performs a target authorization or consumes an existing authorization token, and launches a proxied RDP connection.
+
+@include 'cmd-connect-command-options.mdx'
+
+### RDP options:
+
+- `-style` `(string: "")` - How the CLI attempts to invoke an RDP client.
+This value also sets a suitable default for `-exec`, if you did not specify a value.
+The currently-understood value is `mstsc`, which is the default on Windows and launches the Windows client.
+It is also the default on Mac, and launches an rdp://URL.
+You can also specify how the CLI attempts to invoke an RDP client using the **BOUNDARY_CONNECT_RDP_STYLE** environment variable.
+
+@include 'cmd-option-note.mdx'

@@ -1,0 +1,54 @@
+---
+layout: docs
+page_title: scopes - Command
+description: >-
+  The "scopes" command performs operations on Boundary scope resources. Scopes are permission boundaries modeled as containers. They group resources.
+---
+
+# scopes
+
+Command: `boundary scopes`
+
+The `scopes` command lets you perform operations on Boundary scope resources.
+
+## Example
+
+The following command creates a scope with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary scopes create -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary scopes <subcommand> [options] [args]
+  # ...
+Subcommands:
+    create                               Create a scope
+    delete                               Delete a scope
+    destroy-key-version                  Destroy a key version within a scope
+    list                                 List a scope
+    list-key-version-destruction-jobs    List all pending key version destruction jobs within a scope
+    list-keys                            List keys within a scope
+    read                                 Read a scope
+    rotate-keys                          Rotate the keys within a scope
+    update                               Update a scope
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/scopes/create)
+- [delete](/boundary/docs/commands/scopes/delete)
+- [destroy-key-version](/boundary/docs/commands/scopes/destroy-key-version)
+- [list](/boundary/docs/commands/scopes/list)
+- [list-key-version-destruction-jobs](/boundary/docs/commands/scopes/list-key-version-destruction-jobs)
+- [list-keys](/boundary/docs/commands/scopes/list-keys)
+- [read](/boundary/docs/commands/scopes/read)
+- [rotate-keys](/boundary/docs/commands/scopes/rotate-keys)
+- [update](/boundary/docs/commands//scopes/update)

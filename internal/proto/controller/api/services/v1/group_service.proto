@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.services.v1;
@@ -10,6 +13,18 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service GroupService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Group service"
+    description:
+      "A group is a resource that represents a collection of users that can be "
+      "treated equally for the purposes of access control. "
+      "The group service provides endpoints for managing groups in Boundary. "
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups";
+      description: "Read about groups in the Boundary domain model";
+    }
+  };
+
   // GetGroup returns a stored Group if present. The provided request must
   // include the Group id and if it is missing, malformed or referencing a
   // non existing resource an error is returned.
@@ -18,21 +33,15 @@ service GroupService {
       get: "/v1/groups/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Group."};
   }
 
   // ListGroups returns a list of stored Groups which exist inside the
   // provided scope id. If that id is missing, malformed, or
   // references a non-existing scope, an error is returned.
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
-    option (google.api.http) = {
-      get: "/v1/groups"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Groups."
-    };
+    option (google.api.http) = {get: "/v1/groups"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Groups."};
   }
 
   // CreateGroup creates and stores a Group in boundary. The provided
@@ -46,9 +55,7 @@ service GroupService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Group."};
   }
 
   // UpdateGroup updates an existing Group in boundary. The provided Group
@@ -65,20 +72,14 @@ service GroupService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Group."};
   }
 
   // DeleteGroup removes a Group from Boundary. If the provided Group
   // ID is malformed or not provided an error is returned.
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
-    option (google.api.http) = {
-      delete: "/v1/groups/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Group."
-    };
+    option (google.api.http) = {delete: "/v1/groups/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Group."};
   }
 
   // AddGroupMembers adds members to a Group.  The provided request must include
@@ -91,9 +92,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds members to a Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds members to a Group."};
   }
 
   // SetGroupMembers sets the Group's members.  Any existing members on
@@ -107,9 +106,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."};
   }
 
   // RemoveGroupMembers removes members from the specified Group.
@@ -123,14 +120,12 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes the specified members from a Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes the specified members from a Group."};
   }
 }
 
 message GetGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetGroupResponse {
@@ -138,13 +133,53 @@ message GetGroupResponse {
 }
 
 message ListGroupsRequest {
-  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+  string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the default page configured,
+  // the page size will be truncated to this number.
+  uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListGroupsResponse {
   repeated resources.groups.v1.Group items = 1;
+
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message CreateGroupRequest {
@@ -152,12 +187,12 @@ message CreateGroupRequest {
 }
 
 message CreateGroupResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.groups.v1.Group item = 2;
 }
 
 message UpdateGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.groups.v1.Group item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -167,17 +202,17 @@ message UpdateGroupResponse {
 }
 
 message DeleteGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteGroupResponse {}
 
 message AddGroupMembersRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public"`
+  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AddGroupMembersResponse {
@@ -185,11 +220,11 @@ message AddGroupMembersResponse {
 }
 
 message SetGroupMembersRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public"`
+  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message SetGroupMembersResponse {
@@ -197,11 +232,11 @@ message SetGroupMembersResponse {
 }
 
 message RemoveGroupMembersRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public"`
+  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message RemoveGroupMembersResponse {

@@ -1,0 +1,44 @@
+---
+layout: docs
+page_title: scopes create - Command
+description: >-
+  The "scopes create" command creates a new scope resource.
+---
+
+# scopes create
+
+Command: `scopes create`
+
+The `scopes create` command lets you create a new scope.
+
+## Example
+
+This example creates a scope with the name `prodops` and the description `Scope for ProdOps`:
+
+```shell-session
+$ boundary scopes create -name prodops -description "Scope for ProdOps"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary scopes create [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-description=<string>` - The description to set on the scope.
+- `-name=<string>` - The name to set on the scope.
+- `-scope-id=<string>` - The scope in which you want to create the scope.
+The default is `global`.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
+- `-skip-admin-role-creation` - If set, Boundary does not create a role that grants the current user administrative access to the newly created scope.
+The default value is `false`.
+- `-skip-default-role-creation` - If set, Boundary does not create a role that grants the anonymous user access to log in to auth methods and other actions within the newly created scope.
+The default value is `false`.
+
+@include 'cmd-option-note.mdx'

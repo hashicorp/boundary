@@ -1,0 +1,45 @@
+---
+layout: docs
+page_title: session-recordings download - Command
+description: >-
+  The "session-recordings download" command downloads session recording resources so that you can view them.
+---
+
+# session-recordings download
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary session-recordings download`
+
+The `boundary session-recordings download` command lets you download a Boundary session recording.
+
+## Example
+
+The following command downloads a session recording with the id `chr_1234567890`:
+
+```shell-session
+$ boundary session-recordings download -id chr_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary session-recordings download [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the session recording resource you want to download.
+- `-no-clobber` - If set, prevents downloads from overwriting existing files.
+This option is aliased as `-nc`.
+The default value is `false`.
+- `-output=<string>` - If set, indicates an optional output file for the download.
+If you do not provide a value, the recording ID is given a ".cast" extension.
+Use `-` for stdout.
+This option is aliased as `-o`.
+
+@include 'cmd-option-note.mdx'

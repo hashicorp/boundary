@@ -1,0 +1,137 @@
+---
+layout: docs
+page_title: SSH ProxyCommand
+description: >-
+  Learn how to use SSH ProxyCommand to proxy an SSH connection using a configuration file. Configure hosts using the target's ID or domain.
+---
+
+# SSH ProxyCommand
+
+SSH `ProxyCommand` lets you proxy an SSH connection to a target to simplify common developer and operator workflows.
+For example, you can configure the `.ssh/ssh_config` file to connect to the target ID or the target domain.
+
+## Configure a host using target ID
+
+To use SSH `ProxyCommand`, you must configure a `Host` entry in `.ssh/ssh_config` for `localhost`.
+
+In the following example, `ProxyCommand` configures the SSH client to invoke `boundary connect`.
+
+The command passes the `-exec nc` flag to `boundary connect` to wrap [netcat](http://netcat.sourceforge.net/), and then pass the `boundary.ip` and `boundary.port` environment variables as arguments to `nc`.
+This command allows you to proxy your SSH connection through a local netcat tunnel that's managed as a Boundary session:
+
+<CodeBlockConfig filename="./ssh/ssh_config">
+
+```bash
+Host ttcp_*
+  ProxyCommand sh -c "boundary connect -target-id %n -exec nc -- {{boundary.ip}} {{boundary.port}}"
+```
+
+</CodeBlockConfig>
+
+Using this configuration, if you run `ssh ttcp_1234567890` to connect to a target with the ID `ttcp_1234567890`, SSH invokes `boundary connect`, and tunnels the traffic through the local Boundary proxy in a wrapped netcat session.
+Boundary passes the target ID to the `boundary` command as the hostname.
+
+Note that you must authenticate to Boundary before you can use `ssh` to invoke `boundary connect`.
+
+### SSH to target
+
+Once the command is configured, you can run `ssh` as you normally would and all the traffic is proxied over the Boundary proxy to your target machine:
+
+```bash
+$ ssh ttcp_1234567890
+Password:
+Last login: Thu Nov 19 10:32:09 2023
+➜  ~
+```
+
+On the controller, you can see the session being invoked in the logs:
+
+```bash
+controller.worker-handler: connection established: session_id=s_WkaQbqmrJx connection_id=sc_RDYNFFI2M4 client_tcp_address=127.0.0.1 client_tcp_port=57421 endpoint_tcp_address=::1 endpoint_tcp_port=22
+```
+
+You can inspect the session on the CLI as well:
+
+```bash
+$  boundary sessions read -id $(boundary sessions list -scope-id p_1234567890 -format json | jq '.[0]["id"]' | tr -d '"')
+
+Session information:
+  Auth Token ID:       at_a8itRfDSyV
+  Created Time:        Thu, 19 Nov 2023 10:52:44 PST
+  Endpoint:            tcp://localhost:22
+  Expiration Time:     Thu, 19 Nov 2023 18:52:44 PST
+  Host ID:             hst_1234567890
+  Host Set ID:         hsst_1234567890
+  ID:                  s_WkaQbqmrJx
+  Status:              active
+  Target ID:           ttcp_1234567890
+  Type:                tcp
+  Updated Time:        Thu, 19 Nov 2023 10:52:47 PST
+  User ID:             u_1234567890
+  Version:             2
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  States:
+    Start Time:        Thu, 19 Nov 2023 10:52:47 PST
+    Status:            active
+
+    End Time:          Thu, 19 Nov 2023 10:52:47 PST
+    Start Time:        Thu, 19 Nov 2023 10:52:44 PST
+    Status:            pending
+```
+
+## Configure a host using target domain
+
+If you want to use the domain name to SSH to targets, you can set the `Host` value to the target domain instead of the target ID.
+
+This method requires an extra step.
+You must authorize the session to the target and store it in your environment, since you do not pass the target ID as part of the SSH command.
+Authorizing the session allows Boundary to pull the target information from the token you create using the `authorize session` command.
+
+### Authorize the session
+
+The following example authorizes a session to a target `ttcp_1234567890` and stores the token in the `BOUNDARY_CONNECT_AUTHZ_TOKEN` environment variable.
+Boundary uses the token when it's invoked by SSH:
+
+```bash
+$ export BOUNDARY_CONNECT_AUTHZ_TOKEN=$(boundary targets authorize-session -id ttcp_1234567890 -format json | jq '.authorization_token' | tr -d '"')
+```
+### Configure the host
+
+To use SSH `ProxyCommand`, you must configure a `Host` entry in `.ssh/ssh_config` for `localhost`.
+
+In the following example, `ProxyCommand` configures the SSH client to invoke `boundary connect`.
+
+The command passes the `-exec nc` flag to `boundary connect` to wrap [netcat](http://netcat.sourceforge.net/), and then pass the `boundary.ip` and `boundary.port` environment variables as arguments to `nc`.
+This command allows you to proxy your SSH connection through a local netcat tunnel that's managed as a Boundary session:
+
+<CodeBlockConfig filename="./ssh/ssh_config">
+
+```bash
+Host localhost
+    # requires BOUNDARY_CONNECT_AUTHZ_TOKEN to be set from authorize-session command
+    ProxyCommand sh -c "boundary connect -exec nc -- {{boundary.ip}} {{boundary.port}}"
+```
+
+</CodeBlockConfig>
+
+Using this configuration, if you run `ssh user@localhost` to connect to the target you created the authorization session for, SSH invokes `boundary connect`, and tunnels the traffic through the local Boundary proxy in a wrapped netcat session.
+Boundary passes the target domain to the `boundary` command as the hostname.
+
+Note that you must authenticate to Boundary before you can use `ssh` to invoke `boundary connect`.
+
+### SSH to target
+
+Once the command is configured, you can run `ssh` as you normally would and all the traffic is proxied over the Boundary proxy to your target machine:
+
+```bash
+$ ssh user@localhost
+Password:
+Last login: Thu Nov 19 10:32:09 2023
+➜  ~
+```

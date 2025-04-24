@@ -1,15 +1,21 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package base
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/mitchellh/cli"
@@ -31,7 +37,7 @@ func Test_NewServer(t *testing.T) {
 	})
 }
 
-func TestServer_SetupKMSes(t *testing.T) {
+func TestServer_SetupKMSes_Purposes(t *testing.T) {
 	tests := []struct {
 		name            string
 		purposes        []string
@@ -57,9 +63,49 @@ func TestServer_SetupKMSes(t *testing.T) {
 		{
 			name: "multi purpose",
 			purposes: []string{
-				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
-				globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeConfig,
+				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth, globals.KmsPurposeDownstreamWorkerAuth,
+				globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeConfig, globals.KmsPurposeBsr,
 			},
+		},
+		{
+			name:            "previous root without root",
+			purposes:        []string{globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("KMS block contains '%s' without '%s'", globals.KmsPurposePreviousRoot, globals.KmsPurposeRoot),
+		},
+		{
+			name:            "root and previous in the same stanza",
+			purposes:        []string{globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("KMS blocks with purposes '%s' and '%s' must have different key IDs", globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot),
+		},
+		{
+			name:            "duplicate root purposes",
+			purposes:        []string{globals.KmsPurposeRoot, globals.KmsPurposeRoot},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeRoot),
+		},
+		{
+			name:            "duplicate previous root purposes",
+			purposes:        []string{globals.KmsPurposePreviousRoot, globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposePreviousRoot),
+		},
+		{
+			name:            "duplicate worker auth purposes",
+			purposes:        []string{globals.KmsPurposeWorkerAuth, globals.KmsPurposeWorkerAuth},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeWorkerAuth),
+		},
+		{
+			name:            "duplicate worker auth storage purposes",
+			purposes:        []string{globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeWorkerAuthStorage},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeWorkerAuthStorage),
+		},
+		{
+			name:            "duplicate bsr kms purposes",
+			purposes:        []string{globals.KmsPurposeBsr, globals.KmsPurposeBsr},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeBsr),
+		},
+		{
+			name:            "duplicate recovery purposes",
+			purposes:        []string{globals.KmsPurposeRecovery, globals.KmsPurposeRecovery},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeRecovery),
 		},
 	}
 	logger := hclog.Default()
@@ -76,7 +122,7 @@ func TestServer_SetupKMSes(t *testing.T) {
 				},
 			}
 			s := NewServer(&Command{Context: context.Background()})
-			require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+			require.NoError(s.SetupEventing(s.Context, logger, serLock, "setup-kms-testing"))
 			err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
 
 			if tt.wantErrContains != "" {
@@ -96,10 +142,110 @@ func TestServer_SetupKMSes(t *testing.T) {
 					assert.NotNil(s.WorkerAuthStorageKms)
 				case globals.KmsPurposeRecovery:
 					assert.NotNil(s.RecoveryKms)
+				case globals.KmsPurposeBsr:
+					assert.NotNil(s.BsrKms)
 				}
 			}
 		})
 	}
+}
+
+func TestServer_SetupKMSes_RootMigration(t *testing.T) {
+	t.Parallel()
+	t.Run("correctly-pools-root-and-previous", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposeRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+					Config: map[string]string{
+						"key_id": "previous_root",
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(s.Context, logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.NoError(err)
+		require.NotNil(s.RootKms)
+		typ, err := s.RootKms.Type(s.Context)
+		require.NoError(err)
+		assert.Equal(wrapping.WrapperTypePooled, typ)
+		// Ensure that the root is the encryptor
+		keyId, err := s.RootKms.KeyId(s.Context)
+		require.NoError(err)
+		assert.Equal("root", keyId)
+		// Ensure that the previous root is in the wrapper too
+		assert.Equal([]string{"previous_root", "root"}, s.RootKms.(*multi.PooledWrapper).AllKeyIds())
+	})
+	t.Run("errors-on-previous-without-root", func(t *testing.T) {
+		t.Parallel()
+		require := require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(s.Context, logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.Error(err)
+	})
+	t.Run("errors-on-previous-and-root-with-same-key-id", func(t *testing.T) {
+		t.Parallel()
+		require := require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposeRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(s.Context, logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.Error(err)
+	})
 }
 
 func TestServer_SetupEventing(t *testing.T) {
@@ -155,12 +301,14 @@ func TestServer_SetupEventing(t *testing.T) {
 				AuditEnabled:        &setTrue,
 				ObservationsEnabled: &setFalse,
 				SysEventsEnabled:    &setFalse,
+				TelemetryEnabled:    &setFalse,
 			})},
 			want: func() event.EventerConfig {
 				c := event.DefaultEventerConfig()
 				c.AuditEnabled = true
 				c.ObservationsEnabled = false
 				c.SysEventsEnabled = false
+				c.TelemetryEnabled = false
 				return *c
 			}(),
 		},
@@ -184,12 +332,14 @@ func TestServer_SetupEventing(t *testing.T) {
 				ObservationsEnabled: false,
 				SysEventsEnabled:    false,
 				AuditEnabled:        true,
+				TelemetryEnabled:    false,
 			})},
 			want: func() event.EventerConfig {
 				c := event.DefaultEventerConfig()
 				c.AuditEnabled = true
 				c.ObservationsEnabled = false
 				c.SysEventsEnabled = false
+				c.TelemetryEnabled = false
 				return *c
 			}(),
 		},
@@ -208,6 +358,42 @@ func TestServer_SetupEventing(t *testing.T) {
 			wantErrIs:       event.ErrInvalidParameter,
 			wantErrContains: "sink 0 is invalid",
 		},
+		{
+			name:   "opts-eventer-config-observation-telemetry-invalid",
+			s:      &Server{},
+			logger: testLogger,
+			lock:   testLock,
+			opt: []Option{WithEventFlags(&EventFlags{
+				Format:              event.JSONSinkFormat,
+				AuditEnabled:        &setTrue,
+				ObservationsEnabled: &setFalse,
+				SysEventsEnabled:    &setFalse,
+				TelemetryEnabled:    &setTrue,
+			})},
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "telemetry events require observation event to be enabled",
+		},
+		{
+			name:   "opts-eventer-config-observation-on-telemetry-off",
+			s:      &Server{},
+			logger: testLogger,
+			lock:   testLock,
+			opt: []Option{WithEventFlags(&EventFlags{
+				Format:              event.JSONSinkFormat,
+				AuditEnabled:        &setFalse,
+				ObservationsEnabled: &setTrue,
+				SysEventsEnabled:    &setFalse,
+				TelemetryEnabled:    &setFalse,
+			})},
+			want: func() event.EventerConfig {
+				c := event.DefaultEventerConfig()
+				c.AuditEnabled = false
+				c.ObservationsEnabled = true
+				c.SysEventsEnabled = false
+				c.TelemetryEnabled = false
+				return *c
+			}(),
+		},
 	}
 
 	for _, tt := range tests {
@@ -215,7 +401,7 @@ func TestServer_SetupEventing(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			event.TestResetSystEventer(t)
 
-			err := tt.s.SetupEventing(tt.logger, tt.lock, tt.name, tt.opt...)
+			err := tt.s.SetupEventing(context.Background(), tt.logger, tt.lock, tt.name, tt.opt...)
 			if tt.wantErrMatch != nil || tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(tt.s.Eventer)
@@ -287,7 +473,6 @@ func TestServer_AddEventerToContext(t *testing.T) {
 }
 
 func TestSetupWorkerPublicAddress(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name             string
 		inputConfig      *config.Config
@@ -311,7 +496,7 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			expPublicAddress: ":9202",
 		},
 		{
-			name: "setting public address directly with ip",
+			name: "setting public address directly with ipv4",
 			inputConfig: &config.Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -326,7 +511,7 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			expPublicAddress: "127.0.0.1:9202",
 		},
 		{
-			name: "setting public address directly with ip:port",
+			name: "setting public address directly with ipv4:port",
 			inputConfig: &config.Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
@@ -339,6 +524,66 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			expErr:           false,
 			expErrStr:        "",
 			expPublicAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "setting public address directly with ipv6",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860:0:0:0:0:8888]",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860:0:0:0:0:8888]:9202",
+		},
+		{
+			name: "setting public address directly with ipv6:port",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860:0:0:0:0:8888]:8080",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+		},
+		{
+			name: "setting public address directly with abbreviated ipv6",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860::8888]",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860::8888]:9202",
+		},
+		{
+			name: "setting public address directly with abbreviated ipv6:port",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860::8888]:8080",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "setting public address to env var",

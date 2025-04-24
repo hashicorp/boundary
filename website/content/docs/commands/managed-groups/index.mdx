@@ -1,0 +1,46 @@
+---
+layout: docs
+page_title: managed-groups - Command
+description: >-
+  The "managed-groups" command performs operations on Boundary managed group resources. Managed groups represent collections of accounts.
+---
+
+# managed-groups
+
+Command: `boundary managed-groups`
+
+The `managed-groups` command lets you perform operations on Boundary managed group resources.
+
+## Example
+
+The following command creates a managed group with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary managed-groups create -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary managed-groups <subcommand> [options] [args]
+  # ...
+Subcommands:
+    create    Create a managed group
+    delete    Delete a managed group
+    list      List a managed group
+    read      Read a managed group
+    update    Update a managed group
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/managed-groups/create)
+- [delete](/boundary/docs/commands/managed-groups/delete)
+- [list](/boundary/docs/commands/managed-groups/list)
+- [read](/boundary/docs/commands/managed-groups/read)
+- [update](/boundary/docs/commands/managed-groups/update)

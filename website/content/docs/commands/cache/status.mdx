@@ -1,0 +1,52 @@
+---
+layout: docs
+page_title: cache status - Command
+description: >-
+  The "cache status" command checks the status of the Boundary cache and reports on configuration, user, and resource information.
+---
+
+# cache status
+
+Command: `boundary cache status`
+
+The `boundary cache status` command lets you manually check the status of the Boundary cache.
+Boundary prints out a status report that includes configuration, user, and resource information.
+
+## Example
+
+The following command checks the status of the Boundary cache:
+
+```shell-session
+$ boundary cache status
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Status:
+  Domain Socket:       /home/my_user/.boundary/socket/daemon.sock
+  Log Location:        /home/my_user/.boundary/cache.log
+  Uptime:              15m22s
+  User Count:          1
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary cache status [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `output-curl-string` - Specifies that Boundary should print an equivalent cURL command string and exit, instead of executing the request.
+The default value is `false`.
+
+@include 'cmd-option-note.mdx'

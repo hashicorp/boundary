@@ -1,0 +1,238 @@
+---
+layout: docs
+page_title: Resource table
+description: >-
+  View a list of resources and their available permissions parameters and actions to help you configure and manage permissions.
+---
+
+# Resource tables
+
+The following tables work as a quick cheat sheet to help you manage your
+permissions. Note that the tables are not exhaustive; for brevity they do _not_ show
+wildcard or templated grant strings.
+
+Additionally, these tables do not include available output fields; see the [service
+documentation](/boundary/api-docs) for guidance.
+
+Refer to the tables for more information about the following resource types:
+
+<!-- BEGIN TABLE -->
+
+- [Account](#account)
+- [Alias](#alias)
+- [Auth method](#auth-method)
+- [Auth token](#auth-token)
+- [Billing](#billing)
+- [Credential](#credential)
+- [Credential library](#credential-library)
+- [Credential store](#credential-store)
+- [Group](#group)
+- [Host](#host)
+- [Host catalog](#host-catalog)
+- [Host set](#host-set)
+- [Managed group](#managed-group)
+- [Policy](#policy)
+- [Role](#role)
+- [Scope](#scope)
+- [Session](#session)
+- [Session recording](#session-recording)
+- [Storage bucket](#storage-bucket)
+- [Target](#target)
+- [User](#user)
+- [Worker](#worker)
+
+## Account
+
+The **Account** resource type supports the following scopes: **Global**, **Org**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/accounts</code> | <ul><li>Type</li><ul><li><code>account</code></li></ul></ul> | <ul><li><code>create</code>: Create an account</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List accounts</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/accounts/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;auth-method-id&gt;</code></li></ul><li>Type</li><ul><li><code>account</code></li></ul></ul> | <ul><li><code>read</code>: Read an account</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update an account</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete an account</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul><li><code>change-password</code>: Change a password on an account given the current password</li><ul><li>`ids=<id>;actions=change-password`</li><li>`ids=<pin>;type=<type>;actions=change-password`</li></ul><li><code>set-password</code>: Set a password on an account, without requiring the current password</li><ul><li>`ids=<id>;actions=set-password`</li><li>`ids=<pin>;type=<type>;actions=set-password`</li></ul></ul> |
+
+## Alias
+
+The **Alias** resource type supports the following scopes: **Global**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/aliases</code> | <ul><li>Type</li><ul><li><code>alias</code></li></ul></ul> | <ul><li><code>create</code>: Create an alias</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List aliass</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/aliases/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>alias</code></li></ul></ul> | <ul><li><code>read</code>: Read an alias</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update an alias</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete an alias</li><ul><li>`ids=<id>;actions=delete`</li></ul></ul> |
+
+## Auth method
+
+The **Auth method** resource type supports the following scopes: **Global**, **Org**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/auth-methods</code> | <ul><li>Type</li><ul><li><code>auth-method</code></li></ul></ul> | <ul><li><code>create</code>: Create an auth method</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List auth methods</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/auth-methods/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>auth-method</code></li></ul></ul> | <ul><li><code>read</code>: Read an auth method</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update an auth method</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete an auth method</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>authenticate</code>: Authenticate to an auth method</li><ul><li>`ids=<id>;actions=authenticate`</li></ul><li><code>change-state</code>: </li><ul><li>`ids=<id>;actions=change-state`</li></ul></ul> |
+
+## Auth token
+
+The **Auth token** resource type supports the following scopes: **Global**, **Org**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/auth-tokens</code> | <ul><li>Type</li><ul><li><code>auth-token</code></li></ul></ul> | <ul><li><code>list</code>: List auth tokens</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/auth-tokens/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>auth-token</code></li></ul></ul> | <ul><li><code>read</code>: Read an auth token</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>delete</code>: Delete an auth token</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>delete:self</code>: </li><ul><li>`ids=<id>;actions=delete:self`</li></ul><li><code>read:self</code>: </li><ul><li>`ids=<id>;actions=read:self`</li></ul></ul> |
+
+## Billing
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/billing</code> | <ul><li>Type</li><ul><li><code>billing</code></li></ul></ul> | <ul><li><code>monthly-active-users</code>: </li><ul><li>`type=<type>;actions=monthly-active-users`</li></ul></ul> |
+
+## Credential
+
+The **Credential** resource type supports the following scopes: **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/credentials</code> | <ul><li>Type</li><ul><li><code>credential</code></li></ul></ul> | <ul><li><code>create</code>: Create a credential</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List credentials</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/credentials/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;credential-store-id&gt;</code></li></ul><li>Type</li><ul><li><code>credential</code></li></ul></ul> | <ul><li><code>read</code>: Read a credential</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update a credential</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete a credential</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul></ul> |
+
+## Credential library
+
+The **Credential library** resource type supports the following scopes: **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/credential-libraries</code> | <ul><li>Type</li><ul><li><code>credential-library</code></li></ul></ul> | <ul><li><code>create</code>: Create a credential library</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List credential librarys</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/credential-libraries/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;credential-store-id&gt;</code></li></ul><li>Type</li><ul><li><code>credential-library</code></li></ul></ul> | <ul><li><code>read</code>: Read a credential library</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update a credential library</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete a credential library</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul></ul> |
+
+## Credential store
+
+The **Credential store** resource type supports the following scopes: **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/credential-stores</code> | <ul><li>Type</li><ul><li><code>credential-store</code></li></ul></ul> | <ul><li><code>create</code>: Create a credential store</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List credential stores</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/credential-stores/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>credential-store</code></li></ul></ul> | <ul><li><code>read</code>: Read a credential store</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a credential store</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a credential store</li><ul><li>`ids=<id>;actions=delete`</li></ul></ul> |
+
+## Group
+
+The **Group** resource type supports the following scopes: **Global**, **Org**, **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/groups</code> | <ul><li>Type</li><ul><li><code>group</code></li></ul></ul> | <ul><li><code>create</code>: Create a group</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List groups</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/groups/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>group</code></li></ul></ul> | <ul><li><code>read</code>: Read a group</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a group</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a group</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-members</code>: Add members to a group</li><ul><li>`ids=<id>;actions=add-members`</li></ul><li><code>remove-members</code>: Remove members from a group</li><ul><li>`ids=<id>;actions=remove-members`</li></ul><li><code>set-members</code>: Set the full set of members on a group</li><ul><li>`ids=<id>;actions=set-members`</li></ul></ul> |
+
+## Host
+
+The **Host** resource type supports the following scopes: **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/hosts</code> | <ul><li>Type</li><ul><li><code>host</code></li></ul></ul> | <ul><li><code>create</code>: Create a host</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List hosts</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/hosts/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;host-catalog-id&gt;</code></li></ul><li>Type</li><ul><li><code>host</code></li></ul></ul> | <ul><li><code>read</code>: Read a host</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update a host</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete a host</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul></ul> |
+
+## Host catalog
+
+The **Host catalog** resource type supports the following scopes: **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/host-catalogs</code> | <ul><li>Type</li><ul><li><code>host-catalog</code></li></ul></ul> | <ul><li><code>create</code>: Create a host catalog</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List host catalogs</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/host-catalogs/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>host-catalog</code></li></ul></ul> | <ul><li><code>read</code>: Read a host catalog</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a host catalog</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a host catalog</li><ul><li>`ids=<id>;actions=delete`</li></ul></ul> |
+
+## Host set
+
+The **Host set** resource type supports the following scopes: **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/host-sets</code> | <ul><li>Type</li><ul><li><code>host-set</code></li></ul></ul> | <ul><li><code>create</code>: Create a host set</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List host sets</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/host-sets/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;host-catalog-id&gt;</code></li></ul><li>Type</li><ul><li><code>host-set</code></li></ul></ul> | <ul><li><code>read</code>: Read a host set</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update a host set</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete a host set</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul><li><code>add-hosts</code>: Add hosts to a host set</li><ul><li>`ids=<id>;actions=add-hosts`</li><li>`ids=<pin>;type=<type>;actions=add-hosts`</li></ul><li><code>remove-hosts</code>: Remove hosts from a host set</li><ul><li>`ids=<id>;actions=remove-hosts`</li><li>`ids=<pin>;type=<type>;actions=remove-hosts`</li></ul><li><code>set-hosts</code>: Set the full set of hosts on a host set</li><ul><li>`ids=<id>;actions=set-hosts`</li><li>`ids=<pin>;type=<type>;actions=set-hosts`</li></ul></ul> |
+
+## Managed group
+
+The **Managed group** resource type supports the following scopes: **Global**, **Org**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/managed-groups</code> | <ul><li>Type</li><ul><li><code>managed-group</code></li></ul></ul> | <ul><li><code>create</code>: Create a managed group</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List managed groups</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/managed-groups/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;auth-method-id&gt;</code></li></ul><li>Type</li><ul><li><code>managed-group</code></li></ul></ul> | <ul><li><code>read</code>: Read a managed group</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update a managed group</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete a managed group</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul></ul> |
+
+## Policy
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/policies</code> | <ul><li>Type</li><ul><li><code>policy</code></li></ul></ul> | <ul><li><code>create</code>: Create a policy</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List policys</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/policies/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>policy</code></li></ul></ul> | <ul><li><code>read</code>: Read a policy</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a policy</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a policy</li><ul><li>`ids=<id>;actions=delete`</li></ul></ul> |
+
+## Role
+
+The **Role** resource type supports the following scopes: **Global**, **Org**, **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/roles</code> | <ul><li>Type</li><ul><li><code>role</code></li></ul></ul> | <ul><li><code>create</code>: Create a role</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List roles</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/roles/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>role</code></li></ul></ul> | <ul><li><code>read</code>: Read a role</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a role</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a role</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-grant-scopes</code>: Add grant scopes to a role</li><ul><li>`ids=<id>;actions=add-grant-scopes`</li></ul><li><code>add-grants</code>: Add grants to a role</li><ul><li>`ids=<id>;actions=add-grants`</li></ul><li><code>add-principals</code>: Add principals to a role</li><ul><li>`ids=<id>;actions=add-principals`</li></ul><li><code>remove-grant-scopes</code>: Remove grant scopes from a role</li><ul><li>`ids=<id>;actions=remove-grant-scopes`</li></ul><li><code>remove-grants</code>: Remove grants from a role</li><ul><li>`ids=<id>;actions=remove-grants`</li></ul><li><code>remove-principals</code>: Remove principals from a role</li><ul><li>`ids=<id>;actions=remove-principals`</li></ul><li><code>set-grant-scopes</code>: Set the full set of grant scopes on a role</li><ul><li>`ids=<id>;actions=set-grant-scopes`</li></ul><li><code>set-grants</code>: Set the full set of grants on a role</li><ul><li>`ids=<id>;actions=set-grants`</li></ul><li><code>set-principals</code>: Set the full set of principals on a role</li><ul><li>`ids=<id>;actions=set-principals`</li></ul></ul> |
+
+## Scope
+
+The **Scope** resource type supports the following scopes: **Global**, **Org**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/scopes</code> | <ul><li>Type</li><ul><li><code>scope</code></li></ul></ul> | <ul><li><code>create</code>: Create a scope</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>destroy-key-version</code>: </li><ul><li>`type=<type>;actions=destroy-key-version`</li></ul><li><code>list</code>: List scopes</li><ul><li>`type=<type>;actions=list`</li></ul><li><code>list-key-version-destruction-jobs</code>: </li><ul><li>`type=<type>;actions=list-key-version-destruction-jobs`</li></ul><li><code>list-keys</code>: </li><ul><li>`type=<type>;actions=list-keys`</li></ul><li><code>rotate-keys</code>: </li><ul><li>`type=<type>;actions=rotate-keys`</li></ul></ul> |
+| <code>/scopes/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>scope</code></li></ul></ul> | <ul><li><code>read</code>: Read a scope</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a scope</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a scope</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>attach-storage-policy</code>: </li><ul><li>`ids=<id>;actions=attach-storage-policy`</li></ul><li><code>detach-storage-policy</code>: </li><ul><li>`ids=<id>;actions=detach-storage-policy`</li></ul></ul> |
+
+## Session
+
+The **Session** resource type supports the following scopes: **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/sessions</code> | <ul><li>Type</li><ul><li><code>session</code></li></ul></ul> | <ul><li><code>list</code>: List sessions</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/sessions/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>session</code></li></ul></ul> | <ul><li><code>read</code>: Read a session</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>cancel</code>: Cancel a session</li><ul><li>`ids=<id>;actions=cancel`</li></ul><li><code>cancel:self</code>: Cancel a session, which must be associated with the calling user</li><ul><li>`ids=<id>;actions=cancel:self`</li></ul><li><code>read:self</code>: Read a session, which must be associated with the calling user</li><ul><li>`ids=<id>;actions=read:self`</li></ul></ul> |
+
+## Session recording
+
+The **Session recording** resource type supports the following scopes: **Global**, **Org**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/session-recordings</code> | <ul><li>Type</li><ul><li><code>session-recording</code></li></ul></ul> | <ul><li><code>list</code>: List session recordings</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/session-recordings/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>session-recording</code></li></ul></ul> | <ul><li><code>read</code>: Read a session recording</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>delete</code>: Delete a session recording</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>download</code>: Download a session recording</li><ul><li>`ids=<id>;actions=download`</li></ul><li><code>reapply-storage-policy</code>: Reapply the storage policy to a session recording</li><ul><li>`ids=<id>;actions=reapply-storage-policy`</li></ul></ul> |
+
+## Storage bucket
+
+The **Storage bucket** resource type supports the following scopes: **Global**, **Org**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/storage-buckets</code> | <ul><li>Type</li><ul><li><code>storage-bucket</code></li></ul></ul> | <ul><li><code>create</code>: Create a storage bucket</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List storage buckets</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/storage-buckets/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>storage-bucket</code></li></ul></ul> | <ul><li><code>read</code>: Read a storage bucket</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a storage bucket</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a storage bucket</li><ul><li>`ids=<id>;actions=delete`</li></ul></ul> |
+
+## Target
+
+The **Target** resource type supports the following scopes: **Project**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/targets</code> | <ul><li>Type</li><ul><li><code>target</code></li></ul></ul> | <ul><li><code>create</code>: Create a target</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List targets</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/targets/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>target</code></li></ul></ul> | <ul><li><code>read</code>: Read a target</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a target</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a target</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-credential-sources</code>: Add credential sources to a target</li><ul><li>`ids=<id>;actions=add-credential-sources`</li></ul><li><code>add-host-sources</code>: Add host sources to a target</li><ul><li>`ids=<id>;actions=add-host-sources`</li></ul><li><code>authorize-session</code>: Authorize a session via the target</li><ul><li>`ids=<id>;actions=authorize-session`</li></ul><li><code>remove-credential-sources</code>: Remove credential sources from a target</li><ul><li>`ids=<id>;actions=remove-credential-sources`</li></ul><li><code>remove-host-sources</code>: Remove host sources from a target</li><ul><li>`ids=<id>;actions=remove-host-sources`</li></ul><li><code>set-credential-sources</code>: Set the full set of credential sources on a target</li><ul><li>`ids=<id>;actions=set-credential-sources`</li></ul><li><code>set-host-sources</code>: Set the full set of host sources on a target</li><ul><li>`ids=<id>;actions=set-host-sources`</li></ul></ul> |
+
+## User
+
+The **User** resource type supports the following scopes: **Global**, **Org**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/users</code> | <ul><li>Type</li><ul><li><code>user</code></li></ul></ul> | <ul><li><code>create</code>: Create a user</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List users</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/users/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>user</code></li></ul></ul> | <ul><li><code>read</code>: Read a user</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a user</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a user</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-accounts</code>: Add accounts to a user</li><ul><li>`ids=<id>;actions=add-accounts`</li></ul><li><code>list-resolvable-aliases</code>: </li><ul><li>`ids=<id>;actions=list-resolvable-aliases`</li></ul><li><code>remove-accounts</code>: Remove accounts from a user</li><ul><li>`ids=<id>;actions=remove-accounts`</li></ul><li><code>set-accounts</code>: Set the full set of accounts on a user</li><ul><li>`ids=<id>;actions=set-accounts`</li></ul></ul> |
+
+## Worker
+
+The **Worker** resource type supports the following scopes: **Global**
+
+| API endpoint | Parameters into permissions engine | Available actions / examples |
+| ------------ | ---------------------------------- | ---------------------------- |
+| <code>/workers</code> | <ul><li>Type</li><ul><li><code>worker</code></li></ul></ul> | <ul><li><code>create:controller-led</code>: Create a worker using the controller-led workflow</li><ul><li>`type=<type>;actions=create:controller-led`</li><li>`type=<type>;actions=create:controller-led`</li></ul><li><code>create:worker-led</code>: Create a worker using the worker-led workflow</li><ul><li>`type=<type>;actions=create:worker-led`</li><li>`type=<type>;actions=create:worker-led`</li></ul><li><code>list</code>: List workers</li><ul><li>`type=<type>;actions=list`</li></ul><li><code>read-certificate-authority</code>: </li><ul><li>`type=<type>;actions=read-certificate-authority`</li></ul><li><code>reinitialize-certificate-authority</code>: </li><ul><li>`type=<type>;actions=reinitialize-certificate-authority`</li></ul></ul> |
+| <code>/workers/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>worker</code></li></ul></ul> | <ul><li><code>read</code>: Read a worker</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a worker</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a worker</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-worker-tags</code>: Add worker tags to a worker</li><ul><li>`ids=<id>;actions=add-worker-tags`</li></ul><li><code>remove-worker-tags</code>: Remove worker tags from a worker</li><ul><li>`ids=<id>;actions=remove-worker-tags`</li></ul><li><code>set-worker-tags</code>: Set the full set of worker tags on a worker</li><ul><li>`ids=<id>;actions=set-worker-tags`</li></ul></ul> |
+
+
+<!-- END TABLE -->

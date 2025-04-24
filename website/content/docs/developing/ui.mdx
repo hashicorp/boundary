@@ -1,0 +1,22 @@
+---
+layout: docs
+page_title: Develop the UI
+description: >-
+    Learn how to develop the Boundary user interface locally for testing. Use dev mode to run a local fork of the UI without building it into the binary.
+---
+
+# Develop the Boundary user interface
+
+For detailed instructions and the most up-to-date information on developing the
+Boundary admin UI, please consult [the project README on GitHub](https://github.com/hashicorp/boundary-ui).
+
+## Run a local fork of the UI locally in dev mode
+
+If you're developing the Boundary UI locally you can point a dev mode server at a
+local checkout of the repo without building it into the binary. We call this
+directory a passthrough directory, and you can enable it using an env var while in
+conjunction with running Boundary in dev mode:
+
+```bash
+BOUNDARY_DEV_UI_PASSTHROUGH_DIR=../boundary-ui/ui/admin/dist boundary dev
+```

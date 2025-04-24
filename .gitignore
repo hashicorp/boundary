@@ -33,7 +33,6 @@ temp/
 # Icon must end with two \r
 Icon
 
-
 # Thumbnails
 ._*
 
@@ -53,6 +52,10 @@ Icon
 *_REMOTE_*.txt
 
 ### Go ###
+# Files that shouldn't be shared
+go.work
+go.work.sum
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -120,20 +123,32 @@ main
 /bin/
 update-ui-assets*
 /plugins/kms/assets/boundary-plugin*
-/plugins/host/assets/boundary-plugin*
+/plugins/boundary/assets/boundary-plugin*
 
 # Test config file
 test*.hcl
+
+# Test error files
+tmp-errors-Test*
 
 # Enos
 /enos/**/.enos
 /enos/terraform-plugin-cache
 /enos/*.zip
 /enos/support
-
+enos/enos-local.vars.hcl
+# Enos local Terraform files
+enos/.terraform/*
+enos/.terraform.lock.hcl
+enos/*.tfstate
+enos/*.tfstate.*
+enos/ci/*/.terraform/*
+enos/ci/*/.terraform.lock.hcl
 # vim: set filetype=conf :
 
 # CRT (Common Release Tooling)
 !.release/ci.hcl
 dist
 out
+
+.schema-diff/

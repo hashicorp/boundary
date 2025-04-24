@@ -1,6 +1,10 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -15,8 +19,8 @@ func TestClosedWith_validate(t *testing.T) {
 	sessionConnection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 	type fields struct {
 		ConnectionId string
-		BytesUp      uint64
-		BytesDown    uint64
+		BytesUp      int64
+		BytesDown    int64
 		ClosedReason ClosedReason
 	}
 	tests := []struct {
@@ -60,7 +64,7 @@ func TestClosedWith_validate(t *testing.T) {
 				BytesDown:    tt.fields.BytesDown,
 				ClosedReason: tt.fields.ClosedReason,
 			}
-			if err := c.validate(); (err != nil) != tt.wantErr {
+			if err := c.validate(context.Background()); (err != nil) != tt.wantErr {
 				t.Errorf("ClosedWith.validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

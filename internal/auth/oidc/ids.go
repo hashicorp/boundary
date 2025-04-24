@@ -1,33 +1,31 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/intglobals"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, AccountPrefix, intglobals.OidcManagedGroupPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.OidcAuthMethodPrefix, resource.AuthMethod, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.OidcAccountPrefix, resource.Account, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.OidcManagedGroupPrefix, resource.ManagedGroup, auth.Domain, Subtype)
 }
 
 const (
-	// AuthMethodPrefix defines the prefix for AuthMethod public ids.
-	AuthMethodPrefix = "amoidc"
-	// AccountPrefix defines the prefix for Account public ids.
-	AccountPrefix = "acctoidc"
-
-	Subtype = subtypes.Subtype("oidc")
+	Subtype = globals.Subtype("oidc")
 )
 
 func newAuthMethodId(ctx context.Context) (string, error) {
 	const op = "oidc.newAuthMethodId"
-	id, err := db.NewPublicId(AuthMethodPrefix)
+	id, err := db.NewPublicId(ctx, globals.OidcAuthMethodPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -45,7 +43,7 @@ func newAccountId(ctx context.Context, authMethodId, issuer, sub string) (string
 	if sub == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing subject")
 	}
-	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
+	id, err := db.NewPublicId(ctx, globals.OidcAccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -54,7 +52,7 @@ func newAccountId(ctx context.Context, authMethodId, issuer, sub string) (string
 
 func newManagedGroupId(ctx context.Context) (string, error) {
 	const op = "oidc.newManagedGroupId"
-	id, err := db.NewPublicId(intglobals.OidcManagedGroupPrefix)
+	id, err := db.NewPublicId(ctx, globals.OidcManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

@@ -1,6 +1,9 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
-import "github.com/hashicorp/boundary/internal/credential"
+import "github.com/hashicorp/boundary/globals"
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -27,13 +30,21 @@ type options struct {
 	withClientCert     *ClientCertificate
 	withMethod         Method
 	withRequestBody    []byte
-	withCredentialType credential.Type
+	withCredentialType globals.CredentialType
 
 	withOverrideUsernameAttribute             string
 	withOverridePasswordAttribute             string
 	withOverridePrivateKeyAttribute           string
 	withOverridePrivateKeyPassphraseAttribute string
 	withMappingOverride                       MappingOverride
+
+	withKeyType                   string
+	withKeyBits                   uint32
+	withTtl                       string
+	withKeyId                     string
+	withCriticalOptions           string
+	withExtensions                string
+	withAdditionalValidPrincipals []string
 }
 
 func getDefaultOptions() options {
@@ -129,7 +140,7 @@ func WithRequestBody(b []byte) Option {
 
 // WithCredentialType provides an optional credential type to associate
 // with a credential library.
-func WithCredentialType(t credential.Type) Option {
+func WithCredentialType(t globals.CredentialType) Option {
 	return func(o *options) {
 		o.withCredentialType = t
 	}
@@ -172,5 +183,58 @@ func WithOverridePrivateKeyPassphraseAttribute(s string) Option {
 func WithMappingOverride(m MappingOverride) Option {
 	return func(o *options) {
 		o.withMappingOverride = m
+	}
+}
+
+// WithKeyType provides an optional ssh private key type to use
+// with a ssh certificate credential library. Must be rsa, ed25519, or ecdsa.
+func WithKeyType(t string) Option {
+	return func(o *options) {
+		o.withKeyType = t
+	}
+}
+
+// WithKeyBits provides an optional number of bits used to generate an ssh private key.
+func WithKeyBits(b uint32) Option {
+	return func(o *options) {
+		o.withKeyBits = b
+	}
+}
+
+// WithTtl provides an optional requested time to live for a generated ssh certificate.
+func WithTtl(t string) Option {
+	return func(o *options) {
+		o.withTtl = t
+	}
+}
+
+// WithKeyId provides an optional key id for a created certificate.
+func WithKeyId(i string) Option {
+	return func(o *options) {
+		o.withKeyId = i
+	}
+}
+
+// WithCriticalOptions provides an optional map of the critical options
+// that the certificate should be signed for.
+func WithCriticalOptions(s string) Option {
+	return func(o *options) {
+		o.withCriticalOptions = s
+	}
+}
+
+// WithExtensions provides a optional map of the extensions
+// that the certificate should be signed for.
+func WithExtensions(s string) Option {
+	return func(o *options) {
+		o.withExtensions = s
+	}
+}
+
+// WithAdditionalValidPrincipals adds principals to be signed for as
+// "valid_principles" in addition to username.
+func WithAdditionalValidPrincipals(p []string) Option {
+	return func(o *options) {
+		o.withAdditionalValidPrincipals = p
 	}
 }

@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 syntax = "proto3";
 
 package controller.storage.target.store.v1;
 
+import "controller/custom_options/v1/options.proto";
 import "controller/storage/timestamp/v1/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/target/store;store";
@@ -46,6 +50,10 @@ message TargetView {
   // @inject_tag: `gorm:"default:null"`
   uint32 default_port = 90;
 
+  // Default port for the listening client to use when establishing a session
+  // @inject_tag: `gorm:"default:null"`
+  uint32 default_client_port = 95;
+
   // Maximum total lifetime of a created session, in seconds
   // @inject_tag: `gorm:"default:null"`
   uint32 session_max_seconds = 100;
@@ -57,6 +65,20 @@ message TargetView {
   // A boolean expression that allows filtering the workers that can handle a session
   // @inject_tag: `gorm:"default:null"`
   string worker_filter = 120;
+
+  // @inject_tag: `gorm:"default:null"`
+  string egress_worker_filter = 130;
+
+  // @inject_tag: `gorm:"default:null"`
+  string ingress_worker_filter = 140;
+
+  // A boolean indicating if session recording has been enabled
+  // @inject_tag: `gorm:"default:null"`
+  bool enable_session_recording = 150;
+
+  // PublicId of the storage bucket associated with the target
+  // @inject_tag: `gorm:"default:null"`
+  string storage_bucket_id = 160;
 }
 
 message TargetHostSet {
@@ -71,6 +93,19 @@ message TargetHostSet {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 30;
+}
+
+message TargetAddress {
+  // target_id of the Target
+  // @inject_tag: gorm:"primary_key"
+  string target_id = 10;
+
+  // address associated to the Target
+  // @inject_tag: `gorm:"not_null"`
+  string address = 20 [(custom_options.v1.mask_mapping) = {
+    this: "address"
+    that: "address"
+  }];
 }
 
 message CredentialLibrary {

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -118,7 +121,7 @@ func TestToken_New(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(databaseWrapper)
 
-			got, err := newToken(tt.args.storeId, tt.args.token, tt.args.accessor, tt.args.expiration)
+			got, err := newToken(ctx, tt.args.storeId, tt.args.token, tt.args.accessor, tt.args.expiration)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)

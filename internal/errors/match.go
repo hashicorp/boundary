@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package errors
 
 // Template is useful constructing Match Err templates.  Templates allow you to
@@ -10,7 +13,7 @@ type Template struct {
 
 // T creates a new Template for matching Errs.  Invalid parameters are ignored.
 // If more than is one parameter for a given type, only the last one is used.
-func T(args ...interface{}) *Template {
+func T(args ...any) *Template {
 	t := &Template{}
 	for _, a := range args {
 		switch arg := a.(type) {

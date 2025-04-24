@@ -1,0 +1,143 @@
+---
+layout: docs
+page_title: host-sets update - Command
+description: >-
+  The "host-sets update" command updates an existing host set resource.
+---
+
+# host-sets update
+
+Command: `host-sets update`
+
+The `host-sets update` command lets you update an existing host set.
+
+## Example
+
+This example updates a static host set with the ID `hsst_1234567890` to add the name `devops` and the description `For DevOps usage`:
+
+```shell-session
+$ boundary host-sets update static -id hsst_1234567890 -name devops -description "For DevOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-sets update [type] <subcommand> [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    plugin    Update a plugin-type host set
+    static    Update a static-type host set
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can update plugin or static host set types.
+
+<Tabs>
+<Tab heading="Plugin">
+
+The `boundary host-sets update plugin` command lets you update a plugin type host set.
+
+#### Example
+
+This example updates a plugin type host set with the ID `hsplg_1234567890` to add the name `devops` and the description `Plugin host-set for DevOps`.
+
+```shell-session
+$ boundary host-sets update plugin -id hsplg_1234567890 -name "devops" -description "Plugin host-set for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-sets update plugin [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the plugin host set.
+- `-id=<string>` - The ID of the plugin type host set to update.
+- `-name=<string>` - The name to set on the plugin host set.
+- `-version=<int>` - The version of the plugin host set to update.
+If you do not specify a version, the command automatically performs a check-and-set.
+
+#### Attribute options
+
+- `-attr` - A key=value pair to add to the request's attribute map.
+This option can also be a key value only, which sets a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can override the type using `-string-attr`, `-bool-attr`, or `-num-attr`.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-attributes=<string>` - A JSON map value that you can use as the entirety of the request's attributes map.
+Usually this value is sourced from a file using the `file://` syntax.
+This option is exclusive with other `attr` flags.
+- `-bool-attr` - A key=value Boolean value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+- `-num-attr` - A key=value numeric value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This attribute supports referencing values from files using `file://` and environment variables using `env://`.
+- `-string-attr` - A key=value string value that you can add to the request's attributes map.
+You can specify this value multiple times.
+This option supports referencing values from files using `file://` and environment variables using `env://`.
+
+#### Plugin host-set options
+
+- `-preferred-endpoint=<string>` - If set, specifies which IP address or DNS name out of a host's available options is preferred as an endpoint.
+You can specify your preference using `cidr:<valid IPv4/6 CIDR>` or `dns:<globbed name>`.
+You can specify multiple preferences to create an order of preferences.
+If you do not specify a preference, Boundary chooses a value from all available values using a built-in priority order.
+The endpoint preference option may not be valid for all plugin types.
+- `-sync-interval=<string>` - The interval of time between sync operations on the host set.
+You can enter an integer number of seconds or a string such as `400s`, `5m`, or `6h`.
+The interval is applied to the end of the previous sync operation, not the beginning.
+If you set the interval to a negative value, it disables synchronization for that host set.
+If you set the interval to null, Boundary uses the default value.
+The default value may change between releases.
+
+</Tab>
+
+<Tab heading="Static">
+
+The `boundary host-sets update static` command lets you update a static type host set.
+
+#### Example
+
+This example updates a static type host set with the ID `hsst_1234567890` to add the name `devops` and the description `Static host-set for DevOps`:
+
+```shell-session
+$ boundary host-sets update static -id hsst_1234567890 -name "devops" -description "Static host-set for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary host-sets update static [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the static host set.
+- `-id=<string>` - The ID of the static type host set to update.
+- `-name=<string>` - The name to set on the static host set.
+- `-version=<int>` - The version of the static type host set to update.
+If you do not specify a version, the command automatically performs a check-and-set.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

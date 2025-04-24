@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package accountscmd
 
 import (
@@ -296,7 +299,7 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 }
 
 func printItemTable(item *accounts.Account, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

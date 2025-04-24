@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package dbassert
 
 import (
@@ -137,7 +140,7 @@ check(
   length(trim(value)) > 10
 );
 comment on domain dbasserts_public_id is
-'dbasserts test domain type';
+  'dbasserts test domain type';
 `
 		createTable = `
 create table if not exists test_table_dbasserts (
@@ -147,7 +150,7 @@ create table if not exists test_table_dbasserts (
   type_int int
 );
 comment on table test_table_dbasserts is
-'dbasserts test table'
+  'dbasserts test table'
 `
 	)
 	rw := db.New(d)

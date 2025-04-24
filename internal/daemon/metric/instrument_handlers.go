@@ -1,10 +1,15 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package metric provides functions to initialize the controller specific
 // collectors and hooks to measure metrics and update the relevant collectors.
 package metric
 
 import (
 	"context"
+	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -13,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 /* The following methods are used to instrument handlers for gRPC server and client connections. */
@@ -93,6 +99,66 @@ func NewGrpcRequestRecorder(fullMethodName string, reqLatency prometheus.Observe
 func (r requestRecorder) Record(err error) {
 	r.labels[LabelGrpcCode] = StatusFromError(err).Code().String()
 	r.reqLatency.With(r.labels).Observe(time.Since(r.start).Seconds())
+}
+
+type connectionTrackingListener struct {
+	net.Listener
+	acceptedConns prometheus.Counter
+	closedConns   prometheus.Counter
+}
+
+func (l *connectionTrackingListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	l.acceptedConns.Inc()
+	if c, ok := conn.(stateProvidingConn); ok {
+		return &connectionTrackingListenerStateConn{
+			stateProvidingConn: c,
+			closedConns:        l.closedConns,
+		}, nil
+	}
+	return &connectionTrackingListenerConn{Conn: conn, closedConns: l.closedConns}, nil
+}
+
+// NewConnectionTrackingListener registers a new Prometheus gauge with an unique
+// connection type label and wraps an existing listener to track when connections
+// are accepted and closed.
+// Multiple calls to Close() a listener connection will only decrement the gauge
+// once. A call to Close() will decrement the gauge even if Close() errors.
+func NewConnectionTrackingListener(l net.Listener, ac prometheus.Counter, cc prometheus.Counter) *connectionTrackingListener {
+	return &connectionTrackingListener{Listener: l, acceptedConns: ac, closedConns: cc}
+}
+
+type stateProvidingConn interface {
+	net.Conn
+	ClientState() *structpb.Struct
+}
+
+// connectionTrackingListenerStateConn wraps connections that expose
+// a State structpb.Struct, for example with *protocol.Conn. This allows
+// code downstream being able to get the connection's state.
+type connectionTrackingListenerStateConn struct {
+	stateProvidingConn
+	dec         sync.Once
+	closedConns prometheus.Counter
+}
+
+func (c *connectionTrackingListenerStateConn) Close() error {
+	c.dec.Do(func() { c.closedConns.Inc() })
+	return c.stateProvidingConn.Close()
+}
+
+type connectionTrackingListenerConn struct {
+	net.Conn
+	dec         sync.Once
+	closedConns prometheus.Counter
+}
+
+func (c *connectionTrackingListenerConn) Close() error {
+	c.dec.Do(func() { c.closedConns.Inc() })
+	return c.Conn.Close()
 }
 
 // StatusFromError retrieves the *status.Status from the provided error.  It'll

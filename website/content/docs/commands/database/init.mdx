@@ -1,0 +1,128 @@
+---
+layout: docs
+page_title: database init - Command
+description: >-
+  The "database init" command initializes Boundary's database.
+---
+
+# database init
+
+Command: `boundary database init`
+
+The `database init` command initializes Boundary's database.
+
+## Examples
+
+The following example initializes a Boundary's database with the configuration specified in the `/etc/boundary/controller.hcl` file:
+
+```shell-session
+$ boundary database init -config=/etc/boundary/controller.hcl
+```
+
+The `controller.hcl` file contains the database URL.
+
+<CodeBlockConfig filename="/etc/boundary.d/controller.hcl" hideClipboard highlight="19-23">
+
+```hcl
+...snip...
+
+# Controller configuration block
+controller {
+  # This name attr must be unique across all controller instances if running in HA mode
+  name = "boundary-controller-1"
+  description = "Boundary controller number one"
+
+  # This is the public hostname or IP where the workers can reach the
+  # controller. This should typically be a load balancer address
+  public_cluster_addr = "example-cluster-lb.example.com"
+
+  # Enterprise license file, can also be the raw value or env:// value
+  license = "file:///path/to/license/file.hclic"
+
+  # After receiving a shutdown signal, Boundary will wait 10s before initiating the shutdown process.
+  graceful_shutdown_wait_duration = "10s"
+
+  # Database URL for postgres. This is set in boundary.env and
+  #consumed via the “env://” notation.
+  database {
+      url = "env://POSTGRESQL_CONNECTION_STRING"
+  }
+}
+
+...snip...
+```
+
+</CodeBlockConfig>
+
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary database init [options] [args]
+```
+
+</CodeBlockConfig>
+
+Some initial resources are created in the following order, and in the indicated scopes:
+
+- Initial login role (global)
+- Password-type auth method (global)
+- Org scope (global)
+- Project scope (org)
+   - Static-type host catalog (project)
+      - Static-type host set
+      - Static-type host
+   - Target (project)
+
+<Tip>
+
+You can use flags to prevent Boundary from creating these resources.
+If you use flags to skip any of these resources, any resources that would be created afterwards are also skipped.
+Refer to the following [init options](#init-options) for the available flags.
+
+</Tip>
+
+### Command options
+
+- `-config` `(string: "")` - The path to the configuration file.
+- `-config-kms` `(string: "")` - The path to a configuration file containing a `kms` block marked for the `config` purpose.
+The KMS block performs decryption of the main configuration file.
+If you don't set a `kms` block, Boundary looks for such a block in the main configuration file, which has some drawbacks; see the help output for `boundary config encrypt -h` for details.
+- `-log-format` `(string: "")` - The log format.
+Supported values are `standard` and `json`.
+- `-log-level` `(string: "")` - The log verbosity level. Supported values include the following in order of more detail to less:
+
+  - `trace`
+  - `debug`
+  - `info`
+  - `warn`
+  - `err`
+
+  You can also specify a log level using the **BOUNDARY_LOG_LEVEL** environment variable.
+
+### Init options:
+
+- `-migration-url` `(string: "")` - If set, this value overrides the migration URL set in the configuration file, and specifies the URL used to connect to the database for initialization.
+Configuring this option can allow different permissions for the user running initialization vs. standard operations.
+This value can refer to a direct database URL, or it can refer to file on disk (`file://`) or an environment variable (`env://`) from which Boundary reads the URL.
+
+- `-skip-auth-method-creation` - If not set, skips the creation of an auth method as part of initialization.
+If you set this value, the recovery KMS is required to perform any actions.
+The default value is `false`.
+
+- `-skip-host-resources-creation` - If not set, skips the creation of host resources as part of the initialization, inlcuding host catalog, host set, and hosts.
+The default value is `false`.
+
+- `-skip-initial-login-role-creation` - If not set, skips the creation of a default role allowing necessary grants for logging in as part of initialization.
+If you set this value, the recovery KMS is required to perform any actions.
+The default value is `false`.
+
+- `-skip-scopes-creation` - If not set, skips the creation of scopes as part of initialization.
+The default value is `false`.
+
+- `-skip-target-creation` - If not set, skips the creation of a target as part of initialization.
+The default value is `false`.
+
+@include 'cmd-option-note.mdx'

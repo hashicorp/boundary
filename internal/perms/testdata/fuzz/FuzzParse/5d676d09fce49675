@@ -1,0 +1,2 @@
+go test fuzz v1
+string("{\"ids\":[\",00\"],\"actions\":[\"CreAte\"]}")

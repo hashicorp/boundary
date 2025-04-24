@@ -1,0 +1,257 @@
+---
+layout: docs
+page_title: dev - Command
+description: >-
+  The `dev` command starts a Boundary instance in a dev mode. Dev mode provides admin credentials for password authentication.
+---
+
+# dev
+
+Command: `boundary dev`
+
+The `dev` command starts a Boundary instance in a dev mode. Dev mode
+provides admin credentials for password authentication.
+
+Dev mode brings up a fully functioning instance of Boundary which includes:
+
+- A controller server
+- A worker server
+- A Postgres database
+
+These components are ephemeral; therefore, data is not persisted.
+Setting up an environment in dev mode is a convenient method for quick testing.
+
+## Examples
+
+The following example starts a Boundary instance in a dev mode:
+
+```shell-session
+$ boundary dev
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+==> Boundary server configuration:
+
+                        [Bsr] AEAD Key Bytes: McoUxn6XMdaYdS8lb2bqjgvrZIaLWML0
+                 [Controller] AEAD Key Bytes: SA+ccZA42hj/7XRwYeq4c7OEeSoYT4Ds
+                   [Recovery] AEAD Key Bytes: 9KJyjHcC35MPcz6VsfGczZn4KLCNXhz5
+                [Worker-Auth] AEAD Key Bytes: Pgr4AbL+S6hThU6B0cyVOI7cqtoyCVrS
+                             [Bsr] AEAD Type: aes-gcm
+                        [Recovery] AEAD Type: aes-gcm
+                            [Root] AEAD Type: aes-gcm
+             [Worker-Auth-Storage] AEAD Type: aes-gcm
+                     [Worker-Auth] AEAD Type: aes-gcm
+                                         Cgo: disabled
+              Controller Public Cluster Addr: 127.0.0.1:9201
+                      Dev Database Container: infallible_mahavira
+                            Dev Database Url: postgres://postgres:password@localhost:32769/boundary?sslmode=disable
+                  Generated Admin Login Name: admin
+                    Generated Admin Password: password
+                   Generated Host Catalog Id: hcst_1234567890
+                           Generated Host Id: hst_1234567890
+                       Generated Host Set Id: hsst_1234567890
+  Generated Ldap Auth Method Base Search DNs: users="ou=people,dc=example,dc=org" groups="ou=groups,dc=example,dc=org"
+        Generated Ldap Auth Method Host:Port: 127.0.0.1:64160 (does not have a root DSE; use simple bind)
+               Generated Ldap Auth Method Id: amldap_1234567890
+               Generated Oidc Auth Method Id: amoidc_1234567890
+                      Generated Org Scope Id: o_1234567890
+           Generated Password Auth Method Id: ampw_1234567890
+                  Generated Project Scope Id: p_1234567890
+            Generated Target With Address Id: ttcp_1234567890
+        Generated Target With Host Source Id: ttcp_0987654321
+           Generated Unprivileged Login Name: user
+             Generated Unprivileged Password: password
+                                  Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                                  Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                                  Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                                  Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                                   Log Level: info
+                                       Mlock: supported: false, enabled: false
+                                     Version: Boundary v0.13.1
+                                 Version Sha: db01791662a7126fbf4ea0a27b23b70acd20b17b
+                  Worker Auth Current Key Id: september-viewing-rubdown-wrench-sliceable-valid-chute-retrace
+                    Worker Auth Storage Path: (in-memory)
+                    Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+...
+```
+
+</CodeBlockConfig>
+
+The generated admin username is `admin` and the password is `password`.
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary dev [options]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+
+- `-api-listen-address` `(string: "")` - The address to bind for controller "api"
+   purposes. If the address begins with a forward slash, Boundary assumes it is a Unix
+   domain socket path. You can also specify an address using the
+   **BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS** environment variable.
+
+- `-audit-events` `(string: "")` - If set, indicates whether you want to emit audit events. Supported values are `true` and `false`.
+
+- `-bsr-key` `(string: "")` - A valid, base64-encoded AES key to be used
+   for session recording. You can also specify the BSR key using the **BOUNDARY_DEV_BSR_KEY**
+   environment variable.
+
+- `-cluster-listen-address` `(string: "")` - The address to bind for controller
+   "cluster" purposes. If the address begins with a forward slash, Boundary assumes it is a Unix domain socket path. You can also specify an address using the
+   **BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS** environment variable.
+
+- `-combine-logs`  - If set, sends both startup information and logs to stdout.
+   If you do not set this value, startup information goes
+   to stdout and logs are sent to stderr. The default is `false`.
+
+- `-container-image` `(string: "")` - A container image to use.
+   This value must be in `<repo>:<tag>` format
+
+- `-controller-only`  - If set, indicates that only a dev controller should be
+   started instead of both a dev controller and dev worker. The default value is `false`.
+
+- `-controller-public-cluster-address` `(string: "")` - The public address at which
+   the controller is reachable for cluster tasks, such as worker connections.
+   You can also specify the public address using the **BOUNDARY_DEV_CONTROLLER_PUBLIC_CLUSTER_ADDRESS** environment variable.
+
+- `-database-url` `(string: "")` - The URL that Boundary uses to connect to
+   the database for initialization, otherwise a Docker container is
+   started. This URL can refer to a file on disk (`file://`) from which a URL is read, an environment variable (`env://`) from which the URL is read, or a direct database URL.
+
+- `-disable-database-destruction`  - If set, creates a database automatically in Docker.
+   The database is not removed when the dev server is shut down.
+   The default value is `false`.
+
+- `-event-allow-filter` `(string: "")` - An optional allow filter for every event.
+  You can specfiy this value multiple times.
+
+- `-event-deny-filter` `(string: "")` - An optional deny filter for every event.
+  You can specify this value multiple times.
+
+- `-event-format` `(string: "")` - The event format.
+   The following values are supported:
+
+   - `cloudevents-json`
+   - `cloudevents-text`
+   - `hclog-json`
+   - `hclog-text`
+
+- `-host-address` `(string: "")` - The address to use for the default host that is
+   created. This value must be a bare host or IP address, it cannot be a port. The default value is `localhost`. You can also specify a host address using the **BOUNDARY_DEV_HOST_ADDRESS** environment variable.
+
+- `-id-suffix` `(string: "")` - If set, designates that auto-created resources use this
+   suffix value for their identifier, along with any resource-specific prefix, if set. This value must be 10 alphanumeric characters. As an example, if this is set to `1234567890`,
+   the generated password auth method ID is `ampw_1234567890`, the
+   generated TCP target ID is `ttcp_1234567890`, and so on.
+
+   This value must be different from any `-secondary-id-suffix` or **BOUNDARY_DEV_SECONDARY_ID_SUFFIX** value.
+   The default is `1234567890`. You can also configure a suffix using the **BOUNDARY_DEV_ID_SUFFIX** environment variable.
+
+- `-log-format` `(string: "")` - The log format. Supported values are `standard` and
+  `json`.
+
+- `-log-level` `(string: "")` - The desired log verbosity level.
+   Supported values, in order of more detail to less, are:
+
+   - `trace`
+   - `debug`
+   - `info`
+   - `warn`
+   - `err`
+
+   You can also specify log verbosity level using the **BOUNDARY_LOG_LEVEL** environment variable.
+
+- `-login-name` `(string: "")` - The initial admin login name. If you set this value to an empty
+   string, Boundary autogenerates a login name. The default value is `admin`. You can also specify a login name using the **BOUNDARY_DEV_LOGIN_NAME** environment variable.
+
+- `-observation-events` `(string: "")` - If set, indicates whether you want Boundary to emit observation events. Supported values are `true` and `false`.
+
+- `-ops-listen-address` `(string: "")` - An address to bind to for "ops" purpose.
+   If the address begins with a forward slash, Boundary assumes it is a Unix domain
+   socket path. You can also specify an address using the
+   **BOUNDARY_DEV_OPS_LISTEN_ADDRESS** environment variable.
+
+- `-password` `(string: "")` - The initial admin login password. If you set this value to an empty
+   string, Boundary autogenerates a password. The default value is `password`. You can also specify an initial admin login password using the **BOUNDARY_DEV_PASSWORD** environment variable.
+
+- `-plugin-execution-dir` `(string: "")` - The directory where Boundary should write
+   plugins that it executes.
+   If you do not set a value, Boundary defaults to using the system temp directory.
+   You can also specify a directory using the **BOUNDARY_DEV_PLUGIN_EXECUTION_DIR**
+   environment variable.
+
+- `-proxy-listen-address` `(string: "")` - The address to bind for worker "proxy"
+   purposes. You can also specify an address using the
+   **BOUNDARY_DEV_WORKER_PROXY_LISTEN_ADDRESS** environment variable.
+
+- `-recovery-key` `(string: "")` - The base64'd 256-bit AES key to use
+   for recovery operations. You can also specify a recovery key using the
+   **BOUNDARY_DEV_RECOVERY_KEY** environment variable.
+
+- `-secondary-id-suffix` `(string: "")` - If set, indicates that secondary auto-created
+   resources should use the given value for their identifier, along with their
+   resource-specific prefix, if set. This value must be 10 alphanumeric characters. Currently it is only used for the target resource. The secondary suffix must be different from the `-id-suffix` and **BOUNDARY_DEV_ID_SUFFIX** values. The default value is `0987654321`. You can also specify a secondary suffix using the **BOUNDARY_DEV_SECONDARY_ID_SUFFIX** environment variable.
+
+- `-system-events` `(string: "")` - If set, indicates whether you want Boundary to emit system events. Supported values are `true` and `false`.
+
+- `-target-default-port` `(int: 0)` - The default port to use for the default target
+   that is created. The default value is `22`. You can also specify a default target port using the **BOUNDARY_DEV_TARGET_DEFAULT_PORT** environment variable.
+
+- `-target-session-connection-limit` `(int: 0)` - The maximum number of connections
+   per session to set on the default target. A value of `-1` means unlimited. The default is
+   `-1`. You can also specify the maximum number of connections using the
+   **BOUNDARY_DEV_TARGET_SESSION_CONNECTION_LIMIT** environment variable.
+
+- `-target-session-max-seconds` `(int: 0)` - The maximum number of seconds to use for sessions on the default target.
+You can also specify the maximum number of seconds using the **BOUNDARY_DEV_TARGET_SESSION_MAX_SECONDS** environment variable.
+
+- `-ui-passthrough-dir` `(string: "")` - A passthrough directory in the
+   webserver at /. You can also specify a passthrough directory using the
+   **BOUNDARY_DEV_UI_PASSTHROUGH_DIR** environment variable.
+
+- `-unprivileged-login-name` `(string: "")` - The initial unprivileged user's name. If
+   you set this value to an empty string, Boundary automatically generates the user name. The default value is `user`.
+   You can also specify the user name using the **BOUNDARY_DEV_UNPRIVILEGED_LOGIN_NAME**
+   environment variable.
+
+- `-unprivileged-password` `(string: "")` - The initial unprivileged user login
+   password. If you set this value to an empty string, Boundary automatically generates the password. The default value is `password`. You can also specify the password using the
+   **BOUNDARY_DEV_UNPRIVILEGED_PASSWORD** environment variable.
+
+- `-worker-auth-enable-debugging`  - If set, turns on debug logging for the
+   worker authentication process. The default value is `false`.
+
+- `-worker-auth-key` `(string: "")` - A valid, base64-encoded AES key to
+   use for worker-auth purposes You can also specify a key using the
+   **BOUNDARY_DEV_WORKER_AUTH_KEY** environment variable.
+
+- `-worker-auth-method` `(string: "")` - If set, lets you specify how the generated
+   worker authenticates to the controller. The default is `random`.
+
+- `-worker-auth-storage-dir` `(string: "")` - The directory in which to store
+   worker authentication credentials when in dev mode. If you do not set this value, Boundary uses in-memory storage or a temporary directory.
+
+- `-worker-auth-storage-skip-cleanup`  - If set, prevents deletion of
+   worker credential storage directory, if set. This value has no effect unless
+   you specfiy a `worker-auth-storage-dir` value. The default value is `false`.
+
+- `-worker-public-address` `(string: "")` - The public address at which the worker
+   is reachable for session proxying. You can also specify an address using the
+   **BOUNDARY_DEV_WORKER_PUBLIC_ADDRESS** environment variable.
+
+- `-worker-recording-storage-dir` `(string: "")` - The directory in which to
+   store worker session recordings when in dev mode. If you do not specify a directory, Boundary creates a temporary directory. Session recording is only available for Boundary Enterprise and HCP Boundary.

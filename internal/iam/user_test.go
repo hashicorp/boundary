@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -15,6 +19,7 @@ import (
 
 func TestNewUser(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := TestScopes(t, TestRepo(t, conn, wrapper))
@@ -61,7 +66,7 @@ func TestNewUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewUser(tt.args.orgPublicId, tt.args.opt...)
+			got, err := NewUser(ctx, tt.args.orgPublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -79,7 +84,7 @@ func Test_UserHardcoded(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
-	for _, v := range []string{"u_anon", "u_auth"} {
+	for _, v := range []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId} {
 		foundUser := AllocUser()
 		foundUser.PublicId = v
 		err := w.LookupByPublicId(context.Background(), &foundUser)
@@ -91,6 +96,7 @@ func Test_UserHardcoded(t *testing.T) {
 
 func Test_UserCreate(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := TestScopes(t, TestRepo(t, conn, wrapper))
@@ -98,30 +104,30 @@ func Test_UserCreate(t *testing.T) {
 	t.Run("valid-user", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		user, err := NewUser(org.PublicId)
+		user, err := NewUser(ctx, org.PublicId)
 		require.NoError(err)
-		id, err := newUserId()
+		id, err := newUserId(ctx)
 		require.NoError(err)
 		user.PublicId = id
-		err = w.Create(context.Background(), user)
+		err = w.Create(ctx, user)
 		require.NoError(err)
 		require.NotEmpty(user.PublicId)
 
 		foundUser := AllocUser()
 		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), &foundUser)
+		err = w.LookupByPublicId(ctx, &foundUser)
 		require.NoError(err)
 		assert.Equal(user, &foundUser)
 	})
 	t.Run("bad-orgid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		user, err := NewUser(id)
+		user, err := NewUser(ctx, id)
 		require.NoError(err)
-		id, err := newUserId()
+		id, err := newUserId(ctx)
 		require.NoError(err)
 		user.PublicId = id
-		err = w.Create(context.Background(), user)
+		err = w.Create(ctx, user)
 		require.Error(err)
 		assert.Equal("db.Create: dbw.Create: error before write: iam.(User).VetForWrite: iam.validateScopeForWrite: scope is not found: search issue: error #1100", err.Error())
 	})
@@ -201,7 +207,7 @@ func Test_UserUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_user_name_scope_id_key": unique constraint violation: integrity violation: error #1002`,
+			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_user_name_scope_id_uq": unique constraint violation: integrity violation: error #1002`,
 		},
 		{
 			name: "modified-scope",
@@ -281,13 +287,13 @@ func Test_UserDelete(t *testing.T) {
 		},
 		{
 			name:            "anon-user",
-			user:            func() *User { u := AllocUser(); u.PublicId = "u_anon"; return &u }(),
+			user:            func() *User { u := AllocUser(); u.PublicId = globals.AnonymousUserId; return &u }(),
 			wantErr:         true,
 			wantRowsDeleted: 0,
 		},
 		{
 			name:            "auth-user",
-			user:            func() *User { u := AllocUser(); u.PublicId = "u_auth"; return &u }(),
+			user:            func() *User { u := AllocUser(); u.PublicId = globals.AnyAuthenticatedUserId; return &u }(),
 			wantErr:         true,
 			wantRowsDeleted: 0,
 		},
@@ -329,6 +335,7 @@ func Test_UserGetScope(t *testing.T) {
 
 func TestUser_Clone(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -344,20 +351,20 @@ func TestUser_Clone(t *testing.T) {
 		assert := assert.New(t)
 		w := db.New(conn)
 
-		user, err := NewUser(org.PublicId)
+		user, err := NewUser(ctx, org.PublicId)
 		assert.NoError(err)
-		id, err := newUserId()
+		id, err := newUserId(ctx)
 		assert.NoError(err)
 		user.PublicId = id
-		err = w.Create(context.Background(), user)
+		err = w.Create(ctx, user)
 		assert.NoError(err)
 
-		user2, err := NewUser(org.PublicId)
+		user2, err := NewUser(ctx, org.PublicId)
 		assert.NoError(err)
-		id, err = newUserId()
+		id, err = newUserId(ctx)
 		assert.NoError(err)
 		user2.PublicId = id
-		err = w.Create(context.Background(), user2)
+		err = w.Create(ctx, user2)
 		assert.NoError(err)
 
 		cp := user.Clone()
@@ -382,7 +389,7 @@ func TestUser_Actions(t *testing.T) {
 func TestUser_ResourceType(t *testing.T) {
 	t.Parallel()
 	u := AllocUser()
-	assert.Equal(t, resource.User, u.ResourceType())
+	assert.Equal(t, resource.User, u.GetResourceType())
 }
 
 func TestUser_SetTableName(t *testing.T) {

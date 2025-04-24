@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package workerscmd
 
 import (
@@ -57,7 +60,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	case "add-worker-tags":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary workers add-worker-tags [sub command] [args]",
+			"Usage: boundary workers add-worker-tags [options] [args]",
 			"",
 			"  This command allows adding api tags to worker resources. Example:",
 			"",
@@ -69,7 +72,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	case "set-worker-tags":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary workers set-worker-tags [sub command] [args]",
+			"Usage: boundary workers set-worker-tags [options] [args]",
 			"",
 			"  This command allows setting api tags for worker resources. Example:",
 			"",
@@ -81,7 +84,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	case "remove-worker-tags":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary workers remove-worker-tags [sub command] [args]",
+			"Usage: boundary workers remove-worker-tags [options] [args]",
 			"",
 			"  This command allows removing api tags from worker resources. Example:",
 			"",
@@ -190,11 +193,6 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Scope ID:                %s", item.ScopeId),
 			)
 		}
-		if item.Type != "" {
-			output = append(output,
-				fmt.Sprintf("    Type:                    %s", item.Type),
-			)
-		}
 		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:                 %d", item.Version),
@@ -225,6 +223,11 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Last Status Time:        %s", item.LastStatusTime.Format(time.RFC1123)),
 			)
 		}
+		if len(item.DirectlyConnectedDownstreamWorkers) > 0 {
+			output = append(output,
+				"    Directly Connected Downstream Workers:",
+				base.WrapSlice(6, item.DirectlyConnectedDownstreamWorkers))
+		}
 
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
@@ -238,7 +241,7 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 }
 
 func printItemTable(item *workers.Worker, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -271,6 +274,9 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 	}
 	if item.ControllerGeneratedActivationToken != "" {
 		nonAttributeMap["Controller-Generated Activation Token"] = item.ControllerGeneratedActivationToken
+	}
+	if item.LocalStorageState != "" {
+		nonAttributeMap["Local Storage State"] = item.LocalStorageState
 	}
 
 	resultMap := resp.Map
@@ -329,6 +335,31 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 				base.WrapMap(6, 2, tagMap),
 			)
 		}
+	}
+
+	if len(item.RemoteStorageState) > 0 {
+		ret = append(ret,
+			"",
+			"  Remote Storage State:",
+		)
+		for storageBucketId, state := range item.RemoteStorageState {
+			ret = append(ret,
+				fmt.Sprintf("    %s:", storageBucketId),
+				fmt.Sprintf("        Status: %s", state.Status),
+				"        Permissions:",
+				fmt.Sprintf("            Write: %s", state.Permissions.Write),
+				fmt.Sprintf("            Read: %s", state.Permissions.Read),
+				fmt.Sprintf("            Delete: %s", state.Permissions.Delete),
+			)
+		}
+	}
+
+	if len(item.DirectlyConnectedDownstreamWorkers) > 0 {
+		ret = append(ret,
+			"",
+			"  Directly Connected Downstream Workers:",
+			base.WrapSlice(4, item.DirectlyConnectedDownstreamWorkers),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {

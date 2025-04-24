@@ -1,10 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package base
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-bexpr"
 )
 
@@ -15,6 +18,7 @@ type EventFlags struct {
 	AuditEnabled        *bool
 	ObservationsEnabled *bool
 	SysEventsEnabled    *bool
+	TelemetryEnabled    *bool
 	AllowFilters        []string
 	DenyFilters         []string
 }
@@ -47,6 +51,7 @@ type ComposedOfEventArgs struct {
 	Observations string
 	Audit        string
 	SysEvents    string
+	Telemetry    string
 	Allow        []string
 	Deny         []string
 }
@@ -71,6 +76,12 @@ func NewEventFlags(defaultFormat event.SinkFormat, c ComposedOfEventArgs) (*Even
 		f.ObservationsEnabled = &setTrue
 	case "false":
 		f.ObservationsEnabled = &setFalse
+	}
+	switch strings.ToLower(c.Telemetry) {
+	case "true":
+		f.TelemetryEnabled = &setTrue
+	case "false":
+		f.TelemetryEnabled = &setFalse
 	}
 	switch strings.ToLower(c.Audit) {
 	case "true":

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 syntax = "proto3";
 
 // Package store provides protobufs for storing types in the plugin host
@@ -57,6 +60,13 @@ message HostCatalog {
   // attributes is a jsonb formatted field.
   // @inject_tag: `gorm:"not_null"`
   bytes attributes = 10;
+
+  // worker_filter is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string worker_filter = 11 [(custom_options.v1.mask_mapping) = {
+    this: "WorkerFilter"
+    that: "worker_filter"
+  }];
 }
 
 message HostSet {
@@ -161,6 +171,10 @@ message Host {
   // external_id is an id provided by the plugin.
   // @inject_tag: `gorm:"not_null"`
   string external_id = 2;
+
+  // external_name is an optional name provided by the plugin.
+  // @inject_tag: `gorm:"default:null"`
+  string external_name = 11;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`

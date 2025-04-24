@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package database
 
 import (
@@ -43,11 +46,13 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initiali
 	// This is an advisory lock on the DB which is released when the DB session ends.
 	if err := man.ExclusiveLock(ctx); err != nil {
 		ui.Error("Unable to capture a lock on the database.")
+		_ = man.Close(ctx)
 		return noop, 2
 	}
 	unlock := func() {
 		// We don't report anything since this should resolve itself anyways.
 		_ = man.ExclusiveUnlock(ctx)
+		_ = man.Close(ctx)
 	}
 
 	st, err := man.CurrentState(ctx)
@@ -104,8 +109,8 @@ type RoleInfo struct {
 	Name   string `json:"name"`
 }
 
-func generateInitialRoleTableOutput(in *RoleInfo) string {
-	nonAttributeMap := map[string]interface{}{
+func generateInitialLoginRoleTableOutput(in *RoleInfo) string {
+	nonAttributeMap := map[string]any{
 		"Role ID": in.RoleId,
 		"Name":    in.Name,
 	}
@@ -126,6 +131,28 @@ func generateInitialRoleTableOutput(in *RoleInfo) string {
 	return base.WrapForHelpText(ret)
 }
 
+func generateInitialAuthenticatedUserRoleOutput(in *RoleInfo) string {
+	nonAttributeMap := map[string]any{
+		"Role ID": in.RoleId,
+		"Name":    in.Name,
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret := []string{
+		"",
+		"Initial authenticated user role information:",
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	}
+
+	return base.WrapForHelpText(ret)
+}
+
 type AuthInfo struct {
 	AuthMethodId   string `json:"auth_method_id"`
 	AuthMethodName string `json:"auth_method_name"`
@@ -137,7 +164,7 @@ type AuthInfo struct {
 }
 
 func generateInitialAuthTableOutput(in *AuthInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Scope ID":         in.ScopeId,
 		"Auth Method ID":   in.AuthMethodId,
 		"Auth Method Name": in.AuthMethodName,
@@ -170,7 +197,7 @@ type ScopeInfo struct {
 }
 
 func generateInitialScopeTableOutput(in *ScopeInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Scope ID": in.ScopeId,
 		"Type":     in.Type,
 		"Name":     in.Name,
@@ -204,7 +231,7 @@ type HostInfo struct {
 }
 
 func generateInitialHostResourcesTableOutput(in *HostInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Host Catalog ID":   in.HostCatalogId,
 		"Host Catalog Name": in.HostCatalogName,
 		"Host Set ID":       in.HostSetId,
@@ -242,7 +269,7 @@ type TargetInfo struct {
 }
 
 func generateInitialTargetTableOutput(in *TargetInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Target ID":                in.TargetId,
 		"Default Port":             in.DefaultPort,
 		"Session Max Seconds":      in.SessionMaxSeconds,

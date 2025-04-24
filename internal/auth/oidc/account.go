@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -5,8 +8,10 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -112,18 +117,39 @@ func (a *Account) SetTableName(n string) {
 	a.tableName = n
 }
 
+// GetResourceType returns the resource type of the Account
+func (a *Account) GetResourceType() resource.Type {
+	return resource.Account
+}
+
+// GetLoginName returns the login name, which will always be empty as this type
+// doesn't currently support login name
+func (a *Account) GetLoginName() string {
+	return ""
+}
+
 // oplog will create oplog metadata for the Account.
-func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
+func (a *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.GetPublicId()},
+		"resource-public-id": []string{a.GetPublicId()},
 		"resource-type":      []string{"oidc account"},
 		"op-type":            []string{op.String()},
 	}
-	if c.AuthMethodId != "" {
-		metadata["auth-method-id"] = []string{c.AuthMethodId}
+	if a.AuthMethodId != "" {
+		metadata["auth-method-id"] = []string{a.AuthMethodId}
 	}
 	if authMethodScopeId != "" {
 		metadata["scope-id"] = []string{authMethodScopeId}
 	}
 	return metadata
+}
+
+type deletedAccount struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAccount) TableName() string {
+	return "auth_oidc_account_deleted"
 }

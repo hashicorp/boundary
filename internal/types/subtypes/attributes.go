@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package subtypes
 
 import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -30,7 +34,7 @@ func init() {
 	})
 }
 
-type fieldMap map[Subtype]protoreflect.FieldDescriptor
+type fieldMap map[globals.Subtype]protoreflect.FieldDescriptor
 
 type attributeRegistry struct {
 	sync.RWMutex
@@ -69,7 +73,7 @@ func (ak *attributeRegistry) register(d protoreflect.MessageDescriptor) error {
 		opts := f.Options().(*descriptorpb.FieldOptions)
 		st := proto.GetExtension(opts, protooptions.E_Subtype).(string)
 		if st != "" {
-			km[Subtype(st)] = f
+			km[globals.Subtype(st)] = f
 		}
 	}
 
@@ -96,7 +100,7 @@ func (ak *attributeRegistry) register(d protoreflect.MessageDescriptor) error {
 // attributeField retrieves the FieldDescriptor for a given subtype's
 // attribute fields. If the corresponding protobuf message has not been
 // registered it will return an error.
-func (ak *attributeRegistry) attributeField(d protoreflect.MessageDescriptor, t Subtype) (protoreflect.FieldDescriptor, error) {
+func (ak *attributeRegistry) attributeField(d protoreflect.MessageDescriptor, t globals.Subtype) (protoreflect.FieldDescriptor, error) {
 	ak.RLock()
 	defer ak.RUnlock()
 
@@ -121,6 +125,6 @@ func (ak *attributeRegistry) attributeField(d protoreflect.MessageDescriptor, t 
 
 // attributeField is used by the AttributeTransformInterceptor to retrieve
 // the proto FieldDescriptor for a given subtype.
-func attributeField(d protoreflect.MessageDescriptor, t Subtype) (protoreflect.FieldDescriptor, error) {
+func attributeField(d protoreflect.MessageDescriptor, t globals.Subtype) (protoreflect.FieldDescriptor, error) {
 	return globalAttributeRegistry.attributeField(d, t)
 }

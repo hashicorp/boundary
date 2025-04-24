@@ -1,0 +1,40 @@
+---
+layout: docs
+page_title: scopes destroy-key-version - Command
+description: >-
+  The "scopes destroy-key-version" destroys a key version in the scope resource.
+---
+
+# scopes destroy-key-version
+
+Command: `scopes destroy-key-version`
+
+The `scopes destroy-key-version` command lets you destroy a key version in the scope.
+You cannot destroy the key version that is currently active.
+When you run this command, it may start an asynchronous job to re-encrypt any existing data that was encrypted with the key version that you destroy.
+You can check the progress of the key destruction job using the [`boundary scopes list-key-version-destruction-jobs`](/boundary/docs/commands/scopes/list-key-version-destruction-jobs) command.
+
+## Example
+
+This example destroys a key version with the ID `krkv_123456789` in the scope `global`:
+
+```shell-session
+$ boundary scopes destroy-key-version -scope-id global -key-version-id krkv_123456789
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary scopes destroy-key-version [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-key-version-id=<string>` - The ID of the key version you want to destroy.
+- `-scope-id=<string>` - The ID of the scope in which the key version you want to destroy exists.
+
+@include 'cmd-option-note.mdx'

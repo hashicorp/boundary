@@ -1,0 +1,379 @@
+---
+layout: docs
+page_title: Auditing
+description: >-
+  Learn how Boundary can help improve compliance and threat management by using session recording to audit user access and actions. Understand the BSR format.
+---
+
+# Auditing
+
+A fundamental challenge of securing access to sensitive computing resources is creating a system of record around users' access and actions over remote sessions.
+Organizations are typically motivated to invest in recording capabilities to address at least one of the following:
+
+1. **Compliance management**: Organizations need to prove compliance of their infrastructure's security posture to internal or external auditors.
+Records of remote access are often required.
+
+   Various laws and regulations have record keeping requirements.
+   These laws and regulations specify what activities need to be recorded and how long the records must be kept.
+   One of the reasons an organization records access to a system is to comply with the record keeping requirements of a law or regulation.
+
+2. **Threat management**: Organizations must monitor, investigate, and react to security incidents and malicious activity.
+Further, security teams seek to prevent incidents and proactively identify potential threats in real time.
+
+   In the course of their investigations, security teams may need to identify suspicious activity conducted by a specific principal or against a specific target.
+   Administrators may require a breakdown of session information by user or a time-based view of past activities, for example.
+
+## Session recording
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Boundary provides auditing capabilities via [session recording](/boundary/docs/concepts/domain-model/session-recordings).
+In Boundary, a session represents a set of connections between a user and a host from a target.
+The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+All sessions have a fixed time limit, and all connections are proxied through a worker.
+
+Sessions are recorded by workers.
+Workers are the proxy between an end user and a target.
+No session data is routed through a controller during the recording stage.
+The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated. Session recordings are stored in the [BSR](#bsr-directory-structure) (Boundary Session Recording) format.
+Any credentials needed to access the external object store are passed from the controller to the recording worker when the session is established.
+
+In a multi-hop session, the worker that is configured to access the external object store is the worker that records the session.
+If no worker can access the storage backend, the session is canceled and an error is returned.
+
+You view session recordings with a session player that runs in a web browser.
+The session player is an aggregation of web components that work together to present the different parts of a session recording as a logical whole.
+A controller retrieves the contents of a recording from a worker with access to the external object store.
+The controller decodes the contents of the recording into a format that is usable by the player.
+The player then retrieves the data from the controller.
+
+### Session recording audit events
+
+Boundary emits audit events for actions performed by users. Here are **some** of the possible event field types that are emitted:
+
+- `timestamp` - The timestamp of the event
+- `auth` - Authentication information about the user who performed the action.
+- `response.details.item.connection_recordings.`
+   - `id` - Session recording ID.
+   - `channel_recordings.id` - Session recording channel ID.
+   - `start_time.seconds` - Start time of session recording.
+   - `end_time.seconds` - End time of session recording.
+   - `bytes_up` - Upload bytes during session.
+   - `bytes_down` - Download bytes during session.
+   - `channel_recordings.duration.seconds`- Length of time a session took, recorded in seconds.
+- `request_info.client_ip` - The client IP address used by the user.
+- `response.details.item.create_time_values.`
+   - `target.name` - The name of the targets.
+   - `target.id` - The ID of the target accessed during the recording.
+   - `target.type` - The type of protocol used.
+   - `target.scope.name` - Name of the scope the target accessed belongs to.
+   - `target.scope.parent_scope_id` - Parent ID of the scope the target accessed belongs to.
+- `response.details.item.Attrs.SshTargetAttributes.`
+   - `storage_bucket_id.value` - Storage bucket ID attached to a target that is used for storing session recordings.
+   - `enable_session_recording.value` - Determines if session recording is enabled on a target.
+
+## Storage buckets
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-buckets) is used to store the recorded sessions.
+The storage bucket represents a bucket in an external object store.
+At this time, the only supported storage for storage buckets is AWS S3.
+In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the secret key.
+
+Before you can use a storage bucket to record sessions, you must configure a worker with local storage to act as a cache.
+The entire recording is written to the local storage cache before it is uploaded.
+Once the session is complete, the files are automatically synced with the external storage bucket and deleted from the worker's local storage.
+
+A storage bucket exists in either the Global scope or an Org scope.
+A storage bucket that is associated with the Global scope can be associated with any target.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
+Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
+
+Deleting a storage bucket in Boundary does not delete the bucket in the external object store, nor does it delete the recorded sessions in the bucket.
+The storage bucket's lifecycle does not affect the lifecycle of the bucket in the external object store.
+Any session recording metadata that is attached to the storage bucket is deleted when the storage bucket is deleted.
+
+## BSR directory structure
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+The BSR (Boundary Session Recording) defines a hierarchical directory structure of files and a binary file format.
+It contains all the data transmitted between a user and a target during a single session.
+
+Boundary creates the top-level directory of the BSR as `<sessionRecordingID>.bsr`. This top level directory contains session summary
+information and subdirectories for connections.
+
+A BSR connections directory contains a summary of connections, as well as inbound and outbound requests.
+If you use a multiplexed protocol, there are subdirectories for the channels.
+
+Every directory contains a SHA256SUMS and SHA256SUMS.sig file, to be used for cryptographically verifying the contents of
+that directory. The SHA256SUMS file contains rows of file names paired with a checksum for file contents. The
+SHA256SUMS.sign is a copy of the SHA256SUMS file, signed with the BSR’s private key. For more information on verifying a
+session recording, refer to [Validating the integrity of session recordings](/boundary/docs/operations/session-recordings/validate-session-recordings).
+
+The example BSR below is for a multiplexed session recording with the ID `sr_iNCdGSREeX`. The session recording contains one connection,
+`cr_3bB78W53Y9`. Connection `cr_3bB78W53Y9` contains two channels, `chr_VUnVuVnITu` and `chr_nITuVUnVuV`.
+The files in each directory are explained in the following sections.
+
+```
+└── sr_iNCdGSREeX.bsr
+    ├── SHA256SUM
+    ├── SHA256SUM.sig
+    ├── bsrKey.pub
+    ├── pubKeyBsrSignature.sign
+    ├── pubKeySelfSignature.sign
+    ├── session-meta.json
+    ├── session-recording-summary.json
+    ├── session-recording.meta
+    ├── wrappedBsrKey
+    ├── wrappedPrivKey
+    ├── cr_3bB78W53Y9.connection
+    │   ├── SHA256SUM
+    │   ├── SHA256SUM.sig
+    │   ├── connection-recording-summary.json
+    │   ├── connection-recording.meta
+    │   ├── requests-inbound.data
+    │   ├── requests-outbound.data
+    │   ├── chr_VUnVuVnITu.channel
+    │   │   ├── SHA256SUM
+    │   │   ├── SHA256SUM.sig
+    │   │   ├── channel-recording-summary.json
+    │   │   ├── channel-recording.meta
+    │   │   ├── messages-inbound.data
+    │   │   ├── messages-outbound.data
+    │   │   ├── requests-inbound.data
+    │   │   └── requests-outbound.data
+    │   ├── chr_nITuVUnVuV.channel
+    │   │   ├── SHA256SUM
+    │   │   ├── SHA256SUM.sig
+    │   │   ├── channel-recording-summary.json
+    │   │   ├── channel-recording.meta
+    │   │   ├── messages-inbound.data
+    │   │   ├── messages-outbound.data
+    │   │   ├── requests-inbound.data
+    │   │   └── requests-outbound.data
+    │   └──
+    └──
+
+
+```
+
+### BSR Session folder
+ A BSR session folder contains the following files:
+- `SHA256SUM.sig`  is a plaintext file that contains rows of file names paired with a checksum for file contents.
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
+- `bsrKey.pub` is the public ed25519 key.
+- `pubKeySelfSignature.sign` is a self-signature of the plaintext public ed25519 key created with its private key.
+- `pubKeyBsrSignature.sign` is a signature of the plaintext public ed25519 key created with the BSR key.
+- `wrappedBsrKey` is the BSR key wrapped by the external KMS AES-GCM key that you configure.
+- `wrappedPrivKey` is the private ed25519 key wrapped by the external KMS AES-GCM key that you configure.
+- `session-meta.json` is a JSON file that contains metadata about the session, including the session id, endpoint,
+user, target, host, worker, and credentials used to access the target. The intention of this file is to provide all information
+relevant to the recorded session so that the BSR provides a complete snapshot of a session even in the absence of the Boundary
+control plane.
+- `session-recording.meta` is a plaintext file that contains metadata about the session, including the session id, protocol,
+and a connection ids. For each connection id listed, there should be a corresponding connection directory in the session directory.
+- `session-recording-summary.json` is a JSON file that contains a summary of the session recording, including the session id, connection count,
+start time, end time, and any errors encountered during recording of the session.
+
+`session-recording.meta` file example:
+
+```
+id: sr_iNCdGSREeX
+protocol: BSSH
+connection: cr_3bB78W53Y9.connection
+```
+
+`session-recording-summary.json` file example:
+
+```
+{
+  "Id": "sr_iNCdGSREeX",
+  "ConnectionCount": 1,
+  "StartTime": "2023-09-19T15:05:39.343307163Z",
+  "EndTime": "2023-09-19T15:08:02.953159598Z",
+  "Errors": ""
+}
+
+```
+
+`session-meta.json` file example:
+
+```
+{
+    "PublicId": "s_HQbVb8fJaM",
+    "Endpoint": "ssh://openssh-server:2222",
+    "User": {
+        "PublicId": "u_5Ry4oDiEVp",
+        "Scope": {
+            "PublicId": "global",
+            "Name": "global",
+            "Description": "Global Scope",
+            "Type": "global",
+            "ParentId": "",
+            "PrimaryAuthMethodId": "ampw_CdIa5KR9iw"
+        },
+        "Name": "admin",
+        "Description": "Initial admin user within the \"global\" scope"
+    },
+    "Target": {
+        "PublicId": "tssh_TIx4ENZMdA",
+        "Scope": {
+            "PublicId": "p_7Qe46uNMYX",
+            "Name": "session-recording-project",
+            "Description": "",
+            "Type": "project",
+            "ParentId": "o_yK7GoA6OG2",
+            "PrimaryAuthMethodId": ""
+        },
+        "Name": "session-recording-target",
+        "Description": "",
+        "DefaultPort": 2222,
+        "DefaultClientPort": 0,
+        "SessionMaxSeconds": 28800,
+        "SessionConnectionLimit": -1,
+        "WorkerFilter": "",
+        "EgressWorkerFilter": "",
+        "IngressWorkerFilter": "\"pki\" in \"/tags/type\"",
+        "EnableSessionRecording": true,
+        "StorageBucketId": "sb_vqn871JdQf"
+    },
+    "Worker": {
+        "PublicId": "w_ogOQt0rsuQ",
+        "Version": "0.13.0",
+        "Sha": ""
+    },
+    "StaticHost": null,
+    "DynamicHost": null,
+    "StaticJSONCredentials": null,
+    "StaticUsernamePasswordCredentials": [
+        {
+            "PublicId": "credup_gdzeB5UWJv",
+            "Name": "",
+            "Description": "",
+            "Username": "username",
+            "PasswordHmac": "PasswordHmac,
+            "Purposes": [
+                "injected_application"
+            ],
+            "CredentialStore": {
+                "PublicId": "csst_agwIT97uZ7",
+                "ProjectId": "p_7Qe46uNMYX",
+                "Name": "ssh static store",
+                "Description": "SSH Static Cred store"
+            }
+        }
+    ],
+    "StaticSshPrivateKeyCredentials": null,
+    "VaultGenericLibraries": null,
+    "VaultSshCertificateLibraries": null
+}
+```
+
+### BSR Connection folder
+ A BSR connection folder contains the following files:
+- `SHA256SUM.sig`  is a plaintext file that contains rows of file names paired with a checksum for file contents.
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
+- `connection-recording.meta` is a plaintext file that contains metadata about the connection, including the connection id,
+requests seen, channel ids, and any errors seen. For each channel id listed, there should be a corresponding channel directory in the connection directory.
+- `connection-recording-summary.json` is a JSON file that contains a summary of the connection, including the connection id,
+start time, end time, bytes up, bytes down, and any errors encountered during recording the connection.
+- `requests-inbound.data` is a binary file containing all inbound SSH request messages transmitted for the connection.
+- `requests-outbound.data` is a binary file containing all outbound SSH request messages transmitted for the connection.
+
+`connection-recording.meta` file example:
+
+```
+id: cr_W53Y93bB78
+requests: outbound
+requests: inbound
+channel: chr_uVVuUITnVn.channel
+error: error message would be appear here
+```
+
+`connection-recording-summary.json` file example:
+
+```
+{
+  "Id": "cr_W53Y93bB78",
+  "ChannelCount": 1,
+  "StartTime": "2023-07-13T20:21:49.164105381Z",
+  "EndTime": "2023-07-13T20:22:37.241911112Z",
+  "BytesUp": 125,
+  "BytesDown": 748,
+  "Errors": null
+}
+```
+
+### BSR Channel folder
+ A BSR connection folder contains the following files:
+- `SHA256SUM.sig`  is a plaintext file that contains rows of file names paired with a checksum for file contents.
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
+- `channel-recording.meta` is a plaintext file that contains metadata about the channel, including the channel id,
+inbound and outbound requests seen, and inbound and outbound messages seen.
+- `channel-recording-summary.json` is a JSON file that contains a summary of the channel, including the channel id,
+start time, end time, bytes up, bytes down, channel type, session program, subsystem name (if applicable), exec program (if applicable),
+and file transfer direction (if applicable).
+- `requests-inbound.data` is a binary file containing all inbound SSH request messages transmitted for the channel.
+- `requests-outbound.data` is a binary file containing all outbound SSH request messages transmitted for the channel.
+- `messages-inbound.data` is a binary file containing all inbound SSH data transmitted for the channel.
+- `messages-outbound.data` is a binary file containing all outbound SSH data transmitted for the channel.
+
+`channel-recording.meta` file example:
+
+```
+id: chr_uVVuUITnVn
+channelType: session
+messages: outbound
+requests: outbound
+messages: inbound
+requests: inbound
+```
+
+`channel-recording-summary.json` file example:
+
+```
+{
+  "ChannelSummary": {
+    "Id": "chr_uVVuUITnVn",
+    "ConnectionRecordingId": "cr_W53Y93bB78",
+    "StartTime": "2023-07-13T20:21:49.230916214Z",
+    "EndTime": "2023-07-13T20:22:37.229379944Z",
+    "BytesUp": 125,
+    "BytesDown": 748,
+    "ChannelType": "session"
+  },
+  "SessionProgram": "shell",
+  "SubsystemName": "",
+  "ExecProgram": "",
+  "FileTransferDirection": "not applicable"
+}
+```
+
+For more information, refer to the [overview of configuring session recording](/boundary/docs/configuration/session-recording).
+
+## Read a BSR data file
+
+BSR data files are where all the data transmitted during a session is stored. BSR data files
+have the file suffix `.data` and are binary files written in network byte or big-endian order. The first eight bytes of a
+BSR data file always contains the following signature, which identifies the file as a BSR file: `"\x89BSR\r\n\x1a\n"`.
+
+Following the BSR signature, a BSR file contains “chunks” of data. Each chunk contains the same basic metadata information:
+length, protocol, chunk type, direction, and a timestamp. The chunk type indicates the expected data payload. The first
+chunk in a BSR file is the header chunk, and the last chunk in a BSR file is the EOF chunk. The remaining
+chunks in the file depend on the protocol identified in the BSR header.
+
+The only protocol currently supported for session recording is SSH. Data files for SSH are prefixed with either `messages-`
+or `requests-`, and suffixed with either `inbound` or `outbound` to indicate the direction the data came from. Message
+files contain raw data from an SSH session and contain a header chunk, data chunks, and an EOF chunk. Request files
+contain a header chunk, SSH request message chunks, and an EOF chunk.
+
+SSH request message chunks follow the SSH connection and channel request definitions. Boundary populates these chunks
+using a protobuf definition provided here: [SSH Chunks](https://github.com/hashicorp/boundary/blob/main/internal/bsr/proto/ssh/v1/ssh_chunks.proto).
+
+Boundary session recording playback generates an asciinema from a session channel’s `messages-outbound.data` file. For more
+information on finding and viewing BSR data using the asciinema, refer to [Find and view recorded sessions](https://developer.hashicorp.com/boundary/docs/operations/session-recordings/manage-recorded-sessions).
+
+While Boundary does not currently provide tooling to read other BSR .data files, the BSR definition is available in our
+[community repository](https://github.com/hashicorp/boundary/tree/main/internal/bsr), and you can use it to develop external tooling.

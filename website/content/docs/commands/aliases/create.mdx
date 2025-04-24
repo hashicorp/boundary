@@ -1,0 +1,78 @@
+---
+layout: docs
+page_title: aliases create - Command
+description: >-
+  The "aliases create" command creates a new alias resource for a target.
+---
+
+# aliases create
+
+Command: `aliases create`
+
+The `aliases create` command lets you create a new alias.
+
+## Example
+
+This example creates an alias for the target `prod-ops.example` with the name `prodops` and the description `Target alias for ProdOps`:
+
+```shell-session
+$ boundary aliases create target -value prod-ops.example -name prodops
+    -description "Target alias for ProdOps"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary aliases create [type] [sub command] [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    target    Create a target type alias
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+At this time, you can only create aliases for targets.
+
+The `aliases create target` command lets you create aliases for targets.
+
+#### Example
+
+This example creates an alias for the target `-prod-ops.example` with the name `prodops` and the description `Target alias for ProdOps`:
+
+```shell-session
+$ boundary aliases create target -value prod-ops.example -name prodops
+    -description "Target alias for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary aliases create target [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - Specifies the optional description you want to use to describe the alias for identification purposes.
+- `-destination-id=<string>` - Specifies the ID of the target that the alias points to.
+- `-name=<string>` - Specifies the optional name you want to use to describe the alias for identification purposes.
+- `-scope-id=<string>` - Scope in which to create the alias. The default is `global`.
+You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+At this time, aliases are only supported for the global scope.
+- `-value=<string>` - The string that you want to use as the alias to represent the target.
+The `value` must comply with DNS naming rules.
+
+#### Target alias options
+
+- `-authorize-session-host-id=<string>` - Indicates the host ID to use when you use the alias to authorize a session.
+
+@include 'cmd-option-note.mdx'

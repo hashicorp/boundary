@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package worker
 
 import (
@@ -7,24 +10,27 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -65,13 +71,8 @@ func (tw *TestWorker) Name() string {
 }
 
 func (tw *TestWorker) UpstreamAddrs() []string {
-	var addrs []string
-	lastStatus := tw.w.LastStatusSuccess()
-	for _, v := range lastStatus.GetCalculatedUpstreams() {
-		addrs = append(addrs, v.Address)
-	}
-
-	return addrs
+	lastRoutingInfo := tw.w.LastRoutingInfoSuccess()
+	return lastRoutingInfo.GetCalculatedUpstreamAddresses()
 }
 
 func (tw *TestWorker) ProxyAddrs() []string {
@@ -185,11 +186,21 @@ type TestWorkerOpts struct {
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKms wrapping.Wrapper
 
+	// The downstream worker auth KMS to use, or one will be created
+	DownstreamWorkerAuthKms *multi.PooledWrapper
+
 	// The worker credential storage KMS to use, or one will be created
 	WorkerAuthStorageKms wrapping.Wrapper
 
 	// The location of the worker's auth storage
 	WorkerAuthStoragePath string
+
+	// The location of the worker's recording storage
+	WorkerRecordingStoragePath string
+
+	// The interval between each respective worker RPC invocation
+	// This sets the interval for SessionInfo, RoutingInfo and Statistics.
+	WorkerRPCInterval time.Duration
 
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
@@ -204,7 +215,7 @@ type TestWorkerOpts struct {
 
 	// The amount of time to wait before marking connections as closed when a
 	// connection cannot be made back to the controller
-	StatusGracePeriodDuration time.Duration
+	SuccessfulControllerRPCGracePeriodDuration time.Duration
 
 	// Overrides worker's nonceFn, for cases where we want to have control
 	// over the nonce we send to the Controller
@@ -212,6 +223,24 @@ type TestWorkerOpts struct {
 
 	// If set, override the normal auth rotation period
 	AuthRotationPeriod time.Duration
+
+	// Toggle worker auth debugging
+	WorkerAuthDebuggingEnabled *atomic.Bool
+
+	// Enable audit events
+	EnableAuditEvents bool
+
+	// Enable system events
+	EnableSysEvents bool
+
+	// Enable observation events
+	EnableObservationEvents bool
+
+	// Enable IPv6
+	EnableIPv6 bool
+
+	// Enable error events
+	EnableErrorEvents bool
 }
 
 func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
@@ -225,6 +254,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		shutdownDoneCh: make(chan struct{}),
 		shutdownOnce:   new(sync.Once),
 	}
+	t.Cleanup(tw.Shutdown)
 
 	if opts == nil {
 		opts = new(TestWorkerOpts)
@@ -232,6 +262,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	// Base server
 	tw.b = base.NewServer(nil)
+	tw.b.WorkerAuthDebuggingEnabled = opts.WorkerAuthDebuggingEnabled
 	tw.b.Command = &base.Command{
 		Context:    ctx,
 		ShutdownCh: make(chan struct{}),
@@ -240,12 +271,21 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	// Get dev config, or use a provided one
 	var err error
 	if opts.Config == nil {
-		opts.Config, err = config.DevWorker()
+		var configOpts []config.Option
+		configOpts = append(configOpts, config.WithAuditEventsEnabled(opts.EnableAuditEvents))
+		configOpts = append(configOpts, config.WithSysEventsEnabled(opts.EnableSysEvents))
+		configOpts = append(configOpts, config.WithObservationsEnabled(opts.EnableObservationEvents))
+		configOpts = append(configOpts, config.WithIPv6Enabled(opts.EnableIPv6))
+		configOpts = append(configOpts, config.TestWithErrorEventsEnabled(t, opts.EnableErrorEvents))
+		opts.Config, err = config.DevWorker(configOpts...)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if opts.Name != "" {
 			opts.Config.Worker.Name = opts.Name
+		}
+		if opts.WorkerRPCInterval > 0 {
+			opts.Config.Worker.TestWorkerRPCInterval = opts.WorkerRPCInterval
 		}
 	}
 
@@ -263,9 +303,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	tw.b.PrometheusRegisterer = opts.PrometheusRegisterer
 
-	// Initialize status grace period
-	tw.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
-
 	if opts.Config.Worker == nil {
 		opts.Config.Worker = &config.Worker{
 			Name: opts.Name,
@@ -273,29 +310,39 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	}
 	if opts.WorkerAuthStoragePath != "" {
 		opts.Config.Worker.AuthStoragePath = opts.WorkerAuthStoragePath
-		tw.b.DevUsePkiForUpstream = true
 	}
+	if opts.WorkerRecordingStoragePath != "" {
+		opts.Config.Worker.RecordingStoragePath = opts.WorkerRecordingStoragePath
+	}
+
+	tw.b.EnabledPlugins = append(tw.b.EnabledPlugins, base.EnabledPluginLoopback)
 	tw.name = opts.Config.Worker.Name
+
+	if opts.SuccessfulControllerRPCGracePeriodDuration != 0 {
+		opts.Config.Worker.SuccessfulControllerRPCGracePeriodDuration = opts.SuccessfulControllerRPCGracePeriodDuration
+	}
 
 	serverName, err := os.Hostname()
 	if err != nil {
 		t.Fatal(err)
 	}
 	serverName = fmt.Sprintf("%s/worker", serverName)
-	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	if err := tw.b.SetupEventing(tw.b.Context, tw.b.Logger, tw.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 
 	// Set up KMSes
-	switch {
-	case opts.WorkerAuthKms != nil:
+	if err := tw.b.SetupKMSes(tw.b.Context, nil, opts.Config); err != nil {
+		t.Fatal(err)
+	}
+	if opts.WorkerAuthKms != nil {
 		tw.b.WorkerAuthKms = opts.WorkerAuthKms
-	case opts.WorkerAuthStorageKms != nil:
+	}
+	if opts.WorkerAuthStorageKms != nil {
 		tw.b.WorkerAuthStorageKms = opts.WorkerAuthStorageKms
-	default:
-		if err := tw.b.SetupKMSes(tw.b.Context, nil, opts.Config); err != nil {
-			t.Fatal(err)
-		}
+	}
+	if opts.DownstreamWorkerAuthKms != nil {
+		tw.b.DownstreamWorkerAuthKms = opts.DownstreamWorkerAuthKms
 	}
 
 	// Ensure the listeners use random port allocation
@@ -314,9 +361,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		Server:    tw.b,
 	}
 
-	tw.w, err = New(conf)
+	tw.w, err = New(ctx, conf)
 	if err != nil {
-		tw.Shutdown()
 		t.Fatal(err)
 	}
 
@@ -343,7 +389,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	if !opts.DisableAutoStart {
 		if err := tw.w.Start(); err != nil {
-			tw.Shutdown()
 			t.Fatal(err)
 		}
 	}
@@ -357,16 +402,18 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		opts = new(TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
-		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
-		WorkerAuthStorageKms:      tw.w.conf.WorkerAuthStorageKms,
-		Name:                      opts.Name,
-		InitialUpstreams:          tw.UpstreamAddrs(),
-		Logger:                    tw.w.conf.Logger,
-		StatusGracePeriodDuration: opts.StatusGracePeriodDuration,
+		WorkerAuthKms:           tw.w.conf.WorkerAuthKms,
+		DownstreamWorkerAuthKms: tw.w.conf.DownstreamWorkerAuthKms,
+		WorkerAuthStorageKms:    tw.w.conf.WorkerAuthStorageKms,
+		Name:                    opts.Name,
+		InitialUpstreams:        tw.UpstreamAddrs(),
+		Logger:                  tw.w.conf.Logger,
+		SuccessfulControllerRPCGracePeriodDuration: opts.SuccessfulControllerRPCGracePeriodDuration,
+		WorkerAuthDebuggingEnabled:                 tw.w.conf.WorkerAuthDebuggingEnabled,
 	}
 	if nextOpts.Name == "" {
 		var err error
-		nextOpts.Name, err = db.NewPublicId("w")
+		nextOpts.Name, err = db.NewPublicId(context.Background(), "w")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -376,83 +423,133 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	return NewTestWorker(t, nextOpts)
 }
 
-// NewTestMultihopWorkers creates a KMS and PKI worker with the controller as an upstream, and a
-// child PKI worker as a downstream of the PKI worker connected to the controller.
-// Tags for the PKI and child PKI worker can be passed in, if desired
-func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext context.Context, clusterAddrs []string,
-	workerAuthKms wrapping.Wrapper, serversRepoFn common.ServersRepoFactory, pkiTags,
-	childPkiTags map[string][]string,
-) (kmsWorker *TestWorker, pkiWorker *TestWorker, childPkiWorker *TestWorker) {
-	require := require.New(t)
-	kmsWorker = NewTestWorker(t, &TestWorkerOpts{
-		WorkerAuthKms:    workerAuthKms,
-		InitialUpstreams: clusterAddrs,
-		Logger:           logger.Named("kmsWorker"),
+// NewAuthorizedPkiTestWorker creates a new test worker with the provided upstreams
+// and creates it in the provided repo as an authorized worker. It returns
+// The TestWorker and it's boundary id.
+func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name string, upstreams []string, opt ...config.Option) (*TestWorker, string) {
+	t.Helper()
+	logger := hclog.New(&hclog.LoggerOptions{
+		Level: hclog.Trace,
 	})
-
-	// names should not be set when using pki workers
-	pkiWorkerConf, err := config.DevWorker()
-	require.NoError(err)
-	pkiWorkerConf.Worker.Name = ""
-	if pkiTags != nil {
-		pkiWorkerConf.Worker.Tags = pkiTags
-	}
-	pkiWorkerConf.Worker.InitialUpstreams = clusterAddrs
-	pkiWorker = NewTestWorker(t, &TestWorkerOpts{
-		InitialUpstreams: clusterAddrs,
-		Logger:           logger.Named("pkiWorker"),
-		Config:           pkiWorkerConf,
+	wcfg, err := config.DevWorker()
+	require.NoError(t, err)
+	wcfg.Worker.Name = ""
+	wcfg.Worker.InitialUpstreams = upstreams
+	w := NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams: upstreams,
+		Logger:           logger.Named(name),
+		Config:           wcfg,
 	})
-	t.Cleanup(pkiWorker.Shutdown)
-
-	// Get a server repo and worker auth repo
-	serversRepo, err := serversRepoFn()
-	require.NoError(err)
+	t.Cleanup(w.Shutdown)
 
 	// Perform initial authentication of worker to controller
-	reqBytes, err := base58.FastBase58Decoding(pkiWorker.Worker().WorkerAuthRegistrationRequest)
-	require.NoError(err)
+	reqBytes, err := base58.FastBase58Decoding(w.Worker().WorkerAuthRegistrationRequest)
+	require.NoError(t, err)
 
 	// Decode the proto into the request and create the worker
 	pkiWorkerReq := new(types.FetchNodeCredentialsRequest)
-	require.NoError(proto.Unmarshal(reqBytes, pkiWorkerReq))
-	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
+	require.NoError(t, proto.Unmarshal(reqBytes, pkiWorkerReq))
+	wr, err := repo.CreateWorker(context.Background(), &server.Worker{
 		Worker: &store.Worker{
+			Name:    name,
 			ScopeId: scope.Global.String(),
 		},
 	}, server.WithFetchNodeCredentialsRequest(pkiWorkerReq))
-	require.NoError(err)
+	require.NoError(t, err)
+	return w, wr.GetPublicId()
+}
 
-	childPkiWorkerConf, err := config.DevWorker()
-	require.NoError(err)
-	childPkiWorkerConf.Worker.Name = ""
-	if childPkiTags != nil {
-		childPkiWorkerConf.Worker.Tags = childPkiTags
+// mockServerCoordinationService is meant to stand in for a controller when testing
+// the methods defined by the server coordination service. It allows applying assertions and specifying
+// the return value of grpc methods by overwriting service methods.
+type mockServerCoordinationService struct {
+	pbs.UnimplementedServerCoordinationServiceServer
+	nextReqAssert         func(*pbs.StatusRequest) (*pbs.StatusResponse, error)
+	nextStatisticAssert   func(*pbs.StatisticsRequest) (*pbs.StatisticsResponse, error)
+	nextSessionInfoAssert func(*pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error)
+}
+
+func (m mockServerCoordinationService) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
+	if m.nextReqAssert != nil {
+		return m.nextReqAssert(req)
 	}
-	childPkiWorkerConf.Worker.InitialUpstreams = kmsWorker.ProxyAddrs()
+	return nil, status.Error(codes.Unavailable, "Status not implemented")
+}
 
-	childPkiWorker = NewTestWorker(t, &TestWorkerOpts{
-		InitialUpstreams: kmsWorker.ProxyAddrs(),
-		Logger:           logger.Named("childPkiWorker"),
-		Config:           childPkiWorkerConf,
-	})
+func (m mockServerCoordinationService) Statistics(ctx context.Context, req *pbs.StatisticsRequest) (*pbs.StatisticsResponse, error) {
+	if m.nextStatisticAssert != nil {
+		return m.nextStatisticAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "Statistics not implemented")
+}
 
-	// Perform initial authentication of worker to controller
-	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
-	require.NoError(err)
+func (m mockServerCoordinationService) SessionInfo(ctx context.Context, req *pbs.SessionInfoRequest) (*pbs.SessionInfoResponse, error) {
+	if m.nextSessionInfoAssert != nil {
+		return m.nextSessionInfoAssert(req)
+	}
+	return nil, status.Error(codes.Unavailable, "SessionInfo not implemented")
+}
 
-	// Decode the proto into the request and create the worker
-	childPkiWorkerReq := new(types.FetchNodeCredentialsRequest)
-	require.NoError(proto.Unmarshal(reqBytes, childPkiWorkerReq))
-	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
-		Worker: &store.Worker{
-			ScopeId: scope.Global.String(),
-		},
-	}, server.WithFetchNodeCredentialsRequest(childPkiWorkerReq))
-	require.NoError(err)
+var _ pbs.ServerCoordinationServiceServer = (*mockServerCoordinationService)(nil)
 
-	// Sleep so that workers can startup and connect.
-	time.Sleep(10 * time.Second)
+// TestWaitForNextSuccessfulSessionInfoUpdate waits for the next successful session info. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with the worker's session info grace period.
+func (w *Worker) TestWaitForNextSuccessfulSessionInfoUpdate(t testing.TB) {
+	t.Helper()
+	const op = "worker.(Worker).WaitForNextSuccessfulSessionInfoUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(w.successfulSessionInfoGracePeriod.Load()))
+	defer cancel()
+	t.Log("waiting for next session info report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
 
-	return kmsWorker, pkiWorker, childPkiWorker
+		case <-ctx.Done():
+			t.Error("error waiting for next session info report to controller")
+			return
+		}
+
+		si := w.lastSessionInfoSuccess.Load().(*lastSessionInfo)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	t.Log("next worker session info update sent successfully")
+}
+
+// TestWaitForNextSuccessfulStatisticsUpdate waits for the next successful statistics. It's
+// used by testing in place of a more opaque and possibly unnecessarily long sleep for
+// things like initial controller check-in, etc.
+//
+// The timeout is aligned with twice the worker's statistics timeout duration.
+func (w *Worker) TestWaitForNextSuccessfulStatisticsUpdate(t testing.TB) {
+	t.Helper()
+	const op = "worker.(Worker).WaitForNextSuccessfulStatisticsUpdate"
+	waitStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(2*w.statisticsCallTimeoutDuration.Load()))
+	defer cancel()
+	t.Log("waiting for next statistics report to controller")
+	for {
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			t.Error("error waiting for next statistics report to controller")
+			return
+		}
+
+		si := w.lastStatisticsSuccess.Load().(*lastStatistics)
+		if si != nil && si.LastSuccessfulRequestTime.After(waitStart) {
+			break
+		}
+	}
+
+	t.Log("next worker statistics update sent successfully")
 }

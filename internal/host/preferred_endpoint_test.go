@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package host_test
 
 import (
@@ -7,10 +10,11 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -27,10 +31,10 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "create")
-	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	set := plugin.TestSet(t, conn, kmsCache, sched, catalog, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	plg := plugin.TestPlugin(t, conn, "create")
+	catalog := hostplugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	set := hostplugin.TestSet(t, conn, kmsCache, sched, catalog, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
 	type args struct {
@@ -141,7 +145,7 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 					assert.NoError(err)
 				}
 				found := host.AllocPreferredEndpoint()
-				require.NoError(rw.LookupWhere(ctx, found, "host_set_id = ? and priority = ?", []interface{}{tt.args.hostSetId, tt.args.priority}))
+				require.NoError(rw.LookupWhere(ctx, found, "host_set_id = ? and priority = ?", []any{tt.args.hostSetId, tt.args.priority}))
 				assert.Equal(got, found)
 			}
 		})
@@ -158,10 +162,10 @@ func TestPreferredEndpoint_Delete(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "create")
-	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	set := plugin.TestSet(t, conn, kmsCache, sched, catalog, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
+	plg := plugin.TestPlugin(t, conn, "create")
+	catalog := hostplugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	set := hostplugin.TestSet(t, conn, kmsCache, sched, catalog, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&plgpb.UnimplementedHostPluginServiceServer{}),
 	})
 
 	peFunc := func(priority uint32, condition string) *host.PreferredEndpoint {
@@ -220,7 +224,7 @@ func TestPreferredEndpoint_Delete(t *testing.T) {
 			}
 			require.Equal(tt.wantRowsDeleted, deletedRows)
 			found := host.AllocPreferredEndpoint()
-			err = rw.LookupWhere(ctx, &found, "host_set_id = ?", []interface{}{set.PublicId})
+			err = rw.LookupWhere(ctx, &found, "host_set_id = ?", []any{set.PublicId})
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}

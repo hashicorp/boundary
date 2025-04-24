@@ -1,34 +1,34 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, Subtype, HostCatalogPrefix, PreviousHostCatalogPrefix, HostSetPrefix, PreviousHostSetPrefix, HostPrefix, PreviousHostPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostCatalogPrefix, resource.HostCatalog, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostCatalogPreviousPrefix, resource.HostCatalog, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostSetPrefix, resource.HostSet, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostSetPreviousPrefix, resource.HostSet, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostPrefix, resource.Host, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostPreviousPrefix, resource.Host, host.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	HostCatalogPrefix         = "hcplg"
-	PreviousHostCatalogPrefix = "hc"
-	HostSetPrefix             = "hsplg"
-	PreviousHostSetPrefix     = "hs"
-	HostPrefix                = "hplg"
-	PreviousHostPrefix        = "h"
-
-	Subtype = subtypes.Subtype("plugin")
+	Subtype = globals.Subtype("plugin")
 )
 
 func newHostCatalogId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(HostCatalogPrefix)
+	id, err := db.NewPublicId(ctx, globals.PluginHostCatalogPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostCatalogId")
 	}
@@ -36,7 +36,7 @@ func newHostCatalogId(ctx context.Context) (string, error) {
 }
 
 func newHostSetId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(HostSetPrefix)
+	id, err := db.NewPublicId(ctx, globals.PluginHostSetPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostSetId")
 	}
@@ -51,7 +51,7 @@ func newHostId(ctx context.Context, catalogId, externalId string) (string, error
 	if externalId == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing external id")
 	}
-	id, err := db.NewPublicId(HostPrefix, db.WithPrngValues([]string{catalogId, externalId}))
+	id, err := db.NewPublicId(ctx, globals.PluginHostPrefix, db.WithPrngValues([]string{catalogId, externalId}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

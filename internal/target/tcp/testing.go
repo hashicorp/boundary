@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package tcp
 
 import (
@@ -20,38 +23,44 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 	rw := db.New(conn)
 	tar, err := target.New(ctx, Subtype, projectId, opt...)
 	require.NoError(err)
-	id, err := db.NewPublicId(TargetPrefix)
+	id, err := db.NewPublicId(ctx, TargetPrefix)
 	require.NoError(err)
-	tar.SetPublicId(ctx, id)
-	err = rw.Create(context.Background(), tar)
-	require.NoError(err)
+	require.NoError(tar.SetPublicId(ctx, id))
+	require.NoError(rw.Create(ctx, tar))
 
+	if opts.WithAddress != "" {
+		address, err := target.NewAddress(ctx, tar.GetPublicId(), opts.WithAddress)
+		require.NoError(err)
+		require.NotNil(address)
+		err = rw.Create(context.Background(), address)
+		require.NoError(err)
+	}
 	if len(opts.WithHostSources) > 0 {
-		newHostSets := make([]interface{}, 0, len(opts.WithHostSources))
+		newHostSets := make([]*target.TargetHostSet, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
-			hostSet, err := target.NewTargetHostSet(tar.GetPublicId(), s)
+			hostSet, err := target.NewTargetHostSet(ctx, tar.GetPublicId(), s)
 			require.NoError(err)
 			newHostSets = append(newHostSets, hostSet)
 		}
-		err := rw.CreateItems(context.Background(), newHostSets)
+		err := rw.CreateItems(ctx, newHostSets)
 		require.NoError(err)
 	}
 	if len(opts.WithCredentialLibraries) > 0 {
-		newCredLibs := make([]interface{}, 0, len(opts.WithCredentialLibraries))
+		newCredLibs := make([]*target.CredentialLibrary, 0, len(opts.WithCredentialLibraries))
 		for _, cl := range opts.WithCredentialLibraries {
 			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)
 		}
-		err := rw.CreateItems(context.Background(), newCredLibs)
+		err := rw.CreateItems(ctx, newCredLibs)
 		require.NoError(err)
 	}
 	if len(opts.WithStaticCredentials) > 0 {
-		newCreds := make([]interface{}, 0, len(opts.WithStaticCredentials))
+		newCreds := make([]*target.StaticCredential, 0, len(opts.WithStaticCredentials))
 		for _, c := range opts.WithStaticCredentials {
 			c.TargetId = tar.GetPublicId()
 			newCreds = append(newCreds, c)
 		}
-		err := rw.CreateItems(context.Background(), newCreds)
+		err := rw.CreateItems(ctx, newCreds)
 		require.NoError(err)
 	}
 	return tar

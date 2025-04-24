@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -16,6 +19,7 @@ import (
 
 func TestNewUserRole(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -86,7 +90,7 @@ func TestNewUserRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewUserRole(tt.args.roleId, tt.args.userId, tt.args.opt...)
+			got, err := NewUserRole(ctx, tt.args.roleId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -100,6 +104,7 @@ func TestNewUserRole(t *testing.T) {
 
 func TestUserRole_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -122,7 +127,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, org.PublicId)
 					principal := TestUser(t, repo, org.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -135,7 +140,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, proj.PublicId)
 					principal := TestUser(t, repo, org.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -148,7 +153,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, org2.PublicId)
 					principal := TestUser(t, repo, org.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -160,7 +165,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, proj2.PublicId)
 					principal := TestUser(t, repo, org.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -172,7 +177,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					id := testId(t)
 					principal := TestUser(t, repo, org.PublicId)
-					principalRole, err := NewUserRole(id, principal.PublicId)
+					principalRole, err := NewUserRole(ctx, id, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -186,7 +191,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					id := testId(t)
 					role := TestRole(t, conn, proj.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, id)
+					principalRole, err := NewUserRole(ctx, role.PublicId, id)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -234,7 +239,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, org.PublicId)
 					principal := TestUser(t, repo, org.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -265,7 +270,7 @@ func TestUserRole_Create(t *testing.T) {
 			assert.NoError(err)
 
 			found := allocUserRole()
-			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{r.RoleId, r.PrincipalId})
+			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []any{r.RoleId, r.PrincipalId})
 			require.NoError(err)
 			assert.Empty(cmp.Diff(r, &found, protocmp.Transform()))
 		})
@@ -343,7 +348,7 @@ func TestUserRole_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := allocUserRole()
-			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{tt.role.GetRoleId(), tt.role.GetPrincipalId()})
+			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []any{tt.role.GetRoleId(), tt.role.GetPrincipalId()})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})
@@ -377,6 +382,7 @@ func TestUserRole_Clone(t *testing.T) {
 
 func TestNewGroupRole(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -447,7 +453,7 @@ func TestNewGroupRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewGroupRole(tt.args.roleId, tt.args.groupId, tt.args.opt...)
+			got, err := NewGroupRole(ctx, tt.args.roleId, tt.args.groupId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -461,6 +467,7 @@ func TestNewGroupRole(t *testing.T) {
 
 func TestGroupRole_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -483,7 +490,7 @@ func TestGroupRole_Create(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, org.PublicId)
 					principal := TestGroup(t, conn, org.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -496,7 +503,7 @@ func TestGroupRole_Create(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, proj.PublicId)
 					principal := TestGroup(t, conn, proj.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -509,7 +516,7 @@ func TestGroupRole_Create(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, org2.PublicId)
 					principal := TestGroup(t, conn, org.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -521,7 +528,7 @@ func TestGroupRole_Create(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, proj2.PublicId)
 					principal := TestGroup(t, conn, org.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -533,7 +540,7 @@ func TestGroupRole_Create(t *testing.T) {
 				role: func() *GroupRole {
 					id := testId(t)
 					principal := TestGroup(t, conn, org.PublicId)
-					principalRole, err := NewGroupRole(id, principal.PublicId)
+					principalRole, err := NewGroupRole(ctx, id, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -547,7 +554,7 @@ func TestGroupRole_Create(t *testing.T) {
 				role: func() *GroupRole {
 					id := testId(t)
 					role := TestRole(t, conn, proj.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, id)
+					principalRole, err := NewGroupRole(ctx, role.PublicId, id)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -595,7 +602,7 @@ func TestGroupRole_Create(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, org.PublicId)
 					principal := TestGroup(t, conn, org.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -610,7 +617,7 @@ func TestGroupRole_Create(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, proj.PublicId)
 					principal := TestGroup(t, conn, proj.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(ctx, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -641,7 +648,7 @@ func TestGroupRole_Create(t *testing.T) {
 			assert.NoError(err)
 
 			found := allocGroupRole()
-			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{r.RoleId, r.PrincipalId})
+			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []any{r.RoleId, r.PrincipalId})
 			require.NoError(err)
 			assert.Empty(cmp.Diff(r, &found, protocmp.Transform()))
 		})
@@ -724,7 +731,7 @@ func TestGroupRole_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := allocGroupRole()
-			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{tt.role.GetRoleId(), tt.role.GetPrincipalId()})
+			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []any{tt.role.GetRoleId(), tt.role.GetPrincipalId()})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

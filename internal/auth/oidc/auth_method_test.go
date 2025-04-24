@@ -1,8 +1,10 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
 	"context"
-	"net/url"
 	"sort"
 	"testing"
 
@@ -32,7 +34,6 @@ func TestAuthMethod_Create(t *testing.T) {
 
 	type args struct {
 		scopeId      string
-		issuer       *url.URL
 		clientId     string
 		clientSecret ClientSecret
 		opt          []Option
@@ -547,7 +548,7 @@ func Test_convertValueObjects(t *testing.T) {
 	testPublicId := "test-id"
 
 	testAlgs := []string{string(RS256), string(RS384)}
-	var testSigningAlgs []interface{}
+	var testSigningAlgs []*SigningAlg
 	for _, a := range []Alg{RS256, RS384} {
 		obj, err := NewSigningAlg(ctx, testPublicId, Alg(a))
 		require.NoError(t, err)
@@ -555,7 +556,7 @@ func Test_convertValueObjects(t *testing.T) {
 	}
 
 	testAuds := []string{"alice", "eve"}
-	var testAudiences []interface{}
+	var testAudiences []*AudClaim
 	for _, a := range testAuds {
 		obj, err := NewAudClaim(ctx, testPublicId, a)
 		require.NoError(t, err)
@@ -566,10 +567,10 @@ func Test_convertValueObjects(t *testing.T) {
 	testCerts := []string{pem}
 	c, err := NewCertificate(ctx, testPublicId, pem)
 	require.NoError(t, err)
-	testCertificates := []interface{}{c}
+	testCertificates := []*Certificate{c}
 
 	testScopes := []string{"profile", "email"}
-	testClaimsScopes := make([]interface{}, 0, len(testScopes))
+	testClaimsScopes := make([]*ClaimsScope, 0, len(testScopes))
 	for _, s := range testScopes {
 		obj, err := NewClaimsScope(ctx, testPublicId, s)
 		require.NoError(t, err)
@@ -577,7 +578,7 @@ func Test_convertValueObjects(t *testing.T) {
 	}
 
 	testClaimMaps := []string{"oid=sub", "display_name=name"}
-	testAccountClaimMaps := make([]interface{}, 0, len(testClaimMaps))
+	testAccountClaimMaps := make([]*AccountClaimMap, 0, len(testClaimMaps))
 	acms, err := ParseAccountClaimMaps(ctx, testClaimMaps...)
 	require.NoError(t, err)
 	for _, m := range acms {
@@ -588,6 +589,14 @@ func Test_convertValueObjects(t *testing.T) {
 		testAccountClaimMaps = append(testAccountClaimMaps, obj)
 	}
 
+	testPrompts := []string{"consent", "select_account"}
+	testExpectedPrompts := make([]*Prompt, 0, len(testPrompts))
+	for _, a := range testPrompts {
+		obj, err := NewPrompt(ctx, testPublicId, PromptParam(a))
+		require.NoError(t, err)
+		testExpectedPrompts = append(testExpectedPrompts, obj)
+	}
+
 	tests := []struct {
 		name            string
 		authMethodId    string
@@ -596,6 +605,7 @@ func Test_convertValueObjects(t *testing.T) {
 		certs           []string
 		scopes          []string
 		maps            []string
+		prompts         []string
 		wantValues      *convertedValues
 		wantErrMatch    *errors.Template
 		wantErrContains string
@@ -608,12 +618,14 @@ func Test_convertValueObjects(t *testing.T) {
 			certs:        testCerts,
 			scopes:       testScopes,
 			maps:         testClaimMaps,
+			prompts:      testPrompts,
 			wantValues: &convertedValues{
 				Algs:             testSigningAlgs,
 				Auds:             testAudiences,
 				Certs:            testCertificates,
 				ClaimsScopes:     testClaimsScopes,
 				AccountClaimMaps: testAccountClaimMaps,
+				Prompts:          testExpectedPrompts,
 			},
 		},
 		{
@@ -633,6 +645,7 @@ func Test_convertValueObjects(t *testing.T) {
 					Certificates:     tt.certs,
 					ClaimsScopes:     tt.scopes,
 					AccountClaimMaps: tt.maps,
+					Prompts:          tt.prompts,
 				},
 			}
 
@@ -675,11 +688,11 @@ func Test_convertValueObjects(t *testing.T) {
 			} else {
 				want := make([]*AccountClaimMap, 0, len(tt.wantValues.AccountClaimMaps))
 				for _, v := range tt.wantValues.AccountClaimMaps {
-					want = append(want, v.(*AccountClaimMap))
+					want = append(want, v)
 				}
 				got := make([]*AccountClaimMap, 0, len(convertedMaps))
 				for _, v := range convertedMaps {
-					got = append(got, v.(*AccountClaimMap))
+					got = append(got, v)
 				}
 				sort.Slice(want, func(a, b int) bool {
 					return want[a].ToClaim < want[b].ToClaim
@@ -688,6 +701,14 @@ func Test_convertValueObjects(t *testing.T) {
 					return got[a].ToClaim < got[b].ToClaim
 				})
 				assert.Equal(want, got)
+			}
+
+			convertedPrompts, err := am.convertPrompts(ctx)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Prompts, convertedPrompts)
 			}
 
 			values, err := am.convertValueObjects(ctx)
@@ -707,30 +728,51 @@ func Test_convertValueObjects(t *testing.T) {
 	}
 }
 
-type converted []interface{}
+type sortableAlgs []*SigningAlg
 
-func (a converted) Len() int      { return len(a) }
-func (a converted) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a converted) Less(i, j int) bool {
-	switch a[i].(type) {
-	case *SigningAlg:
-		return a[i].(*SigningAlg).GetAlg() < a[j].(*SigningAlg).GetAlg()
-	case *Certificate:
-		return a[i].(*Certificate).GetCert() < a[j].(*Certificate).GetCert()
-	case *AccountClaimMap:
-		return a[i].(*AccountClaimMap).GetToClaim() < a[j].(*AccountClaimMap).GetToClaim()
-	case *AudClaim:
-		return a[i].(*AudClaim).GetAud() < a[j].(*AudClaim).GetAud()
-	case *ClaimsScope:
-		return a[i].(*ClaimsScope).GetScope() < a[j].(*ClaimsScope).GetScope()
-	}
-	return false
+func (s sortableAlgs) Len() int      { return len(s) }
+func (s sortableAlgs) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortableAlgs) Less(i, j int) bool {
+	return s[i].GetAlg() < s[j].GetAlg()
+}
+
+type sortableCerts []*Certificate
+
+func (s sortableCerts) Len() int      { return len(s) }
+func (s sortableCerts) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortableCerts) Less(i, j int) bool {
+	return s[i].GetCert() < s[j].GetCert()
+}
+
+type sortableAccountClaimMaps []*AccountClaimMap
+
+func (s sortableAccountClaimMaps) Len() int      { return len(s) }
+func (s sortableAccountClaimMaps) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortableAccountClaimMaps) Less(i, j int) bool {
+	return s[i].GetFromClaim()+s[i].GetToClaim() < s[j].GetFromClaim()+s[j].GetToClaim()
+}
+
+type sortableAuds []*AudClaim
+
+func (s sortableAuds) Len() int      { return len(s) }
+func (s sortableAuds) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortableAuds) Less(i, j int) bool {
+	return s[i].GetAud() < s[j].GetAud()
+}
+
+type sortableClaimsScopes []*ClaimsScope
+
+func (s sortableClaimsScopes) Len() int      { return len(s) }
+func (s sortableClaimsScopes) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortableClaimsScopes) Less(i, j int) bool {
+	return s[i].GetScope() < s[j].GetScope()
 }
 
 func testSortConverted(t *testing.T, c *convertedValues) {
-	sort.Sort(converted(c.Algs))
-	sort.Sort(converted(c.Certs))
-	sort.Sort(converted(c.AccountClaimMaps))
-	sort.Sort(converted(c.Auds))
-	sort.Sort(converted(c.ClaimsScopes))
+	t.Helper()
+	sort.Sort(sortableAlgs(c.Algs))
+	sort.Sort(sortableCerts(c.Certs))
+	sort.Sort(sortableAccountClaimMaps(c.AccountClaimMaps))
+	sort.Sort(sortableAuds(c.Auds))
+	sort.Sort(sortableClaimsScopes(c.ClaimsScopes))
 }

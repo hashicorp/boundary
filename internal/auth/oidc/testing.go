@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -9,7 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/big"
 	"net"
@@ -36,8 +39,8 @@ import (
 const TestFakeManagedGroupFilter = `"/foo" == "bar"`
 
 // TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
-// WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims, and
-// WithSigningAlgs options are supported.
+// WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims,
+// WithSigningAlgs and WithPrompts options are supported.
 func TestAuthMethod(
 	t testing.TB,
 	conn *db.DB,
@@ -65,7 +68,7 @@ func TestAuthMethod(
 	require.NoError(err)
 
 	if len(opts.withAudClaims) > 0 {
-		newAudClaims := make([]interface{}, 0, len(opts.withAudClaims))
+		newAudClaims := make([]*AudClaim, 0, len(opts.withAudClaims))
 		for _, a := range opts.withAudClaims {
 			aud, err := NewAudClaim(ctx, authMethod.PublicId, a)
 			require.NoError(err)
@@ -76,7 +79,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withAudClaims), len(authMethod.AudClaims))
 	}
 	if len(opts.withCertificates) > 0 {
-		newCerts := make([]interface{}, 0, len(opts.withCertificates))
+		newCerts := make([]*Certificate, 0, len(opts.withCertificates))
 		for _, c := range opts.withCertificates {
 			pem, err := EncodeCertificates(ctx, c)
 			require.NoError(err)
@@ -89,7 +92,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withCertificates), len(authMethod.Certificates))
 	}
 	if len(opts.withSigningAlgs) > 0 {
-		newAlgs := make([]interface{}, 0, len(opts.withSigningAlgs))
+		newAlgs := make([]*SigningAlg, 0, len(opts.withSigningAlgs))
 		for _, a := range opts.withSigningAlgs {
 			alg, err := NewSigningAlg(ctx, authMethod.PublicId, a)
 			require.NoError(err)
@@ -100,7 +103,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withSigningAlgs), len(authMethod.SigningAlgs))
 	}
 	if len(opts.withClaimsScopes) > 0 {
-		newClaimsScopes := make([]interface{}, 0, len(opts.withClaimsScopes))
+		newClaimsScopes := make([]*ClaimsScope, 0, len(opts.withClaimsScopes))
 		for _, cs := range opts.withClaimsScopes {
 			s, err := NewClaimsScope(ctx, authMethod.PublicId, cs)
 			require.NoError(err)
@@ -111,7 +114,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withClaimsScopes), len(authMethod.ClaimsScopes))
 	}
 	if len(opts.withAccountClaimMap) > 0 {
-		newAccountClaimMaps := make([]interface{}, 0, len(opts.withAccountClaimMap))
+		newAccountClaimMaps := make([]*AccountClaimMap, 0, len(opts.withAccountClaimMap))
 		for k, v := range opts.withAccountClaimMap {
 			acm, err := NewAccountClaimMap(ctx, authMethod.PublicId, k, v)
 			require.NoError(err)
@@ -119,6 +122,17 @@ func TestAuthMethod(
 		}
 		require.NoError(rw.CreateItems(ctx, newAccountClaimMaps))
 		require.Equal(len(opts.withAccountClaimMap), len(authMethod.AccountClaimMaps))
+	}
+	if len(opts.withPrompts) > 0 {
+		newPrompts := make([]*Prompt, 0, len(opts.withPrompts))
+		for _, p := range opts.withPrompts {
+			prompt, err := NewPrompt(ctx, authMethod.PublicId, p)
+			require.NoError(err)
+			newPrompts = append(newPrompts, prompt)
+		}
+		err := rw.CreateItems(ctx, newPrompts)
+		require.NoError(err)
+		require.Equal(len(opts.withPrompts), len(authMethod.Prompts))
 	}
 	authMethod.OperationalState = string(state)
 	rowsUpdated, err := rw.Update(ctx, authMethod, []string{OperationalStateField}, nil)
@@ -417,7 +431,7 @@ func startTestControllerSrv(t testing.TB, oidcRepoFn OidcRepoFactory, iamRepoFn 
 		atRepoFn:   atRepoFn,
 	}
 	s.httpServer = httptest.NewServer(s)
-	s.httpServer.Config.ErrorLog = log.New(ioutil.Discard, "", 0)
+	s.httpServer.Config.ErrorLog = log.New(io.Discard, "", 0)
 	s.t.Cleanup(s.Stop)
 	return s
 }
@@ -478,7 +492,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 		case error != "":
 			errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, error)
 			s.t.Log("auth error: ", errorRedirectTo)
-			http.RedirectHandler(errorRedirectTo, 301)
+			http.RedirectHandler(errorRedirectTo, http.StatusMovedPermanently)
 		default:
 			redirectTo, err := Callback(context.Background(),
 				s.oidcRepoFn,
@@ -491,7 +505,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 			if err != nil {
 				errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, url.QueryEscape(err.Error()))
 				s.t.Log("callback error: ", errorRedirectTo)
-				http.RedirectHandler(errorRedirectTo, 302)
+				http.RedirectHandler(errorRedirectTo, http.StatusFound)
 				return
 			}
 			s.t.Log("callback success: ", redirectTo)

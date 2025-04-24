@@ -1,9 +1,12 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package errors
 
 import (
 	"errors"
 
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // IsUniqueError returns a boolean indicating whether the error is known to
@@ -93,4 +96,14 @@ func IsNotFoundError(err error) bool {
 	}
 
 	return false
+}
+
+// IsConflictError returns a boolean indicating whether the error is known to
+// report a pre-conditional check violation or an aborted transaction.
+func IsConflictError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return Match(T(Conflict), err)
 }

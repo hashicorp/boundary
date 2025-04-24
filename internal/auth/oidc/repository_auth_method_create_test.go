@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -33,6 +36,14 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		}
 		return s
 	}
+
+	convertPrompts := func(prompts ...PromptParam) []string {
+		s := make([]string, 0, len(prompts))
+		for _, a := range prompts {
+			s = append(s, string(a))
+		}
+		return s
+	}
 	tests := []struct {
 		name         string
 		am           func(*testing.T) *AuthMethod
@@ -45,6 +56,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				algs := []Alg{RS256, ES256}
 				cbs := TestConvertToUrls(t, "https://www.alice.com/callback")[0]
 				auds := []string{"alice-rp", "bob-rp"}
+				prompts := []PromptParam{"consent", "select_account"}
 				cert1, pem1 := testGenerateCA(t, "localhost")
 				cert2, pem2 := testGenerateCA(t, "localhost")
 				certs := []*x509.Certificate{cert1, cert2}
@@ -62,6 +74,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithName("alice's restaurant"),
 					WithDescription("it's a good place to eat"),
 					WithClaimsScopes("email", "profile"),
+					WithPrompts(prompts...),
 					WithAccountClaimMap(map[string]AccountToClaim{"display_name": ToNameClaim, "oid": ToSubClaim}),
 				)
 				require.NoError(t, err)
@@ -71,6 +84,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				require.Equal(t, am.AudClaims, auds)
 				require.Equal(t, am.Certificates, pems)
 				require.Equal(t, am.OperationalState, string(InactiveState))
+				require.Equal(t, am.Prompts, convertPrompts(prompts...))
 				return am
 			},
 		},
@@ -80,6 +94,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				algs := []Alg{RS256, ES256}
 				cbs := TestConvertToUrls(t, "https://www.alice.com/callback")[0]
 				auds := []string{"alice-rp-custom", "bob-rp-custom"}
+				prompts := []PromptParam{"consent", "select_account"}
 				cert1, pem1 := testGenerateCA(t, "localhost")
 				cert2, pem2 := testGenerateCA(t, "localhost")
 				certs := []*x509.Certificate{cert1, cert2}
@@ -94,6 +109,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithApiUrl(cbs),
 					WithSigningAlgs(algs...),
 					WithCertificates(certs...),
+					WithPrompts(prompts...),
 					WithName("alice's restaurant with a twist"),
 					WithDescription("it's an okay but kinda weird place to eat"),
 					WithClaimsScopes("email", "profile"),
@@ -106,6 +122,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				require.Equal(t, am.AudClaims, auds)
 				require.Equal(t, am.Certificates, pems)
 				require.Equal(t, am.OperationalState, string(InactiveState))
+				require.Equal(t, am.Prompts, convertPrompts(prompts...))
 				return am
 			},
 			opt: []Option{WithPublicId("amoidc_1234567890")},

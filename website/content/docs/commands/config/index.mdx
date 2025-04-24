@@ -1,0 +1,60 @@
+---
+layout: docs
+page_title: config - Command
+description: >-
+  The "config" command groups subcommands that interact with Boundary's configuration files.
+---
+
+# config
+
+Command: `boundary config`
+
+The `config` command groups subcommands for operators to interact with
+Boundary's configuration files.
+
+## Examples
+
+The following command encrypts sensitive values in a configuration file:
+
+```shell-session
+$ boundary config encrypt config.hcl
+```
+
+The following command decrypts sensitive values in a configuration file:
+
+```shell-session
+$ boundary config decrypt config.hcl
+```
+
+The following command reads a stored token's output.
+
+```shell-session
+$ boundary config get-token
+```
+
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary config <subcommand> [options] [args]
+
+  # ...
+
+Subcommands:
+    autocomplete    Install or uninstall autocompletion for Boundary's CLI
+    decrypt         Decrypt sensitive values in Boundary's configuration file
+    encrypt         Encrypt sensitive values in Boundary's configuration file
+    get-token       Get the stored token, or its properties
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [autocomplete](/boundary/docs/commands/config/autocomplete)
+- [decrypt](/boundary/docs/commands/config/decrypt)
+- [encrypt](/boundary/docs/commands/config/encrypt)
+- [get-token](/boundary/docs/commands/config/get-token)

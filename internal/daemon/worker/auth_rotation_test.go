@@ -1,6 +1,12 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package worker_test
 
 import (
+	"bytes"
+	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -22,21 +28,26 @@ import (
 // TestRotationTicking ensures that we see new credential information for a
 // worker on both the controller side and worker side in a periodic fashion
 func TestRotationTicking(t *testing.T) {
+	t.Parallel()
+
 	require, assert := require.New(t), assert.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
 
+	const rotationPeriod = 20 * time.Second
+
 	conf, err := config.DevController()
 	require.NoError(err)
 
+	workerAuthDebugEnabled := new(atomic.Bool)
+	workerAuthDebugEnabled.Store(true)
 	c := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config: conf,
-		Logger: logger.Named("controller"),
+		Config:                          conf,
+		Logger:                          logger.Named("controller"),
+		WorkerAuthCaCertificateLifetime: rotationPeriod,
+		WorkerAuthDebuggingEnabled:      workerAuthDebugEnabled,
 	})
-	t.Cleanup(c.Shutdown)
-
-	const rotationPeriod = 20 * time.Second
 
 	// names should not be set when using pki workers
 	wConf, err := config.DevWorker()
@@ -44,12 +55,11 @@ func TestRotationTicking(t *testing.T) {
 	wConf.Worker.Name = ""
 	wConf.Worker.InitialUpstreams = c.ClusterAddrs()
 	w := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		InitialUpstreams:   c.ClusterAddrs(),
-		Logger:             logger.Named("worker"),
-		AuthRotationPeriod: rotationPeriod,
-		Config:             wConf,
+		InitialUpstreams:           c.ClusterAddrs(),
+		Logger:                     logger.Named("worker"),
+		Config:                     wConf,
+		WorkerAuthDebuggingEnabled: workerAuthDebugEnabled,
 	})
-	t.Cleanup(w.Shutdown)
 
 	// Get a server repo and worker auth repo
 	serversRepo, err := c.Controller().ServersRepoFn()
@@ -73,66 +83,94 @@ func TestRotationTicking(t *testing.T) {
 	// Decode the proto into the request and create the worker
 	req := new(types.FetchNodeCredentialsRequest)
 	require.NoError(proto.Unmarshal(reqBytes, req))
-	worker, err := serversRepo.CreateWorker(c.Context(), &server.Worker{
+	newWorker, err := serversRepo.CreateWorker(c.Context(), &server.Worker{
 		Worker: &store.Worker{
 			ScopeId: scope.Global.String(),
 		},
 	}, server.WithFetchNodeCredentialsRequest(req))
 	require.NoError(err)
 
-	// Verify we see one authorized set of credentials now
+	// Wait for a short while; there will be an initial rotation of credentials
+	// after authentication
+	time.Sleep(rotationPeriod / 2)
+
+	// Verify we see authorized credentials now
 	auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
 	require.NoError(err)
-	assert.Len(auths, 1)
+	require.Len(auths, 2)
 	// Fetch creds and store current key
-	currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.Config().WorkerAuthStorageKms))
+	currNodeCreds, err := types.LoadNodeCredentials(
+		w.Context(),
+		w.Worker().WorkerAuthStorage,
+		nodeenrollment.CurrentId,
+		nodeenrollment.WithStorageWrapper(w.Config().WorkerAuthStorageKms),
+	)
 	require.NoError(err)
 	currKey := currNodeCreds.CertificatePublicKeyPkix
 
-	priorKeyId, err := nodeenrollment.KeyIdFromPkix(currKey)
-	require.NoError(err)
-
 	// Now we wait and check that we see new values in the DB and different
 	// creds on the worker after each rotation period
-	for i := 2; i < 5; i++ {
-		time.Sleep(rotationPeriod)
+
+	// Make sure we have a failsafe in case the below loop never finds what it's
+	// looking for; at expiration the List will fail and we'll hit the Require,
+	// exiting
+	testTimeout := 10 * time.Minute
+	testDeadline, ok := t.Deadline()
+	if ok && time.Until(testDeadline) < testTimeout {
+		// If the test deadline is less than the default timeout, use the deadline
+		// Give a minute buffer for shutdowns and other test cleanup
+		testTimeout = time.Until(testDeadline) - time.Minute
+	}
+	deadlineCtx, deadlineCtxCancel := context.WithTimeout(c.Context(), testTimeout)
+	defer deadlineCtxCancel()
+
+	rotationCount := 2
+	for {
+		if rotationCount > 3 {
+			break
+		}
+		nextRotation := w.Worker().AuthRotationNextRotation.Load()
+		// Sleep until 5 seconds after next rotation
+		time.Sleep(time.Until(*nextRotation) + 5*time.Second)
 
 		// Verify we see 2- after credentials have rotated, we should see current and previous
-		auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
+		auths, err = workerAuthRepo.List(deadlineCtx, (*types.NodeInformation)(nil))
 		require.NoError(err)
-		assert.Len(auths, 2)
+		require.Len(auths, 2)
 
 		// Fetch creds and compare current key
-		currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.Config().WorkerAuthStorageKms))
+		currNodeCreds, err := types.LoadNodeCredentials(
+			w.Context(),
+			w.Worker().WorkerAuthStorage,
+			nodeenrollment.CurrentId,
+			nodeenrollment.WithStorageWrapper(w.Config().WorkerAuthStorageKms),
+		)
 		require.NoError(err)
+		if bytes.Equal(currKey, currNodeCreds.CertificatePublicKeyPkix) {
+			// Load due to parallel tests may mean that we didn't hit rotation
+			// yet, loop back to evaluate again
+			continue
+		}
 		assert.NotEqual(currKey, currNodeCreds.CertificatePublicKeyPkix)
 		currKey = currNodeCreds.CertificatePublicKeyPkix
 		currKeyId, err := nodeenrollment.KeyIdFromPkix(currNodeCreds.CertificatePublicKeyPkix)
 		require.NoError(err)
 		assert.Equal(currKeyId, w.Worker().WorkerAuthCurrentKeyId.Load())
 
-		// Check that we've got the correct prior encryption key
-		previousKeyId, _, err := currNodeCreds.PreviousX25519EncryptionKey()
-		require.NoError(err)
-		assert.Equal(priorKeyId, previousKeyId)
-
 		// Get workerAuthSet for this worker id and compare keys
-		workerAuthSet, err := workerAuthRepo.FindWorkerAuthByWorkerId(c.Context(), worker.PublicId)
+		workerAuthSet, err := workerAuthRepo.FindWorkerAuthByWorkerId(c.Context(), newWorker.PublicId)
 		require.NoError(err)
 		assert.NotNil(workerAuthSet)
 		assert.NotNil(workerAuthSet.Previous)
 		assert.NotNil(workerAuthSet.Current)
 		assert.Equal(workerAuthSet.Current.WorkerKeyIdentifier, currKeyId)
-		assert.Equal(workerAuthSet.Previous.WorkerKeyIdentifier, previousKeyId)
-
-		// Save priorKeyId
-		priorKeyId = currKeyId
 
 		// Stop and start the client connections to ensure the new credentials
 		// are valid; if not, we won't establish a new connection and rotation
 		// will fail
-		require.NotNil(w.Worker().GrpcClientConn)
-		require.NoError(w.Worker().GrpcClientConn.Close())
+		require.NotNil(w.Worker().GrpcClientConn.Load())
+		require.NoError(w.Worker().GrpcClientConn.Load().Close())
 		require.NoError(w.Worker().StartControllerConnections())
+		rotationCount++
 	}
 }

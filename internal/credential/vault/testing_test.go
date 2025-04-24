@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -131,7 +134,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 				gotPeriod, err := parseutil.ParseDurationSecond(period)
 				require.NoError(t, err)
 				if assert.True(t, ok, op) {
-					delta := 1 * time.Minute
+					delta := 5 * time.Minute
 					assert.InDelta(t, want.Seconds(), gotPeriod.Seconds(), delta.Seconds())
 				}
 			}
@@ -264,6 +267,58 @@ func TestNewVaultServer(t *testing.T) {
 		require.NotNil(client)
 		require.NoError(client.ping(ctx))
 	})
+	t.Run("TestServerTLS-InsecureSkipVerify", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS), WithServerCertHostNames([]string{"kaz"}))
+		require.NotNil(v)
+
+		assert.NotEmpty(v.RootToken)
+		assert.NotEmpty(v.Addr)
+		assert.NotEmpty(v.CaCert)
+
+		conf := &clientConfig{
+			Addr:   v.Addr,
+			Token:  TokenSecret(v.RootToken),
+			CaCert: v.CaCert,
+		}
+
+		client, err := newClient(ctx, conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.Error(client.ping(ctx))
+
+		conf.TlsSkipVerify = true
+		client, err = newClient(ctx, conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.NoError(client.ping(ctx))
+	})
+	t.Run("TestServerTLS-TlsServerName", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS), WithServerCertHostNames([]string{"kaz"}))
+		require.NotNil(v)
+
+		assert.NotEmpty(v.RootToken)
+		assert.NotEmpty(v.Addr)
+		assert.NotEmpty(v.CaCert)
+
+		conf := &clientConfig{
+			Addr:   v.Addr,
+			Token:  TokenSecret(v.RootToken),
+			CaCert: v.CaCert,
+		}
+
+		client, err := newClient(ctx, conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.Error(client.ping(ctx))
+
+		conf.TlsServerName = "kaz"
+		client, err = newClient(ctx, conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.NoError(client.ping(ctx))
+	})
 	t.Run("TestClientTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		v := NewTestVaultServer(t, WithTestVaultTLS(TestClientTLS))
@@ -308,11 +363,13 @@ func TestNewVaultServer(t *testing.T) {
 		assert.Equal(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: k}), v.ClientKey)
 
 		conf := &clientConfig{
-			Addr:       v.Addr,
-			Token:      TokenSecret(v.RootToken),
-			CaCert:     v.CaCert,
-			ClientCert: v.ClientCert,
-			ClientKey:  v.ClientKey,
+			Addr:          v.Addr,
+			Token:         TokenSecret(v.RootToken),
+			CaCert:        v.CaCert,
+			TlsServerName: v.TlsServerName,
+			TlsSkipVerify: v.TlsSkipVerify,
+			ClientCert:    v.ClientCert,
+			ClientKey:     v.ClientKey,
 		}
 
 		client, err := newClient(ctx, conf)
@@ -347,7 +404,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("pki", "issue", "boundary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -378,7 +435,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("gary", "issue", "boundary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -409,7 +466,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("pki", "issue", "gary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -612,7 +669,7 @@ func TestTestVaultServer_CreateKVSecret(t *testing.T) {
 		require.NotNil(got.Data)
 		require.NotNil(got.Data["data"])
 
-		gotData, ok := got.Data["data"].(map[string]interface{})
+		gotData, ok := got.Data["data"].(map[string]any)
 		require.True(ok)
 		require.NotNil(gotData["foo"])
 

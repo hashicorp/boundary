@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package users
 
 import (
@@ -5,21 +8,25 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	aliaspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
@@ -31,7 +38,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
@@ -39,44 +46,60 @@ var (
 		action.AddAccounts,
 		action.SetAccounts,
 		action.RemoveAccounts,
-	}
+		action.ListResolvableAliases,
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.User{}}, handlers.MaskSource{&pb.User{}}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.User{}},
+		handlers.MaskSource{&pb.User{}},
+	); err != nil {
 		panic(err)
 	}
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.User, IdActions, CollectionActions)
 }
 
 // Service handles request as described by the pbs.UserServiceServer interface.
 type Service struct {
 	pbs.UnsafeUserServiceServer
 
-	repoFn common.IamRepoFactory
+	repoFn      common.IamRepoFactory
+	aliasRepoFn common.TargetAliasRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.UserServiceServer = (*Service)(nil)
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(repo common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.IamRepoFactory, aliasRepoFn common.TargetAliasRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "users.NewService"
-	if repo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
+	switch {
+	case repo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+	case aliasRepoFn == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing alias repository")
 	}
-	return Service{repoFn: repo}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(globals.DefaultMaxPageSize)
+	}
+	return Service{repoFn: repo, aliasRepoFn: aliasRepoFn, maxPageSize: maxPageSize}, nil
 }
 
 // ListUsers implements the interface pbs.UserServiceServer.
 func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	const op = "users.(Service).ListUsers"
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -98,55 +121,116 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	if err != nil {
 		return nil, err
 	}
-	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
-		return &pbs.ListUsersResponse{}, nil
+
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
-	if err != nil {
-		return nil, err
-	}
-	if len(ul) == 0 {
-		return &pbs.ListUsersResponse{}, nil
-	}
-
-	filter, err := handlers.NewFilter(req.GetFilter())
-	if err != nil {
-		return nil, err
-	}
-	finalItems := make([]*pb.User, 0, len(ul))
-	res := perms.Resource{
-		Type: resource.User,
-	}
-	for _, item := range ul {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-
-		item, err := toProto(ctx, item, nil, outputOpts...)
+	var filterItemFn func(ctx context.Context, item *iam.User) (bool, error)
+	switch {
+	case req.GetFilter() != "":
+		// Only use a filter if we need to
+		filter, err := handlers.NewFilter(ctx, req.GetFilter())
 		if err != nil {
 			return nil, err
 		}
-
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
+		filterItemFn = func(ctx context.Context, item *iam.User) (bool, error) {
+			outputOpts, ok := newOutputOpts(ctx, item, scopeInfoMap, authResults)
+			if !ok {
+				return false, nil
+			}
+			pbItem, err := toProto(ctx, item, nil, outputOpts...)
+			if err != nil {
+				return false, err
+			}
+			return filter.Match(pbItem), nil
+		}
+	default:
+		filterItemFn = func(ctx context.Context, item *iam.User) (bool, error) {
+			return true, nil
 		}
 	}
-	return &pbs.ListUsersResponse{Items: finalItems}, nil
+
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var listResp *pagination.ListResponse[*iam.User]
+	var sortBy string
+	if req.GetListToken() == "" {
+		sortBy = "created_time"
+		listResp, err = iam.ListUsers(ctx, grantsHash, pageSize, filterItemFn, repo, scopeIds)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.User, grantsHash)
+		if err != nil {
+			return nil, err
+		}
+		switch st := listToken.Subtype.(type) {
+		case *listtoken.PaginationToken:
+			sortBy = "created_time"
+			listResp, err = iam.ListUsersPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.StartRefreshToken:
+			sortBy = "updated_time"
+			listResp, err = iam.ListUsersRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.RefreshToken:
+			sortBy = "updated_time"
+			listResp, err = iam.ListUsersRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
+		}
+	}
+
+	finalItems := make([]*pb.User, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, scopeInfoMap, authResults)
+		if !ok {
+			continue
+		}
+		item, err := toProto(ctx, item, nil, outputOpts...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListUsersResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       sortBy,
+		SortDir:      "desc",
+	}
+	if listResp.ListToken != nil {
+		resp.ListToken, err = handlers.MarshalListToken(ctx, listResp.ListToken, pbs.ResourceType_RESOURCE_TYPE_USER)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, nil
 }
 
 // GetUsers implements the interface pbs.UserServiceServer.
@@ -171,7 +255,7 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -209,7 +293,7 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -246,7 +330,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -300,7 +384,7 @@ func (s Service) AddUserAccounts(ctx context.Context, req *pbs.AddUserAccountsRe
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -338,7 +422,7 @@ func (s Service) SetUserAccounts(ctx context.Context, req *pbs.SetUserAccountsRe
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -376,7 +460,7 @@ func (s Service) RemoveUserAccounts(ctx context.Context, req *pbs.RemoveUserAcco
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -390,6 +474,162 @@ func (s Service) RemoveUserAccounts(ctx context.Context, req *pbs.RemoveUserAcco
 	}
 
 	return &pbs.RemoveUserAccountsResponse{Item: item}, nil
+}
+
+// ListResolvableAliases implements the interface pbs.AliasServiceServer.
+func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolvableAliasesRequest) (*pbs.ListResolvableAliasesResponse, error) {
+	const op = "users.(Service).ListResolvableAliases"
+	if err := validateListResolvableAliasesRequest(req); err != nil {
+		return nil, err
+	}
+
+	authResults := s.authResult(ctx, req.GetId(), action.ListResolvableAliases)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+	acl := authResults.ACL()
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	if req.GetId() != authResults.UserId {
+		var err error
+		acl, grantsHash, err = s.aclAndGrantHashForUser(ctx, req.GetId())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+		}
+	}
+
+	permissions := acl.ListResolvableAliasesPermissions(resource.Target, targets.IdActions)
+
+	if len(permissions) == 0 {
+		// if there are no permitted targets then there will be no aliases that
+		// can resolve to them.
+		return &pbs.ListResolvableAliasesResponse{
+			ResponseType: "complete",
+			SortBy:       "created_time",
+			SortDir:      "desc",
+		}, nil
+	}
+
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
+	}
+
+	repo, err := s.aliasRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var listResp *pagination.ListResponse[*talias.Alias]
+	var sortBy string
+	if req.GetListToken() == "" {
+		sortBy = "created_time"
+		listResp, err = talias.ListResolvableAliases(ctx, grantsHash, pageSize, repo, permissions)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.Alias, grantsHash)
+		if err != nil {
+			return nil, err
+		}
+		switch st := listToken.Subtype.(type) {
+		case *listtoken.PaginationToken:
+			sortBy = "created_time"
+			listResp, err = talias.ListResolvableAliasesPage(ctx, grantsHash, pageSize, listToken, repo, permissions)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.StartRefreshToken:
+			sortBy = "updated_time"
+			listResp, err = talias.ListResolvableAliasesRefresh(ctx, grantsHash, pageSize, listToken, repo, permissions)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.RefreshToken:
+			sortBy = "updated_time"
+			listResp, err = talias.ListResolvableAliasesRefreshPage(ctx, grantsHash, pageSize, listToken, repo, permissions)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
+		}
+	}
+
+	finalItems := make([]*aliaspb.Alias, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		item, err := toResolvableAliasProto(item, handlers.WithOutputFields(outputFields))
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListResolvableAliasesResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       sortBy,
+		SortDir:      "desc",
+	}
+	if listResp.ListToken != nil {
+		resp.ListToken, err = handlers.MarshalListToken(ctx, listResp.ListToken, pbs.ResourceType_RESOURCE_TYPE_ALIAS)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, nil
+}
+
+// aclAndGrantHashForUser returns an ACL from the grants provided to the user and
+// the hash of those grants.
+func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string) (perms.ACL, []byte, error) {
+	const op = "users.(Service).aclAndGrantHashForUser"
+	iamRepo, err := s.repoFn()
+	if err != nil {
+		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	grantTuples, err := iamRepo.GrantsForUser(ctx, userId)
+	if err != nil {
+		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	hash, err := grantTuples.GrantHash(ctx)
+	if err != nil {
+		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	parsedGrants := make([]perms.Grant, 0, len(grantTuples))
+	// Note: Below, we always skip validation so that we don't error on formats
+	// that we've since restricted, e.g. "ids=foo;actions=create,read". These
+	// will simply not have an effect.
+	for _, tuple := range grantTuples {
+		permsOpts := []perms.Option{
+			perms.WithUserId(userId),
+			perms.WithSkipFinalValidation(true),
+		}
+		parsed, err := perms.Parse(
+			ctx,
+			tuple,
+			permsOpts...)
+		if err != nil {
+			return perms.ACL{}, nil, errors.Wrap(ctx, err, op)
+		}
+		parsedGrants = append(parsedGrants, parsed)
+	}
+	return perms.NewACL(parsedGrants...), hash, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.User, []string, error) {
@@ -419,7 +659,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := iam.NewUser(orgId, opts...)
+	u, err := iam.NewUser(ctx, orgId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -447,7 +687,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
 	version := item.GetVersion()
-	u, err := iam.NewUser(orgId, opts...)
+	u, err := iam.NewUser(ctx, orgId, opts...)
 	if err != nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for update: %v.", err)
 	}
@@ -484,18 +724,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.User, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	ul, err := repo.ListUsers(ctx, scopeIds)
-	if err != nil {
-		return nil, err
-	}
-	return ul, nil
 }
 
 func (s Service) addInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*iam.User, []string, error) {
@@ -659,13 +887,46 @@ func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.
 	return &out, nil
 }
 
+func toResolvableAliasProto(a *talias.Alias, opt ...handlers.Option) (*aliaspb.Alias, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building user proto")
+	}
+	outputFields := *opts.WithOutputFields
+
+	pbItem := &aliaspb.Alias{}
+	if a == nil {
+		return pbItem, nil
+	}
+	if outputFields.Has(globals.IdField) {
+		pbItem.Id = a.GetPublicId()
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		pbItem.CreatedTime = a.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
+		pbItem.UpdatedTime = a.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.ValueField) {
+		pbItem.Value = a.GetValue()
+	}
+	if outputFields.Has(globals.DestinationIdField) && a.GetDestinationId() != "" {
+		pbItem.DestinationId = wrapperspb.String(a.GetDestinationId())
+	}
+	if outputFields.Has(globals.TypeField) {
+		pbItem.Type = "target"
+	}
+
+	return pbItem, nil
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //   - The path passed in is correctly formatted
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetUserRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.UserPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
@@ -680,20 +941,20 @@ func validateCreateRequest(req *pbs.CreateUserRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
-	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, iam.UserPrefix)
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, globals.UserPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.UserPrefix)
 }
 
-func validateListRequest(req *pbs.ListUsersRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListUsersRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
@@ -704,7 +965,7 @@ func validateListRequest(req *pbs.ListUsersRequest) error {
 
 func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -716,9 +977,10 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
+			globals.OidcAccountPrefix,
+			globals.LdapAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -732,7 +994,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 
 func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -741,9 +1003,10 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
+			globals.OidcAccountPrefix,
+			globals.LdapAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -757,7 +1020,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 
 func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -769,9 +1032,10 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
+			globals.OidcAccountPrefix,
+			globals.LdapAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -781,4 +1045,42 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
+}
+
+func validateListResolvableAliasesRequest(req *pbs.ListResolvableAliasesRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
+		badFields[globals.IdField] = "Incorrectly formatted identifier."
+	}
+	if req.GetId() == globals.RecoveryUserId {
+		badFields["principal_ids"] = "Cannot list resolvable aliases for the recovery user."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func newOutputOpts(ctx context.Context, item *iam.User, scopeInfoMap map[string]*scopes.ScopeInfo, authResults auth.VerifyResults) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		Type: resource.User,
+	}
+	res.Id = item.GetPublicId()
+	res.ScopeId = item.GetScopeId()
+	res.ParentScopeId = scopeInfoMap[item.GetScopeId()].GetParentScopeId()
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res))
+	if len(authorizedActions) == 0 {
+		return nil, false
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
+	}
+	return outputOpts, true
 }

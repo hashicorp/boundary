@@ -1,0 +1,64 @@
+---
+layout: docs
+page_title: roles - Command
+description: >-
+  The "roles" command performs operations on Boundary role resources. Roles contain collections of permissions which are granted to principals assigned to the role.
+---
+
+# roles
+
+Command: `boundary roles`
+
+The `roles` command lets you perform operations on Boundary role resources.
+
+## Example
+
+The following command creates a role with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary roles create -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary roles <subcommand> [options] [args]
+  # ...
+Subcommands:
+    add-grant-scopes     Add grant scopes to a role
+    add-grants           Add grants to a role
+    add-principals       Add principals (users, groups) to a role
+    create               Create a role
+    delete               Delete a role
+    list                 List a role
+    read                 Read a role
+    remove-grant-scopes  Remove grant scopes from a role
+    remove-grants        Remove grants from a role
+    remove-principals    Remove principals (users, groups) from a role
+    set-grant-scopes     Set the full contents of grant scopes on a role
+    set-grants           Set the full contents of the grants on a role
+    set-principals       Set the full contents of the principals (users, groups) on a role
+    update               Update a role
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [add-grant-scopes](/boundary/docs/commands/roles/add-grant-scopes)
+- [add-grants](/boundary/docs/commands/roles/add-grants)
+- [add-principals](/boundary/docs/commands/roles/add-principals)
+- [create](/boundary/docs/commands/roles/create)
+- [delete](/boundary/docs/commands/roles/delete)
+- [list](/boundary/docs/commands/roles/list)
+- [read](/boundary/docs/commands/roles/read)
+- [remove-grant-scopes](/boundary/docs/commands/roles/remove-grant-scopes)
+- [remove-grants](/boundary/docs/commands/roles/remove-grants)
+- [remove-principals](/boundary/docs/commands/roles/remove-principals)
+- [set-grant-scopes](/boundary/docs/commands/roles/set-grant-scopes)
+- [set-grants](/boundary/docs/commands/roles/set-grants)
+- [set-principals](/boundary/docs/commands/roles/set-principals)
+- [update](/boundary/docs/commands/roles/update)

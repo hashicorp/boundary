@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package timestamp
 
 import (
@@ -15,7 +18,7 @@ var (
 )
 
 // Scan implements sql.Scanner for protobuf Timestamp.
-func (ts *Timestamp) Scan(value interface{}) error {
+func (ts *Timestamp) Scan(value any) error {
 	switch t := value.(type) {
 	case time.Time:
 		ts.Timestamp = timestamppb.New(t) // google proto version
@@ -34,10 +37,16 @@ func (ts *Timestamp) Scan(value interface{}) error {
 
 // Scan implements driver.Valuer for protobuf Timestamp.
 func (ts *Timestamp) Value() (driver.Value, error) {
-	if ts == nil {
+	switch {
+	case ts == nil:
 		return nil, nil
+	case ts.AsTime().Equal(NegativeInfinityTS):
+		return "-infinity", nil
+	case ts.AsTime().Equal(PositiveInfinityTS):
+		return "infinity", nil
+	default:
+		return ts.Timestamp.AsTime(), nil
 	}
-	return ts.Timestamp.AsTime(), nil
 }
 
 // GormDataType gorm common data type (required)

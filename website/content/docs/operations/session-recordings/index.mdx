@@ -1,0 +1,58 @@
+---
+layout: docs
+page_title: Recorded sessions format and security
+description: >-
+  Learn about asciicast, the recording format used for recorded sessions. Understand security concerns and discover resources for working with recorded sessions.
+---
+
+# Recorded sessions operations
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Boundary provides [auditing](/boundary/docs/concepts/auditing) capabilities via [session recording](/boundary/docs/configuration/session-recording).
+In Boundary, a session represents a set of connections between a user and a host from a target.
+The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+When you enable session recording on a target, any user session that connects to the target is automatically recorded.
+An administrator can later view the recordings to investigate security issues, review system activity, or perform regular assessments of security policies and procedures.
+
+Recorded sessions are stored in an external storage bucket that you create.
+Storing session recordings in a system external to Boundary means those recordings can be accessed, modified, deleted, and even restored independently of Boundary.
+You can view any sessions that Boundary recorded in your storage provider or via the CLI.
+
+## asciicast
+
+When you view recorded sessions using the CLI or Admin UI, Boundary can convert the recording into other formats for playback.
+Currently Boundary supports converting the recording of an individual SSH channel into an [asciicast](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format to play back an interactive SSH session.
+
+### Limitations
+
+The asciicast format is well suited for the playback of interactive shell activity.
+However, some aspects of the recording cannot be translated into asciicast.
+For example, if an SSH session uses the `RemoteCommand` option, or is used to `exec` a command, the command is not displayed in the asciicast.
+The output of the command may be displayed, though.
+
+If you use SSH for something other than an interactive shell, such as for file transfer, X11 forwarding, or port forwarding, Boundary does not attempt to create an asciicast.
+In all cases, the SSH session is still recorded in the [BSR file](/boundary/docs/concepts/auditing/#bsr-directory-structure) and you can view the BSR file in the external storage bucket.
+
+### Security
+
+When a worker converts an SSH recording into the BSR file, it iterates through each of the requests in the recording and displays some of them to the user.
+If you use an environment request to set the shell variable, the request is included in the asciicast header.
+You should be aware of the following security concerns that could result from this behavior:
+
+- asciicast only includes the last value that you send in the header, any previous values are overwritten.
+An attacker may be able to use a malicious shell value at the beginning of a session, and then switch to `shell=/bin/bash` at the end of the session to conceal the malicious activity.
+
+- asciicast does not display other variables such as `path` in the header, but they can cause drastic changes to code execution during the SSH session.
+An attacker could change the `path` variable to point to a malicious program or change the beahvior of a normal program so that it performs a malicious action.
+
+- asciicast silently ignores any requests that do not have an explicit handler, even though they may cause signficant changes to code execution during the SSH session.
+An attacker could execute malicious code using a request without an explicit handler.
+
+## Next steps
+
+For more information about working with recorded sessions, refer to the following topics:
+
+- [Find and view recorded sessions](/boundary/docs/operations/session-recordings/manage-recorded-sessions)
+- [Validate the integrity of session recordings](/boundary/docs/operations/session-recordings/validate-session-recordings)
+- [How Boundary validates data integrity in the external data store](/boundary/docs/operations/session-recordings/validate-data-store)

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package password
 
 import (
@@ -32,7 +35,7 @@ func TestRepository_Authenticate(t *testing.T) {
 	}
 	passwd := "12345678"
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 	outAcct, err := repo.CreateAccount(context.Background(), o.GetPublicId(), inAcct, WithPassword(passwd))
@@ -142,7 +145,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	passwd := "12345678"
 	ctx := context.Background()
 
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(context.Background(), rw, rw, kmsCache)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -171,7 +174,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	// Get the credential for the new account and verify the KDF used the
 	// original argon2 configuration
 	origCred := &Argon2Credential{Argon2Credential: &store.Argon2Credential{}}
-	require.NoError(rw.LookupWhere(ctx, origCred, "password_account_id = ?", []interface{}{origAcct.PublicId}))
+	require.NoError(rw.LookupWhere(ctx, origCred, "password_account_id = ?", []any{origAcct.PublicId}))
 	assert.Equal(origAcct.PublicId, origCred.PasswordAccountId)
 	assert.Equal(origConfId, origCred.PasswordConfId)
 	assert.Equal(origCred.CreateTime, origCred.UpdateTime, "create and update times are equal")
@@ -213,6 +216,11 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	require.True(ok, "want *Argon2Configuration")
 	assert.NotEqual(origConfId, upArgonConf.PrivateId)
 
+	// Change the key used to encrypt the password too, to test
+	// that it gets updated appropriately
+	err = kmsCache.RotateKeys(ctx, o.GetPublicId())
+	require.NoError(err)
+
 	// Authenticate and verify the credential ID has not changed
 	auth2Acct, err := repo.Authenticate(ctx, o.GetPublicId(), authMethodId, loginName, passwd)
 	require.NoError(err)
@@ -242,6 +250,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	assert.NotEqual(origCred.PasswordConfId, auth2Cred.PasswordConfId, "the configuration Id should be different")
 	assert.NotEqual(origCred.Salt, auth2Cred.Salt, "a new salt value should be generated")
 	assert.NotEqual(origCred.DerivedKey, auth2Cred.DerivedKey, "the derived key should be different")
+	assert.NotEqual(origCred.KeyId, auth2Cred.KeyId)
 
 	assert.NoError(db.TestVerifyOplog(t, rw, auth2Cred.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 }
@@ -252,7 +261,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
@@ -415,7 +424,7 @@ func TestRepository_SetPassword(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 

@@ -1,0 +1,111 @@
+---
+layout: docs
+page_title: workers create - Command
+description: >-
+  The "workers create" command creates new worker resources.
+---
+
+# workers create
+
+Command: `boundary workers create`
+
+The `boundary workers create` command lets you create Boundary workers.
+
+## Example
+
+This example creates a worker with the name `prodops` and the description `Worker for ProdOps`:
+
+```shell-session
+$ boundary workers create -name prodops -description "Worker for ProdOps"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary workers create [options] [args]
+
+ # ...
+
+Subcommands:
+    controller-led  Create a controller-led type worker.
+    worker-led      Create a worker-led type worker.
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can create controller-led or worker-led types of workers.
+
+<Tabs>
+<Tab heading="controller-led">
+
+The `workers create controller-led` command lets you create a worker by receiving an activation token from a controller.
+
+#### Example
+
+This example creates a controller-led worker named `us-east-1-1`:
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary workers create controller-led -name us-east-1-1
+```
+
+</CodeBlockConfig>
+
+#### Usage
+
+```shell-session
+$ boundary workers create controller-led [options] [args]
+```
+
+#### Command options
+
+- `-description=<string>` - A description to set on the controller-led type worker.
+- `name=<string>` - A name to set on the controller-led type worker.
+- `scope-id=<string>` - The scope in which to make the request.
+The default is `global`.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
+
+</Tab>
+<Tab heading="worker-led">
+
+The `workers create worker-led` command lets you create a worker by providing an auth method from the worker.
+
+#### Example
+
+This example specifies a worker-generated auth token and creates a worker named `us-east-1-1`:
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary workers create worker-led -name us-east-1-1 -worker-generated-auth-token <token>
+```
+
+</CodeBlockConfig>
+
+#### Usage
+
+```shell-session
+$ boundary workers create worker-led [options] [args]
+```
+
+#### Command options
+
+- `-description=<string>` - A description to set on the worker-led type worker.
+- `name=<string>` - A name to set on the worker-led type worker.
+- `scope-id=<string>` - The scope in which to make the request.
+The default is `global`.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
+
+#### Worker creation options
+
+- `worker-generated-auth-token=<string>` - The auth token that is provided by the worker and used to register the worker with Boundary.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

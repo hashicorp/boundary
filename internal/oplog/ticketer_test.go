@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oplog
 
 import (
@@ -11,8 +14,8 @@ import (
 
 // Test_NewGormTicketer provides unit tests for creating a Gorm ticketer
 func Test_NewTicketer(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, _ := setup(testCtx, t)
 
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -30,8 +33,8 @@ func Test_NewTicketer(t *testing.T) {
 
 // Test_GetTicket provides unit tests for getting oplog.Tickets
 func Test_GetTicket(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, _ := setup(testCtx, t)
 
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 	require.NoError(t, err)
@@ -55,15 +58,17 @@ func Test_GetTicket(t *testing.T) {
 
 // Test_Redeem provides unit tests for redeeming tickets
 func Test_Redeem(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, _ := setup(testCtx, t)
 
 	t.Run("valid", func(t *testing.T) {
 		require := require.New(t)
 
 		tx, err := dbw.New(db).Begin(testCtx)
 		require.NoError(err)
-		defer tx.Commit(testCtx)
+		defer func() {
+			assert.NoError(t, tx.Commit(testCtx))
+		}()
 		ticketer, err := NewTicketer(testCtx, tx.DB(), WithAggregateNames(true))
 		require.NoError(err)
 
@@ -78,7 +83,9 @@ func Test_Redeem(t *testing.T) {
 
 		tx, err := dbw.New(db).Begin(testCtx)
 		require.NoError(err)
-		defer tx.Commit(testCtx)
+		defer func() {
+			assert.NoError(tx.Commit(testCtx))
+		}()
 
 		ticketer, err := NewTicketer(testCtx, tx.DB(), WithAggregateNames(true))
 		require.NoError(err)
@@ -107,7 +114,7 @@ func Test_Redeem(t *testing.T) {
 
 		err = ticketer.Redeem(testCtx, ticket)
 		require.NoError(err)
-		tx.Commit(testCtx)
+		assert.NoError(tx.Commit(testCtx))
 
 		err = secondTicketer.Redeem(testCtx, secondTicket)
 		assert.Contains(err.Error(), "ticket already redeemed: integrity violation: error #106")

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.resources.workers.v1;
@@ -13,10 +16,10 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 // Worker contains all fields related to a Worker resource
 message Worker {
   // Output only. The ID of the User.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope this resource is in.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -42,10 +45,10 @@ message Worker {
   ]; // @gotags: `class:"sensitive"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
@@ -64,7 +67,7 @@ message Worker {
   map<string, google.protobuf.ListValue> config_tags = 130 [json_name = "config_tags"]; // @gotags: `class:"public"`
 
   // Output only. The time this worker daemon last reported its status.
-  google.protobuf.Timestamp last_status_time = 140 [json_name = "last_status_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp last_status_time = 140 [json_name = "last_status_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // worker_generated_auth_token is input only. Supports the worker led node
   // enrollment flow where this credentials token is produced by a worker. This
@@ -77,7 +80,7 @@ message Worker {
   google.protobuf.StringValue controller_generated_activation_token = 151 [json_name = "controller_generated_activation_token"]; // @gotags: `class:"secret"`
 
   // Output only. The number of connections that this worker is currently handling.
-  google.protobuf.UInt32Value active_connection_count = 160 [json_name = "active_connection_count"]; // @gotags: `class:"public"`
+  google.protobuf.UInt32Value active_connection_count = 160 [json_name = "active_connection_count"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The type of the worker, denoted by how it authenticates: `pki`
   // or `kms`.
@@ -87,10 +90,52 @@ message Worker {
   map<string, google.protobuf.ListValue> api_tags = 180 [json_name = "api_tags"]; // @gotags: `class:"public"`
 
   // Output only. The version of the Boundary binary the worker is running.
-  string release_version = 190 [json_name = "release_version"]; // @gotags: `class:"public"`
+  string release_version = 190 [json_name = "release_version"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. The ids of the workers directly connected to this worker.
+  repeated string directly_connected_downstream_workers = 200 [json_name = "directly_connected_downstream_workers"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The available actions on this resource for the requester.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+
+  // Output only. The local_storage_state indicates the state of the local disk space of the worker.
+  // Possible values are:
+  // - available: The worker local storage state is at an acceptable state
+  // - low storage: The worker is below the minimum threshold for local storage
+  // - critically low storage: The worker local storage state is below the critical minimum threshold for local storage
+  // - out of storage: The worker is out of local disk space
+  // - not configured: The worker does not have a local storage path configured
+  // - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known
+  string local_storage_state = 310 [json_name = "local_storage_state"]; // @gotags: `class:"public"`
+
+  // Output only. The remote_storage_state indicats the permission state of the storage buckets that the Worker
+  // is actively using. The possible permission state types include: write, read, and delete. The possible
+  // permission state values include: unknown, error, and ok.
+  map<string, RemoteStorageState> remote_storage_state = 320 [json_name = "remote_storage_state"]; // @gotags: `class:"public"`
+}
+
+message RemoteStorageState {
+  // Output only. The overall health status of the storage bucket. The possible values include: error and available.
+  // The status exists in an available state if each remote storage permission state does not have an error. An unknown remote
+  // storage permission state does not affect the overall health status.
+  string status = 10; // @gotags: `class:"public"`
+
+  // Output only. The remote storage permissions contains the permission state for each individual permission type.
+  RemoteStoragePermissions permissions = 20; // @gotags: `class:"public"`
+}
+
+message RemoteStoragePermissions {
+  // Output only. The status of the write permission state for the given storage bucket.
+  // Possible values are: unknown, error, and ok.
+  string write = 10; // @gotags: `class:"public"`
+
+  // Output only. The status of the read permission state for the given storage bucket.
+  // Possible values are: unknown, error, and ok.
+  string read = 20; // @gotags: `class:"public"`
+
+  // Output only. The status of the delete permission state for the given storage bucket.
+  // Possible values are: unknown, error, and ok.
+  string delete = 30; // @gotags: `class:"public"`
 }
 
 message Certificate {

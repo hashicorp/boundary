@@ -1,0 +1,64 @@
+---
+layout: docs
+page_title: Aliases
+description: >-
+  Aliases let you associate a string with a resource. Learn how to use an alias instead of an ID when you connect to a target.
+---
+
+# Aliases
+
+An alias is a globally unique, DNS-like string that is associated with a destination resource. You can establish a session to a target by referencing its alias, instead of having to provide a target ID or target name and scope ID.
+
+For example, if you have an alias `boundary.dev`, you can use it to connect to a target with the following command: `boundary connect ssh boundary.dev`.
+
+## Background
+
+When you create a resource in Boundary, it assigns the resource a randomly generated identifier. You must use those IDs to perform actions in Boundary. When you connect to a target using the terminal, you must reference the target ID or target name and scope name.
+
+As an example, to SSH to a target, you can execute the command `boundary connect ssh -target-id ttcp_123456789`.
+
+Since it can be difficult to remember the unique IDs, users frequently have to look up the identifiers for any resources they want to operate on.
+
+Aliases simplify this process. When you create an alias and associate it with a target, you can later use the alias `value` instead of the target ID in commands. Boundary automatically resolves to the target that the alias references.
+
+## Permissions
+
+The existence of an alias for a Boundary resource does not change how permissions function. Anyone can attempt to use an alias to access a target, but if you do not have permission to access the target, the attempt fails. You can create an alias for a target, even if you do not have permission to access the target.
+
+Separating the permissions from aliases and destination resources means a different set of people can manage the aliases than the people who have permission to operate on targets. For example, you may have a project with a sensitive set of targets. You can configure Boundary to allow a select few users to manage those targets, while a different group of users manage the aliases.
+
+## Naming conventions
+
+An alias is a globally unique, DNS-like string that is associated with a destination resource. The alias `value` parameter does not have to be delimited by a suffix, and can be just a hostname.
+
+Examples of valid aliases include `database.boundary` and `webserver.boundary`.
+
+### Single word aliases and transparent sessions
+
+HashiCorp recommends that you do not use single-word aliases such as `webserver` as opposed to `webserver.boundary`, because single-word aliases do not work intuitively on Windows.
+
+Windows DNS resolution does not support resolving unqualified single word DNS hostnames. You can make the hostname fully qualified, but is not intuitive to most users.
+
+For example the following hostname works:
+
+```
+ssh mytarget.
+```
+
+But this hostname does not work:
+
+```
+ssh mytarget
+```
+
+For this reason, if you expect any Windows users to use an alias, it should contain a dot (`.`) anywhere in the value.
+
+Refer to the [transparent sessions](/boundary/docs/concepts/transparent-sessions) documentation for more information.
+
+## Scopes
+
+You can only create aliases in the `global` scope. However, you can associate aliases with targets or hosts from any scope. Support for additional resource types may be added in the future.
+
+If you delete a project, Boundary clears the `destination_id` parameter for any aliases that resolve to targets in that project, so that they no longer function.
+
+Refer to the [Configure aliases and transparent sessions](/boundary/docs/configuration/target-aliases) pages to learn more.

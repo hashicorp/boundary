@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
   alter table session alter constraint target_fkey                deferrable initially deferred;
   alter table session alter constraint session_auth_token_id_fkey deferrable initially deferred;

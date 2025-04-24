@@ -1,0 +1,48 @@
+---
+layout: docs
+page_title: storage-buckets - Command
+description: >-
+  The "storage-buckets" command performs operations on Boundary storage bucket resources. Storage buckets store session recordings.
+---
+
+# storage-buckets
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary storage-buckets`
+
+The `storage-buckets` command lets you perform operations on Boundary storage bucket resources.
+
+## Example
+
+The following command reads the details of a storage bucket with the id `sb_1234567890`:
+
+```shell-session
+$ boundary storage-buckets read -id sb_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary storage-buckets <subcommand> [options] [args]
+  # ...
+Subcommands:
+    create    Create a storage bucket
+    delete    Delete a storage bucket
+    list      List a storage bucket
+    read      Read a storage bucket
+    update    Update a storage bucket
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/storage-buckets/create)
+- [delete](/boundary/docs/commands/storage-buckets/delete)
+- [list](/boundary/docs/commands/storage-buckets/list)
+- [read](/boundary/docs/commands/storage-buckets/read)
+- [update](/boundary/docs/commands/storage-buckets/update)

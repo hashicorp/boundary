@@ -1,0 +1,52 @@
+---
+layout: docs
+page_title: host-sets - Command
+description: >-
+  The "host-sets" command performs operations on Boundary host set resources. A host set represents a collection of hosts with the same access control.
+---
+
+# host-sets
+
+Command: `boundary host-sets`
+
+The `host-sets` command lets you perform operations on Boundary host set resources.
+
+## Example
+
+The following command reads the details of a host set with the ID `hsst_1234567890`:
+
+```shell-session
+$ boundary host-sets read -id hsst_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary host-sets <subcommand> [options] [args]
+  # ...
+Subcommands:
+    add-hosts       Add hosts to the specified host set
+    create          Create a host set
+    delete          Delete a host set
+    list            List a host set
+    read            Read a host set
+    remove-hosts    Remove hosts from the specified host set
+    set-hosts       Set the full contents of the hosts on the specified host set
+    update          Update a host set
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [add-hosts](/boundary/docs/commands/host-sets/add-hosts)
+- [create](/boundary/docs/commands/host-sets/create)
+- [delete](/boundary/docs/commands/host-sets/delete)
+- [list](/boundary/docs/commands/host-sets/list)
+- [read](/boundary/docs/commands/host-sets/read)
+- [remove-hosts](/boundary/docs/commands/host-sets/remove-hosts)
+- [set-hosts](/boundary/docs/commands/host-sets/set-hosts)
+- [update](/boundary/docs/commands/host-sets/update)

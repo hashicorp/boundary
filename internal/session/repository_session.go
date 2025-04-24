@@ -1,8 +1,10 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/subtle"
 	"database/sql"
 	"fmt"
@@ -12,7 +14,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/util"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
@@ -20,62 +24,59 @@ import (
 // its State of "Pending".  The following fields must be empty when creating a
 // session: WorkerId, and PublicId.  No options are
 // currently supported.
-func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, workerAddresses []string, _ ...Option) (*Session, ed25519.PrivateKey, error) {
+func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, workerAddresses []string, _ ...Option) (*Session, error) {
 	const op = "session.(Repository).CreateSession"
 	if newSession == nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session")
 	}
 	if newSession.PublicId != "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id is not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id is not empty")
 	}
 	if len(newSession.Certificate) != 0 {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "certificate is not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "certificate is not empty")
 	}
 	if newSession.TargetId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
-	}
-	if newSession.HostId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing host id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if newSession.UserId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
-	}
-	if newSession.HostSetId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing host set id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	if newSession.AuthTokenId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
 	}
 	if newSession.ProjectId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+	if newSession.HostId == "" && newSession.HostSetId == "" && newSession.Endpoint == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host source and endpoint")
 	}
 	if newSession.CtTofuToken != nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
 	}
 	if newSession.TofuToken != nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "tofu token is not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "tofu token is not empty")
 	}
 	if newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero() {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
 	}
 	if len(workerAddresses) == 0 {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
 	}
 
-	id, err := newId()
+	id, err := newId(ctx)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	privKey, certBytes, err := newCert(ctx, sessionWrapper, newSession.UserId, id, workerAddresses, newSession.ExpirationTime.Timestamp.AsTime())
+	privKey, certBytes, err := newCert(ctx, id, workerAddresses, newSession.ExpirationTime.Timestamp.AsTime(), r.randomReader)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	newSession.Certificate = certBytes
+	newSession.CertificatePrivateKey = privKey
 	newSession.PublicId = id
-	newSession.KeyId, err = sessionWrapper.KeyId(ctx)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get session wrapper key id"))
+	if err := newSession.encrypt(ctx, sessionWrapper); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to encrypt session"))
 	}
 
 	var returnedSession *Session
@@ -91,11 +92,42 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				return errors.Wrap(ctx, err, op)
 			}
 
+			if newSession.HostSetId != "" && newSession.HostId != "" {
+				hs, err := NewSessionHostSetHost(ctx, newSession.PublicId, newSession.HostSetId, newSession.HostId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err = w.Create(ctx, hs); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				returnedSession.HostSetId = hs.HostSetId
+				returnedSession.HostId = hs.HostId
+			} else if newSession.Endpoint != "" {
+				ta, err := NewSessionTargetAddress(ctx, newSession.PublicId, newSession.TargetId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err = w.Create(ctx, ta); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+			}
+
+			if newSession.ProtocolWorkerId != "" {
+				swp, err := NewSessionWorkerProtocol(ctx, newSession.PublicId, newSession.ProtocolWorkerId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err = w.Create(ctx, swp); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				returnedSession.ProtocolWorkerId = swp.WorkerId
+			}
+
 			for _, cred := range newSession.DynamicCredentials {
 				cred.SessionId = newSession.PublicId
 			}
 
-			var staticCreds []interface{}
+			var staticCreds []*StaticCredential
 			for _, cred := range newSession.StaticCredentials {
 				cred.SessionId = newSession.PublicId
 				staticCreds = append(staticCreds, cred)
@@ -108,14 +140,14 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 
 				// Get static creds back from the db for return
 				var c []*StaticCredential
-				if err := read.SearchWhere(ctx, &c, "session_id = ?", []interface{}{newSession.PublicId}); err != nil {
+				if err := read.SearchWhere(ctx, &c, "session_id = ?", []any{newSession.PublicId}); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 				returnedSession.StaticCredentials = c
 			}
 
 			// TODO: after upgrading to gorm v2 this batch insert can be replaced, since gorm v2 supports batch inserts
-			q, batchInsertArgs, err := batchInsertsessionCredentialDynamic(newSession.DynamicCredentials)
+			q, batchInsertArgs, err := batchInsertSessionCredentialDynamic(newSession.DynamicCredentials)
 			if err == nil {
 				rows, err := w.Query(ctx, q, batchInsertArgs)
 				if err != nil {
@@ -124,8 +156,13 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				defer rows.Close()
 				for rows.Next() {
 					var returnedCred DynamicCredential
-					w.ScanRows(ctx, rows, &returnedCred)
+					if err := w.ScanRows(ctx, rows, &returnedCred); err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
 					returnedSession.DynamicCredentials = append(returnedSession.DynamicCredentials, &returnedCred)
+				}
+				if err := rows.Err(); err != nil {
+					return errors.Wrap(ctx, err, op)
 				}
 			}
 
@@ -148,20 +185,23 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return returnedSession, privKey, nil
+	return returnedSession, nil
 }
 
 // LookupSession will look up a session in the repository and return the session
 // with its states.  Returned States are ordered by start time descending.  If the
-// session is not found, it will return nil, nil, nil. No options are currently
-// supported.
-func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...Option) (*Session, *AuthzSummary, error) {
+// session is not found, it will return nil, nil, nil. If the session has no user
+// or project associated with it, decryption of fields will not be performed.
+// Supported Options:
+//   - WithIgnoreDecryptionFailures
+func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, *AuthzSummary, error) {
 	const op = "session.(Repository).LookupSession"
 	if sessionId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
+	opts := getOpts(opt...)
 	session := AllocSession()
 	session.PublicId = sessionId
 	_, err := r.writer.DoTx(
@@ -172,14 +212,14 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			if err := read.LookupById(ctx, &session); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
 			}
-			states, err := fetchStates(ctx, read, sessionId, db.WithOrder("start_time desc"))
+			states, err := fetchStates(ctx, read, sessionId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			session.States = states
 
 			var dynamicCreds []*DynamicCredential
-			if err := read.SearchWhere(ctx, &dynamicCreds, "session_id = ?", []interface{}{sessionId}); err != nil {
+			if err := read.SearchWhere(ctx, &dynamicCreds, "session_id = ?", []any{sessionId}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			if len(dynamicCreds) > 0 {
@@ -187,12 +227,25 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			}
 
 			var staticCreds []*StaticCredential
-			if err := read.SearchWhere(ctx, &staticCreds, "session_id = ?", []interface{}{sessionId}); err != nil {
+			if err := read.SearchWhere(ctx, &staticCreds, "session_id = ?", []any{sessionId}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			if len(staticCreds) > 0 {
 				session.StaticCredentials = staticCreds
 			}
+
+			sessionHostSetHost := AllocSessionHostSetHost()
+			if err := read.LookupWhere(ctx, sessionHostSetHost, "session_id = ?", []any{sessionId}); err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			session.HostSetId = sessionHostSetHost.HostSetId
+			session.HostId = sessionHostSetHost.HostId
+
+			sessionWorkerProtocol := AllocSessionWorkerProtocol()
+			if err := read.LookupWhere(ctx, sessionWorkerProtocol, "session_id = ?", []any{sessionId}); err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			session.ProtocolWorkerId = sessionWorkerProtocol.WorkerId
 
 			connections, err := fetchConnections(ctx, read, sessionId, db.WithOrder("create_time desc"))
 			if err != nil {
@@ -208,16 +261,14 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 		}
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	if len(session.CtTofuToken) > 0 {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ProjectId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+
+	// Skip decryption if Project ID or UserId is missing,
+	// since it will just lead to errors, and the session
+	// is already canceled if either of those are empty.
+	if session.ProjectId != "" && session.UserId != "" {
+		if err := decrypt(ctx, r.kms, &session); err != nil && !opts.withIgnoreDecryptionFailures {
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
-		if err := session.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("cannot decrypt session value"))
-		}
-	} else {
-		session.CtTofuToken = nil
 	}
 
 	authzSummary, err := r.sessionAuthzSummary(ctx, sessionId)
@@ -228,71 +279,165 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
-// ListSessions lists sessions. Sessions returned will be limited by the list
-// permissions of the repository. Supports the WithTerminated, WithLimit,
-// WithOrderByCreateTime options.
-func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
+// listSessions lists sessions. Sessions returned will be limited by the list
+// permissions of the repository.
+// Supported options:
+//   - withTerminated
+//   - withLimit
+//   - withStartPageAfterItem
+func (r *Repository) listSessions(ctx context.Context, opt ...Option) ([]*Session, time.Time, error) {
 	const op = "session.(Repository).ListSessions"
-	opts := getOpts(opt...)
 
 	where, args := r.listPermissionWhereClauses()
 	if len(where) == 0 {
-		return nil, nil
+		return nil, time.Time{}, nil
 	}
 
-	var whereClause string
-	if len(where) > 0 {
-		whereClause = " where (" + strings.Join(where, " or ") + ")"
-		if !opts.withTerminated {
-			whereClause += "and termination_reason is null"
+	opts := getOpts(opt...)
+
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+	if !opts.withTerminated {
+		permissionWhereClause += " and termination_reason is null"
+	}
+
+	limit := r.defaultLimit
+	if opts.withLimit > 0 {
+		limit = opts.withLimit
+	}
+
+	query := fmt.Sprintf(listSessionsTemplate, permissionWhereClause, limit)
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listSessionsPageTemplate, permissionWhereClause, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.querySessions(ctx, query, args)
+}
+
+// listSessionsRefresh lists sessions limited by the list
+// permissions of the repository.
+// Supported options:
+//   - withTerminated
+//   - withLimit
+//   - withStartPageAfterItem
+func (r *Repository) listSessionsRefresh(ctx context.Context, updatedAfter time.Time, opt ...Option) ([]*Session, time.Time, error) {
+	const op = "session.(Repository).ListSessionsRefresh"
+
+	if updatedAfter.IsZero() {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+
+	where, args := r.listPermissionWhereClauses()
+	if len(where) == 0 {
+		return nil, time.Time{}, nil
+	}
+
+	opts := getOpts(opt...)
+
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+	if !opts.withTerminated {
+		permissionWhereClause += " and termination_reason is null"
+	}
+
+	limit := r.defaultLimit
+	if opts.withLimit > 0 {
+		limit = opts.withLimit
+	}
+
+	query := fmt.Sprintf(refreshSessionsTemplate, permissionWhereClause, limit)
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	)
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(refreshSessionsPageTemplate, permissionWhereClause, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.querySessions(ctx, query, args)
+}
+
+func (r *Repository) querySessions(ctx context.Context, query string, args []any) ([]*Session, time.Time, error) {
+	const op = "session.(Repository).querySessions"
+
+	var sessions []*Session
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		rows, err := rd.Query(ctx, query, args)
+		if err != nil {
+			return err
 		}
-	} else {
-		if !opts.withTerminated {
-			whereClause = "where termination_reason is null"
+		defer rows.Close()
+		var sessionsList []*sessionListView
+		for rows.Next() {
+			var s sessionListView
+			if err := rd.ScanRows(ctx, rows, &s); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+			}
+			sessionsList = append(sessionsList, &s)
 		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get next row for session"))
+		}
+		sessions, err = r.convertToSessions(ctx, sessionsList)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
+	return sessions, transactionTimestamp, nil
+}
 
-	var limit string
-	switch {
-	case opts.withLimit < 0: // any negative number signals unlimited results
-	case opts.withLimit == 0: // zero signals the default value and default limits
-		limit = fmt.Sprintf("limit %d", r.defaultLimit)
-	default:
-		// non-zero signals an override of the default limit for the repo.
-		limit = fmt.Sprintf("limit %d", opts.withLimit)
+// listDeletedIds lists the public IDs of any sessions deleted since the timestamp provided.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "session.(Repository).listDeletedIds"
+	var deletedSessions []*deletedSession
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedSessions, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted sessions"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
-	var withOrder string
-	switch opts.withOrderByCreateTime {
-	case db.AscendingOrderBy:
-		withOrder = "order by create_time asc"
-	case db.DescendingOrderBy:
-		fallthrough
-	default:
-		withOrder = "order by create_time"
+	var sessionIds []string
+	for _, sess := range deletedSessions {
+		sessionIds = append(sessionIds, sess.PublicId)
 	}
+	return sessionIds, transactionTimestamp, nil
+}
 
-	q := sessionList
-	query := fmt.Sprintf(q, whereClause, withOrder, limit, withOrder)
-
-	rows, err := r.reader.Query(ctx, query, args)
+// estimatedCount returns an estimate of the total number of items in the session table.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "session.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountSessions, nil)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
 	}
-	defer rows.Close()
-
-	var sessionsList []*sessionListView
+	var count int
 	for rows.Next() {
-		var s sessionListView
-		if err := r.reader.ScanRows(ctx, rows, &s); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
 		}
-		sessionsList = append(sessionsList, &s)
 	}
-	sessions, err := r.convertToSessions(ctx, sessionsList, withListingConvert(true))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
 	}
-	return sessions, nil
+	return count, nil
 }
 
 // DeleteSession will delete a session from the repository.
@@ -340,7 +485,9 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, _ ...Op
 // session state to "canceling" for the given reason, so the workers can get the
 // "canceling signal" during their next status heartbeat. CancelSession is
 // idempotent.
-func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, error) {
+// Supported Options:
+//   - WithIgnoreDecryptionFailures
+func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32, opt ...Option) (*Session, error) {
 	const op = "session.(Repository).CancelSession"
 	if sessionId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
@@ -348,7 +495,7 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 	if sessionVersion == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session version")
 	}
-	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCanceling)
+	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCanceling, opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -401,7 +548,7 @@ func (r *Repository) terminateSessionIfPossible(ctx context.Context, sessionId s
 		func(reader db.Reader, w db.Writer) error {
 			var err error
 			rowsAffected, err = w.Exec(ctx, terminateSessionIfPossible,
-				[]interface{}{sql.Named("public_id", sessionId)})
+				[]any{sql.Named("public_id", sessionId)})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -418,11 +565,13 @@ type AuthzSummary struct {
 	ExpirationTime         *timestamp.Timestamp
 	ConnectionLimit        int32
 	CurrentConnectionCount uint32
+	EgressWorkerFilter     string
+	IngressWorkerFilter    string
 }
 
 func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*AuthzSummary, error) {
 	const op = "session.(Repository).sessionAuthzSummary"
-	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []interface{}{sql.Named("session_id", sessionId)})
+	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []any{sql.Named("session_id", sessionId)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -438,7 +587,78 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get next row for session"))
+	}
 	return info, nil
+}
+
+// Lookup an activated session. Must run in a transaction.
+func (r *Repository) lookupActivatedSessionTx(ctx context.Context, reader db.Reader, writer db.Writer, sessionId string,
+	tofuToken []byte, activatedSession *Session,
+) error {
+	const op = "session.(Repository).lookupActivatedSessionTx"
+	var txErr error
+	if txErr = reader.LookupById(ctx, activatedSession); txErr != nil {
+		return errors.Wrap(ctx, txErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
+	}
+	if txErr = decrypt(ctx, r.kms, activatedSession); txErr != nil {
+		return errors.Wrap(ctx, txErr, op)
+	}
+	if len(activatedSession.TofuToken) > 0 && subtle.ConstantTimeCompare(activatedSession.TofuToken, tofuToken) != 1 {
+		return errors.New(ctx, errors.TokenMismatch, op, "tofu token mismatch")
+	}
+
+	return nil
+}
+
+// Return states for an activated session. Must run in a transaction.
+func (r *Repository) fetchActivatedSessionStatesTx(ctx context.Context, reader db.Reader, sessionId string) ([]*State, error) {
+	const op = "session.(Repository).fetchActivatedSessionStatesTx"
+	var txErr error
+
+	var returnedStates []*State
+	returnedStates, txErr = fetchStates(ctx, reader, sessionId)
+	if txErr != nil {
+		return nil, errors.Wrap(ctx, txErr, op)
+	}
+	return returnedStates, nil
+}
+
+// getActivatedSession is called if there was a duplicate attempt to activate a session
+// It validates the tofu token matches and returns the session
+func (r *Repository) getActivatedSession(ctx context.Context, sessionId string, tofuToken []byte) (*Session, []*State, error) {
+	const op = "session.(Repository).getActivatedSession"
+
+	activatedSession := AllocSession()
+	activatedSession.PublicId = sessionId
+	var returnedStates []*State
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, _ db.Writer) error {
+			err := reader.LookupById(ctx, &activatedSession)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
+			}
+			returnedStates, err = r.fetchActivatedSessionStatesTx(ctx, reader, sessionId)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	if err := decrypt(ctx, r.kms, &activatedSession); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	if len(activatedSession.TofuToken) > 0 && subtle.ConstantTimeCompare(activatedSession.TofuToken, tofuToken) != 1 {
+		return nil, nil, errors.New(ctx, errors.TokenMismatch, op, "tofu token mismatch")
+	}
+	return &activatedSession, returnedStates, nil
 }
 
 // ActivateSession will activate the session and is called by a worker after
@@ -446,6 +666,8 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 // activated. States are ordered by start time descending. Returns an
 // InvalidSessionState error code if a connection cannot be made because the session
 // was canceled or terminated.
+// If ActivateSession receives duplicate requests for the same session, it will return the
+// already active session if the tofu token is correct
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, tofuToken []byte) (*Session, []*State, error) {
 	const op = "session.(Repository).ActivateSession"
 	if sessionId == "" {
@@ -458,15 +680,33 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing tofu token")
 	}
 
+	// Lookup session first to get the project id so the correct kms wrapper can be used for encrypting the tofu.
+	foundSession := AllocSession()
+	foundSession.PublicId = sessionId
+	if err := r.reader.LookupById(ctx, &foundSession); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
+	}
+
+	// Encrypt the tofu before we start a database transaction to avoid holding the transaction while encrypting.
 	updatedSession := AllocSession()
 	updatedSession.PublicId = sessionId
+	updatedSession.TofuToken = tofuToken
+	sessionWrapper, err := r.kms.GetWrapper(ctx, foundSession.ProjectId, kms.KeyPurposeSessions)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get session wrapper"))
+	}
+	if err := updatedSession.encrypt(ctx, sessionWrapper); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
+	var tofuSeen bool
 	var returnedStates []*State
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, activateStateCte, []interface{}{
+			rowsAffected, err := w.Exec(ctx, activateStateCte, []any{
 				sql.Named("session_id", sessionId),
 				sql.Named("version", sessionVersion),
 			})
@@ -476,24 +716,27 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			if rowsAffected == 0 {
 				return errors.New(ctx, errors.InvalidSessionState, op, "session is not in a pending state")
 			}
-			foundSession := AllocSession()
+
+			foundSession = AllocSession()
 			foundSession.PublicId = sessionId
-			if err := reader.LookupById(ctx, &foundSession); err != nil {
+			err = reader.LookupById(ctx, &foundSession)
+			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
 			}
-			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ProjectId, kms.KeyPurposeDatabase)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-			}
-			if len(foundSession.TofuToken) > 0 && subtle.ConstantTimeCompare(foundSession.TofuToken, tofuToken) != 1 {
-				return errors.New(ctx, errors.TokenMismatch, op, "tofu token mismatch")
+
+			// If we already have recorded a tofu, we don't need to update anything.
+			// Once we are out of the transaction, we can decrypt and check if the
+			// recorded tofu matches.
+			if len(foundSession.CtTofuToken) > 0 {
+				tofuSeen = true
+				returnedStates, err = r.fetchActivatedSessionStatesTx(ctx, reader, sessionId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				return nil
 			}
 
-			updatedSession.TofuToken = tofuToken
-			if err := updatedSession.encrypt(ctx, databaseWrapper); err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"CtTofuToken"}, nil)
+			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"CtTofuToken", "KeyId"}, nil)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -502,7 +745,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 
-			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+			returnedStates, err = r.fetchActivatedSessionStatesTx(ctx, reader, sessionId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -510,15 +753,32 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 		},
 	)
 	if err != nil {
+		// If this was a duplicate activation attempt, return existing session if the tofu token matches
+		if errors.IsUniqueError(err) {
+			event.WriteSysEvent(ctx, op, fmt.Sprintf("ignoring duplicate session activation attempt for session %v", sessionId))
+			return r.getActivatedSession(ctx, sessionId, tofuToken)
+		}
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
+	if tofuSeen {
+		if err := decrypt(ctx, r.kms, &foundSession); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
+		if subtle.ConstantTimeCompare(foundSession.TofuToken, tofuToken) != 1 {
+			return nil, nil, errors.New(ctx, errors.TokenMismatch, op, "tofu token mismatch")
+		}
+		return &foundSession, returnedStates, nil
+	}
+
 	return &updatedSession, returnedStates, nil
 }
 
 // updateState will update the session's state using the session id and its
 // version. updateState is idempotent. States are ordered by start time
 // descending. No options are currently supported.
-func (r *Repository) updateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, _ ...Option) (*Session, []*State, error) {
+// Supported Options:
+//   - WithIgnoreDecryptionFailures
+func (r *Repository) updateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, opt ...Option) (*Session, []*State, error) {
 	const op = "session.(Repository).updateState"
 	if sessionId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
@@ -532,6 +792,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 	if s == StatusActive {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "you must call ActivateSession to update a session's state to active")
 	}
+	opts := getOpts(opt...)
 
 	var rowsAffected int
 	updatedSession := AllocSession()
@@ -552,19 +813,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 			if rowsUpdated != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated session and %d rows updated", rowsUpdated))
 			}
-			if len(updatedSession.CtTofuToken) > 0 {
-				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ProjectId, kms.KeyPurposeDatabase)
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-				}
-				if err := updatedSession.decrypt(ctx, databaseWrapper); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("cannot decrypt session value"))
-				}
-			} else {
-				updatedSession.CtTofuToken = nil
-			}
-
-			rowsAffected, err = w.Exec(ctx, updateSessionState, []interface{}{
+			rowsAffected, err = w.Exec(ctx, updateSessionState, []any{
 				sql.Named("session_id", sessionId),
 				sql.Named("status", s.String()),
 			})
@@ -574,64 +823,73 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 			if rowsAffected != 0 && rowsAffected != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated session %s to state %s and %d rows inserted (should be 0 or 1)", sessionId, s.String(), rowsAffected))
 			}
-			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+			returnedStates, err = fetchStates(ctx, reader, sessionId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			if len(returnedStates) < 1 && returnedStates[0].Status != s {
 				return errors.New(ctx, errors.InvalidSessionState, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
 			}
+			hostSetHost, err := fetchHostSetHost(ctx, reader, sessionId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			updatedSession.HostId = hostSetHost.HostId
+			updatedSession.HostSetId = hostSetHost.HostSetId
 			return nil
 		},
 	)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new state"))
 	}
+
+	if err := decrypt(ctx, r.kms, &updatedSession); err != nil && !opts.withIgnoreDecryptionFailures {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
 	return &updatedSession, returnedStates, nil
 }
 
-// checkIfNoLongerActive checks the given sessions to see if they are in a
-// non-active state, i.e. "canceling" or "terminated"
-// It returns a []StateReport for each session that is not active, with its current status.
-func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions []string) ([]StateReport, error) {
-	const op = "session.(Repository).checkIfNotActive"
+// CheckIfNotActive checks the given sessions to see if they are in a
+// non-active state, i.e. "canceling" or "terminated" It returns a *StateReport
+// object for each session that is not active, with its current status.
+func (r *Repository) CheckIfNotActive(ctx context.Context, reportedSessions []string) ([]*StateReport, error) {
+	const op = "session.(Repository).CheckIfNotActive"
 
-	notActive := make([]StateReport, 0, len(reportedSessions))
-	args := make([]interface{}, 0, len(reportedSessions))
-	var inClause string
-
+	notActive := make([]*StateReport, 0, len(reportedSessions))
 	if len(reportedSessions) <= 0 {
 		return notActive, nil
 	}
 
-	inClause = `and session_id in (%s)`
-	params := make([]string, len(reportedSessions))
-	for i, sessId := range reportedSessions {
-		params[i] = fmt.Sprintf("@%d", i)
-		args = append(args, sql.Named(fmt.Sprintf("%d", i), sessId))
+	unrecognizedSessions := make(map[string]struct{})
+	for _, sessId := range reportedSessions {
+		unrecognizedSessions[sessId] = struct{}{}
 	}
-	inClause = fmt.Sprintf(inClause, strings.Join(params, ","))
 
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			rows, err := r.reader.Query(ctx, fmt.Sprintf(checkIfNotActive, inClause), args)
+		func(reader db.Reader, _ db.Writer) error {
+			var states []*State
+			err := reader.SearchWhere(ctx, &states, "upper(active_time_range) is null and session_id in (?)", []any{reportedSessions})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			defer rows.Close()
 
-			for rows.Next() {
-				var sessionId string
-				var status Status
-				if err := rows.Scan(&sessionId, &status); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+			for _, s := range states {
+				delete(unrecognizedSessions, s.SessionId)
+				switch s.Status {
+				case StatusPending, StatusActive:
+					continue
+				case StatusCanceling, StatusTerminated:
+				default:
+					return errors.New(ctx, errors.Internal, op, fmt.Sprintf("unknown session state %q", s.Status))
 				}
-				notActive = append(notActive, StateReport{
-					SessionId: sessionId,
-					Status:    status,
+
+				notActive = append(notActive, &StateReport{
+					SessionId: s.SessionId,
+					Status:    s.Status,
 				})
 			}
 			return nil
@@ -640,28 +898,29 @@ func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error checking if sessions are no longer active"))
 	}
+
+	for s := range unrecognizedSessions {
+		notActive = append(notActive, &StateReport{
+			SessionId:    s,
+			Unrecognized: true,
+		})
+	}
+
 	return notActive, nil
-}
-
-func (r *Repository) deleteSessionsTerminatedBefore(ctx context.Context, threshold time.Duration) (int, error) {
-	const op = "session.(Repository).deleteTerminated"
-
-	args := []any{
-		sql.Named("threshold_seconds", threshold.Seconds()),
-	}
-
-	c, err := r.writer.Exec(ctx, deleteTerminated, args)
-	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("error deleting terminated sessions"))
-	}
-	return c, nil
 }
 
 func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*State, error) {
 	const op = "session.fetchStates"
 	var states []*State
-	if err := r.SearchWhere(ctx, &states, "session_id = ?", []interface{}{sessionId}, opt...); err != nil {
+	rows, err := r.Query(ctx, selectStates, []any{sessionId}, opt...)
+	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := r.ScanRows(ctx, rows, &states); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 	if len(states) == 0 {
 		return nil, nil
@@ -672,11 +931,51 @@ func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.O
 func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*Connection, error) {
 	const op = "session.fetchConnections"
 	var connections []*Connection
-	if err := r.SearchWhere(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...); err != nil {
+	if err := r.SearchWhere(ctx, &connections, "session_id = ?", []any{sessionId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(connections) == 0 {
 		return nil, nil
 	}
 	return connections, nil
+}
+
+func fetchHostSetHost(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) (*SessionHostSetHost, error) {
+	const op = "session.fetchHostSetHost"
+	var hostSetHost *SessionHostSetHost
+	if err := r.SearchWhere(ctx, &hostSetHost, "session_id = ?", []any{sessionId}, opt...); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return hostSetHost, nil
+}
+
+// decrypt decrypts encrypted fields of the Session.
+func decrypt(ctx context.Context, kmsRepo kms.GetWrapperer, session *Session) error {
+	const op = "session.decrypt"
+	if util.IsNil(kmsRepo) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repo")
+	}
+	if session == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session")
+	}
+	if session.ProjectId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session project ID")
+	}
+	if session.KeyId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session key ID")
+	}
+	if session.UserId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session user ID")
+	}
+	if session.PublicId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session ID")
+	}
+	sessionWrapper, err := kmsRepo.GetWrapper(ctx, session.ProjectId, kms.KeyPurposeSessions, kms.WithKeyId(session.KeyId))
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get session wrapper"))
+	}
+	if err := session.decrypt(ctx, sessionWrapper); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to decrypt session value"))
+	}
+	return nil
 }

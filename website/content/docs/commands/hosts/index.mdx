@@ -1,0 +1,46 @@
+---
+layout: docs
+page_title: hosts - Command
+description: >-
+  The "hosts" command performs operations on Boundary host resources. A host represents a computing element with a network address that Boundary can reach.
+---
+
+# hosts
+
+Command: `boundary hosts`
+
+The `hosts` command lets you perform operations on Boundary host resources.
+
+## Example
+
+The following command reads the details of a host with the ID `hst_1234567890`:
+
+```shell-session
+$ boundary hosts read -id hst_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary hosts <subcommand> [options] [args]
+  # ...
+Subcommands:
+    create    Create a host
+    delete    Delete a host
+    list      List a host
+    read      Read a host
+    update    Update a host
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/hosts/create)
+- [delete](/boundary/docs/commands/hosts/delete)
+- [list](/boundary/docs/commands/hosts/list)
+- [read](/boundary/docs/commands/hosts/read)
+- [update](/boundary/docs/commands/hosts/update)

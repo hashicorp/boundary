@@ -1,0 +1,47 @@
+---
+layout: docs
+page_title: policies list - Command
+description: >-
+  The "policies list" command lists the available policy resources within a scope or resource.
+---
+
+# policies list
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `policies list`
+
+The `policies list` command lets you list the policies within a given scope or resource.
+
+## Example
+
+This example lists all policies within the scope `s_1234567890`.
+The `recursive` option means Boundary runs the operation recursively on any child scopes, if applicable:
+
+```shell-session
+$ boundary policies list -scope-id s_1234567890 -recursive
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary policies list [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-filter=<string>` - If set, Boundary filters the list operation before the results are returned.
+The filter operates against each item in the list.
+We recommend that you use single quotes, because the filters contain double quotes.
+Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
+- `recursive` - If set, runs the list operation recursively on any child scopes, if the type supports it.
+The default value is `false`.
+- `scope-id=<string>` - The scope from which to list policies.
+The default value is `global`.
+You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
+
+@include 'cmd-option-note.mdx'

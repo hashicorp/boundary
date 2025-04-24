@@ -1,12 +1,22 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
-import "io"
+import (
+	"io"
+
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/pagination"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	return opts
 }
@@ -16,19 +26,23 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId                string
-	withName                    string
-	withDescription             string
-	withLimit                   int
-	withGrantScopeId            string
-	withSkipVetForWrite         bool
-	withDisassociate            bool
-	withSkipAdminRoleCreation   bool
-	withSkipDefaultRoleCreation bool
-	withUserId                  string
-	withRandomReader            io.Reader
-	withAccountIds              []string
-	withPrimaryAuthMethodId     string
+	withPublicId                  string
+	withName                      string
+	withDescription               string
+	withLimit                     int
+	withGrantScopeIds             []string
+	withSkipVetForWrite           bool
+	withDisassociate              bool
+	withSkipAdminRoleCreation     bool
+	withSkipDefaultRoleCreation   bool
+	withUserId                    string
+	withRandomReader              io.Reader
+	withAccountIds                []string
+	withPrimaryAuthMethodId       string
+	withReader                    db.Reader
+	withWriter                    db.Writer
+	withStartPageAfterItem        pagination.Item
+	withTestCacheMultiGrantTuples *[]multiGrantTuple
 }
 
 func getDefaultOptions() options {
@@ -37,7 +51,6 @@ func getDefaultOptions() options {
 		withName:            "",
 		withDescription:     "",
 		withLimit:           0,
-		withGrantScopeId:    "",
 		withSkipVetForWrite: false,
 	}
 }
@@ -72,11 +85,13 @@ func WithLimit(limit int) Option {
 	}
 }
 
-// WithGrantScopeId provides an option to specify the scope ID for grants in
-// roles.
-func WithGrantScopeId(id string) Option {
+// WithGrantScopeIds provides an option to specify the scope ID for grants in
+// roles. In most tests this is likely the option to use, however, for tests
+// that call repo functions instead of test functions the other option is still
+// correct to specify a grant scope at creation time.
+func WithGrantScopeIds(ids []string) Option {
 	return func(o *options) {
-		o.withGrantScopeId = id
+		o.withGrantScopeIds = ids
 	}
 }
 
@@ -139,5 +154,31 @@ func WithAccountIds(id ...string) Option {
 func WithPrimaryAuthMethodId(id string) Option {
 	return func(o *options) {
 		o.withPrimaryAuthMethodId = id
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction. The purpose of the
+// WithReaderWriter(...) option is to allow the caller to create the scope and
+// all of its keys in the same transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.withReader = r
+		o.withWriter = w
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
+	}
+}
+
+func withTestCacheMultiGrantTuples(cache *[]multiGrantTuple) Option {
+	return func(o *options) {
+		o.withTestCacheMultiGrantTuples = cache
 	}
 }

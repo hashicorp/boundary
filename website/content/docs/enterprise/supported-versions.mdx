@@ -1,0 +1,60 @@
+---
+layout: docs
+page_title: Boundary Enterprise supported version policies
+description: >-
+  Learn about Enterprise support policies. Includes information about support periods, control plane and worker compatibility, and PostgreSQL database versions.
+---
+
+# Boundary Enterprise supported versions policy
+
+Self-managed Boundary Enterprise environments function optimally when workers and controllers are running the same version.
+The following sections outline support periods, control plane & worker compatibility and Postgres DB version support.
+
+## Support periods
+
+Generally Available (GA) releases of Boundary Enterprise are consistent with [HashiCorp’s Support Period and End-of-Life (EOL) Policy](https://support.hashicorp.com/hc/en-us/articles/360021185113-Support-Period-and-End-of-Life-EOL-Policy).
+Boundary Enterprise releases will be supported for up to two (2) years since release.
+Eligible code-fixes and hot-fixes are provided via a new minor release (Z) on top of the latest “major release” branch, for up to two (2) releases from the most current major release.
+A major release is identified by a change in the first (X) or second (Y) digit in the following versioning nomenclature: Version X.Y.Z.
+
+As a best practice, HashiCorp expects customers to stay current within two (2) releases from the latest major release in order to receive optimal support.
+Release updates for Boundary Enterprise can be found at https://releases.hashicorp.com.
+
+## Control plane and worker compatibility
+
+Although major releases are supported as outlined within the support periods section above, within a Boundary Enterprise deployment API backwards compatibility is only supported between the control plane and workers from the prior “major release”. Using a worker with version that is newer than the control plane they connect to is not supported.
+All workers within an environment must be on the same version.
+
+For example, Boundary workers version 0.13.0 are compatible with Boundary control plane running Boundary 0.14.0.
+However, they will not have compatibility once the control plane is updated to version 0.15.0 or above.
+Customers are recommended to run the latest versions of Boundary in order to leverage the newest features and bug fixes.
+
+## Control plane and client/cli compatibility
+
+The supported version compatibility between Boundary's control plane and Boundary clients/CLI is the same as control plane and worker compatibility. Within a Boundary Enterprise deployment API backwards compatibility is only supported between the control plane and clients from the prior “major release”. Using clients on newer versions than the control plane they are registered with is not supported.
+
+For example, Boundary clients version 0.14.0 are compatible with Boundary control plane running Boundary 0.15.0.
+However, they will not have compatibility once the control plane is updated to version 0.16.0 or above.
+Boundary clients version 0.16.0 are not compatible with Boundary control plane running Boundary 0.15.0 or lower.
+Customers are recommended to run the latest versions of Boundary in order to leverage the newest features and bug fixes.
+
+The Desktop client uses a different numbering scheme than the CLI and control plane.
+Refer to the table for the Desktop version that corresponds to the control plane version.
+
+| Desktop version | Control plane version |
+| --------------- | ----------- |
+| 2.1.0 | 0.17.0 |
+| 2.0.3 | 0.16.0 |
+| 2.0.2 | 0.15.3 |
+| 2.0.1 | 0.15.1 |
+| 2.0.0 | 0.15.0 |
+
+For example, the Desktop version 2.0.3 is compatible with version 0.17.0 of the control plane.
+But when the control plane is upgraded to 0.18.0, version 2.0.3 will no longer be officially supported.
+
+To view the Desktop version along with the corresponding CLI and control plane version, click **Boundary**, and then click **About Boundary** in the Desktop client.
+
+## PostgreSQL support policy
+
+Boundary Enterprise will only support PostgreSQL version 13 and above at launch.
+On an ongoing basis, Boundary will end support for a PostgreSQL version one (1) year prior to its EOL as documented on PostgreSQL’s versioning policy website.

@@ -1,0 +1,380 @@
+---
+layout: docs
+page_title: v0.15.0 release notes
+description: >-
+  Learn more about the new features included in the Boundary 0.15.0 release. Understand any deprecations, changes, and known issues.
+---
+
+# Boundary 0.15.0 release notes
+
+**GA date:** January 30, 2024
+
+@include 'release-notes/intro.mdx'
+
+## New features
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Feature</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Session recording storage policies
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     Storage policies codify how long session recordings must be kept, and when they should be deleted. You can configure retention periods based on your compliance needs.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/concepts/domain-model/storage-policy">Storage policies</a> and <a href="/boundary/docs/configuration/session-recording/configure-storage-policy">Configure storage bucket policies</a>
+    </td>
+  </tr>
+
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Search and filter
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      A new command was added, <code>boundary search</code>. It allows you to search a local cache for information about session and target resources. The local cache helps prevent your system resources from being overwhelmed.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/search"><code>boundary search</code></a> and <a href="/boundary/docs/api-clients/client-cache#boundary-list-vs-search"> Boundary <code>list</code> vs. <code>search</code></a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Boundary daemon
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      The Boundary client daemon now runs on end users' computers and locally caches session and target resource information from Boundary instances. The cache helps expedite searches.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/daemon"><code>boundary daemon</code></a> and <a href="/boundary/docs/api-clients/client-cache">Client cache</a>
+    </td>
+  </tr>
+
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      List endpoint pagination
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      All <code>list</code> endpoints now support pagination, except for worker resources. You can request a list of updated and deleted resources relative to the last result you received via the API. There are new controller flags <code>page_size</code> and <code>max_page_size</code> to set the default and max size of pages.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/api-clients/api/pagination">API list pagination</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Generic commands
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      In this release, new generic commands were added for <code>read</code>, <code>update</code>, and <code>delete</code>. You can use these generic commands to operate directly on a resource by specifying the resource ID as the next parameter. You do not need to specify a sub-type. For example, the command <code>boundary update ttcp_1234567890</code> automatically updates a target with that ID.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/delete"><code>delete</code></a>, <a href="/boundary/docs/commands/read"><code>read</code></a>, and <a href="/boundary/docs/commands/update"><code>update</code></a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Multiple grant scopes in roles
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Roles now support multiple grant scopes, along with the special values <code>this</code>, <code>children</code> (global/org scopes only) to apply to all direct children of a scope, and <code>descendants</code> (global only) to apply to all descendants of a scope. You can apply the new values by using the commands <code>add-grant-scopes</code>, <code>set-grant-scopes</code>, and <code>remove-grant-scopes</code> on roles. You can continue to use the existing <code>grant_scope_id</code> field for now, but it has been deprecated.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/roles/add-grant-scopes"><code>add-grant-scopes</code></a>, <a href="/boundary/docs/commands/roles/remove-grant-scopes"><code>remove-grant-scopes</code></a>, and <a href="/boundary/docs/commands/roles/set-grant-scopes"><code>set-grant-scopes</code></a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
+
+## Known issues and breaking changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Issue</th>
+      <th style={{verticalAligh: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Rotation of AWS access and secret keys during a session results in stale recordings
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In Boundary version 0.13.0+, when you rotate a storage bucket's secrets, any new sessions use the new credentials. However, previously established sessions continue to use the old credentials.
+    <br /><br />
+    As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+    Otherwise, you may end up with recordings that aren't stored in the remote storage bucket, and are unable to be played back.
+    </td>
+  </tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unsupported recovery workflow during worker failure
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If a worker fails during a recording, there is no way to recover the recording. This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+
+ <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0+
+    <br /><br />
+    (Fixed in 0.15.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Cannot delete IAM access key resource
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When you delete an AWS S3 storage bucket that had credential rotation enabled, Boundary cannot delete the associated IAM access key resource.
+    <br /><br />
+    This issue is fixed in version 0.15.3.
+     <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create a storage bucket</a>
+    </td>
+  </tr>
+
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Permission grant string change
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The ability to add new grants via the <code>id</code> parameter has been removed. Grants now accept more than one ID per grant string or JSON entry using the <code>ids</code> parameter. This change was noted in the <a href="https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md#0131-20230710">v0.13.1 Changelog</a>, and goes into effect with this release. You must update any code or Terraform configuration that uses the <code>id</code> parameter.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/commands/roles/add-grants">Add grants</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    List result pagination
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    All <code>list</code> endpoints now return the first 1,000 items instead of all items, if no parameters are provided. You can configure the number of items returned using the new controller configuration parameter <code>max_page_size</code>. The Admin UI, CLI, and API package automatically paginate results.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/api-clients/api/pagination">API list pagination</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Storage bucket policy updates
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you have session recording configured, you must update your IAM policy in AWS before you upgrade your worker to version 0.15.0 to ensure your session recordings continue to get uploaded to S3. The IAM policy now requires the <code>DeleteObjects</code> and <code>ListBucket</code> permissions.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create storage buckets</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    <br /><br />
+    (Fixed in 0.15.1)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Maximum number of connections allowed is incorrect
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A known issue causes Boundary to permit one less than the allowed number of connections that you configured for a given target. For example, if you configured the session connection limit for a target at 2, Boundary only permits 1 connection to the target. If the value is 1, Boundary does not allow any connections to the target. A value of -1 still means that connections to the target are unlimited.
+    <br /><br />
+    This issue is fixed in version 0.15.1.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    Learn more:&nbsp;
+    Refer to the CLI docs for information about using <a href="/boundary/docs/commands/targets/create"><code>targets create</code></a> or <a href="/boundary/docs/commands/targets/update"><code>targets update</code></a> to configure a maximum number of connections.
+    <br /><br />
+    Refer to the API docs for information about using <a href="/boundary/api-docs/target-service">Target service</a> to configure a maximum number of connections.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    <br /><br />
+    (Fixed in 0.15.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Go CVE-2024-24783, Go CVE-2024-24784, Go CVE-2024-24785, Go CVE-2024-24786, Go CVE-2023-45289, Go CVE-2023-45290
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.15.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.8. Boundary was updated to use the new Go version in release 0.15.2, and the issue is resolved.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    CVE-2024-24783: <a href="https://www.cve.org/CVERecord?id=CVE-2024-24783">Verify panics on certificates with an unknown public key algorithm in crypto/x509</a>
+    <br /><br />
+    CVE-2024-24784: <a href="https://www.cve.org/CVERecord?id=CVE-2024-24784">Comments in display names are incorrectly handled in net/mail</a>
+    <br /><br />
+    CVE-2024-24785: <a href="https://www.cve.org/CVERecord?id=CVE-2024-24785">Errors returned from JSON marshaling may break template escaping in html/template</a>
+    <br /><br />
+    CVE-2024-24786: <a href="https://www.cve.org/CVERecord?id=CVE-2024-24786">Infinite loop in JSON unmarshaling in google.golang.org/protobuf</a>
+    <br /><br />
+    CVE-2023-45289: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45289">Incorrect forwarding of sensitive headers and cookies on HTTP redirect in net/http</a>
+    <br /><br />
+    CVE-2023-45290: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45290">Memory exhaustion in multipart form parsing in net/textproto and net/http</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    <br /><br />
+    (Fixed in 0.15.3 and 2.0.2 Desktop)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary Desktop does not update
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The macOS Boundary Desktop client displays a prompt to update automatically, but it never actually updates.
+    <br /><br />
+    This issue is fixed in Boundary version 0.15.3 and version 2.0.2 of the Desktop client.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    <br /><br />
+    (Fixed in 0.15.4)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Go CVE-2023-45288
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.15.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.9. Boundary was updated to use the new Go version in release 0.15.4, and the issue is resolved.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    CVE-2023-45288: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45288">HTTP/2 CONTINUATION flood in net/http</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    <br /><br />
+    (Fixed in 0.15.5)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Users cannot log in to Boundary Desktop
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A bug caused Boundary Desktop to incorrectly assume the controller was running an unsupported version. It would prevent users from being able to log in to the Desktop client.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    <a href="https://github.com/hashicorp/boundary/issues/4370">Boundary Desktop issue #4370</a>
+    <br /><br />
+    This issue is fixed in Boundary version 0.15.5.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+
+
+  </tbody>
+</table>
+
+## Feature deprecations and EOL
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>EOL</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>kms</code> worker method
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     As noted in the <a href="/boundary/docs/release-notes/v0_13_0#deprecations-and-changes">v0.13.0 release notes</a>, the <code>kms</code> worker method has been removed. Since version 0.13.0, you have had to opt in to use the deprecated method. Now it is no longer available and Boundary uses the new <code>kms</code> mechanism.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/configuration/worker/kms-worker">KMS worker configuration</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Default port value
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     As noted in the <a href="/boundary/docs/release-notes/v0_14_0#feature-deprecations-and-eol">v0.14.0</a> and <a href="/boundary/docs/release-notes/v0_12_0#deprecations-and-changes">v0.12.0</a> release notes, targets now require a default port value. Previously, any ports that you defined as part of a host address were ignored, but allowed as part of the target definition. Now, if you define a port on a host address it results in an error. As of this release, the restriction also affects existing addresses. Any existing addresses that contain a port cannot be used as part of a target's session authorization call.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/targets">Targets</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>id</code> field for grants
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     As noted in the <a href="https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md#0131-20230710">v0.13.1 Changelog</a>, the ability to add new grants via the <code>id</code> parameter has been removed. Grants now accept more than one ID per grant string or JSON entry using the <code>ids</code> parameter.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/roles/add-grants">Add grants</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>grant-scope-id</code> field for roles
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     The <code>grant-scope-id</code> field is now deprecated in favor of multiple grant scope support.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/roles/add-grant-scopes"><code>add-grant-scopes</code></a>, <a href="/boundary/docs/commands/roles/remove-grant-scopes"><code>remove-grant-scopes</code></a>, and <a href="/boundary/docs/commands/roles/set-grant-scopes"><code>set-grant-scopes</code></a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>

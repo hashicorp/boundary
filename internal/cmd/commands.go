@@ -1,11 +1,16 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package cmd
 
 import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/accountscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/aliasescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethodscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokenscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/billingcmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentiallibrariescmd"
@@ -13,20 +18,26 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentialstorescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
+	"github.com/hashicorp/boundary/internal/cmd/commands/genericcmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/logout"
 	"github.com/hashicorp/boundary/internal/cmd/commands/managedgroupscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/policiescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
+	"github.com/hashicorp/boundary/internal/cmd/commands/sessionrecordingscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/storagebucketscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/unsupported"
 	"github.com/hashicorp/boundary/internal/cmd/commands/userscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
 	"github.com/hashicorp/boundary/internal/cmd/commands/workerscmd"
+	"github.com/hashicorp/boundary/internal/cmd/wrapper"
 
 	"github.com/mitchellh/cli"
 )
@@ -35,6 +46,10 @@ import (
 var Commands map[string]cli.CommandFactory
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
+	var opts []base.Option
+	if runOpts.ImplicitId != "" {
+		opts = append(opts, base.WithImplicitId(runOpts.ImplicitId))
+	}
 	Commands = map[string]cli.CommandFactory{
 		"server": func() (cli.Command, error) {
 			return &server.Command{
@@ -52,1134 +67,1469 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"version": func() (cli.Command, error) {
 			return &version.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 
-		"authenticate": func() (cli.Command, error) {
+		"authenticate": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authenticate.Command{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"authenticate password": func() (cli.Command, error) {
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"authenticate password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authenticate.PasswordCommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"authenticate oidc": func() (cli.Command, error) {
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"authenticate oidc": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authenticate.OidcCommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"authenticate ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &authenticate.LdapCommand{
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
 
 		"accounts": func() (cli.Command, error) {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"accounts read": func() (cli.Command, error) {
+		"accounts read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"accounts delete": func() (cli.Command, error) {
+			}
+		}),
+		"accounts delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"accounts list": func() (cli.Command, error) {
+			}
+		}),
+		"accounts list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"accounts set-password": func() (cli.Command, error) {
+			}
+		}),
+		"accounts set-password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-password",
-			}, nil
-		},
-		"accounts change-password": func() (cli.Command, error) {
+			}
+		}),
+		"accounts change-password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "change-password",
-			}, nil
-		},
-		"accounts create": func() (cli.Command, error) {
+			}
+		}),
+		"accounts create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"accounts create password": func() (cli.Command, error) {
+			}
+		}),
+		"accounts create password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.PasswordCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"accounts create oidc": func() (cli.Command, error) {
+			}
+		}),
+		"accounts create oidc": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.OidcCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"accounts update": func() (cli.Command, error) {
+			}
+		}),
+		"accounts create ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &accountscmd.LdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"accounts update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"accounts update password": func() (cli.Command, error) {
+			}
+		}),
+		"accounts update password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.PasswordCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"accounts update oidc": func() (cli.Command, error) {
+			}
+		}),
+		"accounts update oidc": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &accountscmd.OidcCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
+			}
+		}),
+		"accounts update ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &accountscmd.LdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+
+		"aliases": func() (cli.Command, error) {
+			return &aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
+		"aliases read": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}
+		}),
+		"aliases delete": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}
+		}),
+		"aliases list": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}
+		}),
+		"aliases create": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"aliases update": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"aliases create target": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &aliasescmd.TargetCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"aliases update target": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &aliasescmd.TargetCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
 
 		"auth-methods": func() (cli.Command, error) {
 			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-methods read": func() (cli.Command, error) {
+		"auth-methods read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"auth-methods delete": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"auth-methods list": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"auth-methods create": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods create password": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods create password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.PasswordCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods create oidc": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods create oidc": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.OidcCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods update": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods create ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &authmethodscmd.LdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"auth-methods update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods update password": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods update password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.PasswordCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods update oidc": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods update oidc": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.OidcCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods change-state oidc": func() (cli.Command, error) {
+			}
+		}),
+		"auth-methods update ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &authmethodscmd.LdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"auth-methods change-state oidc": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authmethodscmd.OidcCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "change-state",
-			}, nil
-		},
+			}
+		}),
 
 		"auth-tokens": func() (cli.Command, error) {
 			return &authtokenscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-tokens read": func() (cli.Command, error) {
+		"auth-tokens read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authtokenscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"auth-tokens delete": func() (cli.Command, error) {
+			}
+		}),
+		"auth-tokens delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &authtokenscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
+			}
+		}),
+		"auth-tokens list": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &authtokenscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}
+		}),
+
+		"billing": func() (cli.Command, error) {
+			return &billingcmd.Command{
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-tokens list": func() (cli.Command, error) {
-			return &authtokenscmd.Command{
+		"billing monthly-active-users": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &billingcmd.Command{
 				Command: base.NewCommand(ui),
-				Func:    "list",
+				Func:    "monthly-active-users",
+			}
+		}),
+
+		"client-agent": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui, opts...),
+				CommandName: "client-agent",
 			}, nil
 		},
 
 		"config": func() (cli.Command, error) {
 			return &config.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 		"config encrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "encrypt",
 			}, nil
 		},
 		"config decrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "decrypt",
 			}, nil
 		},
 		"config get-token": func() (cli.Command, error) {
 			return &config.TokenCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "get-token",
 			}, nil
 		},
 		"config autocomplete": func() (cli.Command, error) {
 			return &config.AutocompleteCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "base",
 			}, nil
 		},
 		"config autocomplete install": func() (cli.Command, error) {
 			return &config.AutocompleteCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "install",
 			}, nil
 		},
 		"config autocomplete uninstall": func() (cli.Command, error) {
 			return &config.AutocompleteCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "uninstall",
 			}, nil
 		},
 
-		"connect": func() (cli.Command, error) {
+		"connect": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "connect",
-			}, nil
-		},
-		"connect http": func() (cli.Command, error) {
+			}
+		}),
+		"connect http": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "http",
-			}, nil
-		},
-		"connect kube": func() (cli.Command, error) {
+			}
+		}),
+		"connect kube": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "kube",
-			}, nil
-		},
-		"connect postgres": func() (cli.Command, error) {
+			}
+		}),
+		"connect postgres": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "postgres",
-			}, nil
-		},
-		"connect rdp": func() (cli.Command, error) {
+			}
+		}),
+		"connect rdp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &connect.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "rdp",
+			}
+		}),
+		"connect ssh": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &connect.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "ssh",
+			}
+		}),
+
+		"credential-libraries": func() (cli.Command, error) {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"connect ssh": func() (cli.Command, error) {
-			return &connect.Command{
-				Command: base.NewCommand(ui),
-				Func:    "ssh",
+		"credential-libraries read": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}
+		}),
+		"credential-libraries delete": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}
+		}),
+		"credential-libraries list": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}
+		}),
+		"credential-libraries create": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credential-libraries create vault": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credential-libraries create vault-generic": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credential-libraries create vault-ssh-certificate": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultSshCertificateCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credential-libraries update": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credential-libraries update vault": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credential-libraries update vault-generic": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credential-libraries update vault-ssh-certificate": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentiallibrariescmd.VaultSshCertificateCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+
+		"credential-stores": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"credential-stores read": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}
+		}),
+		"credential-stores delete": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}
+		}),
+		"credential-stores list": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}
+		}),
+		"credential-stores create": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credential-stores create vault": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credential-stores create static": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.StaticCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credential-stores update": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credential-stores update vault": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credential-stores update static": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialstorescmd.StaticCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+
+		"credentials": func() (cli.Command, error) {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"credentials read": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}
+		}),
+		"credentials delete": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}
+		}),
+		"credentials list": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}
+		}),
+		"credentials create": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credentials create username-password": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.UsernamePasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credentials create ssh-private-key": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.SshPrivateKeyCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credentials create json": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.JsonCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"credentials update": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credentials update username-password": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.UsernamePasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credentials update ssh-private-key": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.SshPrivateKeyCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credentials update json": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.JsonCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+
+		"daemon": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui, opts...),
+				CommandName: "daemon",
 			}, nil
 		},
 
 		"database": func() (cli.Command, error) {
 			return &database.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 		"database init": func() (cli.Command, error) {
 			return &database.InitCommand{
-				Server: base.NewServer(base.NewCommand(ui)),
+				Server: base.NewServer(base.NewCommand(ui, opts...)),
 			}, nil
 		},
 		"database migrate": func() (cli.Command, error) {
 			return &database.MigrateCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 
-		"credential-libraries": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"credential-libraries read": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "read",
-			}, nil
-		},
-		"credential-libraries delete": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui),
+		"delete": func() (cli.Command, error) {
+			return &genericcmd.Command{
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"credential-libraries list": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "list",
-			}, nil
-		},
-		"credential-libraries create": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credential-libraries create vault": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultCommand{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credential-libraries update": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-		"credential-libraries update vault": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultCommand{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-
-		"credential-stores": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"credential-stores read": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "read",
-			}, nil
-		},
-		"credential-stores delete": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "delete",
-			}, nil
-		},
-		"credential-stores list": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "list",
-			}, nil
-		},
-		"credential-stores create": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credential-stores create vault": func() (cli.Command, error) {
-			return &credentialstorescmd.VaultCommand{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credential-stores create static": func() (cli.Command, error) {
-			return &credentialstorescmd.StaticCommand{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credential-stores update": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-		"credential-stores update vault": func() (cli.Command, error) {
-			return &credentialstorescmd.VaultCommand{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-		"credential-stores update static": func() (cli.Command, error) {
-			return &credentialstorescmd.StaticCommand{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-
-		"credentials": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"credentials read": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "read",
-			}, nil
-		},
-		"credentials delete": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "delete",
-			}, nil
-		},
-		"credentials list": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "list",
-			}, nil
-		},
-		"credentials create": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credentials create username-password": func() (cli.Command, error) {
-			return &credentialscmd.UsernamePasswordCommand{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credentials create ssh-private-key": func() (cli.Command, error) {
-			return &credentialscmd.SshPrivateKeyCommand{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credentials create json": func() (cli.Command, error) {
-			return &credentialscmd.JsonCommand{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"credentials update": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-		"credentials update username-password": func() (cli.Command, error) {
-			return &credentialscmd.UsernamePasswordCommand{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-		"credentials update ssh-private-key": func() (cli.Command, error) {
-			return &credentialscmd.SshPrivateKeyCommand{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-		"credentials update json": func() (cli.Command, error) {
-			return &credentialscmd.JsonCommand{
-				Command: base.NewCommand(ui),
-				Func:    "update",
 			}, nil
 		},
 
 		"groups": func() (cli.Command, error) {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"groups create": func() (cli.Command, error) {
+		"groups create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"groups update": func() (cli.Command, error) {
+			}
+		}),
+		"groups update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"groups read": func() (cli.Command, error) {
+			}
+		}),
+		"groups read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"groups delete": func() (cli.Command, error) {
+			}
+		}),
+		"groups delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"groups list": func() (cli.Command, error) {
+			}
+		}),
+		"groups list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"groups add-members": func() (cli.Command, error) {
+			}
+		}),
+		"groups add-members": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "add-members",
-			}, nil
-		},
-		"groups set-members": func() (cli.Command, error) {
+			}
+		}),
+		"groups set-members": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-members",
-			}, nil
-		},
-		"groups remove-members": func() (cli.Command, error) {
+			}
+		}),
+		"groups remove-members": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-members",
-			}, nil
-		},
+			}
+		}),
 
 		"host-catalogs": func() (cli.Command, error) {
 			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"host-catalogs read": func() (cli.Command, error) {
+		"host-catalogs read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"host-catalogs delete": func() (cli.Command, error) {
+			}
+		}),
+		"host-catalogs delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"host-catalogs list": func() (cli.Command, error) {
+			}
+		}),
+		"host-catalogs list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"host-catalogs create": func() (cli.Command, error) {
+			}
+		}),
+		"host-catalogs create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs create static": func() (cli.Command, error) {
+			}
+		}),
+		"host-catalogs create static": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.StaticCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs create plugin": func() (cli.Command, error) {
+			}
+		}),
+		"host-catalogs create plugin": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.PluginCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs update": func() (cli.Command, error) {
+			}
+		}),
+		"host-catalogs update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"host-catalogs update static": func() (cli.Command, error) {
+			}
+		}),
+		"host-catalogs update static": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.StaticCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"host-catalogs update plugin": func() (cli.Command, error) {
+			}
+		}),
+		"host-catalogs update plugin": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostcatalogscmd.PluginCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
+			}
+		}),
 
 		"host-sets": func() (cli.Command, error) {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"host-sets read": func() (cli.Command, error) {
+		"host-sets read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"host-sets delete": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"host-sets list": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"host-sets create": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets create static": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets create static": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.StaticCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets create plugin": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets create plugin": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.PluginCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets update": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets update static": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets update static": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.StaticCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets update plugin": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets update plugin": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.PluginCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets add-hosts": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets add-hosts": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "add-hosts",
-			}, nil
-		},
-		"host-sets remove-hosts": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets remove-hosts": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-hosts",
-			}, nil
-		},
-		"host-sets set-hosts": func() (cli.Command, error) {
+			}
+		}),
+		"host-sets set-hosts": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-hosts",
-			}, nil
-		},
+			}
+		}),
 
 		"hosts": func() (cli.Command, error) {
 			return &hostscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"hosts read": func() (cli.Command, error) {
+		"hosts read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"hosts delete": func() (cli.Command, error) {
+			}
+		}),
+		"hosts delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"hosts list": func() (cli.Command, error) {
+			}
+		}),
+		"hosts list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"hosts create": func() (cli.Command, error) {
+			}
+		}),
+		"hosts create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"hosts create static": func() (cli.Command, error) {
+			}
+		}),
+		"hosts create static": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostscmd.StaticCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"hosts update": func() (cli.Command, error) {
+			}
+		}),
+		"hosts update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"hosts update static": func() (cli.Command, error) {
+			}
+		}),
+		"hosts update static": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &hostscmd.StaticCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
+			}
+		}),
 
 		"logout": func() (cli.Command, error) {
 			return &logout.LogoutCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 
 		"managed-groups": func() (cli.Command, error) {
 			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"managed-groups read": func() (cli.Command, error) {
+		"managed-groups read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}
+		}),
+		"managed-groups delete": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}
+		}),
+		"managed-groups list": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}
+		}),
+		"managed-groups create": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"managed-groups create oidc": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"managed-groups create ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &managedgroupscmd.LdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"managed-groups update": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"managed-groups update oidc": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"managed-groups update ldap": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &managedgroupscmd.LdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+
+		"policies": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"policies read": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}, nil
 		},
-		"managed-groups delete": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui),
+		"policies delete": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}, nil
 		},
-		"managed-groups list": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui),
+		"policies list": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}, nil
 		},
-		"managed-groups create": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui),
+		"policies create": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}, nil
 		},
-		"managed-groups create oidc": func() (cli.Command, error) {
-			return &managedgroupscmd.OidcCommand{
-				Command: base.NewCommand(ui),
+		"policies create storage": func() (cli.Command, error) {
+			return &policiescmd.StorageCommand{
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}, nil
 		},
-		"managed-groups update": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui),
+		"policies update": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}, nil
 		},
-		"managed-groups update oidc": func() (cli.Command, error) {
-			return &managedgroupscmd.OidcCommand{
-				Command: base.NewCommand(ui),
+		"policies update storage": func() (cli.Command, error) {
+			return &policiescmd.StorageCommand{
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
+			}, nil
+		},
+
+		"read": func() (cli.Command, error) {
+			return &genericcmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
 			}, nil
 		},
 
 		"roles": func() (cli.Command, error) {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"roles create": func() (cli.Command, error) {
+		"roles create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"roles update": func() (cli.Command, error) {
+			}
+		}),
+		"roles update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"roles read": func() (cli.Command, error) {
+			}
+		}),
+		"roles read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"roles delete": func() (cli.Command, error) {
+			}
+		}),
+		"roles delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"roles list": func() (cli.Command, error) {
+			}
+		}),
+		"roles list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"roles add-principals": func() (cli.Command, error) {
+			}
+		}),
+		"roles add-principals": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "add-principals",
-			}, nil
-		},
-		"roles set-principals": func() (cli.Command, error) {
+			}
+		}),
+		"roles set-principals": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-principals",
-			}, nil
-		},
-		"roles remove-principals": func() (cli.Command, error) {
+			}
+		}),
+		"roles remove-principals": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-principals",
-			}, nil
-		},
-		"roles add-grants": func() (cli.Command, error) {
+			}
+		}),
+		"roles add-grants": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "add-grants",
-			}, nil
-		},
-		"roles set-grants": func() (cli.Command, error) {
+			}
+		}),
+		"roles set-grants": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-grants",
-			}, nil
-		},
-		"roles remove-grants": func() (cli.Command, error) {
+			}
+		}),
+		"roles remove-grants": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-grants",
-			}, nil
-		},
+			}
+		}),
+		"roles add-grant-scopes": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &rolescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "add-grant-scopes",
+			}
+		}),
+		"roles set-grant-scopes": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &rolescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "set-grant-scopes",
+			}
+		}),
+		"roles remove-grant-scopes": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &rolescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "remove-grant-scopes",
+			}
+		}),
 
 		"scopes": func() (cli.Command, error) {
 			return &scopescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"scopes create": func() (cli.Command, error) {
+		"scopes create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &scopescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"scopes read": func() (cli.Command, error) {
+			}
+		}),
+		"scopes read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &scopescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"scopes update": func() (cli.Command, error) {
+			}
+		}),
+		"scopes update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &scopescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"scopes delete": func() (cli.Command, error) {
+			}
+		}),
+		"scopes delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &scopescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"scopes list": func() (cli.Command, error) {
+			}
+		}),
+		"scopes list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &scopescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
+			}
+		}),
+		"scopes list-keys": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &scopescmd.ListKeysCommand{
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"scopes rotate-keys": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &scopescmd.RotateKeysCommand{
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"scopes list-key-version-destruction-jobs": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &scopescmd.ListKeyVersionDestructionJobsCommand{
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"scopes destroy-key-version": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &scopescmd.DestroyKeyVersionCommand{
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"scopes attach-storage-policy": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &scopescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "attach-storage-policy",
+			}
+		}),
+		"scopes detach-storage-policy": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &scopescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "detach-storage-policy",
+			}
+		}),
+
+		"search": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui, opts...),
+				CommandName: "search",
 			}, nil
 		},
 
 		"sessions": func() (cli.Command, error) {
 			return &sessionscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"sessions read": func() (cli.Command, error) {
+		"sessions read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &sessionscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"sessions list": func() (cli.Command, error) {
+			}
+		}),
+		"sessions list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &sessionscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"sessions cancel": func() (cli.Command, error) {
+			}
+		}),
+		"sessions cancel": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &sessionscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "cancel",
+			}
+		}),
+
+		"session-recordings": func() (cli.Command, error) {
+			return &sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
+		"session-recordings read": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}
+		}),
+		"session-recordings list": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}
+		}),
+		"session-recordings download": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.DownloadCommand{
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"session-recordings delete": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}
+		}),
+		"session-recordings reapply-storage-policy": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &sessionrecordingscmd.ReApplyStoragePolicyCommand{
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+
+		"storage-buckets": func() (cli.Command, error) {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"storage-buckets read": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}
+		}),
+		"storage-buckets delete": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}
+		}),
+		"storage-buckets list": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}
+		}),
+		"storage-buckets create": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
+		"storage-buckets update": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
 
 		"targets": func() (cli.Command, error) {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"targets authorize-session": func() (cli.Command, error) {
+		"targets authorize-session": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "authorize-session",
-			}, nil
-		},
-		"targets read": func() (cli.Command, error) {
+			}
+		}),
+		"targets read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"targets delete": func() (cli.Command, error) {
+			}
+		}),
+		"targets delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"targets list": func() (cli.Command, error) {
+			}
+		}),
+		"targets list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"targets create": func() (cli.Command, error) {
+			}
+		}),
+		"targets create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"targets create tcp": func() (cli.Command, error) {
+			}
+		}),
+		"targets create tcp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.TcpCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"targets create ssh": func() (cli.Command, error) {
+			}
+		}),
+		"targets create ssh": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.SshCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"targets update": func() (cli.Command, error) {
+			}
+		}),
+		"targets update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"targets update tcp": func() (cli.Command, error) {
+			}
+		}),
+		"targets update tcp": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.TcpCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"targets update ssh": func() (cli.Command, error) {
+			}
+		}),
+		"targets update ssh": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.SshCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"targets add-host-sources": func() (cli.Command, error) {
+			}
+		}),
+		"targets add-host-sources": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "add-host-sources",
-			}, nil
-		},
-		"targets remove-host-sources": func() (cli.Command, error) {
+			}
+		}),
+		"targets remove-host-sources": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-host-sources",
-			}, nil
-		},
-		"targets set-host-sources": func() (cli.Command, error) {
+			}
+		}),
+		"targets set-host-sources": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-host-sources",
-			}, nil
-		},
-		"targets add-credential-sources": func() (cli.Command, error) {
+			}
+		}),
+		"targets add-credential-sources": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "add-credential-sources",
-			}, nil
-		},
-		"targets remove-credential-sources": func() (cli.Command, error) {
+			}
+		}),
+		"targets remove-credential-sources": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-credential-sources",
-			}, nil
-		},
-		"targets set-credential-sources": func() (cli.Command, error) {
+			}
+		}),
+		"targets set-credential-sources": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-credential-sources",
+			}
+		}),
+
+		"update": func() (cli.Command, error) {
+			return &genericcmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
 			}, nil
 		},
 
 		"users": func() (cli.Command, error) {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"users create": func() (cli.Command, error) {
+		"users create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"users read": func() (cli.Command, error) {
+			}
+		}),
+		"users read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"users update": func() (cli.Command, error) {
+			}
+		}),
+		"users update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"users delete": func() (cli.Command, error) {
+			}
+		}),
+		"users delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"users list": func() (cli.Command, error) {
+			}
+		}),
+		"users list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"users add-accounts": func() (cli.Command, error) {
+			}
+		}),
+		"users add-accounts": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "add-accounts",
-			}, nil
-		},
-		"users set-accounts": func() (cli.Command, error) {
+			}
+		}),
+		"users set-accounts": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-accounts",
-			}, nil
-		},
-		"users remove-accounts": func() (cli.Command, error) {
+			}
+		}),
+		"users remove-accounts": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-accounts",
-			}, nil
-		},
+			}
+		}),
 
 		"workers": func() (cli.Command, error) {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"workers create": func() (cli.Command, error) {
+		"workers create": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"workers create worker-led": func() (cli.Command, error) {
+			}
+		}),
+		"workers create worker-led": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.WorkerLedCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"workers create controller-led": func() (cli.Command, error) {
+			}
+		}),
+		"workers create controller-led": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.ControllerLedCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
-			}, nil
-		},
-		"workers read": func() (cli.Command, error) {
+			}
+		}),
+		"workers read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"workers update": func() (cli.Command, error) {
+			}
+		}),
+		"workers update": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
-			}, nil
-		},
-		"workers delete": func() (cli.Command, error) {
+			}
+		}),
+		"workers delete": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-		"workers list": func() (cli.Command, error) {
+			}
+		}),
+		"workers list": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
-			}, nil
-		},
-		"workers add-worker-tags": func() (cli.Command, error) {
+			}
+		}),
+		"workers add-worker-tags": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "add-worker-tags",
-			}, nil
-		},
-		"workers set-worker-tags": func() (cli.Command, error) {
+			}
+		}),
+		"workers set-worker-tags": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "set-worker-tags",
-			}, nil
-		},
-		"workers remove-worker-tags": func() (cli.Command, error) {
+			}
+		}),
+		"workers remove-worker-tags": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-worker-tags",
-			}, nil
-		},
-		"workers certificate-authority": func() (cli.Command, error) {
+			}
+		}),
+		"workers certificate-authority": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.WorkerCACommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"workers certificate-authority read": func() (cli.Command, error) {
+				Command: base.NewCommand(ui, opts...),
+			}
+		}),
+		"workers certificate-authority read": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.WorkerCACommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
-			}, nil
-		},
-		"workers certificate-authority reinitialize": func() (cli.Command, error) {
+			}
+		}),
+		"workers certificate-authority reinitialize": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &workerscmd.WorkerCACommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "reinitialize",
-			}, nil
-		},
+			}
+		}),
 	}
 
 	for _, fn := range extraCommandsFuncs {
 		if fn != nil {
-			fn()
+			fn(ui, serverCmdUi, runOpts)
 		}
 	}
 }
 
-var extraCommandsFuncs []func()
+var extraCommandsFuncs []func(ui, serverCmdUi cli.Ui, runOpts *RunOptions)

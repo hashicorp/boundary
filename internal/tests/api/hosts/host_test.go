@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package hosts_test
 
 import (
@@ -6,12 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/api/hostsets"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -97,14 +102,14 @@ func TestPluginHosts(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(hc)
 
-	hset, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id, hostsets.WithAttributes(map[string]interface{}{
-		"host_info": []interface{}{
-			map[string]interface{}{
+	hset, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id, hostsets.WithAttributes(map[string]any{
+		"host_info": []any{
+			map[string]any{
 				"external_id":  "test1",
 				"ip_addresses": []string{"10.0.0.1", "192.168.1.1"},
 				"dns_names":    []string{"foo.hashicorp.com", "boundaryproject.io"},
 			},
-			map[string]interface{}{
+			map[string]any{
 				"external_id":  "test2",
 				"ip_addresses": []string{"10.0.0.2", "192.168.1.2"},
 				"dns_names":    []string{"foo2.hashicorp.com", "boundaryproject2.io"},
@@ -122,7 +127,17 @@ func TestPluginHosts(t *testing.T) {
 
 	h, err := hClient.Read(tc.Context(), hl.Items[0].Id)
 	require.NoError(err)
-	assert.Equal(hl.Items[0], h.Item)
+	assert.Empty(
+		cmp.Diff(
+			hl.Items[0],
+			h.Item,
+			cmpopts.IgnoreUnexported(hosts.Host{}),
+			cmpopts.IgnoreFields(hosts.Host{}, "Version", "UpdatedTime"),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+		),
+	)
 
 	_, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hosts.WithName("foo"))
 	require.Error(err)
@@ -220,7 +235,7 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, err = hClient.Read(tc.Context(), static.HostPrefix+"_doesntexis")
+	_, err = hClient.Read(tc.Context(), globals.StaticHostPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

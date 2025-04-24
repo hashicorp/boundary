@@ -1,0 +1,32 @@
+---
+layout: docs
+page_title: Boundary vs. bastion hosts
+description: >-
+    Learn how Boundary compares to bastion hosts by providing tightly controlled, just-in-time access to infrastructure using role-based access controls (RBAC).
+---
+
+# Boundary vs. bastion hosts
+
+If you want to set up your cloud environment securely, you may choose to run all of your important workloads behind a NAT Gateway, and provision a DMZ with a set of hardened bastion servers.
+
+Bastion host security groups are often not locked down at the network layer.
+Additionally, users who log into a bastion host using SSH are typically dropped into a privileged account.
+Maintaining security groups, network ACLs, and IAM controls on a bastion host at a per-user level is nearly impossible, unless you create and maintain multiple bastion hosts per user or group.
+IT departments now have to manage updates for another server and the sprawl of infrastructure continues, increasing your attack surface, and requiring your IT department to be perfect.
+
+Boundary is not a traditional bastion host.
+Boundary streamlines just-in-time access to privileged sessions for users, and tightly controls access to infrastructure with role-based access controls (RBAC).
+Boundary validates a user's identity using your identity provider of choice, and then dynamically grants them access to the resources they need using their associated permissions.
+Boundary's worker nodes, the resources that proxy connections to private endpoints, are fundamentally stateless and can be easily scaled elastically using modern development tools.
+
+You can use SSH to inject the credentials of any target resources that you want to connect to using Boundary, so that the credentials are never exposed to the user while establishing a connection.
+Alternatively, Boundary can return brokered credentials back to users (if permitted), which could take the form of API tokens, usernames and passwords, public keys, etc.
+
+_Can Boundary replace a Bastion/Jumphost access model?_
+
+**Yes**, in many cases you can use Boundary as a replacement for an existing bastion host-based access model to infrastructure.
+The advantages to Boundary's access model are outlined above.
+
+_Can Boundary extend a Bastion/Jumphost access model?_
+
+**Yes**, some users may see value in Boundary providing access to an existing bastion host deployment.

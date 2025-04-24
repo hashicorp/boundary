@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: users delete - Command
+description: >-
+  The "users delete" command deletes an existing user resource.
+---
+
+# users delete
+
+Command: `users delete`
+
+The `users delete` command lets you delete a user.
+
+## Example
+
+This example deletes a user with the id `u_1234567890`:
+
+```shell-session
+$ boundary users delete -id u_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary users delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the user you want to delete.
+
+@include 'cmd-option-note.mdx'

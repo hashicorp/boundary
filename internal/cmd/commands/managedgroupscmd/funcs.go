@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package managedgroupscmd
 
 import (
@@ -63,7 +66,7 @@ func (c *Command) printListTable(items []*managedgroups.ManagedGroup) string {
 }
 
 func printItemTable(item *managedgroups.ManagedGroup, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

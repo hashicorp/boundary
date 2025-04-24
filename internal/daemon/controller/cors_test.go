@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package controller
 
 import (
@@ -76,6 +79,8 @@ func TestHandler_CORS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cfg.Eventing.ErrorEventsDisabled = true
+	cfg.Eventing.SysEventsEnabled = false
 
 	var wildcardListenerNum int
 	for listenerNum, listener := range cfg.Listeners {
@@ -222,14 +227,14 @@ func TestHandler_CORS(t *testing.T) {
 			var req *retryablehttp.Request
 
 			// This tests out scope_id handling from body or query
-			var body interface{}
+			var body any
 			scopeId := "global"
 			if c.provideScopeId {
 				scopeId = org.GetPublicId()
 			}
 
 			if c.method == http.MethodPost {
-				body = map[string]interface{}{
+				body = map[string]any{
 					"scope_id": scopeId,
 				}
 			}
@@ -260,6 +265,7 @@ func TestHandler_CORS(t *testing.T) {
 			if req.Method == http.MethodOptions && c.code == http.StatusNoContent {
 				assert.Equal(t, fmt.Sprintf("%s, %s, %s, %s, %s", http.MethodDelete, http.MethodGet, http.MethodOptions, http.MethodPost, http.MethodPatch), resp.HttpResponse().Header.Get("Access-Control-Allow-Methods"))
 				assert.Equal(t, fmt.Sprintf("%s, %s, %s, %s", "Content-Type", "X-Requested-With", "Authorization", "X-Foobar"), resp.HttpResponse().Header.Get("Access-Control-Allow-Headers"))
+				assert.Equal(t, "Retry-After, RateLimit, RateLimit-Policy", resp.HttpResponse().Header.Get("Access-Control-Expose-Headers"))
 				assert.Equal(t, "300", resp.HttpResponse().Header.Get("Access-Control-Max-Age"))
 			}
 

@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package workers
 
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -11,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -23,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
@@ -42,7 +48,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
@@ -50,24 +56,38 @@ var (
 		action.AddWorkerTags,
 		action.SetWorkerTags,
 		action.RemoveWorkerTags,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.CreateControllerLed,
 		action.CreateWorkerLed,
 		action.List,
 		action.ReadCertificateAuthority,
 		action.ReinitializeCertificateAuthority,
-	}
+	)
+	// downstreamWorkers returns a list of worker ids which are directly
+	// connected downstream of the provided worker.
+	downstreamWorkers = emptyDownstreamWorkers
 )
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Worker{}}, handlers.MaskSource{&pb.Worker{}}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.Worker{}},
+		handlers.MaskSource{&pb.Worker{}},
+	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.Worker, IdActions, CollectionActions)
+}
+
+func emptyDownstreamWorkers(context.Context, string, downstream.Graph) []string {
+	return nil
 }
 
 // Service handles request as described by the pbs.WorkerServiceServer interface.
@@ -77,13 +97,14 @@ type Service struct {
 	repoFn       common.ServersRepoFactory
 	workerAuthFn common.WorkerAuthRepoStorageFactory
 	iamRepoFn    common.IamRepoFactory
+	downstreams  downstream.Graph
 }
 
 var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
 func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory,
-	workerAuthFn common.WorkerAuthRepoStorageFactory,
+	workerAuthFn common.WorkerAuthRepoStorageFactory, ds downstream.Graph,
 ) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {
@@ -95,12 +116,12 @@ func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn c
 	if workerAuthFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing worker auth repository")
 	}
-	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn}, nil
+	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn, downstreams: ds}, nil
 }
 
 // ListWorkers implements the interface pbs.WorkerServiceServer.
 func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (*pbs.ListWorkersResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -135,7 +156,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 		return &pbs.ListWorkersResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +167,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 	for _, item := range ul {
 		res.Id = item.GetPublicId()
 		res.ScopeId = item.GetScopeId()
+		res.ParentScopeId = scopeInfoMap[item.GetScopeId()].GetParentScopeId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
@@ -153,7 +175,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
 		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 		if outputFields.Has(globals.ScopeField) {
 			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
 		}
@@ -161,7 +183,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
-		item, err := toProto(ctx, item, outputOpts...)
+		item, err := s.toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +217,7 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -203,7 +225,7 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, w, outputOpts...)
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +302,7 @@ func (s Service) createCommon(ctx context.Context, in *pb.Worker, act action.Typ
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -288,7 +310,7 @@ func (s Service) createCommon(ctx context.Context, in *pb.Worker, act action.Typ
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, created.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, created, outputOpts...)
+	item, err := s.toProto(ctx, created, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +327,17 @@ func (s Service) DeleteWorker(ctx context.Context, req *pbs.DeleteWorkerRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+
+	w, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	if server.IsManagedWorker(w) {
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.", map[string]string{"id": "Managed workers cannot be deleted."})
+	}
+
+	_, err = s.deleteFromRepo(ctx, w.GetPublicId())
 	if err != nil {
 		return nil, err
 	}
@@ -323,8 +355,44 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	w, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+
+	w, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
+		return nil, err
+	}
+
+	possibleKmsWorkerId, err := server.NewWorkerIdFromScopeAndName(ctx, w.GetScopeId(), w.GetName())
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE on the second case: because KMS-authed workers have predictable IDs
+	// generated from the scope and name, it's functionally equivalent to
+	// checking the type, but works for both KMS-PKI and old-style KMS workers.
+	switch {
+	case server.IsManagedWorker(w):
+		return nil, handlers.InvalidArgumentErrorf(
+			"Error in provided request.",
+			map[string]string{"id": "Managed workers cannot be updated."},
+		)
+	case possibleKmsWorkerId == w.GetPublicId():
+		return nil, handlers.InvalidArgumentErrorf(
+			"Error in provided request.",
+			map[string]string{"id": "KMS workers cannot be updated through the API and must be updated via their configuration file."},
+		)
+	}
+
+	w, err = s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	switch {
+	case err == nil:
+	case stderrors.Is(err, server.ErrCannotUpdateKmsWorkerViaApi):
+		// This is an extra check on the repo side, although it should be caught
+		// by the logic above.
+		return nil, handlers.InvalidArgumentErrorf(
+			"Error in provided request.",
+			map[string]string{"id": "KMS workers cannot be updated through the API and must be updated via their configuration file."},
+		)
+	default:
 		return nil, err
 	}
 
@@ -334,7 +402,7 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -342,7 +410,7 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, w, outputOpts...)
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -371,14 +439,15 @@ func (s Service) AddWorkerTags(ctx context.Context, req *pbs.AddWorkerTagsReques
 		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
-	item, err := toProto(ctx, w, outputOpts...)
+
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -407,14 +476,15 @@ func (s Service) SetWorkerTags(ctx context.Context, req *pbs.SetWorkerTagsReques
 		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
-	item, err := toProto(ctx, w, outputOpts...)
+
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -443,14 +513,15 @@ func (s Service) RemoveWorkerTags(ctx context.Context, req *pbs.RemoveWorkerTags
 		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
-	item, err := toProto(ctx, w, outputOpts...)
+
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -511,7 +582,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*server
 	if err != nil {
 		return nil, err
 	}
-	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1))
+	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1), server.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}
@@ -751,7 +822,7 @@ func certificateAuthorityToProto(in *types.RootCertificates) *pb.CertificateAuth
 	return &pb.CertificateAuthority{Certs: certs}
 }
 
-func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*pb.Worker, error) {
+func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*pb.Worker, error) {
 	const op = "workers.toProto"
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
@@ -765,6 +836,9 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 	}
 	if outputFields.Has(globals.ScopeIdField) {
 		out.ScopeId = in.GetScopeId()
+	}
+	if outputFields.Has(globals.DirectlyConnectedDownstreamWorkersField) {
+		out.DirectlyConnectedDownstreamWorkers = downstreamWorkers(ctx, in.GetPublicId(), s.downstreams)
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -787,14 +861,31 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 	if outputFields.Has(globals.ScopeField) {
 		out.Scope = opts.WithScope
 	}
-	if outputFields.Has(globals.AuthorizedActionsField) {
+	if outputFields.Has(globals.LocalStorageStateField) {
+		out.LocalStorageState = in.GetLocalStorageState()
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) && opts.WithAuthorizedActions != nil {
 		out.AuthorizedActions = opts.WithAuthorizedActions
-		if in.Type == KmsWorkerType && out.AuthorizedActions != nil {
-			// KMS workers cannot be updated through the API
+		possibleKmsWorkerId, err := server.NewWorkerIdFromScopeAndName(ctx, in.GetScopeId(), in.GetName())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		// KMS workers cannot be updated through the API
+		if possibleKmsWorkerId == in.GetPublicId() {
 			allActions := out.AuthorizedActions
 			out.AuthorizedActions = make([]string, 0, len(allActions))
 			for _, act := range allActions {
 				if act != action.Update.String() {
+					out.AuthorizedActions = append(out.AuthorizedActions, act)
+				}
+			}
+		}
+		// Managed workers cannot be deleted
+		if server.IsManagedWorker(in) {
+			allActions := out.AuthorizedActions
+			out.AuthorizedActions = make([]string, 0, len(allActions))
+			for _, act := range allActions {
+				if act != action.Delete.String() {
 					out.AuthorizedActions = append(out.AuthorizedActions, act)
 				}
 			}
@@ -810,21 +901,21 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
 	}
 	if outputFields.Has(globals.ActiveConnectionCountField) {
-		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount()}
+		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount}
 	}
 	if outputFields.Has(globals.ControllerGeneratedActivationToken) && in.ControllerGeneratedActivationToken != "" {
 		out.ControllerGeneratedActivationToken = &wrapperspb.StringValue{Value: in.ControllerGeneratedActivationToken}
 	}
-	if outputFields.Has(globals.ConfigTagsField) && len(in.GetConfigTags()) > 0 {
+	if outputFields.Has(globals.ConfigTagsField) && len(in.ConfigTags) > 0 {
 		var err error
-		out.ConfigTags, err = tagsToMapProto(in.GetConfigTags())
+		out.ConfigTags, err = tagsToMapProto(in.ConfigTags)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
 		}
 	}
-	if outputFields.Has(globals.ApiTagsField) && len(in.GetApiTags()) > 0 {
+	if outputFields.Has(globals.ApiTagsField) && len(in.ApiTags) > 0 {
 		var err error
-		out.ApiTags, err = tagsToMapProto(in.GetApiTags())
+		out.ApiTags, err = tagsToMapProto(in.ApiTags)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing api tags proto"))
 		}
@@ -836,14 +927,71 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing canonical tags proto"))
 		}
 	}
-
+	if outputFields.Has(globals.RemoteStorageStateField) && len(in.RemoteStorageStates) > 0 {
+		var err error
+		out.RemoteStorageState, err = remoteStorageStatesToMapProto(in.RemoteStorageStates)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing remote storage state proto"))
+		}
+	}
 	return &out, nil
 }
 
+func remoteStorageStatesToMapProto(in map[string]*plugin.StorageBucketCredentialState) (map[string]*pb.RemoteStorageState, error) {
+	ret := make(map[string]*pb.RemoteStorageState)
+	for storageBucketId, sbcState := range in {
+		status := server.RemoteStorageStateAvailable
+		writeState := server.PermissionStateUnknown.String()
+		readState := server.PermissionStateUnknown.String()
+		deleteState := server.PermissionStateUnknown.String()
+		if sbcState.GetState() != nil {
+			if sbcState.GetState().GetWrite() != nil {
+				writePermissionState, err := server.ParsePermissionState(sbcState.GetState().GetWrite().GetState())
+				if err != nil {
+					return nil, err
+				}
+				writeState = writePermissionState
+				if writeState == server.PermissionStateError.String() {
+					status = server.RemoteStorageStateError
+				}
+			}
+			if sbcState.GetState().GetRead() != nil {
+				readPermissionState, err := server.ParsePermissionState(sbcState.GetState().GetRead().GetState())
+				if err != nil {
+					return nil, err
+				}
+				readState = readPermissionState
+				if readState == server.PermissionStateError.String() {
+					status = server.RemoteStorageStateError
+				}
+			}
+			if sbcState.GetState().GetDelete() != nil {
+				deletePermissionState, err := server.ParsePermissionState(sbcState.GetState().GetDelete().GetState())
+				if err != nil {
+					return nil, err
+				}
+				deleteState = deletePermissionState
+				if deleteState == server.PermissionStateError.String() {
+					status = server.RemoteStorageStateError
+				}
+			}
+		}
+		ret[storageBucketId] = &pb.RemoteStorageState{
+			Status: status.String(),
+			Permissions: &pb.RemoteStoragePermissions{
+				Write:  writeState,
+				Read:   readState,
+				Delete: deleteState,
+			},
+		}
+	}
+	return ret, nil
+}
+
 func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, error) {
-	b := make(map[string][]interface{})
+	b := make(map[string][]any)
 	for k, v := range in {
-		result := make([]interface{}, 0, len(v))
+		result := make([]any, 0, len(v))
 		for _, t := range v {
 			result = append(result, t)
 		}
@@ -866,15 +1014,15 @@ func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, err
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetWorkerRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.WorkerPrefix)
 }
 
-func validateListRequest(req *pbs.ListWorkersRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListWorkersRequest) error {
 	badFields := map[string]string{}
 	if req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Must be 'global' when listing."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
@@ -884,7 +1032,7 @@ func validateListRequest(req *pbs.ListWorkersRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteWorkerRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.WorkerPrefix)
 }
 
 func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
@@ -911,7 +1059,7 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 			badFields[globals.DescriptionField] = "Contains non-printable characters."
 		}
 		return badFields
-	}, server.WorkerPrefix)
+	}, globals.WorkerPrefix)
 }
 
 func validateCreateRequest(item *pb.Worker, act action.Type) error {
@@ -980,6 +1128,8 @@ func validateStringForDb(str string) string {
 		return "must be non-empty."
 	case len(str) > 512:
 		return "must be within 512 characters."
+	case str == server.ManagedWorkerTag:
+		return "cannot be the managed worker tag."
 	default:
 		return ""
 	}
@@ -987,7 +1137,7 @@ func validateStringForDb(str string) string {
 
 func validateAddTagsRequest(req *pbs.AddWorkerTagsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.WorkerPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1024,7 +1174,7 @@ func validateAddTagsRequest(req *pbs.AddWorkerTagsRequest) error {
 
 func validateSetTagsRequest(req *pbs.SetWorkerTagsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.WorkerPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1058,7 +1208,7 @@ func validateSetTagsRequest(req *pbs.SetWorkerTagsRequest) error {
 
 func validateRemoveTagsRequest(req *pbs.RemoveWorkerTagsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.WorkerPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

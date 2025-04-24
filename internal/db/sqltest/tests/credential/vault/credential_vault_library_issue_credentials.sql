@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- credential_vault_library_issue_credentials tests the credential_vault_library_issue_credentials view
 
 begin;

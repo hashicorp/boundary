@@ -1,0 +1,389 @@
+---
+layout: docs
+page_title: v0.14.0 release notes
+description: >-
+  Learn more about the new features included in the Boundary 0.14.0 release. Understand any deprecations, changes, and known issues.
+---
+
+# Boundary 0.14.0 release notes
+
+**GA date:** October 11, 2023
+
+@include 'release-notes/intro.mdx'
+
+## New features
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Feature</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Boundary Desktop embedded terminal
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     An embedded terminal has been added to the Boundary Desktop client for convenience. Now you can use the CLI directly from within Boundary Desktop.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app">Install Boundary Desktop tutorial</a>
+    </td>
+  </tr>
+
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      LDAP authorization method
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      The LDAP auth method is no longer in beta, it is now fully supported. Administrators can now create, manage, and delete LDAP auth methods along with managed groups and accounts using the admin console UI.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/auth-methods">Auth methods</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Dynamic credential support for storage buckets <sup>HCP/ENT</sup>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      You can now configure dynamic credentials for AWS S3 storage buckets using the Amazon Web Services (AWS) <code>AssumeRole</code> API. We recommend that you configure credentials using <code>AssumeRole</code> instead of access keys when possible.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create a storage bucket</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Remote pass-through commands for SSH
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      A new SSH flag, <code>remote-command</code> was introduced to the <a href="/boundary/docs/commands/connect/ssh">boundary connect ssh helper</a>. It lets you run the specified commands on the remote-machine using pass-through arguments.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/connect/ssh">connect ssh command</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      New worker health metric
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      A new metric was added to the health endpoint to check the connection state of the worker and whether it can connect to an upstream controller. The result is automatically included in the response when you run the health endpoint.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/operations/health">Boundary health endpoints</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Improved telemetry
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Improved telemetry was added to Boundary. You can enable telemetry to gather information about your Boundary cluster.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/configuration/events">events stanza</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Valid principals for Vault SSH signed certificates
+      <br /><br />
+      (Added in version 0.14.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     You can now add additional valid principals when you create a Vault SSH signed certificate credential library. The additional principals list the names for which the certificate is valid.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/credential-libraries#vault-ssh-certificate-credential-library-attributes">Vault SSH certificate credential library attributes</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      OIDC prompts
+      <br /><br />
+      (Added in version 0.14.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      You can now use OIDC prompts to customize the authentication and authorization flow to suit your specific needs. For more information about the OIDC specification, refer to the <a href="https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest">OIDC authentication request documentation</a>.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/auth-methods#oidc-auth-method-attributes">OIDC auth method attributes</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      API rate limiting
+      <br /><br />
+      (Added in version 0.14.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      You can now configure rate limits on the controller API to help manage your system resources. Boundary supports separate configurable limits for each resource and action. Rate limiting is enabled by default.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/api-clients/api#rate-limiting">API rate limiting</a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
+
+## Known issues and breaking changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Issue</th>
+      <th style={{verticalAligh: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Rotation of AWS access and secret keys during a session results in stale recordings
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In Boundary version 0.13.0+, when you rotate a storage bucket's secrets, any new sessions use the new credentials. However, previously established sessions continue to use the old credentials.
+    <br /><br />
+    As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+    Otherwise, you may end up with recordings that aren't stored in the remote storage bucket, and are unable to be played back.
+    </td>
+  </tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unsupported recovery workflow during worker failure
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If a worker fails during a recording, there is no way to recover the recording. This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0
+    <br /><br />
+    (Fixed in 0.14.1)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Go CVE-2023-39325 and Go CVE-2023-39326
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.14.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.3. Boundary was updated to use the new Go version in release 0.14.1, and the issue is resolved.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    Go CVE-2023-39325: <a href="https://github.com/advisories/GHSA-4374-p667-p6c8">HTTP/2 rapid reset can cause excessive work in net/http</a>
+    <br /><br />
+    Go CVE-2023-39326: <a href="https://github.com/advisories/GHSA-9f76-wg39-x86h">A malicious HTTP sender can use chunk extensions</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0
+    <br /><br />
+    (Fixed in 0.14.3 and 0.13.5 <sup>HCP/ENT</sup>)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Go CVE-2023-39322 and Go CVE-2022-45285
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.14.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.5. Boundary was updated to use the new Go version in release 0.14.3, and the issue is resolved.
+    <br /><br />
+    Note that version 0.13.5 of HCP Boundary and Boundary Enterprise was also updated to use the new Go version.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    Go CVE-2023-39322: <a href="https://github.com/advisories/GHSA-892h-r6cr-53g4">QUIC connections do not set an upper bound on the amount of data buffered</a>
+    <br /><br />
+    Go CVE-2022-45285: <a href="https://github.com/advisories/GHSA-5f94-vhjq-rpg8">Using go get to fetch a module with the ".git" suffix may unexpectedly fallback to insecure protocol</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.8.0 - 0.14.0
+    <br /><br />
+    (Fixed in 0.14.4 and 0.13.6 <sup>ENT</sup>)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    HCSEC-2024-02
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary and Boundary Enterprise since version 0.8.0 are vulnerable to session hijacking through TLS certificate tampering.
+    <br /><br />
+    An attacker who has privileges to enumerate active or pending sessions, obtain a private key pertaining to a session, and obtain a valid trust on first use or TOFU token may exploit the vulnerability.
+    It allows the attacker to create a TLS certificate that hijacks an active session to gain access to the underlying service or application.
+    The vulnerability, CVE-2024-1052, is fixed in Boundary version 0.15.0 and patched in Boundary Enterprise versions 0.13.6 and 0.14.4.
+    <br /><br />
+    Boundary Enterprise users should upgrade to Boundary Enterprise 0.14.4.
+    Community users should evaluate the risk associated with this issue and consider upgrading to Boundary 0.15.0 or later.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    HCSEC-2024-02: <a href="https://discuss.hashicorp.com/t/hcsec-2024-02-boundary-vulnerable-to-session-hijacking-through-tls-certificate-tampering/62458">Boundary vulnerable to session hijacking through TLS certificate tampering</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0
+    <br /><br />
+    (Fixed in 0.14.5)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Go CVE-2024-24783, Go CVE-2024-24784, Go CVE-2024-24785, Go CVE-2024-24786, Go CVE-2023-45289, Go CVE-2023-45290
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.14.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.8. Boundary was updated to use the new Go version in release 0.14.5, and the issue is resolved.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    CVE-2024-24783: <a href="https://www.cve.org/CVERecord?id=CVE-2024-24783">Verify panics on certificates with an unknown public key algorithm in crypto/x509</a>
+    <br /><br />
+    CVE-2024-24784: <a href="https://www.cve.org/CVERecord?id=CVE-2024-24784">Comments in display names are incorrectly handled in net/mail</a>
+    <br /><br />
+    CVE-2024-24785: <a href="https://www.cve.org/CVERecord?id=CVE-2024-24785">Errors returned from JSON marshaling may break template escaping in html/template</a>
+    <br /><br />
+    CVE-2024-24786: <a href="https://www.cve.org/CVERecord?id=CVE-2024-24786">Infinite loop in JSON unmarshaling in google.golang.org/protobuf</a>
+    <br /><br />
+    CVE-2023-45289: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45289">Incorrect forwarding of sensitive headers and cookies on HTTP redirect in net/http</a>
+    <br /><br />
+    CVE-2023-45290: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45290">Memory exhaustion in multipart form parsing in net/textproto and net/http</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0+
+    <br /><br />
+    (Fixed in 0.15.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Cannot delete IAM access key resource
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When you delete an AWS S3 storage bucket that had credential rotation enabled, Boundary cannot delete the associated IAM access key resource.
+    <br /><br />
+    This issue is fixed in version 0.15.3.
+     <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create a storage bucket</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0
+    <br /><br />
+    (Fixed in 0.14.6)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Go CVE-2023-45288
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.14.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.9. Boundary was updated to use the new Go version in release 0.14.6, and the issue is resolved.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    CVE-2023-45288: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45288">HTTP/2 CONTINUATION flood in net/http</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
+
+## Feature deprecations and EOL
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>EOL</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>vault</code> credential library subtype
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     As noted in the <a href="/boundary/docs/release-notes/v0_12_0#deprecations-and-changes">v0.12.0 release notes</a>, the <code>vault</code> credential library subtype was renamed to <code>vault-generic</code>. The <code>vault</code> subtype is removed in this release, you must use <code>vault-generic</code> now.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/credential-libraries">Credential libraries</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>status</code> field
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      As noted in the <a href="https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md#deprecationschanges-3">v0.12.0 changelog</a>, using the <code>-format=json</code> option with the CLI produced inconsistent results. The <code>status</code> field is removed in this release. The <code>status_code</code> field is now used for both successful requests and errors.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Default port value
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     As noted in the <a href="/boundary/docs/release-notes/v0_12_0#deprecations-and-changes">v0.12.0 release notes</a>, targets now require a default port value. Previously, any ports that you defined as part of a host address were ignored, but allowed as part of the target definition. From this version on, if you define a port on a host address it results in an error.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/targets">Targets</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Application credentials parameter
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      As noted in the <a href="https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md#deprecationschanges-6">v0.10.0 changelog</a>, the <code>target</code> subcommands for application credentials were renamed to brokered credentials. The application credentials subcommands are removed in this release. You must use the brokered credential subcommands instead.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/targets">targets</a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package static
 
 import (
@@ -6,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -125,7 +131,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assertPublicId(t, credential.UsernamePasswordCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.UsernamePasswordCredentialPrefix, got.PublicId)
 			assert.Equal(tt.cred.Username, got.Username)
 			assert.Nil(got.Password)
 			assert.Nil(got.CtPassword)
@@ -184,6 +190,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 
 		// Creating credential in different project should not conflict
 		in3, err := NewUsernamePasswordCredential(prj2Cs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		require.NoError(err)
 		got3, err := repo.CreateUsernamePasswordCredential(ctx, prj2.GetPublicId(), in3)
 		require.NoError(err)
 		assert.Equal(in3.Name, got3.Name)
@@ -320,7 +327,7 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assertPublicId(t, credential.SshPrivateKeyCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.SshPrivateKeyCredentialPrefix, got.PublicId)
 			assert.Equal(tt.cred.Username, got.Username)
 			assert.Nil(got.PrivateKey)
 			assert.Nil(got.PrivateKeyEncrypted)
@@ -407,8 +414,7 @@ func TestRepository_CreateJsonCredential(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	obj, objBytes, err := TestJsonObject()
-	assert.NoError(t, err)
+	obj, objBytes := TestJsonObject(t)
 
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
 
@@ -491,7 +497,7 @@ func TestRepository_CreateJsonCredential(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assertPublicId(t, credential.JsonCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.JsonCredentialPrefix, got.PublicId)
 			assert.Nil(got.Object)
 			assert.Nil(got.ObjectEncrypted)
 
@@ -572,8 +578,7 @@ func TestRepository_LookupCredential(t *testing.T) {
 	spkCredWithPass := TestSshPrivateKeyCredential(t, conn, wrapper, "username", string(testdata.PEMEncryptedKeys[0].PEMBytes),
 		store.PublicId, prj.PublicId, WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
 
-	obj, _, err := TestJsonObject()
-	assert.NoError(t, err)
+	obj, _ := TestJsonObject(t)
 
 	jsonCred := TestJsonCredential(t, conn, wrapper, store.PublicId, prj.PublicId, obj)
 
@@ -679,14 +684,13 @@ func TestRepository_ListCredentials(t *testing.T) {
 	TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), total/3)
 	TestSshPrivateKeyCredentials(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), total/3)
 
-	obj, _, err := TestJsonObject()
-	assert.NoError(t, err)
+	obj, _ := TestJsonObject(t)
 
 	TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, total/3)
 
 	type args struct {
 		storeId string
-		opt     []Option
+		opt     []credential.Option
 	}
 	tests := []struct {
 		name    string
@@ -694,27 +698,19 @@ func TestRepository_ListCredentials(t *testing.T) {
 		wantCnt int
 	}{
 		{
-			name: "no-limit",
-			args: args{
-				storeId: store.PublicId,
-				opt:     []Option{WithLimit(-1)},
-			},
-			wantCnt: total,
-		},
-		{
 			name: "default-limit",
 			args: args{
 				storeId: store.PublicId,
 			},
-			wantCnt: defaultLimit * 3,
+			wantCnt: defaultLimit,
 		},
 		{
 			name: "custom-limit",
 			args: args{
 				storeId: store.PublicId,
-				opt:     []Option{WithLimit(3)},
+				opt:     []credential.Option{credential.WithLimit(3)},
 			},
-			wantCnt: 9,
+			wantCnt: 3,
 		},
 		{
 			name: "bad-store",
@@ -732,9 +728,12 @@ func TestRepository_ListCredentials(t *testing.T) {
 			require.NotNil(repo)
 			repo.defaultLimit = defaultLimit
 
-			got, err := repo.ListCredentials(context.Background(), tt.args.storeId, tt.args.opt...)
+			got, ttime, err := repo.ListCredentials(context.Background(), tt.args.storeId, tt.args.opt...)
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 
 			// Validate only hmac values are returned
 			for _, c := range got {
@@ -759,6 +758,55 @@ func TestRepository_ListCredentials(t *testing.T) {
 	}
 }
 
+func TestRepository_ListCredentials_Pagination(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	obj, _ := TestJsonObject(t)
+	_ = TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, 2)
+	_ = TestSshPrivateKeyCredentials(t, conn, wrapper, "username", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), 2)
+	_ = TestUsernamePasswordCredentials(t, conn, wrapper, "username", "testpassword", store.GetPublicId(), prj.GetPublicId(), 1)
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	page1, ttime, err := repo.ListCredentials(ctx, store.GetPublicId(), credential.WithLimit(2))
+	require.NoError(err)
+	require.Len(page1, 2)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	page2, ttime, err := repo.ListCredentials(ctx, store.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
+	require.NoError(err)
+	require.Len(page2, 2)
+	for _, item := range page1 {
+		assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+		assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+	}
+	assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	page3, ttime, err := repo.ListCredentials(ctx, store.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
+	require.NoError(err)
+	require.Len(page3, 1)
+	for _, item := range append(page1, page2...) {
+		assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+	}
+	assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	page4, ttime, err := repo.ListCredentials(ctx, store.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
+	require.NoError(err)
+	require.Empty(page4)
+	assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+}
+
 func TestRepository_DeleteCredential(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -772,8 +820,7 @@ func TestRepository_DeleteCredential(t *testing.T) {
 	upCred := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	spkCred := TestSshPrivateKeyCredential(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
-	obj, _, err := TestJsonObject()
-	assert.NoError(t, err)
+	obj, _ := TestJsonObject(t)
 
 	jsonCred := TestJsonCredential(t, conn, wrapper, store.PublicId, prj.PublicId, obj)
 
@@ -1300,7 +1347,7 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, credential.UsernamePasswordCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.UsernamePasswordCredentialPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)
@@ -1340,6 +1387,47 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_UpdatePasswordCredentialKeyUpdate(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	kkms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kkms)
+	require.NoError(err)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	credStore := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	orig, err := repo.CreateUsernamePasswordCredential(ctx, prj.GetPublicId(), &UsernamePasswordCredential{
+		UsernamePasswordCredential: &store.UsernamePasswordCredential{
+			Username: "user",
+			Password: []byte("pass"),
+			StoreId:  credStore.PublicId,
+		},
+	})
+	require.NoError(err)
+
+	err = kkms.RotateKeys(ctx, prj.GetPublicId())
+	require.NoError(err)
+
+	orig.Password = []byte("pass1") // Company policy to change password every 3 months
+
+	got, _, err := repo.UpdateUsernamePasswordCredential(ctx, prj.GetPublicId(), orig, orig.GetVersion(), []string{"Password"})
+	require.NoError(err)
+
+	// Validate that the KeyId has changed
+	assert.NotEqual(orig.KeyId, got.KeyId)
+
+	// Validate hmac
+	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyId(got.KeyId))
+	require.NoError(err)
+	hm, err := crypto.HmacSha256(ctx, orig.Password, databaseWrapper, []byte(credStore.GetPublicId()), nil, crypto.WithEd25519())
+	require.NoError(err)
+	assert.Equal([]byte(hm), got.PasswordHmac)
 }
 
 func TestRepository_UpdateSshPrivateKeyCredential(t *testing.T) {
@@ -1850,7 +1938,7 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, credential.SshPrivateKeyCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.SshPrivateKeyCredentialPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)
@@ -1971,8 +2059,7 @@ func TestRepository_UpdateJsonCredential(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	_, objBytes, err := TestJsonObject()
-	assert.NoError(t, err)
+	_, objBytes := TestJsonObject(t)
 
 	secondJsonSecret := &structpb.Struct{
 		Fields: map[string]*structpb.Value{
@@ -2362,7 +2449,7 @@ func TestRepository_UpdateJsonCredential(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, credential.JsonCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.JsonCredentialPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)
@@ -2400,4 +2487,161 @@ func TestRepository_UpdateJsonCredential(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_ListDeletedCredentialIds(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	obj, _ := TestJsonObject(t)
+	jsonCreds := TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, 2)
+	sshCreds := TestSshPrivateKeyCredentials(t, conn, wrapper, "username", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), 2)
+	pwCreds := TestUsernamePasswordCredentials(t, conn, wrapper, "username", "testpassword", store.GetPublicId(), prj.GetPublicId(), 2)
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+	staticRepo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.ListDeletedCredentialIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+	// Expect transaction timestamp to be within ~10 seconds of now
+	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+	// Delete a json credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), jsonCreds[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect one entry
+	deletedIds, ttime, err = repo.ListDeletedCredentialIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	assert.Empty(
+		cmp.Diff(
+			[]string{jsonCreds[0].GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+	// Delete a ssh credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), sshCreds[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect two entries
+	deletedIds, ttime, err = repo.ListDeletedCredentialIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	assert.Empty(
+		cmp.Diff(
+			[]string{jsonCreds[0].GetPublicId(), sshCreds[0].GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+	// Delete a pw credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), pwCreds[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect three entries
+	deletedIds, ttime, err = repo.ListDeletedCredentialIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	assert.Empty(
+		cmp.Diff(
+			[]string{jsonCreds[0].GetPublicId(), sshCreds[0].GetPublicId(), pwCreds[0].GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.ListDeletedCredentialIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+}
+
+func TestRepository_EstimatedCredentialCount(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	staticStore := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+	staticRepo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.EstimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create some credentials
+	obj, _ := TestJsonObject(t)
+	assert.NoError(err)
+	jsonCreds := TestJsonCredentials(t, conn, wrapper, staticStore.GetPublicId(), prj.GetPublicId(), obj, 2)
+	sshCreds := TestSshPrivateKeyCredentials(t, conn, wrapper, "username", TestSshPrivateKeyPem, staticStore.GetPublicId(), prj.GetPublicId(), 2)
+	pwCreds := TestUsernamePasswordCredentials(t, conn, wrapper, "username", "testpassword", staticStore.GetPublicId(), prj.GetPublicId(), 2)
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(6, numItems)
+
+	// Delete a json credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), jsonCreds[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(5, numItems)
+
+	// Delete a ssh credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), sshCreds[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(4, numItems)
+
+	// Delete a pw credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), pwCreds[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(3, numItems)
 }

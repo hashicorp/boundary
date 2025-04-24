@@ -1,0 +1,41 @@
+---
+layout: docs
+page_title: Fault tolerance recommendations
+description: >-
+  Understand Boundary fault tolerance recommendations to increase availability, reduce risk. Minimize the impact of node, availability zone, and regional failures.
+---
+
+# Fault tolerance recommendations
+
+Review the following fault tolerance recommendations to ensure increased availability and reduced risk.
+
+## Node failure
+
+Boundary controllers store all state and configuration within a PostgreSQL database that must not be deployed on the controller nodes.
+When a controller node fails, users are still able to interact with other Boundary controllers, assuming the presence of additional nodes behind a load balancer.
+
+Boundary workers are used as either proxies or reverse proxies.
+Boundary workers routinely communicate with Boundary controllers to report their health.
+In the event of a Boundary worker node failure, it is a best practice to have at least three Boundary workers per network boundary, per type (ingress and egress).
+Therefore, the controller assigns a user's proxy session to an active Boundary worker node.
+
+## Availability zone failure
+
+By deploying Boundary controllers in the recommended architecture across three availability zones with load balancing in front of them, the Boundary control plane can survive outages in up to two availability zones.
+
+The best practice for deploying Boundary workers is to have at least one worker deployed per availability zone.
+In the case of an availability zone outage, if the networking service is still up, users will have their attempted session connection proxied through a worker in a different availability zone and then onto the target, granted the proper security rules are in place to allow for cross subnet/availability zone communication.
+
+## Regional failures
+
+Generally speaking, when there is a failure in an entire cloud region, the resources running in that region are most likely inaccessible, especially if the networking service is affected.
+
+To continue to serve Boundary controller requests in the event of a regional outage, there must be a deployment like the one outlined in this guide in a different region.
+The nodes in the secondary region must be able to communicate with the PostgreSQL database, which can be accomplished with multi-regional database technologies from the various cloud providers (for example AWS RDS Read Replicas, where a read replica can be promoted to a primary in the event the primary resides in a failed region).
+
+Another point of consideration is how to handle load balancing Boundary controller requests to regions that are not in a failed state.
+Services like AWS Global Accelerator for AWS, Cross-Region Load Balancer for Azure, and GCP Cloud Load Balancer for GCP all provide this level of functionality with some configuration.
+
+Refer to your cloud provider's documentation for additional information regarding multi-region disaster recovery strategies for PostgreSQL.
+
+In the case of a regional outage, if a Boundary worker cannot reach its upstream worker, cannot reach a controller, a user cannot reach the worker, or any combination of the above, the user is not able to establish a proxied session to the target.

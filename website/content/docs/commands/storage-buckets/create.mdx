@@ -1,0 +1,41 @@
+---
+layout: docs
+page_title: storage-buckets create - Command
+description: >-
+  The "storage-buckets create" command creates new storage bucket resources.
+---
+
+# storage-buckets create
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary storage-buckets create`
+
+The `boundary storage-buckets create` command lets you create Boundary storage buckets.
+Storage buckets are Boundary resources that represent storage resources in an external store.
+
+## Example
+
+This example creates a storage bucket with the name `prodops` and the description `storage bucket for ProdOps`:
+
+```shell-session
+$ boundary storage-buckets create -name prodops -description "storage bucket for ProdOps"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary storage-buckets create [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-bucket-name=<string>` - The name of the storage bucket in the external store.
+- `-bucket-prefix==<string>` - An optional prefix to set on the storage bucket.
+- `-worker-filter=<string>` - A Boolean expression to filter which workers can process communication to this storage bucket.
+
+@include 'cmd-option-note.mdx'

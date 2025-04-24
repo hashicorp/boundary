@@ -1,4 +1,4 @@
-# # Note that this is an example systemd file and is not intended to be functional as-is.
+# # Note that this is an example config file and is not intended to be functional as-is.
 # # Full configuration options can be found at https://www.boundaryproject.io/docs/configuration/worker
 
 # listener "tcp" {
@@ -13,7 +13,7 @@
 #   description = "A default worker created demonstration"
 
 #   # Workers must be able to reach controllers on :9201
-#   controllers = [
+#   initial_upstreams = [
 #     "10.0.0.1",
 #     "10.0.0.2",
 #     "10.0.0.3",

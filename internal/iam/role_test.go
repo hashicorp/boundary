@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -21,6 +24,7 @@ import (
 
 func TestNewRole(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -80,7 +84,7 @@ func TestNewRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRole(tt.args.scopePublicId, tt.args.opt...)
+			got, err := NewRole(ctx, tt.args.scopePublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -97,6 +101,7 @@ func TestNewRole(t *testing.T) {
 
 func Test_RoleCreate(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -117,9 +122,9 @@ func Test_RoleCreate(t *testing.T) {
 			args: args{
 				role: func() *Role {
 					id := testId(t)
-					role, err := NewRole(org.PublicId, WithName(id), WithDescription("description-"+id))
+					role, err := NewRole(ctx, org.PublicId, WithName(id), WithDescription("description-"+id))
 					require.NoError(t, err)
-					grpId, err := newRoleId()
+					grpId, err := newRoleId(ctx)
 					require.NoError(t, err)
 					role.PublicId = grpId
 					return role
@@ -132,9 +137,9 @@ func Test_RoleCreate(t *testing.T) {
 			args: args{
 				role: func() *Role {
 					id := testId(t)
-					role, err := NewRole(proj.PublicId, WithName(id), WithDescription("description-"+id))
+					role, err := NewRole(ctx, proj.PublicId, WithName(id), WithDescription("description-"+id))
 					require.NoError(t, err)
-					grpId, err := newRoleId()
+					grpId, err := newRoleId(ctx)
 					require.NoError(t, err)
 					role.PublicId = grpId
 					return role
@@ -146,9 +151,9 @@ func Test_RoleCreate(t *testing.T) {
 			name: "valid-with-dup-null-names-and-descriptions",
 			args: args{
 				role: func() *Role {
-					role, err := NewRole(org.PublicId)
+					role, err := NewRole(ctx, org.PublicId)
 					require.NoError(t, err)
-					roleId, err := newRoleId()
+					roleId, err := newRoleId(ctx)
 					require.NoError(t, err)
 					role.PublicId = roleId
 					return role
@@ -162,9 +167,9 @@ func Test_RoleCreate(t *testing.T) {
 			args: args{
 				role: func() *Role {
 					id := testId(t)
-					role, err := NewRole(id)
+					role, err := NewRole(ctx, id)
 					require.NoError(t, err)
-					roleId, err := newRoleId()
+					roleId, err := newRoleId(ctx)
 					require.NoError(t, err)
 					role.PublicId = roleId
 					return role
@@ -181,14 +186,14 @@ func Test_RoleCreate(t *testing.T) {
 			w := db.New(conn)
 			if tt.wantDup {
 				r := tt.args.role.Clone().(*Role)
-				roleId, err := newRoleId()
+				roleId, err := newRoleId(ctx)
 				require.NoError(err)
 				r.PublicId = roleId
-				err = w.Create(context.Background(), r)
+				err = w.Create(ctx, r)
 				require.NoError(err)
 			}
 			r := tt.args.role.Clone().(*Role)
-			err := w.Create(context.Background(), r)
+			err := w.Create(ctx, r)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -199,7 +204,7 @@ func Test_RoleCreate(t *testing.T) {
 
 			foundGrp := allocRole()
 			foundGrp.PublicId = tt.args.role.PublicId
-			err = w.LookupByPublicId(context.Background(), &foundGrp)
+			err = w.LookupByPublicId(ctx, &foundGrp)
 			require.NoError(err)
 			assert.Empty(cmp.Diff(r, &foundGrp, protocmp.Transform()))
 		})
@@ -214,7 +219,6 @@ func Test_RoleUpdate(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, proj := TestScopes(t, repo)
-	org2, proj2 := TestScopes(t, repo)
 	rw := db.New(conn)
 	type args struct {
 		name            string
@@ -222,7 +226,6 @@ func Test_RoleUpdate(t *testing.T) {
 		fieldMaskPaths  []string
 		nullPaths       []string
 		scopeId         string
-		grantScopeId    string
 		scopeIdOverride string
 		opts            []db.Option
 	}
@@ -284,7 +287,7 @@ func Test_RoleUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_role_name_scope_id_key": unique constraint violation: integrity violation: error #1002`,
+			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_role_name_scope_id_uq": unique constraint violation: integrity violation: error #1002`,
 		},
 		{
 			name: "set description null",
@@ -320,80 +323,6 @@ func Test_RoleUpdate(t *testing.T) {
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
-		{
-			name: "set grant scope in project with same scope",
-			args: args{
-				name:           "set grant scope in project with same scope",
-				fieldMaskPaths: []string{"Name", "GrantScopeId"},
-				scopeId:        proj.PublicId,
-				grantScopeId:   proj.PublicId,
-			},
-			wantRowsUpdate: 1,
-		},
-		{
-			name: "set grant scope in org with same scope",
-			args: args{
-				name:           "set grant scope in org with same scope",
-				fieldMaskPaths: []string{"Name", "GrantScopeId"},
-				scopeId:        org2.PublicId,
-				grantScopeId:   org2.PublicId,
-			},
-			wantRowsUpdate: 1,
-		},
-		{
-			name: "set grant scope in project with different scope",
-			args: args{
-				name:           "set grant scope in project with different scope",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        proj.PublicId,
-				grantScopeId:   proj2.PublicId,
-			},
-			wantErr:    true,
-			wantErrMsg: "db.Update: invalid to set grant_scope_id to non-same scope_id when role scope type is project: integrity violation: error #1104",
-		},
-		{
-			name: "set grant scope in org",
-			args: args{
-				name:           "set grant scope in org",
-				fieldMaskPaths: []string{"Name", "GrantScopeId"},
-				scopeId:        org2.PublicId,
-				grantScopeId:   proj2.PublicId,
-			},
-			wantRowsUpdate: 1,
-		},
-		{
-			name: "set grant scope in external project",
-			args: args{
-				name:           "set grant scope in external project",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        org.PublicId,
-				grantScopeId:   proj2.PublicId,
-			},
-			wantErr:    true,
-			wantErrMsg: "db.Update: grant_scope_id is not a child project of the role scope: integrity violation: error #1104",
-		},
-		{
-			name: "set grant scope in global",
-			args: args{
-				name:           "set grant scope in global",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        org.PublicId,
-				grantScopeId:   "global",
-			},
-			wantErr:    true,
-			wantErrMsg: "db.Update: grant_scope_id is not a child project of the role scope: integrity violation: error #1104",
-		},
-		{
-			name: "set grant scope to parent",
-			args: args{
-				name:           "set grant scope to parent",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        proj2.PublicId,
-				grantScopeId:   org2.PublicId,
-			},
-			wantErr:    true,
-			wantErrMsg: "db.Update: invalid to set grant_scope_id to non-same scope_id when role scope type is project: integrity violation: error #1104",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -419,7 +348,6 @@ func Test_RoleUpdate(t *testing.T) {
 			}
 			updateRole.Name = tt.args.name
 			updateRole.Description = tt.args.description
-			updateRole.GrantScopeId = tt.args.grantScopeId
 
 			updatedRows, err := rw.Update(context.Background(), &updateRole, tt.args.fieldMaskPaths, tt.args.nullPaths, tt.args.opts...)
 			if tt.wantErr {
@@ -438,9 +366,6 @@ func Test_RoleUpdate(t *testing.T) {
 			foundRole.PublicId = role.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundRole)
 			require.NoError(err)
-			if tt.args.grantScopeId == "" {
-				updateRole.GrantScopeId = role.ScopeId
-			}
 			assert.True(proto.Equal(updateRole, foundRole))
 			if len(tt.args.nullPaths) != 0 {
 				underlyingDB, err := conn.SqlDB(ctx)
@@ -553,7 +478,7 @@ func TestRole_Actions(t *testing.T) {
 func TestRole_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	r := &Role{}
-	ty := r.ResourceType()
+	ty := r.GetResourceType()
 	assert.Equal(ty, resource.Role)
 }
 

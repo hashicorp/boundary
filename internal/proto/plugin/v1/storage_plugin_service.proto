@@ -1,0 +1,241 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package plugin.v1;
+
+import "controller/api/resources/plugins/v1/plugin.proto";
+import "controller/api/resources/storagebuckets/v1/storage_bucket.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/plugin;plugin";
+
+// StoragePluginService describes the service for storage bucket plugins.
+service StoragePluginService {
+  // NormalizeStorageBucketData is a hook that passes attributes to the plugin
+  // and allows those values to be normalized prior to creating or updating
+  // those values within the persisted storage bucket.
+  //
+  // NormalizeStorageBucketData is called before the values of attributes are
+  // persisted. All normalized values will be persisted in Boundary and returned
+  // to all clients.
+  //
+  // NormalizeStorageBucketData could affect other clients. For example, in
+  // Terraform, if data is passed to Boundary and then normalized into a new
+  // data structure, it could cause diffs in Terraform for unchanged values.
+  // This is because, the data structure in Terraform's state will now be
+  // different from the normalized data structure returned from Boundary.
+  //
+  // NormalizeStorageBucketData is called before:
+  // * OnCreateStorageBucket
+  // * OnUpdateStorageBucket
+  rpc NormalizeStorageBucketData(NormalizeStorageBucketDataRequest) returns (NormalizeStorageBucketDataResponse);
+
+  // OnCreateStorageBucket is a hook that runs when a
+  // storage bucket is created.
+  rpc OnCreateStorageBucket(OnCreateStorageBucketRequest) returns (OnCreateStorageBucketResponse);
+
+  // OnUpdateStorageBucket is a hook that runs when a storage bucket is
+  // updated.
+  rpc OnUpdateStorageBucket(OnUpdateStorageBucketRequest) returns (OnUpdateStorageBucketResponse);
+
+  // OnDeleteStorageBucket is a hook that runs when a storage bucket is
+  // deleted.
+  rpc OnDeleteStorageBucket(OnDeleteStorageBucketRequest) returns (OnDeleteStorageBucketResponse);
+
+  // ValidatePermissions is a hook that checks if the secrets associated with
+  // the storage bucket meet the requirements of the plugin.
+  rpc ValidatePermissions(ValidatePermissionsRequest) returns (ValidatePermissionsResponse);
+
+  // HeadObject is a hook that retrieves metadata about an object.
+  rpc HeadObject(HeadObjectRequest) returns (HeadObjectResponse);
+
+  // GetObject is a hook that retrieves objects.
+  rpc GetObject(GetObjectRequest) returns (stream GetObjectResponse);
+
+  // PutObject is a hook that reads a file stored on local disk and
+  // stores it to an external object store.
+  rpc PutObject(PutObjectRequest) returns (PutObjectResponse);
+
+  // DeleteObjects deletes one or many files in an external object store
+  // via a provided key prefix.
+  rpc DeleteObjects(DeleteObjectsRequest) returns (DeleteObjectsResponse);
+}
+
+message NormalizeStorageBucketDataRequest {
+  // The incoming attributes in the create or update request.
+  google.protobuf.Struct attributes = 10;
+
+  // The plugin information for this request.
+  controller.api.resources.plugins.v1.PluginInfo plugin = 20;
+}
+
+message NormalizeStorageBucketDataResponse {
+  // Outgoing attributes. If nil, no changes will be recorded. If non-nil, the
+  // values here will be used in place of the original set of attributes.
+  google.protobuf.Struct attributes = 10;
+}
+
+message OnCreateStorageBucketRequest {
+  // Required. The storage bucket to create. The request may contain optional
+  // secret data to help authenticate the request against a cloud
+  // API.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+}
+
+message OnCreateStorageBucketResponse {
+  // The persisted data represents state persisted between storage bucket calls.
+  controller.api.resources.storagebuckets.v1.StorageBucketPersisted persisted = 10;
+}
+
+message OnUpdateStorageBucketRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket current_bucket = 10;
+
+  // Required. The requested new state of the storage bucket.
+  // This field may contain optional secret data that has been
+  // updated from the last returned persisted state.
+  controller.api.resources.storagebuckets.v1.StorageBucket new_bucket = 20;
+
+  // Required. The existing persisted secret data.
+  controller.api.resources.storagebuckets.v1.StorageBucketPersisted persisted = 30;
+}
+
+message OnUpdateStorageBucketResponse {
+  // The persisted data represents state persisted between storage bucket calls.
+  controller.api.resources.storagebuckets.v1.StorageBucketPersisted persisted = 10;
+}
+
+message OnDeleteStorageBucketRequest {
+  // Required. The existing state of the storage bucket to delete.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+
+  // Required. The existing persisted secret data.
+  controller.api.resources.storagebuckets.v1.StorageBucketPersisted persisted = 20;
+}
+
+message OnDeleteStorageBucketResponse {}
+
+message ValidatePermissionsRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+}
+
+message ValidatePermissionsResponse {}
+
+message HeadObjectRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+
+  // Required. The path of the object.
+  string key = 20;
+}
+
+message HeadObjectResponse {
+  // The size of the object in bytes.
+  int64 content_length = 10;
+
+  // Creation date of the object.
+  google.protobuf.Timestamp last_modified = 20;
+}
+
+message GetObjectRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+
+  // Required. The path of the object.
+  string key = 20;
+
+  // Optional. The maximum size of the stream response message. Defaults to 64KiB.
+  uint32 chunk_size = 30;
+}
+
+message GetObjectResponse {
+  // Object data.
+  bytes file_chunk = 10;
+}
+
+message PutObjectRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+
+  // Required. The path of the object.
+  string key = 20;
+
+  // Required. The path of the object on local disk.
+  string path = 30;
+}
+
+message PutObjectResponse {
+  // 256-bit SHA-256 digest of the object.
+  bytes checksum_sha_256 = 10;
+}
+
+message DeleteObjectsRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+
+  // Required. The prefix of object keys to be deleted.
+  //
+  // Deletes all objects whose keys start with this field. Note that object storage keys
+  // use fully qualified names, including the full directory path in the object key. This
+  // allows you to delete entire "folders" stored on remote by passing the directory path
+  // and setting recursive to true, or only a single object by passing the object's full
+  // key and setting recursive to false.
+  string key_prefix = 20;
+
+  // Required. Determines whether or not to delete all objects beginning with the prefix
+  // or only a single key that matches the prefix in its entirety.
+  //
+  // Note that this means when recursive = false, key_prefix is not treated as a prefix
+  // but as a fully qualified key.
+  bool recursive = 30;
+}
+
+message DeleteObjectsResponse {
+  // The number of objects successfully deleted.
+  //
+  // Note that when receiving a successful response, the plugin guarantees that all
+  // objects beginning with the prefix have been deleted. This response is purely
+  // informational and not meant to be used for validation.
+  uint32 objects_deleted = 10;
+}
+
+enum StateType {
+  STATE_TYPE_UNSPECIFIED = 0;
+  STATE_TYPE_OK = 1;
+  STATE_TYPE_ERROR = 2;
+  STATE_TYPE_UNKNOWN = 3;
+}
+
+message Permission {
+  // Required. The state of the permission.
+  StateType state = 10;
+
+  // Optional. The error details returned from the external object store service.
+  string error_details = 20;
+
+  // Required. The utc timestamp of when the permission was tested.
+  google.protobuf.Timestamp checked_at = 30;
+}
+
+message Permissions {
+  // Optional. The write permission state.
+  Permission write = 10;
+
+  // Optional. The read permission state.
+  Permission read = 20;
+
+  // Optional. The delete permission state.
+  Permission delete = 30;
+}
+
+message StorageBucketCredentialState {
+  // Required. The permission states.
+  Permissions state = 10;
+
+  // Required. The version of the storage bucket.
+  uint32 version = 20;
+}

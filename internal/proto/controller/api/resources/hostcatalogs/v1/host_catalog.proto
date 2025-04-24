@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.resources.hostcatalogs.v1;
@@ -14,10 +17,10 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 // HostCatalog manages Hosts and Host Sets
 message HostCatalog {
   // Output only. The ID of the host.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope of which this Host Catalog is a part.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -26,7 +29,7 @@ message HostCatalog {
   string plugin_id = 34 [
     json_name = "plugin_id",
     (custom_options.v1.generate_sdk_option) = true
-  ]; // @gotags: `class:"public"`
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Plugin information for this resource.
   resources.plugins.v1.PluginInfo plugin = 35;
@@ -50,17 +53,17 @@ message HostCatalog {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // The type of Host Catalog.
-  string type = 90; // @gotags: `class:"public"`
+  string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
     // Attributes specific to the catalog type.
@@ -75,6 +78,15 @@ message HostCatalog {
 
   // Output only. The HMAC of the last secrets supplied via the API, if any.
   string secrets_hmac = 120; // @gotags: `class:"public"`
+
+  // Optional worker filter for plugin-subtype host catalogs. Boundary Enterprise only.
+  google.protobuf.StringValue worker_filter = 130 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "worker_filter"
+      that: "WorkerFilter"
+    }
+  ]; // @gotags: `class:"public"`
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`

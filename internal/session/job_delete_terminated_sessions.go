@@ -1,11 +1,16 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/scheduler/batch"
 )
 
 type deleteTerminatedJob struct {
@@ -15,8 +20,8 @@ type deleteTerminatedJob struct {
 	// state for it to be deleted.
 	threshold time.Duration
 
-	// the number of sessions deleted in the most recent run
-	deletedInRun int
+	mu    sync.Mutex
+	batch *batch.Batch
 }
 
 func newDeleteTerminatedJob(ctx context.Context, repo *Repository, threshold time.Duration) (*deleteTerminatedJob, error) {
@@ -35,24 +40,49 @@ func newDeleteTerminatedJob(ctx context.Context, repo *Repository, threshold tim
 // Status reports the job’s current status.  The status is periodically persisted by
 // the scheduler when a job is running, and will be used to verify a job is making progress.
 func (d *deleteTerminatedJob) Status() scheduler.JobStatus {
-	return scheduler.JobStatus{
-		Completed: d.deletedInRun,
-		Total:     d.deletedInRun,
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.batch != nil {
+		return d.batch.Status()
 	}
+	return scheduler.JobStatus{}
 }
 
 // Run performs the required work depending on the implementation.
 // The context is used to notify the job that it should exit early.
-func (d *deleteTerminatedJob) Run(ctx context.Context) error {
+func (d *deleteTerminatedJob) Run(ctx context.Context, statusThreshold time.Duration) error {
 	const op = "session.(deleteTerminatedJob).Run"
-	d.deletedInRun = 0
-	var err error
 
-	d.deletedInRun, err = d.repo.deleteSessionsTerminatedBefore(ctx, d.threshold)
+	params, err := d.repo.getDeleteJobParams(ctx, d.threshold)
+	switch {
+	case err != nil:
+		return errors.Wrap(ctx, err, op)
+	case params.TotalToDelete == 0:
+		return nil
+	}
+
+	exec := func() batch.Exec {
+		return func(ctx context.Context, batchSize int) (int, error) {
+			return d.repo.deleteTerminatedSessionsBatch(ctx, params.WindowStartTime, batchSize)
+		}
+	}
+
+	config := &batch.Config{
+		Size:            params.BatchSize,
+		TotalToComplete: params.TotalToDelete,
+		StatusThreshold: statusThreshold,
+		Exec:            exec(),
+		Store:           d.repo.setDeleteJobBatchSize,
+	}
+
+	batch, err := batch.New(ctx, config)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	return nil
+	d.mu.Lock()
+	d.batch = batch
+	d.mu.Unlock()
+	return batch.Run(ctx)
 }
 
 // NextRunIn returns the duration until the next job run should be scheduled.  This

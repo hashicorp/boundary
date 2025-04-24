@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 //go:build linux || darwin || windows
 // +build linux darwin windows
 
@@ -6,7 +9,6 @@ package vault
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -15,19 +17,32 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/go-rootcerts"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	vault "github.com/hashicorp/vault/api"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
 )
 
-const DefaultVaultVersion = "1.7.2"
+const DefaultVaultVersion = "1.15.1"
+
+var (
+	vaultRepository    = "hashicorp/vault"
+	postgresRepository = "postgres"
+)
 
 func init() {
 	newVaultServer = gotNewServer
 	mountDatabase = gotMountDatabase
+
+	mirror := os.Getenv("DOCKER_MIRROR")
+	if mirror != "" {
+		vaultRepository = strings.Join([]string{mirror, vaultRepository}, "/")
+		postgresRepository = strings.Join([]string{mirror, postgresRepository}, "/")
+	}
 }
 
 func gotDocker(t testing.TB) {}
@@ -75,9 +90,14 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		pool:      pool,
 	}
 
+	vaultVersion := DefaultVaultVersion
+	if opts.vaultVersion != "" {
+		vaultVersion = opts.vaultVersion
+	}
+
 	dockerOptions := &dockertest.RunOptions{
-		Repository: "vault",
-		Tag:        DefaultVaultVersion,
+		Repository: vaultRepository,
+		Tag:        vaultVersion,
 		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
 	}
 
@@ -93,7 +113,7 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", clientTlsTemplate))
 		}
 
-		serverCert := testServerCert(t, testCaCert(t), "localhost")
+		serverCert := testServerCert(t, testCaCert(t), opt...)
 		server.serverCertBundle = serverCert
 		server.ServerCert = serverCert.Cert.Cert
 		server.CaCert = serverCert.CA.Cert
@@ -107,11 +127,11 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		dataSrcDir := t.TempDir()
 		require.NoError(os.Chmod(dataSrcDir, 0o777))
 		caCertFn := filepath.Join(dataSrcDir, "ca-certificate.pem")
-		require.NoError(ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
+		require.NoError(os.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
 		certFn := filepath.Join(dataSrcDir, "certificate.pem")
-		require.NoError(ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
+		require.NoError(os.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
 		keyFn := filepath.Join(dataSrcDir, "key.pem")
-		require.NoError(ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
+		require.NoError(os.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
 		dockerOptions.Mounts = append(dockerOptions.Mounts, fmt.Sprintf("%s:/vault/config/certificates", dataSrcDir))
 
 		if opts.vaultTLS == TestClientTLS {
@@ -120,7 +140,7 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 			server.ClientCert = clientCert.Cert.Cert
 			server.ClientKey = clientCert.Cert.Key
 			clientCaCertFn := filepath.Join(dataSrcDir, "client-ca-certificate.pem")
-			require.NoError(ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
+			require.NoError(os.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
 
 			vaultClientCert, err := tls.X509KeyPair(server.ClientCert, server.ClientKey)
 			require.NoError(err)
@@ -128,6 +148,8 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 				return &vaultClientCert, nil
 			}
 		}
+		server.TlsSkipVerify = true
+		clientTLSConfig.InsecureSkipVerify = true
 	}
 
 	// NOTE(mgaffney) 05/2021: creating a docker network is not the default
@@ -147,7 +169,9 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 	// Engine: 20.10.6
 
 	if opts.dockerNetwork {
-		network, err := pool.CreateNetwork(t.Name())
+		id, err := base62.Random(4)
+		require.NoError(err)
+		network, err := pool.CreateNetwork(fmt.Sprintf("%s-%s", t.Name(), id))
 		require.NoError(err)
 		server.network = network
 		dockerOptions.Networks = []*dockertest.Network{network}
@@ -204,8 +228,8 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	require.True(ok)
 
 	dockerOptions := &dockertest.RunOptions{
-		Repository: "postgres",
-		Tag:        "11",
+		Repository: postgresRepository,
+		Tag:        globals.MinimumSupportedPostgresVersion,
 		Networks:   []*dockertest.Network{network},
 		Env:        []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundarytest"},
 	}
@@ -302,7 +326,7 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	t.Log(connUrl)
 
 	postgresConfPath := path.Join(mountPath, "config/postgresql")
-	postgresConfOptions := map[string]interface{}{
+	postgresConfOptions := map[string]any{
 		"plugin_name":    "postgresql-database-plugin",
 		"connection_url": connUrl,
 		"allowed_roles":  "opened,closed",
@@ -311,7 +335,7 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	}
 	s, err := vc.Logical().Write(postgresConfPath, postgresConfOptions)
 	require.NoError(err)
-	require.NotEmpty(s)
+	require.Empty(s)
 
 	const (
 		vaultOpenedCreationStatement = `
@@ -330,7 +354,7 @@ grant closed_role to "{{name}}";
 	)
 
 	openedRolePath := path.Join(mountPath, "roles", "opened")
-	openedRoleOptions := map[string]interface{}{
+	openedRoleOptions := map[string]any{
 		"db_name":             "postgresql",
 		"creation_statements": vaultOpenedCreationStatement,
 	}
@@ -338,7 +362,7 @@ grant closed_role to "{{name}}";
 	require.NoError(err)
 
 	closedRolePath := path.Join(mountPath, "roles", "closed")
-	closedRoleOptions := map[string]interface{}{
+	closedRoleOptions := map[string]any{
 		"db_name":             "postgresql",
 		"creation_statements": vaultClosedCreationStatement,
 	}

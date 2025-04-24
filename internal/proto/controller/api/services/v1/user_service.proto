@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.api.services.v1;
 
+import "controller/api/resources/aliases/v1/alias.proto";
 import "controller/api/resources/users/v1/user.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
@@ -10,6 +14,17 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service UserService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "User service"
+    description:
+      "A user can be a human individual or a service account that accesses resources. "
+      "The user service provides endpoints that let you manage users in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users";
+      description: "Read about users in the Boundary domain model";
+    }
+  };
+
   // GetUser returns a stored User if present.  The provided request
   // must include the User ID for the User being retrieved. If
   // that ID is missing, malformed or reference a non existing
@@ -19,9 +34,7 @@ service UserService {
       get: "/v1/users/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single User."};
   }
 
   // ListUsers returns a list of stored Users which exist inside the provided
@@ -29,12 +42,8 @@ service UserService {
   // If the scope ID is missing, malformed, or reference a non existing scope,
   // an error is returned.
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
-    option (google.api.http) = {
-      get: "/v1/users"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Users."
-    };
+    option (google.api.http) = {get: "/v1/users"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Users."};
   }
 
   // CreateUser creates and stores a User in boundary.  The provided
@@ -48,9 +57,7 @@ service UserService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single User."};
   }
 
   // UpdateUser updates an existing User in boundary.  The provided
@@ -67,20 +74,14 @@ service UserService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a User."};
   }
 
   // DeleteUser removes a User from Boundary. If the provided User ID
   // is malformed or not provided an error is returned.
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
-    option (google.api.http) = {
-      delete: "/v1/users/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a User."
-    };
+    option (google.api.http) = {delete: "/v1/users/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a User."};
   }
 
   // AddUserAccounts adds Users as members to a group.  The provided request
@@ -94,9 +95,7 @@ service UserService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Associates an Account to a User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Associates an Account to a User."};
   }
 
   // SetUserAccounts sets the Accounts associated with this User.
@@ -113,9 +112,7 @@ service UserService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified."};
   }
 
   // RemoveUserAccounts removes Accounts from the specified User.
@@ -128,14 +125,20 @@ service UserService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes the specified Accounts from being associated with the provided User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes the specified Accounts from being associated with the provided User."};
+  }
+
+  // ListResolvableAliases returns a list of Aliases which point to a resource
+  // for which the provided user id has some permission.
+  // If missing or malformed an error is returned.
+  rpc ListResolvableAliases(ListResolvableAliasesRequest) returns (ListResolvableAliasesResponse) {
+    option (google.api.http) = {get: "/v1/users/{id}:list-resolvable-aliases"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Aliases which point to a resource for which the requester has some permission."};
   }
 }
 
 message GetUserRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetUserResponse {
@@ -143,13 +146,51 @@ message GetUserResponse {
 }
 
 message ListUsersRequest {
-  string scope_id = 1; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
+
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
+  string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the default page configured,
+  // the page size will be truncated to this number..
+  uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListUsersResponse {
   repeated resources.users.v1.User items = 1;
+
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message CreateUserRequest {
@@ -157,12 +198,12 @@ message CreateUserRequest {
 }
 
 message CreateUserResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.users.v1.User item = 2;
 }
 
 message UpdateUserRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.users.v1.User item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -172,16 +213,16 @@ message UpdateUserResponse {
 }
 
 message DeleteUserRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteUserResponse {}
 
 message AddUserAccountsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AddUserAccountsResponse {
@@ -189,10 +230,10 @@ message AddUserAccountsResponse {
 }
 
 message SetUserAccountsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message SetUserAccountsResponse {
@@ -200,12 +241,57 @@ message SetUserAccountsResponse {
 }
 
 message RemoveUserAccountsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message RemoveUserAccountsResponse {
   resources.users.v1.User item = 1;
+}
+
+message ListResolvableAliasesRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // An opaque token used to continue an existing iteration or
+  // request updated items. If not specified, pagination
+  // will start from the beginning.
+  string list_token = 2 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the default page configured,
+  // an error will be returned.
+  uint32 page_size = 3 [json_name = "page_size"]; // @gotags: `class:"public"`
+}
+
+message ListResolvableAliasesResponse {
+  repeated resources.aliases.v1.Alias items = 1;
+
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. This includes aliases which have their
+  // destination_id removed or set to a resource for which the requester doesn't
+  // have permissions.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }

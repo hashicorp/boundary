@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authmethodscmd
 
 import (
@@ -54,8 +57,8 @@ func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string
 	return helpStr + c.Flags().Help()
 }
 
-func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.FlagSet) {
-	f = set.NewFlagSet("Password Auth Method Options")
+func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, _ *base.FlagSet) {
+	f := set.NewFlagSet("Password Auth Method Options")
 
 	for _, name := range flagsPasswordMap[c.Func] {
 		switch name {
@@ -76,10 +79,10 @@ func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.
 }
 
 func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, opts *[]authmethods.Option) bool {
-	var attributes map[string]interface{}
-	addAttribute := func(name string, value interface{}) {
+	var attributes map[string]any
+	addAttribute := func(name string, value any) {
 		if attributes == nil {
-			attributes = make(map[string]interface{})
+			attributes = make(map[string]any)
 		}
 		attributes[name] = value
 	}

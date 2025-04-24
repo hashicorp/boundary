@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: workers read - Command
+description: >-
+  The "workers read" command retrieves the details of a worker resource.
+---
+
+# workers read
+
+Command: `boundary workers read`
+
+The `boundary workers read` command lets you read a Boundary worker information for a given ID.
+
+## Example
+
+This example reads a worker with the ID `w_1234567890`:
+
+```shell-session
+$ boundary workers read -id w_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary workers read [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `id=<string>` - The ID of the worker to read.
+
+@include 'cmd-option-note.mdx'

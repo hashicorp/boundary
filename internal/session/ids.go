@@ -1,14 +1,17 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package session
 
 import (
+	"context"
+
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
 const (
-	// SessionPrefix for session PK ids
-	SessionPrefix = "s"
-
 	// StatePrefix for state PK ids
 	StatePrefix = "ss"
 
@@ -19,38 +22,38 @@ const (
 	ConnectionStatePrefix = "scs"
 )
 
-func newId() (string, error) {
+func newId(ctx context.Context) (string, error) {
 	const op = "session.newId"
-	id, err := db.NewPublicId(SessionPrefix)
+	id, err := db.NewPublicId(ctx, globals.SessionPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op)
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }
 
-func newStateId() (string, error) {
+func newStateId(ctx context.Context) (string, error) {
 	const op = "session.newStateId"
-	id, err := db.NewPublicId(StatePrefix)
+	id, err := db.NewPublicId(ctx, StatePrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op)
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }
 
-func newConnectionId() (string, error) {
+func newConnectionId(ctx context.Context) (string, error) {
 	const op = "session.newConnectionId"
-	id, err := db.NewPublicId(ConnectionPrefix)
+	id, err := db.NewPublicId(ctx, ConnectionPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op)
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }
 
-func newConnectionStateId() (string, error) {
+func newConnectionStateId(ctx context.Context) (string, error) {
 	const op = "session.newConnectionStateId"
-	id, err := db.NewPublicId(ConnectionStatePrefix)
+	id, err := db.NewPublicId(ctx, ConnectionStatePrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op)
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }

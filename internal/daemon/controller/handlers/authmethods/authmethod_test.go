@@ -1,6 +1,10 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authmethods
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -42,6 +46,29 @@ func TestTransformAuthenticateRequestAttributes(t *testing.T) {
 				AuthMethodId: "apw_test",
 				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
 					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: "login-name",
+						Password:  "password",
+					},
+				},
+			},
+		},
+		{
+			name: "ldap-attributes",
+			input: &pbs.AuthenticateRequest{
+				AuthMethodId: "amldap_test",
+				Attrs: &pbs.AuthenticateRequest_Attributes{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"login_name": structpb.NewStringValue("login-name"),
+							"password":   structpb.NewStringValue("password"),
+						},
+					},
+				},
+			},
+			expected: &pbs.AuthenticateRequest{
+				AuthMethodId: "amldap_test",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
 						LoginName: "login-name",
 						Password:  "password",
 					},
@@ -170,7 +197,7 @@ func TestTransformAuthenticateRequestAttributes(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			in := proto.Clone(c.input)
-			require.NoError(t, transformAuthenticateRequestAttributes(in))
+			require.NoError(t, transformAuthenticateRequestAttributes(context.Background(), in))
 			require.Empty(t, cmp.Diff(c.expected, in, protocmp.Transform()))
 		})
 	}
@@ -180,11 +207,11 @@ func TestTransformAuthenticateRequestAttributesErrors(t *testing.T) {
 	t.Parallel()
 	t.Run("not-an-authenticate-request", func(t *testing.T) {
 		t.Parallel()
-		require.Error(t, transformAuthenticateRequestAttributes(&pb.AuthMethod{}))
+		require.Error(t, transformAuthenticateRequestAttributes(context.Background(), &pb.AuthMethod{}))
 	})
 	t.Run("invalid-auth-method-id", func(t *testing.T) {
 		t.Parallel()
-		require.Error(t, transformAuthenticateRequestAttributes(&pbs.AuthenticateRequest{
+		require.Error(t, transformAuthenticateRequestAttributes(context.Background(), &pbs.AuthenticateRequest{
 			AuthMethodId: "invalid",
 			Attrs: &pbs.AuthenticateRequest_Attributes{
 				Attributes: &structpb.Struct{},
@@ -193,7 +220,7 @@ func TestTransformAuthenticateRequestAttributesErrors(t *testing.T) {
 	})
 	t.Run("invalid-oidc-command", func(t *testing.T) {
 		t.Parallel()
-		require.Error(t, transformAuthenticateRequestAttributes(&pbs.AuthenticateRequest{
+		require.Error(t, transformAuthenticateRequestAttributes(context.Background(), &pbs.AuthenticateRequest{
 			AuthMethodId: "amoidc_test",
 			Command:      "invalid",
 			Attrs: &pbs.AuthenticateRequest_Attributes{
@@ -203,8 +230,22 @@ func TestTransformAuthenticateRequestAttributesErrors(t *testing.T) {
 	})
 	t.Run("invalid-password-attributes", func(t *testing.T) {
 		t.Parallel()
-		require.Error(t, transformAuthenticateRequestAttributes(&pbs.AuthenticateRequest{
+		require.Error(t, transformAuthenticateRequestAttributes(context.Background(), &pbs.AuthenticateRequest{
 			AuthMethodId: "apw_test",
+			Attrs: &pbs.AuthenticateRequest_Attributes{
+				Attributes: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"field1": structpb.NewBoolValue(true),
+						"field2": structpb.NewStringValue("value2"),
+					},
+				},
+			},
+		}))
+	})
+	t.Run("invalid-ldap-attributes", func(t *testing.T) {
+		t.Parallel()
+		require.Error(t, transformAuthenticateRequestAttributes(context.Background(), &pbs.AuthenticateRequest{
+			AuthMethodId: "amldap_test",
 			Attrs: &pbs.AuthenticateRequest_Attributes{
 				Attributes: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
@@ -217,7 +258,7 @@ func TestTransformAuthenticateRequestAttributesErrors(t *testing.T) {
 	})
 	t.Run("invalid-oidc-start-attributes", func(t *testing.T) {
 		t.Parallel()
-		require.Error(t, transformAuthenticateRequestAttributes(&pbs.AuthenticateRequest{
+		require.Error(t, transformAuthenticateRequestAttributes(context.Background(), &pbs.AuthenticateRequest{
 			AuthMethodId: "amoidc_test",
 			Command:      "start",
 			Attrs: &pbs.AuthenticateRequest_Attributes{
@@ -232,7 +273,7 @@ func TestTransformAuthenticateRequestAttributesErrors(t *testing.T) {
 	})
 	t.Run("invalid-oidc-token-attributes", func(t *testing.T) {
 		t.Parallel()
-		require.Error(t, transformAuthenticateRequestAttributes(&pbs.AuthenticateRequest{
+		require.Error(t, transformAuthenticateRequestAttributes(context.Background(), &pbs.AuthenticateRequest{
 			AuthMethodId: "amoidc_test",
 			Command:      "token",
 			Attrs: &pbs.AuthenticateRequest_Attributes{
@@ -381,7 +422,7 @@ func TestTransformAuthenticateResponseAttributes(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			in := proto.Clone(c.input)
-			require.NoError(t, transformAuthenticateResponseAttributes(in))
+			require.NoError(t, transformAuthenticateResponseAttributes(context.Background(), in))
 			require.Empty(t, cmp.Diff(c.expected, in, protocmp.Transform()))
 		})
 	}
@@ -391,6 +432,6 @@ func TestTransformAuthenticateResponseAttributesErrors(t *testing.T) {
 	t.Parallel()
 	t.Run("not-an-authenticate-response", func(t *testing.T) {
 		t.Parallel()
-		require.Error(t, transformAuthenticateResponseAttributes(&pb.AuthMethod{}))
+		require.Error(t, transformAuthenticateResponseAttributes(context.Background(), &pb.AuthMethod{}))
 	})
 }

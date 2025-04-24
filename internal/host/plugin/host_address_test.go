@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
@@ -8,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/store"
 	"github.com/hashicorp/boundary/internal/iam"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +22,7 @@ func TestHostDnsName_Create(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 
@@ -150,7 +153,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 
@@ -208,7 +211,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 			wantDbErr:   true,
 		},
 		{
-			name: "valid",
+			name: "valid-ipv4",
 			args: args{
 				hostId:  host1.GetPublicId(),
 				address: "1.2.3.4",
@@ -219,6 +222,64 @@ func TestHostIpAddress_Create(t *testing.T) {
 					Address: "1.2.3.4",
 				},
 			},
+		},
+		{
+			name: "valid-ipv6",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "2001:4860:4860:0:0:0:0:8888",
+			},
+			want: &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:  host1.GetPublicId(),
+					Address: "2001:4860:4860:0:0:0:0:8888",
+				},
+			},
+		},
+		{
+			name: "valid-abbreviated-ipv6",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "2001:4860:4860::8887",
+			},
+			want: &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:  host1.GetPublicId(),
+					Address: "2001:4860:4860::8887",
+				},
+			},
+		},
+		{
+			name: "invalid-abbreviated-[ipv6]",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "[2001:4860:4860::8886]",
+			},
+			wantNewErr: true,
+		},
+		{
+			name: "invalid-[ipv6]",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "[2001:4860:4860:0:0:0:0:8885]",
+			},
+			wantNewErr: true,
+		},
+		{
+			name: "invalid-abbreviated-[ipv6]:port",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "[2001:4860:4860::8884]:80",
+			},
+			wantNewErr: true,
+		},
+		{
+			name: "invalid-[ipv6]:port",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "[2001:4860:4860:0:0:0:0:8883]:80",
+			},
+			wantNewErr: true,
 		},
 		{
 			name: "duplicate-name",
@@ -289,7 +350,7 @@ func TestHostDnsName_Delete(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 	addr1, err := host.NewDnsName(ctx, host1.GetPublicId(), "addr1.foo.com")
@@ -356,7 +417,7 @@ func TestHostIpAddress_Delete(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 	addr1, err := host.NewIpAddress(ctx, host1.GetPublicId(), "1.2.3.4")

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 syntax = "proto3";
 
 package testing.options.v1;
@@ -13,9 +16,7 @@ service TestService {
     option (google.api.http) = {
       get: "/v1/test/{id}"
       response_body: "item"
-      additional_bindings {
-        get: "/v2/test"
-      }
+      additional_bindings {get: "/v2/test"}
     };
   }
 }

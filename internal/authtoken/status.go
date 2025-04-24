@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authtoken
 
 // Status of the AuthToken.  It will default IssuedStatus in the database.

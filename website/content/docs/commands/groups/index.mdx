@@ -1,0 +1,92 @@
+---
+layout: docs
+page_title: groups - Command
+description: >-
+  The "groups" command performs operations on group resources. A group represents a collection of users with the same access control.
+---
+
+# groups
+
+Command: `boundary groups`
+
+The `groups` command lets you create and manage group resources in Boundary.
+
+A group in Boundary is a resource that represents a collection of users that are treated equally for the purposes of access control.
+A group is a principal, which means it can be assigned to roles.
+Roles assigned to a group are indirectly assigned to the users in the group, and users receive all permissions of the assigned roles.
+You can define groups at the global, organization, or project scope.
+
+## Examples
+
+The following example creates a group, `group01` in a scope with the id `o_R0wbo0H6Zl`:
+
+```shell-session
+$ boundary groups create -name "group01" \
+   -description "A test group" \
+   -scope-id o_R0wbo0H6Zl
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Group information:
+  Created Time:        Thu, 24 Aug 2023 09:51:44 PDT
+  Description:         A test group
+  ID:                  g_XzlDiNLgoz
+  Name:                group01
+  Updated Time:        Thu, 24 Aug 2023 09:51:44 PDT
+  Version:             1
+
+  Scope:
+    ID:                o_R0wbo0H6Zl
+    Name:              quick-start-org
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-members
+    set-members
+    remove-members
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary groups [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    add-members       Add members to a group
+    create            Create a group
+    delete            Delete a group
+    list              List a group
+    read              Read a group
+    remove-members    Remove members from a group
+    set-members       Set the full contents of the members on a group
+    update            Update a group
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [add-members](/boundary/docs/commands/groups/add-members)
+- [create](/boundary/docs/commands/groups/create)
+- [delete](/boundary/docs/commands/groups/delete)
+- [list](/boundary/docs/commands/groups/list)
+- [read](/boundary/docs/commands/groups/read)
+- [remove-members](/boundary/docs/commands/groups/remove-members)
+- [set-members](/boundary/docs/commands/groups/set-members)
+- [update](/boundary/docs/commands/groups/update)

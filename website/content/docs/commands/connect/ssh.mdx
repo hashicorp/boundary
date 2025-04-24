@@ -1,0 +1,94 @@
+---
+layout: docs
+page_title: connect ssh - Command
+description: >-
+  The "connect ssh" command command performs a target authorization or consumes an existing authorization token, and then launches a proxied SSH connection.
+---
+
+# connect ssh
+
+Command: `boundary connect ssh`
+
+The `connect ssh` command authorizes a session against a target and invokes an SSH client for the connection.
+The command fills in the local address and port.
+You can specify your SSH client of choice using the `-style` option.
+
+@include 'cmd-connect-env-vars.mdx'
+
+The SSH helper command sets the host key `Alias`.
+When an `Alias` is set, SSH does not use `localhost:<port>` for host key validation, but instead uses one of the following:
+
+- For connections to a target that has an attached host set, the SSH helper command sets the `HostID` as the alias.
+- For connections directly to a host, the SSH helper command sets the `HostID` as the alias.
+- For connections to a target that has an address field configured, the SSH helper command sets the `TargetID` as the alias.
+
+## Examples
+
+The following example authorizes a session to a target with the ID `ttcp_eTcZMueUYv` and invokes the default SSH client without any additional options:
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_eTcZMueUYv
+```
+
+</CodeBlockConfig>
+
+The following example authorizes a session to a target with the ID `ttcp_eTcZMueUYv`, and pipes arguments directly to the invoked SSH binary.
+Any SSH arguments after the double hyphen are sent directly to the binary:
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_eTcZMueUYv --  -A
+```
+
+</CodeBlockConfig>
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -target-scope-name Helpdesk -target-name ubuntu-server --  -A
+```
+
+</CodeBlockConfig>
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -target-id=ttcp_Gymo7Vcq7Y \
+   -host-id=hst_FrdNPd9Zm9 -- -l ubuntu -i private_key.pem
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh [options] [args]
+```
+
+</CodeBlockConfig>
+
+This command performs a target authorization or consumes an existing authorization token, and launches a proxied SSH connection.
+
+@include 'cmd-connect-command-options.mdx'
+
+### SSH options:
+
+-  `style` `(string: "")` - How the CLI attempts to invoke an SSH
+   client.
+   This value also sets a suitable default for `-exec`, if you did not specify a value.
+   Currently understood values are `ssh` and `putty`.
+   The default is `ssh`.
+   You can also specify how the CLI attempts to invoke the SSH client using the **BOUNDARY_CONNECT_SSH_STYLE** environment variable.
+
+-  `username` `(string: "")` - The username you want to pass through to the
+   client.
+   You can also specify a username using the **BOUNDARY_CONNECT_USERNAME** environment variable.
+
+- `remote-command` `(string: "")` - A command that you want to run on the remote host.
+You can specify a complete command line, or you may include additional arguments.
+If you include additional arguments, you must append them to the command and separate them using spaces.

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -8,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // SetManagedGroupMemberships will set the managed groups for the given account
@@ -108,13 +112,13 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				msgs = append(msgs, &mgOplogMsg)
 			}
 
-			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
+			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader), WithLimit(-1))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current managed group memberships before deletion"))
 			}
 
 			// Figure out which ones to delete and which ones we already have
-			toDelete := make([]interface{}, 0, len(mgs))
+			toDelete := make([]*ManagedGroupMemberAccount, 0, len(mgs))
 			for _, currMg := range currentMemberships {
 				currMgId := currMg.ManagedGroupId
 				if newMgPublicIds[currMgId] {
@@ -158,7 +162,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			if len(newMgPublicIds) > 0 {
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 				addOplogMsgs := make([]*oplog.Message, 0, len(newMgPublicIds))
-				toAdd := make([]interface{}, 0, len(newMgPublicIds))
+				toAdd := make([]*ManagedGroupMemberAccount, 0, len(newMgPublicIds))
 				for mgId := range newMgPublicIds {
 					newMg := AllocManagedGroupMemberAccount()
 					newMg.ManagedGroupId = mgId
@@ -178,7 +182,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				}
 			}
 
-			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
+			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader), WithLimit(-1))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current managed group memberships after set"))
 			}
@@ -204,11 +208,11 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 		limit = opts.withLimit
 	}
 	reader := r.reader
-	if opts.withReader != nil {
+	if !util.IsNil(opts.withReader) {
 		reader = opts.withReader
 	}
 	var mgs []*ManagedGroupMemberAccount
-	err := reader.SearchWhere(ctx, &mgs, "member_id = ?", []interface{}{withAcctId}, db.WithLimit(limit))
+	err := reader.SearchWhere(ctx, &mgs, "member_id = ?", []any{withAcctId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -229,11 +233,11 @@ func (r *Repository) ListManagedGroupMembershipsByGroup(ctx context.Context, wit
 		limit = opts.withLimit
 	}
 	reader := r.reader
-	if opts.withReader != nil {
+	if !util.IsNil(opts.withReader) {
 		reader = opts.withReader
 	}
 	var mgs []*ManagedGroupMemberAccount
-	err := reader.SearchWhere(ctx, &mgs, "managed_group_id = ?", []interface{}{withGroupId}, db.WithLimit(limit))
+	err := reader.SearchWhere(ctx, &mgs, "managed_group_id = ?", []any{withGroupId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

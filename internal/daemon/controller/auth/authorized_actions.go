@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package auth
 
 import (
@@ -6,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -19,11 +23,12 @@ import (
 func CalculateAuthorizedCollectionActions(ctx context.Context,
 	authResults VerifyResults,
 	mapToRange map[resource.Type]action.ActionSet,
-	scopeId, pin string,
+	scopeInfo *scopes.ScopeInfo, pin string,
 ) (map[string]*structpb.ListValue, error) {
 	res := &perms.Resource{
-		ScopeId: scopeId,
-		Pin:     pin,
+		ScopeId:       scopeInfo.GetId(),
+		Pin:           pin,
+		ParentScopeId: scopeInfo.GetParentScopeId(),
 	}
 	// Range over the defined collections and check permissions against those
 	// collections.

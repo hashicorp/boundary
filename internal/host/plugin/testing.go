@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
@@ -13,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -45,7 +48,7 @@ func TestCatalog(t testing.TB, conn *db.DB, projectId, pluginId string, opt ...O
 	require.NoError(t, err)
 	assert.NotNil(t, cat)
 
-	plg := hostplugin.NewPlugin()
+	plg := plugin.NewPlugin()
 	plg.PublicId = pluginId
 	require.NoError(t, w.LookupByPublicId(ctx, plg))
 
@@ -67,14 +70,14 @@ func TestSet(t testing.TB, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Sche
 	ctx := context.Background()
 	rw := db.New(conn)
 
-	repo, err := NewRepository(rw, rw, kmsCache, sched, plgm)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache, sched, plgm)
 	require.NoError(err)
 
 	set, err := NewHostSet(ctx, hc.PublicId, opt...)
 	require.NoError(err)
 	require.NotNil(set)
 
-	plg := hostplugin.NewPlugin()
+	plg := plugin.NewPlugin()
 	plg.PublicId = hc.GetPluginId()
 	require.NoError(rw.LookupByPublicId(ctx, plg))
 
@@ -122,10 +125,10 @@ func TestHost(t testing.TB, conn *db.DB, catId, externId string, opt ...Option) 
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, host1))
 
-	var ipAddresses []interface{}
+	var ipAddresses []*host.IpAddress
 	if len(host1.GetIpAddresses()) > 0 {
 		sort.Strings(host1.IpAddresses)
-		ipAddresses = make([]interface{}, 0, len(host1.GetIpAddresses()))
+		ipAddresses = make([]*host.IpAddress, 0, len(host1.GetIpAddresses()))
 		for _, a := range host1.GetIpAddresses() {
 			obj, err := host.NewIpAddress(ctx, host1.PublicId, a)
 			require.NoError(t, err)
@@ -134,10 +137,10 @@ func TestHost(t testing.TB, conn *db.DB, catId, externId string, opt ...Option) 
 		require.NoError(t, w.CreateItems(ctx, ipAddresses))
 	}
 
-	var dnsNames []interface{}
+	var dnsNames []*host.DnsName
 	if len(host1.GetDnsNames()) > 0 {
 		sort.Strings(host1.DnsNames)
-		dnsNames = make([]interface{}, 0, len(host1.GetDnsNames()))
+		dnsNames = make([]*host.DnsName, 0, len(host1.GetDnsNames()))
 		for _, n := range host1.GetDnsNames() {
 			obj, err := host.NewDnsName(ctx, host1.PublicId, n)
 			require.NoError(t, err)
@@ -162,7 +165,8 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 		externalId, err := base62.Random(10)
 		require.NoError(err)
 
-		ipStr := testGetIpAddress(t)
+		ipv4Str := testGetIpv4Address(t)
+		ipv6Str := testGetIpv6Address(t)
 		dnsName := testGetDnsName(t)
 
 		rh := &plgpb.ListHostsResponseHost{
@@ -170,7 +174,7 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 			Name:        base62.MustRandom(10),
 			Description: base62.MustRandom(10),
 			SetIds:      setIds[0 : i+1],
-			IpAddresses: []string{ipStr},
+			IpAddresses: []string{ipv4Str, ipv6Str},
 			DnsNames:    []string{dnsName},
 		}
 		retRH = append(retRH, rh)
@@ -187,7 +191,7 @@ func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, coun
 				CatalogId:   catalog.PublicId,
 				PublicId:    publicId,
 				ExternalId:  externalId,
-				IpAddresses: []string{ipStr},
+				IpAddresses: []string{ipv4Str, ipv6Str},
 				DnsNames:    []string{dnsName},
 				Version:     1,
 			},
@@ -205,7 +209,7 @@ func TestRunSetSync(t testing.TB, conn *db.DB, kmsCache *kms.Kms, plgm map[strin
 
 	j, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
 	require.NoError(t, err)
-	require.NoError(t, j.Run(ctx))
+	require.NoError(t, j.Run(ctx, 0))
 }
 
 func testGetDnsName(t testing.TB) string {
@@ -214,7 +218,7 @@ func testGetDnsName(t testing.TB) string {
 	return fmt.Sprintf("%s.example.com", dnsName)
 }
 
-func testGetIpAddress(t testing.TB) string {
+func testGetIpv4Address(t testing.TB) string {
 	ipBytes := make([]byte, 4)
 	for {
 		lr := io.LimitReader(rand.Reader, 4)
@@ -229,81 +233,17 @@ func testGetIpAddress(t testing.TB) string {
 	}
 }
 
-var _ plgpb.HostPluginServiceServer = (*TestPluginServer)(nil)
-
-// TestPluginServer provides a host plugin service server where each method can be overwritten for tests.
-type TestPluginServer struct {
-	NormalizeCatalogDataFn func(context.Context, *plgpb.NormalizeCatalogDataRequest) (*plgpb.NormalizeCatalogDataResponse, error)
-	OnCreateCatalogFn      func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
-	OnUpdateCatalogFn      func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error)
-	OnDeleteCatalogFn      func(context.Context, *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error)
-	NormalizeSetDataFn     func(context.Context, *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error)
-	OnCreateSetFn          func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
-	OnUpdateSetFn          func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
-	OnDeleteSetFn          func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
-	ListHostsFn            func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
-	plgpb.UnimplementedHostPluginServiceServer
-}
-
-func (t TestPluginServer) NormalizeCatalogData(ctx context.Context, req *plgpb.NormalizeCatalogDataRequest) (*plgpb.NormalizeCatalogDataResponse, error) {
-	if t.NormalizeCatalogDataFn == nil {
-		return t.UnimplementedHostPluginServiceServer.NormalizeCatalogData(ctx, req)
+func testGetIpv6Address(t testing.TB) string {
+	ipBytes := make([]byte, 16)
+	for {
+		lr := io.LimitReader(rand.Reader, 16)
+		n, err := lr.Read(ipBytes)
+		require.NoError(t, err)
+		require.Equal(t, n, 16)
+		ip := net.IP(ipBytes)
+		v6 := ip.To16()
+		if v6 != nil {
+			return v6.String()
+		}
 	}
-	return t.NormalizeCatalogDataFn(ctx, req)
-}
-
-func (t TestPluginServer) OnCreateCatalog(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-	if t.OnCreateCatalogFn == nil {
-		return t.UnimplementedHostPluginServiceServer.OnCreateCatalog(ctx, req)
-	}
-	return t.OnCreateCatalogFn(ctx, req)
-}
-
-func (t TestPluginServer) OnUpdateCatalog(ctx context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
-	if t.OnUpdateCatalogFn == nil {
-		return t.UnimplementedHostPluginServiceServer.OnUpdateCatalog(ctx, req)
-	}
-	return t.OnUpdateCatalogFn(ctx, req)
-}
-
-func (t TestPluginServer) OnDeleteCatalog(ctx context.Context, req *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error) {
-	if t.OnDeleteCatalogFn == nil {
-		return t.UnimplementedHostPluginServiceServer.OnDeleteCatalog(ctx, req)
-	}
-	return t.OnDeleteCatalogFn(ctx, req)
-}
-
-func (t TestPluginServer) NormalizeSetData(ctx context.Context, req *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error) {
-	if t.NormalizeSetDataFn == nil {
-		return t.UnimplementedHostPluginServiceServer.NormalizeSetData(ctx, req)
-	}
-	return t.NormalizeSetDataFn(ctx, req)
-}
-
-func (t TestPluginServer) OnCreateSet(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
-	if t.OnCreateSetFn == nil {
-		return t.UnimplementedHostPluginServiceServer.OnCreateSet(ctx, req)
-	}
-	return t.OnCreateSetFn(ctx, req)
-}
-
-func (t TestPluginServer) OnUpdateSet(ctx context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
-	if t.OnUpdateSetFn == nil {
-		return t.UnimplementedHostPluginServiceServer.OnUpdateSet(ctx, req)
-	}
-	return t.OnUpdateSetFn(ctx, req)
-}
-
-func (t TestPluginServer) OnDeleteSet(ctx context.Context, req *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error) {
-	if t.OnDeleteSetFn == nil {
-		return t.UnimplementedHostPluginServiceServer.OnDeleteSet(ctx, req)
-	}
-	return t.OnDeleteSetFn(ctx, req)
-}
-
-func (t TestPluginServer) ListHosts(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
-	if t.ListHostsFn == nil {
-		return t.UnimplementedHostPluginServiceServer.ListHosts(ctx, req)
-	}
-	return t.ListHostsFn(ctx, req)
 }

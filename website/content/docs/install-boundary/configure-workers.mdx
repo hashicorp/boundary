@@ -1,0 +1,612 @@
+---
+layout: docs
+page_title: Configure workers
+description: >-
+ Configure Boundary workers for a self-managed deployment, including environment files and KMS keys. Set up ingress, intermediary, and egress roles for multi-hop.
+---
+
+# Configure workers
+
+Before you configure workers, you should have completed the following steps:
+
+- Installed Boundary on at least three [controller nodes](/boundary/docs/install-boundary/configure-controllers).
+- Prepared or have three existing network boundaries:
+   - Public/DMZ network
+   - Intermediary network
+   - Private network
+- Prepared three virtual machines for Boundary workers, one in each network boundary with the Boundary binary installed on it.
+
+In the following configuration files, there are common configuration components as well as some unique components depending on the role the Boundary worker performs.
+There are three files, one for each worker in a unique network boundary.
+Additionally, Boundary Enterprise supports a [multi-hop configuration](/boundary/docs/configuration/worker#multi-hop-worker-capabilities) in which the Boundary workers can serve one of three purposes: an ingress worker, an ingress/egress worker, or an egress worker.
+
+## Prepare the environment files
+
+HashiCorp recommends using either the `env://` or `file://` notation within the configuration files, to securely provide secret configuration components to the Boundary worker binaries.
+The following configuration example uses `env://` to secure AWS KMS configuration items.
+
+When you install the Boundary binary using a package manager, it includes a unit file which configures an environment file at `/etc/boundar.d/boundary.env`.
+You can use this file to set the sensitive values that are used to configure the Boundary workers.
+The following file is an example of how this environment file could be configured:
+
+<CodeBlockConfig lineNumbers filename="/etc/boundary.d/boundary.env">
+
+```shell-session
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+</CodeBlockConfig>
+
+<Note>
+
+In the example above, the proper IAM roles and permissions for the given `AWS_ACCESS_KEY` and `AWS_SECRET_ACCESS_KEY` must be in place so that Boundary can use them to access the different KMS keys.
+
+</Note>
+
+## Prepare the worker KMS keys
+
+The worker-auth storage KMS key is used by a Worker for the encrypted storage of authentication keys.
+This is recommended Workers using controller-led or worker-led methods. If it is not specified, the authentication keys are not encrypted on disk.
+Optionally, if you deploy KMS authentication-driven Boundary workers, an additional KMS key must be generated to authenticate the Boundary worker with the controller.
+
+HashiCorp strongly recommends using the Key Management System (KMS) of the cloud provider where you deploy your Boundary workers.
+Keep in mind that Boundary workers must have the correct level of permissions for interacting with the cloud provider's KMS.
+Refer to your cloud provider's documentation, for more information.
+
+## Create the worker configurations
+
+After you create the requisite key or keys in the cloud provider of your choice, you can begin configuring the workers.
+
+The following configuration examples all employ the worker-led authorization flow.
+For more information on configuring KMS authentication for Boundary workers, refer to the [KMS authentication configuration documenation](/boundary/docs/configuration/worker/worker-configuration).
+
+If you use Boundary Enterprise, you can configure multiple workers to act in three different roles: ingress, intermediary, and egress.
+For Community Edition, workers only serve one role, acting as both the point of ingress and egress.
+Select your Boundary edition, and complete the following steps to configure workers.
+
+<Tabs>
+<Tab heading="Enterprise">
+
+For Boundary Enterprise, you can configure ingress, intermediary, and egress workers to take advantage of [multi-hop worker capabilities](/boundary/docs/configuration/worker#multi-hop-worker-capabilities).
+
+Note that "ingress," "intermediary," and "egress" are general ways to describe how the respective worker interacts with resources.
+A worker can serve more than one of those roles at a time.
+Refer to [Multi-hop sessions](/boundary/docs/concepts/workers#multi-hop-sessions) for more information.
+
+Complete the steps below to configure workers for Boundary Enterprise.
+
+### Ingress worker configuration
+
+Create the `ingress-worker.hcl` file with the relevant configuration information:
+
+<CodeBlockConfig lineNumbers filename="/etc/boundary.d/ingress-worker.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<controller_lb_address>:9201"]
+  auth_storage_path = "/var/lib/boundary"
+  tags {
+    type = ["worker1", "upstream"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "ingress-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# kms block for encrypting the authentication PKI material
+kms "awskms" {
+  purpose    = "worker-auth-storage"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey3"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+
+</CodeBlockConfig>
+
+### Intermediate worker configuration
+
+Create the `intermediate-worker.hcl` file with the relevant configuration information:
+
+<CodeBlockConfig lineNumbers filename="/etc/boundary.d/intermediate-worker.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<ingress_worker_address>:9202"]
+  auth_storage_path = "/var/lib/boundary"
+  tags {
+    type = ["worker2", "intermediate"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "intermediate-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# kms block for encrypting the authentication PKI material
+kms "awskms" {
+  purpose    = "worker-auth-storage"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey4"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+
+</CodeBlockConfig>
+
+### Egress worker configuration
+
+Create the `egress-worker.hcl` file with the relevant configuration information:
+
+<CodeBlockConfig lineNumbers filename="/etc/boundary.d/egress-worker.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<intermediate_worker_address>:9202"]
+  auth_storage_path = "/var/lib/boundary"
+  tags {
+    type = ["worker3", "egress"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "egress-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# kms block for encrypting the authentication PKI material
+kms "awskms" {
+  purpose    = "worker-auth-storage"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey5"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+
+</CodeBlockConfig>
+
+Refer to the list below for explanations of the parameters used in the example above:
+
+- `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
+This is fine for local development and testing.
+However, it is not recommended for production unless the systems running Boundary use only encrypted swap or do not use swap at all.
+Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
+
+   On Linux, to give the Boundary executable the ability to use `mlock` syscall without running the process as root, run the following command:
+
+   `sudo setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))`
+
+   If you use a Linux distribution with a modern version of systemd, you can add the following directive to the **"[Service]"** configuration section:
+
+   `LimitMEMLOCK=infinity`
+
+- `listener` - Configures the listeners on which Boundary serves traffic (API cluster and proxy).
+- `worker` - Configures the worker.
+If present, `boundary server` starts a worker subprocess.
+- `events` - Configures event-specific parameters.
+
+   The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
+   This configuration may or may not work for your organization's logging solution.
+
+- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/concepts/security/data-encryption).
+
+   Refer to the links below for configuration information for the different cloud KMS blocks:
+
+   - [AWS](/boundary/docs/configuration/kms/awskms)
+   - [Azure](/boundary/docs/configuration/kms/azurekeyvault)
+   - [GCP](/boundary/docs/configuration/kms/gcpckms)
+   - [OCI](/boundary/docs/configuration/kms/ocikms)
+   - [AliCloud](/boundary/docs/configuration/kms/alicloudkms)
+   - [Vault Transit](/boundary/docs/configuration/kms/transit)
+
+Refer to the documentation for additional [top-level configuration options](/boundary/docs/configuration) and additional [controller-specific options](/boundary/docs/configuration/controller).
+
+</Tab>
+<Tab heading="Community Edition">
+
+For the Community Edition of Boundary, you must configure a worker server that communicates with the controller and is responsible for storage-related tasks.
+
+Boundary Community Edition only supports egress workers. To configure workers for multi-hop sessions, check the Boundary Enterprise configuration.
+
+Complete the following steps to configure the worker.
+
+### Worker configuration
+
+Create the `egress-worker.hcl` file with the relevant configuration information:
+
+<CodeBlockConfig lineNumbers filename="/etc/boundary.d/egress-worker.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<controller_lb_address>:9201"]
+  auth_storage_path = "/var/lib/boundary"
+  tags {
+    type = ["worker", "egress"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "egress-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# kms block for encrypting the authentication PKI material
+kms "awskms" {
+  purpose    = "worker-auth-storage"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey5"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+
+</CodeBlockConfig>
+
+Refer to the list below for explanations of the parameters used in the example above:
+
+- `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
+This is fine for local development and testing.
+However, it is not recommended for production unless the systems running Boundary use only encrypted swap or do not use swap at all.
+Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
+
+   On Linux, to give the Boundary executable the ability to use `mlock` syscall without running the process as root, run the following command:
+
+   `sudo setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))`
+
+   If you use a Linux distribution with a modern version of systemd, you can add the following directive to the **"[Service]"** configuration section:
+
+   `LimitMEMLOCK=infinity`
+
+- `listener` - Configures the listeners on which Boundary serves traffic (API cluster and proxy).
+- `worker` - Configures the worker.
+If present, `boundary server` starts a worker subprocess.
+- `events` - Configures event-specific parameters.
+
+   The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
+   This configuration may or may not work for your organization's logging solution.
+
+- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/concepts/security/data-encryption).
+
+   Refer to the links below for configuration information for the different cloud KMS blocks:
+
+   - [AWS](/boundary/docs/configuration/kms/awskms)
+   - [Azure](/boundary/docs/configuration/kms/azurekeyvault)
+   - [GCP](/boundary/docs/configuration/kms/gcpckms)
+   - [OCI](/boundary/docs/configuration/kms/ocikms)
+   - [AliCloud](/boundary/docs/configuration/kms/alicloudkms)
+   - [Vault Transit](/boundary/docs/configuration/kms/transit)
+
+Refer to the documentation for additional [top-level configuration options](/boundary/docs/configuration) and additional [controller-specific options](/boundary/docs/configuration/controller).
+
+
+</Tab>
+</Tabs>
+
+## Start the Boundary service
+
+When the configuration files are in place on each Boundary controller, you can proceed to enable and start the binary on each of the Boundary worker nodes using `systemd`.
+Run the following commands to start the service:
+
+1. `sudo systemctl enable boundary`
+1. `sudo systemctl start boundary`
+
+## Adopt the Workers (optional)
+
+If you use the Workers as outlined above, you must adopt the Boundary Workers.
+Complete the following steps to adopt the workers:
+
+<Tabs>
+
+<Tab heading="Admin UI">
+
+Complete the following steps to adopt the worker using the UI:
+
+1. Log in to Boundary as the admin user.
+
+1. Select **Workers** in the navigation pane.
+
+1. Click **New**.
+
+1. (Optional) You can use the workers page to construct the contents of the `worker.hcl` file, if you did not [create the configuration file](/boundary/docs/install-boundary/configure-workers#create-the-worker-configurations) as part of the installation process above.
+Provide the following details, and Boundary constructs the worker configuration file for you:
+   - Boundary Cluster ID
+   - Worker Public Address
+   - Config file path
+   - Worker Tags
+
+1. Scroll to the bottom of the **New Worker** page, and paste the **Worker Auth Registration Request** key.
+Boundary provides you with the **Worker Auth Registration Request** key in the CLI output when you start the worker.
+You can also locate this value in the `auth_request_token` file.
+
+1. Click **Register Worker**.
+
+1. Click **Done**.
+
+  The new worker appears on the **Workers** page.
+
+1. Repeat the registration process for any other workers, such as the intermediate and egress workers.
+
+</Tab>
+
+<Tab heading="CLI">
+
+Complete the following steps to adopt the worker using the CLI:
+
+1. Use the following command to ensure that the `BOUNDARY_ADDR` is set as an environment variable:
+
+  ```hcl
+  $ export BOUNDARY_ADDR="https://c3a7a20a-f663-40f3-a8e3-1b2f69b3625.boundary.hashicorp.cloud"
+  ```
+
+1. Log into the CLI as the admin user, providing the Auth Method ID, admin login name, and admin password when prompted.
+
+  ```hcl
+  $ boundary authenticate password \
+    -auth-method-id=ampw_KfLAjMS2CG \
+    -login-name=admin
+  ```
+
+  Example:
+
+  <CodeBlockConfig hideClipboard>
+
+  ```hcl
+  $ boundary authenticate password \
+    -auth-method-id=ampw_KfLAjMS2CG \
+    -login-name=admin
+  Please enter the password (it will be hidden):
+
+  Authentication information:
+    Account ID:      acctpw_r6crEm0FgM
+    Auth Method ID:  ampw_KfLAjMS2CG
+    Expiration Time: Mon, 27 Jun 2022 22:03:28 MDT
+    User ID:         u_ysJd0LXX9T
+
+   The token was successfully stored in the chosen keyring and is not displayed here.
+  ```
+
+  </CodeBlockConfig>
+
+1. Next, use the following command to export the **Worker Auth Request Token** value as an environment variable:
+
+  ```shell-session
+  $ export WORKER_TOKEN=<Worker Auth Registration Request Value>
+  ```
+
+  Boundary provides you with the **Worker Auth Registration Request** key in the CLI output when you start the worker.
+  You can also locate this value in the `auth_request_token` file.
+
+  The token is used to issue a create worker request that authorizes the worker to Boundary and makes it available.
+  Currently worker creation is only supported for workers with an authorization token (worker-led and controller-led).
+
+1. Create a new worker using the worker-led registration method with the following command:
+
+  ```shell-session
+  $ boundary workers create worker-led -worker-generated-auth-token=$WORKER_TOKEN
+  
+  Worker information:
+    Active Connection Count:   0
+    Created Time:              Fri, 03 Jan 2025 13:52:04 MST
+    ID:                        w_zLGjAbYx1h
+    Local Storage State:       unknown
+    Type:                      pki
+    Updated Time:              Fri, 03 Jan 2025 13:52:04 MST
+    Version:                   1
+  
+    Scope:
+      ID:                      global
+      Name:                    global
+      Type:                    global
+  
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+  ```
+
+  Confirm the worker registration and view its details by executing the following command and supplying the new worker's id:
+
+  ```shell-session
+  $ boundary workers read -id w_zLGjAbYx1h
+  
+  Worker information:
+    Active Connection Count:   0
+    Address:                   127.0.0.1:9202
+    Created Time:              Fri, 03 Jan 2025 13:52:04 MST
+    ID:                        w_zLGjAbYx1h
+    Last Status Time:          2025-01-03 20:58:41.346537 +0000 UTC
+    Local Storage State:       not configured
+    Release Version:           Boundary v0.18.1+ent
+    Type:                      pki
+    Updated Time:              Fri, 03 Jan 2025 13:58:41 MST
+    Version:                   1
+  
+    Scope:
+      ID:                      global
+      Name:                    global
+      Type:                    global
+  
+    Tags:
+      Configuration:
+        type: ["worker1" "upstream"]
+      Canonical:
+        type: ["upstream" "worker1"]
+  
+    Authorized Actions:
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+      no-op
+      read
+      update
+      delete
+  ```
+
+1. Repeat the registration process for any other workers, such as the intermediate and egress workers.
+
+</Tab>
+</Tabs>
+
+After configuring workers, you should:
+
+- [Initialize Boundary](/boundary/docs/install-boundary/initialize)
+- [Install the Boundary Clients](/boundary/docs/install-boundary/install-clients)

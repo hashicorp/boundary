@@ -1,0 +1,62 @@
+---
+layout: docs
+page_title: targets - Command
+description: >-
+  The "targets" command performs operations on Boundary target resources. Targets represent networked services that users can connect to during sessions.
+---
+
+# targets
+
+Command: `boundary targets`
+
+The `targets` command lets you perform operations on Boundary target resources.
+
+## Example
+
+The following command updates the description for a target with the ID `ttcp_1234567890`:
+
+```shell-session
+ $ boundary targets update -id ttcp_1234567890 -description "updated postgres target"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+boundary targets [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    add-credential-sources       Add credential sources to a target
+    add-host-sources             Add host sources to a target
+    authorize-session            Request session authorization against the target
+    create                       Create a target
+    delete                       Delete a target
+    list                         List a target
+    read                         Read a target
+    remove-credential-sources    Remove credential sources from a target
+    remove-host-sources          Remove host sources from a target
+    set-credential-sources       Set the full contents of the credential sources on a target
+    set-host-sources             Set the full contents of the host sources on a target
+    update                       Update a target
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [add-credential-sources](/boundary/docs/commands/targets/add-credential-sources)
+- [add-host-sources](/boundary/docs/commands/targets/add-host-sources)
+- [authorize-session](/boundary/docs/commands/targets/authorize-session)
+- [create](/boundary/docs/commands/targets/create)
+- [delete](/boundary/docs/commands/targets/delete)
+- [list](/boundary/docs/commands/targets/list)
+- [read](/boundary/docs/commands/targets/read)
+- [remove-credential-sources](/boundary/docs/commands/targets/remove-credential-sources)
+- [remove-host-sources](/boundary/docs/commands/targets/remove-host-sources)
+- [set-credential-sources](/boundary/docs/commands/targets/set-credential-sources)
+- [set-host-sources](/boundary/docs/commands/targets/set-host-sources)
+- [update](/boundary/docs/commands/targets/update)

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authenticate
 
 import (
@@ -11,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/cap/util"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -24,6 +28,8 @@ var (
 
 type OidcCommand struct {
 	*base.Command
+
+	parsedOpts base.Options
 }
 
 func (c *OidcCommand) Synopsis() string {
@@ -53,6 +59,14 @@ func (c *OidcCommand) Flags() *base.FlagSets {
 		Usage:  "The auth-method resource to use for the operation",
 	})
 
+	if !c.parsedOpts.WithSkipScopeIdFlag {
+		f.StringVar(&base.StringVar{
+			Name:   "scope-id",
+			EnvVar: "BOUNDARY_SCOPE_ID",
+			Target: &c.FlagScopeId,
+			Usage:  "The scope ID to use for the operation.",
+		})
+	}
 	return set
 }
 
@@ -65,16 +79,11 @@ func (c *OidcCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *OidcCommand) Run(args []string) int {
+	c.parsedOpts = base.GetOpts(c.Opts...)
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return base.CommandUserError
-	}
-
-	switch {
-	case c.FlagAuthMethodId == "":
-		c.PrintCliError(errors.New("Auth method ID must be provided via -auth-method-id"))
 		return base.CommandUserError
 	}
 
@@ -92,6 +101,23 @@ func (c *OidcCommand) Run(args []string) int {
 	}
 
 	aClient := authmethods.NewClient(client)
+
+	// if auth method ID isn't passed on the CLI, try looking up the primary auth method ID
+	if c.FlagAuthMethodId == "" {
+		// if flag for scope is empty try looking up global
+		if c.FlagScopeId == "" {
+			c.FlagScopeId = scope.Global.String()
+		}
+
+		pri, err := getPrimaryAuthMethodId(c.Context, aClient, c.FlagScopeId, "amoidc")
+		if err != nil {
+			c.PrintCliError(err)
+			return base.CommandUserError
+		}
+
+		c.FlagAuthMethodId = pri
+	}
+
 	result, err := aClient.Authenticate(c.Context, c.FlagAuthMethodId, "start", nil)
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -110,10 +136,11 @@ func (c *OidcCommand) Run(args []string) int {
 
 	if base.Format(c.UI) == "table" {
 		c.UI.Output("Opening returned authentication URL in your browser...")
+		c.UI.Output(startResp.AuthUrl)
 	}
 	if err := util.OpenURL(startResp.AuthUrl); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to open authentication URL in browser: %w", err).Error())
-		c.UI.Warn("Please open the following URL manually in your web browser:")
+		c.UI.Warn("Please copy and paste this link into a browser manually:")
 		c.UI.Output(startResp.AuthUrl)
 	}
 
@@ -130,7 +157,7 @@ func (c *OidcCommand) Run(args []string) int {
 				return
 
 			case <-time.After(1500 * time.Millisecond):
-				result, err = aClient.Authenticate(c.Context, c.FlagAuthMethodId, "token", map[string]interface{}{
+				result, err = aClient.Authenticate(c.Context, c.FlagAuthMethodId, "token", map[string]any{
 					"token_id": startResp.TokenId,
 				})
 				if err != nil {
@@ -161,5 +188,5 @@ func (c *OidcCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	return saveAndOrPrintToken(c.Command, result)
+	return saveAndOrPrintToken(c.Command, result, c.Opts...)
 }

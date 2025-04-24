@@ -1,41 +1,64 @@
 name: build
 
 on:
-  - workflow_dispatch
-  - push
-  - workflow_call
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+    paths-ignore:
+      - 'website/**'
+  workflow_call:
+  workflow_dispatch:
 
 env:
   PKG_NAME: "boundary"
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
-  product-metadata:
-    runs-on: ubuntu-latest
+  set-product-version:
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     outputs:
-      product-version: ${{ steps.get-product-version.outputs.product-version }}
-      product-minor-version: ${{ steps.get-product-version.outputs.product-minor-version }}
+      product-version: ${{ steps.set-product-version.outputs.product-version }}
+      base-product-version: $${{ steps.set-product-version.outputs.base-product-version }}
+      prerelease-product-version: ${{ steps.set-product-version.outputs.prerelease-product-version }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set Product version
+        id: set-product-version
+        uses: hashicorp/actions-set-product-version@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+
+  product-metadata:
+    needs: set-product-version
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    outputs:
+      product-minor-version: ${{ steps.get-product-minor-version.outputs.product-minor-version }}
       product-edition: ${{ steps.get-product-edition.outputs.product-edition }}
       go-version: ${{ steps.get-go-version.outputs.go-version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
         # version, because "goenv" can react to it automatically.
         run: |
           echo "Building with Go $(cat .go-version)"
-          echo "::set-output name=go-version::$(cat .go-version)"
+          echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
+          cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@v3
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -48,42 +71,44 @@ jobs:
         # Run make edition twice to ensure that extra go output isn't included
         run: |
           make edition
-          echo "::set-output name=product-edition::$(make edition)"
-      - name: Determine product version
-        id: get-product-version
+          echo "product-edition=$(make edition)" >> "$GITHUB_OUTPUT"
+      - name: Determine minor product version
+        id: get-product-minor-version
         run: |
-          VERSION=$(make version)
+          VERSION=${{ needs.set-product-version.outputs.product-version }}
           MINOR_VERSION=$(echo $VERSION | cut -d. -f-2)
-          echo "::set-output name=product-version::$VERSION"
-          echo "::set-output name=product-minor-version::$MINOR_VERSION"
+          echo "product-minor-version=$MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
   verify-product-metadata:
-    needs: product-metadata
-    runs-on: ubuntu-latest
+    needs:
+    - set-product-version
+    - product-metadata
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     steps:
       - name: 'Checkout directory'
-        uses: actions/checkout@v3
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - run: |
-          echo "Product Version - ${{ needs.product-metadata.outputs.product-version }}"
+          echo "Product Version - ${{ needs.set-product-version.outputs.product-version }}"
+          echo "Product Prerelease - ${{ needs.set-product-version.outputs.prerelease-product-version }}"
+          echo "Product Metadata - ${{ needs.product-metadata.outputs.product-edition }}"
           echo "Product Minor Version - ${{ needs.product-metadata.outputs.product-minor-version }}"
-          echo "Product Edition - ${{ needs.product-metadata.outputs.product-edition }}"
 
   generate-metadata-file:
-    needs: product-metadata
-    runs-on: ubuntu-latest
+    needs: set-product-version
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     outputs:
       filepath: ${{ steps.generate-metadata-file.outputs.filepath }}
     steps:
       - name: 'Checkout directory'
-        uses: actions/checkout@v3
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Generate metadata file
         id: generate-metadata-file
-        uses: hashicorp/actions-generate-metadata@main
+        uses: hashicorp/actions-generate-metadata@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
-          version: ${{ needs.product-metadata.outputs.product-version }}
+          repository: boundary
+          version: ${{ needs.set-product-version.outputs.product-version }}
           product: ${{ env.PKG_NAME }}
-
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: metadata.json
           path: ${{ steps.generate-metadata-file.outputs.filepath }}
@@ -91,7 +116,8 @@ jobs:
   build-other:
     needs:
       - product-metadata
-    runs-on: ubuntu-latest
+      - set-product-version
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
@@ -111,18 +137,19 @@ jobs:
       GOPRIVATE: "github.com/hashicorp"
       GO111MODULE: on
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ matrix.go }}
+          cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@v3
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -134,33 +161,36 @@ jobs:
         run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
       - name: Determine SHA
         id: set-sha
-        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+        run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@v2
+        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-      - name: Go build
+      - name: Go Build
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: |
-          mkdir out
-          make build
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
-      - uses: actions/upload-artifact@v3
+          CGO_ENABLED: "0"
+          PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
+          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+        uses: hashicorp/actions-go-build@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
-          name: ${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          product_name: ${{ env.PKG_NAME }}
+          product_version: ${{ needs.set-product-version. outputs.product-version }}
+          go_version: ${{ matrix.go }}
+          os: ${{ matrix.goos }}
+          arch: ${{ matrix.goarch }}
+          reproducible: report
+          instructions: |-
+            make build
 
   build-linux:
     needs:
       - product-metadata
-    runs-on: ubuntu-latest
+      - set-product-version
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [linux]
@@ -175,20 +205,21 @@ jobs:
       GO111MODULE: on
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up Git
         run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ matrix.go }}
+          cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@v3
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -198,40 +229,46 @@ jobs:
             ${{ runner.os }}-go-
       - name: Determine SHA
         id: set-sha
-        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+        run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@v2
+        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-      - name: Go build
+      - name: Go Build
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: |
-          mkdir out
-          make build
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
-      - uses: actions/upload-artifact@v3
+          CGO_ENABLED: "0"
+          PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
+          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+        uses: hashicorp/actions-go-build@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
-          name: ${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-
+          product_name: ${{ env.PKG_NAME }}
+          product_version: ${{ needs.set-product-version. outputs.product-version }}
+          go_version: ${{ matrix.go }}
+          os: ${{ matrix.goos }}
+          arch: ${{ matrix.goarch }}
+          reproducible: report
+          instructions: |-
+            make build
+      - name: Copy license file to config_dir
+        env:
+          LICENSE_DIR: ".release/linux/package/usr/share/doc/${{ env.PKG_NAME }}"
+        run: |
+          mkdir -p "$LICENSE_DIR" && cp LICENSE "$LICENSE_DIR/LICENSE.txt"
       - name: Package
-        uses: hashicorp/actions-packaging-linux@v1
+        uses: hashicorp/actions-packaging-linux@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           name: ${{ github.event.repository.name }}
           description: "HashiCorp Boundary - Identity-based access management for dynamic infrastructure"
           arch: ${{ matrix.goarch }}
-          version: ${{ needs.product-metadata.outputs.product-version }}
+          version: ${{ needs.set-product-version.outputs.product-version }}
           maintainer: "HashiCorp"
           homepage: "https://github.com/hashicorp/boundary"
-          license: "MPL-2.0"
-          binary: "bin/${{ env.PKG_NAME }}"
+          license: "BUSL-1.1"
+          binary: "dist/${{ env.PKG_NAME }}"
           deb_depends: "openssl"
           rpm_depends: "openssl"
           config_dir: ".release/linux/package/"
@@ -239,15 +276,15 @@ jobs:
           postremove: ".release/linux/postrm"
       - name: Add Linux Package names to env
         run: |
-          echo "RPM_PACKAGE=$(basename out/*.rpm)" >> $GITHUB_ENV
-          echo "DEB_PACKAGE=$(basename out/*.deb)" >> $GITHUB_ENV
+          echo "RPM_PACKAGE=$(basename out/*.rpm)" >> "$GITHUB_ENV"
+          echo "DEB_PACKAGE=$(basename out/*.deb)" >> "$GITHUB_ENV"
       - name: Upload RPM package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: ${{ env.RPM_PACKAGE }}
           path: out/${{ env.RPM_PACKAGE }}
       - name: Upload DEB package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: ${{ env.DEB_PACKAGE }}
           path: out/${{ env.DEB_PACKAGE }}
@@ -255,7 +292,8 @@ jobs:
   build-darwin:
     needs:
       - product-metadata
-    runs-on: macos-latest
+      - set-product-version
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [ darwin ]
@@ -269,18 +307,19 @@ jobs:
       GO111MODULE: on
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: ${{ matrix.go }}
+          cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@v3
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -290,52 +329,58 @@ jobs:
             ${{ runner.os }}-go-
       - name: Determine SHA
         id: set-sha
-        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+        run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@v2
+        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-      - name: Go build
+      - name: Go Build
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: |
-          mkdir out
-          make build
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
-      - uses: actions/upload-artifact@v3
+          CGO_ENABLED: "0"
+          PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
+          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+        uses: hashicorp/actions-go-build@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
-          name: ${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          product_name: ${{ env.PKG_NAME }}
+          product_version: ${{ needs.set-product-version. outputs.product-version }}
+          go_version: ${{ matrix.go }}
+          os: ${{ matrix.goos }}
+          arch: ${{ matrix.goarch }}
+          reproducible: report
+          instructions: |-
+            make build
 
   build-docker:
     name: Docker ${{ matrix.arch }} build
     needs:
       - product-metadata
+      - set-product-version
       - build-linux
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         arch: ["arm", "arm64", "386", "amd64"]
+    outputs:
+      name: docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
     env:
       repo: ${{ github.event.repository.name }}
-      version: ${{ needs.product-metadata.outputs.product-version }}
+      version: ${{ needs.set-product-version.outputs.product-version }}
       minor-version: ${{ needs.product-metadata.outputs.product-minor-version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Docker Build (Action)
-        uses: hashicorp/actions-docker-build@v1
+        uses: hashicorp/actions-docker-build@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           version: ${{ env.version }}
           target: default
           arch: ${{ matrix.arch }}
           tags: |
             docker.io/hashicorp/${{ env.repo }}:${{ env.version }}
+            docker.io/hashicorp/${{ env.repo }}:${{ env.version }}_${{ github.sha }}
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.version }}
           # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
           # And MAJOR.MINOR-dev-$COMMITSHA
@@ -350,99 +395,25 @@ jobs:
     # Github Actions secrets, it only makes sense to run this workflow when those
     # secrets are available. Any pull requests from forks will not trigger the
     # workflow.
-    if: "! github.event.pull_request.head.repo.fork"
+    if: github.event.pull_request.head.repo.fork != 'true'
     needs:
+      - set-product-version
       - product-metadata
-      - build-linux
+      - build-docker
     uses: ./.github/workflows/enos-run.yml
     with:
-      artifact-name: "boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip"
+      artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
       go-version: ${{ needs.product-metadata.outputs.go-version }}
+      edition: ${{ needs.product-metadata.outputs.product-edition }}
+      docker-image-name: ${{ needs.build-docker.outputs.name }}
+      docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
     secrets: inherit
-
   bats:
-    runs-on: ubuntu-latest
-    name: CLI tests
-    if: "! github.event.pull_request.head.repo.fork"
+    uses: ./.github/workflows/test-cli-ui_oss.yml
+    if: github.event.pull_request.head.repo.fork != 'true'
     needs:
-      - product-metadata
+      - set-product-version
       - build-linux
-    steps:
-      - uses: actions/checkout@v3
-      - name: Import GPG key for Boundary pass keystore
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v5
-        with:
-          gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
-      - name: Trust the pass keystore GPG key
-        id: trust_gpg
-        run: |
-          gpg -a --encrypt -r ${{ secrets.ENOS_GPG_UID }} --trust-model always
-          echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
-          cat ~/.gnupg/gpg.conf
-      - name: Set up Bats CLI UI tests dependency cache
-        id: dep-cache
-        uses: actions/cache@v3
-        with:
-          path: /tmp/bats-cli-ui-deps
-          key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4
-      - name: Set up Node for Bats install
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - name: Install Bats via NPM
-        # Use npm so this workflow is portable on multiple runner distros
-        run: npm install --location=global bats
-      - name: Download jq for Bats CLI UI tests
-        if: steps.dep-cache.outputs.cache-hit != 'true'
-        # NOTE: if you update the jq version make sure to update the dep cache key
-        run: |
-          mkdir -p /tmp/bats-cli-ui-deps
-          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/bats-cli-ui-deps/jq-bin
-      - name: Install jq for Bats CLI UI tests
-        run: |
-          chmod +x /tmp/bats-cli-ui-deps/jq-bin
-          sudo cp /tmp/bats-cli-ui-deps/jq-bin /usr/local/bin/jq
-      - name: Download and unzip pass for Boundary keyring
-        if: steps.dep-cache.outputs.cache-hit != 'true'
-        # NOTE: if you update the password store version make sure to update the dep cache key
-        run: |
-          mkdir -p /tmp/bats-cli-ui-deps/pass
-          wget https://git.zx2c4.com/password-store/snapshot/password-store-1.7.4.tar.xz -O /tmp/bats-cli-ui-deps/pass/pass.tar.xz
-          cd /tmp/bats-cli-ui-deps/pass
-          tar -xvf pass.tar.xz
-      - name: Install pass for Boundary keyring
-        run: |
-          cd /tmp/bats-cli-ui-deps/pass/password-store-1.7.4
-          sudo make install
-          pass init ${{ secrets.ENOS_GPG_UID }}
-      - name: Download Linux AMD64 Boundary bundle
-        id: download
-        uses: actions/download-artifact@v3
-        with:
-          name: boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip
-          path: /tmp
-      - name: Unpack boundary bundle
-        run: |
-          unzip ${{steps.download.outputs.download-path}}/boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip -d /usr/local/bin
-          rm ${{steps.download.outputs.download-path}}/boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip
-      - name: Versions
-        run: |
-          echo "go version:"
-          go version
-          echo "bats version:"
-          bats --version
-          echo "jq version:"
-          jq --version
-          echo "gpg version:"
-          gpg --version
-          echo "pass version:"
-          pass --version
-          echo "bash version:"
-          bash --version
-          echo "boundary version:"
-          boundary version
-      - name: Run cli bats tests
-        run: |
-          make test-cli
+    with:
+      artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
+    secrets: inherit

@@ -1,0 +1,75 @@
+---
+layout: docs
+page_title: auth-tokens - Command
+description: >-
+  The "auth-tokens" command peforms operations on auth token resources.
+---
+
+# auth-tokens
+
+Command: `boundary auth-tokens`
+
+The `auth-tokens` command lets you manage auth token resources in Boundary.
+
+## Example
+
+The following example command lists existing auth tokens recursively:
+
+```shell-session
+$ boundary auth-tokens list -recursive
+
+Auth Token information:
+  ID:                            at_LvUqeYz80B
+    Scope ID:                    global
+    Approximate Last Used Time:  Sun, 13 Aug 2023 17:22:59 PDT
+    Auth Method ID:              ampw_1234567890
+    Created Time:                Sun, 13 Aug 2023 17:22:59 PDT
+    Expiration Time:             Sun, 20 Aug 2023 17:22:59 PDT
+    Updated Time:                Sun, 13 Aug 2023 17:22:59 PDT
+    User ID:                     u_1234567890
+    Authorized Actions:
+      no-op
+      read
+      read:self
+      delete
+      delete:self
+
+  ID:                            at_TXmYwSqnnO
+    Scope ID:                    global
+    Approximate Last Used Time:  Sun, 13 Aug 2023 17:23:16 PDT
+    Auth Method ID:              ampw_1234567890
+    Created Time:                Sun, 13 Aug 2023 17:23:16 PDT
+    Expiration Time:             Sun, 20 Aug 2023 17:23:16 PDT
+    Updated Time:                Sun, 13 Aug 2023 17:23:16 PDT
+    User ID:                     u_1234567890
+    Authorized Actions:
+      no-op
+      read
+      read:self
+      delete
+      delete:self
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary auth-tokens [sub command] [options] [args]
+
+  # ...
+
+Subcommands:
+    delete          Delete an auth tokn
+    list            List an auth token
+    read            Read an auth token
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [delete](/boundary/docs/commands/auth-tokens/delete)
+- [list](/boundary/docs/commands/auth-tokens/list)
+- [read](/boundary/docs/commands/auth-tokens/read)

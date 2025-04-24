@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package main
 
 import (
@@ -13,6 +16,9 @@ type cmdInfo struct {
 
 	// Standard actions (with standard parameters) used by this resource
 	StdActions []string
+
+	// HasCustomList indicates if there is a custom list action
+	HasCustomList bool
 
 	// HasExtraCommandVars controls whether to generate an embedded struct with
 	// extra command variables
@@ -83,6 +89,19 @@ type cmdInfo struct {
 	// SkipClientCallActions allows skipping creation of an actual client
 	// call for an action in favor of custom logic in extra actions
 	SkipClientCallActions []string
+
+	SkipFiltering bool
+
+	// UsesAlias controls whether to attempt to extract aliases from the CLI args
+	UsesAlias bool
+
+	// AliasFieldFlag controls which command flag to substitute a found alias for
+	AliasFieldFlag string
+
+	// FlagNameOverwrittenByAlias is used in the CLI template to populate an error message.
+	// It controls what to print as the field replaced by an alias
+	// if both an alias and the FlagNameOverwrittenByAlias are provided.
+	FlagNameOverwrittenByAlias string
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -127,6 +146,45 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:      true,
 			VersionedActions:    []string{"update"},
 		},
+		{
+			ResourceType:        resource.Account.String(),
+			Pkg:                 "accounts",
+			StdActions:          []string{"create", "update"},
+			SubActionPrefix:     "ldap",
+			HasExtraCommandVars: true,
+			SkipNormalHelp:      true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			HasName:             true,
+			Container:           "AuthMethod",
+			HasDescription:      true,
+			VersionedActions:    []string{"update"},
+		},
+	},
+	"aliases": {
+		{
+			ResourceType:     resource.Alias.String(),
+			Pkg:              "aliases",
+			StdActions:       []string{"read", "delete", "list"},
+			HasExtraHelpFunc: true,
+			Container:        "Scope",
+			HasId:            true,
+		},
+		{
+			ResourceType:         resource.Alias.String(),
+			Pkg:                  "aliases",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "target",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+		},
 	},
 	"authmethods": {
 		{
@@ -167,13 +225,38 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:     []string{"update", "change-state"},
 			NeedsSubtypeInCreate: true,
 		},
+		{
+			ResourceType:         resource.AuthMethod.String(),
+			Pkg:                  "authmethods",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "ldap",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+		},
 	},
 	"authtokens": {
 		{
-			ResourceType: resource.AuthToken.String(),
-			Pkg:          "authtokens",
-			StdActions:   []string{"read", "delete", "list"},
-			Container:    "Scope",
+			ResourceType:     resource.AuthToken.String(),
+			Pkg:              "authtokens",
+			StdActions:       []string{"read", "delete", "list"},
+			HasExtraHelpFunc: true,
+			Container:        "Scope",
+		},
+	},
+	"billing": {
+		{
+			ResourceType:        resource.Billing.String(),
+			Pkg:                 "billing",
+			HasCustomList:       true,
+			HasExtraCommandVars: true,
+			HasExtraHelpFunc:    true,
 		},
 	},
 	"credentialstores": {
@@ -227,18 +310,51 @@ var inputStructs = map[string][]*cmdInfo{
 			HasId:            true,
 		},
 		{
-			ResourceType:        resource.CredentialLibrary.String(),
-			Pkg:                 "credentiallibraries",
-			StdActions:          []string{"create", "update"},
-			SubActionPrefix:     "vault",
-			HasExtraCommandVars: true,
-			SkipNormalHelp:      true,
-			HasExtraHelpFunc:    true,
-			HasId:               true,
-			HasName:             true,
-			HasDescription:      true,
-			Container:           "CredentialStore",
-			VersionedActions:    []string{"update"},
+			ResourceType:         resource.CredentialLibrary.String(),
+			Pkg:                  "credentiallibraries",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "vault",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			NeedsSubtypeInCreate: true,
+			Container:            "CredentialStore",
+			VersionedActions:     []string{"update"},
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
+		},
+		{
+			ResourceType:         resource.CredentialLibrary.String(),
+			Pkg:                  "credentiallibraries",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "vault-generic",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			NeedsSubtypeInCreate: true,
+			Container:            "CredentialStore",
+			VersionedActions:     []string{"update"},
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
+		},
+		{
+			ResourceType:         resource.CredentialLibrary.String(),
+			Pkg:                  "credentiallibraries",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "vault-ssh-certificate",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			NeedsSubtypeInCreate: true,
+			Container:            "CredentialStore",
+			VersionedActions:     []string{"update"},
 			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
 		},
 	},
@@ -344,6 +460,7 @@ var inputStructs = map[string][]*cmdInfo{
 			SubActionPrefix:      "plugin",
 			SkipNormalHelp:       true,
 			HasExtraHelpFunc:     true,
+			HasExtraCommandVars:  true,
 			HasId:                true,
 			HasName:              true,
 			HasDescription:       true,
@@ -447,6 +564,46 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:      true,
 			VersionedActions:    []string{"update"},
 		},
+		{
+			ResourceType:        resource.ManagedGroup.String(),
+			Pkg:                 "managedgroups",
+			StdActions:          []string{"create", "update"},
+			SubActionPrefix:     "ldap",
+			HasExtraCommandVars: true,
+			SkipNormalHelp:      true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			HasName:             true,
+			Container:           "AuthMethod",
+			HasDescription:      true,
+			VersionedActions:    []string{"update"},
+		},
+	},
+	"policies": {
+		{
+			ResourceType:     resource.Policy.String(),
+			Pkg:              "policies",
+			StdActions:       []string{"read", "delete", "list"},
+			HasExtraHelpFunc: true,
+			HasName:          true,
+			HasDescription:   true,
+			Container:        "Scope",
+		},
+		{
+			ResourceType:         resource.Policy.String(),
+			Pkg:                  "policies",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "storage",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			Container:            "Scope",
+			HasDescription:       true,
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+		},
 	},
 	"roles": {
 		{
@@ -459,7 +616,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:           "Scope",
 			HasName:             true,
 			HasDescription:      true,
-			VersionedActions:    []string{"update", "add-grants", "remove-grants", "set-grants", "add-principals", "remove-principals", "set-principals"},
+			VersionedActions:    []string{"update", "add-grants", "remove-grants", "set-grants", "add-principals", "remove-principals", "set-principals", "add-grant-scopes", "remove-grant-scopes", "set-grant-scopes"},
 		},
 	},
 	"scopes": {
@@ -468,11 +625,12 @@ var inputStructs = map[string][]*cmdInfo{
 			Pkg:                 "scopes",
 			StdActions:          []string{"create", "read", "update", "delete", "list"},
 			HasExtraCommandVars: true,
+			HasExtraHelpFunc:    true,
 			HasId:               true,
 			Container:           "Scope",
 			HasName:             true,
 			HasDescription:      true,
-			VersionedActions:    []string{"update"},
+			VersionedActions:    []string{"update", "attach-storage-policy", "detach-storage-policy"},
 		},
 	},
 	"sessions": {
@@ -487,48 +645,86 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:    []string{"cancel"},
 		},
 	},
-	"targets": {
+	"sessionrecordings": {
 		{
-			ResourceType:        resource.Target.String(),
-			Pkg:                 "targets",
-			StdActions:          []string{"read", "delete", "list"},
+			ResourceType:        resource.SessionRecording.String(),
+			Pkg:                 "sessionrecordings",
+			StdActions:          []string{"delete", "read", "list"},
+			Container:           "Scope",
 			HasExtraCommandVars: true,
 			HasExtraHelpFunc:    true,
-			HasExampleCliOutput: true,
-			HasName:             true,
-			HasDescription:      true,
-			Container:           "Scope",
-			VersionedActions:    []string{"add-host-sources", "remove-host-sources", "set-host-sources", "add-credential-sources", "remove-credential-sources", "set-credential-sources"},
+			HasId:               true,
+			SkipFiltering:       true,
 		},
+	},
+	"storagebuckets": {
 		{
-			ResourceType:         resource.Target.String(),
-			Pkg:                  "targets",
-			StdActions:           []string{"create", "update"},
-			SubActionPrefix:      "tcp",
-			HasExtraCommandVars:  true,
-			SkipNormalHelp:       true,
+			ResourceType:         resource.StorageBucket.String(),
+			Pkg:                  "storagebuckets",
+			StdActions:           []string{"create", "update", "read", "delete", "list"},
 			HasExtraHelpFunc:     true,
+			HasExtraCommandVars:  true,
 			HasId:                true,
 			HasName:              true,
-			Container:            "Scope",
 			HasDescription:       true,
+			Container:            "Scope",
+			IsPluginType:         true,
 			VersionedActions:     []string{"update"},
-			NeedsSubtypeInCreate: true,
+			HasGenericAttributes: true,
+			HasGenericSecrets:    true,
+		},
+	},
+	"targets": {
+		{
+			ResourceType:               resource.Target.String(),
+			Pkg:                        "targets",
+			StdActions:                 []string{"read", "delete", "list"},
+			HasExtraCommandVars:        true,
+			HasExtraHelpFunc:           true,
+			HasExampleCliOutput:        true,
+			HasName:                    true,
+			HasDescription:             true,
+			Container:                  "Scope",
+			VersionedActions:           []string{"add-host-sources", "remove-host-sources", "set-host-sources", "add-credential-sources", "remove-credential-sources", "set-credential-sources"},
+			UsesAlias:                  true,
+			AliasFieldFlag:             "FlagId",
+			FlagNameOverwrittenByAlias: "id",
 		},
 		{
-			ResourceType:         resource.Target.String(),
-			Pkg:                  "targets",
-			StdActions:           []string{"create", "update"},
-			SubActionPrefix:      "ssh",
-			HasExtraCommandVars:  true,
-			SkipNormalHelp:       true,
-			HasExtraHelpFunc:     true,
-			HasId:                true,
-			HasName:              true,
-			Container:            "Scope",
-			HasDescription:       true,
-			VersionedActions:     []string{"update"},
-			NeedsSubtypeInCreate: true,
+			ResourceType:               resource.Target.String(),
+			Pkg:                        "targets",
+			StdActions:                 []string{"create", "update"},
+			SubActionPrefix:            "tcp",
+			HasExtraCommandVars:        true,
+			SkipNormalHelp:             true,
+			HasExtraHelpFunc:           true,
+			HasId:                      true,
+			HasName:                    true,
+			Container:                  "Scope",
+			HasDescription:             true,
+			VersionedActions:           []string{"update"},
+			NeedsSubtypeInCreate:       true,
+			UsesAlias:                  true,
+			AliasFieldFlag:             "FlagId",
+			FlagNameOverwrittenByAlias: "id",
+		},
+		{
+			ResourceType:               resource.Target.String(),
+			Pkg:                        "targets",
+			StdActions:                 []string{"create", "update"},
+			SubActionPrefix:            "ssh",
+			HasExtraCommandVars:        true,
+			SkipNormalHelp:             true,
+			HasExtraHelpFunc:           true,
+			HasId:                      true,
+			HasName:                    true,
+			Container:                  "Scope",
+			HasDescription:             true,
+			VersionedActions:           []string{"update"},
+			NeedsSubtypeInCreate:       true,
+			UsesAlias:                  true,
+			AliasFieldFlag:             "FlagId",
+			FlagNameOverwrittenByAlias: "id",
 		},
 	},
 	"users": {

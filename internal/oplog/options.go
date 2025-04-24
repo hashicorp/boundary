@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oplog
 
 import "github.com/hashicorp/go-dbw"
@@ -17,7 +20,7 @@ func GetOpts(opt ...Option) Options {
 type Option func(Options)
 
 // Options = how options are represented
-type Options map[string]interface{}
+type Options map[string]any
 
 func getDefaultOptions() Options {
 	return Options{

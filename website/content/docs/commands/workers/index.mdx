@@ -1,0 +1,56 @@
+---
+layout: docs
+page_title: workers - Command
+description: >-
+  The "workers" command performs operations on Boundary worker resources. Workers are primarily used as network proxies.
+---
+
+# workers
+
+Command: `boundary workers`
+
+The `workers` command lets you perform operations on Boundary worker resources.
+
+## Example
+
+This example reads information about a worker with the ID `w_1234567890`:
+
+```shell-session
+$ boundary workers read -id w_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary workers <subcommand> [options] [args]
+
+  # ...
+
+Subcommands:
+    add-worker-tags           Add api tags to the specified worker.
+    certificate-authority     Manage the certificate authority used to authorize Boundary workers
+    create                    Create a worker
+    delete                    Delete a worker
+    list                      List a worker
+    read                      Read a worker
+    remove-worker-tags        Remove api tags from the specified worker
+    set-worker-tags           Set api tags for the specified worker
+    update                    Update a worker
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [add-worker-tags](/boundary/docs/commands/workers/add-worker-tags)
+- [certificate-authority](/boundary/docs/commands/workers/certificate-authority)
+- [create](/boundary/docs/commands/workers/create)
+- [delete](/boundary/docs/commands/workers/delete)
+- [list](/boundary/docs/commands/workers/list)
+- [read](/boundary/docs/commands/workers/read)
+- [remove-worker-tags](/boundary/docs/commands/workers/remove-worker-tags)
+- [set-worker-tags](/boundary/docs/commands/workers/set-worker-tags)
+- [update](/boundary/docs/commands/workers/update)

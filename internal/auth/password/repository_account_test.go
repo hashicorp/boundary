@@ -1,20 +1,28 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package password
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestCheckLoginName(t *testing.T) {
@@ -231,7 +239,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
@@ -243,7 +251,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
+			assertPublicId(t, globals.PasswordAccountPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -251,7 +259,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
-			opts := getOpts(tt.opts...)
+			opts := GetOpts(tt.opts...)
 			if opts.withPassword {
 				authAcct, err := repo.Authenticate(context.Background(), org.GetPublicId(), tt.in.AuthMethodId, tt.in.LoginName, opts.password)
 				require.NoError(err)
@@ -271,7 +279,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(context.Background(), rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -290,7 +298,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
+		assertPublicId(t, globals.PasswordAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -303,7 +311,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-parents", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(context.Background(), rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -322,7 +330,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
+		assertPublicId(t, globals.PasswordAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -332,7 +340,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got2.PublicId)
+		assertPublicId(t, globals.PasswordAccountPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -341,6 +349,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 }
 
 func TestRepository_LookupAccount(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -352,7 +361,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	account := TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
-	newAcctId, err := newAccountId()
+	newAcctId, err := newAccountId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -381,10 +390,10 @@ func TestRepository_LookupAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupAccount(context.Background(), tt.in)
+			got, err := repo.LookupAccount(ctx, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -397,6 +406,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 }
 
 func TestRepository_DeleteAccount(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -408,7 +418,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	account := TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
-	newAcctId, err := newAccountId()
+	newAcctId, err := newAccountId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -438,10 +448,10 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
+			got, err := repo.DeleteAccount(ctx, org.GetPublicId(), tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -466,6 +476,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 	accounts1 := TestMultipleAccounts(t, conn, authMethods[0].GetPublicId(), 3)
 	accounts2 := TestMultipleAccounts(t, conn, authMethods[1].GetPublicId(), 4)
 	_ = accounts2
+	slices.Reverse(accounts1)
 
 	tests := []struct {
 		name       string
@@ -478,7 +489,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 		{
 			name:       "With no auth method id",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "password.(Repository).ListAccounts: missing auth method id: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).listAccounts: missing auth method id: parameter violation: error #100",
 		},
 		{
 			name: "With no accounts id",
@@ -496,17 +507,20 @@ func TestRepository_ListAccounts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
+			got, ttime, err := repo.listAccounts(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
-			assert.EqualValues(tt.want, got)
+			assert.Empty(cmp.Diff(tt.want, got, cmpopts.IgnoreUnexported(Account{}, store.Account{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
@@ -573,12 +587,15 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(context.Background(), rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
+			got, ttime, err := repo.listAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
@@ -912,7 +929,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -946,7 +963,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				return
 			}
 			require.NotNil(got)
-			assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
+			assertPublicId(t, globals.PasswordAccountPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.AuthMethodId, got.AuthMethodId)
@@ -971,6 +988,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 }
 
 func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -979,7 +997,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1011,7 +1029,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1033,7 +1051,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
+		assertPublicId(t, globals.PasswordAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -1057,7 +1075,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-loginnames", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1089,7 +1107,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("valid-duplicate-loginnames-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1110,7 +1128,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
+		assertPublicId(t, globals.PasswordAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.LoginName, got.LoginName)
 
@@ -1131,7 +1149,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("change-authmethod-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 

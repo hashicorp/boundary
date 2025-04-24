@@ -1,11 +1,16 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package perms
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,49 +21,106 @@ func Test_OutputFields(t *testing.T) {
 	type input struct {
 		name     string
 		fields   []string
-		startMap OutputFieldsMap
-		resMap   OutputFieldsMap
+		startMap *OutputFields
+		resMap   *OutputFields
 		resStar  bool
 	}
 	tests := []input{
 		{
-			name: "nil map, add nil",
+			name:   "nil map, add nil",
+			resMap: &OutputFields{},
+		},
+		{
+			name:   "nil map, add empty fields",
+			fields: []string{},
+			resMap: &OutputFields{
+				fields: map[string]bool{},
+			},
 		},
 		{
 			name:   "nil map, add fields",
 			fields: []string{"id", "version"},
-			resMap: OutputFieldsMap{"id": true, "version": true},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"id":      true,
+					"version": true,
+				},
+			},
 		},
 		{
-			name:     "existing map, add nil",
-			startMap: OutputFieldsMap{"id": true, "version": true},
-			resMap:   OutputFieldsMap{"id": true, "version": true},
+			name: "existing map, add nil",
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"id":      true,
+					"version": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"id":      true,
+					"version": true,
+				},
+			},
 		},
 		{
-			name:     "existing with star, add nil",
-			startMap: OutputFieldsMap{"*": true},
-			resMap:   OutputFieldsMap{"*": true},
-			resStar:  true,
+			name: "existing with star, add nil",
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resStar: true,
 		},
 		{
-			name:     "existing with star, add new",
-			fields:   []string{"id", "version"},
-			startMap: OutputFieldsMap{"*": true},
-			resMap:   OutputFieldsMap{"*": true},
-			resStar:  true,
+			name:   "existing with star, add new",
+			fields: []string{"id", "version"},
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resStar: true,
 		},
 		{
-			name:     "existing without star, add new",
-			fields:   []string{"id", "version"},
-			startMap: OutputFieldsMap{"name": true},
-			resMap:   OutputFieldsMap{"id": true, "version": true, "name": true},
+			name:   "existing without star, add new",
+			fields: []string{"id", "version"},
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"name": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"id":      true,
+					"version": true,
+					"name":    true,
+				},
+			},
 		},
 		{
-			name:     "existing without star, add star",
-			fields:   []string{"id", "*"},
-			startMap: OutputFieldsMap{"name": true},
-			resMap:   OutputFieldsMap{"*": true},
-			resStar:  true,
+			name:   "existing without star, add star",
+			fields: []string{"id", "*"},
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"name": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resStar: true,
 		},
 	}
 
@@ -66,7 +128,7 @@ func Test_OutputFields(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 			out := test.startMap.AddFields(test.fields)
-			assert.True(out.HasAll() == test.resStar)
+			assert.True(out.Has("*") == test.resStar)
 			assert.Equal(test.resMap, out)
 		})
 	}
@@ -74,6 +136,8 @@ func Test_OutputFields(t *testing.T) {
 
 func Test_ACLOutputFields(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	type input struct {
 		name       string
@@ -86,25 +150,25 @@ func Test_ACLOutputFields(t *testing.T) {
 	tests := []input{
 		{
 			name:       "default",
-			resource:   Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource:   Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			action:     action.Read,
-			grants:     []string{"id=bar;actions=read,update"},
+			grants:     []string{"ids=u_bar;actions=read,update"},
 			authorized: true,
 		},
 		{
 			name:       "single value",
-			resource:   Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants:     []string{"id=bar;actions=read,update;output_fields=id"},
+			resource:   Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
+			grants:     []string{"ids=u_bar;actions=read,update;output_fields=id"},
 			action:     action.Read,
 			fields:     []string{"id"},
 			authorized: true,
 		},
 		{
 			name:     "compound no overlap",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=id",
-				"id=*;type=host-catalog;actions=read,update;output_fields=version",
+				"ids=u_bar;actions=read,update;output_fields=id",
+				"ids=*;type=host-catalog;actions=read,update;output_fields=version",
 			},
 			action:     action.Read,
 			fields:     []string{"id"},
@@ -112,10 +176,10 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "compound",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=id",
-				"id=*;type=role;output_fields=version",
+				"ids=u_bar;actions=read,update;output_fields=id",
+				"ids=*;type=role;output_fields=version",
 			},
 			action:     action.Read,
 			fields:     []string{"id", "version"},
@@ -123,10 +187,10 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "wildcard with type",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=read",
-				"id=*;type=role;output_fields=*",
+				"ids=u_bar;actions=read,update;output_fields=read",
+				"ids=*;type=role;output_fields=*",
 			},
 			action:     action.Read,
 			fields:     []string{"*"},
@@ -134,10 +198,10 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "wildcard with wildcard type",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=read",
-				"id=*;type=*;output_fields=*",
+				"ids=u_bar;actions=read,update;output_fields=read",
+				"ids=*;type=*;output_fields=*",
 			},
 			action:     action.Read,
 			fields:     []string{"*"},
@@ -145,9 +209,9 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "subaction exact",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read:self,update;output_fields=version",
+				"ids=u_bar;actions=read:self,update;output_fields=version",
 			},
 			action:     action.ReadSelf,
 			fields:     []string{"version"},
@@ -157,10 +221,10 @@ func Test_ACLOutputFields(t *testing.T) {
 			// If the action is a subaction, parent output fields will apply, in
 			// addition to subaction. This matches authorization.
 			name:     "subaction parent action",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=version",
-				"id=bar;actions=read:self;output_fields=id",
+				"ids=u_bar;actions=read,update;output_fields=version",
+				"ids=u_bar;actions=read:self;output_fields=id",
 			},
 			action:     action.ReadSelf,
 			fields:     []string{"id", "version"},
@@ -172,10 +236,10 @@ func Test_ACLOutputFields(t *testing.T) {
 			// non-self actions. This is useful to allow more visibility to self
 			// actions and less in the general case.
 			name:     "subaction child action",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read:self,update;output_fields=version",
-				"id=bar;actions=read;output_fields=id",
+				"ids=u_bar;actions=read:self,update;output_fields=version",
+				"ids=u_bar;actions=read;output_fields=id",
 			},
 			action:     action.Read,
 			fields:     []string{"id"},
@@ -183,10 +247,10 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "initial grant unauthorized with star",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;output_fields=*",
-				"id=bar;actions=delete;output_fields=id",
+				"ids=u_bar;output_fields=*",
+				"ids=u_bar;actions=delete;output_fields=id",
 			},
 			action:     action.Delete,
 			fields:     []string{"*"},
@@ -194,16 +258,16 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "unauthorized id only",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;output_fields=name",
+				"ids=u_bar;output_fields=name",
 			},
 			action: action.Delete,
 			fields: []string{"name"},
 		},
 		{
 			name:     "unauthorized type only",
-			resource: Resource{ScopeId: "o_myorg", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", ParentScopeId: scope.Global.String(), Type: resource.Role},
 			grants: []string{
 				"type=role;output_fields=name",
 			},
@@ -216,13 +280,14 @@ func Test_ACLOutputFields(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var grants []Grant
 			for _, g := range test.grants {
-				grant, err := Parse("o_myorg", g)
+				grant, err := Parse(ctx, GrantTuple{RoleScopeId: "o_myorg", GrantScopeId: "o_myorg", Grant: g})
 				require.NoError(t, err)
 				grants = append(grants, grant)
 			}
 			acl := NewACL(grants...)
-			results := acl.Allowed(test.resource, test.action, AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
-			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
+			results := acl.Allowed(test.resource, test.action, globals.AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
+			fields, _ := results.OutputFields.Fields()
+			assert.ElementsMatch(t, fields, test.fields)
 			assert.True(t, test.authorized == results.Authorized)
 		})
 	}
@@ -233,42 +298,58 @@ func Test_ACLSelfOrDefault(t *testing.T) {
 
 	type input struct {
 		name   string
-		input  OutputFieldsMap
-		output OutputFieldsMap
+		input  *OutputFields
+		output *OutputFields
 		userId string
 	}
 	tests := []input{
 		{
-			name:   "nil, no user ID",
-			output: OutputFieldsMap{},
+			name: "nil, no user ID, set but empty",
+			output: &OutputFields{
+				fields: map[string]bool{},
+			},
 		},
 		{
-			name:   "nil, non anon id",
-			output: OutputFieldsMap{"*": true},
+			name: "nil, non anon id",
+			output: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
 			userId: "u_abc123",
 		},
 		{
 			name: "nil, anon id",
-			output: OutputFieldsMap{
-				globals.IdField:                          true,
-				globals.ScopeField:                       true,
-				globals.ScopeIdField:                     true,
-				globals.PluginField:                      true,
-				globals.PluginIdField:                    true,
-				globals.NameField:                        true,
-				globals.DescriptionField:                 true,
-				globals.TypeField:                        true,
-				globals.IsPrimaryField:                   true,
-				globals.PrimaryAuthMethodIdField:         true,
-				globals.AuthorizedActionsField:           true,
-				globals.AuthorizedCollectionActionsField: true,
+			output: &OutputFields{
+				fields: map[string]bool{
+					globals.IdField:                          true,
+					globals.ScopeField:                       true,
+					globals.ScopeIdField:                     true,
+					globals.PluginField:                      true,
+					globals.PluginIdField:                    true,
+					globals.NameField:                        true,
+					globals.DescriptionField:                 true,
+					globals.TypeField:                        true,
+					globals.IsPrimaryField:                   true,
+					globals.PrimaryAuthMethodIdField:         true,
+					globals.AuthorizedActionsField:           true,
+					globals.AuthorizedCollectionActionsField: true,
+				},
 			},
-			userId: AnonymousUserId,
+			userId: globals.AnonymousUserId,
 		},
 		{
-			name:   "not nil",
-			input:  OutputFieldsMap{"foo": true},
-			output: OutputFieldsMap{"foo": true},
+			name: "not nil",
+			input: &OutputFields{
+				fields: map[string]bool{
+					"foo": true,
+				},
+			},
+			output: &OutputFields{
+				fields: map[string]bool{
+					"foo": true,
+				},
+			},
 		},
 	}
 	for _, test := range tests {

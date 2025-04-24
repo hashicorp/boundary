@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 
 package controller.custom_options.v1;
@@ -14,7 +17,8 @@ extend google.protobuf.FieldOptions {
   MaskMapping mask_mapping = 85464;
 
   // generate_sdk_option is a directive used when generating the SDK to
-  // indicate that an option should be created for the field
+  // indicate that an option should be created for the field. This also controls
+  // API options (DefaultX, WithX functions).
   bool generate_sdk_option = 85412;
 
   // subtype is used for oneOf attribute subtypes, to identify that we only need to parse attributes
@@ -25,6 +29,12 @@ extend google.protobuf.FieldOptions {
   // subtype_source_id is used to indicate that a field provided an id that can be used
   // to determine the subtype of a message.
   bool subtype_source_id = 85556;
+
+  // aliasable_field is used to indicate that a field is aliasable. Fields with
+  // this option attached will have their values checked for a possible alias
+  // value at request time and will be replaced with the destination id
+  // associated with the alias if found.
+  AliasInfo aliasable = 85557;
 }
 
 extend google.protobuf.FileOptions {
@@ -35,4 +45,21 @@ extend google.protobuf.FileOptions {
 message MaskMapping {
   string this = 1;
   string that = 2;
+}
+
+message AliasInfo {
+  oneof aliasable {
+    bool always = 1;
+
+    // aliasable_with_fields is used to indicate that the field this FieldOption
+    // is on, while normally aliasable, should not be aliased if any fields on this
+    // same message are populated.
+    AliasableUnlessSet unless_set = 2;
+  }
+}
+
+message AliasableUnlessSet {
+  // fields is a list of fields that, if any of them are set with a non zero
+  // value then the field this FieldOption is on should not be treated as an alias.
+  repeated string fields = 1;
 }

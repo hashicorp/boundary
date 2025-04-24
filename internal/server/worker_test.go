@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
@@ -21,16 +24,12 @@ import (
 
 func TestWorkerCanonicalTags(t *testing.T) {
 	w := NewWorker(scope.Global.String())
-	w.apiTags = []*Tag{
-		{Key: "key", Value: "apis unique"},
-		{Key: "key", Value: "shared"},
-		{Key: "key2", Value: "apis key2 unique"},
-	}
-	w.configTags = []*Tag{
-		{Key: "key", Value: "configs unique"},
-		{Key: "key", Value: "shared"},
-		{Key: "key3", Value: "configs key3 unique"},
-	}
+	w.ApiTags = make(Tags)
+	w.ApiTags["key"] = []string{"apis unique", "shared"}
+	w.ApiTags["key2"] = []string{"apis key2 unique"}
+	w.ConfigTags = make(Tags)
+	w.ConfigTags["key"] = []string{"configs unique", "shared"}
+	w.ConfigTags["key3"] = []string{"configs key3 unique"}
 
 	got := w.CanonicalTags()
 	assert.Len(t, got, 3, "2 keys expected, 'key' and 'key2'")
@@ -45,12 +44,10 @@ func TestWorkerAggregate(t *testing.T) {
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	getAggWorker := func(id string) *Worker {
-		agg := &workerAggregate{PublicId: id}
-		require.NoError(t, rw.LookupById(ctx, agg))
-		got, err := agg.toWorker(ctx)
-		assert.NoError(t, err)
-		return got
+	getWorker := func(id string) *Worker {
+		ret, err := lookupWorker(ctx, rw, id)
+		require.NoError(t, err)
+		return ret
 	}
 
 	t.Run("kms worker", func(t *testing.T) {
@@ -64,7 +61,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, KmsWorkerType.String(), got.GetType())
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, scope.Global.String(), got.GetScopeId())
@@ -87,7 +84,7 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
@@ -106,20 +103,21 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 		require.NoError(t, rw.Create(ctx,
-			&store.WorkerTag{
+			&store.ConfigTag{
 				WorkerId: id,
 				Key:      "key",
 				Value:    "val",
-				Source:   ConfigurationTagSource.String(),
 			}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
 		assert.NotNil(t, got.GetReleaseVersion())
-		assert.Empty(t, got.apiTags)
-		assert.Equal(t, got.configTags, []*Tag{{Key: "key", Value: "val"}})
+		assert.Empty(t, got.ApiTags)
+		wantTag := make(Tags)
+		wantTag["key"] = []string{"val"}
+		assert.Equal(t, got.ConfigTags, wantTag)
 	})
 
 	t.Run("Worker with many config tag", func(t *testing.T) {
@@ -131,29 +129,26 @@ func TestWorkerAggregate(t *testing.T) {
 		w.Type = KmsWorkerType.String()
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ConfigTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val",
-			Source:   ConfigurationTagSource.String(),
 		}))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ConfigTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val2",
-			Source:   ConfigurationTagSource.String(),
 		}))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ConfigTag{
 			WorkerId: id,
 			Key:      "key2",
 			Value:    "val2",
-			Source:   ConfigurationTagSource.String(),
 		}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
-		assert.Empty(t, got.apiTags)
-		assert.ElementsMatch(t, got.configTags, []*Tag{
+		assert.Empty(t, got.ApiTags)
+		assert.ElementsMatch(t, got.ConfigTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val"},
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
@@ -170,19 +165,20 @@ func TestWorkerAggregate(t *testing.T) {
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 		require.NoError(t, rw.Create(ctx,
-			&store.WorkerTag{
+			&store.ApiTag{
 				WorkerId: id,
 				Key:      "key",
 				Value:    "val",
-				Source:   ApiTagSource.String(),
 			}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
-		assert.Empty(t, got.GetConfigTags())
-		assert.Equal(t, got.apiTags, []*Tag{{Key: "key", Value: "val"}})
+		assert.Empty(t, got.ConfigTags)
+		wantTag := make(Tags)
+		wantTag["key"] = []string{"val"}
+		assert.Equal(t, got.ApiTags, wantTag)
 	})
 
 	// Worker with mix of tag sources
@@ -195,34 +191,62 @@ func TestWorkerAggregate(t *testing.T) {
 		w.Type = KmsWorkerType.String()
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ConfigTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val",
-			Source:   ConfigurationTagSource.String(),
 		}))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ApiTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val2",
-			Source:   ApiTagSource.String(),
 		}))
-		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+		require.NoError(t, rw.Create(ctx, &store.ApiTag{
 			WorkerId: id,
 			Key:      "key2",
 			Value:    "val2",
-			Source:   ApiTagSource.String(),
 		}))
 
-		got := getAggWorker(id)
+		got := getWorker(id)
 		require.NotNil(t, got.GetLastStatusTime())
-		assert.ElementsMatch(t, got.apiTags, []*Tag{
+		assert.ElementsMatch(t, got.ApiTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
 		})
-		assert.ElementsMatch(t, got.configTags, []*Tag{
+		assert.ElementsMatch(t, got.ConfigTags.convertToTag(), []*Tag{
 			{Key: "key", Value: "val"},
 		})
+	})
+
+	t.Run("worker with default unknown local storage state", func(t *testing.T) {
+		id, err := newWorkerId(ctx)
+		require.NoError(t, err)
+		id = strings.ToLower(id)
+		w := NewWorker(scope.Global.String(),
+			WithName(id),
+			WithAddress("address"))
+		w.Type = KmsWorkerType.String()
+		w.PublicId = id
+		require.NoError(t, rw.Create(ctx, w))
+
+		got := getWorker(id)
+		assert.Equal(t, UnknownLocalStorageState.String(), got.LocalStorageState)
+	})
+
+	t.Run("worker with available local storage state", func(t *testing.T) {
+		id, err := newWorkerId(ctx)
+		require.NoError(t, err)
+		id = strings.ToLower(id)
+		w := NewWorker(scope.Global.String(),
+			WithName(id),
+			WithAddress("address"),
+			WithLocalStorageState("available"))
+		w.Type = KmsWorkerType.String()
+		w.PublicId = id
+		require.NoError(t, rw.Create(ctx, w))
+
+		got := getWorker(id)
+		assert.Equal(t, AvailableLocalStorageState.String(), got.LocalStorageState)
 	})
 }
 
@@ -251,12 +275,13 @@ func TestWorker_Update(t *testing.T) {
 			name: "kms update address",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             KmsWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "kms update address",
-					Address:          "kms update address",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              KmsWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "kms update address",
+					Address:           "kms update address",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -277,12 +302,13 @@ func TestWorker_Update(t *testing.T) {
 			name: "kms update name",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             KmsWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "kms update name",
-					Address:          "kms update name",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              KmsWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "kms update name",
+					Address:           "kms update name",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -297,12 +323,13 @@ func TestWorker_Update(t *testing.T) {
 			name: "kms clear name",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             KmsWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "kms clear name",
-					Address:          "kms clear name",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              KmsWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "kms clear name",
+					Address:           "kms clear name",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -315,11 +342,12 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update address",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "pki update address",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki update address",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -340,11 +368,12 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update name",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "pki update name",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki update name",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -364,11 +393,12 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update description",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "pki update description",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki update description",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -389,13 +419,14 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki clear address",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "pki clear address",
-					Address:          "pki clear address",
-					LastStatusTime:   &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki clear address",
+					Address:           "pki clear address",
+					LastStatusTime:    &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -408,13 +439,14 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki clear name",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "pki clear name",
-					Address:          "pki clear name",
-					LastStatusTime:   &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki clear name",
+					Address:           "pki clear name",
+					LastStatusTime:    &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -433,11 +465,12 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update name to capital",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "pki update name to capital",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki update name to capital",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -452,11 +485,12 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update name to unprintable",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "worker reported update name to unprintable",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "worker reported update name to unprintable",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -467,11 +501,54 @@ func TestWorker_Update(t *testing.T) {
 			mask:            []string{"Name"},
 			wantUpdateError: true,
 		},
+		{
+			name: "local storage state update to available",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "valid local storage state",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					LocalStorageState: AvailableLocalStorageState.String(),
+				},
+			},
+			mask: []string{"LocalStorageState"},
+			assert: func(t *testing.T, init, up *Worker) {
+				t.Helper()
+				assert.Equal(t, AvailableLocalStorageState.String(), up.LocalStorageState)
+			},
+		},
+		{
+			name: "local storage state update to invalid value",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "invalid local storage state",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					LocalStorageState: "Invalid Local Storage State",
+				},
+			},
+			mask:            []string{"LocalStorageState"},
+			wantUpdateError: true,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			init := tc.initial.clone()
-			require.NoError(t, rw.Create(ctx, init))
+			require.NoError(t, rw.Create(ctx, init), tc.name)
 			up := tc.update.clone()
 			up.PublicId = init.PublicId
 			_, err := rw.Update(ctx, up, tc.mask, tc.nullMask)
@@ -513,13 +590,14 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms base",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             KmsWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Address:          "address",
-					Name:             "kms base",
-					Description:      "kms base",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              KmsWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Address:           "address",
+					Name:              "kms base",
+					Description:       "kms base",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			want: wanted{lastStatusUpdated: true},
@@ -528,11 +606,12 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms with no name field",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             KmsWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Address:          "address",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              KmsWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Address:           "address",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -554,12 +633,13 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms with upper case name",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             KmsWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "With Upper Case Worker Reported Name",
-					Address:          "address",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              KmsWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "With Upper Case Worker Reported Name",
+					Address:           "address",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -568,12 +648,13 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms with unprintable worker reported name",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             KmsWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "unprintable \u0008 worker reported name",
-					Address:          "address",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              KmsWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "unprintable \u0008 worker reported name",
+					Address:           "address",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -584,11 +665,12 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki base",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "pki base",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki base",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			want: wanted{},
@@ -597,10 +679,11 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki with no name field",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			want: wanted{},
@@ -609,11 +692,12 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki with address field",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Address:          "address",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Address:           "address",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -622,12 +706,13 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki with upper case name",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "PKI With Upper Case Worker Reported Name",
-					Address:          "address",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "PKI With Upper Case Worker Reported Name",
+					Address:           "address",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -636,12 +721,41 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki with unprintable worker reported name",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "unprintable \u0008 worker reported name",
-					Address:          "address",
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "unprintable \u0008 worker reported name",
+					Address:           "address",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: AvailableLocalStorageState.String(),
+				},
+			},
+			want: wanted{createError: true},
+		},
+		{
+			name: "pki with unknown local storage state",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki unknown local storage state",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
+				},
+			},
+			want: wanted{},
+		},
+		{
+			name: "pki with invalid local storage state",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki invalid local storage state",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: "invalid state",
 				},
 			},
 			want: wanted{createError: true},
@@ -692,7 +806,8 @@ func TestWorker_New(t *testing.T) {
 			args: args{},
 			want: &Worker{
 				Worker: &store.Worker{
-					OperationalState: ActiveOperationalState.String(),
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 		},
@@ -703,8 +818,9 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:          scope.Global.String(),
-					OperationalState: ActiveOperationalState.String(),
+					ScopeId:           scope.Global.String(),
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 		},
@@ -715,8 +831,9 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:          org.GetPublicId(),
-					OperationalState: ActiveOperationalState.String(),
+					ScopeId:           org.GetPublicId(),
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 		},
@@ -727,8 +844,9 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:          prj.GetPublicId(),
-					OperationalState: ActiveOperationalState.String(),
+					ScopeId:           prj.GetPublicId(),
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 		},
@@ -742,9 +860,10 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:          scope.Global.String(),
-					Name:             "foo",
-					OperationalState: ActiveOperationalState.String(),
+					ScopeId:           scope.Global.String(),
+					Name:              "foo",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 		},
@@ -758,9 +877,10 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:          scope.Global.String(),
-					Description:      "foo",
-					OperationalState: ActiveOperationalState.String(),
+					ScopeId:           scope.Global.String(),
+					Description:       "foo",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 		},
@@ -774,9 +894,10 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:          scope.Global.String(),
-					Address:          "foo",
-					OperationalState: ActiveOperationalState.String(),
+					ScopeId:           scope.Global.String(),
+					Address:           "foo",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 		},
@@ -793,8 +914,9 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:          scope.Global.String(),
-					OperationalState: ActiveOperationalState.String(),
+					ScopeId:           scope.Global.String(),
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 				inputTags: []*Tag{
 					{

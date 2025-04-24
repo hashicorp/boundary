@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package job
 
 import (
@@ -5,7 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Run represents an instance of a job that is either actively running or has already completed.
+// Run represents an instance of a job that is either actively running or has failed in some way.
 type Run struct {
 	*store.JobRun
 	tableName string `gorm:"-"`

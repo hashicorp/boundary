@@ -1,16 +1,19 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package job
 
 const runJobsQuery = `
 	insert into job_run (
 	  job_plugin_id, job_name, controller_id
 	)
-	select 
-	  job_plugin_id, job_name, ?
-	from job_jobs_to_run 
+	select
+	  j.plugin_id, j."name", ?
+	from job j
+	where next_scheduled_run <= current_timestamp
 	order by next_scheduled_run asc
-	%s
-	on conflict 
-	  (job_plugin_id, job_name) 
+	on conflict
+	  (job_plugin_id, job_name)
 	    where status = 'running'
 	do nothing
 	returning *;
@@ -62,7 +65,8 @@ const updateProgressQuery = `
 	  job_run
 	set
 	  completed_count = ?,
-	  total_count = ?
+	  total_count = ?,
+	  retries_count = ?
 	where
 	  private_id = ?
 	  and status = 'running'
@@ -70,13 +74,7 @@ const updateProgressQuery = `
 `
 
 const completeRunQuery = `
-	update
-	  job_run
-	set
-	  completed_count = ?,
-	  total_count     = ?,
-	  status          = 'completed',
-	  end_time        = current_timestamp
+	delete from job_run
 	where
 	  private_id = ?
 	  and status = 'running'
@@ -89,6 +87,7 @@ const failRunQuery = `
 	set
 	  completed_count = ?,
 	  total_count     = ?,
+	  retries_count   = ?,
 	  status          = 'failed',
 	  end_time        = current_timestamp
 	where

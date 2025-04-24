@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package worker
 
 import (
@@ -29,21 +32,21 @@ func TestGetHealth(t *testing.T) {
 		name             string
 		method           string
 		queryParams      string
-		expectedResponse opsservices.GetHealthResponse
+		expectedResponse *opsservices.GetHealthResponse
 		expCode          int
 	}{
 		{
 			name:             "healthy reply",
 			method:           http.MethodGet,
 			expCode:          http.StatusOK,
-			expectedResponse: opsservices.GetHealthResponse{},
+			expectedResponse: &opsservices.GetHealthResponse{},
 		},
 		{
 			name:        "healthy reply with worker info",
 			method:      http.MethodGet,
 			queryParams: "worker_info=1",
 			expCode:     http.StatusOK,
-			expectedResponse: opsservices.GetHealthResponse{
+			expectedResponse: &opsservices.GetHealthResponse{
 				WorkerProcessInfo: &pbhealth.HealthInfo{
 					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
@@ -55,7 +58,7 @@ func TestGetHealth(t *testing.T) {
 			method:           http.MethodPost,
 			queryParams:      "worker_info=1",
 			expCode:          http.StatusNotImplemented,
-			expectedResponse: opsservices.GetHealthResponse{},
+			expectedResponse: &opsservices.GetHealthResponse{},
 		},
 	}
 
@@ -76,7 +79,14 @@ func TestGetHealth(t *testing.T) {
 			resp := &opsservices.GetHealthResponse{}
 			require.NoError(t, healthCheckMarshaler.Unmarshal(b, resp))
 
-			assert.Empty(t, cmp.Diff(tt.expectedResponse, resp, protocmp.Transform()))
+			assert.Empty(t,
+				cmp.Diff(
+					tt.expectedResponse,
+					resp,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbhealth.HealthInfo{}, "upstream_connection_state"),
+				),
+			)
 		})
 	}
 }

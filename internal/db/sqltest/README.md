@@ -76,7 +76,7 @@ Different versions of postgres can easily be tested:
 
 ```bash
 make PG_DOCKER_TAG=latest
+make PG_DOCKER_TAG=14-alpine
 make PG_DOCKER_TAG=13-alpine
 make PG_DOCKER_TAG=12-alpine
-make PG_DOCKER_TAG=11-alpine
 ```

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
   create function wt_is_sentinel(string text) returns bool
@@ -17,7 +20,7 @@ begin;
         length(trim(u&'\fffe ' from value)) > 0
       );
   comment on domain wt_sentinel is
-  'A non-empty string with a Unicode prefix of U+FFFE to indicate it is a sentinel value';
+    'A non-empty string with a Unicode prefix of U+FFFE to indicate it is a sentinel value';
 
   create function wt_to_sentinel(string text) returns text
   as $$

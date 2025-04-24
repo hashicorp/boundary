@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package sessions
 
 import (
@@ -68,6 +71,6 @@ func (c *Client) Cancel(ctx context.Context, sessionId string, version uint32, o
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

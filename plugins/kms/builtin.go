@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package kms_plugin_assets
 
 import (
@@ -7,7 +10,7 @@ import (
 
 func BuiltinKmsPlugins() map[string]pluginutil.InmemCreationFunc {
 	return map[string]pluginutil.InmemCreationFunc{
-		"aead": func() (interface{}, error) {
+		"aead": func() (any, error) {
 			return aead.NewWrapper(), nil
 		},
 	}

@@ -1,0 +1,53 @@
+---
+layout: docs
+page_title: config autocomplete - Command
+description: >-
+  The "config autocomplete" command installs or uninstalls autocompletion support for Boundary's CLI.
+---
+
+# config autocomplete
+
+Command: `boundary config autocomplete`
+
+The `config autocomplete` command lets you install or uninstall autocompletion support
+for Boundary's CLI.
+
+
+## Examples
+
+The following command installs autocompletion support for Boundary's CLI:
+
+```shell-session
+$ boundary config autocomplete install
+```
+
+The following command uninstalls autocompletion support from Boundary's CLI:
+
+```shell-session
+$ boundary config autocomplete uninstall
+```
+
+## Usage
+
+**Install:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary config autocomplete install [options] [args]
+```
+
+</CodeBlockConfig>
+
+**Uninstall:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary config autocomplete uninstall [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+@include 'cmd-option-note.mdx'

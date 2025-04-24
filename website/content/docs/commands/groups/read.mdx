@@ -1,0 +1,73 @@
+---
+layout: docs
+page_title: groups read - Command
+description: >-
+  The "groups read" command retrieves the details of an existing group resource.
+---
+
+# groups read
+
+Command: `boundary groups read`
+
+The `groups read` command retrieves the group details for a given ID.
+
+
+## Examples
+
+The following example retrieves the group information for a group with the ID, `g_XzlDiNLgoz`:
+
+```shell-session
+$ boundary groups read -id g_XzlDiNLgoz
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Group information:
+  Created Time:        Thu, 24 Aug 2023 09:51:44 PDT
+  Description:         A test group
+  ID:                  g_XzlDiNLgoz
+  Name:                group01
+  Updated Time:        Thu, 24 Aug 2023 11:12:31 PDT
+  Version:             2
+
+  Scope:
+    ID:                o_R0wbo0H6Zl
+    Name:              quick-start-org
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-members
+    set-members
+    remove-members
+
+  Members:
+    ID:                u_qboadM3Q25
+    Scope ID:          o_R0wbo0H6Zl
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary groups read [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the group to retrieve information for.
+
+@include 'cmd-option-note.mdx'

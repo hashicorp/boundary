@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package hostsetscmd
 
 import (
@@ -244,7 +247,7 @@ func (c *Command) printListTable(items []*hostsets.HostSet) string {
 }
 
 func printItemTable(item *hostsets.HostSet, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

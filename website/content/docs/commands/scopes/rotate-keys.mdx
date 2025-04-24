@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: scopes rotate-keys - Command
+description: >-
+  The "scopes rotate-keys" command deactivates a scope's current KEK and DEKs, and then activates a new set of keys for the scope resource.
+---
+
+# scopes rotate-keys
+
+Command: `boundary scopes rotate-keys`
+
+The `boundary scopes rotate-keys` command lets you replace a scope's current KEK and DEKs with a new set of keys.
+
+## Example
+
+This example rotates all keys within the scope `s_1234567890`:
+
+```shell-session
+$ boundary scopes rotate-keys -scope-id s_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary scopes rotate-keys [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-rewrap` - If set, re-encrypts DEKs with the new KEK.
+The default value is `false`.
+- `-scope-id=<string>` - The enclosing scope in which you want to rotate the keys.
+
+@include 'cmd-option-note.mdx'

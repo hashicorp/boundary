@@ -1,4 +1,9 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package scope
+
+import "github.com/hashicorp/boundary/globals"
 
 // Type defines the possible types for Scopes
 type Type uint
@@ -22,9 +27,9 @@ func (s Type) String() string {
 func (s Type) Prefix() string {
 	return [...]string{
 		"unknown",
-		"global",
-		"o",
-		"p",
+		globals.GlobalPrefix,
+		globals.OrgPrefix,
+		globals.ProjectPrefix,
 	}[s]
 }
 

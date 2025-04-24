@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package credentialstores
 
 import (
@@ -14,7 +17,7 @@ func TestPkAndClientCerts(t *testing.T) {
 	ctx := context.Background()
 	s := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
 
-	t.Run("seperate client cert and key", func(t *testing.T) {
+	t.Run("separate client cert and key", func(t *testing.T) {
 		c, k, err := extractClientCertAndPk(ctx, string(s.ClientCert), string(s.ClientKey))
 		assert.NoError(t, err)
 		require.NotNil(t, k)

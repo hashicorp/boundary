@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: policies delete - Command
+description: >-
+  The "policies delete" command deletes existing policy resources.
+---
+
+# policies delete
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary policies delete`
+
+The `boundary policies delete` command lets you delete Boundary policies.
+
+## Example
+
+This example deletes a policy with the ID `p_1234567890`:
+
+```shell-session
+$ boundary policies delete -id p_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary policies delete [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the policy you want to delete.
+
+@include 'cmd-option-note.mdx'

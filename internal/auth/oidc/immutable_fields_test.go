@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package oidc
 
 import (
@@ -105,7 +108,7 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com"))
 
 	new := AllocAudClaim()
-	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []interface{}{am.PublicId, "alice.com"}))
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []any{am.PublicId, "alice.com"}))
 
 	tests := []struct {
 		name      string
@@ -147,7 +150,7 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 
 			orig := new.Clone()
 			orig.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []interface{}{orig.OidcMethodId, orig.Aud}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []any{orig.OidcMethodId, orig.Aud}))
 
 			require.NoError(err)
 
@@ -158,7 +161,7 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 
 			after := new.Clone()
 			after.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []interface{}{after.OidcMethodId, after.Aud}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []any{after.OidcMethodId, after.Aud}))
 
 			assert.True(proto.Equal(orig, after))
 		})
@@ -186,7 +189,7 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithCertificates(x509))
 
 	new := AllocCertificate()
-	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []interface{}{am.PublicId, pem}))
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []any{am.PublicId, pem}))
 
 	tests := []struct {
 		name      string
@@ -228,7 +231,7 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 
 			orig := new.Clone()
 			orig.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []interface{}{orig.OidcMethodId, orig.Cert}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []any{orig.OidcMethodId, orig.Cert}))
 
 			require.NoError(err)
 
@@ -239,7 +242,7 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 
 			after := new.Clone()
 			after.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []interface{}{after.OidcMethodId, after.Cert}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []any{after.OidcMethodId, after.Cert}))
 
 			assert.True(proto.Equal(orig, after))
 		})
@@ -263,7 +266,7 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithSigningAlgs(RS256))
 
 	new := AllocSigningAlg()
-	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{am.PublicId, RS256}))
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []any{am.PublicId, RS256}))
 
 	tests := []struct {
 		name      string
@@ -305,7 +308,7 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 
 			orig := new.Clone()
 			orig.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{orig.OidcMethodId, orig.Alg}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []any{orig.OidcMethodId, orig.Alg}))
 
 			require.NoError(err)
 
@@ -316,7 +319,7 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 
 			after := new.Clone()
 			after.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{after.OidcMethodId, after.Alg}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []any{after.OidcMethodId, after.Alg}))
 
 			assert.True(proto.Equal(orig, after))
 		})
@@ -422,6 +425,83 @@ func TestAccount_ImmutableFields(t *testing.T) {
 			after.SetTableName(defaultAccountTableName)
 			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
+
+			assert.True(proto.Equal(orig, after))
+		})
+	}
+}
+
+func TestPrompt_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	rw := db.New(conn)
+	ctx := context.Background()
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithPrompts(SelectAccount))
+
+	new := AllocPrompt()
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and prompt = ?", []any{am.PublicId, SelectAccount}))
+
+	tests := []struct {
+		name      string
+		update    *Prompt
+		fieldMask []string
+	}{
+		{
+			name: "oidc_method_id",
+			update: func() *Prompt {
+				cp := new.Clone()
+				cp.OidcMethodId = "p_thisIsNotAValidId"
+				return cp
+			}(),
+			fieldMask: []string{"PublicId"},
+		},
+		{
+			name: "create time",
+			update: func() *Prompt {
+				cp := new.Clone()
+				cp.CreateTime = &ts
+				return cp
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "prompt",
+			update: func() *Prompt {
+				cp := new.Clone()
+				cp.PromptParam = string(Consent)
+				return cp
+			}(),
+			fieldMask: []string{"PromptParam"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			orig := new.Clone()
+			orig.SetTableName(defaultAuthMethodTableName)
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and prompt = ?", []any{orig.OidcMethodId, orig.PromptParam}))
+
+			require.NoError(err)
+
+			tt.update.SetTableName(defaultAuthMethodTableName)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			after.SetTableName(defaultAuthMethodTableName)
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and prompt = ?", []any{after.OidcMethodId, after.PromptParam}))
 
 			assert.True(proto.Equal(orig, after))
 		})

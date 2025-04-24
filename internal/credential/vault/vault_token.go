@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package vault
 
 import (
@@ -52,19 +55,19 @@ type Token struct {
 	expiration time.Duration `gorm:"-"`
 }
 
-func newToken(storeId string, token TokenSecret, accessor []byte, expiration time.Duration) (*Token, error) {
+func newToken(ctx context.Context, storeId string, token TokenSecret, accessor []byte, expiration time.Duration) (*Token, error) {
 	const op = "vault.newToken"
 	if storeId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no store id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no store id")
 	}
 	if len(token) == 0 {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no vault token")
 	}
 	if len(accessor) == 0 {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token accessor")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no vault token accessor")
 	}
 	if expiration == 0 {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no expiration")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no expiration")
 	}
 
 	tokenCopy := make(TokenSecret, len(token))
@@ -74,7 +77,7 @@ func newToken(storeId string, token TokenSecret, accessor []byte, expiration tim
 
 	hmac, err := crypto.HmacSha256WithPrk(context.Background(), tokenCopy, accessorCopy)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	t := &Token{
 		expiration: expiration.Round(time.Second),
@@ -136,11 +139,11 @@ func (t *Token) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	return nil
 }
 
-func (t *Token) insertQuery() (query string, queryValues []interface{}) {
+func (t *Token) insertQuery() (query string, queryValues []any) {
 	query = insertTokenQuery
 
 	exp := int(t.expiration.Round(time.Second).Seconds())
-	queryValues = []interface{}{
+	queryValues = []any{
 		sql.Named("1", t.TokenHmac),
 		sql.Named("2", t.CtToken),
 		sql.Named("3", t.StoreId),
@@ -152,21 +155,21 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 	return
 }
 
-func (t *Token) updateStatusQuery(status TokenStatus) (query string, queryValues []interface{}) {
+func (t *Token) updateStatusQuery(status TokenStatus) (query string, queryValues []any) {
 	query = updateTokenStatusQuery
 
-	queryValues = []interface{}{
+	queryValues = []any{
 		status,
 		t.TokenHmac,
 	}
 	return
 }
 
-func (t *Token) updateExpirationQuery() (query string, queryValues []interface{}) {
+func (t *Token) updateExpirationQuery() (query string, queryValues []any) {
 	query = updateTokenExpirationQuery
 
 	exp := int(t.expiration.Round(time.Second).Seconds())
-	queryValues = []interface{}{
+	queryValues = []any{
 		exp,
 		t.TokenHmac,
 	}

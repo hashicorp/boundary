@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: scopes read - Command
+description: >-
+  The "scopes read" command retrieves the details about a scope resource.
+---
+
+# scopes read
+
+Command: `boundary scopes read`
+
+The `boundary scopes read` command lets you read the details about a Boundary scope using its given ID.
+
+## Example
+
+This example reads the details about a scope with the ID `o_1234567890`:
+
+```shell-session
+$ boundary scopes read -id o_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary scopes read [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-id=<string>` - The ID of the scope you want to read.
+
+@include 'cmd-option-note.mdx'

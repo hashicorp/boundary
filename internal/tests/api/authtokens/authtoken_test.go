@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package authtokens_test
 
 import (
@@ -13,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/scopes"
-	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -46,10 +49,10 @@ func TestList(t *testing.T) {
 	role, err := rolesClient.Create(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	require.NotNil(role)
-	role, err = rolesClient.AddPrincipals(tc.Context(), role.Item.Id, 0, []string{"u_anon"}, roles.WithAutomaticVersioning(true))
+	role, err = rolesClient.AddPrincipals(tc.Context(), role.Item.Id, 0, []string{globals.AnonymousUserId}, roles.WithAutomaticVersioning(true))
 	require.NoError(err)
 	require.NotNil(role)
-	role, err = rolesClient.AddGrants(tc.Context(), role.Item.Id, 0, []string{"id=*;type=auth-method;actions=authenticate"}, roles.WithAutomaticVersioning(true))
+	role, err = rolesClient.AddGrants(tc.Context(), role.Item.Id, 0, []string{"ids=*;type=auth-method;actions=authenticate"}, roles.WithAutomaticVersioning(true))
 	require.NoError(err)
 	require.NotNil(role)
 
@@ -67,7 +70,7 @@ func TestList(t *testing.T) {
 	var expected []*authtokens.AuthToken
 	methods := authmethods.NewClient(client)
 
-	result, err := methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+	result, err := methods.Authenticate(tc.Context(), amId, "login", map[string]any{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	token = new(authtokens.AuthToken)
 	require.NoError(json.Unmarshal(result.GetRawAttributes(), token))
@@ -78,7 +81,7 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl.Items))
 
 	for i := 1; i < 10; i++ {
-		result, err = methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+		result, err = methods.Authenticate(tc.Context(), amId, "login", map[string]any{"login_name": "user", "password": "passpass"})
 		require.NoError(err)
 		token = new(authtokens.AuthToken)
 		require.NoError(json.Unmarshal(result.GetRawAttributes(), token))
@@ -130,7 +133,7 @@ func TestCrud(t *testing.T) {
 	tokens := authtokens.NewClient(client)
 	methods := authmethods.NewClient(client)
 
-	result, err := methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+	result, err := methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]any{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	wantToken := new(authtokens.AuthToken)
 	require.NoError(json.Unmarshal(result.GetRawAttributes(), wantToken))
@@ -153,7 +156,7 @@ func TestErrors(t *testing.T) {
 	client.SetToken(token.Token)
 	tokens := authtokens.NewClient(client)
 
-	_, err := tokens.Read(tc.Context(), authtoken.AuthTokenPrefix+"_doesntexis")
+	_, err := tokens.Read(tc.Context(), globals.AuthTokenPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)

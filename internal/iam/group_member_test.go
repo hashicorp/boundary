@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package iam
 
 import (
@@ -16,6 +19,7 @@ import (
 
 func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -101,7 +105,7 @@ func Test_NewGroupMember(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := NewGroupMemberUser(tt.args.groupId, tt.args.userId, tt.args.opt...)
+			got, err := NewGroupMemberUser(ctx, tt.args.groupId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -115,6 +119,7 @@ func Test_NewGroupMember(t *testing.T) {
 
 func Test_GroupMemberCreate(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -136,7 +141,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
 					u := TestUser(t, repo, org.PublicId)
-					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(ctx, g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -149,7 +154,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, proj.PublicId)
 					u := TestUser(t, repo, org.PublicId)
-					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(ctx, g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -162,7 +167,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					id := testId(t)
 					u := TestUser(t, repo, org.PublicId)
-					gm, err := NewGroupMemberUser(id, u.PublicId)
+					gm, err := NewGroupMemberUser(ctx, id, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -176,7 +181,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					id := testId(t)
 					g := TestGroup(t, conn, proj.PublicId)
-					gm, err := NewGroupMemberUser(g.PublicId, id)
+					gm, err := NewGroupMemberUser(ctx, g.PublicId, id)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -222,7 +227,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
 					u := TestUser(t, repo, org.PublicId)
-					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(ctx, g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -253,7 +258,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			assert.NoError(err)
 
 			found := allocGroupMember()
-			err = w.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []interface{}{gm.GroupId, gm.MemberId})
+			err = w.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []any{gm.GroupId, gm.MemberId})
 			require.NoError(err)
 			assert.Empty(cmp.Diff(gm, &found, protocmp.Transform()))
 		})
@@ -331,7 +336,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := allocGroupMember()
-			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []interface{}{tt.gm.GetGroupId(), tt.gm.GetMemberId()})
+			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []any{tt.gm.GetGroupId(), tt.gm.GetMemberId()})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

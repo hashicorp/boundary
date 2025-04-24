@@ -1,0 +1,70 @@
+---
+layout: docs
+page_title: hosts create - Command
+description: >-
+  The "hosts create" command creates a new host resource.
+---
+
+# hosts create
+
+Command: `hosts create`
+
+The `hosts create` command lets you create a new host.
+
+## Example
+
+This example creates a static host with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary hosts create static -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary hosts create [type] <subcommand> [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    static    Create a static type host.
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+The `boundary hosts create static` command lets you create a static type host.
+
+#### Example
+
+This example creates a static type host with the name `prodops`, the description `Static host for ProdOps`, and the address `127.0.0.1`.
+
+```shell-session
+$ boundary hosts create static -name prodops -description "Static host for ProdOps" -address "127.0.0.1"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary hosts create static [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Command options
+
+- `-description=<string>` - The description to set on the host.
+- `-host-catalog-id=<string>` - The host catalog resource to use for the operation.
+You can also specify the host catalog using the **BOUNDARY_HOST_CATALOG_ID** environment variable.
+- `-name=<string>` - The name to set on the host.
+
+#### Static host options
+
+- `-address=<string>` - The address of the static host.
+
+@include 'cmd-option-note.mdx'

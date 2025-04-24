@@ -1,0 +1,75 @@
+---
+layout: docs
+page_title: groups add-members - Command
+description: >-
+  The "groups add-members" command adds users as members of a group resource.
+---
+
+# groups add-members
+
+Command: `boundary groups add-members`
+
+The `groups add-members` command lets you add users as members of a group.
+
+## Examples
+
+The following example adds a user with ID, `u_qboadM3Q25` to the group with ID, `g_XzlDiNLgoz`:
+
+```shell-session
+$ boundary groups add-members -id g_XzlDiNLgoz -member u_qboadM3Q25
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Group information:
+  Created Time:        Thu, 24 Aug 2023 09:51:44 PDT
+  Description:         A test group
+  ID:                  g_XzlDiNLgoz
+  Name:                group01
+  Updated Time:        Thu, 24 Aug 2023 11:12:31 PDT
+  Version:             2
+
+  Scope:
+    ID:                o_R0wbo0H6Zl
+    Name:              quick-start-org
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-members
+    set-members
+    remove-members
+
+  Members:
+    ID:                u_qboadM3Q25
+    Scope ID:          o_R0wbo0H6Zl
+```
+
+</CodeBlockConfig>
+
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$  boundary groups add-members [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-id` `(string: "")` - The ID of the group you want to add a member to.
+- `-member` `(string: "")` - The ID of the user you want to add to the group.
+You can specify the `-member` flag multiple times.
+
+@include 'cmd-option-note.mdx'

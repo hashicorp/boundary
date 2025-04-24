@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package plugin
 
 import (
@@ -27,12 +30,13 @@ func TestUtilFunctions(t *testing.T) {
 	require.NoError(t, err)
 
 	baseResponseHost := &plgpb.ListHostsResponseHost{
-		ExternalId:  externalId,
-		Name:        "base-name",
-		Description: "base-description",
-		IpAddresses: []string{"1.2.3.4", "5.6.7.8"},
-		DnsNames:    []string{"a.b.c", "x.y.z"},
-		SetIds:      []string{"set1", "set2"},
+		ExternalId:   externalId,
+		ExternalName: "base-external-name",
+		Name:         "base-name",
+		Description:  "base-description",
+		IpAddresses:  []string{"1.2.3.4", "5.6.7.8"},
+		DnsNames:     []string{"a.b.c", "x.y.z"},
+		SetIds:       []string{"set1", "set2"},
 	}
 	baseIpsIfaces := valueToInterfaceMap{}
 	for _, v := range baseResponseHost.IpAddresses {
@@ -47,6 +51,7 @@ func TestUtilFunctions(t *testing.T) {
 		baseDnsNamesIfaces[v] = name
 	}
 	baseHost := NewHost(ctx, catalog.PublicId, externalId)
+	baseHost.ExternalName = baseResponseHost.ExternalName
 	baseHost.Name = baseResponseHost.Name
 	baseHost.Description = baseResponseHost.Description
 	baseHost.IpAddresses = baseResponseHost.IpAddresses
@@ -115,6 +120,18 @@ func TestUtilFunctions(t *testing.T) {
 			sets: defaultSetsFunc,
 			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
 				in.Description = "newdescription"
+				hi := &hostInfo{
+					dirtyHost: true,
+				}
+				return in, hi
+			},
+		},
+		{
+			name: "new-external-name",
+			host: defaultHostFunc,
+			sets: defaultSetsFunc,
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				in.ExternalName = "newextname"
 				hi := &hostInfo{
 					dirtyHost: true,
 				}
@@ -263,7 +280,7 @@ func TestUtilFunctions(t *testing.T) {
 						hi.ipsToAdd,
 						got.ipsToAdd,
 						cmpopts.IgnoreUnexported(host.IpAddress{}, hoststore.IpAddress{}),
-						cmpopts.SortSlices(func(x, y interface{}) bool {
+						cmpopts.SortSlices(func(x, y any) bool {
 							return x.(*host.IpAddress).Address < y.(*host.IpAddress).Address
 						}),
 					),
@@ -273,7 +290,7 @@ func TestUtilFunctions(t *testing.T) {
 						hi.ipsToRemove,
 						got.ipsToRemove,
 						cmpopts.IgnoreUnexported(host.IpAddress{}, hoststore.IpAddress{}),
-						cmpopts.SortSlices(func(x, y interface{}) bool {
+						cmpopts.SortSlices(func(x, y any) bool {
 							return x.(*host.IpAddress).Address < y.(*host.IpAddress).Address
 						}),
 					),
@@ -283,7 +300,7 @@ func TestUtilFunctions(t *testing.T) {
 						hi.dnsNamesToAdd,
 						got.dnsNamesToAdd,
 						cmpopts.IgnoreUnexported(host.DnsName{}, hoststore.DnsName{}),
-						cmpopts.SortSlices(func(x, y interface{}) bool {
+						cmpopts.SortSlices(func(x, y any) bool {
 							return x.(*host.DnsName).Name < y.(*host.DnsName).Name
 						}),
 					),
@@ -293,7 +310,7 @@ func TestUtilFunctions(t *testing.T) {
 						hi.dnsNamesToRemove,
 						got.dnsNamesToRemove,
 						cmpopts.IgnoreUnexported(host.DnsName{}, hoststore.DnsName{}),
-						cmpopts.SortSlices(func(x, y interface{}) bool {
+						cmpopts.SortSlices(func(x, y any) bool {
 							return x.(*host.DnsName).Name < y.(*host.DnsName).Name
 						}),
 					),

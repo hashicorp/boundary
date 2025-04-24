@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
 begin;
 
 /*
@@ -216,6 +219,7 @@ begin;
   create trigger insert_new_session_state after insert on session
     for each row execute procedure insert_new_session_state();
 
+  -- Updated in 90/01_remove_session_connection_state
   -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
   -- session_connection table.  it will valiadate that all the session's
   -- connections are closed, and then insert a state of "closed" in
@@ -391,6 +395,7 @@ begin;
       references session_state (session_id, end_time)
   );
 
+  -- Replaced in 92/02_session_state_tstzrange.up.sql
   create trigger immutable_columns before update on session_state
     for each row execute procedure immutable_columns('session_id', 'state', 'start_time', 'previous_end_time');
 

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package controller
 
 import (
@@ -6,54 +9,74 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
+	"github.com/hashicorp/boundary/internal/alias"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/billing"
+	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/downstream"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
+	"github.com/hashicorp/boundary/internal/host"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/plugin/host"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
+	"github.com/hashicorp/boundary/internal/pagination/purge"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
+	"github.com/hashicorp/boundary/internal/ratelimit"
+	"github.com/hashicorp/boundary/internal/recording"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/server"
 	serversjob "github.com/hashicorp/boundary/internal/server/job"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/snapshot"
+	pluginstorage "github.com/hashicorp/boundary/internal/storage/plugin"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
-	"github.com/hashicorp/boundary/sdk/pbs/plugin"
-	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
+	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
+	"github.com/hashicorp/nodeenrollment"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
 
-// downstreamRouter defines a min interface which must be met by a
-// Controller.downstreamRoutes field
-type downstreamRouter interface {
-	// StartRouteMgmtTicking starts a ticker which manages the router's
+// downstreamReceiver defines a min interface which must be met by a
+// Controller.downstreamConns field
+type downstreamReceiver interface {
+	// StartConnectionMgmtTicking starts a ticker which manages the receiver's
 	// connections.
-	StartRouteMgmtTicking(context.Context, func() string, int) error
+	StartConnectionMgmtTicking(context.Context, func() string, int) error
 
-	// ProcessPendingConnections starts a function that continually processes
+	// StartProcessingPendingConnections starts a function that continually processes
 	// incoming client connections. This only returns when the provided context
 	// is done.
-	StartProcessingPendingConnections(context.Context, func() string)
+	StartProcessingPendingConnections(context.Context, func() string) error
 }
 
 // downstreamWorkersTicker defines an interface for a ticker that maintains the
@@ -64,20 +87,13 @@ type downstreamWorkersTicker interface {
 	StartDownstreamWorkersTicking(context.Context, int) error
 }
 
-// downstreamers provides at least a minimum interface that must be met by a
-// Controller.downstreamWorkers field which is far better than allowing any (empty
-// interface)
-type downstreamers interface {
-	// Root returns the root of the downstreamers' graph
-	Root() string
-}
-
 var (
-	downstreamRouterFactory func() downstreamRouter
+	downstreamReceiverFactory func(*atomic.Int64) (downstreamReceiver, error)
 
-	downstreamersFactory           func(context.Context, string) (downstreamers, error)
-	downstreamWorkersTickerFactory func(context.Context, string, downstreamers, downstreamRouter) (downstreamWorkersTicker, error)
+	graphFactory                   func(context.Context, string, string) (downstream.Graph, error)
+	downstreamWorkersTickerFactory func(context.Context, string, string, downstream.Graph, downstreamReceiver, *atomic.Int64) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
+	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer, kms *kms.Kms) (intglobals.ControllerExtension, error)
 )
 
 type Controller struct {
@@ -94,34 +110,51 @@ type Controller struct {
 	workerAuthCache *sync.Map
 
 	// downstream workers and routes to those workers
-	downstreamWorkers downstreamers
-	downstreamRoutes  downstreamRouter
+	downstreamWorkers downstream.Graph
+	downstreamConns   downstreamReceiver
 
 	apiListeners    []*base.ServerListener
 	clusterListener *base.ServerListener
 
 	// Used for testing and tracking worker health
-	workerStatusUpdateTimes *sync.Map
+	workerRoutingInfoUpdateTimes *sync.Map
+
+	// Timing variables. These are atomics for SIGHUP support, and are int64
+	// because they are casted to time.Duration.
+	workerRPCGracePeriod        *atomic.Int64
+	livenessTimeToStale         *atomic.Int64
+	getDownstreamWorkersTimeout *atomic.Int64
 
 	apiGrpcServer         *grpc.Server
 	apiGrpcServerListener grpcServerListener
 	apiGrpcGatewayTicket  string
 
+	rateLimiter   ratelimit.Limiter
+	rateLimiterMu sync.RWMutex
+
 	// Repo factory methods
-	AuthTokenRepoFn         common.AuthTokenRepoFactory
-	VaultCredentialRepoFn   common.VaultCredentialRepoFactory
-	StaticCredentialRepoFn  common.StaticCredentialRepoFactory
-	IamRepoFn               common.IamRepoFactory
-	OidcRepoFn              common.OidcAuthRepoFactory
-	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
-	ServersRepoFn           common.ServersRepoFactory
-	SessionRepoFn           session.RepositoryFactory
-	ConnectionRepoFn        common.ConnectionRepoFactory
-	StaticHostRepoFn        common.StaticRepoFactory
-	PluginHostRepoFn        common.PluginHostRepoFactory
-	HostPluginRepoFn        common.HostPluginRepoFactory
-	TargetRepoFn            target.RepositoryFactory
-	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
+	AuthTokenRepoFn           common.AuthTokenRepoFactory
+	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
+	CredentialStoreRepoFn     common.CredentialStoreRepoFactory
+	HostCatalogRepoFn         common.HostCatalogRepoFactory
+	IamRepoFn                 common.IamRepoFactory
+	OidcRepoFn                common.OidcAuthRepoFactory
+	LdapRepoFn                common.LdapAuthRepoFactory
+	PasswordAuthRepoFn        common.PasswordAuthRepoFactory
+	AuthMethodRepoFn          common.AuthMethodRepoFactory
+	ServersRepoFn             common.ServersRepoFactory
+	SessionRepoFn             session.RepositoryFactory
+	ConnectionRepoFn          common.ConnectionRepoFactory
+	StaticHostRepoFn          common.StaticRepoFactory
+	PluginHostRepoFn          common.PluginHostRepoFactory
+	PluginStorageBucketRepoFn common.PluginStorageBucketRepoFactory
+	PluginRepoFn              common.PluginRepoFactory
+	TargetRepoFn              target.RepositoryFactory
+	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
+	BillingRepoFn             common.BillingRepoFactory
+	AliasRepoFn               common.AliasRepoFactory
+	TargetAliasRepoFn         common.TargetAliasRepoFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -132,24 +165,31 @@ type Controller struct {
 	// Used to signal the Health Service to start
 	// replying to queries with "503 Service Unavailable".
 	HealthService *health.Service
+
+	downstreamConnManager *cluster.DownstreamManager
+
+	// ControllerExtension defines a std way to extend the controller
+	ControllerExtension intglobals.ControllerExtension
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
+	const op = "controller.New"
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
+	ratelimit.InitializeMetrics(conf.PrometheusRegisterer)
 	c := &Controller{
-		conf:                    conf,
-		logger:                  conf.Logger.Named("controller"),
-		started:                 ua.NewBool(false),
-		tickerWg:                new(sync.WaitGroup),
-		schedulerWg:             new(sync.WaitGroup),
-		workerAuthCache:         new(sync.Map),
-		workerStatusUpdateTimes: new(sync.Map),
-		enabledPlugins:          conf.Server.EnabledPlugins,
-		apiListeners:            make([]*base.ServerListener, 0),
-	}
-
-	if downstreamRouterFactory != nil {
-		c.downstreamRoutes = downstreamRouterFactory()
+		conf:                         conf,
+		logger:                       conf.Logger.Named("controller"),
+		started:                      ua.NewBool(false),
+		tickerWg:                     new(sync.WaitGroup),
+		schedulerWg:                  new(sync.WaitGroup),
+		workerAuthCache:              new(sync.Map),
+		workerRoutingInfoUpdateTimes: new(sync.Map),
+		enabledPlugins:               conf.Server.EnabledPlugins,
+		apiListeners:                 make([]*base.ServerListener, 0),
+		downstreamConnManager:        cluster.NewDownstreamManager(),
+		workerRPCGracePeriod:         new(atomic.Int64),
+		livenessTimeToStale:          new(atomic.Int64),
+		getDownstreamWorkersTimeout:  new(atomic.Int64),
 	}
 
 	c.started.Store(false)
@@ -163,7 +203,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		conf.RawConfig.Controller = new(config.Controller)
 	}
 
-	if err := conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
+	if err := conf.RawConfig.Controller.InitNameIfEmpty(ctx); err != nil {
 		return nil, fmt.Errorf("error auto-generating controller name: %w", err)
 	}
 
@@ -180,6 +220,34 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 					"set the `disable_mlock` configuration option in your configuration\n"+
 					"file.",
 				err)
+		}
+	}
+
+	switch conf.RawConfig.Controller.WorkerRPCGracePeriodDuration {
+	case 0:
+		c.workerRPCGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		c.workerRPCGracePeriod.Store(int64(conf.RawConfig.Controller.WorkerRPCGracePeriodDuration))
+	}
+	switch conf.RawConfig.Controller.LivenessTimeToStaleDuration {
+	case 0:
+		c.livenessTimeToStale.Store(int64(server.DefaultLiveness))
+	default:
+		c.livenessTimeToStale.Store(int64(conf.RawConfig.Controller.LivenessTimeToStaleDuration))
+	}
+
+	switch conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		c.getDownstreamWorkersTimeout.Store(int64(server.DefaultLiveness))
+	default:
+		c.getDownstreamWorkersTimeout.Store(int64(conf.RawConfig.Controller.GetDownstreamWorkersTimeoutDuration))
+	}
+
+	if downstreamReceiverFactory != nil {
+		var err error
+		c.downstreamConns, err = downstreamReceiverFactory(c.getDownstreamWorkersTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to initialize downstream receiver: %w", op, err)
 		}
 	}
 
@@ -209,6 +277,10 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.clusterListener = clusterListeners[0]
 
+	if err := c.initializeRateLimiter(conf.RawConfig); err != nil {
+		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
+	}
+
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
 		if pluginLogger == nil {
@@ -217,39 +289,68 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
 			}
 		}
-		switch enabledPlugin {
-		case base.EnabledPluginHostLoopback:
-			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
-			opts := []hostplugin.Option{
-				hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
-				hostplugin.WithPublicId(conf.DevLoopbackHostPluginId),
+		switch {
+		case enabledPlugin == base.EnabledPluginLoopback:
+			lp, err := loopback.NewLoopbackPlugin()
+			if err != nil {
+				return nil, fmt.Errorf("error creating loopback plugin: %w", err)
 			}
-			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
+			plg := loopback.NewWrappingPluginHostClient(lp)
+			opts := []plugin.Option{
+				plugin.WithDescription("Provides an initial loopback storage and host plugin in Boundary"),
+				plugin.WithPublicId(conf.DevLoopbackPluginId),
+			}
+			if _, err = conf.RegisterPlugin(ctx, "loopback", plg, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, opts...); err != nil {
 				return nil, err
 			}
-		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
+		case enabledPlugin == base.EnabledPluginHostAzure && !c.conf.SkipPlugins:
 			pluginType := strings.ToLower(enabledPlugin.String())
-			client, cleanup, err := external_host_plugins.CreateHostPlugin(
+			client, cleanup, err := external_plugins.CreateHostPlugin(
 				ctx,
 				pluginType,
-				external_host_plugins.WithPluginOptions(
+				external_plugins.WithPluginOptions(
 					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
-					pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+					pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 				),
-				external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
 			}
 			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
-			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, hostplugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
+			}
+		case enabledPlugin == base.EnabledPluginGCP && !c.conf.SkipPlugins:
+			fallthrough
+		case enabledPlugin == base.EnabledPluginAws && !c.conf.SkipPlugins:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			client, cleanup, err := external_plugins.CreateHostPlugin(
+				ctx,
+				pluginType,
+				external_plugins.WithPluginOptions(
+					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+					pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
+				),
+				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
+			}
+		case enabledPlugin == base.EnabledPluginMinio && !c.conf.SkipPlugins:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			if _, err := conf.RegisterPlugin(ctx, pluginType, nil, []plugin.PluginType{plugin.PluginTypeStorage}, plugin.WithDescription(fmt.Sprintf("Built-in %s storage plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s storage plugin: %w", pluginType, err)
 			}
 		}
 	}
 
 	if conf.HostPlugins == nil {
-		conf.HostPlugins = make(map[string]plugin.HostPluginServiceClient)
+		conf.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
 	}
 
 	// Set up repo stuff
@@ -263,12 +364,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		kms.WithRootWrapper(c.conf.RootKms),
 		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
 		kms.WithRecoveryWrapper(c.conf.RecoveryKms),
+		kms.WithBsrWrapper(c.conf.BsrKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
 	// we need to get all the scopes so we can reconcile the DEKs for each scope.
-	iamRepo, err := iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
+	iamRepo, err := iam.NewRepository(ctx, dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize iam repository: %w", err)
 	}
@@ -295,58 +397,75 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
 	}
 	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(dbase, dbase, c.kms)
+		return job.NewRepository(ctx, dbase, dbase, c.kms)
 	}
-	// TODO: Allow setting run jobs limit from config
-	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
-	if sche := c.conf.RawConfig.Controller.Scheduler; sche != nil {
-		if sche.JobRunIntervalDuration > 0 {
-			schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(sche.JobRunIntervalDuration))
-		}
-		if sche.MonitorIntervalDuration > 0 {
-			schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(sche.MonitorIntervalDuration))
-		}
+
+	schedulerOpts := []scheduler.Option{}
+	if c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration))
 	}
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
+	if c.conf.RawConfig.Controller.Scheduler.MonitorIntervalDuration > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(c.conf.RawConfig.Controller.Scheduler.MonitorIntervalDuration))
+	}
+
+	c.scheduler, err = scheduler.New(ctx, c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
 	}
 	c.IamRepoFn = func() (*iam.Repository, error) {
-		return iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
+		return iam.NewRepository(ctx, dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
-		return static.NewRepository(dbase, dbase, c.kms)
+		return static.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
-		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
+		return pluginhost.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
 	}
-	c.HostPluginRepoFn = func() (*host.Repository, error) {
-		return host.NewRepository(dbase, dbase, c.kms)
+	c.PluginRepoFn = func() (*plugin.Repository, error) {
+		return plugin.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.PluginStorageBucketRepoFn = func() (*pluginstorage.Repository, error) {
+		return pluginstorage.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(dbase, dbase, c.kms,
+		return authtoken.NewRepository(ctx, dbase, dbase, c.kms,
 			authtoken.WithTokenTimeToLiveDuration(c.conf.RawConfig.Controller.AuthTokenTimeToLiveDuration),
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
-		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
+		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
 	}
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
+	c.CredentialStoreRepoFn = func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(ctx, dbase, dbase)
+	}
+	c.HostCatalogRepoFn = func() (*host.CatalogRepository, error) {
+		return host.NewCatalogRepository(ctx, dbase, dbase)
+	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
-		return server.NewRepository(dbase, dbase, c.kms)
+		return server.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
 	}
+	c.LdapRepoFn = func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, dbase, dbase, c.kms)
+	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
-		return password.NewRepository(dbase, dbase, c.kms)
+		return password.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.AuthMethodRepoFn = func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
 	}
 	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
+		// Always add a secure random reader to the new session repository.
+		// Add it as the first option so that it can be overridden by users.
+		opt = append([]session.Option{session.WithRandomReader(c.conf.SecureRandomReader)}, opt...)
 		return session.NewRepository(ctx, dbase, dbase, c.kms, opt...)
 	}
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
@@ -355,6 +474,15 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.WorkerAuthRepoStorageFn = func() (*server.WorkerAuthRepositoryStorage, error) {
 		return server.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
 	}
+	c.BillingRepoFn = func() (*billing.Repository, error) {
+		return billing.NewRepository(ctx, dbase)
+	}
+	c.AliasRepoFn = func() (*alias.Repository, error) {
+		return alias.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.TargetAliasRepoFn = func() (*talias.Repository, error) {
+		return talias.NewRepository(ctx, dbase, dbase, c.kms)
+	}
 
 	// Check that credentials are available at startup, to avoid some harmless
 	// but nasty-looking errors
@@ -362,13 +490,20 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
 	}
-	_, err = server.RotateRoots(ctx, serversRepo)
+	_, err = server.RotateRoots(ctx, serversRepo, nodeenrollment.WithCertificateLifetime(conf.TestOverrideWorkerAuthCaCertificateLifetime), nodeenrollment.WithReinitializeRoots(conf.TestWorkerAuthCaReinitialize))
 	if err != nil {
-		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
+		event.WriteSysEvent(ctx, op, "unable to ensure worker auth roots exist, may be due to multiple controllers starting at once, continuing")
 	}
 
-	if downstreamersFactory != nil {
-		c.downstreamWorkers, err = downstreamersFactory(ctx, "root")
+	if c.conf.RawConfig.Controller.ConcurrentPasswordHashWorkers > 0 {
+		if err := password.SetHashingPermits(int(c.conf.RawConfig.Controller.ConcurrentPasswordHashWorkers)); err != nil {
+			return nil, fmt.Errorf("unable to set number of concurrent password workers: %w", err)
+		}
+	}
+
+	if graphFactory != nil {
+		boundVer := version.Get().VersionNumber()
+		c.downstreamWorkers, err = graphFactory(ctx, "root", boundVer)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize downstream workers graph: %w", err)
 		}
@@ -380,12 +515,18 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	if extControllerFactory != nil {
+		if c.ControllerExtension, err = extControllerFactory(ctx, c, dbase, dbase, c.kms); err != nil {
+			return nil, fmt.Errorf("unable to extend controller: %w", err)
+		}
+	}
+
 	return c, nil
 }
 
 func (c *Controller) Start() error {
 	const op = "controller.(Controller).Start"
-	if c.started.Load() {
+	if c.started.Swap(true) {
 		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
@@ -424,12 +565,11 @@ func (c *Controller) Start() error {
 		defer c.tickerWg.Done()
 		c.startCloseExpiredPendingTokens(c.baseContext)
 	}()
-	go func() {
-		defer c.tickerWg.Done()
-		c.started.Store(true)
-	}()
+	if err := c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.tickerWg, c.downstreamConnManager); err != nil {
+		return errors.Wrap(c.baseContext, err, op)
+	}
 
-	if c.downstreamRoutes != nil {
+	if c.downstreamConns != nil {
 		c.tickerWg.Add(2)
 
 		servNameFn := func() string {
@@ -442,24 +582,25 @@ func (c *Controller) Start() error {
 		}
 		go func() {
 			defer c.tickerWg.Done()
-			c.downstreamRoutes.StartProcessingPendingConnections(c.baseContext, servNameFn)
+			c.downstreamConns.StartProcessingPendingConnections(c.baseContext, servNameFn)
 		}()
 		go func() {
 			defer c.tickerWg.Done()
-			err := c.downstreamRoutes.StartRouteMgmtTicking(
+			err := c.downstreamConns.StartConnectionMgmtTicking(
 				c.baseContext,
 				servNameFn,
 				-1,
 			)
 			if err != nil {
-				errors.Wrap(c.baseContext, err, op)
+				event.WriteError(c.baseContext, op, fmt.Errorf("connection management ticker exited with error: %w", err))
 			}
 		}()
 	}
 	if downstreamWorkersTickerFactory != nil {
 		// we'll use "root" to designate that this is the root of the graph (aka
 		// a controller)
-		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", c.downstreamWorkers, c.downstreamRoutes)
+		boundVer := version.Get().VersionNumber()
+		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", boundVer, c.downstreamWorkers, c.downstreamConns, c.getDownstreamWorkersTimeout)
 		if err != nil {
 			return fmt.Errorf("error creating downstream workers ticker: %w", err)
 		}
@@ -472,7 +613,11 @@ func (c *Controller) Start() error {
 			}
 		}()
 	}
-
+	if c.ControllerExtension != nil {
+		if err := c.ControllerExtension.Start(c.baseContext); err != nil {
+			return fmt.Errorf("error starting controller extension: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -484,10 +629,32 @@ func (c *Controller) registerJobs() error {
 	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
-	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.StatusGracePeriodDuration); err != nil {
+	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerRPCGracePeriod); err != nil {
 		return err
 	}
-	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+	var serverJobOpts []serversjob.Option
+	if c.conf.TestOverrideWorkerAuthCaCertificateLifetime > 0 {
+		serverJobOpts = append(serverJobOpts,
+			serversjob.WithCertificateLifetime(c.conf.TestOverrideWorkerAuthCaCertificateLifetime),
+			serversjob.WithRotationFrequency(c.conf.TestOverrideWorkerAuthCaCertificateLifetime/2),
+		)
+	}
+	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.ControllerExtension, c.workerRPCGracePeriod, serverJobOpts...); err != nil {
+		return err
+	}
+	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
+		return err
+	}
+	if err := snapshot.RegisterJob(c.baseContext, c.scheduler, rw, rw); err != nil {
+		return err
+	}
+	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
+		return err
+	}
+	if err := purge.RegisterJobs(c.baseContext, c.scheduler, rw, rw); err != nil {
+		return err
+	}
+	if err := recording.RegisterJob(c.baseContext, c.scheduler, rw, rw, c.ControllerExtension, c.kms); err != nil {
 		return err
 	}
 
@@ -514,10 +681,44 @@ func (c *Controller) Shutdown() error {
 	return nil
 }
 
-// WorkerStatusUpdateTimes returns the map, which specifically is held in _this_
+// WorkerRoutingInfoUpdateTimes returns the map, which specifically is held in _this_
 // controller, not the DB. It's used in tests to verify that a given controller
 // is receiving updates from an expected set of workers, to test out balancing
 // and auto reconnection.
-func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
-	return c.workerStatusUpdateTimes
+func (c *Controller) WorkerRoutingInfoUpdateTimes() *sync.Map {
+	return c.workerRoutingInfoUpdateTimes
+}
+
+// ReloadTimings reloads timing related parameters
+func (c *Controller) ReloadTimings(newConfig *config.Config) error {
+	const op = "controller.(Controller).ReloadTimings"
+
+	switch {
+	case newConfig == nil:
+		return errors.New(c.baseContext, errors.InvalidParameter, op, "nil config")
+	case newConfig.Controller == nil:
+		return errors.New(c.baseContext, errors.InvalidParameter, op, "nil config.Controller")
+	}
+
+	switch newConfig.Controller.WorkerRPCGracePeriodDuration {
+	case 0:
+		c.workerRPCGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		c.workerRPCGracePeriod.Store(int64(newConfig.Controller.WorkerRPCGracePeriodDuration))
+	}
+	switch newConfig.Controller.LivenessTimeToStaleDuration {
+	case 0:
+		c.livenessTimeToStale.Store(int64(server.DefaultLiveness))
+	default:
+		c.livenessTimeToStale.Store(int64(newConfig.Controller.LivenessTimeToStaleDuration))
+	}
+
+	switch newConfig.Controller.GetDownstreamWorkersTimeoutDuration {
+	case 0:
+		c.getDownstreamWorkersTimeout.Store(int64(server.DefaultLiveness))
+	default:
+		c.getDownstreamWorkersTimeout.Store(int64(newConfig.Controller.GetDownstreamWorkersTimeoutDuration))
+	}
+
+	return nil
 }

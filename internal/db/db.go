@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package db
 
 import (
@@ -8,9 +11,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-dbw"
-	_ "github.com/jackc/pgx/v4"
+	_ "github.com/jackc/pgx/v5"
+
 	"gorm.io/driver/postgres"
 )
 
@@ -19,17 +23,25 @@ func init() {
 	dbw.InitNonUpdatableFields([]string{"PublicId", "CreateTime", "UpdateTime"})
 }
 
+// sqliteOpen is a function used to get the dbw.Dialector for sqlite. It returns
+// an error if there is any problem opening it.
+var sqliteOpen = func(string) (dbw.Dialector, error) {
+	return nil, fmt.Errorf("sqlite is not supported on this platform")
+}
+
 type DbType int
 
 const (
 	UnknownDB DbType = 0
 	Postgres  DbType = 1
+	Sqlite    DbType = 2
 )
 
 func (db DbType) String() string {
 	return [...]string{
 		"unknown",
 		"postgres",
+		"sqlite",
 	}[db]
 }
 
@@ -37,6 +49,8 @@ func StringToDbType(dialect string) (DbType, error) {
 	switch dialect {
 	case "postgres":
 		return Postgres, nil
+	case "sqlite":
+		return Sqlite, nil
 	default:
 		return UnknownDB, fmt.Errorf("%s is an unknown dialect", dialect)
 	}
@@ -54,18 +68,18 @@ var CloseSwappedDbDuration = 5 * time.Minute
 // Swap replaces *DB's underlying database object with the one from `newDB`.
 // It returns a function that calls Close() on the outgoing database object.
 // Note: Swap does not verify the incoming *DB object is correctly set-up.
-func (db *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
+func (d *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
 	const op = "db.(DB).Swap"
 	if newDB == nil || newDB.wrapped == nil || newDB.wrapped.Load() == nil {
 		return nil, fmt.Errorf("no new db object present")
 	}
-	if db == nil || db.wrapped == nil || db.wrapped.Load() == nil {
+	if d == nil || d.wrapped == nil || d.wrapped.Load() == nil {
 		// TBD: We could be helpful here and set the new DB instead of err?
 		return nil, fmt.Errorf("no current db is present to swap, aborting")
 	}
 
 	// Grab the old db to allow for cleanup after swap.
-	oldDbw := db.wrapped.Swap(newDB.wrapped.Load())
+	oldDbw := d.wrapped.Swap(newDB.wrapped.Load())
 	closeOldDbFn := func(ctx context.Context) {
 		go func() {
 			maxTime := time.Now().Add(CloseSwappedDbDuration)
@@ -104,8 +118,8 @@ func (db *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
 }
 
 // Debug will enable/disable debug info for the connection
-func (db *DB) Debug(on bool) {
-	db.wrapped.Load().Debug(on)
+func (d *DB) Debug(on bool) {
+	d.wrapped.Load().Debug(on)
 }
 
 // SqlDB returns the underlying sql.DB
@@ -145,6 +159,12 @@ func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Optio
 			DSN: connectionUrl,
 		},
 		)
+	case Sqlite:
+		var err error
+		dialect, err = sqliteOpen(connectionUrl)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	default:
 		return nil, fmt.Errorf("unable to open %s database type", dbType)
 	}
@@ -154,7 +174,7 @@ func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Optio
 		wrappedOpts = append(wrappedOpts, dbw.WithLogger(opts.withGormFormatter))
 	}
 	if opts.withMaxOpenConnections > 0 {
-		if opts.withMaxOpenConnections < 5 {
+		if opts.withMaxOpenConnections < 5 && dbType != Sqlite {
 			return nil, fmt.Errorf("max_open_connections cannot be below 5")
 		}
 		wrappedOpts = append(wrappedOpts, dbw.WithMaxOpenConnections(opts.withMaxOpenConnections))

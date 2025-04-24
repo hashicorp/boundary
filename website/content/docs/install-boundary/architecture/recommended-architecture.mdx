@@ -1,0 +1,53 @@
+---
+layout: docs
+page_title: Recommended architecture
+description: >-
+  Learn about the recommended architectures for two main Boundary user workflows: an administrator configuring Boundary and an end user connecting to a target.
+---
+
+# Recommended architecture
+
+Boundary has two main user workflows to consider when you deploy it to production.
+
+## Administrative workflow
+
+The first is the Boundary administration workflow, where an administrator uses either the Boundary CLI or GUI to configure Boundary.
+In this scenario, the administrator interfaces solely with the Boundary controllers, and a load balancer can be used to balance requests across multiple controllers.
+The Boundary controllers do not directly communicate with one another, all configuration and state is managed through an RDBMS, in this case PostgreSQL.
+
+The following diagram shows the recommended architecture for deploying Boundary controller nodes within a single region:
+
+![Single region deployment](/img/single-region.png)
+
+Boundary controllers are stateless and do not operate using consensus protocols such as Raft.
+They are therefore able to withstand failure scenarios where only one node is accessible.
+
+If deploying Boundary to three availability zones is not possible, you can use the same architecture across one or two availability zones, at the expense of reliability risk in case of an availability zone outage.
+
+## Connect to a target workflow
+
+The second workflow is a user connecting to a Boundary target.
+In this scenario, the user initiates a session connecting to a target they have been granted access to using either the Boundary CLI or desktop application.
+
+1. If the user is not authenticated, they must first authenticate by communicating with the Boundary controllers and any relied-upon OIDC IdP, if necessary.
+1. Once authenticated, the user's session can be initiated and a tunnel is built from their client to an ingress worker.
+If there are multiple layers of network boundaries, a tunnel is built from the ingress worker to an egress worker.
+1. The last step is traffic being proxied through the egress worker to the target.
+
+It is ideal to have multiple ingress and egress workers with the same configurations within each network boundary to provide high availability.
+Load balancing the Boundary workers is not recommended, as the Boundary control plane handles session scaling and balancing when users start sessions.
+
+The following diagram shows the recommended architecture for deploying Boundary workers:
+
+![Worker deployment](/img/worker-deployment.png)
+
+The Boundary controllers also depend on a PostgreSQL database.
+This database should be deployed in a fashion where it is reachable by all Boundary controller nodes.
+
+## Community reference architectures
+
+A number of community-supported reference architectures for non-dev deployments can be found in Boundary's dedicated [reference architecture repo](https://github.com/hashicorp/boundary-reference-architecture).
+
+While some initial reference deployments have been seeded by the Boundary team, the seeded examples are for demonstration purposes only and are intended convey how to get Boundary up and running on popular cloud and container platforms.
+
+We highly encourage organizations who use Boundary in production environments to contribute configurations to the repo so that the community may benefit from them.

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package server
 
 import (
@@ -7,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/version"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,10 +78,11 @@ func Test_GetOpts(t *testing.T) {
 		tags := []*Tag{
 			{Key: "key1", Value: "val1"},
 			{Key: "key2", Value: "val2"},
+			nil,
 		}
 		opts := GetOpts(WithWorkerTags(tags...))
 		testOpts := getDefaultOptions()
-		testOpts.withWorkerTags = tags
+		testOpts.withWorkerTags = tags[:2]
 		opts.withNewIdFunc = nil
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)
@@ -158,6 +164,13 @@ func Test_GetOpts(t *testing.T) {
 		opts.withNewIdFunc = nil
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithTestUseInputTagsAsApiTags", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.False(testOpts.withTestUseInputTagsAsApiTags)
+		opts := GetOpts(WithTestUseInputTagsAsApiTags(true))
+		assert.True(opts.withTestUseInputTagsAsApiTags)
+	})
 	t.Run("WithWorkerType", func(t *testing.T) {
 		opts := getDefaultOptions()
 		assert.Empty(t, opts.withWorkerType)
@@ -167,8 +180,14 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithRoot", func(t *testing.T) {
 		opts := getDefaultOptions()
 		assert.Empty(t, opts.withRoot)
-		opts = GetOpts(WithRoot("a"))
-		assert.Equal(t, "a", opts.withRoot)
+		opts = GetOpts(WithRoot(RootInfo{
+			RootId:  "a",
+			RootVer: "0.1.0",
+		}))
+		assert.Equal(t, RootInfo{
+			RootId:  "a",
+			RootVer: "0.1.0",
+		}, opts.withRoot)
 	})
 	t.Run("WithStopAfter", func(t *testing.T) {
 		opts := getDefaultOptions()
@@ -201,5 +220,52 @@ func Test_GetOpts(t *testing.T) {
 		assert.Empty(t, opts.withActiveWorkers)
 		opts = GetOpts(WithActiveWorkers(true))
 		assert.Equal(t, true, opts.withActiveWorkers)
+	})
+	t.Run("WithFeature", func(t *testing.T) {
+		opts := GetOpts(WithFeature(version.MultiHopSessionFeature))
+		testOpts := getDefaultOptions()
+		testOpts.withFeature = version.MultiHopSessionFeature
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithDirectlyConnected", func(t *testing.T) {
+		opts := GetOpts(WithDirectlyConnected(true))
+		testOpts := getDefaultOptions()
+		testOpts.withDirectlyConnected = true
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithWorkerPool", func(t *testing.T) {
+		opts := GetOpts(WithWorkerPool([]string{"1", "2", "3"}))
+		testOpts := getDefaultOptions()
+		testOpts.withWorkerPool = []string{"1", "2", "3"}
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithLocalStorageState", func(t *testing.T) {
+		opts := GetOpts(WithLocalStorageState(AvailableLocalStorageState.String()))
+		testOpts := getDefaultOptions()
+		testOpts.withLocalStorageState = AvailableLocalStorageState.String()
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithReaderWriter", func(t *testing.T) {
+		reader := &db.Db{}
+		writer := &db.Db{}
+		testOpts := getDefaultOptions()
+		assert.Nil(t, testOpts.WithReader)
+		assert.Nil(t, testOpts.WithWriter)
+		testOpts.WithReader = reader
+		testOpts.WithWriter = writer
+		opts := GetOpts(WithReaderWriter(reader, writer))
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, reader, opts.WithReader)
+		assert.Equal(t, writer, opts.WithWriter)
+		assert.Equal(t, opts, testOpts)
 	})
 }

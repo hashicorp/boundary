@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 //go:build !hsm
 // +build !hsm
 
@@ -14,6 +17,8 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -21,8 +26,6 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
-
-	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
 const shutdownReloadWorkerProvidedConfiguration = `
@@ -54,7 +57,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	recoveryWrapper, _ := wrapperWithKey(t)
 	workerAuthWrapper, key := wrapperWithKey(t)
 	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
-	defer testController.Shutdown()
+	t.Cleanup(testController.Shutdown)
 
 	// Start the worker
 	workerCmd := testServerCommand(t, testServerCommandOpts{})
@@ -78,20 +81,23 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	tcl := targets.NewClient(client)
 	tgtL, err := tcl.List(ctx, scope.Global.String(), targets.WithRecursive(true))
 	require.NoError(err)
-	require.Len(tgtL.Items, 1)
+	require.LessOrEqual(2, len(tgtL.Items))
 	tgt := tgtL.Items[0]
 	require.NotNil(tgt)
+	require.NotNil(tgtL.GetItems()[1])
 
 	// Create test server, update default port on target
 	ts := helper.NewTestTcpServer(t)
 	require.NotNil(ts)
-	defer ts.Close()
+	t.Cleanup(ts.Close)
 	tgtR, err := tcl.Update(ctx, tgt.Id, tgt.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
 	require.NoError(err)
 	require.NotNil(tgtR)
 
 	// Authorize and connect
-	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id)
+	// This prevents us from running tests in parallel.
+	server.TestUseCommunityFilterWorkersFn(t)
+	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id, helper.WithSkipSessionTeardown(true))
 	sConn := sess.Connect(ctx, t)
 
 	// Run initial send/receive test, make sure things are working
@@ -99,7 +105,9 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	sConn.TestSendRecvAll(t)
 
 	// Shutdown the worker and close the connection, as the worker will otherwise wait for it to close.
-	sConn.Close()
+	err = sConn.Close()
+	require.NoError(err)
+
 	workerCmd.ShutdownCh <- struct{}{}
 	if <-workerCodeChan != 0 {
 		output := workerCmd.UI.(*cli.MockUi).ErrorWriter.String() + workerCmd.UI.(*cli.MockUi).OutputWriter.String()
@@ -131,7 +139,7 @@ func setAuthToken(ctx context.Context, t *testing.T, client *api.Client) {
 		ctx,
 		"ampw_1234567890",
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": "admin",
 			"password":   "passpass",
 		},

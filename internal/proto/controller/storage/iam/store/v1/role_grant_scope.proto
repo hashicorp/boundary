@@ -1,0 +1,26 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.storage.iam.store.v1;
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
+
+message RoleGrantScope {
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 1;
+
+  // role_id is the ID of the role this is a part of
+  // @inject_tag: `gorm:"primary_key"`
+  string role_id = 2;
+
+  // scope_id_or_special is the string grant scope value as provided by the
+  // user, which may be one of a few special values as well
+  //
+  // @inject_tag: `gorm:"primary_key"`
+  string scope_id_or_special = 3;
+}

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package dev
 
 import (
@@ -5,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net"
 	"os"
 	"runtime"
 	"strings"
@@ -14,24 +16,20 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/cmd/ops"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/host/static"
-	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
-	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/cli"
 	"github.com/mr-tron/base58"
@@ -40,10 +38,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	ControllerGeneratedAuthTokenWorkerAuthMechanism = "controller-generated-auth-token"
+	WorkerGeneratedAuthTokenWorkerAuthMechanism     = "worker-generated-auth-token"
+	KmsWorkerAuthMechanism                          = "kms"
+	RandomWorkerAuthMechanism                       = "random"
+	DeprecatedKmsWorkerAuthMechanism                = "deprecated-kms"
+)
+
 var (
 	_ cli.Command             = (*Command)(nil)
 	_ cli.CommandAutocomplete = (*Command)(nil)
 )
+
+var extraSelfTerminationConditionFuncs []func(*Command, chan struct{})
 
 type Command struct {
 	*base.Server
@@ -58,43 +66,55 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                     string
-	flagLogFormat                    string
-	flagCombineLogs                  bool
-	flagLoginName                    string
-	flagPassword                     string
-	flagUnprivilegedLoginName        string
-	flagUnprivilegedPassword         string
-	flagIdSuffix                     string
-	flagHostAddress                  string
-	flagTargetDefaultPort            int
-	flagTargetSessionMaxSeconds      int
-	flagTargetSessionConnectionLimit int
-	flagControllerAPIListenAddr      string
-	flagControllerClusterListenAddr  string
-	flagControllerPublicClusterAddr  string
-	flagControllerOnly               bool
-	flagWorkerAuthKey                string
-	flagWorkerProxyListenAddr        string
-	flagWorkerPublicAddr             string
-	flagOpsListenAddr                string
-	flagUiPassthroughDir             string
-	flagRecoveryKey                  string
-	flagDatabaseUrl                  string
-	flagContainerImage               string
-	flagDisableDatabaseDestruction   bool
-	flagEventFormat                  string
-	flagAudit                        string
-	flagObservations                 string
-	flagSysEvents                    string
-	flagEveryEventAllowFilters       []string
-	flagEveryEventDenyFilters        []string
-	flagCreateLoopbackHostPlugin     bool
-	flagPluginExecutionDir           string
-	flagWorkerAuthMethod             string
-	flagWorkerAuthStorageDir         string
-	flagWorkerAuthStorageSkipCleanup bool
-	flagWorkerAuthRotationInterval   time.Duration
+	flagLogLevel                                       string
+	flagLogFormat                                      string
+	flagCombineLogs                                    bool
+	flagLoginName                                      string
+	flagPassword                                       string
+	flagUnprivilegedLoginName                          string
+	flagUnprivilegedPassword                           string
+	flagIdSuffix                                       string
+	flagSecondaryIdSuffix                              string
+	flagHostAddress                                    string
+	flagTargetDefaultPort                              uint16
+	flagTargetSessionMaxSeconds                        int64
+	flagTargetSessionConnectionLimit                   int64
+	flagControllerApiListenAddr                        string
+	flagControllerClusterListenAddr                    string
+	flagControllerPublicClusterAddr                    string
+	flagControllerOnly                                 bool
+	flagWorkerAuthKey                                  string
+	flagWorkerProxyListenAddr                          string
+	flagWorkerPublicAddr                               string
+	flagOpsListenAddr                                  string
+	flagUiPassthroughDir                               string
+	flagRecoveryKey                                    string
+	flagDatabaseUrl                                    string
+	flagContainerImage                                 string
+	flagDisableDatabaseDestruction                     bool
+	flagEventFormat                                    string
+	flagAudit                                          string
+	flagObservations                                   string
+	flagTelemetry                                      string
+	flagSysEvents                                      string
+	flagEveryEventAllowFilters                         []string
+	flagEveryEventDenyFilters                          []string
+	flagCreateLoopbackPlugin                           bool
+	flagPluginExecutionDir                             string
+	flagSkipPlugins                                    bool
+	flagSkipOidcAuthMethodCreation                     bool
+	flagSkipLdapAuthMethodCreation                     bool
+	flagSkipAliasTargetCreation                        bool
+	flagWorkerDnsServer                                string
+	flagWorkerAuthMethod                               string
+	flagWorkerAuthStorageDir                           string
+	flagWorkerAuthStorageSkipCleanup                   bool
+	flagWorkerAuthWorkerRotationInterval               time.Duration
+	flagWorkerAuthCaCertificateLifetime                time.Duration
+	flagWorkerAuthDebuggingEnabled                     bool
+	flagWorkerRecordingStorageDir                      string
+	flagWorkerRecordingStorageMinimumAvailableCapacity string
+	flagBsrKey                                         string
 }
 
 func (c *Command) Synopsis() string {
@@ -141,7 +161,15 @@ func (c *Command) Flags() *base.FlagSets {
 		Target:  &c.flagIdSuffix,
 		Default: "1234567890",
 		EnvVar:  "BOUNDARY_DEV_ID_SUFFIX",
-		Usage:   `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on.`,
+		Usage:   `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on. Must be different from -secondary-id-suffix (BOUNDARY_DEV_SECONDARY_ID_SUFFIX).`,
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:    "secondary-id-suffix",
+		Target:  &c.flagSecondaryIdSuffix,
+		Default: "0987654321",
+		EnvVar:  "BOUNDARY_DEV_SECONDARY_ID_SUFFIX",
+		Usage:   `If set, secondary auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. Currently only used for the target resource. Must be different from -id-suffix (BOUNDARY_DEV_ID_SUFFIX).`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -178,7 +206,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f.StringVar(&base.StringVar{
 		Name:   "api-listen-address",
-		Target: &c.flagControllerAPIListenAddr,
+		Target: &c.flagControllerApiListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"api\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
 	})
@@ -191,7 +219,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Address to use for the default host that is created. Must be a bare host or IP address, no port.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Uint16Var(&base.Uint16Var{
 		Name:    "target-default-port",
 		Default: 22,
 		Target:  &c.flagTargetDefaultPort,
@@ -199,7 +227,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Default port to use for the default target that is created.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Int64Var(&base.Int64Var{
 		Name:    "target-session-connection-limit",
 		Target:  &c.flagTargetSessionConnectionLimit,
 		Default: -1,
@@ -207,7 +235,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:   "Maximum number of connections per session to set on the default target. -1 means unlimited.",
 	})
 
-	f.IntVar(&base.IntVar{
+	f.Int64Var(&base.Int64Var{
 		Name:   "target-session-max-seconds",
 		Target: &c.flagTargetSessionMaxSeconds,
 		EnvVar: "BOUNDARY_DEV_TARGET_SESSION_MAX_SECONDS",
@@ -237,7 +265,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "controller-only",
 		Target: &c.flagControllerOnly,
-		Usage:  "If set, only a dev controller will be started instead of both a dev controller and dev worker",
+		Usage:  "If set, only a dev controller will be started instead of both a dev controller and dev worker.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -259,6 +287,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagWorkerAuthKey,
 		EnvVar: "BOUNDARY_DEV_WORKER_AUTH_KEY",
 		Usage:  "If set, a valid base64-encoded AES key to be used for worker-auth purposes",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "bsr-key",
+		Target: &c.flagBsrKey,
+		EnvVar: "BOUNDARY_DEV_BSR_KEY",
+		Usage:  "If set, a valid base64-encoded AES key to be used for bsr purposes",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -310,6 +345,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      `Emit observation events. Supported values are "true" and "false".`,
 	})
 	f.StringVar(&base.StringVar{
+		Name:       "telemetry-events",
+		Target:     &c.flagTelemetry,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit telemetry events. Supported values are "true" and "false".`,
+	})
+	f.StringVar(&base.StringVar{
 		Name:       "audit-events",
 		Target:     &c.flagAudit,
 		Completion: complete.PredictSet("true", "false"),
@@ -338,34 +379,85 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
 	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-plugins",
+		Target: &c.flagSkipPlugins,
+		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
+		Hidden: true,
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-oidc-auth-method-creation",
+		Target: &c.flagSkipOidcAuthMethodCreation,
+		Usage:  "Skip creating a test OIDC auth method. This is useful if e.g. running a Unix API listener.",
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-ldap-auth-method-creation",
+		Target: &c.flagSkipLdapAuthMethodCreation,
+		Usage:  "Skip creating a test LDAP auth method. This is useful if e.g. running a Unix API listener.",
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-alias-target-creation",
+		Target: &c.flagSkipAliasTargetCreation,
+		Usage:  "Skip creating test targets using an alias.",
+		Hidden: true,
+	})
 	f.StringVar(&base.StringVar{
-		Name:    "worker-auth-method",
-		Target:  &c.flagWorkerAuthMethod,
-		Default: "random-pki",
-		Usage:   `Allows specifying how the generated worker will authenticate to the controller. Valid values are "kms" for the KMS-based mechanism; "pki-controller-led" for the PKI mechanism via the server-led authorization flow; "pki-worker-led" for the PKI mechanism via the worker-led authorization flow; and "random-pki" to randomly choose one of the PKI methods.`,
+		Name:   "worker-dns-server",
+		Target: &c.flagWorkerDnsServer,
+		Usage:  "Use a custom DNS server when workers resolve endpoints.",
+		Hidden: true,
 	})
 
 	f.StringVar(&base.StringVar{
+		Name:       "worker-auth-method",
+		Target:     &c.flagWorkerAuthMethod,
+		Default:    RandomWorkerAuthMechanism,
+		Completion: complete.PredictSet(ControllerGeneratedAuthTokenWorkerAuthMechanism, WorkerGeneratedAuthTokenWorkerAuthMechanism, KmsWorkerAuthMechanism, RandomWorkerAuthMechanism),
+		Usage:      `Allows specifying how the generated worker will authenticate to the controller.`,
+	})
+	f.StringVar(&base.StringVar{
 		Name:   "worker-auth-storage-dir",
 		Target: &c.flagWorkerAuthStorageDir,
-		Usage:  "Specifies the directory to store worker authentication credentials in dev mode.",
+		Usage:  "Specifies the directory to store worker authentication credentials in dev mode. Setting this will make use of file storage at the specified location; otherwise in-memory storage or a temporary directory will be used.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "worker-recording-storage-dir",
+		Target: &c.flagWorkerRecordingStorageDir,
+		Usage:  "Specifies the directory to store worker session recordings in dev mode. If not provided a temp directory will be created. Session recording is an Enterprise-only feature.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "worker-recording-storage-minimum-available-capacity",
+		Target: &c.flagWorkerRecordingStorageMinimumAvailableCapacity,
+		Usage:  "Specifies the minimum amount of available disk space a worker needs in the recording storage directory to process sessions with session recording enabled. Input should be a capacity string: 4kib or 3GB. Defaults to 500mib.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "worker-auth-storage-skip-cleanup",
 		Target: &c.flagWorkerAuthStorageSkipCleanup,
-		Usage:  "Prevents deletion of temp worker credential storage directory if set.",
+		Usage:  "Prevents deletion of worker credential storage directory if set. Has no effect unless worker-auth-storage-dir is specified.",
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "worker-auth-enable-debugging",
+		Target: &c.flagWorkerAuthDebuggingEnabled,
+		Usage:  "Turn on debug logging of the worker authentication process.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "create-loopback-host-plugin",
-		Target: &c.flagCreateLoopbackHostPlugin,
+		Name:   "create-loopback-plugin",
+		Target: &c.flagCreateLoopbackPlugin,
 		Hidden: true,
 	})
 
 	f.DurationVar(&base.DurationVar{
-		Name:   "worker-auth-rotation-interval",
-		Target: &c.flagWorkerAuthRotationInterval,
+		Name:   "worker-auth-worker-rotation-interval",
+		Target: &c.flagWorkerAuthWorkerRotationInterval,
+		Hidden: true,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-ca-certificate-lifetime",
+		Target: &c.flagWorkerAuthCaCertificateLifetime,
 		Hidden: true,
 	})
 
@@ -401,7 +493,10 @@ func (c *Command) Run(args []string) int {
 
 	switch c.flagControllerOnly {
 	case true:
-		c.Config, err = config.DevController()
+		c.Config, err = config.DevController(
+			config.WithObservationsEnabled(true),
+			config.WithSysEventsEnabled(true),
+		)
 	default:
 		c.Config, err = config.DevCombined()
 	}
@@ -419,13 +514,41 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
+	if c.flagBsrKey != "" {
+		c.Config.DevBsrKey = c.flagBsrKey
+		for _, kms := range c.Config.Seals {
+			if strutil.StrListContains(kms.Purpose, globals.KmsPurposeBsr) {
+				kms.Config["key"] = c.flagBsrKey
+			}
+		}
+	}
+
+	c.WorkerAuthDebuggingEnabled.Store(c.flagWorkerAuthDebuggingEnabled)
+
 	c.DevLoginName = c.flagLoginName
 	c.DevPassword = c.flagPassword
 	c.DevUnprivilegedLoginName = c.flagUnprivilegedLoginName
 	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
-	c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
+
+	if !c.flagControllerOnly {
+		c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
+		c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
+		c.Config.Worker.RecordingStorageMinimumAvailableCapacity = c.flagWorkerRecordingStorageMinimumAvailableCapacity
+
+		if c.Config.Worker.RecordingStoragePath == "" {
+			// Create a temp dir for recording storage
+			const pattern = "recordingstorage"
+			c.Config.Worker.RecordingStoragePath, err = os.MkdirTemp("", pattern)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error creating storage temp dir: %w", err).Error())
+				return base.CommandCliError
+			}
+			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return os.RemoveAll(c.Config.Worker.RecordingStoragePath) })
+		}
+	}
+
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -435,29 +558,44 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Invalid ID suffix, must be in the set A-Za-z0-9")
 			return base.CommandUserError
 		}
-		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
-		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", oidc.AuthMethodPrefix, c.flagIdSuffix)
-		c.DevUserId = fmt.Sprintf("%s_%s", iam.UserPrefix, c.flagIdSuffix)
-		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", intglobals.NewPasswordAccountPrefix, c.flagIdSuffix)
-		c.DevOidcAccountId = fmt.Sprintf("%s_%s", oidc.AccountPrefix, c.flagIdSuffix)
+		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", globals.PasswordAuthMethodPrefix, c.flagIdSuffix)
+		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", globals.OidcAuthMethodPrefix, c.flagIdSuffix)
+		c.DevLdapAuthMethodId = fmt.Sprintf("%s_%s", globals.LdapAuthMethodPrefix, c.flagIdSuffix)
+		c.DevUserId = fmt.Sprintf("%s_%s", globals.UserPrefix, c.flagIdSuffix)
+		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", globals.PasswordAccountPrefix, c.flagIdSuffix)
+		c.DevOidcAccountId = fmt.Sprintf("%s_%s", globals.OidcAccountPrefix, c.flagIdSuffix)
 		c.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(c.DevUserId, "u_"))
-		c.DevUnprivilegedPasswordAccountId = fmt.Sprintf("%s_", intglobals.NewPasswordAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevPasswordAccountId, fmt.Sprintf("%s_", intglobals.NewPasswordAccountPrefix)))
-		c.DevUnprivilegedOidcAccountId = fmt.Sprintf("%s_", oidc.AccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevOidcAccountId, fmt.Sprintf("%s_", oidc.AccountPrefix)))
+		c.DevUnprivilegedPasswordAccountId = fmt.Sprintf("%s_", globals.PasswordAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevPasswordAccountId, fmt.Sprintf("%s_", globals.PasswordAccountPrefix)))
+		c.DevUnprivilegedOidcAccountId = fmt.Sprintf("%s_", globals.OidcAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevOidcAccountId, fmt.Sprintf("%s_", globals.OidcAccountPrefix)))
 		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
 		c.DevProjectId = fmt.Sprintf("%s_%s", scope.Project.Prefix(), c.flagIdSuffix)
-		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)
-		c.DevHostSetId = fmt.Sprintf("%s_%s", static.HostSetPrefix, c.flagIdSuffix)
-		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
-		c.DevTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagIdSuffix)
+		c.DevHostCatalogId = fmt.Sprintf("%s_%s", globals.StaticHostCatalogPrefix, c.flagIdSuffix)
+		c.DevHostSetId = fmt.Sprintf("%s_%s", globals.StaticHostSetPrefix, c.flagIdSuffix)
+		c.DevHostId = fmt.Sprintf("%s_%s", globals.StaticHostPrefix, c.flagIdSuffix)
+		c.DevTargetId = fmt.Sprintf("%s_%s", globals.TcpTargetPrefix, c.flagIdSuffix)
 	}
-
-	host, port, err := net.SplitHostPort(c.flagHostAddress)
-	if err != nil {
-		if !strings.Contains(err.Error(), "missing port") {
-			c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
+	if c.flagSecondaryIdSuffix != "" {
+		if len(c.flagSecondaryIdSuffix) != 10 {
+			c.UI.Error("Invalid secondary ID suffix, must be exactly 10 characters")
 			return base.CommandUserError
 		}
-		host = c.flagHostAddress
+		if !handlers.ValidId(handlers.Id("abc_"+c.flagSecondaryIdSuffix), "abc") {
+			c.UI.Error("Invalid secondary ID suffix, must be in the set A-Za-z0-9")
+			return base.CommandUserError
+		}
+		c.DevSecondaryTargetId = fmt.Sprintf("%s_%s", globals.TcpTargetPrefix, c.flagSecondaryIdSuffix)
+	}
+
+	if c.flagIdSuffix != "" && c.flagSecondaryIdSuffix != "" &&
+		strings.EqualFold(c.flagIdSuffix, c.flagSecondaryIdSuffix) {
+		c.UI.Error("Primary and secondary ID suffixes are equal, must be distinct")
+		return base.CommandUserError
+	}
+
+	host, port, err := util.SplitHostPort(c.flagHostAddress)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
+		return base.CommandUserError
 	}
 	if port != "" {
 		c.UI.Error(`Port must not be specified as part of the dev host address`)
@@ -473,6 +611,10 @@ func (c *Command) Run(args []string) int {
 
 	c.Config.DevUiPassthroughDir = c.flagUiPassthroughDir
 
+	c.SkipPlugins = c.flagSkipPlugins
+	c.SkipAliasTargetCreation = c.flagSkipAliasTargetCreation
+	c.WorkerDnsServer = c.flagWorkerDnsServer
+
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
 			c.UI.Error("Only one purpose supported for each listener")
@@ -480,8 +622,8 @@ func (c *Command) Run(args []string) int {
 		}
 		switch l.Purpose[0] {
 		case "api":
-			if c.flagControllerAPIListenAddr != "" {
-				l.Address = c.flagControllerAPIListenAddr
+			if c.flagControllerApiListenAddr != "" {
+				l.Address = c.flagControllerApiListenAddr
 			}
 			if strings.HasPrefix(l.Address, "/") {
 				l.Type = "unix"
@@ -556,6 +698,7 @@ func (c *Command) Run(args []string) int {
 		Format:       c.flagEventFormat,
 		Audit:        c.flagAudit,
 		Observations: c.flagObservations,
+		Telemetry:    c.flagTelemetry,
 		SysEvents:    c.flagSysEvents,
 		Allow:        c.flagEveryEventAllowFilters,
 		Deny:         c.flagEveryEventDenyFilters,
@@ -565,13 +708,10 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	// Initialize status grace period (0 denotes using env or default
-	// here)
-	c.SetStatusGracePeriodDuration(0)
-
 	base.StartMemProfiler(c.Context)
 
 	if err := c.SetupEventing(
+		c.Context,
 		c.Logger,
 		c.StderrLock,
 		serverName,
@@ -593,23 +733,37 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
 	}
-	if c.WorkerAuthKms == nil {
-		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return base.CommandUserError
-	}
-	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
-	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 
-	if c.flagWorkerAuthMethod != "kms" {
-		c.DevUsePkiForUpstream = true
-		// These must be unset for PKI
-		c.Config.Worker.Name = ""
-		c.Config.Worker.Description = ""
+	if c.flagWorkerAuthMethod != DeprecatedKmsWorkerAuthMechanism &&
+		c.flagWorkerAuthMethod != KmsWorkerAuthMechanism {
+		// Flip a coin to decide between file storage and inmem. It's
+		// transparent to users, but keeps both exercised.
+		randStorage := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
+		if randStorage == 0 {
+			const pattern = "nodeenrollment"
+			c.Config.Worker.AuthStoragePath, err = os.MkdirTemp("", pattern)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error creating temp dir: %w", err).Error())
+				return base.CommandCliError
+			}
+			if !c.flagWorkerAuthStorageSkipCleanup && c.flagWorkerAuthStorageDir != "" {
+				c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return os.RemoveAll(c.Config.Worker.AuthStoragePath) })
+			}
+		}
 	}
-	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
-	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
+
+	c.InfoKeys = append(c.InfoKeys, "[Root] AEAD Key Bytes")
+	c.Info["[Root] AEAD Key Bytes"] = c.Config.DevControllerKey
 	c.InfoKeys = append(c.InfoKeys, "[Recovery] AEAD Key Bytes")
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
+	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
+	c.InfoKeys = append(c.InfoKeys, "[Bsr] AEAD Key Bytes")
+	c.Info["[Bsr] AEAD Key Bytes"] = c.Config.DevBsrKey
+	if c.Config.DevWorkerAuthStorageKey != "" {
+		c.InfoKeys = append(c.InfoKeys, "[Worker-Auth-Storage] AEAD Key Bytes")
+		c.Info["[Worker-Auth-Storage] AEAD Key Bytes"] = c.Config.DevWorkerAuthStorageKey
+	}
 
 	// Initialize the listeners
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
@@ -624,10 +778,17 @@ func (c *Command) Run(args []string) int {
 	}
 
 	var opts []base.Option
-	if c.flagCreateLoopbackHostPlugin {
-		c.DevLoopbackHostPluginId = "pl_1234567890"
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostLoopback)
+	if c.flagSkipOidcAuthMethodCreation {
+		opts = append(opts, base.WithSkipOidcAuthMethodCreation())
+	}
+	if c.flagSkipLdapAuthMethodCreation {
+		opts = append(opts, base.WithSkipLdapAuthMethodCreation())
+	}
+	if c.flagCreateLoopbackPlugin {
+		c.DevLoopbackPluginId = "pl_1234567890"
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginLoopback)
 		c.Config.Controller.Scheduler.JobRunIntervalDuration = 100 * time.Millisecond
+		c.Info["Generated Dev Loopback plugin id"] = c.DevLoopbackPluginId
 	}
 	switch c.flagDatabaseUrl {
 	case "":
@@ -660,10 +821,14 @@ func (c *Command) Run(args []string) int {
 	}
 
 	{
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure, base.EnabledPluginGCP)
+		if base.MinioEnabled {
+			c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginMinio)
+		}
 		conf := &controller.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,
+			TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
 		}
 
 		var err error
@@ -693,61 +858,65 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.worker, err = worker.New(conf)
+		c.worker, err = worker.New(c.Context, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
 			return base.CommandCliError
 		}
+		c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthWorkerRotationInterval
 
-		if c.flagWorkerAuthRotationInterval > 0 {
-			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
-		}
-
-		// Note: this should be done before starting the worker so that the
-		// activation token is populated
-		var useWorkerLed bool
-		if c.flagWorkerAuthMethod != "kms" {
+		if c.flagWorkerAuthMethod == RandomWorkerAuthMechanism {
 			// Flip a coin. Use one method or the other; it's transparent to
 			// users, but keeps both exercised.
-			if c.flagWorkerAuthMethod == "random-pki" {
-				randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
-				if randPki == 0 {
-					c.flagWorkerAuthMethod = "pki-controller-led"
-				} else {
-					c.flagWorkerAuthMethod = "pki-worker-led"
-				}
-			}
-			switch c.flagWorkerAuthMethod {
-			case "pki-controller-led":
-				// Controller-led
-				serversRepo, err := c.controller.ServersRepoFn()
-				if err != nil {
-					c.UI.Error(fmt.Errorf("Error instantiating server repo: %w", err).Error())
-					if err := c.controller.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-					}
-					return base.CommandCliError
-				}
-
-				// Create the worker in the database and fetch an activation token
-				worker, err := serversRepo.CreateWorker(c.Context, &server.Worker{
-					Worker: &store.Worker{
-						ScopeId: scope.Global.String(),
-					},
-				}, server.WithCreateControllerLedActivationToken(true))
-				if err != nil {
-					c.UI.Error(fmt.Errorf("Error creating worker in database: %w", err).Error())
-					if err := c.controller.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-					}
-					return base.CommandCliError
-				}
-
-				// Set the activation token in the config
-				conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
-
+			randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(3)
+			switch randPki {
+			case 0:
+				c.flagWorkerAuthMethod = ControllerGeneratedAuthTokenWorkerAuthMechanism
+			case 1:
+				c.flagWorkerAuthMethod = WorkerGeneratedAuthTokenWorkerAuthMechanism
 			default:
-				useWorkerLed = true
+				c.flagWorkerAuthMethod = KmsWorkerAuthMechanism
+			}
+		}
+		switch c.flagWorkerAuthMethod {
+		case ControllerGeneratedAuthTokenWorkerAuthMechanism:
+			// Controller-led
+			serversRepo, err := c.controller.ServersRepoFn()
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error instantiating server repo: %w", err).Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
+
+			// Create the worker in the database and fetch an activation token
+			worker, err := serversRepo.CreateWorker(c.Context, &server.Worker{
+				Worker: &store.Worker{
+					ScopeId: scope.Global.String(),
+				},
+			}, server.WithCreateControllerLedActivationToken(true))
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error creating worker in database: %w", err).Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
+
+			// Set the activation token in the config and nil out the worker
+			// auth KMS so we don't use it via PKI-KMS
+			c.WorkerAuthKms = nil
+			conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
+
+		case WorkerGeneratedAuthTokenWorkerAuthMechanism:
+			// Clear this out as presence of it causes PKI-KMS behavior
+			c.WorkerAuthKms = nil
+
+		case KmsWorkerAuthMechanism, DeprecatedKmsWorkerAuthMechanism:
+			if c.WorkerAuthKms == nil {
+				c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
+				return base.CommandUserError
 			}
 		}
 
@@ -764,32 +933,39 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		if c.flagWorkerAuthMethod != "kms" {
+		if c.flagWorkerAuthMethod != DeprecatedKmsWorkerAuthMechanism {
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
-			c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
+			if c.Config.Worker.AuthStoragePath != "" {
+				c.Info["worker auth storage path"] = c.Config.Worker.AuthStoragePath
+			} else {
+				c.Info["worker auth storage path"] = "(in-memory)"
+			}
 
-			if useWorkerLed {
+			if c.flagWorkerAuthMethod == WorkerGeneratedAuthTokenWorkerAuthMechanism {
 				req := c.worker.WorkerAuthRegistrationRequest
 				if req == "" {
 					c.UI.Error("No worker auth registration request found at worker start time")
 					return base.CommandCliError
 				}
 
-				if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
-					// Shutdown on failure
-					retErr := fmt.Errorf("Error storing worker auth request: %w", err)
-					if err := c.worker.Shutdown(); err != nil {
+				if c.Config.Worker.AuthStoragePath != "" {
+					if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.Config.Worker.AuthStoragePath); err != nil {
+						// Shutdown on failure
+						retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+						if err := c.worker.Shutdown(); err != nil {
+							c.UI.Error(retErr.Error())
+							retErr = fmt.Errorf("Error shutting down worker: %w", err)
+						}
 						c.UI.Error(retErr.Error())
-						retErr = fmt.Errorf("Error shutting down worker: %w", err)
+						if err := c.controller.Shutdown(); err != nil {
+							c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+						}
+						return base.CommandCliError
 					}
-					c.UI.Error(retErr.Error())
-					if err := c.controller.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-					}
-					return base.CommandCliError
 				}
+
 				go func() {
 					for {
 						select {
@@ -815,11 +991,10 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Logger, c.controller, c.worker, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Context, c.Logger, c.controller, c.worker, c.Listeners...)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Failed to start ops listeners: %w", err).Error())
 		return base.CommandCliError
-
 	}
 	c.opsServer = opsServer
 	c.opsServer.Start()
@@ -833,7 +1008,11 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 		}
 		if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
-			c.worker.WorkerAuthStorage.Cleanup()
+			if cleanable, ok := c.worker.WorkerAuthStorage.(nodeenrollment.CleanableStorage); ok {
+				if err := cleanable.Cleanup(c.Context); err != nil {
+					c.UI.Error(fmt.Errorf("Error cleaning up authentication storage: %w", err).Error())
+				}
+			}
 		}
 	}
 	workerGracefulShutdownFunc := func() {
@@ -893,6 +1072,10 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
+	for _, f := range extraSelfTerminationConditionFuncs {
+		f(c, c.ServerSideShutdownCh)
+	}
+
 	for !errorEncountered.Load() && !shutdownCompleted.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
@@ -903,6 +1086,9 @@ func (c *Command) Run(args []string) int {
 		case <-c.ShutdownCh:
 			shutdownTriggerCount++
 			runShutdownLogic()
+
+		case <-c.SighupCh:
+			c.UI.Output("==> Boundary dev environment does not support configuration reloading, taking no action")
 
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)

@@ -1,12 +1,15 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package base
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"regexp"
@@ -24,7 +27,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 )
 
@@ -32,19 +34,28 @@ type EnabledPlugin uint
 
 const (
 	EnabledPluginUnknown EnabledPlugin = iota
-	EnabledPluginHostLoopback
-	EnabledPluginHostAws
+	EnabledPluginLoopback
+	EnabledPluginAws
 	EnabledPluginHostAzure
+	EnabledPluginMinio
+	EnabledPluginGCP
 )
+
+// MinioEnabled controls if the Minio storage plugin should be initiated or not
+var MinioEnabled bool
 
 func (e EnabledPlugin) String() string {
 	switch e {
-	case EnabledPluginHostLoopback:
+	case EnabledPluginLoopback:
 		return "Loopback"
-	case EnabledPluginHostAws:
+	case EnabledPluginAws:
 		return "AWS"
 	case EnabledPluginHostAzure:
 		return "Azure"
+	case EnabledPluginMinio:
+		return "MinIO"
+	case EnabledPluginGCP:
+		return "GCP"
 	default:
 		return ""
 	}
@@ -61,10 +72,14 @@ const (
 	// maxLineLength is the maximum width of any line.
 	maxLineLength int = 78
 
-	envToken          = "BOUNDARY_TOKEN"
-	EnvTokenName      = "BOUNDARY_TOKEN_NAME"
-	EnvKeyringType    = "BOUNDARY_KEYRING_TYPE"
-	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
+	envToken                             = "BOUNDARY_TOKEN"
+	EnvTokenName                         = "BOUNDARY_TOKEN_NAME"
+	EnvKeyringType                       = "BOUNDARY_KEYRING_TYPE"
+	envRecoveryConfig                    = "BOUNDARY_RECOVERY_CONFIG"
+	envSkipCacheDaemon                   = "BOUNDARY_SKIP_CACHE_DAEMON"
+	envSkipClientAgent                   = "BOUNDARY_SKIP_CLIENT_AGENT"
+	EnvClientAgentPort                   = "BOUNDARY_CLIENT_AGENT_LISTENING_PORT"
+	EnvBoundaryClientAgentCliErrorOutput = "BOUNDARY_CLIENT_AGENT_CLI_ERROR_OUTPUT"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -81,10 +96,12 @@ type Command struct {
 	UI            cli.Ui
 	ShutdownCh    chan struct{}
 
+	Opts []Option
+
 	flags     *FlagSets
 	flagsOnce sync.Once
 
-	flagAddr    string
+	FlagAddr    string
 	flagVerbose bool
 
 	flagTLSCACert     string
@@ -94,12 +111,17 @@ type Command struct {
 	flagTLSServerName string
 	flagTLSInsecure   bool
 
-	flagFormat           string
-	FlagToken            string
-	FlagTokenName        string
-	FlagKeyringType      string
-	FlagRecoveryConfig   string
-	flagOutputCurlString bool
+	flagFormat                    string
+	FlagToken                     string
+	FlagTokenName                 string
+	FlagKeyringType               string
+	FlagRecoveryConfig            string
+	FlagOutputCurlString          bool
+	FlagSkipCacheDaemon           bool
+	FlagSkipClientAgent           bool
+	FlagOutputClientAgentCliError bool
+
+	FlagClientAgentPort uint16
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -111,10 +133,12 @@ type Command struct {
 	FlagAuthMethodId      string
 	FlagHostCatalogId     string
 	FlagCredentialStoreId string
-	FlagVersion           int
+	FlagVersion           int64
 	FlagRecursive         bool
 	FlagFilter            string
 	FlagTags              map[string][]string
+	FlagOutputFile        string // the output file for the command
+	FlagNoClobber         bool   // Don't clobber the output file
 
 	// Attribute values
 	FlagAttributes string
@@ -137,12 +161,14 @@ type Command struct {
 }
 
 // New returns a new instance of a base.Command type
-func NewCommand(ui cli.Ui) *Command {
+func NewCommand(ui cli.Ui, opt ...Option) *Command {
+	opts := GetOpts(opt...)
 	ctx, cancel := context.WithCancel(context.Background())
 	ret := &Command{
 		UI:         ui,
 		ShutdownCh: MakeShutdownCh(),
 		Context:    ctx,
+		FlagId:     opts.withImplicitId,
 	}
 	go func() {
 		<-ret.ShutdownCh
@@ -182,6 +208,10 @@ func MakeShutdownCh() chan struct{} {
 	return resultCh
 }
 
+func (c *Command) BaseCommand() *Command {
+	return c
+}
+
 // Client returns the HTTP API client. The client is cached on the command to
 // save performance on future calls.
 func (c *Command) Client(opt ...Option) (*api.Client, error) {
@@ -190,23 +220,23 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		return c.client, nil
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	config, err := api.DefaultConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	if c.flagOutputCurlString {
-		config.OutputCurlString = c.flagOutputCurlString
+	if c.FlagOutputCurlString {
+		config.OutputCurlString = c.FlagOutputCurlString
 	}
 
 	c.client, err = api.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
-	if c.flagAddr != "" {
-		if err := c.client.SetAddr(c.flagAddr); err != nil {
+	if c.FlagAddr != "" {
+		if err := c.client.SetAddr(c.FlagAddr); err != nil {
 			return nil, fmt.Errorf("error setting address on client: %w", err)
 		}
 	}
@@ -241,7 +271,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	if modifiedTLS {
 		// Setup TLS config
 		if err := c.client.SetTLSConfig(tlsConfig); err != nil {
-			return nil, errors.Wrap(err, "failed to setup TLS config")
+			return nil, fmt.Errorf("failed to setup TLS config: %w", err)
 		}
 	}
 
@@ -320,13 +350,24 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			return nil, err
 		}
 
-		authToken := c.ReadTokenFromKeyring(keyringType, tokenName)
-		if authToken != nil {
+		authToken, err := c.ReadTokenFromKeyring(keyringType, tokenName)
+		if err != nil {
+			c.UI.Error(err.Error())
+		} else {
 			c.client.SetToken(authToken.Token)
 		}
 	}
 
 	return c.client, nil
+}
+
+// If the first arg isn't a flag, extract it as the alias and return the remaining args
+func ExtractAliasFromArgs(inArgs []string) (string, []string) {
+	if len(inArgs) > 0 && inArgs[0][0] != '-' {
+		return inArgs[0], inArgs[1:]
+	}
+
+	return "", inArgs
 }
 
 type FlagSetBit uint
@@ -349,7 +390,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 
 			f.StringVar(&StringVar{
 				Name:       FlagNameAddr,
-				Target:     &c.flagAddr,
+				Target:     &c.FlagAddr,
 				EnvVar:     api.EnvBoundaryAddr,
 				Completion: complete.PredictAnything,
 				Usage:      "Addr of the Boundary controller, as a complete URL (e.g. https://boundary.example.com:9200).",
@@ -445,8 +486,42 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 
 			f.BoolVar(&BoolVar{
 				Name:   "output-curl-string",
-				Target: &c.flagOutputCurlString,
+				Target: &c.FlagOutputCurlString,
 				Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "skip-cache-daemon",
+				Target:  &c.FlagSkipCacheDaemon,
+				Default: false,
+				EnvVar:  envSkipCacheDaemon,
+				Usage:   "Skips starting the caching daemon or sending the current used/retrieved token to the caching daemon.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "output-client-agent-cli-error",
+				Target:  &c.FlagOutputClientAgentCliError,
+				Default: false,
+				EnvVar:  EnvBoundaryClientAgentCliErrorOutput,
+				Usage:   "Enables outputting CLI errors encountered for client-agent callbacks.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "skip-client-agent",
+				Target:  &c.FlagSkipClientAgent,
+				Default: false,
+				EnvVar:  envSkipClientAgent,
+				Usage:   "Skips sending the auth token used for this command to the client agent if it is running.",
+				Hidden:  true,
+			})
+
+			f.Uint16Var(&Uint16Var{
+				Name:    "client-agent-port",
+				Target:  &c.FlagClientAgentPort,
+				Default: 9300,
+				EnvVar:  EnvClientAgentPort,
+				Usage:   "The port on which the client agent is listening.",
+				Hidden:  true,
 			})
 		}
 
@@ -494,7 +569,7 @@ func NewFlagSets(ui cli.Ui) *FlagSets {
 
 	// Errors and usage are controlled by the CLI.
 	mainSet.Usage = func() {}
-	mainSet.SetOutput(ioutil.Discard)
+	mainSet.SetOutput(io.Discard)
 
 	return &FlagSets{
 		flagSets:    make([]*FlagSet, 0, 6),
@@ -505,41 +580,41 @@ func NewFlagSets(ui cli.Ui) *FlagSets {
 }
 
 // NewFlagSet creates a new flag set from the given flag sets.
-func (f *FlagSets) NewFlagSet(name string) *FlagSet {
+func (fs *FlagSets) NewFlagSet(name string) *FlagSet {
 	flagSet := NewFlagSet(name)
-	flagSet.mainSet = f.mainSet
-	flagSet.completions = f.completions
-	f.flagSets = append(f.flagSets, flagSet)
+	flagSet.mainSet = fs.mainSet
+	flagSet.completions = fs.completions
+	fs.flagSets = append(fs.flagSets, flagSet)
 	return flagSet
 }
 
 // Completions returns the completions for this flag set.
-func (f *FlagSets) Completions() complete.Flags {
-	if f == nil {
+func (fs *FlagSets) Completions() complete.Flags {
+	if fs == nil {
 		return nil
 	}
-	return f.completions
+	return fs.completions
 }
 
 // Parse parses the given flags, returning any errors.
-func (f *FlagSets) Parse(args []string) error {
-	return f.mainSet.Parse(args)
+func (fs *FlagSets) Parse(args []string) error {
+	return fs.mainSet.Parse(args)
 }
 
 // Parsed reports whether the command-line flags have been parsed.
-func (f *FlagSets) Parsed() bool {
-	return f.mainSet.Parsed()
+func (fs *FlagSets) Parsed() bool {
+	return fs.mainSet.Parsed()
 }
 
 // Args returns the remaining args after parsing.
-func (f *FlagSets) Args() []string {
-	return f.mainSet.Args()
+func (fs *FlagSets) Args() []string {
+	return fs.mainSet.Args()
 }
 
 // Visit visits the flags in lexicographical order, calling fn for each. It
 // visits only those flags that have been set.
-func (f *FlagSets) Visit(fn func(*flag.Flag)) {
-	f.mainSet.Visit(fn)
+func (fs *FlagSets) Visit(fn func(*flag.Flag)) {
+	fs.mainSet.Visit(fn)
 }
 
 // Help builds custom help for this command, grouping by flag set.
