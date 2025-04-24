@@ -93,7 +93,7 @@ func Test_lookupRoleScope(t *testing.T) {
 				firstRole := TestRole(t, conn, globals.GlobalPrefix)
 				secondRole := TestRole(t, conn, org2.PublicId)
 
-				firstRoleOrg1 := &GlobalRoleIndividualOrgGrantScope{
+				firstRoleOrg1 := &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     firstRole.PublicId,
 						ScopeId:    org1.PublicId,
@@ -101,7 +101,7 @@ func Test_lookupRoleScope(t *testing.T) {
 					},
 				}
 				require.NoError(t, rw.Create(ctx, firstRoleOrg1))
-				firstRoleProj1 := &GlobalRoleIndividualProjectGrantScope{
+				firstRoleProj1 := &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     firstRole.PublicId,
 						ScopeId:    proj1.PublicId,
@@ -110,7 +110,7 @@ func Test_lookupRoleScope(t *testing.T) {
 				}
 				require.NoError(t, rw.Create(ctx, firstRoleProj1))
 
-				secondRoleProj2 := &OrgRoleIndividualGrantScope{
+				secondRoleProj2 := &orgRoleIndividualGrantScope{
 					OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
 						RoleId:     secondRole.PublicId,
 						ScopeId:    proj2.PublicId,
@@ -151,7 +151,7 @@ func Test_lookupRoleScope(t *testing.T) {
 				gRole := allocGlobalRole()
 				gRole.PublicId = r.PublicId
 				require.NoError(t, rw.LookupByPublicId(ctx, &gRole))
-				o1 := &GlobalRoleIndividualOrgGrantScope{
+				o1 := &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    org1.PublicId,
@@ -159,7 +159,7 @@ func Test_lookupRoleScope(t *testing.T) {
 					},
 				}
 				require.NoError(t, rw.Create(ctx, o1))
-				o2 := &GlobalRoleIndividualOrgGrantScope{
+				o2 := &globalRoleIndividualOrgGrantScope{
 					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    org2.PublicId,
@@ -167,7 +167,7 @@ func Test_lookupRoleScope(t *testing.T) {
 					},
 				}
 				require.NoError(t, rw.Create(ctx, o2))
-				p1 := &GlobalRoleIndividualProjectGrantScope{
+				p1 := &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj1.PublicId,
@@ -175,7 +175,7 @@ func Test_lookupRoleScope(t *testing.T) {
 					},
 				}
 				require.NoError(t, rw.Create(ctx, p1))
-				p2 := &GlobalRoleIndividualProjectGrantScope{
+				p2 := &globalRoleIndividualProjectGrantScope{
 					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
 						RoleId:     r.PublicId,
 						ScopeId:    proj2.PublicId,
