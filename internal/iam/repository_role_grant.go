@@ -44,7 +44,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -132,7 +132,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 	}
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -319,7 +319,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	}
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {

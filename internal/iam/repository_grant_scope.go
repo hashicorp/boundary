@@ -33,7 +33,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
 
 	// Find existing grant scopes
@@ -153,7 +153,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
@@ -275,7 +275,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id for", roleId)))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
 	// NOTE: Set calculation can safely take place out of the transaction since
 	// we are using roleVersion to ensure that we end up operating on the same
