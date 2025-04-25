@@ -28,18 +28,18 @@ type OrgRoleIndividualGrantScope struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,1,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,1,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// role_id is the ID of the role this is a part of
 	// @inject_tag: `gorm:"primary_key"`
-	RoleId string `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	RoleId string `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty" gorm:"primary_key"`
 	// scope_id is the string grant scope value as provided by the user
 	//
 	// @inject_tag: `gorm:"primary_key"`
-	ScopeId string `protobuf:"bytes,3,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,3,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"primary_key"`
 	// grant_scope control type of grant scope granted to this role ['individual']
 	//
 	// @inject_tag: `gorm:"default:null"`
-	GrantScope    string `protobuf:"bytes,4,opt,name=grant_scope,json=grantScope,proto3" json:"grant_scope,omitempty"`
+	GrantScope    string `protobuf:"bytes,4,opt,name=grant_scope,json=grantScope,proto3" json:"grant_scope,omitempty" gorm:"default:null"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
