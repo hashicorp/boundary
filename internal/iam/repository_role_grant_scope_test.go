@@ -443,7 +443,7 @@ func Test_AddRoleGrantScope(t *testing.T) {
 			wantRoleVersionChange: 0,
 			wantScopes:            []string{globals.GrantScopeThis},
 			wantErr:               true,
-			wantErrMsg:            `iam.(Repository).AddRoleGrantScopes: grant scope cannot be added to project role: parameter violation: error #100`,
+			wantErrMsg:            `iam.(Repository).AddRoleGrantScopes: grant scope cannot be added to project roles: parameter violation: error #100`,
 		},
 	}
 
@@ -525,15 +525,119 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			wantErr:                 false,
 		},
 		{
-			name: "global role change grants types from individual to children",
+			name: "global role set different special and individual scopes",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeDescendants}))
+			},
+			expectRemove:            2,
+			expectRoleVersionChange: 1,
+			scopes:                  []string{globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
+			wantErr:                 false,
+		},
+		{
+			name: "global role change grants types from individual to children with individual scopes",
 			setupRole: func(t *testing.T) *Role {
 				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, proj1.PublicId, proj2.PublicId}))
 			},
-			expectRemove:            2,
+			expectRemove:            0,
 			expectRoleVersionChange: 1,
 			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
 			wantErr:                 false,
 		},
+		{
+			name: "global role set grants to mix type",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId}))
+			},
+			expectRemove:            4,
+			expectRoleVersionChange: 1,
+			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			wantErr:                 false,
+		},
+		{
+			name: "global role set special conflicting scopes return error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix)
+			},
+			expectRemove:            0,
+			expectRoleVersionChange: 0,
+			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeChildren, globals.GrantScopeDescendants},
+			wantErr:                 true,
+			wantErrMsg:              "some error",
+		},
+		{
+			name: "global role set individual conflicting scopes return error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix)
+			},
+			expectRemove:            0,
+			expectRoleVersionChange: 0,
+			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeDescendants, proj1.PublicId, proj2.PublicId},
+			wantErr:                 true,
+			wantErrMsg:              "some error",
+		},
+		{
+			name: "global role set individual to remove individual grants",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId}))
+			},
+			expectRemove:            2,
+			expectRoleVersionChange: 1,
+			scopes:                  []string{org1.PublicId, proj1.PublicId},
+			wantErr:                 false,
+		},
+
+		{
+			name: "org role set no scopes to special",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{"testing-none"}))
+			},
+			expectRemove:            0,
+			expectRoleVersionChange: 1,
+			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+			wantErr:                 false,
+		},
+		{
+			name: "org role switch from specials to individual",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+			},
+			expectRemove:            2,
+			expectRoleVersionChange: 1,
+			scopes:                  []string{proj1.PublicId},
+			wantErr:                 false,
+		},
+		{
+			name: "org role set role to remove all special scopes",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeDescendants}))
+			},
+			expectRemove:            2,
+			expectRoleVersionChange: 1,
+			scopes:                  []string{},
+			wantErr:                 false,
+		},
+		{
+			name: "org role set role to remove all individual scopes",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{proj1.PublicId}))
+			},
+			expectRemove:            2,
+			expectRoleVersionChange: 1,
+			scopes:                  []string{},
+			wantErr:                 false,
+		},
+		{
+			name: "org role add proj under another org returns error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, proj1.PublicId}))
+			},
+			expectRoleVersionChange: 0,
+			scopes:                  []string{globals.GrantScopeThis, proj1.PublicId, proj2.PublicId},
+			wantErr:                 true,
+			wantErrMsg:              "some error",
+		},
+
 		{
 			name: "project role returns error",
 			setupRole: func(t *testing.T) *Role {
