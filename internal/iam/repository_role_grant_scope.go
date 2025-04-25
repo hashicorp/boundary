@@ -432,18 +432,6 @@ func listRoleGrantScopes(ctx context.Context, reader db.Reader, roleIds []string
 	if len(roleIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
 	}
-
-	query := "?"
-	var args []any
-	for i, roleId := range roleIds {
-		if roleId == "" {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
-		}
-		if i > 0 {
-			query = query + ", ?"
-		}
-		args = append(args, roleId)
-	}
 	rows, err := reader.Query(ctx, roleGrantsScopeQuery, []any{roleIds})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query role grant scopes"))
