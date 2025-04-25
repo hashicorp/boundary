@@ -155,27 +155,6 @@ func (g *globalRoleIndividualOrgGrantScope) roleGrantScope() *RoleGrantScope {
 	}
 }
 
-func newGlobalRoleIndividualOrgGrantScope(ctx context.Context, roleId string, scopeId string) (*globalRoleIndividualOrgGrantScope, error) {
-	const op = "iam.newGlobalRoleIndividualOrgGrantScope"
-	if roleId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
-	}
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grant scope")
-	}
-	if !strings.HasPrefix(scopeId, globals.OrgPrefix) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope must be an org")
-	}
-	rgs := &globalRoleIndividualOrgGrantScope{
-		GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
-			ScopeId:    scopeId,
-			RoleId:     roleId,
-			GrantScope: globals.GrantScopeIndividual,
-		},
-	}
-	return rgs, nil
-}
-
 func (g *globalRoleIndividualOrgGrantScope) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
@@ -227,31 +206,6 @@ func (g *globalRoleIndividualProjectGrantScope) roleGrantScope() *RoleGrantScope
 	}
 }
 
-func newGlobalRoleIndividualProjectGrantScope(ctx context.Context, roleId string, scopeId string, grantScope string) (*globalRoleIndividualProjectGrantScope, error) {
-	const op = "iam.newGlobalRoleIndividualProjectGrantScope"
-	if roleId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
-	}
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grant scope")
-	}
-	if grantScope != globals.GrantScopeIndividual &&
-		grantScope != globals.GrantScopeChildren {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("grant scope must be one of [individual, children] but got %s", grantScope))
-	}
-	if !strings.HasPrefix(scopeId, globals.ProjectPrefix) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope must be an org")
-	}
-	rgs := &globalRoleIndividualProjectGrantScope{
-		GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
-			ScopeId:    scopeId,
-			RoleId:     roleId,
-			GrantScope: grantScope,
-		},
-	}
-	return rgs, nil
-}
-
 func (g *globalRoleIndividualProjectGrantScope) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
@@ -290,27 +244,6 @@ func (g *globalRoleIndividualProjectGrantScope) Clone() any {
 type orgRoleIndividualGrantScope struct {
 	*store.OrgRoleIndividualGrantScope
 	tableName string `gorm:"-"`
-}
-
-func newOrgRoleIndividualGrantScope(ctx context.Context, roleId string, scopeId string) (*orgRoleIndividualGrantScope, error) {
-	const op = "iam.newOrgRoleIndividualGrantScope"
-	if roleId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
-	}
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grant scope")
-	}
-	if !strings.HasPrefix(scopeId, globals.ProjectPrefix) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope must be a project")
-	}
-	rgs := &orgRoleIndividualGrantScope{
-		OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
-			ScopeId:    scopeId,
-			RoleId:     roleId,
-			GrantScope: globals.GrantScopeIndividual,
-		},
-	}
-	return rgs, nil
 }
 
 func (g *orgRoleIndividualGrantScope) roleGrantScope() *RoleGrantScope {
