@@ -430,7 +430,7 @@ func testRoleGrantScopeSpecial(t testing.TB, conn *db.DB, r *Role, grantScopeId 
 		o := allocOrgRole()
 		o.PublicId = r.PublicId
 		o.GrantScope = grantScopeId
-		_, err := rw.Update(ctx, &o, []string{"GrantThisRoleScope"}, []string{})
+		_, err := rw.Update(ctx, &o, []string{"GrantScope"}, []string{})
 		require.NoError(t, err)
 		result = &RoleGrantScope{
 			CreateTime:       o.GrantThisRoleScopeUpdateTime,
