@@ -23,20 +23,6 @@ var (
 	_ cli.CommandAutocomplete = (*InitCommand)(nil)
 )
 
-type InitFlags struct {
-	flagConfig                                   []string
-	flagConfigKms                                string
-	flagLogLevel                                 string
-	flagLogFormat                                string
-	flagMigrationUrl                             string
-	flagSkipInitialLoginRoleCreation             bool
-	flagSkipInitialAuthenticatedUserRoleCreation bool
-	flagSkipAuthMethodCreation                   bool
-	flagSkipScopesCreation                       bool
-	flagSkipHostResourcesCreation                bool
-	flagSkipTargetCreation                       bool
-}
-
 type InitCommand struct {
 	*base.Server
 
@@ -46,12 +32,20 @@ type InitCommand struct {
 
 	Config *config.Config
 
-	// This will be intialized, if needed, in ParseFlagsAndConfig when
+	// This will be initialized, if needed, in ParseFlagsAndConfig when
 	// instantiating a config wrapper, if requested. It's then called as a
 	// deferred function on the Run method.
 	configWrapperCleanupFunc func() error
 
-	InitFlags InitFlags
+	// initFlags is a struct that holds initialization flags for various operations.
+	//
+	// New flags should be added as fields to this struct rather than creating new
+	// standalone fields elsewhere.
+	//
+	// For optional flags, helper functions should also be added to determine if
+	// specific configurations should be skipped and why, such as whether a flag
+	// is enabled or a dependency is skipped.
+	initFlags initFlags
 }
 
 func (c *InitCommand) Synopsis() string {
@@ -89,8 +83,8 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 
 	f.StringSliceVar(&base.StringSliceVar{
-		Name:   "config",
-		Target: &c.InitFlags.flagConfig,
+		Name:   flagConfigName,
+		Target: &c.initFlags.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
@@ -99,8 +93,8 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "config-kms",
-		Target: &c.InitFlags.flagConfigKms,
+		Name:   flagConfigKmsName,
+		Target: &c.initFlags.flagConfigKms,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
@@ -109,8 +103,8 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:       "log-level",
-		Target:     &c.InitFlags.flagLogLevel,
+		Name:       flagLogLevelName,
+		Target:     &c.initFlags.flagLogLevel,
 		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
@@ -118,8 +112,8 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:       "log-format",
-		Target:     &c.InitFlags.flagLogFormat,
+		Name:       flagLogFormatName,
+		Target:     &c.initFlags.flagLogFormat,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
@@ -127,44 +121,44 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Init Options")
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-initial-login-role-creation",
-		Target: &c.InitFlags.flagSkipInitialLoginRoleCreation,
+		Name:   flagSkipInitialLoginRoleName,
+		Target: &c.initFlags.flagSkipInitialLoginRoleCreation,
 		Usage:  "If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-initial-authenticated-user-role-creation",
-		Target: &c.InitFlags.flagSkipInitialAuthenticatedUserRoleCreation,
+		Name:   flagSkipInitialAuthenticatedUserRoleName,
+		Target: &c.initFlags.flagSkipInitialAuthenticatedUserRoleCreation,
 		Usage:  "If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-auth-method-creation",
-		Target: &c.InitFlags.flagSkipAuthMethodCreation,
+		Name:   flagSkipAuthMethodName,
+		Target: &c.initFlags.flagSkipAuthMethodCreation,
 		Usage:  "If set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-scopes-creation",
-		Target: &c.InitFlags.flagSkipScopesCreation,
+		Name:   flagSkipScopesName,
+		Target: &c.initFlags.flagSkipScopesCreation,
 		Usage:  "If set, scopes will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-host-resources-creation",
-		Target: &c.InitFlags.flagSkipHostResourcesCreation,
+		Name:   flagSkipHostResourcesName,
+		Target: &c.initFlags.flagSkipHostResourcesCreation,
 		Usage:  "If set, host resources (host catalog, host set, host) will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-target-creation",
-		Target: &c.InitFlags.flagSkipTargetCreation,
+		Name:   flagSkipTargetName,
+		Target: &c.initFlags.flagSkipTargetCreation,
 		Usage:  "If set, a target will not be created as part of initialization.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "migration-url",
-		Target: &c.InitFlags.flagMigrationUrl,
+		Name:   flagMigrationUrlName,
+		Target: &c.initFlags.flagMigrationUrl,
 		Usage:  `If set, overrides a migration URL set in config, and specifies the URL used to connect to the database for initialization. This can allow different permissions for the user running initialization vs. normal operation. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
 
@@ -200,7 +194,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	dialect := "postgres"
 
-	if err := c.SetupLogging(c.InitFlags.flagLogLevel, c.InitFlags.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
+	if err := c.SetupLogging(c.initFlags.flagLogLevel, c.initFlags.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
@@ -254,8 +248,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	if c.Config.Controller.Database.MigrationUrl != "" {
 		migrationUrlToParse = c.Config.Controller.Database.MigrationUrl
 	}
-	if c.InitFlags.flagMigrationUrl != "" {
-		migrationUrlToParse = c.InitFlags.flagMigrationUrl
+	if c.initFlags.flagMigrationUrl != "" {
+		migrationUrlToParse = c.initFlags.flagMigrationUrl
 	}
 	// Fallback to using database URL for everything
 	if migrationUrlToParse == "" {
@@ -325,8 +319,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	if c.InitFlags.SkipInitialLoginRoleCreation() {
-		c.UI.Info("Skipping creation of initial login role.")
+	if shouldSkip, reason := c.initFlags.SkipInitialLoginRoleCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial login role: %s", reason))
 	} else {
 		loginRole, err := c.CreateInitialLoginRole(c.Context)
 		if err != nil {
@@ -345,8 +339,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	if c.InitFlags.SkipInitialAuthenticatedUserRoleCreation() {
-		c.UI.Info("Skipping creation of initial global-scoped authenticated user role.")
+	if shouldSkip, reason := c.initFlags.SkipInitialAuthenticatedUserRoleCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial global-scoped authenticated user role: %s", reason))
 	} else {
 		role, err := c.CreateInitialAuthenticatedUserRole(c.Context)
 		if err != nil {
@@ -366,8 +360,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	if c.InitFlags.SkipAuthMethodCreation() {
-		c.UI.Info("Skipping creation of initial auth method.")
+	if shouldSkip, reason := c.initFlags.SkipAuthMethodCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial auth method: %s", reason))
 	} else {
 		// Use an easy name, at least
 		c.DevLoginName = "admin"
@@ -393,8 +387,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	if c.InitFlags.SkipScopesCreation() {
-		c.UI.Info("Skipping creation of initial scopes.")
+	if shouldSkip, reason := c.initFlags.SkipScopesCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial scopes: %s", reason))
 	} else {
 		orgScope, projScope, err := c.CreateInitialScopes(c.Context)
 		if err != nil {
@@ -427,8 +421,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	if c.InitFlags.SkipHostResourcesCreation() {
-		c.UI.Info("Skipping creation of initial host resources.")
+	if shouldSkip, reason := c.initFlags.SkipHostResourcesCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial host resources: %s", reason))
 	} else {
 		hc, hs, h, err := c.CreateInitialHostResources(c.Context)
 		if err != nil {
@@ -454,8 +448,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	if c.InitFlags.SkipTargetCreation() {
-		c.UI.Info("Skipping creation of initial targets.")
+	if shouldSkip, reason := c.initFlags.SkipTargetCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial target: %s", reason))
 	} else {
 		c.DevTargetSessionConnectionLimit = -1
 		ta, err := c.CreateInitialTargetWithAddress(c.Context)
@@ -512,12 +506,12 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 
 	// Validation
 	switch {
-	case len(c.InitFlags.flagConfig) == 0:
+	case len(c.initFlags.flagConfig) == 0:
 		c.UI.Error("Must specify a config file using -config")
 		return base.CommandUserError
 	}
 
-	c.Config, err = config.Load(c.Context, c.InitFlags.flagConfig, c.InitFlags.flagConfigKms)
+	c.Config, err = config.Load(c.Context, c.initFlags.flagConfig, c.initFlags.flagConfigKms)
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
 		return base.CommandUserError
@@ -544,28 +538,4 @@ func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 		return errors.New(ctx, errors.MigrationIntegrity, op, "oplog_entry is not empty")
 	}
 	return nil
-}
-
-func (f *InitFlags) SkipInitialLoginRoleCreation() bool {
-	return f.flagSkipInitialLoginRoleCreation
-}
-
-func (f *InitFlags) SkipInitialAuthenticatedUserRoleCreation() bool {
-	return f.flagSkipInitialAuthenticatedUserRoleCreation
-}
-
-func (f *InitFlags) SkipAuthMethodCreation() bool {
-	return f.flagSkipAuthMethodCreation
-}
-
-func (f *InitFlags) SkipScopesCreation() bool {
-	return f.flagSkipScopesCreation
-}
-
-func (f *InitFlags) SkipHostResourcesCreation() bool {
-	return f.flagSkipHostResourcesCreation || f.SkipScopesCreation()
-}
-
-func (f *InitFlags) SkipTargetCreation() bool {
-	return f.flagSkipTargetCreation || f.SkipHostResourcesCreation() || f.SkipScopesCreation()
 }
