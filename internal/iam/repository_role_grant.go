@@ -556,7 +556,7 @@ func (r *Repository) grantsForUserGlobalResources(
 	case globals.AnonymousUserId:
 		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ %s }", userId)))
 	default:
-		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ u_anon, u_auth, %s }", userId)))
+		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ %s, %s, %s }", globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId)))
 	}
 	args = append(args, sql.Named("resources", fmt.Sprintf("{ %s, unknown, * }", res.String())))
 
