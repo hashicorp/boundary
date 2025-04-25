@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -38,7 +39,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
 	if scp.Type == scope.Project.String() {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be added to project role")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be added to a project role")
 	}
 
 	// Find existing grant scopes
@@ -264,10 +265,12 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 	case roleVersion == 0:
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
+	}
+	if scp.Type == scope.Project.String() {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be deleted from a project role")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
@@ -275,43 +278,117 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
+	currentGrantScopes, err := listRoleGrantScopes(ctx, r.reader, []string{roleId})
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("failed to list role grant scopes"))
+	}
+	currentMap := map[string]struct{}{}
+	for _, s := range currentGrantScopes {
+		currentMap[s.ScopeIdOrSpecial] = struct{}{}
+	}
+
+	removeThis := false
+	removeSpecial := false
+	scopeToRemove := []string{}
+	for _, s := range grantScopes {
+		if _, ok := currentMap[s]; !ok {
+			// grants doesn't exist so no need to delete
+			continue
+		}
+		if s == globals.GrantScopeThis {
+			removeThis = true
+			continue
+		}
+		if s == globals.GrantScopeChildren || s == globals.GrantScopeDescendants {
+			removeSpecial = true
+			continue
+		}
+		scopeToRemove = append(scopeToRemove, s)
+	}
+	// nothing to remove
+	if len(scopeToRemove) == 0 && !removeThis && !removeSpecial {
+		return db.NoRowsAffected, nil
+	}
+
+	updateMask := []string{"Version"}
+	var updatedRole Resource
+	globalRoleOrgToRemove := make([]*globalRoleIndividualOrgGrantScope, 0, len(grantScopes))
+	globalRoleProjToRemove := make([]*globalRoleIndividualProjectGrantScope, 0, len(grantScopes))
+	orgRoleProjToRemove := make([]*orgRoleIndividualGrantScope, 0, len(grantScopes))
 	var totalRowsDeleted int
+	switch scp.GetType() {
+	case scope.Global.String():
+		g := allocGlobalRole()
+		g.PublicId = roleId
+		g.Version = roleVersion + 1
+		if removeThis {
+			updateMask = append(updateMask, "GrantThisRoleScope")
+			g.GrantThisRoleScope = false
+			totalRowsDeleted += 1
+		}
+		if removeSpecial {
+			updateMask = append(updateMask, "GrantScope")
+			g.GrantScope = globals.GrantScopeIndividual
+			totalRowsDeleted += 1
+		}
+		updatedRole = &g
+		for _, s := range scopeToRemove {
+			switch {
+			case strings.HasPrefix(s, globals.OrgPrefix):
+				globalRoleOrgToRemove = append(globalRoleOrgToRemove, &globalRoleIndividualOrgGrantScope{
+					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
+						RoleId:  roleId,
+						ScopeId: s,
+					},
+				})
+			case strings.HasPrefix(s, globals.ProjectPrefix):
+				globalRoleProjToRemove = append(globalRoleProjToRemove, &globalRoleIndividualProjectGrantScope{
+					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
+						RoleId:  roleId,
+						ScopeId: s,
+					},
+				})
+			}
+		}
+	case scope.Org.String():
+		o := allocOrgRole()
+		o.PublicId = roleId
+		o.Version = roleVersion + 1
+		if removeThis {
+			updateMask = append(updateMask, "GrantThisRoleScope")
+			o.GrantThisRoleScope = false
+			totalRowsDeleted += 1
+		}
+		if removeSpecial {
+			updateMask = append(updateMask, "GrantScope")
+			o.GrantScope = globals.GrantScopeIndividual
+			totalRowsDeleted += 1
+		}
+		updatedRole = &o
+		for _, s := range scopeToRemove {
+			orgRoleProjToRemove = append(orgRoleProjToRemove, &orgRoleIndividualGrantScope{
+				OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
+					RoleId:  roleId,
+					ScopeId: s,
+				},
+			})
+		}
+	default:
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "invalid role type")
+	}
+
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-
-			// We need to update the role version as that's the aggregate
-			var updatedRole Resource
-			switch scp.GetType() {
-			case scope.Global.String():
-				g := allocGlobalRole()
-				g.PublicId = roleId
-				g.Version = roleVersion + 1
-				updatedRole = &g
-			case scope.Org.String():
-				o := allocOrgRole()
-				o.PublicId = roleId
-				o.Version = roleVersion + 1
-				updatedRole = &o
-			case scope.Project.String():
-				p := allocProjectRole()
-				p.PublicId = roleId
-				p.Version = roleVersion + 1
-				updatedRole = &p
-			default:
-				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
-			}
-
 			roleTicket, err := w.GetTicket(ctx, updatedRole)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, updateMask, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -319,26 +396,29 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &roleOplogMsg)
-
-			deleteRoleGrantScopes := make([]*RoleGrantScope, 0, len(grantScopes))
-			for _, grantScope := range grantScopes {
-				roleGrantScope, err := NewRoleGrantScope(ctx, roleId, grantScope)
+			roleGrantScopesOplogMsgs := make([]*oplog.Message, 0, len(globalRoleOrgToRemove)+len(globalRoleProjToRemove)+len(orgRoleProjToRemove))
+			if len(globalRoleOrgToRemove) > 0 {
+				rowsDeleted, err := w.DeleteItems(ctx, globalRoleOrgToRemove, db.NewOplogMsgs(&roleGrantScopesOplogMsgs))
 				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to remove global role individual org grants"))
 				}
-				deleteRoleGrantScopes = append(deleteRoleGrantScopes, roleGrantScope)
+				totalRowsDeleted += rowsDeleted
+			}
+			if len(globalRoleProjToRemove) > 0 {
+				rowsDeleted, err := w.DeleteItems(ctx, globalRoleProjToRemove, db.NewOplogMsgs(&roleGrantScopesOplogMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to remove global role individual project grants"))
+				}
+				totalRowsDeleted += rowsDeleted
+			}
+			if len(orgRoleProjToRemove) > 0 {
+				rowsDeleted, err := w.DeleteItems(ctx, orgRoleProjToRemove, db.NewOplogMsgs(&roleGrantScopesOplogMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to remove org role individual project grants"))
+				}
+				totalRowsDeleted += rowsDeleted
 			}
 
-			if len(deleteRoleGrantScopes) == 0 {
-				return nil
-			}
-
-			roleGrantScopesOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrantScopes))
-			rowsDeleted, err := w.DeleteItems(ctx, deleteRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopesOplogMsgs))
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
-			}
-			totalRowsDeleted = rowsDeleted
 			msgs = append(msgs, roleGrantScopesOplogMsgs...)
 
 			metadata := oplog.Metadata{
@@ -350,7 +430,6 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
-
 			return nil
 		},
 	)

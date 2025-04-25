@@ -558,12 +558,12 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, tc.expectRemove, removed)
-			var scopeIds []string
+			var gotScopeIds []string
 			for _, grantScope := range got {
 				require.Equal(t, r.PublicId, grantScope.RoleId)
-				scopeIds = append(scopeIds, grantScope.ScopeIdOrSpecial)
+				gotScopeIds = append(gotScopeIds, grantScope.ScopeIdOrSpecial)
 			}
-			require.ElementsMatch(t, scopeIds, tc.scopes)
+			require.ElementsMatch(t, gotScopeIds, tc.scopes)
 
 			// also validate using list
 			afterRole, _, _, afterGrantScopes, err := iamRepo.LookupRole(ctx, r.PublicId)
@@ -571,13 +571,145 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			var listedScopeIds []string
 			for _, grantScope := range afterGrantScopes {
 				require.Equal(t, r.PublicId, grantScope.RoleId)
-				listedScopeIds = append(scopeIds, grantScope.ScopeIdOrSpecial)
+				listedScopeIds = append(listedScopeIds, grantScope.ScopeIdOrSpecial)
 			}
 			require.ElementsMatch(t, listedScopeIds, tc.scopes)
 			require.Equal(t, r.Version+tc.expectRoleVersionChange, afterRole.Version)
 		})
 	}
+}
 
+func Test_DeleteRoleGrantScope(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := TestRepo(t, conn, wrap)
+	org1, proj1 := TestScopes(t, iamRepo)
+	org2, proj2 := TestScopes(t, iamRepo)
+
+	testcases := []struct {
+		name                    string
+		setupRole               func(t *testing.T) *Role
+		expectRemove            int
+		expectRoleVersionChange uint32
+		inputScopes             []string
+		finalScopes             []string
+		wantDeleted             int
+		wantErr                 bool
+		wantErrMsg              string
+	}{
+		{
+			name: "global role delete this and descendants",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeDescendants}))
+			},
+			expectRemove:            2,
+			expectRoleVersionChange: 1,
+			inputScopes:             []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			finalScopes:             []string{},
+			wantErr:                 false,
+		},
+		{
+			name: "global role remove special scopes",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId}))
+			},
+			expectRemove:            2,
+			expectRoleVersionChange: 1,
+			inputScopes:             []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+			finalScopes:             []string{proj1.PublicId, proj2.PublicId},
+			wantErr:                 false,
+		},
+		{
+			name: "global role remove individual scopes",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId}))
+			},
+			expectRemove:            4,
+			expectRoleVersionChange: 1,
+			inputScopes:             []string{org1.PublicId, org2.PublicId, proj1.PublicId, proj2.PublicId},
+			finalScopes:             []string{globals.GrantScopeThis},
+			wantErr:                 false,
+		},
+		{
+			name: "global role remove scopes that dont exist",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org1.PublicId, org2.PublicId}))
+			},
+			expectRemove:            0,
+			expectRoleVersionChange: 0,
+			inputScopes:             []string{globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
+			finalScopes:             []string{globals.GrantScopeThis, org1.PublicId, org2.PublicId},
+			wantErr:                 false,
+		},
+		{
+			name: "org role remove special scopes",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+			},
+			expectRemove:            2,
+			expectRoleVersionChange: 1,
+			inputScopes:             []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+			finalScopes:             []string{},
+			wantErr:                 false,
+		},
+		{
+			name: "org role remove individual scopes",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, proj1.PublicId}))
+			},
+			expectRemove:            1,
+			expectRoleVersionChange: 1,
+			inputScopes:             []string{proj1.PublicId, proj2.PublicId},
+			finalScopes:             []string{globals.GrantScopeThis},
+			wantErr:                 false,
+		},
+		{
+			name: "org role remove grants that don't exist",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org2.PublicId, WithGrantScopeIds([]string{proj2.PublicId}))
+			},
+			expectRemove:            0,
+			expectRoleVersionChange: 0,
+			inputScopes:             []string{org1.PublicId, org2.PublicId},
+			finalScopes:             []string{proj2.PublicId},
+			wantErr:                 false,
+		},
+		{
+			name: "project role returns error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId)
+			},
+			inputScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
+			wantErr:     true,
+			wantErrMsg:  `iam.(Repository).DeleteRoleGrantScopes: grant scope cannot be deleted from a project role: parameter violation: error #100`,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := tc.setupRole(t)
+			removed, err := iamRepo.DeleteRoleGrantScopes(ctx, r.PublicId, r.Version, tc.inputScopes)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tc.wantErrMsg)
+				afterRole, _, _, _, err := iamRepo.LookupRole(ctx, r.PublicId)
+				require.NoError(t, err)
+				require.Equal(t, r.Version, afterRole.Version)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expectRemove, removed)
+			afterRole, _, _, afterGrantScopes, err := iamRepo.LookupRole(ctx, r.PublicId)
+			require.NoError(t, err)
+			var afterGrantScopeIds []string
+			for _, grantScope := range afterGrantScopes {
+				require.Equal(t, r.PublicId, grantScope.RoleId)
+				afterGrantScopeIds = append(afterGrantScopeIds, grantScope.ScopeIdOrSpecial)
+			}
+			require.ElementsMatch(t, tc.finalScopes, afterGrantScopeIds)
+			require.Equal(t, r.Version+tc.expectRoleVersionChange, afterRole.Version)
+		})
+	}
 }
 
 func roleScopesToMap(t *testing.T, roleGrantScopes []*RoleGrantScope) map[string][]string {
