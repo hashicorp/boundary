@@ -39,7 +39,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
 	if scp.Type == scope.Project.String() {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be added to a project role")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be added to project roles")
 	}
 
 	// Find existing grant scopes
@@ -103,21 +103,25 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		for _, rgs := range addRoleGrantScopes {
 			switch {
 			case strings.HasPrefix(rgs, globals.OrgPrefix):
-				orgRgs, err := newGlobalRoleIndividualOrgGrantScope(ctx, roleId, rgs)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory global role org grant scope"))
-				}
-				globalRoleOrgGrantScopes = append(globalRoleOrgGrantScopes, orgRgs)
+				globalRoleOrgGrantScopes = append(globalRoleOrgGrantScopes, &globalRoleIndividualOrgGrantScope{
+					GlobalRoleIndividualOrgGrantScope: &store.GlobalRoleIndividualOrgGrantScope{
+						RoleId:     roleId,
+						ScopeId:    rgs,
+						GrantScope: globals.GrantScopeIndividual,
+					},
+				})
 			case strings.HasPrefix(rgs, globals.ProjectPrefix):
 				projGrantScope := globals.GrantScopeIndividual
 				if setSpecialScope != "" {
 					projGrantScope = setSpecialScope
 				}
-				projRgs, err := newGlobalRoleIndividualProjectGrantScope(ctx, roleId, rgs, projGrantScope)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory global role org grant scope"))
-				}
-				globalRoleProjectGrantScopes = append(globalRoleProjectGrantScopes, projRgs)
+				globalRoleProjectGrantScopes = append(globalRoleProjectGrantScopes, &globalRoleIndividualProjectGrantScope{
+					GlobalRoleIndividualProjectGrantScope: &store.GlobalRoleIndividualProjectGrantScope{
+						RoleId:     roleId,
+						ScopeId:    rgs,
+						GrantScope: projGrantScope,
+					},
+				})
 			default:
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("invalid role grant scopes %s", rgs)))
 			}
@@ -135,11 +139,13 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 			updateMask = append(updateMask, "GrantScope")
 		}
 		for _, rgs := range addRoleGrantScopes {
-			projRgs, err := newOrgRoleIndividualGrantScope(ctx, roleId, rgs)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory global role org grant scope"))
-			}
-			orgRoleGrantScopes = append(orgRoleGrantScopes, projRgs)
+			orgRoleGrantScopes = append(orgRoleGrantScopes, &orgRoleIndividualGrantScope{
+				OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
+					RoleId:     roleId,
+					ScopeId:    rgs,
+					GrantScope: globals.GrantScopeIndividual,
+				},
+			})
 		}
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid role scope")
