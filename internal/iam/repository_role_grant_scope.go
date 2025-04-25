@@ -6,14 +6,15 @@ package iam
 import (
 	"context"
 	"fmt"
-
-	"github.com/hashicorp/boundary/internal/types/scope"
-
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
+	"slices"
+	"strings"
 )
 
 // AddRoleGrantScopes will add role grant scopes associated with the role ID in
@@ -21,7 +22,6 @@ import (
 // for the WithVersion option and will return an error.
 func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, roleVersion uint32, grantScopes []string, _ ...Option) ([]*RoleGrantScope, error) {
 	const op = "iam.(Repository).AddRoleGrantScopes"
-
 	switch {
 	case roleId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
@@ -30,38 +30,118 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 	case roleVersion == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-
+	if slices.Contains(grantScopes, globals.GrantScopeDescendants) && slices.Contains(grantScopes, globals.GrantScopeChildren) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "only one of descendants or children grant scope can be specified")
+	}
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
+	if scp.Type == scope.Project.String() {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be added to project role")
+	}
 
 	// Find existing grant scopes
-	roleGrantScopes := []*RoleGrantScope{}
-	if err := r.reader.SearchWhere(ctx, &roleGrantScopes, "role_id = ?", []any{roleId}); err != nil {
+	roleGrantScopes, err := listRoleGrantScopes(ctx, r.reader, []string{roleId})
+	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to search for grant scopes"))
 	}
-	found := map[string]*RoleGrantScope{}
+	found := map[string]struct{}{}
 	for _, rgs := range roleGrantScopes {
-		found[rgs.ScopeIdOrSpecial] = rgs
+		found[rgs.ScopeIdOrSpecial] = struct{}{}
 	}
 
 	// Check incoming grant scopes to see if they exist so we don't try to add
 	// again and cause an integrity error
-	addRoleGrantScopes := make([]any, 0, len(grantScopes))
+	addThisGrantScope := false
+	var setSpecialScope string
+	addRoleGrantScopes := make([]string, 0, len(grantScopes))
 	for _, grantScope := range grantScopes {
-		if _, ok := found[grantScope]; !ok {
-			addRoleGrantScopes = append(addRoleGrantScopes, grantScope)
+		if _, ok := found[grantScope]; ok {
+			continue
 		}
+		if grantScope == globals.GrantScopeThis {
+			addThisGrantScope = true
+			continue
+		}
+		if grantScope == globals.GrantScopeDescendants || grantScope == globals.GrantScopeChildren {
+			setSpecialScope = grantScope
+			continue
+		}
+		addRoleGrantScopes = append(addRoleGrantScopes, grantScope)
 	}
 
-	newRoleGrantScopes := make([]*RoleGrantScope, 0, len(addRoleGrantScopes))
-	for _, grantScope := range grantScopes {
-		roleGrantScope, err := NewRoleGrantScope(ctx, roleId, grantScope)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
+	if !addThisGrantScope && setSpecialScope == "" && len(addRoleGrantScopes) == 0 {
+		return []*RoleGrantScope{}, nil
+	}
+
+	var retRoleGrantScopes []*RoleGrantScope
+	var updatedRole Resource
+	updateMask := []string{"Version"}
+
+	globalRoleOrgGrantScopes := make([]*globalRoleIndividualOrgGrantScope, 0, len(addRoleGrantScopes))
+	globalRoleProjectGrantScopes := make([]*globalRoleIndividualProjectGrantScope, 0, len(addRoleGrantScopes))
+	orgRoleGrantScopes := make([]*orgRoleIndividualGrantScope, 0, len(addRoleGrantScopes))
+
+	switch scp.GetType() {
+	case scope.Global.String():
+		g := allocGlobalRole()
+		g.PublicId = roleId
+		// this is safe to do since it'll be overridden by the trigger, but we want to guarantee that version
+		// is bumped when the globalRole isn't updated
+		g.Version = roleVersion + 1
+		if addThisGrantScope {
+			g.GrantThisRoleScope = true
+			updateMask = append(updateMask, "GrantThisRoleScope")
 		}
-		newRoleGrantScopes = append(newRoleGrantScopes, roleGrantScope)
+		if setSpecialScope != "" {
+			g.GrantScope = setSpecialScope
+			updateMask = append(updateMask, "GrantScope")
+		}
+		updatedRole = &g
+		for _, rgs := range addRoleGrantScopes {
+			switch {
+			case strings.HasPrefix(rgs, globals.OrgPrefix):
+				orgRgs, err := newGlobalRoleIndividualOrgGrantScope(ctx, roleId, rgs)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory global role org grant scope"))
+				}
+				globalRoleOrgGrantScopes = append(globalRoleOrgGrantScopes, orgRgs)
+			case strings.HasPrefix(rgs, globals.ProjectPrefix):
+				projGrantScope := globals.GrantScopeIndividual
+				if setSpecialScope != "" {
+					projGrantScope = setSpecialScope
+				}
+				projRgs, err := newGlobalRoleIndividualProjectGrantScope(ctx, roleId, rgs, projGrantScope)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory global role org grant scope"))
+				}
+				globalRoleProjectGrantScopes = append(globalRoleProjectGrantScopes, projRgs)
+			default:
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("invalid role grant scopes %s", rgs)))
+			}
+		}
+	case scope.Org.String():
+		o := allocOrgRole()
+		o.PublicId = roleId
+		o.Version = roleVersion + 1
+		if addThisGrantScope {
+			o.GrantThisRoleScope = true
+			updateMask = append(updateMask, "GrantThisRoleScope")
+		}
+		if setSpecialScope != "" {
+			o.GrantScope = setSpecialScope
+			updateMask = append(updateMask, "GrantScope")
+		}
+		for _, rgs := range addRoleGrantScopes {
+			projRgs, err := newOrgRoleIndividualGrantScope(ctx, roleId, rgs)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory global role org grant scope"))
+			}
+			orgRoleGrantScopes = append(orgRoleGrantScopes, projRgs)
+		}
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid role scope")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
@@ -75,48 +155,82 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			// We need to update the role version as that's the aggregate
-			var updatedRole Resource
-			switch scp.GetType() {
-			case scope.Global.String():
-				g := allocGlobalRole()
-				g.PublicId = roleId
-				g.Version = roleVersion + 1
-				updatedRole = &g
-			case scope.Org.String():
-				o := allocOrgRole()
-				o.PublicId = roleId
-				o.Version = roleVersion + 1
-				updatedRole = &o
-			case scope.Project.String():
-				p := allocProjectRole()
-				p.PublicId = roleId
-				p.Version = roleVersion + 1
-				updatedRole = &p
-			default:
-				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
-			}
-
 			roleTicket, err := w.GetTicket(ctx, updatedRole)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, updatedRole, updateMask, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
+			switch updatedRole.(type) {
+			case *globalRole:
+				u := updatedRole.(*globalRole)
+				if addThisGrantScope {
+					retRoleGrantScopes = append(retRoleGrantScopes, &RoleGrantScope{
+						CreateTime:       u.GrantThisRoleScopeUpdateTime,
+						RoleId:           u.PublicId,
+						ScopeIdOrSpecial: globals.GrantScopeThis,
+					})
+				}
+				if setSpecialScope != "" {
+					retRoleGrantScopes = append(retRoleGrantScopes, &RoleGrantScope{
+						CreateTime:       u.GrantScopeUpdateTime,
+						RoleId:           u.PublicId,
+						ScopeIdOrSpecial: u.GrantScope,
+					})
+				}
+			case *orgRole:
+				o := updatedRole.(*orgRole)
+				if addThisGrantScope {
+					retRoleGrantScopes = append(retRoleGrantScopes, &RoleGrantScope{
+						CreateTime:       o.GrantThisRoleScopeUpdateTime,
+						RoleId:           o.PublicId,
+						ScopeIdOrSpecial: globals.GrantScopeThis,
+					})
+				}
+				if setSpecialScope != "" {
+					retRoleGrantScopes = append(retRoleGrantScopes, &RoleGrantScope{
+						CreateTime:       o.GrantScopeUpdateTime,
+						RoleId:           o.PublicId,
+						ScopeIdOrSpecial: o.GrantScope,
+					})
+				}
+			}
+
 			if rowsUpdated != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
 			}
-			msgs = append(msgs, &roleOplogMsg)
-			roleGrantScopesOplogMsgs := make([]*oplog.Message, 0, len(newRoleGrantScopes))
-			if err := w.CreateItems(ctx, newRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopesOplogMsgs)); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
-			}
-			msgs = append(msgs, roleGrantScopesOplogMsgs...)
 
+			msgs = append(msgs, &roleOplogMsg)
+			if len(globalRoleOrgGrantScopes) > 0 {
+				roleGrantScopesOplogMsgs := make([]*oplog.Message, 0, len(globalRoleOrgGrantScopes))
+				if err := w.CreateItems(ctx, globalRoleOrgGrantScopes, db.NewOplogMsgs(&roleGrantScopesOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add individual org grant scopes for global role"))
+				}
+				for _, gro := range globalRoleOrgGrantScopes {
+					retRoleGrantScopes = append(retRoleGrantScopes, gro.roleGrantScope())
+				}
+			}
+			if len(globalRoleProjectGrantScopes) > 0 {
+				roleGrantScopesOplogMsgs := make([]*oplog.Message, 0, len(globalRoleProjectGrantScopes))
+				if err := w.CreateItems(ctx, globalRoleProjectGrantScopes, db.NewOplogMsgs(&roleGrantScopesOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add individual proj grant scopes for global role"))
+				}
+				for _, grp := range globalRoleProjectGrantScopes {
+					retRoleGrantScopes = append(retRoleGrantScopes, grp.roleGrantScope())
+				}
+			}
+			if len(orgRoleGrantScopes) > 0 {
+				roleGrantScopesOplogMsgs := make([]*oplog.Message, 0, len(orgRoleGrantScopes))
+				if err := w.CreateItems(ctx, orgRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopesOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add individual proj grant scopes for global role"))
+				}
+				for _, grp := range orgRoleGrantScopes {
+					retRoleGrantScopes = append(retRoleGrantScopes, grp.roleGrantScope())
+				}
+			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 				"scope-id":           []string{scp.PublicId},
@@ -133,7 +247,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return newRoleGrantScopes, nil
+	return retRoleGrantScopes, nil
 }
 
 // DeleteRoleGrantScopes will delete role grant scopes associated with the role ID in
@@ -277,13 +391,17 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
+	if scp.Type == scope.Project.String() {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "cannot modify grant scopes of a project scoped role")
+	}
+
 	// NOTE: Set calculation can safely take place out of the transaction since
 	// we are using roleVersion to ensure that we end up operating on the same
 	// set of data from this query to the final set in the transaction function
 
 	// Find existing grant scopes
-	roleGrantScopes := []*RoleGrantScope{}
-	if err := reader.SearchWhere(ctx, &roleGrantScopes, "role_id = ?", []any{roleId}); err != nil {
+	roleGrantScopes, err := listRoleGrantScopes(ctx, reader, []string{roleId})
+	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to search for grant scopes"))
 	}
 	found := map[string]*RoleGrantScope{}
