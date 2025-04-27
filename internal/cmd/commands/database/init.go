@@ -32,22 +32,20 @@ type InitCommand struct {
 
 	Config *config.Config
 
-	// This will be intialized, if needed, in ParseFlagsAndConfig when
+	// This will be initialized, if needed, in ParseFlagsAndConfig when
 	// instantiating a config wrapper, if requested. It's then called as a
 	// deferred function on the Run method.
 	configWrapperCleanupFunc func() error
 
-	flagConfig                                   []string
-	flagConfigKms                                string
-	flagLogLevel                                 string
-	flagLogFormat                                string
-	flagMigrationUrl                             string
-	flagSkipInitialLoginRoleCreation             bool
-	flagSkipInitialAuthenticatedUserRoleCreation bool
-	flagSkipAuthMethodCreation                   bool
-	flagSkipScopesCreation                       bool
-	flagSkipHostResourcesCreation                bool
-	flagSkipTargetCreation                       bool
+	// initFlags is a struct that holds initialization flags for various operations.
+	//
+	// New flags should be added as fields to this struct rather than creating new
+	// standalone fields elsewhere.
+	//
+	// For optional flags, helper functions should also be added to determine if
+	// specific configurations should be skipped and why, such as whether a flag
+	// is enabled or a dependency is skipped.
+	initFlags initFlags
 }
 
 func (c *InitCommand) Synopsis() string {
@@ -85,8 +83,8 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 
 	f.StringSliceVar(&base.StringSliceVar{
-		Name:   "config",
-		Target: &c.flagConfig,
+		Name:   flagConfigName,
+		Target: &c.initFlags.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
@@ -95,8 +93,8 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "config-kms",
-		Target: &c.flagConfigKms,
+		Name:   flagConfigKmsName,
+		Target: &c.initFlags.flagConfigKms,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
@@ -105,8 +103,8 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:       "log-level",
-		Target:     &c.flagLogLevel,
+		Name:       flagLogLevelName,
+		Target:     &c.initFlags.flagLogLevel,
 		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
@@ -114,8 +112,8 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:       "log-format",
-		Target:     &c.flagLogFormat,
+		Name:       flagLogFormatName,
+		Target:     &c.initFlags.flagLogFormat,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format. Supported values are "standard" and "json".`,
 	})
@@ -123,44 +121,44 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Init Options")
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-initial-login-role-creation",
-		Target: &c.flagSkipInitialLoginRoleCreation,
+		Name:   flagSkipInitialLoginRoleName,
+		Target: &c.initFlags.flagSkipInitialLoginRoleCreation,
 		Usage:  "If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-initial-authenticated-user-role-creation",
-		Target: &c.flagSkipInitialAuthenticatedUserRoleCreation,
+		Name:   flagSkipInitialAuthenticatedUserRoleName,
+		Target: &c.initFlags.flagSkipInitialAuthenticatedUserRoleCreation,
 		Usage:  "If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-auth-method-creation",
-		Target: &c.flagSkipAuthMethodCreation,
+		Name:   flagSkipAuthMethodName,
+		Target: &c.initFlags.flagSkipAuthMethodCreation,
 		Usage:  "If set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-scopes-creation",
-		Target: &c.flagSkipScopesCreation,
+		Name:   flagSkipScopesName,
+		Target: &c.initFlags.flagSkipScopesCreation,
 		Usage:  "If set, scopes will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-host-resources-creation",
-		Target: &c.flagSkipHostResourcesCreation,
+		Name:   flagSkipHostResourcesName,
+		Target: &c.initFlags.flagSkipHostResourcesCreation,
 		Usage:  "If set, host resources (host catalog, host set, host) will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "skip-target-creation",
-		Target: &c.flagSkipTargetCreation,
+		Name:   flagSkipTargetName,
+		Target: &c.initFlags.flagSkipTargetCreation,
 		Usage:  "If set, a target will not be created as part of initialization.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "migration-url",
-		Target: &c.flagMigrationUrl,
+		Name:   flagMigrationUrlName,
+		Target: &c.initFlags.flagMigrationUrl,
 		Usage:  `If set, overrides a migration URL set in config, and specifies the URL used to connect to the database for initialization. This can allow different permissions for the user running initialization vs. normal operation. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
 
@@ -196,7 +194,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	dialect := "postgres"
 
-	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
+	if err := c.SetupLogging(c.initFlags.flagLogLevel, c.initFlags.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
@@ -250,8 +248,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	if c.Config.Controller.Database.MigrationUrl != "" {
 		migrationUrlToParse = c.Config.Controller.Database.MigrationUrl
 	}
-	if c.flagMigrationUrl != "" {
-		migrationUrlToParse = c.flagMigrationUrl
+	if c.initFlags.flagMigrationUrl != "" {
+		migrationUrlToParse = c.initFlags.flagMigrationUrl
 	}
 	// Fallback to using database URL for everything
 	if migrationUrlToParse == "" {
@@ -321,178 +319,176 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	if c.flagSkipInitialLoginRoleCreation {
-		return base.CommandSuccess
+	if shouldSkip, reason := c.initFlags.SkipInitialLoginRoleCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial login role: %s", reason))
+	} else {
+		loginRole, err := c.CreateInitialLoginRole(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("error creating initial login role: %w", err).Error())
+			return base.CommandCliError
+		}
+		roleInfo := &RoleInfo{
+			RoleId: loginRole.PublicId,
+			Name:   loginRole.Name,
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateInitialLoginRoleTableOutput(roleInfo))
+		case "json":
+			jsonMap["login_role"] = roleInfo
+		}
 	}
 
-	role, err := c.CreateInitialLoginRole(c.Context)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating initial global-scoped login role: %w", err).Error())
-		return base.CommandCliError
+	if shouldSkip, reason := c.initFlags.SkipInitialAuthenticatedUserRoleCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial global-scoped authenticated user role: %s", reason))
+	} else {
+		role, err := c.CreateInitialAuthenticatedUserRole(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error creating initial global-scoped authenticated user role: %w", err).Error())
+			return base.CommandCliError
+		}
+
+		roleInfo := &RoleInfo{
+			RoleId: role.PublicId,
+			Name:   role.Name,
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateInitialAuthenticatedUserRoleOutput(roleInfo))
+		case "json":
+			jsonMap["authenticated_user_role"] = roleInfo
+		}
 	}
 
-	roleInfo := &RoleInfo{
-		RoleId: role.PublicId,
-		Name:   role.Name,
-	}
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateInitialLoginRoleTableOutput(roleInfo))
-	case "json":
-		jsonMap["login_role"] = roleInfo
-	}
-
-	if c.flagSkipInitialAuthenticatedUserRoleCreation {
-		return base.CommandSuccess
-	}
-
-	role, err = c.CreateInitialAuthenticatedUserRole(c.Context)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating initial global-scoped authenticated user role: %w", err).Error())
-		return base.CommandCliError
-	}
-
-	roleInfo = &RoleInfo{
-		RoleId: role.PublicId,
-		Name:   role.Name,
-	}
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateInitialAuthenticatedUserRoleOutput(roleInfo))
-	case "json":
-		jsonMap["authenticated_user_role"] = roleInfo
+	if shouldSkip, reason := c.initFlags.SkipAuthMethodCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial auth method: %s", reason))
+	} else {
+		// Use an easy name, at least
+		c.DevLoginName = "admin"
+		am, user, err := c.CreateInitialPasswordAuthMethod(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
+			return base.CommandCliError
+		}
+		authMethodInfo := &AuthInfo{
+			AuthMethodId:   c.DevPasswordAuthMethodId,
+			AuthMethodName: am.Name,
+			LoginName:      c.DevLoginName,
+			Password:       c.DevPassword,
+			ScopeId:        scope.Global.String(),
+			UserId:         user.PublicId,
+			UserName:       user.Name,
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateInitialAuthTableOutput(authMethodInfo))
+		case "json":
+			jsonMap["auth_method"] = authMethodInfo
+		}
 	}
 
-	if c.flagSkipAuthMethodCreation {
-		return base.CommandSuccess
+	if shouldSkip, reason := c.initFlags.SkipScopesCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial scopes: %s", reason))
+	} else {
+		orgScope, projScope, err := c.CreateInitialScopes(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
+			return base.CommandCliError
+		}
+
+		orgScopeInfo := &ScopeInfo{
+			ScopeId: c.DevOrgId,
+			Type:    scope.Org.String(),
+			Name:    orgScope.Name,
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateInitialScopeTableOutput(orgScopeInfo))
+		case "json":
+			jsonMap["org_scope"] = orgScopeInfo
+		}
+
+		projScopeInfo := &ScopeInfo{
+			ScopeId: c.DevProjectId,
+			Type:    scope.Project.String(),
+			Name:    projScope.Name,
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateInitialScopeTableOutput(projScopeInfo))
+		case "json":
+			jsonMap["project_scope"] = projScopeInfo
+		}
 	}
 
-	// Use an easy name, at least
-	c.DevLoginName = "admin"
-	am, user, err := c.CreateInitialPasswordAuthMethod(c.Context)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
-		return base.CommandCliError
+	if shouldSkip, reason := c.initFlags.SkipHostResourcesCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial host resources: %s", reason))
+	} else {
+		hc, hs, h, err := c.CreateInitialHostResources(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
+			return base.CommandCliError
+		}
+
+		hostInfo := &HostInfo{
+			HostCatalogId:   c.DevHostCatalogId,
+			HostCatalogName: hc.GetName(),
+			HostSetId:       c.DevHostSetId,
+			HostSetName:     hs.GetName(),
+			HostId:          c.DevHostId,
+			HostName:        h.GetName(),
+			Type:            "static",
+			ScopeId:         c.DevProjectId,
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateInitialHostResourcesTableOutput(hostInfo))
+		case "json":
+			jsonMap["host_resources"] = hostInfo
+		}
 	}
 
-	authMethodInfo := &AuthInfo{
-		AuthMethodId:   c.DevPasswordAuthMethodId,
-		AuthMethodName: am.Name,
-		LoginName:      c.DevLoginName,
-		Password:       c.DevPassword,
-		ScopeId:        scope.Global.String(),
-		UserId:         user.PublicId,
-		UserName:       user.Name,
-	}
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateInitialAuthTableOutput(authMethodInfo))
-	case "json":
-		jsonMap["auth_method"] = authMethodInfo
-	}
+	if shouldSkip, reason := c.initFlags.SkipTargetCreation(); shouldSkip {
+		c.UI.Info(fmt.Sprintf("Skipping creation of initial target: %s", reason))
+	} else {
+		c.DevTargetSessionConnectionLimit = -1
+		ta, err := c.CreateInitialTargetWithAddress(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())
+			return base.CommandCliError
+		}
+		taInfo := &TargetInfo{
+			TargetId:               ta.GetPublicId(),
+			DefaultPort:            ta.GetDefaultPort(),
+			SessionMaxSeconds:      ta.GetSessionMaxSeconds(),
+			SessionConnectionLimit: ta.GetSessionConnectionLimit(),
+			Type:                   string(ta.GetType()),
+			ScopeId:                ta.GetProjectId(),
+			Name:                   ta.GetName(),
+		}
 
-	if c.flagSkipScopesCreation {
-		return base.CommandSuccess
-	}
-
-	orgScope, projScope, err := c.CreateInitialScopes(c.Context)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
-		return base.CommandCliError
-	}
-
-	orgScopeInfo := &ScopeInfo{
-		ScopeId: c.DevOrgId,
-		Type:    scope.Org.String(),
-		Name:    orgScope.Name,
-	}
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateInitialScopeTableOutput(orgScopeInfo))
-	case "json":
-		jsonMap["org_scope"] = orgScopeInfo
-	}
-
-	projScopeInfo := &ScopeInfo{
-		ScopeId: c.DevProjectId,
-		Type:    scope.Project.String(),
-		Name:    projScope.Name,
-	}
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateInitialScopeTableOutput(projScopeInfo))
-	case "json":
-		jsonMap["project_scope"] = projScopeInfo
-	}
-
-	if c.flagSkipHostResourcesCreation {
-		return base.CommandSuccess
-	}
-
-	hc, hs, h, err := c.CreateInitialHostResources(c.Context)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
-		return base.CommandCliError
-	}
-
-	hostInfo := &HostInfo{
-		HostCatalogId:   c.DevHostCatalogId,
-		HostCatalogName: hc.GetName(),
-		HostSetId:       c.DevHostSetId,
-		HostSetName:     hs.GetName(),
-		HostId:          c.DevHostId,
-		HostName:        h.GetName(),
-		Type:            "static",
-		ScopeId:         c.DevProjectId,
-	}
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateInitialHostResourcesTableOutput(hostInfo))
-	case "json":
-		jsonMap["host_resources"] = hostInfo
-	}
-
-	if c.flagSkipTargetCreation {
-		return base.CommandSuccess
-	}
-
-	c.DevTargetSessionConnectionLimit = -1
-	ta, err := c.CreateInitialTargetWithAddress(c.Context)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())
-		return base.CommandCliError
-	}
-	taInfo := &TargetInfo{
-		TargetId:               ta.GetPublicId(),
-		DefaultPort:            ta.GetDefaultPort(),
-		SessionMaxSeconds:      ta.GetSessionMaxSeconds(),
-		SessionConnectionLimit: ta.GetSessionConnectionLimit(),
-		Type:                   string(ta.GetType()),
-		ScopeId:                ta.GetProjectId(),
-		Name:                   ta.GetName(),
-	}
-
-	ths, err := c.CreateInitialTargetWithHostSources(c.Context)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating initial secondary target: %w", err).Error())
-		return base.CommandCliError
-	}
-	thsInfo := &TargetInfo{
-		TargetId:               ths.GetPublicId(),
-		DefaultPort:            ths.GetDefaultPort(),
-		SessionMaxSeconds:      ths.GetSessionMaxSeconds(),
-		SessionConnectionLimit: ths.GetSessionConnectionLimit(),
-		Type:                   string(ths.GetType()),
-		ScopeId:                ths.GetProjectId(),
-		Name:                   ths.GetName(),
-	}
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(generateInitialTargetTableOutput(taInfo))
-		c.UI.Output(generateInitialTargetTableOutput(thsInfo))
-	case "json":
-		jsonMap["target"] = taInfo
-		jsonMap["target_secondary"] = thsInfo
+		ths, err := c.CreateInitialTargetWithHostSources(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error creating initial secondary target: %w", err).Error())
+			return base.CommandCliError
+		}
+		thsInfo := &TargetInfo{
+			TargetId:               ths.GetPublicId(),
+			DefaultPort:            ths.GetDefaultPort(),
+			SessionMaxSeconds:      ths.GetSessionMaxSeconds(),
+			SessionConnectionLimit: ths.GetSessionConnectionLimit(),
+			Type:                   string(ths.GetType()),
+			ScopeId:                ths.GetProjectId(),
+			Name:                   ths.GetName(),
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateInitialTargetTableOutput(taInfo))
+			c.UI.Output(generateInitialTargetTableOutput(thsInfo))
+		case "json":
+			jsonMap["target"] = taInfo
+			jsonMap["target_secondary"] = thsInfo
+		}
 	}
 
 	return base.CommandSuccess
@@ -510,12 +506,12 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 
 	// Validation
 	switch {
-	case len(c.flagConfig) == 0:
+	case len(c.initFlags.flagConfig) == 0:
 		c.UI.Error("Must specify a config file using -config")
 		return base.CommandUserError
 	}
 
-	c.Config, err = config.Load(c.Context, c.flagConfig, c.flagConfigKms)
+	c.Config, err = config.Load(c.Context, c.initFlags.flagConfig, c.initFlags.flagConfigKms)
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
 		return base.CommandUserError
