@@ -43,12 +43,21 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
   ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
+* ui: Populate subject for OIDC account name displays.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2757)).
+* ui: Improved performance when initially fetching large sets of resources.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2752)).
+* ui: Improved search & filtering behavior when using search field.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2735)).
 
 ### Bug fixes
 
 * Fixed an issue in the worker where closing an SSH channel failed to exit a
   loop, which would cause a massive spike in CPU usage over time. This change
   only affects Enterprise.
+* ui: Fix an issue where the user could not change the key_type of a
+  Vault SSH Certificate credential library.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2790)).
 
 ## 0.19.0 (2025/02/10)
 ### New and Improved
