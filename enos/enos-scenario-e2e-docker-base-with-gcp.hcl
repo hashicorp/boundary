@@ -21,6 +21,7 @@ scenario "e2e_docker_base_with_gcp" {
     local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    license                    = var.boundary_license
     gcp_private_key            = var.gcp_private_key_path != null ? file(var.gcp_private_key_path) : var.gcp_private_key
 
     network_cluster = "e2e_gcp"
