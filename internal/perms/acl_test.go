@@ -830,7 +830,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleScope:  "global",
 					grantScope: globals.GrantScopeDescendants,
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -856,7 +855,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleScope:  "global",
 					grantScope: globals.GrantScopeDescendants,
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -864,7 +862,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleScope:  "global",
 					grantScope: "global",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -899,7 +896,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleScope:  "global",
 					grantScope: "global",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -925,7 +921,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleScope:  "global",
 					grantScope: globals.GrantScopeChildren,
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -951,7 +946,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleScope:  "global",
 					grantScope: "global",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -959,7 +953,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleScope:  "global",
 					grantScope: globals.GrantScopeChildren,
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -967,7 +960,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleScope:  "global",
 					grantScope: "p_1",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1115,7 +1107,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: scope.Global.String(),
 					grantScope:        globals.GrantScopeChildren,
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1124,7 +1115,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: scope.Global.String(),
 					grantScope:        "o_2",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1162,7 +1152,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: scope.Global.String(),
 					grantScope:        globals.GrantScopeChildren,
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1171,7 +1160,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: scope.Global.String(),
 					grantScope:        "o_1",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1209,7 +1197,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: scope.Global.String(),
 					grantScope:        globals.GrantScopeChildren,
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1218,7 +1205,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: scope.Global.String(),
 					grantScope:        "o_1",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1227,7 +1213,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: "o_1",
 					grantScope:        "p_1a",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1236,7 +1221,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: "o_1",
 					grantScope:        "p_1b",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
@@ -1245,7 +1229,6 @@ func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
 					roleParentScopeId: "o_2",
 					grantScope:        "p_2",
 					grants: []string{
-						"type=target;actions=list",
 						"ids=ttcp_1234567890;actions=read",
 					},
 				},
