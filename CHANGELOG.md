@@ -4,10 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### New and Improved 
+### New and Improved
 
-* Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
-  ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
 * ui: Populate subject for OIDC account name displays.
@@ -26,18 +24,24 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   Vault SSH Certificate credential library.
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2790)).
 
+## 0.19.1 (2025/03/04)
+### New and Improved
+
+* Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
+  ([PR](https://github.com/hashicorp/boundary-plugin-azure/pull/22)).
+
 ## 0.19.0 (2025/02/10)
 ### New and Improved
 
 * Introduces soft-delete for users within the client cache.
   ([PR](https://github.com/hashicorp/boundary/pull/5173)).
-* GCP dynamic host catalog: Add dynamic host catalog support for 
+* GCP dynamic host catalog: Add dynamic host catalog support for
   discovering GCP Compute Engine VM Instances.
   ([PR](https://github.com/hashicorp/boundary/pull/5229)).
-* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and 
+* The worker domain has been refactored to create clear domain functions for worker operations, improve readability and
 maintainability of worker queries, and improve DB performance. ([PR](https://github.com/hashicorp/boundary/pull/5338)).
 * Adds support for dual-stack networking for AWS operations.
-  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52)) 
+  ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/52))
   * **Note**: As a consequence of updating AWS SDK dependencies to enable
     dual-stack support, this Boundary release may consume more memory. From our
     testing, the increase seems to be around 1.6x, however this
@@ -270,7 +274,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * curl (enterprise): The curl binary is no longer included in the published
   Docker container images for Boundary Enterprise to address the CVE-2024-7264
   vulnerability.
-  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)  
+  [CVE-2024-7264](https://github.com/advisories/GHSA-97c4-2w4v-c7r8)
 
 ## 0.17.0 (2024/07/17)
 
@@ -286,7 +290,7 @@ object store. There are two SBC types, managed secret and environmental.
   for a worker to perform a specific action using the storage bucket. SBC
   permission types (write, read, & delete) represent an action that is required
   for the storage bucket to do as a routine task on an external object store.
-  Each permission type has a permission state (ok, error, unknown). 
+  Each permission type has a permission state (ok, error, unknown).
   * SBC Worker Filtering: For protocol aware workers that require interaction
   with an external storage service, the workers will be filtered by the SBC
   state depending on the action and permission required.
