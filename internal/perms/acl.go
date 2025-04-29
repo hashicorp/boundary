@@ -468,6 +468,15 @@ func (a ACL) ListResolvableAliasesPermissions(requestedType resource.Type, actio
 				// so skip it
 				continue
 			}
+		case p.RoleScopeId == scope.Global.String() && strings.HasPrefix(grantScopeId, scope.Org.Prefix()):
+			// Handle the case where the parent scope is global, and the grant is at the org level.
+			// Direct grants must either match the parent scope or be downstream. This condition
+			// accounts for a scenario where a child grant exists at the org level while the parent
+			// is global. If the grant were for projects, it would require a descendants grant instead.
+			// Skip processing if the current scope is already accounted for in the childrenScopes map.
+			if _, ok := childrenScopes[p.RoleScopeId]; ok {
+				continue
+			}
 		}
 		if a.buildPermission(&scopes.ScopeInfo{Id: grantScopeId}, requestedType, actions, false, &p) {
 			perms = append(perms, p)

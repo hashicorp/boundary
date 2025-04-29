@@ -73,11 +73,11 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing permissions")
 	}
 
+	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
 	// This condition checks if there are no direct IDs, no direct scope IDs, and no child scopes,
 	// while also ensuring that the "allDescendants" flag is not set, and if so returns early.
 	// An example scenario that can cause this is when a role on the global scope grants a user
 	// access to list aliases and read targets, but only within the global scope and its immediate children.
-	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
 	if !allDescendants && len(directIds) == 0 && len(directScopeIds) == 0 && len(childAllScopes) == 0 {
 		return []*Alias{}, time.Time{}, nil
 	}
