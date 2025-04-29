@@ -235,7 +235,7 @@ const (
          where %s -- the where clause is programmatically generated
          order by update_time desc, public_id desc
          limit @limit
-	)
+    )
     select public_id,
            scope_id,
            name,
