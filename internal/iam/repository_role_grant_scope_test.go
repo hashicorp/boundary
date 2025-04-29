@@ -5,6 +5,7 @@ package iam
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -281,11 +282,7 @@ func Test_lookupRoleScope(t *testing.T) {
 		{
 			name: "bad role id returns error",
 			setupExpect: func(t *testing.T) ([]*Role, []*RoleGrantScope) {
-				invalidRole := &Role{
-					PublicId: "",
-					ScopeId:  globals.GlobalPrefix,
-				}
-				return []*Role{invalidRole}, []*RoleGrantScope{}
+				return []*Role{}, []*RoleGrantScope{}
 			},
 			wantErr:    true,
 			wantErrMsg: `iam.(Repository).listRoleGrantScopes: missing role ids: parameter violation: error #100`,
@@ -531,7 +528,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			},
 			expectRemove:            2,
 			expectRoleVersionChange: 1,
-			scopes:                  []string{globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
+			scopes:                  []string{globals.GrantScopeChildren, proj1.PublicId},
 			wantErr:                 false,
 		},
 		{
@@ -561,9 +558,9 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			},
 			expectRemove:            0,
 			expectRoleVersionChange: 0,
-			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeChildren, globals.GrantScopeDescendants},
+			scopes:                  []string{globals.GrantScopeChildren, globals.GrantScopeDescendants},
 			wantErr:                 true,
-			wantErrMsg:              "some error",
+			wantErrMsg:              "iam.(Repository).SetRoleGrantScopes: only one of ['children', 'descendants'] can be specified: parameter violation: error #100",
 		},
 		{
 			name: "global role set individual conflicting scopes return error",
@@ -574,7 +571,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			expectRoleVersionChange: 0,
 			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeDescendants, proj1.PublicId, proj2.PublicId},
 			wantErr:                 true,
-			wantErrMsg:              "some error",
+			wantErrMsg:              "iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to add individual project grant scope for global role during set: db.CreateItems: only_individual_or_children_grant_scope_allowed constraint failed: check constraint violated: integrity violation: error #1000",
 		},
 		{
 			name: "global role set individual to remove individual grants",
@@ -610,7 +607,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 		{
 			name: "org role set role to remove all special scopes",
 			setupRole: func(t *testing.T) *Role {
-				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeDescendants}))
+				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
 			},
 			expectRemove:            2,
 			expectRoleVersionChange: 1,
@@ -622,7 +619,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			setupRole: func(t *testing.T) *Role {
 				return TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{proj1.PublicId}))
 			},
-			expectRemove:            2,
+			expectRemove:            1,
 			expectRoleVersionChange: 1,
 			scopes:                  []string{},
 			wantErr:                 false,
@@ -635,17 +632,36 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			expectRoleVersionChange: 0,
 			scopes:                  []string{globals.GrantScopeThis, proj1.PublicId, proj2.PublicId},
 			wantErr:                 true,
-			wantErrMsg:              "some error",
+			wantErrMsg:              fmt.Sprintf("iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to add individual project grant scope for org role during set: db.CreateItems: project scope_id %s not found in org: integrity violation: error #1104", proj2.PublicId),
 		},
-
 		{
-			name: "project role returns error",
+			name: "org role conflicting grant scopes returns error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId)
+			},
+			expectRoleVersionChange: 0,
+			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId},
+			wantErr:                 true,
+			wantErrMsg:              "iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to add individual project grant scope for org role during set: db.CreateItems: only_individual_grant_scope_allowed constraint failed: check constraint violated: integrity violation: error #1000",
+		},
+		{
+			name: "org role setting descendent grants returns error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, org1.PublicId)
+			},
+			expectRoleVersionChange: 0,
+			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			wantErr:                 true,
+			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to update role version: db.Update: insert or update on table "iam_role_org" violates foreign key constraint "iam_role_org_grant_scope_enm_fkey": integrity violation: error #1003`,
+		},
+		{
+			name: "project scope role returns error",
 			setupRole: func(t *testing.T) *Role {
 				return TestRole(t, conn, proj1.PublicId)
 			},
 			scopes:     []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
 			wantErr:    true,
-			wantErrMsg: `iam.(Repository).SetRoleGrantScopes: grant scope cannot be added to project role: parameter violation: error #100`,
+			wantErrMsg: `iam.(Repository).SetRoleGrantScopes: cannot modify grant scopes of a project scoped role: parameter violation: error #100`,
 		},
 	}
 	for _, tc := range testcases {
@@ -667,7 +683,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 				require.Equal(t, r.PublicId, grantScope.RoleId)
 				gotScopeIds = append(gotScopeIds, grantScope.ScopeIdOrSpecial)
 			}
-			require.ElementsMatch(t, gotScopeIds, tc.scopes)
+			require.ElementsMatch(t, tc.scopes, gotScopeIds)
 
 			// also validate using list
 			afterRole, _, _, afterGrantScopes, err := iamRepo.LookupRole(ctx, r.PublicId)
