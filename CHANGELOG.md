@@ -4,6 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.19.2 (2025/04/28)
 
+## 0.19.1 (2025/03/04)
 ### New and Improved 
 
 * Adds support for Azure Virtual Machine Scale Sets in the Azure plugin
@@ -23,6 +24,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * ui: Fix an issue where the user could not change the key_type of a
   Vault SSH Certificate credential library.
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2790)).
+
+### Bug fixes
+
+* Fixed a bug that would sometimes make users unable to re-authenticate to the client cache after explicitly logging out of the CLI or Desktop Client. ([PR](https://github.com/hashicorp/boundary/pull/5549)).
 
 ## 0.19.0 (2025/02/10)
 ### New and Improved
