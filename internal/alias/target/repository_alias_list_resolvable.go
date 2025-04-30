@@ -74,13 +74,6 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 	}
 
 	directIds, directScopeIds, childAllScopes, allDescendants := splitPermissions(permissions)
-	// This condition checks if there are no direct IDs, no direct scope IDs, and no child scopes,
-	// while also ensuring that the "allDescendants" flag is not set, and if so returns early.
-	// An example scenario that can cause this is when a role on the global scope grants a user
-	// access to list aliases and read targets, but only within the global scope and its immediate children.
-	if !allDescendants && len(directIds) == 0 && len(directScopeIds) == 0 && len(childAllScopes) == 0 {
-		return []*Alias{}, time.Time{}, nil
-	}
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -122,8 +115,12 @@ func (r *Repository) listResolvableAliases(ctx context.Context, permissions []pe
 			destinationIdClauses = append(destinationIdClauses, "destination_id in (select public_id from target where project_id = any(@target_scope_ids))")
 			args = append(args, sql.Named("target_scope_ids", "{"+strings.Join(directScopeIds, ",")+"}"))
 		}
+		// This condition checks if there are no destinations target Ids and no child scopes,
+		// while also ensuring that the "allDescendants" flag is not set, if so we return no data.
+		// An example scenario of when this can happen is when a role on the global scope grants a user
+		// access to list aliases and read targets, but only within the global scope and its immediate children.
 		if len(destinationIdClauses) == 0 && len(childAllScopes) == 0 {
-			return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no target ids or scope ids provided")
+			return nil, time.Time{}, nil
 		}
 		whereClause = fmt.Sprintf("destination_id is not null and (%s)", strings.Join(destinationIdClauses, " or "))
 	}
