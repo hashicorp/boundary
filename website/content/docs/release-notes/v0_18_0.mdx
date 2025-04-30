@@ -326,5 +326,23 @@ description: >-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.0 - 0.18.3
+    <br /><br />
+    (Fixed in Boundary Enterprise and HCP Boundary 0.18.4)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Canceled SSH connections cause performance issues
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When an SSH connection was canceled, it could cause a spike in CPU usage. In some cases, egress workers become unresponsive, leading to performance issues. The issue occurred when the connection context was canceled at specific times in the process, creating a busy loop that prevented workers from completing tasks.
+    <br/><br />
+    This issue is resolved in Boundary Enterprise and HCP Boundary version 0.18.4. Workers no longer end up in a busy loop when SSH connections are canceled.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
   </tbody>
 </table>
