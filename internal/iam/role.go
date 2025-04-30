@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
@@ -24,28 +25,81 @@ const (
 
 // Roles are granted permissions and assignable to Users and Groups.
 type Role struct {
-	*store.Role
+	PublicId    string
+	ScopeId     string
+	Name        string
+	Description string
+	CreateTime  *timestamp.Timestamp
+	UpdateTime  *timestamp.Timestamp
+	Version     uint32
 	GrantScopes []*RoleGrantScope `gorm:"-"`
-	tableName   string            `gorm:"-"`
+}
+
+func (role *Role) GetPublicId() string {
+	if role == nil {
+		return ""
+	}
+	return role.PublicId
+}
+
+func (role *Role) GetScopeId() string {
+	if role == nil {
+		return ""
+	}
+	return role.ScopeId
+}
+
+func (role *Role) GetName() string {
+	if role == nil {
+		return ""
+	}
+	return role.Name
+}
+
+func (role *Role) GetDescription() string {
+	if role == nil {
+		return ""
+	}
+	return role.Description
+}
+
+func (role *Role) GetCreateTime() *timestamp.Timestamp {
+	if role == nil {
+		return nil
+	}
+	return role.CreateTime
+}
+
+func (role *Role) GetUpdateTime() *timestamp.Timestamp {
+	if role == nil {
+		return nil
+	}
+	return role.UpdateTime
+}
+
+func (role *Role) GetVersion() uint32 {
+	if role == nil {
+		return 0
+	}
+	return role.Version
 }
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
 var (
-	_ Resource        = (*Role)(nil)
-	_ Cloneable       = (*Role)(nil)
-	_ db.VetForWriter = (*Role)(nil)
+	_ Resource                = (*globalRole)(nil)
+	_ Cloneable               = (*globalRole)(nil)
+	_ db.VetForWriter         = (*globalRole)(nil)
+	_ oplog.ReplayableMessage = (*globalRole)(nil)
 
-	_ Resource        = (*globalRole)(nil)
-	_ Cloneable       = (*globalRole)(nil)
-	_ db.VetForWriter = (*globalRole)(nil)
+	_ Resource                = (*orgRole)(nil)
+	_ Cloneable               = (*orgRole)(nil)
+	_ db.VetForWriter         = (*orgRole)(nil)
+	_ oplog.ReplayableMessage = (*orgRole)(nil)
 
-	_ Resource        = (*orgRole)(nil)
-	_ Cloneable       = (*orgRole)(nil)
-	_ db.VetForWriter = (*orgRole)(nil)
-
-	_ Resource        = (*projectRole)(nil)
-	_ Cloneable       = (*projectRole)(nil)
-	_ db.VetForWriter = (*projectRole)(nil)
+	_ Resource                = (*projectRole)(nil)
+	_ Cloneable               = (*projectRole)(nil)
+	_ db.VetForWriter         = (*projectRole)(nil)
+	_ oplog.ReplayableMessage = (*projectRole)(nil)
 )
 
 // NewRole creates a new in memory role with a scope (project/org)
@@ -57,31 +111,11 @@ func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) 
 	}
 	opts := getOpts(opt...)
 	r := &Role{
-		Role: &store.Role{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-		},
+		ScopeId:     scopeId,
+		Name:        opts.withName,
+		Description: opts.withDescription,
 	}
 	return r, nil
-}
-
-func allocRole() Role {
-	return Role{
-		Role: &store.Role{},
-	}
-}
-
-// Clone creates a clone of the Role.
-func (role *Role) Clone() any {
-	cp := proto.Clone(role.Role)
-	ret := &Role{
-		Role: cp.(*store.Role),
-	}
-	for _, grantScope := range role.GrantScopes {
-		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-	}
-	return ret
 }
 
 // VetForWrite implements db.VetForWrite() interface.
@@ -118,21 +152,6 @@ func (*Role) Actions() map[string]action.Type {
 	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
 	return ret
-}
-
-// TableName returns the tablename to override the default gorm table name.
-func (role *Role) TableName() string {
-	if role.tableName != "" {
-		return role.tableName
-	}
-	return defaultRoleTableName
-}
-
-// SetTableName sets the tablename and satisfies the ReplayableMessage
-// interface. If the caller attempts to set the name to "" the name will be
-// reset to the default name.
-func (role *Role) SetTableName(n string) {
-	role.tableName = n
 }
 
 type deletedRole struct {
@@ -208,6 +227,25 @@ func (g *globalRole) Actions() map[string]action.Type {
 	return ret
 }
 
+func (g *globalRole) toRole() *Role {
+	if g == nil {
+		return nil
+	}
+	ret := &Role{
+		PublicId:    g.GetPublicId(),
+		ScopeId:     g.GetScopeId(),
+		Name:        g.GetName(),
+		Description: g.GetDescription(),
+		CreateTime:  g.GetCreateTime(),
+		UpdateTime:  g.GetUpdateTime(),
+		Version:     g.GetVersion(),
+	}
+	for _, grantScope := range g.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
+}
+
 // orgRole is a type embedding store.OrgRole used to interact with iam_role_org table which contains
 // all iam_role entries that are created in org-level scopes through gorm.
 type orgRole struct {
@@ -271,6 +309,25 @@ func (o *orgRole) Actions() map[string]action.Type {
 	return ret
 }
 
+func (o *orgRole) toRole() *Role {
+	if o == nil {
+		return nil
+	}
+	ret := &Role{
+		PublicId:    o.GetPublicId(),
+		ScopeId:     o.GetScopeId(),
+		Name:        o.GetName(),
+		Description: o.GetDescription(),
+		CreateTime:  o.GetCreateTime(),
+		UpdateTime:  o.GetUpdateTime(),
+		Version:     o.GetVersion(),
+	}
+	for _, grantScope := range o.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
+}
+
 // projectRole is a type embedding store.ProjectRole used to interact with iam_role_project table which contains
 // all iam_role entries that are created in project-level scopes through gorm.
 type projectRole struct {
@@ -331,5 +388,24 @@ func (p *projectRole) Actions() map[string]action.Type {
 	ret[action.AddPrincipals.String()] = action.AddPrincipals
 	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
 	ret[action.SetPrincipals.String()] = action.SetPrincipals
+	return ret
+}
+
+func (p *projectRole) toRole() *Role {
+	if p == nil {
+		return nil
+	}
+	ret := &Role{
+		PublicId:    p.GetPublicId(),
+		ScopeId:     p.GetScopeId(),
+		Name:        p.GetName(),
+		Description: p.GetDescription(),
+		CreateTime:  p.GetCreateTime(),
+		UpdateTime:  p.GetUpdateTime(),
+		Version:     p.GetVersion(),
+	}
+	for _, grantScope := range p.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
 	return ret
 }
