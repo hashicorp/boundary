@@ -168,8 +168,8 @@ scenario "e2e_ui_docker" {
       target_user               = "ubuntu"
       target_ca_key             = step.create_host.ca_key_private
       target_ca_key_public      = step.create_host.ca_key_public
-      vault_addr_public         = step.create_vault.address_public
-      vault_addr_private        = step.create_vault.address_private
+      vault_addr                = step.create_vault.address
+      vault_addr_internal       = step.create_vault.address_internal
       vault_root_token          = step.create_vault.token
       vault_port                = step.create_vault.port
       ldap_address              = step.create_ldap_server.address

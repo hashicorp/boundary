@@ -77,14 +77,11 @@ func ApiErrorWithCode(c codes.Code) error {
 
 // ApiErrorWithCodeAndMessage returns an api error with the provided code and message.
 func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...any) error {
-	if len(args) > 0 {
-		msg = fmt.Sprintf(msg, args...)
-	}
 	return &ApiError{
 		Status: int32(runtime.HTTPStatusFromCode(c)),
 		Inner: &pb.Error{
 			Kind:    c.String(),
-			Message: msg,
+			Message: fmt.Sprintf(msg, args...),
 		},
 	}
 }

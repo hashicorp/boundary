@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
@@ -31,8 +32,10 @@ func TestCloseOrphanedConnections(t *testing.T) {
 	require.NoError(t, err)
 
 	serverRepo, _ := server.NewRepository(context.Background(), rw, rw, testKms)
-	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
-	_, err = serverRepo.UpsertController(context.Background(), c)
+	_, err = serverRepo.UpsertController(context.Background(), &store.Controller{
+		PrivateId: "test_controller1",
+		Address:   "127.0.0.1",
+	})
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -447,8 +450,10 @@ func TestUpdateConnectionBytesUpDown(t *testing.T) {
 	require.NoError(t, err)
 
 	serverRepo, _ := server.NewRepository(context.Background(), rw, rw, testKms)
-	c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
-	_, err = serverRepo.UpsertController(context.Background(), c)
+	_, err = serverRepo.UpsertController(context.Background(), &store.Controller{
+		PrivateId: "test_controller1",
+		Address:   "127.0.0.1",
+	})
 	require.NoError(t, err)
 
 	t.Run("nil connection repo", func(t *testing.T) {

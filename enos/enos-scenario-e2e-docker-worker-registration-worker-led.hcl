@@ -207,8 +207,8 @@ scenario "e2e_docker_worker_registration_worker_led" {
       target_address           = step.create_host.address
       target_port              = step.create_host.port
       target_user              = "ubuntu"
-      vault_addr_public        = step.create_vault.address_public
-      vault_addr_private       = step.create_vault.address_private
+      vault_addr               = step.create_vault.address
+      vault_addr_internal      = step.create_vault.address_internal
       vault_root_token         = step.create_vault.token
       vault_port               = step.create_vault.port
       worker_tag_egress        = local.egress_tag

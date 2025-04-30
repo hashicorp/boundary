@@ -567,20 +567,6 @@ func defaultDbUrl(ctx context.Context, opt ...Option) (string, error) {
 		return "", errors.Wrap(ctx, err, op)
 	}
 	fileName := filepath.Join(dotDir, dbFileName)
-	if _, err := os.Stat(fileName); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return "", errors.Wrap(ctx, err, op)
-		}
-		file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0o600)
-		if err != nil {
-			return "", errors.Wrap(ctx, err, op)
-		}
-		defer file.Close()
-	}
-	err = os.Chmod(fileName, 0o600)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, op)
-	}
 	return fmt.Sprintf("%s%s", fileName, fkPragma), nil
 }
 

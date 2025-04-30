@@ -137,9 +137,6 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 			if g.Request.DetailsUpstreamMessage != nil {
 				msgReq.DetailsUpstreamMessage = g.Request.DetailsUpstreamMessage
 			}
-			if g.Request.UserAgents != nil {
-				msgReq.UserAgents = g.Request.UserAgents
-			}
 			payload[RequestField] = msgReq
 		}
 		if g.Response != nil {

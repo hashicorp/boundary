@@ -201,8 +201,8 @@ scenario "e2e_ui_aws" {
       target_address            = step.create_targets_with_tag.target_private_ips[0]
       target_user               = "ubuntu"
       target_port               = "22"
-      vault_addr_public         = step.create_vault_cluster.instance_addresses[0]
-      vault_addr_private        = step.create_vault_cluster.instance_addresses_private[0]
+      vault_addr                = step.create_vault_cluster.instance_addresses[0]
+      vault_addr_internal       = step.create_vault_cluster.instance_addresses[0]
       vault_root_token          = step.create_vault_cluster.vault_root_token
       aws_access_key_id         = step.iam_setup.access_key_id
       aws_secret_access_key     = step.iam_setup.secret_access_key

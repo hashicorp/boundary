@@ -129,10 +129,6 @@ resource "aws_instance" "target" {
     "Environment" : var.environment
     "Enos User" : var.enos_user,
   })
-
-  root_block_device {
-    encrypted = true
-  }
 }
 
 resource "enos_remote_exec" "wait" {

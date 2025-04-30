@@ -30,9 +30,16 @@ import (
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"nhooyr.io/websocket"
 )
+
+var GetProtocolContext = nilProtocolContext
+
+func nilProtocolContext(context.Context, string, session.Session, string) (*anypb.Any, error) {
+	return nil, nil
+}
 
 type HandlerProperties struct {
 	ListenerConfig *listenerutil.ListenerConfig
@@ -260,6 +267,14 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 		protocolCtx := acResp.GetProtocolContext()
+		if protocolCtx == nil {
+			// TODO: Remove this if block once pre v0.12.0 controllers are no longer supported.
+			if protocolCtx, err = GetProtocolContext(ctx, workerId, sess, endpointUrl.Scheme); err != nil {
+				conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to get proxy context")
+				event.WriteError(ctx, op, err)
+				return
+			}
+		}
 
 		pDialer, err := proxyHandlers.GetEndpointDialer(ctx, endpointUrl.Host, workerId, acResp, w.downstreamReceiver, proxyHandlers.WithDnsServerAddress(w.conf.WorkerDnsServer))
 		if err != nil {
