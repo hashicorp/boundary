@@ -6,29 +6,71 @@ package iam
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
-const defaultRoleGrantScopeTable = "iam_role_grant_scope"
-
-// RoleGrantScope defines the grant scopes that are assigned to a role
-type RoleGrantScope struct {
-	*store.RoleGrantScope
-	tableName string `gorm:"-"`
-}
+const (
+	defaultRoleGrantScopeTable                        = "iam_role_grant_scope"
+	defaultGlobalRoleIndividualOrgGrantScopeTable     = "iam_role_global_individual_org_grant_scope"
+	defaultGlobalRoleIndividualProjectGrantScopeTable = "iam_role_global_individual_project_grant_scope"
+	defaultOrgRoleIndividualGrantScopeTable           = "iam_role_org_individual_grant_scope"
+)
 
 // ensure that RoleGrantScope implements the interfaces of: Cloneable and db.VetForWriter
 var (
 	_ Cloneable       = (*RoleGrantScope)(nil)
 	_ db.VetForWriter = (*RoleGrantScope)(nil)
+
+	_ Cloneable               = (*globalRoleIndividualOrgGrantScope)(nil)
+	_ db.VetForWriter         = (*globalRoleIndividualOrgGrantScope)(nil)
+	_ oplog.ReplayableMessage = (*globalRoleIndividualOrgGrantScope)(nil)
+
+	_ Cloneable               = (*globalRoleIndividualProjectGrantScope)(nil)
+	_ db.VetForWriter         = (*globalRoleIndividualProjectGrantScope)(nil)
+	_ oplog.ReplayableMessage = (*globalRoleIndividualProjectGrantScope)(nil)
+
+	_ Cloneable               = (*orgRoleIndividualGrantScope)(nil)
+	_ db.VetForWriter         = (*orgRoleIndividualGrantScope)(nil)
+	_ oplog.ReplayableMessage = (*orgRoleIndividualGrantScope)(nil)
 )
+
+// RoleGrantScope defines the grant scopes that are assigned to a role
+type RoleGrantScope struct {
+	CreateTime       *timestamp.Timestamp
+	RoleId           string
+	ScopeIdOrSpecial string
+}
+
+func (r *RoleGrantScope) GetCreateTime() *timestamp.Timestamp {
+	if r == nil {
+		return nil
+	}
+	return r.CreateTime
+}
+
+func (r *RoleGrantScope) GetRoleId() string {
+	if r == nil {
+		return ""
+	}
+	return r.RoleId
+}
+
+func (r *RoleGrantScope) GetScopeIdOrSpecial() string {
+	if r == nil {
+		return ""
+	}
+	return r.ScopeIdOrSpecial
+}
 
 // NewRoleGrantScope creates a new in memory role grant scope. No options are
 // supported.
@@ -48,28 +90,19 @@ func NewRoleGrantScope(ctx context.Context, roleId string, grantScope string, _ 
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", grantScope))
 	}
-
 	rgs := &RoleGrantScope{
-		RoleGrantScope: &store.RoleGrantScope{
-			RoleId:           roleId,
-			ScopeIdOrSpecial: grantScope,
-		},
+		RoleId:           roleId,
+		ScopeIdOrSpecial: grantScope,
 	}
-
 	return rgs, nil
-}
-
-func allocRoleGrantScope() RoleGrantScope {
-	return RoleGrantScope{
-		RoleGrantScope: &store.RoleGrantScope{},
-	}
 }
 
 // Clone creates a clone of the RoleGrantScope
 func (g *RoleGrantScope) Clone() any {
-	cp := proto.Clone(g.RoleGrantScope)
 	return &RoleGrantScope{
-		RoleGrantScope: cp.(*store.RoleGrantScope),
+		CreateTime:       g.CreateTime,
+		RoleId:           g.RoleId,
+		ScopeIdOrSpecial: g.ScopeIdOrSpecial,
 	}
 }
 
@@ -96,17 +129,122 @@ func (g *RoleGrantScope) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpTy
 	return nil
 }
 
-// TableName returns the tablename to override the default gorm table name
-func (g *RoleGrantScope) TableName() string {
+// globalRoleIndividualOrgGrantScope defines the grant org scopes
+// that are assigned to a global role
+type globalRoleIndividualOrgGrantScope struct {
+	*store.GlobalRoleIndividualOrgGrantScope
+	tableName string `gorm:"-"`
+}
+
+func (g *globalRoleIndividualOrgGrantScope) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
-	return defaultRoleGrantScopeTable
+	return defaultGlobalRoleIndividualOrgGrantScopeTable
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage
-// interface. If the caller attempts to set the name to "" the name will be
-// reset to the default name.
-func (g *RoleGrantScope) SetTableName(n string) {
-	g.tableName = n
+func (g *globalRoleIndividualOrgGrantScope) SetTableName(name string) {
+	g.tableName = name
+}
+
+func (g *globalRoleIndividualOrgGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(GlobalRoleIndividualOrgGrantScope).VetForWrite"
+	if g.RoleId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	if g.ScopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if globals.ResourceInfoFromPrefix(g.ScopeId).Type != resource.Scope &&
+		strings.HasPrefix(g.String(), globals.OrgPrefix) {
+		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope ID %s", g.ScopeId))
+	}
+	return nil
+}
+
+func (g *globalRoleIndividualOrgGrantScope) Clone() any {
+	cp := proto.Clone(g.GlobalRoleIndividualOrgGrantScope)
+	return &globalRoleIndividualOrgGrantScope{
+		GlobalRoleIndividualOrgGrantScope: cp.(*store.GlobalRoleIndividualOrgGrantScope),
+	}
+}
+
+// globalRoleIndividualProjectGrantScope defines the grant project scopes
+// that are assigned to a global role
+type globalRoleIndividualProjectGrantScope struct {
+	*store.GlobalRoleIndividualProjectGrantScope
+	tableName string `gorm:"-"`
+}
+
+func (g *globalRoleIndividualProjectGrantScope) TableName() string {
+	if g.tableName != "" {
+		return g.tableName
+	}
+	return defaultGlobalRoleIndividualProjectGrantScopeTable
+}
+
+func (g *globalRoleIndividualProjectGrantScope) SetTableName(name string) {
+	g.tableName = name
+}
+
+func (g *globalRoleIndividualProjectGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(GlobalRoleIndividualProjectGrantScope).VetForWrite"
+	if g.RoleId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	if g.ScopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if globals.ResourceInfoFromPrefix(g.ScopeId).Type != resource.Scope &&
+		strings.HasPrefix(g.String(), globals.ProjectPrefix) {
+		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope ID %s", g.ScopeId))
+	}
+	return nil
+}
+
+func (g *globalRoleIndividualProjectGrantScope) Clone() any {
+	cp := proto.Clone(g.GlobalRoleIndividualProjectGrantScope)
+	return &globalRoleIndividualProjectGrantScope{
+		GlobalRoleIndividualProjectGrantScope: cp.(*store.GlobalRoleIndividualProjectGrantScope),
+	}
+}
+
+// OrgRoleIndividualGrantScope defines the grant project scopes
+// that are assigned to an org role
+type orgRoleIndividualGrantScope struct {
+	*store.OrgRoleIndividualGrantScope
+	tableName string `gorm:"-"`
+}
+
+func (g *orgRoleIndividualGrantScope) TableName() string {
+	if g.tableName != "" {
+		return g.tableName
+	}
+	return defaultOrgRoleIndividualGrantScopeTable
+}
+
+func (g *orgRoleIndividualGrantScope) SetTableName(name string) {
+	g.tableName = name
+}
+
+func (g *orgRoleIndividualGrantScope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(OrgRoleIndividualGrantScope).VetForWrite"
+	if g.RoleId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	if g.ScopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if globals.ResourceInfoFromPrefix(g.ScopeId).Type != resource.Scope &&
+		strings.HasPrefix(g.String(), globals.ProjectPrefix) {
+		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope ID %s", g.ScopeId))
+	}
+	return nil
+}
+
+func (g *orgRoleIndividualGrantScope) Clone() any {
+	cp := proto.Clone(g.OrgRoleIndividualGrantScope)
+	return &orgRoleIndividualGrantScope{
+		OrgRoleIndividualGrantScope: cp.(*store.OrgRoleIndividualGrantScope),
+	}
 }

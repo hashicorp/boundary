@@ -203,22 +203,10 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	id, err := newRoleId(ctx)
 	require.NoError(err)
 	grantScopeIds := opts.withGrantScopeIds
-
 	grantsThis := false
 	if len(grantScopeIds) == 0 || slices.Contains(grantScopeIds, globals.GrantScopeThis) {
 		grantsThis = true
 	}
-
-	var specialGrants string
-	switch {
-	case slices.Contains(grantScopeIds, globals.GrantScopeDescendants):
-		specialGrants = globals.GrantScopeDescendants
-	case slices.Contains(grantScopeIds, globals.GrantScopeChildren):
-		specialGrants = globals.GrantScopeChildren
-	default:
-		specialGrants = globals.GrantScopeIndividual
-	}
-
 	var role *Role
 	switch {
 	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
@@ -229,7 +217,7 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 				Name:               opts.withName,
 				Description:        opts.withDescription,
 				GrantThisRoleScope: grantsThis,
-				GrantScope:         specialGrants,
+				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope later
 			},
 		}
 		require.NoError(rw.Create(ctx, g))
@@ -243,7 +231,7 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 				Name:               opts.withName,
 				Description:        opts.withDescription,
 				GrantThisRoleScope: grantsThis,
-				GrantScope:         specialGrants,
+				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope later
 			},
 		}
 		require.NoError(rw.Create(ctx, o))
@@ -262,16 +250,15 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 		require.NotEmpty(p.PublicId)
 		role = p.toRole()
 	default:
-		require.FailNowf("invalid scope id: %s", scopeId)
+		t.Logf("invalid scope id: %s", scopeId)
+		t.FailNow()
 	}
 
 	for _, gsi := range grantScopeIds {
 		if gsi == "testing-none" {
 			continue
 		}
-		gs, err := NewRoleGrantScope(ctx, id, gsi)
-		require.NoError(err)
-		require.NoError(rw.Create(ctx, gs))
+		gs := TestRoleGrantScope(t, conn, role, gsi)
 		role.GrantScopes = append(role.GrantScopes, gs)
 	}
 	require.Equal(opts.withDescription, role.Description)
@@ -284,29 +271,15 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 // this function does not provide any default grant scope unlike TestRole
 func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
 	t.Helper()
-
 	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
-
 	grantsThis := false
-	if slices.Contains(grantScopeIDs, globals.GrantScopeThis) {
+	if slices.Contains(grantScopeIDs, globals.GrantScopeThis) || len(grantScopeIDs) == 0 {
 		grantsThis = true
 	}
-
-	var specialGrants string
-	switch {
-	case slices.Contains(grantScopeIDs, globals.GrantScopeDescendants):
-		specialGrants = globals.GrantScopeDescendants
-	case slices.Contains(grantScopeIDs, globals.GrantScopeChildren):
-		specialGrants = globals.GrantScopeChildren
-	default:
-		specialGrants = globals.GrantScopeIndividual
-	}
-
 	id, err := newRoleId(ctx)
 	require.NoError(err)
-
 	var role *Role
 	switch {
 	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
@@ -315,7 +288,7 @@ func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs
 				PublicId:           id,
 				ScopeId:            scopeId,
 				GrantThisRoleScope: grantsThis,
-				GrantScope:         specialGrants,
+				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope call after this
 			},
 		}
 		require.NoError(rw.Create(ctx, g))
@@ -327,7 +300,7 @@ func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs
 				PublicId:           id,
 				ScopeId:            scopeId,
 				GrantThisRoleScope: grantsThis,
-				GrantScope:         specialGrants,
+				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope call after this
 			},
 		}
 		require.NoError(rw.Create(ctx, o))
@@ -347,11 +320,11 @@ func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs
 		t.Logf("invalid scope id: %s", scopeId)
 		t.FailNow()
 	}
-
 	for _, gsi := range grantScopeIDs {
-		gs, err := NewRoleGrantScope(ctx, id, gsi)
-		require.NoError(err)
-		require.NoError(rw.Create(ctx, gs))
+		if gsi == "testing-none" {
+			continue
+		}
+		gs := TestRoleGrantScope(t, conn, role, gsi)
 		role.GrantScopes = append(role.GrantScopes, gs)
 	}
 	for _, g := range grants {
@@ -372,15 +345,170 @@ func TestRoleGrant(t testing.TB, conn *db.DB, roleId, grant string, opt ...Optio
 	return g
 }
 
-func TestRoleGrantScope(t testing.TB, conn *db.DB, roleId, grantScopeId string, opt ...Option) *RoleGrantScope {
+func TestRoleGrantScope(t testing.TB, conn *db.DB, r *Role, grantScopeId string, opt ...Option) *RoleGrantScope {
 	t.Helper()
-	require := require.New(t)
-	rw := db.New(conn)
+	switch grantScopeId {
+	case globals.GrantScopeThis:
+		return testRoleGrantScopeThis(t, conn, r)
+	case globals.GrantScopeDescendants, globals.GrantScopeChildren:
+		return testRoleGrantScopeSpecial(t, conn, r, grantScopeId)
+	default:
+		return testRoleGrantScopeIndividual(t, conn, r, grantScopeId)
+	}
+}
 
-	gs, err := NewRoleGrantScope(context.Background(), roleId, grantScopeId, opt...)
-	require.NoError(err)
-	require.NoError(rw.Create(context.Background(), gs))
-	return gs
+// testRoleGrantScopeThis is a utility function for adding 'this' to a role's Grant scopes
+// this function is not meant to be called directly - use `TestRoleGrantScope` or `TestRoleWithGrants`
+func testRoleGrantScopeThis(t testing.TB, conn *db.DB, r *Role) *RoleGrantScope {
+	rw := db.New(conn)
+	ctx := context.Background()
+	var result *RoleGrantScope
+	switch {
+	case strings.HasPrefix(r.ScopeId, globals.GlobalPrefix):
+		g := allocGlobalRole()
+		g.PublicId = r.PublicId
+		g.GrantThisRoleScope = true
+		_, err := rw.Update(ctx, &g, []string{"GrantThisRoleScope"}, []string{})
+		require.NoError(t, err)
+		result = &RoleGrantScope{
+			CreateTime:       g.GrantThisRoleScopeUpdateTime,
+			RoleId:           g.PublicId,
+			ScopeIdOrSpecial: globals.GrantScopeThis,
+		}
+	case strings.HasPrefix(r.ScopeId, globals.OrgPrefix):
+		o := allocOrgRole()
+		o.PublicId = r.PublicId
+		o.GrantThisRoleScope = true
+		_, err := rw.Update(ctx, &o, []string{"GrantThisRoleScope"}, []string{})
+		require.NoError(t, err)
+		result = &RoleGrantScope{
+			CreateTime:       o.GrantThisRoleScopeUpdateTime,
+			RoleId:           o.PublicId,
+			ScopeIdOrSpecial: globals.GrantScopeThis,
+		}
+	case strings.HasPrefix(r.ScopeId, globals.ProjectPrefix):
+		// roles in project scopes are automatically granted 'this'
+		result = &RoleGrantScope{
+			CreateTime:       r.CreateTime,
+			RoleId:           r.PublicId,
+			ScopeIdOrSpecial: globals.GrantScopeThis,
+		}
+	default:
+		t.Logf("invalid scope type for this grant: %s", r.ScopeId)
+		t.FailNow()
+	}
+	return result
+}
+
+// testRoleGrantScopeThis is a utility function for adding special scopes (children, descendants) to a role's Grant scopes
+// this function is not meant to be called directly - use `TestRoleGrantScope` or `TestRoleWithGrants`
+func testRoleGrantScopeSpecial(t testing.TB, conn *db.DB, r *Role, grantScopeId string) *RoleGrantScope {
+	rw := db.New(conn)
+	ctx := context.Background()
+	allowedGrantScopeId := []string{
+		globals.GrantScopeChildren,
+		globals.GrantScopeDescendants,
+	}
+	// ensure that only special scopes are passed in here
+	require.Contains(t, allowedGrantScopeId, grantScopeId)
+	var result *RoleGrantScope
+	switch {
+	case strings.HasPrefix(r.ScopeId, globals.GlobalPrefix):
+		g := allocGlobalRole()
+		g.PublicId = r.PublicId
+		g.GrantScope = grantScopeId
+		_, err := rw.Update(ctx, &g, []string{"GrantScope"}, []string{})
+		require.NoError(t, err)
+		result = &RoleGrantScope{
+			CreateTime:       g.GrantScopeUpdateTime,
+			RoleId:           g.PublicId,
+			ScopeIdOrSpecial: grantScopeId,
+		}
+	case strings.HasPrefix(r.ScopeId, globals.OrgPrefix):
+		// 'descendants' grants isn't allowed for org but not handling that case to reduce code duplication and
+		// the constraint check in the DB will return an error anyway
+		o := allocOrgRole()
+		o.PublicId = r.PublicId
+		o.GrantScope = grantScopeId
+		_, err := rw.Update(ctx, &o, []string{"GrantScope"}, []string{})
+		require.NoError(t, err)
+		result = &RoleGrantScope{
+			CreateTime:       o.GrantThisRoleScopeUpdateTime,
+			RoleId:           o.PublicId,
+			ScopeIdOrSpecial: grantScopeId,
+		}
+	default:
+		t.Logf("invalid scope type for children grant: %s", r.ScopeId)
+		t.FailNow()
+	}
+	return result
+}
+
+func testRoleGrantScopeIndividual(t testing.TB, conn *db.DB, r *Role, grantScopeId string) *RoleGrantScope {
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	var result *RoleGrantScope
+	switch {
+	case strings.HasPrefix(r.ScopeId, globals.GlobalPrefix):
+		// perform a read to get 'role.GrantScope' because there are two allowed values: [children, individual]
+		g := allocGlobalRole()
+		g.PublicId = r.PublicId
+		require.NoError(t, rw.LookupByPublicId(ctx, &g))
+		switch {
+		case strings.HasPrefix(grantScopeId, globals.OrgPrefix):
+			orgGrantScope := &globalRoleIndividualOrgGrantScope{
+				GlobalRoleIndividualOrgGrantScope: &iamstore.GlobalRoleIndividualOrgGrantScope{
+					RoleId:     g.PublicId,
+					ScopeId:    grantScopeId,
+					GrantScope: g.GrantScope,
+				},
+			}
+			require.NoError(t, rw.Create(ctx, orgGrantScope))
+			result = &RoleGrantScope{
+				CreateTime:       orgGrantScope.CreateTime,
+				RoleId:           orgGrantScope.RoleId,
+				ScopeIdOrSpecial: orgGrantScope.ScopeId,
+			}
+		case strings.HasPrefix(grantScopeId, globals.ProjectPrefix):
+			projGrantScope := &globalRoleIndividualProjectGrantScope{
+				GlobalRoleIndividualProjectGrantScope: &iamstore.GlobalRoleIndividualProjectGrantScope{
+					RoleId:     g.PublicId,
+					ScopeId:    grantScopeId,
+					GrantScope: g.GrantScope,
+				},
+			}
+			require.NoError(t, rw.Create(ctx, projGrantScope))
+			result = &RoleGrantScope{
+				CreateTime:       projGrantScope.CreateTime,
+				RoleId:           projGrantScope.RoleId,
+				ScopeIdOrSpecial: projGrantScope.ScopeId,
+			}
+		default:
+			t.Logf("invalid scope id for global role invidual grant scope: %s", grantScopeId)
+			t.FailNow()
+		}
+	case strings.HasPrefix(r.ScopeId, globals.OrgPrefix):
+		o := &orgRoleIndividualGrantScope{
+			OrgRoleIndividualGrantScope: &iamstore.OrgRoleIndividualGrantScope{
+				RoleId:     r.PublicId,
+				ScopeId:    grantScopeId,
+				GrantScope: globals.GrantScopeIndividual,
+			},
+		}
+		require.NoError(t, rw.Create(ctx, o))
+		result = &RoleGrantScope{
+			CreateTime:       o.CreateTime,
+			RoleId:           o.RoleId,
+			ScopeIdOrSpecial: o.ScopeId,
+		}
+	default:
+		t.Logf("invalid scope for individual scope grant: %s", r.ScopeId)
+		t.FailNow()
+		return nil
+	}
+
+	return result
 }
 
 // TestGroup creates a group suitable for testing.
