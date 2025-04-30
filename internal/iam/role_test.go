@@ -732,18 +732,14 @@ func Test_globalRole_Clone(t *testing.T) {
 		},
 		GrantScopes: []*RoleGrantScope{
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_123456",
-					ScopeIdOrSpecial: "children",
-				},
+				CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_123456",
+				ScopeIdOrSpecial: "children",
 			},
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2025, 1, 14, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_123456",
-					ScopeIdOrSpecial: "p_123456",
-				},
+				CreateTime:       timestamp.New(time.Date(2025, 1, 14, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_123456",
+				ScopeIdOrSpecial: "p_123456",
 			},
 		},
 	}
@@ -763,18 +759,14 @@ func Test_globalRole_Clone(t *testing.T) {
 		},
 		GrantScopes: []*RoleGrantScope{
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_abcdef",
-					ScopeIdOrSpecial: "children",
-				},
+				CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_abcdef",
+				ScopeIdOrSpecial: "children",
 			},
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_abcdef",
-					ScopeIdOrSpecial: "p_abcdef",
-				},
+				CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_abcdef",
+				ScopeIdOrSpecial: "p_abcdef",
 			},
 		},
 	}
@@ -1480,18 +1472,14 @@ func Test_orgRole_Clone(t *testing.T) {
 		},
 		GrantScopes: []*RoleGrantScope{
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_123456",
-					ScopeIdOrSpecial: "children",
-				},
+				CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_123456",
+				ScopeIdOrSpecial: "children",
 			},
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2025, 1, 14, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_123456",
-					ScopeIdOrSpecial: "p_123456",
-				},
+				CreateTime:       timestamp.New(time.Date(2025, 1, 14, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_123456",
+				ScopeIdOrSpecial: "p_123456",
 			},
 		},
 	}
@@ -1511,18 +1499,14 @@ func Test_orgRole_Clone(t *testing.T) {
 		},
 		GrantScopes: []*RoleGrantScope{
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_abcdef",
-					ScopeIdOrSpecial: "children",
-				},
+				CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_abcdef",
+				ScopeIdOrSpecial: "children",
 			},
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_abcdef",
-					ScopeIdOrSpecial: "p_abcdef",
-				},
+				CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_abcdef",
+				ScopeIdOrSpecial: "p_abcdef",
 			},
 		},
 	}
@@ -2033,11 +2017,9 @@ func Test_projectRole_Clone(t *testing.T) {
 		},
 		GrantScopes: []*RoleGrantScope{
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_123456",
-					ScopeIdOrSpecial: "this",
-				},
+				CreateTime:       timestamp.New(time.Date(2025, 3, 12, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_123456",
+				ScopeIdOrSpecial: "this",
 			},
 		},
 	}
@@ -2053,18 +2035,14 @@ func Test_projectRole_Clone(t *testing.T) {
 		},
 		GrantScopes: []*RoleGrantScope{
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_abcdef",
-					ScopeIdOrSpecial: "children",
-				},
+				CreateTime:       timestamp.New(time.Date(2024, 3, 12, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_abcdef",
+				ScopeIdOrSpecial: "children",
 			},
 			{
-				RoleGrantScope: &store.RoleGrantScope{
-					CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
-					RoleId:           "r_abcdef",
-					ScopeIdOrSpecial: "p_abcdef",
-				},
+				CreateTime:       timestamp.New(time.Date(2024, 1, 14, 3, 15, 15, 30, time.UTC)),
+				RoleId:           "r_abcdef",
+				ScopeIdOrSpecial: "p_abcdef",
 			},
 		},
 	}

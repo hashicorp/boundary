@@ -425,3 +425,30 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	}
 	return currentRoleGrantScopes, totalRowsDeleted, nil
 }
+
+// listRoleGrantScopes returns the grant scopes for the roleId
+func listRoleGrantScopes(ctx context.Context, reader db.Reader, roleIds []string) ([]*RoleGrantScope, error) {
+	const op = "iam.(Repository).listRoleGrantScopes"
+	if len(roleIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
+	}
+	rows, err := reader.Query(ctx, roleGrantsScopeQuery, []any{roleIds})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query role grant scopes"))
+	}
+
+	if rows.Err() != nil {
+		return nil, errors.Wrap(ctx, rows.Err(), op, errors.WithMsg("role grant scope rows error"))
+	}
+	var result []*RoleGrantScope
+	for rows.Next() {
+		if err := reader.ScanRows(ctx, rows, &result); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed scan results from querying role scope for: %s", roleIds)))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unexpected error scanning results from querying role scope for: %s", roleIds)))
+	}
+
+	return result, nil
+}
