@@ -17,7 +17,7 @@ scenario "e2e_aws_base_with_vault" {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     boundary_install_dir     = abspath(var.boundary_install_dir)
     license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    license                    = var.boundary_license
+    license                  = var.boundary_license
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     build_path = {
       "local" = "/tmp",
