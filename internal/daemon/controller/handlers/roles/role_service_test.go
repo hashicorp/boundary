@@ -220,7 +220,7 @@ func TestList(t *testing.T) {
 	var totalRoles []*pb.Role
 	for i := 0; i < 10; i++ {
 		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
-		_ = iam.TestRoleGrantScope(t, conn, or.GetPublicId(), globals.GrantScopeChildren)
+		_ = iam.TestRoleGrantScope(t, conn, or, globals.GrantScopeChildren)
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
 			Id:                or.GetPublicId(),
 			ScopeId:           or.GetScopeId(),
@@ -2791,7 +2791,7 @@ func TestAddGrantScopes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
 			for _, e := range tc.existing {
-				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+				_ = iam.TestRoleGrantScope(t, conn, role, e)
 			}
 			req := &pbs.AddRoleGrantScopesRequest{
 				Id:      role.GetPublicId(),
@@ -3129,7 +3129,7 @@ func TestSetGrantScopes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
 			for _, e := range tc.existing {
-				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+				_ = iam.TestRoleGrantScope(t, conn, role, e)
 			}
 			req := &pbs.SetRoleGrantScopesRequest{
 				Id:      role.GetPublicId(),
@@ -3326,7 +3326,7 @@ func TestRemoveGrantScopes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
 			for _, e := range tc.existing {
-				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+				_ = iam.TestRoleGrantScope(t, conn, role, e)
 			}
 			req := &pbs.RemoveRoleGrantScopesRequest{
 				Id:      role.GetPublicId(),
