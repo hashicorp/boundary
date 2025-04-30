@@ -11,7 +11,20 @@ container {
 	triage {
 		suppress {
 			vulnerabilities = [
-				"CVE-2024-13176", # openssl@3.3.2-r4
+				# busybox@1.37.0-r12 https://nvd.nist.gov/vuln/detail/CVE-2025-46394
+				#
+				# Boundary does not shell out to the busybox tar program.
+				"CVE-2025-46394", 
+
+				# busybox@1.37.0-r12 https://nvd.nist.gov/vuln/detail/CVE-2024-58251
+				#
+				# Boundary does not shell out to the busybox netstat program.
+				"CVE-2024-58251",
+
+				# gnupg@2.4.7-r0 https://nvd.nist.gov/vuln/detail/CVE-2025-30258
+				#
+				# Boundary does not utilize GnuPG to import certificates.
+				"CVE-2025-30258",
 			]
 		}
 	}
