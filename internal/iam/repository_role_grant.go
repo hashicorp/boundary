@@ -551,14 +551,23 @@ func (r *Repository) grantsForUserGlobalResources(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 
-	var args []any
+	var (
+		args      []any
+		userIds   []string
+		resources []string
+	)
 	switch userId {
 	case globals.AnonymousUserId:
-		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ %s }", userId)))
+		userIds = []string{globals.AnonymousUserId}
 	default:
-		args = append(args, sql.Named("user_ids", fmt.Sprintf("{ %s, %s, %s }", globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId)))
+		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-	args = append(args, sql.Named("resources", fmt.Sprintf("{ %s, unknown, * }", res.String())))
+	resources = []string{res.String(), "unknown", "*"}
+
+	args = append(args,
+		sql.Named("user_ids", pq.Array(userIds)),
+		sql.Named("resources", pq.Array(resources)),
+	)
 
 	var grants []grantsForUserResults
 	rows, err := r.reader.Query(ctx, grantsForUserGlobalResourcesQuery, args)
