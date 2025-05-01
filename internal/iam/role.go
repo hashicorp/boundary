@@ -18,11 +18,24 @@ import (
 )
 
 const (
-	defaultRoleTableName        = "iam_role"
 	defaultGlobalRoleTableName  = "iam_role_global"
 	defaultOrgRoleTableName     = "iam_role_org"
 	defaultProjectRoleTableName = "iam_role_project"
 )
+
+// roleScopeGranter represents an internal scope type specific role structs that
+// support grant scope columns. Currently this only applies to globalRole and orgRole
+// this is used in SetRoleGrantScope, AddRoleGrantScope, DeleteRoleGrantScope
+type roleScopeGranter interface {
+	Resource
+
+	SetVersion(version uint32)
+	SetThisGrantScope(grantThis bool)
+	SetSpecialScope(specialGrant string)
+
+	ThisGrantScope() *RoleGrantScope
+	SpecialGrantScope() *RoleGrantScope
+}
 
 // Roles are granted permissions and assignable to Users and Groups.
 type Role struct {
@@ -87,11 +100,13 @@ func (role *Role) GetVersion() uint32 {
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
 var (
+	_ roleScopeGranter        = (*globalRole)(nil)
 	_ Resource                = (*globalRole)(nil)
 	_ Cloneable               = (*globalRole)(nil)
 	_ db.VetForWriter         = (*globalRole)(nil)
 	_ oplog.ReplayableMessage = (*globalRole)(nil)
 
+	_ roleScopeGranter        = (*orgRole)(nil)
 	_ Resource                = (*orgRole)(nil)
 	_ Cloneable               = (*orgRole)(nil)
 	_ db.VetForWriter         = (*orgRole)(nil)
@@ -171,6 +186,56 @@ type globalRole struct {
 	*store.GlobalRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
 	tableName   string            `gorm:"-"`
+}
+
+func (g *globalRole) SetVersion(version uint32) {
+	if g == nil {
+		return
+	}
+	g.Version = version
+}
+
+func (g *globalRole) SetThisGrantScope(grantThis bool) {
+	if g == nil {
+		return
+	}
+	g.GrantThisRoleScope = grantThis
+}
+
+func (g *globalRole) SetSpecialScope(specialGrant string) {
+	if g == nil {
+		return
+	}
+	g.GrantScope = specialGrant
+}
+
+func (g *globalRole) ThisGrantScope() *RoleGrantScope {
+	if g == nil {
+		return &RoleGrantScope{}
+	}
+	if !g.GrantThisRoleScope {
+		return &RoleGrantScope{}
+	}
+	return &RoleGrantScope{
+		CreateTime:       g.GrantThisRoleScopeUpdateTime,
+		RoleId:           g.PublicId,
+		ScopeIdOrSpecial: globals.GrantScopeThis,
+	}
+}
+
+func (g *globalRole) SpecialGrantScope() *RoleGrantScope {
+	if g == nil {
+		return &RoleGrantScope{}
+	}
+	if g.GrantScope == globals.GrantScopeIndividual {
+		return &RoleGrantScope{}
+	}
+	return &RoleGrantScope{
+		CreateTime:       g.GrantScopeUpdateTime,
+		RoleId:           g.PublicId,
+		ScopeIdOrSpecial: g.GrantScope,
+	}
+
 }
 
 func (g *globalRole) TableName() string {
@@ -275,6 +340,55 @@ type orgRole struct {
 	*store.OrgRole
 	GrantScopes []*RoleGrantScope `gorm:"-"`
 	tableName   string            `gorm:"-"`
+}
+
+func (o *orgRole) SetVersion(version uint32) {
+	if o == nil {
+		return
+	}
+	o.Version = version
+}
+
+func (o *orgRole) SetThisGrantScope(grantThis bool) {
+	if o == nil {
+		return
+	}
+	o.GrantThisRoleScope = grantThis
+}
+
+func (o *orgRole) SetSpecialScope(specialGrant string) {
+	if o == nil {
+		return
+	}
+	o.GrantScope = specialGrant
+}
+
+func (o *orgRole) ThisGrantScope() *RoleGrantScope {
+	if o == nil {
+		return &RoleGrantScope{}
+	}
+	if !o.GrantThisRoleScope {
+		return &RoleGrantScope{}
+	}
+	return &RoleGrantScope{
+		CreateTime:       o.GrantThisRoleScopeUpdateTime,
+		RoleId:           o.PublicId,
+		ScopeIdOrSpecial: globals.GrantScopeThis,
+	}
+}
+
+func (o *orgRole) SpecialGrantScope() *RoleGrantScope {
+	if o == nil {
+		return &RoleGrantScope{}
+	}
+	if o.GrantScope == globals.GrantScopeIndividual {
+		return &RoleGrantScope{}
+	}
+	return &RoleGrantScope{
+		CreateTime:       o.GrantScopeUpdateTime,
+		RoleId:           o.PublicId,
+		ScopeIdOrSpecial: o.GrantScope,
+	}
 }
 
 func (o *orgRole) TableName() string {
