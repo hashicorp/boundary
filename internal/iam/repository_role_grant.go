@@ -454,11 +454,11 @@ type grantsForUserResults struct {
 	// for itself aka "this" or "individual" scope.
 	grantThisRoleScope bool
 	// individualGrantScopes represents the individual grant scopes for the role.
-	// This is a slice of strings that may be NULL values if the role does
+	// This is a slice of strings that may be empty if the role does
 	// not have individual grants.
 	individualGrantScopes []string
 	// canonicalGrants represents the canonical grants for the role.
-	// This is a slice of strings that may be NULL if the role does
+	// This is a slice of strings that may be empty if the role does
 	// not have canonical grants associated with it.
 	canonicalGrants []string
 }
