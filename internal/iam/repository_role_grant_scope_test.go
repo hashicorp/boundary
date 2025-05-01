@@ -384,7 +384,7 @@ func Test_AddRoleGrantScope(t *testing.T) {
 			},
 			inputAddScopes:        []string{proj1.PublicId},
 			wantReturnedScopes:    []string{proj1.PublicId},
-			wantRoleVersionChange: 1q,
+			wantRoleVersionChange: 1,
 			wantScopes:            []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId},
 			wantErr:               false,
 		},
