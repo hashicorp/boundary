@@ -378,6 +378,17 @@ func Test_AddRoleGrantScope(t *testing.T) {
 			wantErr:               false,
 		},
 		{
+			name: "global role add individual scope when grant_scope is children",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+			},
+			inputAddScopes:        []string{proj1.PublicId},
+			wantReturnedScopes:    []string{proj1.PublicId},
+			wantRoleVersionChange: 1q,
+			wantScopes:            []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId},
+			wantErr:               false,
+		},
+		{
 			name: "error adding mutually exclusive grants",
 			setupRole: func(t *testing.T) *Role {
 				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{"testing-none"}))
