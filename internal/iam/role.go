@@ -235,7 +235,6 @@ func (g *globalRole) SpecialGrantScope() *RoleGrantScope {
 		RoleId:           g.PublicId,
 		ScopeIdOrSpecial: g.GrantScope,
 	}
-
 }
 
 func (g *globalRole) TableName() string {

@@ -6,6 +6,9 @@ package iam
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -14,8 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
-	"slices"
-	"strings"
 )
 
 // AddRoleGrantScopes will add role grant scopes associated with the role ID in
@@ -412,7 +413,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	}
 
 	toRemove := make(map[string]struct{})
-	for scopeId, _ := range originalGrantScopeMap {
+	for scopeId := range originalGrantScopeMap {
 		toRemove[scopeId] = struct{}{}
 	}
 
@@ -474,7 +475,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	var orgRoleIndividualScopeToRemove []*orgRoleIndividualGrantScope
 
 	individualScopesToAdd := make([]string, 0, len(toAdd))
-	for scopeId, _ := range toAdd {
+	for scopeId := range toAdd {
 		if scopeId == globals.GrantScopeThis ||
 			scopeId == globals.GrantScopeDescendants ||
 			scopeId == globals.GrantScopeChildren {
@@ -484,7 +485,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	}
 
 	individualScopesToRemove := make([]string, 0, len(toRemove))
-	for scopeId, _ := range toRemove {
+	for scopeId := range toRemove {
 		if scopeId == globals.GrantScopeThis ||
 			scopeId == globals.GrantScopeDescendants ||
 			scopeId == globals.GrantScopeChildren {
