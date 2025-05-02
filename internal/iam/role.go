@@ -284,28 +284,6 @@ func allocGlobalRole() globalRole {
 	}
 }
 
-func (g *globalRole) getSpecialGrantRoleScope() []*RoleGrantScope {
-	if g == nil {
-		return nil
-	}
-	var ret []*RoleGrantScope
-	if g.GrantScope != globals.GrantScopeIndividual {
-		ret = append(ret, &RoleGrantScope{
-			CreateTime:       g.GrantScopeUpdateTime,
-			RoleId:           g.PublicId,
-			ScopeIdOrSpecial: g.GrantScope,
-		})
-	}
-	if g.GrantThisRoleScope {
-		ret = append(ret, &RoleGrantScope{
-			CreateTime:       g.GrantThisRoleScopeUpdateTime,
-			RoleId:           g.PublicId,
-			ScopeIdOrSpecial: globals.GrantScopeThis,
-		})
-	}
-	return ret
-}
-
 func (g *globalRole) Clone() any {
 	cp := proto.Clone(g.GlobalRole)
 	ret := &globalRole{
@@ -479,28 +457,6 @@ func (o *orgRole) toRole() *Role {
 	}
 	for _, grantScope := range o.GrantScopes {
 		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
-	}
-	return ret
-}
-
-func (o *orgRole) getSpecialGrantRoleScope() []*RoleGrantScope {
-	if o == nil {
-		return nil
-	}
-	var ret []*RoleGrantScope
-	if o.GrantScope != globals.GrantScopeIndividual {
-		ret = append(ret, &RoleGrantScope{
-			CreateTime:       o.GrantScopeUpdateTime,
-			RoleId:           o.PublicId,
-			ScopeIdOrSpecial: o.GrantScope,
-		})
-	}
-	if o.GrantThisRoleScope {
-		ret = append(ret, &RoleGrantScope{
-			CreateTime:       o.GrantThisRoleScopeUpdateTime,
-			RoleId:           o.PublicId,
-			ScopeIdOrSpecial: globals.GrantScopeThis,
-		})
 	}
 	return ret
 }
