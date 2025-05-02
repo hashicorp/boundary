@@ -43,38 +43,89 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be added to project roles")
 	}
 
-	// Find existing grant scopes
+	// Find existing grant scopes to find duplicate grants
 	roleGrantScopes, err := listRoleGrantScopes(ctx, r.reader, []string{roleId})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to search for grant scopes"))
 	}
 
-	existingGrantScopes := map[string]struct{}{}
+	originalGrantScopeMap := map[string]struct{}{}
 	for _, rgs := range roleGrantScopes {
-		existingGrantScopes[rgs.ScopeIdOrSpecial] = struct{}{}
+		originalGrantScopeMap[rgs.ScopeIdOrSpecial] = struct{}{}
 	}
 
-	// Check incoming grant scopes to see if they exist so we don't try to add
-	// again and cause an integrity error
-	addThisGrantScope := false
-	var setSpecialScope string
-	addRoleGrantScopes := make([]string, 0, len(grantScopes))
-	for _, grantScope := range grantScopes {
-		if _, ok := existingGrantScopes[grantScope]; ok {
+	// deduplicate and create a map that contains only new grant scope we need to add
+	toAdd := make(map[string]struct{})
+	for _, scopeId := range grantScopes {
+		if _, ok := originalGrantScopeMap[scopeId]; ok {
+			delete(originalGrantScopeMap, scopeId)
 			continue
 		}
-		if grantScope == globals.GrantScopeThis {
-			addThisGrantScope = true
-			continue
-		}
-		if grantScope == globals.GrantScopeDescendants || grantScope == globals.GrantScopeChildren {
-			setSpecialScope = grantScope
-			continue
-		}
-		addRoleGrantScopes = append(addRoleGrantScopes, grantScope)
+		toAdd[scopeId] = struct{}{}
 	}
 
-	if !addThisGrantScope && setSpecialScope == "" && len(addRoleGrantScopes) == 0 {
+	// allocation type specific role and manually bump version to ensure that version gets updated
+	// even when only individual grant scopes which are stored in separate tables are modified
+	updatedRole, err := allocRoleScopeGranter(ctx, roleId, scp.GetType())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to allocate role subtype to add role grant scopes"))
+	}
+	updatedRole.setVersion(roleVersion + 1)
+	updateMask := []string{"Version"}
+
+	_, addThis := toAdd[globals.GrantScopeThis]
+	if addThis {
+		updatedRole.setThisGrantScope(true)
+		updateMask = append(updateMask, "GrantThisRoleScope")
+	}
+
+	// finalSpecialGrantScope is used to pass into individualGlobalRoleGrantScope
+	// this only matters if the role is a global role and the grantScopes contains individual project scope
+	// because there are 2 possible values ['individual', 'children'].
+	// If there's no scope being added, we have to use the existing iam_role_<type>.grant_scope column
+	finalSpecialGrantScope := globals.GrantScopeIndividual
+
+	_, addChildren := toAdd[globals.GrantScopeChildren]
+	_, addDescendants := toAdd[globals.GrantScopeDescendants]
+
+	switch {
+	case addDescendants:
+		// cannot add another 'special' grant scope
+		if _, ok := originalGrantScopeMap[globals.GrantScopeChildren]; ok {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope children already exists, only one of descendants or children grant scope can be specified")
+		}
+		updatedRole.setSpecialGrantScope(globals.GrantScopeDescendants)
+		updateMask = append(updateMask, "GrantScope")
+		finalSpecialGrantScope = globals.GrantScopeDescendants
+	case addChildren:
+		if _, ok := originalGrantScopeMap[globals.GrantScopeDescendants]; ok {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope descendants already exists, only one of descendants or children grant scope can be specified")
+		}
+		updatedRole.setSpecialGrantScope(globals.GrantScopeChildren)
+		updateMask = append(updateMask, "GrantScope")
+		finalSpecialGrantScope = globals.GrantScopeChildren
+	default:
+		// if no special grant scope is being added, we need to check for `children`
+		// in case th
+		if _, ok := originalGrantScopeMap[globals.GrantScopeChildren]; ok {
+			finalSpecialGrantScope = globals.GrantScopeChildren
+		}
+	}
+
+	// generate a list of 'individual scopes' that need to be inserted to the database
+	// excluding the special grant scopes [this, descendants, children]
+	individualScopesToAdd := make([]string, 0, len(toAdd))
+	for scopeId := range toAdd {
+		switch scopeId {
+		case globals.GrantScopeThis, globals.GrantScopeChildren, globals.GrantScopeDescendants:
+			continue
+		default:
+			individualScopesToAdd = append(individualScopesToAdd, scopeId)
+		}
+	}
+
+	// return early because there's no new scope to add
+	if !addDescendants && !addChildren && !addThis && len(individualScopesToAdd) == 0 {
 		return []*RoleGrantScope{}, nil
 	}
 
@@ -84,33 +135,14 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 	var globalRoleProjectGrantScopes []*globalRoleIndividualProjectGrantScope
 	var orgRoleGrantScopes []*orgRoleIndividualGrantScope
 
-	updatedRole, err := allocRoleResourceForGrantScopeChanges(ctx, roleId, scp.GetType())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to allocate role subtype to add role grant scopes"))
-	}
-	updateMask := []string{"Version"}
-	updatedRole.SetVersion(roleVersion + 1)
-
-	if addThisGrantScope {
-		updatedRole.SetThisGrantScope(true)
-		updateMask = append(updateMask, "GrantThisRoleScope")
-	}
-	if setSpecialScope != "" {
-		updatedRole.SetSpecialScope(setSpecialScope)
-		updateMask = append(updateMask, "GrantScope")
-	}
 	switch scp.GetType() {
 	case scope.Global.String():
-		projGrantScope := globals.GrantScopeIndividual
-		if setSpecialScope != "" {
-			projGrantScope = setSpecialScope
-		}
-		globalRoleOrgGrantScopes, globalRoleProjectGrantScopes, err = individualGlobalRoleGrantScope(ctx, roleId, projGrantScope, addRoleGrantScopes)
+		globalRoleOrgGrantScopes, globalRoleProjectGrantScopes, err = individualGlobalRoleGrantScope(ctx, roleId, finalSpecialGrantScope, individualScopesToAdd)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to split global roles grant scopes"))
 		}
 	case scope.Org.String():
-		orgRoleGrantScopes, err = individualOrgGrantScope(ctx, roleId, addRoleGrantScopes)
+		orgRoleGrantScopes, err = individualOrgGrantScope(ctx, roleId, individualScopesToAdd)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to split org roles grant scopes"))
 		}
@@ -136,13 +168,15 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, updatedRole, updateMask, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role"))
 			}
-			if addThisGrantScope {
-				retRoleGrantScopes = append(retRoleGrantScopes, updatedRole.ThisGrantScope())
+			if addThis {
+				retRoleGrantScopes = append(retRoleGrantScopes, updatedRole.thisGrantScope())
 			}
-			if setSpecialScope != "" {
-				retRoleGrantScopes = append(retRoleGrantScopes, updatedRole.SpecialGrantScope())
+			if addDescendants || addChildren {
+				if g, ok := updatedRole.specialGrantScope(); ok {
+					retRoleGrantScopes = append(retRoleGrantScopes, g)
+				}
 			}
 			if rowsUpdated != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
@@ -222,68 +256,90 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	currentGrantScopes, err := listRoleGrantScopes(ctx, r.reader, []string{roleId})
+	roleGrantScopes, err := listRoleGrantScopes(ctx, r.reader, []string{roleId})
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("failed to list role grant scopes"))
 	}
-	currentMap := map[string]struct{}{}
-	for _, s := range currentGrantScopes {
-		currentMap[s.ScopeIdOrSpecial] = struct{}{}
+	originalGrantScopeMap := map[string]struct{}{}
+	for _, rgs := range roleGrantScopes {
+		originalGrantScopeMap[rgs.ScopeIdOrSpecial] = struct{}{}
 	}
 
-	removeThis := false
-	removeSpecial := false
-	scopeToRemove := []string{}
+	toRemove := map[string]struct{}{}
+	// finding grants
 	for _, s := range grantScopes {
-		if _, ok := currentMap[s]; !ok {
-			// grants doesn't exist so no need to delete
+		// grants doesn't exist in the original grant scopes so no need to delete
+		if _, ok := originalGrantScopeMap[s]; !ok {
 			continue
 		}
-		if s == globals.GrantScopeThis {
-			removeThis = true
-			continue
-		}
-		if s == globals.GrantScopeChildren || s == globals.GrantScopeDescendants {
-			removeSpecial = true
-			continue
-		}
-		scopeToRemove = append(scopeToRemove, s)
+		toRemove[s] = struct{}{}
 	}
-	// nothing to remove
-	if len(scopeToRemove) == 0 && !removeThis && !removeSpecial {
+
+	// return early if there's nothing to remove
+	if len(toRemove) == 0 {
 		return db.NoRowsAffected, nil
 	}
-	var totalRowsDeleted int
-	updatedRole, err := allocRoleResourceForGrantScopeChanges(ctx, roleId, scp.GetType())
+
+	// totalGrantScopeRemoved for special grant scopes ['this', 'descendants', 'children'] must be counted manually,
+	// as they are no longer stored as individual rows. They are now stored as columns in the role entry.
+	// individual grant scopes still rely on `rowsDeleted` number returned from `DeleteItems` calls
+	var totalGrantScopeRemoved int
+	updatedRole, err := allocRoleScopeGranter(ctx, roleId, scp.GetType())
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to allocate role resource"))
 	}
 	updateMask := []string{"Version"}
-	updatedRole.SetVersion(roleVersion + 1)
+	updatedRole.setVersion(roleVersion + 1)
 
+	_, removeThis := toRemove[globals.GrantScopeThis]
+	_, removeChildren := toRemove[globals.GrantScopeChildren]
+	_, removeDescendants := toRemove[globals.GrantScopeDescendants]
+
+	// handle case where 'this' grant scope is removed
 	if removeThis {
-		updatedRole.SetThisGrantScope(false)
+		updatedRole.setThisGrantScope(false)
 		updateMask = append(updateMask, "GrantThisRoleScope")
-		totalRowsDeleted += 1
+		// manually bump rows deleted when for deleting 'this' grant scope since this is now
+		// a DB row update instead of deleting a row.
+		totalGrantScopeRemoved += 1
 	}
 
-	if removeSpecial {
-		updatedRole.SetSpecialScope(globals.GrantScopeIndividual)
+	// handle case where special scope ['children', 'descendants'] is removed
+	// these grants are mutually exclusive so an OR operation is safe here
+	if removeChildren || removeDescendants {
+		updatedRole.setSpecialGrantScope(globals.GrantScopeIndividual)
 		updateMask = append(updateMask, "GrantScope")
-		totalRowsDeleted += 1
+		// manually bump rows deleted when for deleting special grant scope since this is now
+		// a DB row update instead of deleting a row.
+		totalGrantScopeRemoved += 1
 	}
+
+	// generate a list of 'individual scopes' that need to be inserted to the database
+	// excluding the special grant scopes [this, descendants, children]
+	individualScopesToRemove := make([]string, 0, len(toRemove))
+	for scopeId := range toRemove {
+		switch scopeId {
+		case globals.GrantScopeThis, globals.GrantScopeChildren, globals.GrantScopeDescendants:
+			continue
+		default:
+			individualScopesToRemove = append(individualScopesToRemove, scopeId)
+		}
+	}
+
+	// split the list of individual scope to remove into type-specific slices
 	var globalRoleOrgToRemove []*globalRoleIndividualOrgGrantScope
 	var globalRoleProjToRemove []*globalRoleIndividualProjectGrantScope
 	var orgRoleProjToRemove []*orgRoleIndividualGrantScope
-
 	switch scp.GetType() {
 	case scope.Global.String():
-		globalRoleOrgToRemove, globalRoleProjToRemove, err = individualGlobalRoleGrantScope(ctx, roleId, globals.GrantScopeIndividual, scopeToRemove)
+		// projGrantScope can be hardcoded since we're deleting entries, the foreign key check does not apply here
+		projGrantScope := globals.GrantScopeIndividual
+		globalRoleOrgToRemove, globalRoleProjToRemove, err = individualGlobalRoleGrantScope(ctx, roleId, projGrantScope, individualScopesToRemove)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to split global roles grant scopes"))
 		}
 	case scope.Org.String():
-		orgRoleProjToRemove, err = individualOrgGrantScope(ctx, roleId, scopeToRemove)
+		orgRoleProjToRemove, err = individualOrgGrantScope(ctx, roleId, individualScopesToRemove)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to split org roles grant scopes"))
 		}
@@ -304,7 +360,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, updatedRole, updateMask, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role"))
 			}
 			if rowsUpdated != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
@@ -316,21 +372,21 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to remove global role individual org grants"))
 				}
-				totalRowsDeleted += rowsDeleted
+				totalGrantScopeRemoved += rowsDeleted
 			}
 			if len(globalRoleProjToRemove) > 0 {
 				rowsDeleted, err := w.DeleteItems(ctx, globalRoleProjToRemove, db.NewOplogMsgs(&roleGrantScopesOplogMsgs))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to remove global role individual project grants"))
 				}
-				totalRowsDeleted += rowsDeleted
+				totalGrantScopeRemoved += rowsDeleted
 			}
 			if len(orgRoleProjToRemove) > 0 {
 				rowsDeleted, err := w.DeleteItems(ctx, orgRoleProjToRemove, db.NewOplogMsgs(&roleGrantScopesOplogMsgs))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to remove org role individual project grants"))
 				}
-				totalRowsDeleted += rowsDeleted
+				totalGrantScopeRemoved += rowsDeleted
 			}
 
 			msgs = append(msgs, roleGrantScopesOplogMsgs...)
@@ -339,7 +395,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 				"scope-id":           []string{scp.PublicId},
 				"scope-type":         []string{scp.Type},
-				"resource-public-id": []string{updatedRole.GetPublicId()},
+				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
@@ -350,7 +406,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	return totalRowsDeleted, nil
+	return totalGrantScopeRemoved, nil
 }
 
 // SetRoleGrantScopes sets grant scopes on a role (roleId). The role's current
@@ -380,6 +436,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		needFreshReaderWriter = false
 	}
 
+	// fetch current role scopes
 	scp, err := getRoleScope(ctx, r.reader, roleId)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
@@ -417,25 +474,35 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		toRemove[scopeId] = struct{}{}
 	}
 
+	// totalRowsDeleted has to be calculated manually, especially for special scopes ['this', 'children', 'descendants']
+	// because those are deleted by updating `GrantThisRoleScope` and `GrantScope` column on the role table
+	// totalRowsDeleted are kept in place to maintain the existing contract
 	totalRowsDeleted := 0
-	updateRole, err := allocRoleResourceForGrantScopeChanges(ctx, roleId, scp.GetType())
+	updateRole, err := allocRoleScopeGranter(ctx, roleId, scp.GetType())
 	if err != nil {
 		return nil, 0, errors.Wrap(ctx, err, op, errors.WithMsg("unable to allocate role resource"))
 	}
+
+	// bump version manually to force version to change when the role entry doesn't
+	// version still needs to be bumped when a grant scope is added or removed
 	updateMask := []string{"Version"}
-	updateRole.SetVersion(roleVersion + 1)
+	updateRole.setVersion(roleVersion + 1)
+
+	// handle 'this' grant scope - which is now stored in `GrantThisRoleScope` column
 	_, removeThis := toRemove[globals.GrantScopeThis]
 	_, addThis := toAdd[globals.GrantScopeThis]
 	switch {
 	case addThis:
-		updateRole.SetThisGrantScope(true)
+		updateRole.setThisGrantScope(true)
 		updateMask = append(updateMask, "GrantThisRoleScope")
 	case removeThis:
-		updateRole.SetThisGrantScope(false)
+		updateRole.setThisGrantScope(false)
 		updateMask = append(updateMask, "GrantThisRoleScope")
+		// manually count row deleted since removing `this` is done by an update
 		totalRowsDeleted++
 	}
 
+	// return early if the there's a conflict in grant_scopes we're trying to add
 	finalSpecialGrantScope := globals.GrantScopeIndividual
 	_, addDescendants := toAdd[globals.GrantScopeDescendants]
 	_, addChildren := toAdd[globals.GrantScopeChildren]
@@ -444,28 +511,57 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	}
 
 	_, removeDescendants := toRemove[globals.GrantScopeDescendants]
-	if removeDescendants {
-		totalRowsDeleted++
-	}
 	_, removeChildren := toRemove[globals.GrantScopeChildren]
-	if removeChildren {
+
+	// children and descendants are mutually exclusive so we only need to count row once
+	if removeDescendants || removeChildren {
+		// manually count row deleted since removing `this` is done by an update
 		totalRowsDeleted++
 	}
 
+	// determine the final special scopes stored in `grant_scope` column ['descendants', 'children']
+	// depending on if we're adding or removing grants
 	switch {
 	case addDescendants:
-		updateRole.SetSpecialScope(globals.GrantScopeDescendants)
+		updateRole.setSpecialGrantScope(globals.GrantScopeDescendants)
 		finalSpecialGrantScope = globals.GrantScopeDescendants
 		updateMask = append(updateMask, "GrantScope")
 	case addChildren:
-		updateRole.SetSpecialScope(globals.GrantScopeChildren)
+		updateRole.setSpecialGrantScope(globals.GrantScopeChildren)
 		finalSpecialGrantScope = globals.GrantScopeChildren
 		updateMask = append(updateMask, "GrantScope")
 	case removeDescendants || removeChildren:
-		updateRole.SetSpecialScope(globals.GrantScopeIndividual)
+		updateRole.setSpecialGrantScope(globals.GrantScopeIndividual)
 		updateMask = append(updateMask, "GrantScope")
 	}
 
+	// generate a list of 'individual scopes' that need to be inserted to the database
+	// excluding the special grant scopes [this, descendants, children]
+	individualScopesToAdd := make([]string, 0, len(toAdd))
+	for scopeId := range toAdd {
+		switch scopeId {
+		case globals.GrantScopeThis, globals.GrantScopeChildren, globals.GrantScopeDescendants:
+			continue
+		default:
+			individualScopesToAdd = append(individualScopesToAdd, scopeId)
+		}
+	}
+
+	// generate a list of 'individual scopes' that need to be removed from the database
+	// excluding the special grant scopes [this, descendants, children]
+	individualScopesToRemove := make([]string, 0, len(toRemove))
+	for scopeId := range toRemove {
+		switch scopeId {
+		case globals.GrantScopeThis, globals.GrantScopeChildren, globals.GrantScopeDescendants:
+			continue
+		default:
+			individualScopesToRemove = append(individualScopesToRemove, scopeId)
+		}
+	}
+
+	// convert list of individual grant scopes to add and scopes to removed into their respective structs
+	// these lists will be passed to CreateItems and DeleteItems to create or remove
+	// individual grant scope entries
 	var globalRoleIndividualOrgToAdd []*globalRoleIndividualOrgGrantScope
 	var globalRoleIndividualProjToAdd []*globalRoleIndividualProjectGrantScope
 	var globalRoleIndividualOrgToRemove []*globalRoleIndividualOrgGrantScope
@@ -473,26 +569,6 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 
 	var orgRoleIndividualScopeToAdd []*orgRoleIndividualGrantScope
 	var orgRoleIndividualScopeToRemove []*orgRoleIndividualGrantScope
-
-	individualScopesToAdd := make([]string, 0, len(toAdd))
-	for scopeId := range toAdd {
-		if scopeId == globals.GrantScopeThis ||
-			scopeId == globals.GrantScopeDescendants ||
-			scopeId == globals.GrantScopeChildren {
-			continue
-		}
-		individualScopesToAdd = append(individualScopesToAdd, scopeId)
-	}
-
-	individualScopesToRemove := make([]string, 0, len(toRemove))
-	for scopeId := range toRemove {
-		if scopeId == globals.GrantScopeThis ||
-			scopeId == globals.GrantScopeDescendants ||
-			scopeId == globals.GrantScopeChildren {
-			continue
-		}
-		individualScopesToRemove = append(individualScopesToRemove, scopeId)
-	}
 
 	switch scp.Type {
 	case scope.Global.String():
@@ -662,6 +738,10 @@ func listRoleGrantScopes(ctx context.Context, reader db.Reader, roleIds []string
 	return result, nil
 }
 
+// individualGlobalRoleGrantScope parses a list individual grant scope IDs to their corresponding struct representation
+// projGrantScope (value of iam_role_global.grant_scope) is required because for individually granted project scope
+// has a foreign key enforcement that the `iam_role_global_individual_project_grant_scope.grant_scope matches iam_role_global.grant_scope)
+// which has two possible values: ['individual', 'children']
 func individualGlobalRoleGrantScope(ctx context.Context, roleId string, projGrantScope string, grantScopeIds []string) ([]*globalRoleIndividualOrgGrantScope, []*globalRoleIndividualProjectGrantScope, error) {
 	const op = "iam.(Repository).individualGlobalRoleGrantScope"
 	org := make([]*globalRoleIndividualOrgGrantScope, 0, len(grantScopeIds))
@@ -692,6 +772,7 @@ func individualGlobalRoleGrantScope(ctx context.Context, roleId string, projGran
 	return org, proj, nil
 }
 
+// individualOrgGrantScope converts a list of scope IDs into a slice of *orgRoleIndividualGrantScope
 func individualOrgGrantScope(ctx context.Context, roleId string, grantScopeIds []string) ([]*orgRoleIndividualGrantScope, error) {
 	const op = "iam.(Repository).individualOrgGrantScope"
 	grantScopes := make([]*orgRoleIndividualGrantScope, 0, len(grantScopeIds))
@@ -701,8 +782,9 @@ func individualOrgGrantScope(ctx context.Context, roleId string, grantScopeIds [
 		}
 		grantScopes = append(grantScopes, &orgRoleIndividualGrantScope{
 			OrgRoleIndividualGrantScope: &store.OrgRoleIndividualGrantScope{
-				RoleId:     roleId,
-				ScopeId:    rgs,
+				RoleId:  roleId,
+				ScopeId: rgs,
+				// only 'individual' is allowed here since so we can hard-code this value
 				GrantScope: globals.GrantScopeIndividual,
 			},
 		})
@@ -710,8 +792,8 @@ func individualOrgGrantScope(ctx context.Context, roleId string, grantScopeIds [
 	return grantScopes, nil
 }
 
-// allocRoleResourceForGrantScopeChanges allocates an in-memory instance scope-type specific Role with
-func allocRoleResourceForGrantScopeChanges(ctx context.Context, roleId string, scopeType string) (roleScopeGranter, error) {
+// allocRoleScopeGranter allocates an in-memory instance scope-type specific Role with
+func allocRoleScopeGranter(ctx context.Context, roleId string, scopeType string) (roleScopeGranter, error) {
 	const op = "iam.(Repository).AllocRoleResourceWithSpecialGrantScope"
 	var res roleScopeGranter
 	switch scopeType {
