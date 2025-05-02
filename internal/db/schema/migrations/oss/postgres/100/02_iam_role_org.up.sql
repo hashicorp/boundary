@@ -51,7 +51,9 @@ begin;
     constraint iam_role_org_grant_scope_public_id_uq
       unique(grant_scope, public_id),
     constraint iam_role_org_name_scope_id_uq
-      unique(name, scope_id)
+      unique(name, scope_id),
+    constraint iam_role_org_grant_scope_valid_chk
+      check (grant_scope in ('children', 'individual'))
   );
   comment on table iam_role_org is
     'iam_role_org is a subtype table of the iam_role table. It is used to store roles that are scoped to an org.';
