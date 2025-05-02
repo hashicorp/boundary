@@ -2456,8 +2456,8 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 	TestRoleGrant(t, conn, role4.PublicId, "ids=*;type=group;actions=read;output_fields=id")
 
 	// Add user to created roles
-	for _, roleId := range []string{role1.PublicId, role2.PublicId, role3.PublicId, role4.PublicId} {
-		_, err := repo.AddPrincipalRoles(ctx, roleId, 1, []string{user.PublicId})
+	for _, role := range []*Role{role1, role2, role3, role4} {
+		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
 		require.NoError(t, err)
 	}
 
