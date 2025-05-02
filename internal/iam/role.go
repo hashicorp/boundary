@@ -23,10 +23,10 @@ const (
 	defaultProjectRoleTableName = "iam_role_project"
 )
 
-// roleScopeGranter represents an internal scope type specific role structs that
+// roleGrantScopeUpdater represents an internal scope type specific role structs that
 // support grant scope columns. Currently this only applies to globalRole and orgRole
 // this is used in SetRoleGrantScope, AddRoleGrantScope, DeleteRoleGrantScope
-type roleScopeGranter interface {
+type roleGrantScopeUpdater interface {
 	// setVersion sets value of `Version` of this role. This is used in
 	// `repository_grant_scope` operations where version column of the associated role
 	// has to increase when grant scopes list is changed (add/remove) which is done in a different table.
@@ -119,13 +119,13 @@ func (role *Role) GetVersion() uint32 {
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
 var (
-	_ roleScopeGranter        = (*globalRole)(nil)
+	_ roleGrantScopeUpdater   = (*globalRole)(nil)
 	_ Resource                = (*globalRole)(nil)
 	_ Cloneable               = (*globalRole)(nil)
 	_ db.VetForWriter         = (*globalRole)(nil)
 	_ oplog.ReplayableMessage = (*globalRole)(nil)
 
-	_ roleScopeGranter        = (*orgRole)(nil)
+	_ roleGrantScopeUpdater   = (*orgRole)(nil)
 	_ Resource                = (*orgRole)(nil)
 	_ Cloneable               = (*orgRole)(nil)
 	_ db.VetForWriter         = (*orgRole)(nil)

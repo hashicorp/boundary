@@ -793,9 +793,9 @@ func individualOrgGrantScope(ctx context.Context, roleId string, grantScopeIds [
 }
 
 // allocRoleScopeGranter allocates an in-memory instance scope-type specific Role with
-func allocRoleScopeGranter(ctx context.Context, roleId string, scopeType string) (roleScopeGranter, error) {
+func allocRoleScopeGranter(ctx context.Context, roleId string, scopeType string) (roleGrantScopeUpdater, error) {
 	const op = "iam.(Repository).AllocRoleResourceWithSpecialGrantScope"
-	var res roleScopeGranter
+	var res roleGrantScopeUpdater
 	switch scopeType {
 	case scope.Global.String():
 		g := allocGlobalRole()
