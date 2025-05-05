@@ -334,7 +334,7 @@ If not, you may need to first authenticate to the Client Agent using the CLI or 
 The status also sometimes contains a list of errors that have been encountered by the Client Agent.
 The list is ordered by most recent first.
 These errors can help you understand why the Client Agent may not be behaving as expected.
-Please see the section below on commonly seen errors to help diagnose specific errors.
+Please see the section below on common error messages to help diagnose specific errors.
 Note that this list of errors will not be cleared until the next reboot, so it may not necessarily be a sign of something being wrong.
 
 If the status command returns an error, the Client Agent may not be running.
@@ -461,9 +461,9 @@ After you flush the DNS cache, try connecting to the alias again, or repeat the 
 
 If you are still not able to understand what is wrong, submit a support ticket. Include the `boundary client-agent status` output and the log file in the ticket.
 
-### Commonly seen errors
+### Common error messages
 
-Refer to the following commonly seen errors for more information about their possible causes and resolutions.
+Refer to the following common error messages for more information about their possible causes and resolutions.
 
 #### nodename nor servname provided, or not known / No such host is known
 
@@ -541,10 +541,49 @@ $ ssh -o StrictHostKeyChecking=no targetalias.boundary.dev
 
 You can also remove the existing server host key from the `~/.ssh/known_hosts` file to avoid the error.
 
+#### This site can't be reached... DNS_PROBE_FINISHED_NXDOMAIN
+
+This error occurs when you have authenticated to Boundary and have a target that is configured with an alias.
+When you copy the alias from the **Target** page and paste it in the browser, you receive the error.
+The Client Agent is not running, and if you attempt to resume it, you receive a message that says "bind address already in use."
+
+A conflicting service may be preventing the Client Agent from receiving DNS requests.
+The service may be bound to port 53.
+Restarting your computer may resolve the conflict.
+
+#### error when attempting to resume... bind address already in use: invalid state transition
+
+This error occurs when you have authenticated to Boundary and have a target that is configured with an alias.
+When you attempt to use the alias to connect to the target, you receive the error message in Boundary Desktop.
+The Client Agent is not running, and if you attempt to resume it, you receive a message that says "bind address already in use."
+
+A conflicting service may be preventing the Client Agent from receiving DNS requests.
+The service may be bound to port 53.
+Restarting your computer may resolve the conflict.
+
 ## Conflicting software
 
 Some software is known to cause conflicts with the Boundary Client Agent.
 The following sections are an incomplete list of potential conflicts and any available workarounds for issues.
+
+### Cloudflare WARP client
+
+The Cloudflare WARP client uses a local DNS server to direct traffic.
+It has built-in checks to prevent it from being run alongside other software that uses the same mechanism.
+This includes the Boundary Client Agent.
+If you try to use the Client Agent with the Cloudflare WARP client, it may work, or you may see an error like this one:
+
+```
+Status: Unable to Connect
+Error reason: DNS Proxy Failure
+Error code: CF_DNS_PROXY_FAILURE
+Error description: The WARP Agent must be the only process responsible for DNS resolution on the device. One or more processes are already bound to port 53: boundary-client-agent.
+Learn more: https://cfl.re/CF_DNS_PROXY_FAILURE
+```
+
+You can still install both the Cloudflare WARP client and the Boundary Client Agent on the same machine.
+The two products can coexist as long as the WARP client starts first.
+Starting the WARP client first binds it to alternate IPs and leaves the domain available for Boundary.
 
 ### Docker Desktop (MacOS)
 
@@ -552,15 +591,66 @@ Docker Desktop sometimes creates a local DNS listener that prevents the Client A
 If you run Docker Desktop 4.26 or later, you must clear the `Use kernel networking for UDP` option.
 Otherwise, the Client Agent refuses to start.
 
+### Huntress EDR client (Windows)
+
+Host isolation and release do not work as expected in Windows when you use the Huntress EDR client with the Boundary Client Agent.
+The Huntress EDR client for Windows uses the Windows Filtering Platform (WFP) to isolate devices by blocking all non-essential traffic. This behavior conflicts with the Boundary Client Agent during device isolation.
+Specifically, the Boundary Client Agent replaces the default DNS resolver with its own, which can prevent fallback to a secondary DNS when the primary (Boundary) DNS fails during isolation.
+As a result, Huntress is unable to maintain server communication, leaving the device stuck in an isolated state. Huntress cannot isolate and release devices properly in Windows under these conditions.
+
+As a temporary workaround, you can manually configure a secondary DNS (e.g., 8.8.8.8). However, this secondary DNS setting is overwritten when you pause or resume the Boundary Client Agent, so you must configure it again each time.
+
+This issue does not affect macOS devices, where Boundary and Huntress coexist without additional configuration.
+
 ### Internet Sharing (MacOS)
+
 Enabling **Internet Sharing** on MacOS causes the system's DNS resolver (`mDNSResponder`) to bind to all interfaces on port 53, preventing the Client Agent from starting. Disable **Internet Sharing** before you run the Client Agent.
 
-### Parallels Desktop (MacOS VM on MacOS Host)
-Running a MacOS VM in Parallels Desktop with shared networking causes the system's DNS resolver (`mDNSResponder`) to bind to all interfaces, blocking port 53 and preventing the Client Agent from starting.
+### OpenVPN
 
-As a workaround, you can configure Parallels Desktop to use a different network mode.
-Select an alternative network configuration such as **Host-Only**, **Default Adapter**, or **Wi-Fi** instead of **Shared Network**.
-Refer to the Parallels Desktop documentation for more information.
+When you run OpenVPN at the same time as the Client Agent, it can create a DNS conflict.
+If you are unable to establish a transparent session while using OpenVPN, you may need to explicitly specify a network interface and upstream DNS server(s) to use.
+
+To configure the DNS server(s) to use, use the `override_upstream_dns_servers` configuration option:
+
+```hcl
+# The DNS servers must be specified as an IP, or an IP:Port.
+# If no port is provided, port 53 is assumed.
+# The order of the entries specifies the priority.
+# We recommended providing both the VPN DNS servers
+# and the default DNS servers, so that DNS requests can
+# be resolved even when the VPN is not active.
+override_upstream_dns_servers = [
+   "10.0.0.1", # Example primary VPN DNS server
+   "10.0.0.2", # Example secondary VPN DNS server
+   "8.8.8.8",  # Fallback default DNS server
+   "8.8.4.4:53", # Fallback default DNS server with a custom port
+]
+```
+
+<Note>
+
+The `override_upstream_dns_servers` is used for all non-Boundary DNS requests.
+If you only provide the VPN DNS servers, the Client Agent will not be able to resolve any DNS requests when the VPN is not active.
+
+</Note>
+
+If you configured OpenVPN to push DNS servers to the client, it may create additional conflicts.
+Refer to the sections below for more information about how this configuration affects MacOS and Windows systems.
+
+#### MacOS
+
+When OpenVPN is configured to push DNS servers to the client, the client-side service monitors and updates the system DNS settings.
+As a result, OpenVPN may attempt to override the Client Agent's configuration.
+This scenario can create an unstable network environment and lead to disruptions in user connectivity and service access.
+There is no workaround for this scenario at this time.
+
+#### Windows
+
+When OpenVPN is configured to push DNS servers to the client, it creates `DNSClientNrptRule` entries in Windows that control DNS routing independently of the interface priority.
+Although the Client Agent updates the interface's DNS settings, it does not manage the Name Resolution Policy Table (NRPT).
+As a result, the OpenVPN rules may override the Client Agent's configuration.
+This scenario may lead to conflicts, and there is no supported workaround at this time.
 
 ### Palo Alto Networking Global Protect VPN
 
@@ -659,34 +749,13 @@ You must restart the Client Agent for it to update its configuration with the ne
 </Tab>
 </Tabs>
 
-### Cloudflare WARP client
+### Parallels Desktop (MacOS VM on MacOS Host)
 
-The Cloudflare WARP client uses a local DNS server to direct traffic.
-It has built-in checks to prevent it from being run alongside other software that uses the same mechanism.
-This includes the Boundary Client Agent.
-If you try to use the Client Agent with the Cloudflare WARP client, it may work, or you may see an error like this one:
+Running a MacOS VM in Parallels Desktop with shared networking causes the system's DNS resolver (`mDNSResponder`) to bind to all interfaces, blocking port 53 and preventing the Client Agent from starting.
 
-```
-Status: Unable to Connect
-Error reason: DNS Proxy Failure
-Error code: CF_DNS_PROXY_FAILURE
-Error description: The WARP Agent must be the only process responsible for DNS resolution on the device. One or more processes are already bound to port 53: boundary-client-agent.
-Learn more: https://cfl.re/CF_DNS_PROXY_FAILURE
-```
-
-You can still install both the Cloudflare WARP client and the Boundary Client Agent on the same machine.
-As long as you don't run both at the same time, they should work as expected.
-
-### Huntress EDR client
-
-Host isolation and release do not work as expected in Windows when you use the Huntress EDR client with the Boundary Client Agent.
-The Huntress EDR client for Windows uses the Windows Filtering Platform (WFP) to isolate devices by blocking all non-essential traffic. This behavior conflicts with the Boundary Client Agent during device isolation.
-Specifically, the Boundary Client Agent replaces the default DNS resolver with its own, which can prevent fallback to a secondary DNS when the primary (Boundary) DNS fails during isolation.
-As a result, Huntress is unable to maintain server communication, leaving the device stuck in an isolated state. Huntress cannot isolate and release devices properly in Windows under these conditions.
-
-As a temporary workaround, you can manually configure a secondary DNS (e.g., 8.8.8.8). However, this secondary DNS setting is overwritten when you pause or resume the Boundary Client Agent, so you must configure it again each time.
-
-This issue does not affect macOS devices, where Boundary and Huntress coexist without additional configuration.
+As a workaround, you can configure Parallels Desktop to use a different network mode.
+Select an alternative network configuration such as **Host-Only**, **Default Adapter**, or **Wi-Fi** instead of **Shared Network**.
+Refer to the Parallels Desktop documentation for more information.
 
 ## Uninstall the Client Agent on Mac
 
