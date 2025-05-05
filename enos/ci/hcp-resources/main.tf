@@ -43,7 +43,6 @@ locals {
   egress_tag = "egress"
 
   license_path      = abspath(var.boundary_license_path)
-  license           = var.boundary_license
   boundary_zip_path = abspath(var.boundary_zip_path)
 
   cluster_tag     = "boundary_hcp_testing"

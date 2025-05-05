@@ -13,7 +13,6 @@ scenario "e2e_database" {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    license                  = var.boundary_license
 
     tags = merge({
       "Project Name" : var.project_name
@@ -27,7 +26,8 @@ scenario "e2e_database" {
     module    = module.read_license
 
     variables {
-      license_path = local.license_path
+      license_path = local.license_path      
+      license      = var.boundary_license
     }
   }
 

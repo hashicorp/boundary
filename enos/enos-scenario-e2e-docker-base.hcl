@@ -21,7 +21,6 @@ scenario "e2e_docker_base" {
     local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    license                    = var.boundary_license
 
     network_cluster = "e2e_cluster"
 
@@ -70,6 +69,7 @@ scenario "e2e_docker_base" {
 
     variables {
       license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
