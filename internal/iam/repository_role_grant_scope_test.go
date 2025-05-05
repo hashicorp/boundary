@@ -670,7 +670,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			expectRoleVersionChange: 0,
 			scopes:                  []string{globals.GrantScopeChildren, globals.GrantScopeDescendants},
 			wantErr:                 true,
-			wantErrMsg:              "iam.(Repository).SetRoleGrantScopes: only one of ['children', 'descendants'] can be specified: parameter violation: error #100",
+			wantErrMsg:              "iam.(Repository).SetRoleGrantScopes: only one of [children, descendants] can be specified: parameter violation: error #100",
 		},
 		{
 			name: "global role set individual conflicting scopes return error",
@@ -781,7 +781,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			},
 			scopes:     []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
 			wantErr:    true,
-			wantErrMsg: `iam.(Repository).SetRoleGrantScopes: cannot modify grant scopes of a project scoped role: parameter violation: error #100`,
+			wantErrMsg: `iam.(Repository).SetRoleGrantScopes: cannot modify grant scopes of a project scoped role`,
 		},
 	}
 	for _, tc := range testcases {
