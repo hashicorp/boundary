@@ -20,7 +20,6 @@ scenario "e2e_aws" {
     boundary_install_dir     = abspath(var.boundary_install_dir)
     local_boundary_dir       = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
     boundary_license_path    = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    license                  = var.boundary_license
     vault_license_path       = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
 
     build_path = {
@@ -52,6 +51,7 @@ scenario "e2e_aws" {
 
     variables {
       license_path = local.boundary_license_path
+      license      = var.boundary_license
     }
   }
 
