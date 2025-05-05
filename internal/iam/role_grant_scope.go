@@ -34,21 +34,21 @@ var (
 	_ Cloneable               = (*globalRoleIndividualOrgGrantScope)(nil)
 	_ db.VetForWriter         = (*globalRoleIndividualOrgGrantScope)(nil)
 	_ oplog.ReplayableMessage = (*globalRoleIndividualOrgGrantScope)(nil)
-	_ toRoleGrantScope        = (*globalRoleIndividualOrgGrantScope)(nil)
+	_ roleGrantScoper         = (*globalRoleIndividualOrgGrantScope)(nil)
 
 	_ Cloneable               = (*globalRoleIndividualProjectGrantScope)(nil)
 	_ db.VetForWriter         = (*globalRoleIndividualProjectGrantScope)(nil)
 	_ oplog.ReplayableMessage = (*globalRoleIndividualProjectGrantScope)(nil)
-	_ toRoleGrantScope        = (*globalRoleIndividualProjectGrantScope)(nil)
+	_ roleGrantScoper         = (*globalRoleIndividualProjectGrantScope)(nil)
 
 	_ Cloneable               = (*orgRoleIndividualGrantScope)(nil)
 	_ db.VetForWriter         = (*orgRoleIndividualGrantScope)(nil)
 	_ oplog.ReplayableMessage = (*orgRoleIndividualGrantScope)(nil)
-	_ toRoleGrantScope        = (*orgRoleIndividualGrantScope)(nil)
+	_ roleGrantScoper         = (*orgRoleIndividualGrantScope)(nil)
 )
 
-// toRoleGrantScope is an interface for converting internal grantScopeTypes to exported RoleGrantScope
-type toRoleGrantScope interface {
+// roleGrantScoper is an interface for converting internal grantScopeTypes to exported RoleGrantScope
+type roleGrantScoper interface {
 	roleGrantScope() *RoleGrantScope
 }
 

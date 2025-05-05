@@ -35,25 +35,25 @@ type roleGrantScopeUpdater interface {
 
 	// setThisGrantScope sets value of `GrantThisRoleScope` of this role which control
 	// whether this role has 'this' scope granted to it
-	setThisGrantScope(grantThis bool)
+	setGrantThisRoleScope(grantThis bool)
 
-	// setSpecialGrantScope sets value of `GrantScope` column of this role.  The allowed values depends on the scope
+	// setGrantScope sets value of `GrantScope` column of this role.  The allowed values depends on the scope
 	// that the role is in
 	// 	- global-role: ['descendants', 'children', 'individual']
 	// 	- org-role: ['children', 'individual']
 	//	- project-role: [] (None)
 	// This value controls whether special grant scope is granted to this role
-	setSpecialGrantScope(specialGrant string)
+	setGrantScope(specialGrant string)
 
-	// thisGrantScope return value of `GrantScopeThis` column as *RoleGrantScope.
+	// GrantThisRoleScope return value of `GrantScopeThis` column as *RoleGrantScope.
 	// Prior to the grants refactor, `this` grant scope is granted to a role by
 	// inserting a row to 'role_grant_scope' table, but we've moved on to storing
 	// 'this' grant as a dedicated column in the type-specific role tables
-	thisGrantScope() *RoleGrantScope
+	grantThisRoleScope() *RoleGrantScope
 
-	// specialGrantScope returns special grant scopes ['descendants', 'children'] if available.
+	// GrantScope returns special grant scopes ['descendants', 'children'] if available.
 	// returns nil, false if special grant scope is 'individual'
-	specialGrantScope() (*RoleGrantScope, bool)
+	grantScope() (*RoleGrantScope, bool)
 }
 
 // Roles are granted permissions and assignable to Users and Groups.
@@ -214,21 +214,21 @@ func (g *globalRole) setVersion(version uint32) {
 	g.Version = version
 }
 
-func (g *globalRole) setThisGrantScope(grantThis bool) {
+func (g *globalRole) setGrantThisRoleScope(grantThis bool) {
 	if g == nil {
 		return
 	}
 	g.GrantThisRoleScope = grantThis
 }
 
-func (g *globalRole) setSpecialGrantScope(specialGrant string) {
+func (g *globalRole) setGrantScope(specialGrant string) {
 	if g == nil {
 		return
 	}
 	g.GrantScope = specialGrant
 }
 
-func (g *globalRole) thisGrantScope() *RoleGrantScope {
+func (g *globalRole) grantThisRoleScope() *RoleGrantScope {
 	if g == nil {
 		return &RoleGrantScope{}
 	}
@@ -242,7 +242,7 @@ func (g *globalRole) thisGrantScope() *RoleGrantScope {
 	}
 }
 
-func (g *globalRole) specialGrantScope() (*RoleGrantScope, bool) {
+func (g *globalRole) grantScope() (*RoleGrantScope, bool) {
 	if g == nil {
 		return nil, false
 	}
@@ -345,21 +345,21 @@ func (o *orgRole) setVersion(version uint32) {
 	o.Version = version
 }
 
-func (o *orgRole) setThisGrantScope(grantThis bool) {
+func (o *orgRole) setGrantThisRoleScope(grantThis bool) {
 	if o == nil {
 		return
 	}
 	o.GrantThisRoleScope = grantThis
 }
 
-func (o *orgRole) setSpecialGrantScope(specialGrant string) {
+func (o *orgRole) setGrantScope(specialGrant string) {
 	if o == nil {
 		return
 	}
 	o.GrantScope = specialGrant
 }
 
-func (o *orgRole) thisGrantScope() *RoleGrantScope {
+func (o *orgRole) grantThisRoleScope() *RoleGrantScope {
 	if o == nil {
 		return &RoleGrantScope{}
 	}
@@ -373,7 +373,7 @@ func (o *orgRole) thisGrantScope() *RoleGrantScope {
 	}
 }
 
-func (o *orgRole) specialGrantScope() (*RoleGrantScope, bool) {
+func (o *orgRole) grantScope() (*RoleGrantScope, bool) {
 	if o == nil {
 		return nil, false
 	}
