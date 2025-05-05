@@ -75,6 +75,9 @@ const (
 	// UsernamePasswordCredentialPrefix is the prefix for username/password
 	// creds
 	UsernamePasswordCredentialPrefix = "credup"
+	// UsernamePasswordDomainCredentialPrefix is the prefix for username/password/domain
+	// creds
+	UsernamePasswordDomainCredentialPrefix = "credupd"
 	// UsernamePasswordCredentialPreviousPrefix is the previous prefix for
 	// username/password creds
 	UsernamePasswordCredentialPreviousPrefix = "cred"
@@ -241,6 +244,10 @@ var prefixToResourceType = map[string]ResourceInfo{
 	},
 
 	UsernamePasswordCredentialPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
+	UsernamePasswordDomainCredentialPrefix: {
 		Type:    resource.Credential,
 		Subtype: UnknownSubtype,
 	},
