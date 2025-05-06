@@ -25,6 +25,11 @@ container {
 				#
 				# Boundary does not utilize GnuPG to import certificates.
 				"CVE-2025-30258",
+
+				# iputils@20240905-r0 https://nvd.nist.gov/vuln/detail/CVE-2025-47268
+				#
+				# Boundary does not utilize ping in iputils.
+				"CVE-2025-47268"
 			]
 		}
 	}
