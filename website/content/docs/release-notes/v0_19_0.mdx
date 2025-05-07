@@ -279,12 +279,13 @@ description: >-
     CVE-2025-22873
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    The version of Go that was used in Boundary release 0.19.x contained a security vulnerability. It was possible to improperly access the parent directory of an os.Root by opening a filename ending in "../". For example, Root.Open("../") would open the parent directory of the Root. This escape only permits opening the parent directory itself, not ancestors of the parent or files contained within the parent.
-    <br /><br />In the new version of Go, Root now correctly returns an error. Boundary release 0.19.2 was updated to use the new version. This issue is resolved.
+    The version of Go that was used in Boundary release 0.19.x contained a security vulnerability. Although this vulnerability did not affect Boundary, release 0.19.2 was updated to use a new version of Go.
     <br/><br />
     Learn more:
     <br /><br />
     <a href="https://github.com/golang/go/issues/73555">CVE-2025-22873</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
   </tr>
 
