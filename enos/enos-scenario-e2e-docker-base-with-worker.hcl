@@ -86,6 +86,7 @@ scenario "e2e_docker_base_with_worker" {
 
     variables {
       license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
