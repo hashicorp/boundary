@@ -58,15 +58,6 @@ $ boundary client-agent sessions
 
 ### Grants
 
-<Warning>
-
-You may notice unexpected behavior affecting grants for HCP Boundary clusters that were created before May 3, 2025.
-Behavior may include issues such as authenticated users being unable to list aliases for transparent sessions.
-This issue has been resolved for any clusters created after May 3.
-Refer to the following section for more information and workaround options.
-
-</Warning>
-
 The default grants that Boundary creates for anonymous and authenticated users are sufficient to get started with the Client Agent for the public beta.
 However, in a production scenario, you may want to provide the least amount of privileges necessary for users.
 For a Boundary user to be able to use the Client Agent to establish a transparent session, they must:
@@ -83,61 +74,21 @@ type=target;ids=*;actions=authorize-session
 type=auth-token;ids=*;actions=read:self
 ```
 
+HCP Boundary also requires the following grant string for transparent sessions:
+
+```
+type=target;actions=list,read
+```
+
 HashiCorp highly recommends that you also grant users the permission to list resolvable aliases, as the Client Agent periodically fetches a list of aliases to match incoming DNS requests against.
 Without that permission, every DNS request on the system is sent to the Boundary controller, which can easily overwhelm it.
+For HCP Boundary, it is required that you grant users the permission to list resolvable aliases.
+
 You can use the following grant string to grant the permission to list resolvable aliases:
 
 ```
 type=user;ids=*;actions=list-resolvable-aliases
 ```
-
-#### HCP clusters
-
-You may notice unexpected behavior affecting grants for HCP Boundary clusters that were created before May 3, 2025.
-Behavior may include issues such as authenticated users being unable to list aliases for transparent sessions.
-This issue has been resolved for any clusters created after May 3.
-
-<Tabs>
-<Tab heading="Default admin role" group="admin">
-
-   Update the grant scopes on a role scopes to include the flag "Add all descendants".
-
-   Update the Default admin role's [grant scope](/boundary/docs/common-workflows/manage-roles#add-grant-scopes) ID to apply to all `descendants`.
-
-</Tab>
-<Tab heading="Default login role" group="login">
-
-   1. Update the scopes to include the flag "Add all descendants"
-   1. Add the following grant:
-
-      ````
-      ids=*;type=auth-token;actions=read:self,delete:self
-      ````
-
-   1. Remove the following grant:
-
-      ````
-      ids={{account.id}};actions=read,change-password
-      ````
-
-</Tab>
-
-<Tab heading="Authenticated users" group="users">
-
-   If it doesn't already exist, create a role applied to the `u_auth` principal on the global scope and descendants with the following grants:
-
-   ````
-   ids=*;type=scope;actions=read
-   ids=*;type=auth-token;actions=list
-   ids={{.Account.Id}};actions=read,change-password
-   ids=*;type=session;actions=list,read;self,cancel:self
-   ids={{.User.ID}};type=user;actions=list-resolvable-aliases
-   ids=*;type=target;actions=list,read
-   ````
-
-</Tab>
-</Tabs>
-
 
 ## Configuration
 

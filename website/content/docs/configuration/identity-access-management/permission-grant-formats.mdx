@@ -141,6 +141,24 @@ The following templates substitute a given value into the ID field of the grant 
 - `{{.User.Id}}`: The substituted value is the user ID associated with the token
   used to perform the action.
 
+## HCP Boundary grants
+
+By default, the following grants are automatically created for HCP Boundary clusters:
+
+- The default admin role `global_admin_role` is set to `descendants`.
+- The default login role `global_anon_listing` is set to `descendants` and includes the following grant:
+   ```
+   ids=*,type=auth-token;actions=read:self,delete:self
+   ```
+- Authenticated users `u_auth` have a role on the `global` scope and are set to `descendants` with the following grants:
+
+   ```
+   ids=*;type=scope;actions=read
+   ids=*;type=auth-token;actions=list
+   ids={{.Account.Id}};actions=read,change-password
+   ids=*;type=session;actions=list,read:self,cancel:self
+   ```
+
 ## More information
 
 1. Refer to [Assignable permissions](/boundary/docs/configuration/identity-access-management/assignable-permissions) for more information about the permissions you can assign to Boundary principals.
