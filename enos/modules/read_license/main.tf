@@ -8,8 +8,8 @@ variable "license_path" {
   description = "Path to the boundary license file"
 }
 variable "license" {
-  description = "Boundary license" 
-  default = null
+  description = "Boundary license"
+  default     = null
 }
 
 output "license" {
