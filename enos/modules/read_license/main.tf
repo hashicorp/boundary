@@ -3,7 +3,7 @@
 
 
 # Loads boundary license from file or environment variable
-# If license is null or unsuplied then the license is returned from the file at license_path
+# If license is null or not provided, then the license is returned from the file at license_path
 variable "license_path" {
   description = "Path to the boundary license file"
 }
