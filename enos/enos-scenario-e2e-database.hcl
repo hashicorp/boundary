@@ -26,7 +26,7 @@ scenario "e2e_database" {
     module    = module.read_license
 
     variables {
-      license_path = local.license_path      
+      license_path = local.license_path
       license      = var.boundary_license
     }
   }
