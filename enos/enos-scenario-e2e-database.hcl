@@ -27,6 +27,7 @@ scenario "e2e_database" {
 
     variables {
       license_path = local.license_path
+      license      = var.boundary_license
     }
   }
 
