@@ -1,6 +1,7 @@
 package hook96007
 
-const getIllegalAssociationsQuery = `
+const (
+	baseQuery = `
       with
 	  global_roles (role_id) as (
 	    select public_id
@@ -12,60 +13,83 @@ const getIllegalAssociationsQuery = `
           from iam_role 
          where scope_id like 'o_%'
       ),
-	  proj_roles (role_id) as (
-	    select public_id
-          from iam_role 
-         where scope_id like 'p_%'
-      ),
-      global_roles_descendants_overlap_grant_scopes (role_id, special_grant, individual_grants) as (
-        select role_id,
-          max(scope_id_or_special) filter (where scope_id_or_special in ('descendants')) as special_grant_scope,
-          array_agg (scope_id_or_special) filter (where scope_id_or_special like 'o_%' or scope_id_or_special like 'p_%') as individual_grant_scope
-          from iam_role_grant_scope
-         where role_id in (select role_id from global_roles)
+      global_descendants_overlap(role_id, role_scope_id, grant_scope_id) as (
+        select rgs.role_id as role_id,
+               r.scope_id as role_scope_id,
+        	   rgs.scope_id_or_special as grant_scope_id
+          from iam_role_grant_scope rgs
+          join iam_role r on r.public_id = rgs.role_id
+         where scope_id_or_special != 'this' 
+           and role_id in (
+           select role_id
+             from iam_role_grant_scope
+            where role_id in (select role_id from global_roles)
          group by role_id
+           having 
+             count(*) filter (where scope_id_or_special like 'o_%' or scope_id_or_special like 'p_%') >=1 and
+             count(*) filter (where scope_id_or_special = 'descendants') >= 1
+         )
       ),
-      global_roles_children_overlap_grant_scopes (role_id, special_grant, individual_grants) as (
-        select role_id,
-          max(scope_id_or_special) filter (where scope_id_or_special in ('children')) as special_grant_scope,
-          array_agg (scope_id_or_special) filter (where scope_id_or_special like 'o_%') as individual_grant_scope
-          from iam_role_grant_scope
-         where role_id in (select role_id from global_roles)
+      global_children_overlap(role_id, role_scope_id, grant_scope_id) as (
+        select rgs.role_id as role_id,
+               r.scope_id as role_scope_id,
+        	   rgs.scope_id_or_special as grant_scope_id
+          from iam_role_grant_scope rgs
+          join iam_role r on r.public_id = rgs.role_id
+         where scope_id_or_special != 'this' 
+           and scope_id_or_special not like 'p_%' -- filter out projects because children + project is valid
+           and role_id in (
+           select role_id
+             from iam_role_grant_scope
+            where role_id in (select role_id from global_roles)
          group by role_id
+           having 
+             count(*) filter (where scope_id_or_special like 'o_%') >= 1 and
+             count(*) filter (where scope_id_or_special = 'children') >= 1
+         )
       ),
-      org_roles_overlap_grant_scopes (role_id, special_grant, individual_grants) as (
-        select role_id,
-          max(scope_id_or_special) filter (where scope_id_or_special in ('children')) as special_grant_scope,
-          array_agg (scope_id_or_special) filter (where scope_id_or_special like 'p_%') as individual_grant_scope
-          from iam_role_grant_scope
-         where role_id in (select role_id from org_roles)
+      org_overlap_grant_scopes(role_id, role_scope_id, grant_scope_id) as (
+        select rgs.role_id as role_id,
+               r.scope_id as role_scope_id,
+        	   rgs.scope_id_or_special as grant_scope_id
+          from iam_role_grant_scope rgs
+          join iam_role r on r.public_id = rgs.role_id
+         where scope_id_or_special != 'this' 
+           and role_id in (
+           select role_id
+             from iam_role_grant_scope
+            where role_id in (select role_id from org_roles)
          group by role_id
+           having 
+             count(*) filter (where scope_id_or_special like 'p_%') >= 1 and
+             count(*) filter (where scope_id_or_special = 'children') >= 1
+         ) 
+      ),
+      problems (role_id, role_scope_id, grant_scope_id) as (
+        select role_id,
+               role_scope_id,
+               grant_scope_id
+          from global_descendants_overlap
+         union
+        select role_id,
+               role_scope_id,
+               grant_scope_id
+          from global_children_overlap
+         union
+        select role_id,
+               role_scope_id,
+               grant_scope_id
+          from org_overlap_grant_scopes
       )
-      select gs.role_id as role_id,
-             r.scope_id as scope_id,
-             gs.special_grant as special_grant,
-             array_to_string(gs.individual_grants, ', ') as individual_grants
-        from global_roles_descendants_overlap_grant_scopes gs
-        join iam_role r on (gs.role_id  = r.public_id)
-       where special_grant is not null 
-         and individual_grants is not null
-      union 
-      select gs.role_id as role_id,
-             r.scope_id as scope_id,
-             gs.special_grant as special_grant,
-             array_to_string(gs.individual_grants, ', ') as individual_grants
-        from global_roles_children_overlap_grant_scopes gs
-        join iam_role r on (gs.role_id  = r.public_id)
-       where special_grant is not null 
-         and individual_grants is not null
-      union 
-      select gs.role_id as role_id,
-             r.scope_id as scope_id,
-             gs.special_grant as special_grant,
-             array_to_string(gs.individual_grants, ', ') as individual_grants
-        from org_roles_overlap_grant_scopes gs
-        join iam_role r on (gs.role_id  = r.public_id)
-       where special_grant is not null 
-         and individual_grants is not null
-       order by role_id
 `
+
+	getIllegalAssociationsQuery = baseQuery + `
+      select role_id, 
+             role_scope_id,
+			 max(grant_scope_id) FILTER (WHERE grant_scope_id IN ('descendants', 'children')) AS special_grant_scope,
+			 string_agg(grant_scope_id, ', ' order by grant_scope_id) FILTER (WHERE grant_scope_id NOT IN ('descendants', 'children')) AS individual_grant_scope
+        from problems
+    group by role_id, role_scope_id
+	order by role_id;
+`
+)

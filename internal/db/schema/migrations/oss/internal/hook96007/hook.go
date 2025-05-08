@@ -13,14 +13,14 @@ covered by Descendants or Children grant is considered illegal and will be remov
 
 type illegalAssociation struct {
 	RoleId                string `db:"role_id"`
-	ScopeId               string `db:"scope_id"`
-	SpecialGrantScope     string `db:"special_grant"`
-	IndividualGrantScopes string `db:"individual_grants"`
+	RoleScopeId           string `db:"role_scope_id"`
+	SpecialGrantScope     string `db:"special_grant_scope"`
+	IndividualGrantScopes string `db:"individual_grant_scope"`
 }
 
 func (e illegalAssociation) problemString() string {
 	const message = `Role '%s' in scope '%s' has ['%s'] grant scope which covers [%s]`
-	return fmt.Sprintf(message, e.RoleId, e.ScopeId, e.SpecialGrantScope, e.IndividualGrantScopes)
+	return fmt.Sprintf(message, e.RoleId, e.RoleScopeId, e.SpecialGrantScope, e.IndividualGrantScopes)
 }
 
 // FindIllegalAssociations executes a query to identify illegal associations between
@@ -66,7 +66,7 @@ func query(ctx context.Context, tx *sql.Tx, query string) ([]illegalAssociation,
 	illegalAssociations := make([]illegalAssociation, 0)
 	for rows.Next() {
 		var r illegalAssociation
-		if err := rows.Scan(&r.RoleId, &r.ScopeId, &r.SpecialGrantScope, &r.IndividualGrantScopes); err != nil {
+		if err := rows.Scan(&r.RoleId, &r.RoleScopeId, &r.SpecialGrantScope, &r.IndividualGrantScopes); err != nil {
 			return nil, err
 		}
 		illegalAssociations = append(illegalAssociations, r)
