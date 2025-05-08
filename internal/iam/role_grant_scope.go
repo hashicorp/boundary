@@ -34,15 +34,23 @@ var (
 	_ Cloneable               = (*globalRoleIndividualOrgGrantScope)(nil)
 	_ db.VetForWriter         = (*globalRoleIndividualOrgGrantScope)(nil)
 	_ oplog.ReplayableMessage = (*globalRoleIndividualOrgGrantScope)(nil)
+	_ roleGrantScoper         = (*globalRoleIndividualOrgGrantScope)(nil)
 
 	_ Cloneable               = (*globalRoleIndividualProjectGrantScope)(nil)
 	_ db.VetForWriter         = (*globalRoleIndividualProjectGrantScope)(nil)
 	_ oplog.ReplayableMessage = (*globalRoleIndividualProjectGrantScope)(nil)
+	_ roleGrantScoper         = (*globalRoleIndividualProjectGrantScope)(nil)
 
 	_ Cloneable               = (*orgRoleIndividualGrantScope)(nil)
 	_ db.VetForWriter         = (*orgRoleIndividualGrantScope)(nil)
 	_ oplog.ReplayableMessage = (*orgRoleIndividualGrantScope)(nil)
+	_ roleGrantScoper         = (*orgRoleIndividualGrantScope)(nil)
 )
+
+// roleGrantScoper is an interface for converting internal grantScopeTypes to exported RoleGrantScope
+type roleGrantScoper interface {
+	roleGrantScope() *RoleGrantScope
+}
 
 // RoleGrantScope defines the grant scopes that are assigned to a role
 type RoleGrantScope struct {
@@ -136,6 +144,17 @@ type globalRoleIndividualOrgGrantScope struct {
 	tableName string `gorm:"-"`
 }
 
+func (g *globalRoleIndividualOrgGrantScope) roleGrantScope() *RoleGrantScope {
+	if g == nil {
+		return nil
+	}
+	return &RoleGrantScope{
+		CreateTime:       g.CreateTime,
+		RoleId:           g.RoleId,
+		ScopeIdOrSpecial: g.GetScopeId(),
+	}
+}
+
 func (g *globalRoleIndividualOrgGrantScope) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
@@ -176,6 +195,17 @@ type globalRoleIndividualProjectGrantScope struct {
 	tableName string `gorm:"-"`
 }
 
+func (g *globalRoleIndividualProjectGrantScope) roleGrantScope() *RoleGrantScope {
+	if g == nil {
+		return nil
+	}
+	return &RoleGrantScope{
+		CreateTime:       g.GetCreateTime(),
+		RoleId:           g.GetRoleId(),
+		ScopeIdOrSpecial: g.GetScopeId(),
+	}
+}
+
 func (g *globalRoleIndividualProjectGrantScope) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
@@ -214,6 +244,17 @@ func (g *globalRoleIndividualProjectGrantScope) Clone() any {
 type orgRoleIndividualGrantScope struct {
 	*store.OrgRoleIndividualGrantScope
 	tableName string `gorm:"-"`
+}
+
+func (g *orgRoleIndividualGrantScope) roleGrantScope() *RoleGrantScope {
+	if g == nil {
+		return nil
+	}
+	return &RoleGrantScope{
+		CreateTime:       g.GetCreateTime(),
+		RoleId:           g.GetRoleId(),
+		ScopeIdOrSpecial: g.GetScopeId(),
+	}
 }
 
 func (g *orgRoleIndividualGrantScope) TableName() string {
