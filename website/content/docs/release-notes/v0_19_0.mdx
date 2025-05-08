@@ -228,6 +228,64 @@ description: >-
     However, soft-deleted users were not being properly restored when they logged back in and it affected search capabilities.
     <br/><br />
     This issue is resolved in version 0.19.1. Soft-deleted users are now properly restored as active when they log in again if the refresh token is less than 20 days old.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.17.0 - 0.19.0
+    <br /><br />
+    (Fixed in 0.19.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Canceled SSH connections cause performance issues
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When an SSH connection was canceled, it could cause a spike in CPU usage. In some cases, egress workers become unresponsive, leading to performance issues. The issue occurred when the connection context was canceled at specific times in the process, creating a busy loop that prevented workers from completing tasks.
+    <br/><br />
+    This issue is resolved in version 0.19.2. Workers no longer enter a busy loop when SSH connections are canceled.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.19.0
+    <br /><br />
+    (Fixed in 0.19.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unable to change key type for Vault SSH certificate credential library using the UI
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When you attempted to change the key type for a Vault SSH certificate credential library using the UI, the update failed.
+    <br/><br />
+    This issue is resolved in version 0.19.2. You can now change the key type using the UI.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.19.0
+    <br /><br />
+    (Fixed in 0.19.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    CVE-2025-22873
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.19.x contained a security vulnerability. Although this vulnerability did not affect Boundary, release 0.19.2 was updated to use a new version of Go.
+    <br/><br />
+    Learn more:
+    <br /><br />
+    <a href="https://github.com/golang/go/issues/73555">CVE-2025-22873</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
   </tr>
 
