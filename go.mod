@@ -22,7 +22,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
 	github.com/hashicorp/boundary/api v0.0.54
-	github.com/hashicorp/boundary/sdk v0.0.50
+	github.com/hashicorp/boundary/sdk v0.0.52
 	github.com/hashicorp/cap v0.5.1-0.20240315182732-faa330bfb8df
 	github.com/hashicorp/cap/ldap v0.0.0-20240206183135-ed8f24513744
 	github.com/hashicorp/dawdle v0.5.0
