@@ -8,6 +8,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
+
+## 0.19.2 (2025/05/08)
+### New and Improved
+
 * ui: Populate subject for OIDC account name displays.
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2757)).
 * ui: Improved performance when initially fetching large sets of resources.
