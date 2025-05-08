@@ -670,7 +670,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			expectRoleVersionChange: 0,
 			scopes:                  []string{globals.GrantScopeChildren, globals.GrantScopeDescendants},
 			wantErr:                 true,
-			wantErrMsg:              "iam.(Repository).SetRoleGrantScopes: only one of [children, descendants] can be specified: parameter violation: error #100",
+			wantErrMsg:              "iam.(Repository).SetRoleGrantScopes: only one of ['children', 'descendants'] can be specified: parameter violation: error #100",
 		},
 		{
 			name: "global role set individual conflicting scopes return error",
@@ -772,7 +772,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			expectRoleVersionChange: 0,
 			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 			wantErr:                 true,
-			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to update role: db.Update: iam_role_org_grant_scope_valid_chk constraint failed: check constraint violated: integrity violation: error #1000`,
+			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to update role: db.Update: insert or update on table "iam_role_org" violates foreign key constraint "iam_role_org_grant_scope_enm_fkey": integrity violation: error #1003`,
 		},
 		{
 			name: "project scope role returns error",
