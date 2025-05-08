@@ -4,7 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.19.2 (2025/04/28)
+## 0.19.2 (2025/05/08)
 ### New and Improved
 
 * ui: Populate subject for OIDC account name displays.
