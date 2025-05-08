@@ -160,15 +160,36 @@ func TestMigrationHook_FindIllegal(t *testing.T) {
 	// Run hook check
 	checkReport, err := hook96007.FindIllegalAssociations(ctx, tx)
 	require.NoError(t, err)
+
+	// Run hook repair
+	repairReport, err := hook96007.RepairIllegalAssociations(ctx, tx)
+	require.NoError(t, err)
+
+	err = tx.Commit()
+	require.NoError(t, err)
+
 	hook96007validateCheckFunc(t, checkReport)
+	hook96007validateRepairFunc(t, repairReport)
 }
 
 func hook96007validateCheckFunc(t *testing.T, checkReport migration.Problems) {
 	t.Helper()
 	require := require.New(t)
 	require.ElementsMatch(checkReport, migration.Problems{
-		"Role 'r_globala_96007' in scope 'global' has ['descendants'] grant scope which covers [o_ta___96007, p_pA___96007]",
-		"Role 'r_globalb_96007' in scope 'global' has ['children'] grant scope which covers [o_ta___96007]",
-		"Role 'r_orgaa___96007' in scope 'o_ta___96007' has ['children'] grant scope which covers [p_pA___96007]",
+		"Role 'r_globala_96007' in scope 'global' has 'descendants' grant scope which covers 'o_ta___96007'",
+		"Role 'r_globala_96007' in scope 'global' has 'descendants' grant scope which covers 'p_pA___96007'",
+		"Role 'r_globalb_96007' in scope 'global' has 'children' grant scope which covers 'o_ta___96007'",
+		"Role 'r_orgaa___96007' in scope 'o_ta___96007' has 'children' grant scope which covers 'p_pA___96007'",
+	})
+}
+
+func hook96007validateRepairFunc(t *testing.T, checkReport migration.Repairs) {
+	t.Helper()
+	require := require.New(t)
+	require.ElementsMatch(checkReport, migration.Problems{
+		"Remove redundant grant scopes 'o_ta___96007' association from role 'r_globala_96007' in scope 'global' because it overlaps with 'descendants'",
+		"Remove redundant grant scopes 'p_pA___96007' association from role 'r_globala_96007' in scope 'global' because it overlaps with 'descendants'",
+		"Remove redundant grant scopes 'o_ta___96007' association from role 'r_globalb_96007' in scope 'global' because it overlaps with 'children'",
+		"Remove redundant grant scopes 'p_pA___96007' association from role 'r_orgaa___96007' in scope 'o_ta___96007' because it overlaps with 'children'",
 	})
 }

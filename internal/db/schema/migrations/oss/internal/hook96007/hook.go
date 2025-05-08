@@ -4,23 +4,29 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
 )
 
-var RepairDescription = `Removes redundant grants from roles' grant scopes. For Descendants and Children already grants permissions to 
-individual scopes which may overlap with individually granted scopes. Any individually grant scopes that have already been 
-covered by Descendants or Children grant is considered illegal and will be removed`
+var RepairDescription = `Removes redundant grant scopes from roles. Descendants and Children grant scopes grant permissions to
+multiple scopes which may overlap with individually granted scopes. Any individually grant scopes that have already been 
+covered by 'descendants' or 'children' grant is considered illegal and is removed`
 
 type illegalAssociation struct {
-	RoleId                string `db:"role_id"`
-	RoleScopeId           string `db:"role_scope_id"`
-	SpecialGrantScope     string `db:"special_grant_scope"`
-	IndividualGrantScopes string `db:"individual_grant_scope"`
+	RoleId               string `db:"role_id"`
+	RoleScopeId          string `db:"role_scope_id"`
+	CoveredByGrantScope  string `db:"covered_by_grant_scope"`
+	IndividualGrantScope string `db:"individual_grant_scope"`
 }
 
-func (e illegalAssociation) problemString() string {
-	const message = `Role '%s' in scope '%s' has ['%s'] grant scope which covers [%s]`
-	return fmt.Sprintf(message, e.RoleId, e.RoleScopeId, e.SpecialGrantScope, e.IndividualGrantScopes)
+func (e *illegalAssociation) problemString() string {
+	return fmt.Sprintf(`Role '%s' in scope '%s' has '%s' grant scope which covers '%s'`,
+		e.RoleId, e.RoleScopeId, e.CoveredByGrantScope, e.IndividualGrantScope)
+}
+
+func (e *illegalAssociation) repairString() string {
+	return fmt.Sprintf(`Remove redundant grant scopes '%s' association from role '%s' in scope '%s' because it overlaps with '%s'`,
+		e.IndividualGrantScope, e.RoleId, e.RoleScopeId, e.CoveredByGrantScope)
 }
 
 // FindIllegalAssociations executes a query to identify illegal associations between
@@ -37,7 +43,7 @@ func (e illegalAssociation) problemString() string {
 // or an error. Implements the CheckFunc definition from the migration package.
 //
 // An example of a migration problem:
-// "Role r... in scope .... in org o_A has an illegal association to host set hsst_A in host catalog hsct_A in project p_B in org o_A"
+// Role 'r_orgaa___96007' in scope 'o_ta___96007' has 'children' grant scope which covers 'p_pA___96007'
 func FindIllegalAssociations(ctx context.Context, tx *sql.Tx) (migration.Problems, error) {
 	if tx == nil {
 		return nil, fmt.Errorf("query to get illegal associations failed: missing transaction")
@@ -56,6 +62,34 @@ func FindIllegalAssociations(ctx context.Context, tx *sql.Tx) (migration.Problem
 	return nil, nil
 }
 
+// RepairIllegalAssociations executes a query to remove redundant grant scopes from an org if the grant scope is redundant.
+//
+// A redundant grant scopes are defined as individual scopes granted to roles which are already granted permissions to
+// to those scopes by special grant scopes ['children', 'descendants']
+// It returns migration.Repairs if any illegal associations were removed; nil if no illegal
+// associations were found or an error. Implements the RepairFunc definition from
+// the migration package.
+//
+// An example of a migration repair:
+// "Remove redundant grant scopes 'o_ta___96007' association from role 'r_globala_96007' in scope 'global' because it overlaps with 'descendants'"
+func RepairIllegalAssociations(ctx context.Context, tx *sql.Tx) (migration.Repairs, error) {
+	if tx == nil {
+		return nil, fmt.Errorf("query to delete illegal associations failed: missing transaction")
+	}
+	illegalAssociations, err := query(ctx, tx, deleteIllegalAssociationsQuery)
+	if err != nil {
+		return nil, fmt.Errorf("query to delete illegal associations failed: %v", err)
+	}
+	if len(illegalAssociations) > 0 {
+		var repairs migration.Repairs
+		for _, ia := range illegalAssociations {
+			repairs = append(repairs, ia.repairString())
+		}
+		return repairs, nil
+	}
+	return nil, nil
+}
+
 func query(ctx context.Context, tx *sql.Tx, query string) ([]illegalAssociation, error) {
 	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
@@ -66,7 +100,7 @@ func query(ctx context.Context, tx *sql.Tx, query string) ([]illegalAssociation,
 	illegalAssociations := make([]illegalAssociation, 0)
 	for rows.Next() {
 		var r illegalAssociation
-		if err := rows.Scan(&r.RoleId, &r.RoleScopeId, &r.SpecialGrantScope, &r.IndividualGrantScopes); err != nil {
+		if err := rows.Scan(&r.RoleId, &r.RoleScopeId, &r.CoveredByGrantScope, &r.IndividualGrantScope); err != nil {
 			return nil, err
 		}
 		illegalAssociations = append(illegalAssociations, r)
@@ -75,8 +109,4 @@ func query(ctx context.Context, tx *sql.Tx, query string) ([]illegalAssociation,
 		return nil, err
 	}
 	return illegalAssociations, nil
-}
-
-func RepairIllegalAssociations(ctx context.Context, tx *sql.Tx) (migration.Repairs, error) {
-	panic("not implemented")
 }
