@@ -2,8 +2,9 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.19.2 (2025/04/28)
+## Next
 
+## 0.19.2 (2025/05/08)
 ### New and Improved
 
 * Adds support to parse User-Agent headers and emit them in telemetry events
