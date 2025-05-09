@@ -2594,3 +2594,136 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 		})
 	}
 }
+
+func TestGrantsForUserOrgResources(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	user := TestUser(t, repo, "global")
+
+	// Create scopes
+	globalScope := AllocScope()
+	globalScope.PublicId = globals.GlobalPrefix
+	require.NoError(t, rw.LookupByPublicId(ctx, &globalScope))
+
+	org1Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	org2Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+
+	// Create roles
+	roleThis := TestRole(t, conn, globals.GlobalPrefix)
+	roleOrg1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1Scope.PublicId}))
+	roleThisAndOrg2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2Scope.PublicId}))
+	roleDescendants := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
+	roleThisAndChildren := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+
+	// Grant roles
+	TestRoleGrant(t, conn, roleThis.PublicId, "ids=*;type=*;actions=*")
+	TestRoleGrant(t, conn, roleOrg1.PublicId, "ids=*;type=alias;actions=create,update,read,list")
+	TestRoleGrant(t, conn, roleOrg1.PublicId, "ids=*;type=alias;actions=delete")
+	TestRoleGrant(t, conn, roleThisAndOrg2.PublicId, "ids=*;type=alias;actions=delete")
+	TestRoleGrant(t, conn, roleDescendants.PublicId, "ids=*;type=*;actions=update")
+	TestRoleGrant(t, conn, roleThisAndChildren.PublicId, "ids=*;type=account;actions=create,update")
+	TestRoleGrant(t, conn, roleThisAndChildren.PublicId, "ids=*;type=group;actions=read;output_fields=id")
+
+	// Add users to created roles
+	for _, role := range []*Role{roleThis, roleOrg1, roleThisAndOrg2, roleDescendants, roleThisAndChildren} {
+		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
+		require.NoError(t, err)
+	}
+
+	type testInput struct {
+		userId   string
+		resource resource.Type
+		scope    *Scope
+	}
+
+	testcases := []struct {
+		name     string
+		input    testInput
+		output   []perms.GrantTuple
+		errorMsg string
+	}{
+		{
+			name: "user resource should return user and '*' grants",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.User,
+				scope:    &globalScope,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            roleThis.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=*;actions=*",
+				},
+				{
+					RoleId:            roleThisAndOrg2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=alias;actions=delete",
+				},
+			},
+		},
+		// TODO: \/ At each scope \/
+		{
+			name: "no resource specified should return '*' and 'unknown' grants",
+			input: testInput{
+				userId: user.PublicId,
+				scope:  &globalScope,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            roleThis.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=*;actions=*",
+				},
+			},
+		},
+		// TODO: \/ At each scope \/
+		{
+			name: "u_anon should return no grants",
+			input: testInput{
+				userId: globals.AnonymousUserId,
+				scope:  &globalScope,
+			},
+			output: []perms.GrantTuple{},
+		},
+		// TODO: \/ At each scope \/
+		{
+			name: "u_auth should return no grants",
+			input: testInput{
+				userId: globals.AnyAuthenticatedUserId,
+				scope:  &globalScope,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "missing user id should return error",
+			input: testInput{
+				resource: resource.User,
+			},
+			errorMsg: "missing user id",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NotNil(t, tc.input.scope)
+			got, err := repo.grantsForUserOrgResources(ctx, tc.input.userId, tc.input.resource, *tc.input.scope)
+			if tc.errorMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorMsg)
+				return
+			}
+			require.NoError(t, err)
+			assert.ElementsMatch(t, got, tc.output)
+		})
+	}
+}
