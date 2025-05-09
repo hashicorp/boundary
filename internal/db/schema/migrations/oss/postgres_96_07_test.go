@@ -85,6 +85,7 @@ func TestMigrationHook_FindIllegal(t *testing.T) {
 	dbType, err := db.StringToDbType(dialect)
 	require.NoError(t, err)
 	conn, err := db.Open(ctx, dbType, u)
+	require.NoError(t, err)
 	rw := db.New(conn)
 
 	t.Helper()
