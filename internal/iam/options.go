@@ -43,6 +43,8 @@ type options struct {
 	withWriter                    db.Writer
 	withStartPageAfterItem        pagination.Item
 	withTestCacheMultiGrantTuples *[]MultiGrantTuple
+	withCreateDefaultRole         bool
+	withCreateAdminRole           bool
 }
 
 func getDefaultOptions() options {
@@ -116,6 +118,22 @@ func WithDisassociate(enable bool) Option {
 func WithSkipAdminRoleCreation(enable bool) Option {
 	return func(o *options) {
 		o.withSkipAdminRoleCreation = enable
+	}
+}
+
+// WithCreateAdminRole provides an option to enable the automatic
+// creation of an admin role when a new scope is created.
+func WithCreateAdminRole(enable bool) Option {
+	return func(o *options) {
+		o.withCreateAdminRole = enable
+	}
+}
+
+// WithCreateDefaultRole provides an option to enable the automatic
+// creation of a default role when a new scope is created.
+func WithCreateDefaultRole(enable bool) Option {
+	return func(o *options) {
+		o.withCreateDefaultRole = enable
 	}
 }
 
