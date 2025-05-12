@@ -132,6 +132,30 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 
+func WithCreateAdminRole(inCreateAdminRole bool) Option {
+	return func(o *options) {
+		o.postMap["create_admin_role"] = inCreateAdminRole
+	}
+}
+
+func DefaultCreateAdminRole() Option {
+	return func(o *options) {
+		o.postMap["create_admin_role"] = nil
+	}
+}
+
+func WithCreateDefaultRole(inCreateDefaultRole bool) Option {
+	return func(o *options) {
+		o.postMap["create_default_role"] = inCreateDefaultRole
+	}
+}
+
+func DefaultCreateDefaultRole() Option {
+	return func(o *options) {
+		o.postMap["create_default_role"] = nil
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription
