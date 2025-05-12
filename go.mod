@@ -68,6 +68,9 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/mattn/go-colorable v0.1.14
 	github.com/miekg/dns v1.1.66
+	github.com/lib/pq v1.10.9
+	github.com/mattn/go-colorable v0.1.13
+	github.com/miekg/dns v1.1.58
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	github.com/mitchellh/cli v1.1.5
 	github.com/mitchellh/copystructure v1.2.0
@@ -172,7 +175,6 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
