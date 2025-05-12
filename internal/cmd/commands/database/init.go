@@ -11,7 +11,9 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
@@ -44,6 +46,8 @@ type InitCommand struct {
 	flagMigrationUrl                             string
 	flagSkipInitialLoginRoleCreation             bool
 	flagSkipInitialAuthenticatedUserRoleCreation bool
+	flagCreateInitialLoginRole                   bool
+	flagCreateInitialAuthenticatedUserRole       bool
 	flagSkipAuthMethodCreation                   bool
 	flagSkipScopesCreation                       bool
 	flagSkipHostResourcesCreation                bool
@@ -395,7 +399,14 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandSuccess
 	}
 
-	orgScope, projScope, err := c.CreateInitialScopes(c.Context)
+	iamOpts := []iam.Option{}
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
+		iamOpts = []iam.Option{
+			iam.WithCreateAdminRole(c.flagCreateInitialAuthenticatedUserRole),
+			iam.WithCreateDefaultRole(c.flagCreateInitialLoginRole),
+		}
+	}
+	orgScope, projScope, err := c.CreateInitialScopes(c.Context, base.WithIamOptions(iamOpts...))
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
 		return base.CommandCliError

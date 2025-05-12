@@ -11,12 +11,15 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/version"
 )
 
 const (
 	flagPrimaryAuthMethodIdName     = "primary-auth-method-id"
 	flagSkipAdminRoleCreationName   = "skip-admin-role-creation"
 	flagSkipDefaultRoleCreationName = "skip-default-role-creation"
+	flagCreateAdminRoleName         = "create-admin-role"
+	flagCreateDefaultRoleName       = "create-default-role"
 	flagStoragePolicyIdName         = "storage-policy-id"
 )
 
@@ -28,17 +31,25 @@ func init() {
 }
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
-	return map[string][]string{
-		"create":                {flagSkipAdminRoleCreationName, flagSkipDefaultRoleCreationName},
+	extraActionsFlagsMap := map[string][]string{
 		"update":                {flagPrimaryAuthMethodIdName},
 		"attach-storage-policy": {"id", "version", flagStoragePolicyIdName},
 		"detach-storage-policy": {"id", "version"},
 	}
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
+		extraActionsFlagsMap["create"] = append(extraActionsFlagsMap["create"], flagCreateAdminRoleName, flagCreateDefaultRoleName)
+	}
+	if version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		extraActionsFlagsMap["create"] = append(extraActionsFlagsMap["create"], flagSkipAdminRoleCreationName, flagSkipDefaultRoleCreationName)
+	}
+	return extraActionsFlagsMap
 }
 
 type extraCmdVars struct {
 	flagSkipAdminRoleCreation   bool
 	flagSkipDefaultRoleCreation bool
+	flagCreateAdminRole         bool
+	flagCreateDefaultRole       bool
 	flagPrimaryAuthMethodId     string
 	flagStoragePolicyId         string
 }
@@ -50,13 +61,13 @@ func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 			f.BoolVar(&base.BoolVar{
 				Name:   flagSkipAdminRoleCreationName,
 				Target: &c.flagSkipAdminRoleCreation,
-				Usage:  "If set, a role granting the current user access to administer the newly-created scope will not automatically be created",
+				Usage:  "Deprecated: If set, a role granting the current user access to administer the newly-created scope will not automatically be created",
 			})
 		case flagSkipDefaultRoleCreationName:
 			f.BoolVar(&base.BoolVar{
 				Name:   flagSkipDefaultRoleCreationName,
 				Target: &c.flagSkipDefaultRoleCreation,
-				Usage:  "If set, a role granting the anonymous user access to log into auth methods and a few other actions within the newly-created scope will not automatically be created",
+				Usage:  "Deprecated: If set, a role granting the anonymous user access to log into auth methods and a few other actions within the newly-created scope will not automatically be created",
 			})
 		case flagPrimaryAuthMethodIdName:
 			f.StringVar(&base.StringVar{
@@ -69,6 +80,18 @@ func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 				Name:   flagStoragePolicyIdName,
 				Target: &c.flagStoragePolicyId,
 				Usage:  "The public ID of the Storage Policy to attach to this scope. Can only attach to the global scope and an Org scope.",
+			})
+		case flagCreateAdminRoleName:
+			f.BoolVar(&base.BoolVar{
+				Name:   flagCreateAdminRoleName,
+				Target: &c.flagCreateAdminRole,
+				Usage:  "If set, a role granting the current user access to administer the newly-created scope will automatically be created",
+			})
+		case flagCreateDefaultRoleName:
+			f.BoolVar(&base.BoolVar{
+				Name:   flagCreateDefaultRoleName,
+				Target: &c.flagCreateDefaultRole,
+				Usage:  "If set, a role granting the anonymous user access to log into auth methods and a few other actions within the newly-created scope will automatically be created",
 			})
 		}
 	}
@@ -84,12 +107,38 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]scopes.Opt
 		}
 	}
 
-	if c.flagSkipAdminRoleCreation {
-		*opts = append(*opts, scopes.WithSkipAdminRoleCreation(c.flagSkipAdminRoleCreation))
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
+		if c.flagCreateAdminRole && c.flagSkipAdminRoleCreation {
+			c.UI.Error("Cannot set both --create-admin-role and --skip-admin-role-creation to true")
+		}
+		if c.flagCreateDefaultRole && c.flagSkipDefaultRoleCreation {
+			c.UI.Error("Cannot set both --create-default-role and --skip-default-role-creation to true")
+		}
+		if !c.flagCreateAdminRole && !c.flagSkipAdminRoleCreation {
+			c.UI.Output("Warning: --skip-admin-role-creation is deprecated and will be removed in a future version. Use --create-admin-role instead.")
+			*opts = append(*opts, scopes.WithSkipAdminRoleCreation(!c.flagSkipAdminRoleCreation))
+		}
+		if !c.flagCreateDefaultRole && !c.flagSkipDefaultRoleCreation {
+			c.UI.Output("Warning: --skip-default-role-creation is deprecated and will be removed in a future version. Use --create-default-role instead.")
+			*opts = append(*opts, scopes.WithSkipDefaultRoleCreation(!c.flagSkipDefaultRoleCreation))
+		}
+		if c.flagCreateAdminRole {
+			*opts = append(*opts, scopes.WithCreateAdminRole(c.flagCreateAdminRole))
+		}
+		if c.flagCreateDefaultRole {
+			*opts = append(*opts, scopes.WithCreateDefaultRole(c.flagCreateDefaultRole))
+		}
 	}
-	if c.flagSkipDefaultRoleCreation {
-		*opts = append(*opts, scopes.WithSkipDefaultRoleCreation(c.flagSkipDefaultRoleCreation))
+
+	if version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		if c.flagSkipAdminRoleCreation {
+			*opts = append(*opts, scopes.WithSkipAdminRoleCreation(c.flagSkipAdminRoleCreation))
+		}
+		if c.flagSkipDefaultRoleCreation {
+			*opts = append(*opts, scopes.WithSkipDefaultRoleCreation(c.flagSkipDefaultRoleCreation))
+		}
 	}
+
 	if c.flagPrimaryAuthMethodId != "" {
 		*opts = append(*opts, scopes.WithPrimaryAuthMethodId(c.flagPrimaryAuthMethodId))
 	}
