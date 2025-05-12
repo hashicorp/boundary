@@ -58,6 +58,7 @@ type Credential struct {
 	//	*Credential_UsernamePasswordAttributes
 	//	*Credential_SshPrivateKeyAttributes
 	//	*Credential_JsonAttributes
+	//	*Credential_UsernamePasswordDomainAttributes
 	Attrs isCredential_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
 	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
@@ -201,6 +202,15 @@ func (x *Credential) GetJsonAttributes() *JsonAttributes {
 	return nil
 }
 
+func (x *Credential) GetUsernamePasswordDomainAttributes() *UsernamePasswordDomainAttributes {
+	if x != nil {
+		if x, ok := x.Attrs.(*Credential_UsernamePasswordDomainAttributes); ok {
+			return x.UsernamePasswordDomainAttributes
+		}
+	}
+	return nil
+}
+
 func (x *Credential) GetAuthorizedActions() []string {
 	if x != nil {
 		return x.AuthorizedActions
@@ -229,6 +239,10 @@ type Credential_JsonAttributes struct {
 	JsonAttributes *JsonAttributes `protobuf:"bytes,103,opt,name=json_attributes,json=jsonAttributes,proto3,oneof"`
 }
 
+type Credential_UsernamePasswordDomainAttributes struct {
+	UsernamePasswordDomainAttributes *UsernamePasswordDomainAttributes `protobuf:"bytes,104,opt,name=username_password_domain_attributes,json=usernamePasswordDomainAttributes,proto3,oneof"`
+}
+
 func (*Credential_Attributes) isCredential_Attrs() {}
 
 func (*Credential_UsernamePasswordAttributes) isCredential_Attrs() {}
@@ -236,6 +250,8 @@ func (*Credential_UsernamePasswordAttributes) isCredential_Attrs() {}
 func (*Credential_SshPrivateKeyAttributes) isCredential_Attrs() {}
 
 func (*Credential_JsonAttributes) isCredential_Attrs() {}
+
+func (*Credential_UsernamePasswordDomainAttributes) isCredential_Attrs() {}
 
 // The attributes of a UsernamePassword Credential.
 type UsernamePasswordAttributes struct {
@@ -301,6 +317,77 @@ func (x *UsernamePasswordAttributes) GetPasswordHmac() string {
 	return ""
 }
 
+type UsernamePasswordDomainAttributes struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The username associated with the credential.
+	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"public"` // @gotags: `class:"public"`
+	// Input only. The password associated with the credential.
+	Password *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	// Output only. The hmac value of the password.
+	PasswordHmac  string                  `protobuf:"bytes,30,opt,name=password_hmac,proto3" json:"password_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
+	Domain        *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=domain,proto3" json:"domain,omitempty" class:"public"`               // @gotags: `class:"public"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsernamePasswordDomainAttributes) Reset() {
+	*x = UsernamePasswordDomainAttributes{}
+	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsernamePasswordDomainAttributes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsernamePasswordDomainAttributes) ProtoMessage() {}
+
+func (x *UsernamePasswordDomainAttributes) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsernamePasswordDomainAttributes.ProtoReflect.Descriptor instead.
+func (*UsernamePasswordDomainAttributes) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_credentials_v1_credential_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *UsernamePasswordDomainAttributes) GetUsername() *wrapperspb.StringValue {
+	if x != nil {
+		return x.Username
+	}
+	return nil
+}
+
+func (x *UsernamePasswordDomainAttributes) GetPassword() *wrapperspb.StringValue {
+	if x != nil {
+		return x.Password
+	}
+	return nil
+}
+
+func (x *UsernamePasswordDomainAttributes) GetPasswordHmac() string {
+	if x != nil {
+		return x.PasswordHmac
+	}
+	return ""
+}
+
+func (x *UsernamePasswordDomainAttributes) GetDomain() *wrapperspb.StringValue {
+	if x != nil {
+		return x.Domain
+	}
+	return nil
+}
+
 // The attributes of a SshPrivateKey Credential.
 type SshPrivateKeyAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -320,7 +407,7 @@ type SshPrivateKeyAttributes struct {
 
 func (x *SshPrivateKeyAttributes) Reset() {
 	*x = SshPrivateKeyAttributes{}
-	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[2]
+	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -332,7 +419,7 @@ func (x *SshPrivateKeyAttributes) String() string {
 func (*SshPrivateKeyAttributes) ProtoMessage() {}
 
 func (x *SshPrivateKeyAttributes) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[2]
+	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -345,7 +432,7 @@ func (x *SshPrivateKeyAttributes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SshPrivateKeyAttributes.ProtoReflect.Descriptor instead.
 func (*SshPrivateKeyAttributes) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_credentials_v1_credential_proto_rawDescGZIP(), []int{2}
+	return file_controller_api_resources_credentials_v1_credential_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SshPrivateKeyAttributes) GetUsername() *wrapperspb.StringValue {
@@ -396,7 +483,7 @@ type JsonAttributes struct {
 
 func (x *JsonAttributes) Reset() {
 	*x = JsonAttributes{}
-	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[3]
+	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +495,7 @@ func (x *JsonAttributes) String() string {
 func (*JsonAttributes) ProtoMessage() {}
 
 func (x *JsonAttributes) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[3]
+	mi := &file_controller_api_resources_credentials_v1_credential_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +508,7 @@ func (x *JsonAttributes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JsonAttributes.ProtoReflect.Descriptor instead.
 func (*JsonAttributes) Descriptor() ([]byte, []int) {
-	return file_controller_api_resources_credentials_v1_credential_proto_rawDescGZIP(), []int{3}
+	return file_controller_api_resources_credentials_v1_credential_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *JsonAttributes) GetObject() *structpb.Struct {
@@ -442,7 +529,8 @@ var File_controller_api_resources_credentials_v1_credential_proto protoreflect.F
 
 const file_controller_api_resources_credentials_v1_credential_proto_rawDesc = "" +
 	"\n" +
-	"8controller/api/resources/credentials/v1/credential.proto\x12'controller.api.resources.credentials.v1\x1a.controller/api/resources/scopes/v1/scope.proto\x1a*controller/custom_options/v1/options.proto\x1a\x1bgoogle/api/visibility.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xd6\b\n" +
+	"8controller/api/resources/credentials/v1/credential.proto\x12'controller.api.resources.credentials.v1\x1a.controller/api/resources/scopes/v1/scope.proto\x1a*controller/custom_options/v1/options.proto\x1a\x1bgoogle/api/visibility.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xa5\n" +
+	"\n" +
 	"\n" +
 	"Credential\x12\x0e\n" +
 	"\x02id\x18\n" +
@@ -465,7 +553,9 @@ const file_controller_api_resources_credentials_v1_credential_proto_rawDesc = ""
 	"\x1assh_private_key_attributes\x18f \x01(\v2@.controller.api.resources.credentials.v1.SshPrivateKeyAttributesB'\xa0\xda)\x01\x9a\xe3)\x0fssh_private_key\xfa\xd2\xe4\x93\x02\n" +
 	"\x12\bINTERNALH\x00R\x17sshPrivateKeyAttributes\x12\x80\x01\n" +
 	"\x0fjson_attributes\x18g \x01(\v27.controller.api.resources.credentials.v1.JsonAttributesB\x1c\xa0\xda)\x01\x9a\xe3)\x04json\xfa\xd2\xe4\x93\x02\n" +
-	"\x12\bINTERNALH\x00R\x0ejsonAttributes\x12/\n" +
+	"\x12\bINTERNALH\x00R\x0ejsonAttributes\x12\xcc\x01\n" +
+	"#username_password_domain_attributes\x18h \x01(\v2I.controller.api.resources.credentials.v1.UsernamePasswordDomainAttributesB0\xa0\xda)\x01\x9a\xe3)\x18username_password_domain\xfa\xd2\xe4\x93\x02\n" +
+	"\x12\bINTERNALH\x00R usernamePasswordDomainAttributes\x12/\n" +
 	"\x12authorized_actions\x18\xac\x02 \x03(\tR\x12authorized_actionsB\a\n" +
 	"\x05attrs\"\xb6\x02\n" +
 	"\x1aUsernamePasswordAttributes\x12a\n" +
@@ -475,7 +565,17 @@ const file_controller_api_resources_credentials_v1_credential_proto_rawDesc = ""
 	"\bpassword\x18\x14 \x01(\v2\x1c.google.protobuf.StringValueB'\xa0\xda)\x01\xc2\xdd)\x1f\n" +
 	"\x13attributes.password\x12\bPasswordR\bpassword\x12R\n" +
 	"\rpassword_hmac\x18\x1e \x01(\tB,\xc2\xdd)(\n" +
-	"\x18attributes.password_hmac\x12\fPasswordHmacR\rpassword_hmac\"\xee\x04\n" +
+	"\x18attributes.password_hmac\x12\fPasswordHmacR\rpassword_hmac\"\x97\x03\n" +
+	" UsernamePasswordDomainAttributes\x12a\n" +
+	"\busername\x18\n" +
+	" \x01(\v2\x1c.google.protobuf.StringValueB'\xa0\xda)\x01\xc2\xdd)\x1f\n" +
+	"\x13attributes.username\x12\bUsernameR\busername\x12a\n" +
+	"\bpassword\x18\x14 \x01(\v2\x1c.google.protobuf.StringValueB'\xa0\xda)\x01\xc2\xdd)\x1f\n" +
+	"\x13attributes.password\x12\bPasswordR\bpassword\x12R\n" +
+	"\rpassword_hmac\x18\x1e \x01(\tB,\xc2\xdd)(\n" +
+	"\x18attributes.password_hmac\x12\fPasswordHmacR\rpassword_hmac\x12Y\n" +
+	"\x06domain\x18( \x01(\v2\x1c.google.protobuf.StringValueB#\xa0\xda)\x01\xc2\xdd)\x1b\n" +
+	"\x11attributes.domain\x12\x06DomainR\x06domain\"\xee\x04\n" +
 	"\x17SshPrivateKeyAttributes\x12a\n" +
 	"\busername\x18\n" +
 	" \x01(\v2\x1c.google.protobuf.StringValueB'\xa0\xda)\x01\xc2\xdd)\x1f\n" +
@@ -509,38 +609,43 @@ func file_controller_api_resources_credentials_v1_credential_proto_rawDescGZIP()
 	return file_controller_api_resources_credentials_v1_credential_proto_rawDescData
 }
 
-var file_controller_api_resources_credentials_v1_credential_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_api_resources_credentials_v1_credential_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_controller_api_resources_credentials_v1_credential_proto_goTypes = []any{
-	(*Credential)(nil),                 // 0: controller.api.resources.credentials.v1.Credential
-	(*UsernamePasswordAttributes)(nil), // 1: controller.api.resources.credentials.v1.UsernamePasswordAttributes
-	(*SshPrivateKeyAttributes)(nil),    // 2: controller.api.resources.credentials.v1.SshPrivateKeyAttributes
-	(*JsonAttributes)(nil),             // 3: controller.api.resources.credentials.v1.JsonAttributes
-	(*scopes.ScopeInfo)(nil),           // 4: controller.api.resources.scopes.v1.ScopeInfo
-	(*wrapperspb.StringValue)(nil),     // 5: google.protobuf.StringValue
-	(*timestamppb.Timestamp)(nil),      // 6: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),            // 7: google.protobuf.Struct
+	(*Credential)(nil),                       // 0: controller.api.resources.credentials.v1.Credential
+	(*UsernamePasswordAttributes)(nil),       // 1: controller.api.resources.credentials.v1.UsernamePasswordAttributes
+	(*UsernamePasswordDomainAttributes)(nil), // 2: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes
+	(*SshPrivateKeyAttributes)(nil),          // 3: controller.api.resources.credentials.v1.SshPrivateKeyAttributes
+	(*JsonAttributes)(nil),                   // 4: controller.api.resources.credentials.v1.JsonAttributes
+	(*scopes.ScopeInfo)(nil),                 // 5: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrapperspb.StringValue)(nil),           // 6: google.protobuf.StringValue
+	(*timestamppb.Timestamp)(nil),            // 7: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                  // 8: google.protobuf.Struct
 }
 var file_controller_api_resources_credentials_v1_credential_proto_depIdxs = []int32{
-	4,  // 0: controller.api.resources.credentials.v1.Credential.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	5,  // 1: controller.api.resources.credentials.v1.Credential.name:type_name -> google.protobuf.StringValue
-	5,  // 2: controller.api.resources.credentials.v1.Credential.description:type_name -> google.protobuf.StringValue
-	6,  // 3: controller.api.resources.credentials.v1.Credential.created_time:type_name -> google.protobuf.Timestamp
-	6,  // 4: controller.api.resources.credentials.v1.Credential.updated_time:type_name -> google.protobuf.Timestamp
-	7,  // 5: controller.api.resources.credentials.v1.Credential.attributes:type_name -> google.protobuf.Struct
+	5,  // 0: controller.api.resources.credentials.v1.Credential.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	6,  // 1: controller.api.resources.credentials.v1.Credential.name:type_name -> google.protobuf.StringValue
+	6,  // 2: controller.api.resources.credentials.v1.Credential.description:type_name -> google.protobuf.StringValue
+	7,  // 3: controller.api.resources.credentials.v1.Credential.created_time:type_name -> google.protobuf.Timestamp
+	7,  // 4: controller.api.resources.credentials.v1.Credential.updated_time:type_name -> google.protobuf.Timestamp
+	8,  // 5: controller.api.resources.credentials.v1.Credential.attributes:type_name -> google.protobuf.Struct
 	1,  // 6: controller.api.resources.credentials.v1.Credential.username_password_attributes:type_name -> controller.api.resources.credentials.v1.UsernamePasswordAttributes
-	2,  // 7: controller.api.resources.credentials.v1.Credential.ssh_private_key_attributes:type_name -> controller.api.resources.credentials.v1.SshPrivateKeyAttributes
-	3,  // 8: controller.api.resources.credentials.v1.Credential.json_attributes:type_name -> controller.api.resources.credentials.v1.JsonAttributes
-	5,  // 9: controller.api.resources.credentials.v1.UsernamePasswordAttributes.username:type_name -> google.protobuf.StringValue
-	5,  // 10: controller.api.resources.credentials.v1.UsernamePasswordAttributes.password:type_name -> google.protobuf.StringValue
-	5,  // 11: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.username:type_name -> google.protobuf.StringValue
-	5,  // 12: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.private_key:type_name -> google.protobuf.StringValue
-	5,  // 13: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.private_key_passphrase:type_name -> google.protobuf.StringValue
-	7,  // 14: controller.api.resources.credentials.v1.JsonAttributes.object:type_name -> google.protobuf.Struct
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	3,  // 7: controller.api.resources.credentials.v1.Credential.ssh_private_key_attributes:type_name -> controller.api.resources.credentials.v1.SshPrivateKeyAttributes
+	4,  // 8: controller.api.resources.credentials.v1.Credential.json_attributes:type_name -> controller.api.resources.credentials.v1.JsonAttributes
+	2,  // 9: controller.api.resources.credentials.v1.Credential.username_password_domain_attributes:type_name -> controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes
+	6,  // 10: controller.api.resources.credentials.v1.UsernamePasswordAttributes.username:type_name -> google.protobuf.StringValue
+	6,  // 11: controller.api.resources.credentials.v1.UsernamePasswordAttributes.password:type_name -> google.protobuf.StringValue
+	6,  // 12: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.username:type_name -> google.protobuf.StringValue
+	6,  // 13: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.password:type_name -> google.protobuf.StringValue
+	6,  // 14: controller.api.resources.credentials.v1.UsernamePasswordDomainAttributes.domain:type_name -> google.protobuf.StringValue
+	6,  // 15: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.username:type_name -> google.protobuf.StringValue
+	6,  // 16: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.private_key:type_name -> google.protobuf.StringValue
+	6,  // 17: controller.api.resources.credentials.v1.SshPrivateKeyAttributes.private_key_passphrase:type_name -> google.protobuf.StringValue
+	8,  // 18: controller.api.resources.credentials.v1.JsonAttributes.object:type_name -> google.protobuf.Struct
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_credentials_v1_credential_proto_init() }
@@ -553,6 +658,7 @@ func file_controller_api_resources_credentials_v1_credential_proto_init() {
 		(*Credential_UsernamePasswordAttributes)(nil),
 		(*Credential_SshPrivateKeyAttributes)(nil),
 		(*Credential_JsonAttributes)(nil),
+		(*Credential_UsernamePasswordDomainAttributes)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -560,7 +666,7 @@ func file_controller_api_resources_credentials_v1_credential_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_api_resources_credentials_v1_credential_proto_rawDesc), len(file_controller_api_resources_credentials_v1_credential_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -87,6 +87,26 @@ func staticPasswordCredentialToProto(cred *static.UsernamePasswordCredential, pr
 	}
 }
 
+func staticPasswordDomainCredentialToProto(cred *static.UsernamePasswordDomainCredential, prj *iam.Scope, hmac string) *pb.Credential {
+	return &pb.Credential{
+		Id:                cred.GetPublicId(),
+		CredentialStoreId: cred.GetStoreId(),
+		Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+		CreatedTime:       cred.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       cred.GetUpdateTime().GetTimestamp(),
+		Version:           cred.GetVersion(),
+		Type:              credential.UsernamePasswordDomainSubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
+		Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+			UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+				Username:     wrapperspb.String(cred.GetUsername()),
+				PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hmac)),
+				Domain:       wrapperspb.String(cred.GetDomain()),
+			},
+		},
+	}
+}
+
 func staticSshCredentialToProto(cred *static.SshPrivateKeyCredential, prj *iam.Scope, hmac string) *pb.Credential {
 	return &pb.Credential{
 		Id:                cred.GetPublicId(),
@@ -137,6 +157,12 @@ func TestList(t *testing.T) {
 		require.NoError(t, err)
 		wantCreds = append(wantCreds, staticPasswordCredentialToProto(c, prj, hm))
 
+		domain := fmt.Sprintf("domain-%d", i)
+		upd := static.TestUsernamePasswordDomainCredential(t, conn, wrapper, user, pass, domain, store.GetPublicId(), prj.GetPublicId())
+		hm, err = crypto.HmacSha256(ctx, []byte(pass), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+		require.NoError(t, err)
+		wantCreds = append(wantCreds, staticPasswordDomainCredentialToProto(upd, prj, hm))
+
 		spk := static.TestSshPrivateKeyCredential(t, conn, wrapper, user, static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 		hm, err = crypto.HmacSha256(ctx, []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
 		require.NoError(t, err)
@@ -167,7 +193,7 @@ func TestList(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 30,
+				EstItemCount: 40,
 			},
 			anonRes: &pbs.ListCredentialsResponse{
 				Items:        wantCreds,
@@ -221,15 +247,15 @@ func TestList(t *testing.T) {
 		},
 		{
 			name: "Filter on Attribute",
-			req:  &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[3].GetUsernamePasswordAttributes().GetUsername().Value)},
+			req:  &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[4].GetUsernamePasswordAttributes().GetUsername().Value)},
 			res: &pbs.ListCredentialsResponse{
-				Items:        wantCreds[3:5],
+				Items:        wantCreds[4:7],
 				ResponseType: "complete",
 				ListToken:    "",
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 2,
+				EstItemCount: 3,
 			},
 			anonRes: &pbs.ListCredentialsResponse{
 				ResponseType: "complete",
@@ -333,6 +359,10 @@ func TestGet(t *testing.T) {
 	upHm, err := crypto.HmacSha256(context.Background(), []byte("pass"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 	require.NoError(t, err)
 
+	updCred := static.TestUsernamePasswordDomainCredential(t, conn, wrapper, "user", "pass", "domain", store.GetPublicId(), prj.GetPublicId())
+	updHm, err := crypto.HmacSha256(context.Background(), []byte("pass"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+	require.NoError(t, err)
+
 	spkCred := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 	spkHm, err := crypto.HmacSha256(context.Background(), []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
 	require.NoError(t, err)
@@ -402,6 +432,30 @@ func TestGet(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "success-upd",
+			id:   updCred.GetPublicId(),
+			res: &pbs.GetCredentialResponse{
+				Item: &pb.Credential{
+					Id:                updCred.GetPublicId(),
+					CredentialStoreId: updCred.GetStoreId(),
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:              credential.UsernamePasswordDomainSubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+					CreatedTime:       updCred.CreateTime.GetTimestamp(),
+					UpdatedTime:       updCred.UpdateTime.GetTimestamp(),
+					Version:           1,
+					Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+						UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+							Username:     wrapperspb.String("user"),
+							PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(updHm)),
+							Domain:       wrapperspb.String("domain"),
+						},
+					},
+				},
+			},
+		},
+
 		{
 			name: "success-spk",
 			id:   spkCred.GetPublicId(),
@@ -534,6 +588,7 @@ func TestDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	updCred := static.TestUsernamePasswordDomainCredential(t, conn, wrapper, "user", "pass", "domain", store.GetPublicId(), prj.GetPublicId())
 	spkCred := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
 	obj, _ := static.TestJsonObject(t)
@@ -549,6 +604,10 @@ func TestDelete(t *testing.T) {
 		{
 			name: "success-up",
 			id:   upCred.GetPublicId(),
+		},
+		{
+			name: "success-upd",
+			id:   updCred.GetPublicId(),
 		},
 		{
 			name: "success-spk",
@@ -654,6 +713,7 @@ func TestCreate(t *testing.T) {
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
+						Password: wrapperspb.String("password"),
 					},
 				},
 			}},
@@ -712,6 +772,134 @@ func TestCreate(t *testing.T) {
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Id UPD",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				Id:                globals.UsernamePasswordDomainCredentialPrefix + "_notallowed",
+				Type:              credential.UsernamePasswordDomainSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+					UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+						Username: wrapperspb.String("username"),
+						Password: wrapperspb.String("password"),
+						Domain:   wrapperspb.String("domain"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid Credential Store Id UPD",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: "p_invalidid",
+				Type:              credential.UsernamePasswordDomainSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+					UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+						Username: wrapperspb.String("username"),
+						Password: wrapperspb.String("password"),
+						Domain:   wrapperspb.String("domain"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Created Time",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				CreatedTime:       timestamppb.Now(),
+				Type:              credential.UsernamePasswordDomainSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+					UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+						Username: wrapperspb.String("username"),
+						Password: wrapperspb.String("password"),
+						Domain:   wrapperspb.String("domain"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Updated Time",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				UpdatedTime:       timestamppb.Now(),
+				Type:              credential.UsernamePasswordDomainSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+					UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+						Username: wrapperspb.String("username"),
+						Password: wrapperspb.String("password"),
+						Domain:   wrapperspb.String("domain"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Must provide type",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+					UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+						Username: wrapperspb.String("username"),
+						Password: wrapperspb.String("password"),
+						Domain:   wrapperspb.String("domain"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Must provide username",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              credential.UsernamePasswordDomainSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+					UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+						Password: wrapperspb.String("password"),
+						Domain:   wrapperspb.String("domain"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Must provide password",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              credential.UsernamePasswordDomainSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+					UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+						Username: wrapperspb.String("username"),
+						Domain:   wrapperspb.String("domain"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+
+		{
+			name: "Must provide domain",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              credential.UsernamePasswordDomainSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+					UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+						Username: wrapperspb.String("username"),
+						Password: wrapperspb.String("password"),
 					},
 				},
 			}},
@@ -995,6 +1183,16 @@ func TestUpdate(t *testing.T) {
 		return cred, clean
 	}
 
+	freshCredUpd := func(user, pass, domain string) (*static.UsernamePasswordDomainCredential, func()) {
+		t.Helper()
+		cred := static.TestUsernamePasswordDomainCredential(t, conn, wrapper, user, pass, domain, store.GetPublicId(), prj.GetPublicId())
+		clean := func() {
+			_, err := s.DeleteCredential(ctx, &pbs.DeleteCredentialRequest{Id: cred.GetPublicId()})
+			require.NoError(t, err)
+		}
+		return cred, clean
+	}
+
 	freshCredSpk := func(user string) (*static.SshPrivateKeyCredential, func()) {
 		t.Helper()
 		cred := static.TestSshPrivateKeyCredential(t, conn, wrapper, user, static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
@@ -1114,6 +1312,24 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "update-username-domainupd",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.username"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+						UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+							Username: wrapperspb.String("new-user-name"),
+						},
+					},
+				},
+			},
+			res: func(in *pb.Credential) *pb.Credential {
+				out := proto.Clone(in).(*pb.Credential)
+				out.GetUsernamePasswordDomainAttributes().Username = wrapperspb.String("new-user-name")
+				return out
+			},
+		},
+		{
 			name: "update-username-spk",
 			req: &pbs.UpdateCredentialRequest{
 				UpdateMask: fieldmask("attributes.username"),
@@ -1148,6 +1364,44 @@ func TestUpdate(t *testing.T) {
 				hm, err := crypto.HmacSha256(context.Background(), []byte("new-password"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 				require.NoError(t, err)
 				out.GetUsernamePasswordAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				return out
+			},
+		},
+		{
+			name: "update-password-domainupd",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.password"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+						UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+							Password: wrapperspb.String("new-password"),
+						},
+					},
+				},
+			},
+			res: func(in *pb.Credential) *pb.Credential {
+				out := proto.Clone(in).(*pb.Credential)
+				hm, err := crypto.HmacSha256(context.Background(), []byte("new-password"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+				require.NoError(t, err)
+				out.GetUsernamePasswordDomainAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				return out
+			},
+		},
+		{
+			name: "update-domain-domainupd",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.domain"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+						UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+							Domain: wrapperspb.String("new-domain"),
+						},
+					},
+				},
+			},
+			res: func(in *pb.Credential) *pb.Credential {
+				out := proto.Clone(in).(*pb.Credential)
+				out.GetUsernamePasswordDomainAttributes().Domain = wrapperspb.String("new-domain")
 				return out
 			},
 		},
@@ -1192,6 +1446,56 @@ func TestUpdate(t *testing.T) {
 				hm, err := crypto.HmacSha256(context.Background(), []byte("new-password"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 				require.NoError(t, err)
 				out.GetUsernamePasswordAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				return out
+			},
+		},
+		{
+			name: "update-username-password-domainupd",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.username", "attributes.password"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+						UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+							Username: wrapperspb.String("new-username"),
+							Password: wrapperspb.String("new-password"),
+						},
+					},
+				},
+			},
+			res: func(in *pb.Credential) *pb.Credential {
+				out := proto.Clone(in).(*pb.Credential)
+
+				out.GetUsernamePasswordDomainAttributes().Username = wrapperspb.String("new-username")
+
+				hm, err := crypto.HmacSha256(context.Background(), []byte("new-password"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+				require.NoError(t, err)
+				out.GetUsernamePasswordDomainAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				return out
+			},
+		},
+		{
+			name: "update-username-password-and-domain-domainupd",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.username", "attributes.password", "attributes.domain"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_UsernamePasswordDomainAttributes{
+						UsernamePasswordDomainAttributes: &pb.UsernamePasswordDomainAttributes{
+							Username: wrapperspb.String("new-username"),
+							Password: wrapperspb.String("new-password"),
+							Domain:   wrapperspb.String("new-domain"),
+						},
+					},
+				},
+			},
+			res: func(in *pb.Credential) *pb.Credential {
+				out := proto.Clone(in).(*pb.Credential)
+
+				out.GetUsernamePasswordDomainAttributes().Username = wrapperspb.String("new-username")
+
+				hm, err := crypto.HmacSha256(context.Background(), []byte("new-password"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+				require.NoError(t, err)
+				out.GetUsernamePasswordDomainAttributes().Domain = wrapperspb.String("new-domain")
+				out.GetUsernamePasswordDomainAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
 				return out
 			},
 		},
@@ -1357,6 +1661,8 @@ func TestUpdate(t *testing.T) {
 				cred, cleanup = freshCredSpk("user")
 			} else if strings.Contains(tc.name, "json") {
 				cred, cleanup = freshCredJson()
+			} else if strings.Contains(tc.name, "domainupd") {
+				cred, cleanup = freshCredUpd("user", "pass", "domain")
 			} else {
 				cred, cleanup = freshCredUp("user", "pass")
 			}
@@ -1532,6 +1838,11 @@ func TestListPagination(t *testing.T) {
 		require.NoError(err)
 		allCredentials = append(allCredentials, staticSshCredentialToProto(l, prj, hm))
 	}
+	for _, l := range static.TestUsernamePasswordDomainCredentials(t, conn, wrapper, "username", "password", "domain", credStore.GetPublicId(), prj.PublicId, 5) {
+		hm, err := crypto.HmacSha256(ctx, []byte("password"), databaseWrapper, []byte(credStore.GetPublicId()), nil, crypto.WithEd25519())
+		require.NoError(err)
+		allCredentials = append(allCredentials, staticPasswordDomainCredentialToProto(l, prj, hm))
+	}
 	for _, l := range static.TestUsernamePasswordCredentials(t, conn, wrapper, "username", "password", credStore.GetPublicId(), prj.PublicId, 5) {
 		hm, err := crypto.HmacSha256(ctx, []byte("password"), databaseWrapper, []byte(credStore.GetPublicId()), nil, crypto.WithEd25519())
 		require.NoError(err)
@@ -1592,7 +1903,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 15,
+				EstItemCount: 20,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -1618,7 +1929,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 15,
+				EstItemCount: 20,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -1630,10 +1941,10 @@ func TestListPagination(t *testing.T) {
 
 	// Request rest of results
 	req.ListToken = got.ListToken
-	req.PageSize = 15
+	req.PageSize = 16
 	got, err = s.ListCredentials(ctx, req)
 	require.NoError(err)
-	require.Len(got.GetItems(), 11)
+	require.Len(got.GetItems(), 16)
 	// Compare without comparing the list token
 	assert.Empty(
 		cmp.Diff(
@@ -1645,7 +1956,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 15,
+				EstItemCount: 20,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -1714,7 +2025,7 @@ func TestListPagination(t *testing.T) {
 				SortDir:      "desc",
 				// Should contain the deleted credential
 				RemovedIds:   []string{deletedCred.Id},
-				EstItemCount: 15,
+				EstItemCount: 20,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -1738,7 +2049,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "updated_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 15,
+				EstItemCount: 20,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -1767,7 +2078,7 @@ func TestListPagination(t *testing.T) {
 				SortDir:      "desc",
 				// Should be empty again
 				RemovedIds:   nil,
-				EstItemCount: 15,
+				EstItemCount: 20,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
@@ -1791,7 +2102,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				EstItemCount: 15,
+				EstItemCount: 20,
 			},
 			cmpopts.SortSlices(func(a, b string) bool {
 				return a < b
