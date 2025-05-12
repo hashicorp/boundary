@@ -2429,3 +2429,168 @@ func SetupChildGrantScopes(t *testing.T, conn *db.DB, repo *Repository) (childGr
 	)
 	return
 }
+
+func TestGrantsForUserGlobalResources(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	user := TestUser(t, repo, "global")
+
+	// Create scopes
+	org1 := TestOrg(t, repo)
+	org2 := TestOrg(t, repo)
+
+	// Create roles
+	roleThis := TestRole(t, conn, globals.GlobalPrefix)
+	roleOrg1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1.PublicId}))
+	roleThisAndOrg2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2.PublicId}))
+	roleDescendants := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
+	roleThisAndChildren := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+
+	// Grant roles
+	TestRoleGrant(t, conn, roleThis.PublicId, "ids=*;type=*;actions=*")
+	TestRoleGrant(t, conn, roleOrg1.PublicId, "ids=*;type=alias;actions=create,update,read,list")
+	TestRoleGrant(t, conn, roleOrg1.PublicId, "ids=*;type=alias;actions=delete")
+	TestRoleGrant(t, conn, roleThisAndOrg2.PublicId, "ids=*;type=alias;actions=delete")
+	TestRoleGrant(t, conn, roleDescendants.PublicId, "ids=*;type=*;actions=update")
+	TestRoleGrant(t, conn, roleThisAndChildren.PublicId, "ids=*;type=account;actions=create,update")
+	TestRoleGrant(t, conn, roleThisAndChildren.PublicId, "ids=*;type=group;actions=read;output_fields=id")
+
+	// Add users to created roles
+	for _, role := range []*Role{roleThis, roleOrg1, roleThisAndOrg2, roleDescendants, roleThisAndChildren} {
+		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
+		require.NoError(t, err)
+	}
+
+	type testInput struct {
+		userId   string
+		resource resource.Type
+	}
+
+	testcases := []struct {
+		name     string
+		input    testInput
+		output   []perms.GrantTuple
+		errorMsg string
+	}{
+		{
+			name: "alias resource should return alias and '*' grants",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Alias,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            roleThis.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=*;actions=*",
+				},
+				{
+					RoleId:            roleThisAndOrg2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=alias;actions=delete",
+				},
+			},
+		},
+		{
+			name: "account resource should return account and '*' grants",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Account,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            roleThis.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=*;actions=*",
+				},
+				{
+					RoleId:            roleThisAndChildren.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=account;actions=create,update",
+				},
+			},
+		},
+		{
+			name: "group resource should return group and '*' grants",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Group,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            roleThis.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=*;actions=*",
+				},
+				{
+					RoleId:            roleThisAndChildren.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=group;actions=read;output_fields=id",
+				},
+			},
+		},
+		{
+			name: "no resource specified should return '*' and 'unknown' grants",
+			input: testInput{
+				userId: user.PublicId,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            roleThis.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=*;actions=*",
+				},
+			},
+		},
+		{
+			name: "u_anon should return no grants",
+			input: testInput{
+				userId: globals.AnonymousUserId,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_auth should return no grants",
+			input: testInput{
+				userId: globals.AnyAuthenticatedUserId,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "missing user id should return error",
+			input: testInput{
+				resource: resource.Alias,
+			},
+			errorMsg: "missing user id",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := repo.grantsForUserGlobalResources(ctx, tc.input.userId, tc.input.resource)
+			if tc.errorMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorMsg)
+				return
+			}
+			require.NoError(t, err)
+			assert.ElementsMatch(t, got, tc.output)
+		})
+	}
+}
