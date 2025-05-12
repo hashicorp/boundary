@@ -180,10 +180,10 @@ func hook96007validateCheckFunc(t *testing.T, checkReport migration.Problems) {
 	t.Helper()
 	require := require.New(t)
 	require.ElementsMatch(checkReport, migration.Problems{
-		"Role 'r_globala_96007' in scope 'global' has 'descendants' grant scope which covers 'o_ta___96007'",
-		"Role 'r_globala_96007' in scope 'global' has 'descendants' grant scope which covers 'p_pA___96007'",
-		"Role 'r_globalb_96007' in scope 'global' has 'children' grant scope which covers 'o_ta___96007'",
-		"Role 'r_orgaa___96007' in scope 'o_ta___96007' has 'children' grant scope which covers 'p_pA___96007'",
+		"Role 'r_globala_96007' in scope 'global' has the 'descendants' grant scope which covers 'o_ta___96007'",
+		"Role 'r_globala_96007' in scope 'global' has the 'descendants' grant scope which covers 'p_pA___96007'",
+		"Role 'r_globalb_96007' in scope 'global' has the 'children' grant scope which covers 'o_ta___96007'",
+		"Role 'r_orgaa___96007' in scope 'o_ta___96007' has the 'children' grant scope which covers 'p_pA___96007'",
 	})
 }
 
