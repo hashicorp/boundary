@@ -298,7 +298,7 @@ const (
            role_parent_scope_id,
            grant_scope,
            grant_this_role_scope,
-           null as individual_grant_scopes, -- there can be no individual grants for global roles
+           null as individual_grant_scopes, -- individual grant scopes do not apply to resources in the global scope
            array_agg(distinct(canonical_grant)) as canonical_grants
       from global_roles
      where global_roles.grant_this_role_scope = true
