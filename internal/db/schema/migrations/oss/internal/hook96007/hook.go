@@ -12,8 +12,8 @@ import (
 )
 
 var RepairDescription = `Removes redundant grant scopes from roles. Descendants and Children grant scopes grant permissions to
-multiple scopes which may overlap with individually granted scopes. Any individually grant scopes that have already been 
-covered by 'descendants' or 'children' grant is considered illegal and is removed`
+multiple scopes which may overlap with individually granted scopes. Any individually granted scopes that have already been 
+covered by 'descendants' or 'children' grants are considered illegal and are removed`
 
 type illegalAssociation struct {
 	RoleId               string `db:"role_id"`
@@ -23,7 +23,7 @@ type illegalAssociation struct {
 }
 
 func (e *illegalAssociation) problemString() string {
-	return fmt.Sprintf(`Role '%s' in scope '%s' has '%s' grant scope which covers '%s'`,
+	return fmt.Sprintf(`Role '%s' in scope '%s' has the '%s' grant scope which covers '%s'`,
 		e.RoleId, e.RoleScopeId, e.CoveredByGrantScope, e.IndividualGrantScope)
 }
 
