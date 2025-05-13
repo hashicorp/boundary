@@ -343,7 +343,7 @@ func TestAuthMethod_oplog(t *testing.T) {
 func Test_convertValueObjects(t *testing.T) {
 	testCtx := context.TODO()
 	testPublicId := "test-id"
-	testLdapServers := []string{"ldaps://ldap1.alice.com", "ldaps://ldap2.alice.com"}
+	testLdapServers := []string{"ldaps://ldap1.alice.com", "ldaps://ldap2.alice.com", "ldap://[2001:BEEF:0:0:0:1:0:0001]:80"}
 	_, pem := TestGenerateCA(t, "localhost")
 	testCerts := []string{pem}
 	c, err := NewCertificate(testCtx, testPublicId, pem)
@@ -499,7 +499,18 @@ func Test_convertValueObjects(t *testing.T) {
 				},
 			},
 			wantErrMatch:    errors.T(errors.Unknown),
-			wantErrContains: "first path segment in URL cannot contain colon",
+			wantErrContains: "failed to parse address",
+		},
+		{
+			name: "invalid-url-has-invalid-ipv6",
+			am: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId: testPublicId,
+					Urls:     []string{"ldaps://[2001:BEEF:0:0:1:0:0001]"},
+				},
+			},
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "host contains an invalid IPv6 literal",
 		},
 		{
 			name: "invalid-client-cert",

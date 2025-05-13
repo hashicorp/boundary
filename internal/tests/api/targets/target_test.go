@@ -380,7 +380,7 @@ func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 
 	// Create target with a network address association
 	targetResp, err := tClient.Create(tc.Context(), "tcp", proj.GetPublicId(),
-		targets.WithName("test-address"), targets.WithAddress("[::1]"), targets.WithTcpTargetDefaultPort(22))
+		targets.WithName("test-address"), targets.WithAddress("::1"), targets.WithTcpTargetDefaultPort(22))
 	require.NoError(t, err)
 	require.NotNil(t, targetResp)
 	require.Equal(t, "::1", targetResp.GetItem().Address)
@@ -392,7 +392,7 @@ func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 	hs, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id)
 	require.NoError(t, err)
 	require.NotNil(t, hs)
-	h, err := hosts.NewClient(client).Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("[::1]"))
+	h, err := hosts.NewClient(client).Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("::1"))
 	require.NoError(t, err)
 	require.NotNil(t, h)
 	hUpdate, err := hostsets.NewClient(client).AddHosts(tc.Context(), hs.Item.Id, hs.Item.Version, []string{h.GetItem().Id})
@@ -438,7 +438,7 @@ func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 	hs, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id)
 	require.NoError(t, err)
 	require.NotNil(t, hs)
-	h, err := hosts.NewClient(client).Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("[::1]"))
+	h, err := hosts.NewClient(client).Create(tc.Context(), hc.Item.Id, hosts.WithStaticHostAddress("::1"))
 	require.NoError(t, err)
 	require.NotNil(t, h)
 	hUpdate, err := hostsets.NewClient(client).AddHosts(tc.Context(), hs.Item.Id, hs.Item.Version, []string{h.GetItem().Id})
@@ -461,7 +461,7 @@ func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 	require.Empty(t, updateResp.GetItem().Address)
 	require.Equal(t, []string{hs.Item.Id}, updateResp.GetItem().HostSourceIds)
 	version = updateResp.GetItem().Version
-	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("[::1]"))
+	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("::1"))
 	require.Error(t, err)
 	require.Nil(t, updateResp)
 	apiErr := api.AsServerError(err)
@@ -474,7 +474,7 @@ func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 	require.NotNil(t, updateResp)
 	require.Empty(t, updateResp.GetItem().HostSourceIds)
 	version = updateResp.GetItem().Version
-	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("[::1]"))
+	updateResp, err = tClient.Update(tc.Context(), targetId, version, targets.WithAddress("::1"))
 	require.NoError(t, err)
 	require.NotNil(t, updateResp)
 	require.Equal(t, "::1", updateResp.GetItem().Address)
@@ -502,13 +502,13 @@ func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
 		},
 		{
 			name:            "target-ipv6-address",
-			address:         "[2001:4860:4860:0:0:0:0:8888]",
-			expectedAddress: "2001:4860:4860:0:0:0:0:8888",
+			address:         "2001:BEEF:4860:0:0:0:0:8888",
+			expectedAddress: "2001:beef:4860::8888",
 		},
 		{
 			name:            "target-abbreviated-ipv6-address",
-			address:         "[2001:4860:4860::8888]",
-			expectedAddress: "2001:4860:4860::8888",
+			address:         "2001:BEEF:4860::8888",
+			expectedAddress: "2001:beef:4860::8888",
 		},
 		{
 			name:            "target-dns-address",
