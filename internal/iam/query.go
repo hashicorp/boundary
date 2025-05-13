@@ -385,7 +385,7 @@ const (
     global_roles as (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
-             'global'                              as role_type,
+             'global'                              as role_parent_scope_id,
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
              coalesce(individual.scope_id, '')     as individual_grant_scope,
@@ -405,7 +405,7 @@ const (
     org_roles as (
       select iam_role_org.public_id             as role_id,
              iam_role_org.scope_id              as role_scope_id,
-             'org'                              as role_type,
+             'global'                           as role_parent_scope_id,
              iam_role_org.grant_scope           as grant_scope,
              iam_role_org.grant_this_role_scope as grant_this_role_scope,
              ''                                 as individual_grant_scope,
@@ -419,7 +419,7 @@ const (
     global_and_org_roles as (
       select role_id,
              role_scope_id,
-             role_type,
+             role_parent_scope_id,
              grant_scope,
              grant_this_role_scope,
              individual_grant_scope,
@@ -428,7 +428,7 @@ const (
        union
       select role_id,
              role_scope_id,
-             role_type,
+             role_parent_scope_id,
              grant_scope,
              grant_this_role_scope,
              individual_grant_scope,
@@ -437,7 +437,7 @@ const (
     )
     select role_id,
            role_scope_id,
-           role_type,
+           role_parent_scope_id,
            grant_scope,
            grant_this_role_scope,
            array_agg(distinct(individual_grant_scope)) as individual_grant_scopes,
@@ -445,7 +445,7 @@ const (
       from global_and_org_roles
   group by role_id,
            role_scope_id,
-           role_type,
+           role_parent_scope_id,
            grant_scope,
            grant_this_role_scope;
     `
