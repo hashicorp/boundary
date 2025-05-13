@@ -3084,6 +3084,7 @@ func TestAddTargetCredentialSources(t *testing.T) {
 
 	storeStatic := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
 	creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", storeStatic.GetPublicId(), proj.GetPublicId(), 2)
+	updCreds := credstatic.TestUsernamePasswordDomainCredentials(t, conn, wrapper, "user", "pass", "domain", storeStatic.GetPublicId(), proj.GetPublicId(), 2)
 
 	addCases := []struct {
 		name            string
@@ -3104,6 +3105,12 @@ func TestAddTargetCredentialSources(t *testing.T) {
 			resultSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
+			name:            "Add static upd cred on empty target",
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty for static_upd sources"),
+			addSources:      []string{updCreds[1].GetPublicId()},
+			resultSourceIds: []string{updCreds[1].GetPublicId()},
+		},
+		{
 			name:            "Add library on library populated target",
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{cls[1].GetPublicId()},
@@ -3116,16 +3123,34 @@ func TestAddTargetCredentialSources(t *testing.T) {
 			resultSourceIds: []string{creds[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
+			name:            "Add library on static upd cred populated target",
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-static_upd sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose)})),
+			addSources:      []string{cls[1].GetPublicId()},
+			resultSourceIds: []string{updCreds[0].GetPublicId(), cls[1].GetPublicId()},
+		},
+		{
 			name:            "Add static cred on library populated target",
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{creds[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), creds[1].GetPublicId()},
 		},
 		{
+			name:            "Add upd static cred on library populated target",
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static_upd-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
+			addSources:      []string{updCreds[1].GetPublicId()},
+			resultSourceIds: []string{cls[0].GetPublicId(), updCreds[1].GetPublicId()},
+		},
+		{
 			name:            "Add static cred on static cred populated target",
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{creds[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), creds[1].GetPublicId()},
+		},
+		{
+			name:            "Add static upd cred on static cred populated target",
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static_upd-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
+			addSources:      []string{updCreds[1].GetPublicId()},
+			resultSourceIds: []string{creds[0].GetPublicId(), updCreds[1].GetPublicId()},
 		},
 		{
 			name:            "Add duplicated sources on library populated target",
@@ -3138,6 +3163,12 @@ func TestAddTargetCredentialSources(t *testing.T) {
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId(), creds[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId()},
+		},
+		{
+			name:            "Add duplicated sources on static upd cred populated target",
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for static upd sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose)})),
+			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId(), updCreds[1].GetPublicId(), updCreds[1].GetPublicId()},
+			resultSourceIds: []string{updCreds[0].GetPublicId(), cls[1].GetPublicId(), updCreds[1].GetPublicId()},
 		},
 	}
 
@@ -3264,6 +3295,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 
 	storeStatic := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
 	creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", storeStatic.GetPublicId(), proj.GetPublicId(), 2)
+	updCreds := credstatic.TestUsernamePasswordDomainCredentials(t, conn, wrapper, "user", "pass", "domain", storeStatic.GetPublicId(), proj.GetPublicId(), 2)
 
 	setCases := []struct {
 		name                      string
@@ -3284,6 +3316,12 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
+			name:                      "Set static_upd on empty target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty static_upd"),
+			setCredentialSources:      []string{updCreds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{updCreds[1].GetPublicId()},
+		},
+		{
 			name:                      "Set library on library populated target",
 			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
@@ -3296,14 +3334,38 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
+			name:                      "Set static_upd on library populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static_upd-library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
+			setCredentialSources:      []string{updCreds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{updCreds[1].GetPublicId()},
+		},
+		{
 			name:                      "Set library on static populated target",
 			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
+			name:                      "Set library on static_upd populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-static_upd", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose)})),
+			setCredentialSources:      []string{cls[1].GetPublicId()},
+			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+		},
+		{
 			name:                      "Set static on static populated target",
 			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
+			setCredentialSources:      []string{creds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
+		},
+		{
+			name:                      "Set static_upd on static populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static_upd-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
+			setCredentialSources:      []string{updCreds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{updCreds[1].GetPublicId()},
+		},
+		{
+			name:                      "Set static on static_upd populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static-static_upd", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{creds[1].GetPublicId()},
 			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
 		},
@@ -3320,10 +3382,18 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
+			name:                      "Set duplicate static_upd on populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate static_upd", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose)})),
+			setCredentialSources:      []string{updCreds[1].GetPublicId(), updCreds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{updCreds[1].GetPublicId()},
+		},
+		{
 			name: "Set empty on populated target",
 			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated",
 				target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)}),
-				target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
+				target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)}),
+				target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose)}),
+			),
 			setCredentialSources:      []string{},
 			resultCredentialSourceIds: nil,
 		},
@@ -3438,6 +3508,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 
 	csStatic := credstatic.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", csStatic.GetPublicId(), proj.GetPublicId(), 2)
+	updCreds := credstatic.TestUsernamePasswordDomainCredentials(t, conn, wrapper, "user", "pass", "domain", csStatic.GetPublicId(), proj.GetPublicId(), 2)
 
 	removeCases := []struct {
 		name                      string
@@ -3459,6 +3530,12 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 			wantErr:                 true,
 		},
 		{
+			name:                    "Remove static_upd from empty",
+			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty static_upd"),
+			removeCredentialSources: []string{updCreds[1].GetPublicId()},
+			wantErr:                 true,
+		},
+		{
 			name: "Remove 1 of 2 libraries",
 			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial lib",
 				target.WithCredentialLibraries([]*target.CredentialLibrary{
@@ -3477,6 +3554,16 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				})),
 			removeCredentialSources:   []string{creds[1].GetPublicId()},
 			resultCredentialSourceIds: []string{creds[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 of 2 static_upd credentials",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial static_upd",
+				target.WithStaticCredentials([]*target.StaticCredential{
+					target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose),
+					target.TestNewStaticCredential("", updCreds[1].GetPublicId(), credential.BrokeredPurpose),
+				})),
+			removeCredentialSources:   []string{updCreds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{updCreds[0].GetPublicId()},
 		},
 		{
 			name: "Remove 1 duplicate set of 2 libraries",
@@ -3503,6 +3590,18 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 			resultCredentialSourceIds: []string{creds[0].GetPublicId()},
 		},
 		{
+			name: "Remove 1 duplicate set of 2 static_upd credentials",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate static_upd",
+				target.WithStaticCredentials([]*target.StaticCredential{
+					target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose),
+					target.TestNewStaticCredential("", updCreds[1].GetPublicId(), credential.BrokeredPurpose),
+				})),
+			removeCredentialSources: []string{
+				updCreds[1].GetPublicId(), updCreds[1].GetPublicId(),
+			},
+			resultCredentialSourceIds: []string{updCreds[0].GetPublicId()},
+		},
+		{
 			name: "Remove mixed sources from target",
 			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove mixed",
 				target.WithCredentialLibraries([]*target.CredentialLibrary{
@@ -3512,12 +3611,14 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				target.WithStaticCredentials([]*target.StaticCredential{
 					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose),
 					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.BrokeredPurpose),
+					target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose),
+					target.TestNewStaticCredential("", updCreds[1].GetPublicId(), credential.BrokeredPurpose),
 				})),
 			removeCredentialSources: []string{
-				cls[1].GetPublicId(), creds[0].GetPublicId(),
+				cls[1].GetPublicId(), creds[0].GetPublicId(), updCreds[0].GetPublicId(),
 			},
 			resultCredentialSourceIds: []string{
-				cls[0].GetPublicId(), creds[1].GetPublicId(),
+				cls[0].GetPublicId(), creds[1].GetPublicId(), updCreds[1].GetPublicId(),
 			},
 		},
 		{
@@ -3530,10 +3631,13 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				target.WithStaticCredentials([]*target.StaticCredential{
 					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose),
 					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.BrokeredPurpose),
+					target.TestNewStaticCredential("", updCreds[0].GetPublicId(), credential.BrokeredPurpose),
+					target.TestNewStaticCredential("", updCreds[1].GetPublicId(), credential.BrokeredPurpose),
 				})),
 			removeCredentialSources: []string{
 				cls[0].GetPublicId(), cls[1].GetPublicId(),
 				creds[0].GetPublicId(), creds[1].GetPublicId(),
+				updCreds[0].GetPublicId(), updCreds[1].GetPublicId(),
 			},
 			resultCredentialSourceIds: []string{},
 		},
@@ -4125,6 +4229,22 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, upCredResp)
 
+	updCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
+		CredentialStoreId: staticStore.GetPublicId(),
+		Type:              credential.UsernamePasswordDomainSubtype.String(),
+		Name:              wrapperspb.String("UPD Cred Name"),
+		Description:       wrapperspb.String("UPD Cred Description"),
+		Attrs: &credpb.Credential_UsernamePasswordDomainAttributes{
+			UsernamePasswordDomainAttributes: &credpb.UsernamePasswordDomainAttributes{
+				Username: wrapperspb.String("static-username"),
+				Password: wrapperspb.String("static-password"),
+				Domain:   wrapperspb.String("static-domain"),
+			},
+		},
+	}})
+	require.NoError(t, err)
+	require.NotNil(t, updCredResp)
+
 	sshPkCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
 		Type:              credential.SshPrivateKeySubtype.String(),
@@ -4342,6 +4462,34 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					data := map[string]any{
 						"password": "static-password",
 						"username": "static-username",
+					}
+					st, err := structpb.NewStruct(data)
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+			wantedConnectionLimit: 1000,
+		},
+		{
+			name:           "static-UsernamePasswordDomain",
+			hostSourceId:   shs.GetPublicId(),
+			credSourceId:   updCredResp.GetItem().GetId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			wantedCred: &pb.SessionCredential{
+				CredentialSource: &pb.CredentialSource{
+					Id:                updCredResp.GetItem().GetId(),
+					Name:              updCredResp.GetItem().GetName().GetValue(),
+					Description:       updCredResp.GetItem().GetDescription().GetValue(),
+					CredentialStoreId: staticStore.GetPublicId(),
+					Type:              credstatic.Subtype.String(),
+					CredentialType:    string(globals.UsernamePasswordDomainCredentialType),
+				},
+				Credential: func() *structpb.Struct {
+					data := map[string]any{
+						"password": "static-password",
+						"username": "static-username",
+						"domain":   "static-domain",
 					}
 					st, err := structpb.NewStruct(data)
 					require.NoError(t, err)
