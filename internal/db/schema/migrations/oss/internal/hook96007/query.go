@@ -96,7 +96,9 @@ const (
       deleted_grant_scope (role_id, scope_id_or_special) as (
             delete 
               from iam_role_grant_scope
-      	     where (role_id, scope_id_or_special) in (select role_id, individual_grant_scope from problems)
+      	     where (role_id, scope_id_or_special) in (select role_id, 
+                                                             individual_grant_scope
+                                                        from problems)
          returning role_id, scope_id_or_special
       ),
       deleted_problems (role_id, role_scope_id, covered_by_grant_scope, individual_grant_scope) as (
@@ -105,7 +107,9 @@ const (
                covered_by_grant_scope  as covered_by_grant_scope,
                individual_grant_scope  as individual_grant_scope
           from problems
-         where (role_id, individual_grant_scope) in (select role_id, scope_id_or_special from deleted_grant_scope)
+         where (role_id, individual_grant_scope) in (select role_id, 
+                                                            scope_id_or_special 
+                                                       from deleted_grant_scope)
       )
       select * from deleted_problems;`
 )
