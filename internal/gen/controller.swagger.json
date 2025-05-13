@@ -3672,6 +3672,20 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "create_admin_role",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "create_default_role",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [

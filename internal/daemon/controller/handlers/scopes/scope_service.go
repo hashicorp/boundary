@@ -42,6 +42,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/version"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -650,8 +651,25 @@ func (s *Service) createInRepo(ctx context.Context, authResults auth.VerifyResul
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	opts = append(opts, iam.WithSkipAdminRoleCreation(req.GetSkipAdminRoleCreation()))
-	opts = append(opts, iam.WithSkipDefaultRoleCreation(req.GetSkipDefaultRoleCreation()))
+
+	if req.GetCreateDefaultRole() && req.GetSkipDefaultRoleCreation() {
+		return nil, handlers.InvalidArgumentErrorf("Cannot set both create_default_role and skip_default_role_creation to true.", map[string]string{"create_default_role": "Cannot set both create_default_role and skip_default_role_creation to true."})
+	}
+	if !req.GetCreateDefaultRole() && !req.GetSkipDefaultRoleCreation() {
+	}
+
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
+		opts = append(opts,
+			iam.WithCreateAdminRole(req.GetCreateAdminRole()),
+			iam.WithCreateDefaultRole(req.GetCreateDefaultRole()),
+		)
+	}
+	if version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		opts = append(opts,
+			iam.WithSkipAdminRoleCreation(req.GetSkipAdminRoleCreation()),
+			iam.WithSkipDefaultRoleCreation(req.GetSkipDefaultRoleCreation()),
+		)
+	}
 
 	parentScope := authResults.Scope
 	var iamScope *iam.Scope

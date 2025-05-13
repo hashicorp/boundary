@@ -25,6 +25,8 @@ const (
 	PluginDelete
 	LocalStorageState
 	StorageBucketCredentialState
+	CreateDefaultAndAdminRoles
+	SkipDefaultAndAdminRoleCreation
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -96,6 +98,19 @@ func init() {
 	// Worker supports reporting the state of storage bucket credentials
 	featureMap[StorageBucketCredentialState] = MetadataConstraint{
 		Constraints: mustNewConstraints(">= 0.17.0"),
+	}
+
+	// Support using CreateDefaultRole and CreateAdminRole in the CLI
+	// and API. This is a breaking change in the API, so we need to
+	// ensure that the API version is >= 0.20.0 before we allow it.
+	featureMap[CreateDefaultAndAdminRoles] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.20.0"),
+	}
+
+	// Warn until 0.22.0 about using the now-deprecated withSkipAdminRoleCreation
+	// and withSkipDefaultRoleCreation options; after that disallow it
+	featureMap[SkipDefaultAndAdminRoleCreation] = MetadataConstraint{
+		Constraints: mustNewConstraints("< 0.22.0"),
 	}
 }
 
