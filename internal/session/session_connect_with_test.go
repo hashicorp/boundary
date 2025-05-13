@@ -43,11 +43,11 @@ func TestConnectWith_validate(t *testing.T) {
 			name: "valid-ipv6",
 			fields: fields{
 				SessionId:          id,
-				ClientTcpAddress:   "[::1]",
+				ClientTcpAddress:   "::1",
 				ClientTcpPort:      22,
-				EndpointTcpAddress: "[::1]",
+				EndpointTcpAddress: "::1",
 				EndpointTcpPort:    2222,
-				UserClientIp:       "[::2]",
+				UserClientIp:       "::2",
 			},
 		},
 		{

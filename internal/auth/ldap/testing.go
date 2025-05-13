@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -274,6 +275,9 @@ func TestConvertToUrls(t testing.TB, urls ...string) []*url.URL {
 	require.NotEmpty(urls)
 	var convertedUrls []*url.URL
 	for _, u := range urls {
+		var err error
+		u, err = parseutil.NormalizeAddr(u)
+		require.NoError(err)
 		parsed, err := url.Parse(u)
 		require.NoError(err)
 		require.Contains([]string{"ldap", "ldaps"}, parsed.Scheme)

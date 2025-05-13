@@ -455,6 +455,40 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "Update Issuer IPv6",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.issuer"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
+						f := proto.Clone(defaultAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
+						f.Issuer = wrapperspb.String("https://[2001:BEEF:0000:0000:0000:0000:0000:0001]:44344/v1/myissuer/.well-known/openid-configuration")
+						f.DisableDiscoveredConfigValidation = true
+						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
+					}(),
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        oidc.Subtype.String(),
+					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
+						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
+						f.Issuer = wrapperspb.String("https://[2001:beef::1]:44344/v1/myissuer/")
+						f.DisableDiscoveredConfigValidation = true
+						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
+					}(),
+
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
 			name: "invalid-issuer-port",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -856,6 +890,38 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "Change Api Url Prefix IPv6",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.api_url_prefix"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							ApiUrlPrefix: wrapperspb.String("https://[2001:BEEF:0000:0000:0000:0000:0000:0001]:44344/path"),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        oidc.Subtype.String(),
+					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
+						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
+						f.ApiUrlPrefix = wrapperspb.String("https://[2001:beef::1]:44344/path")
+						f.CallbackUrl = "https://[2001:beef::1]:44344/path/v1/auth-methods/oidc:authenticate:callback"
+						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
+					}(),
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
 			name: "Change Allowed Audiences",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -1127,9 +1193,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				if got.Item.GetOidcAuthMethodsAttributes().CallbackUrl != "" {
 					exp := tc.res.Item.GetOidcAuthMethodsAttributes().GetCallbackUrl()
 					gVal := got.Item.GetOidcAuthMethodsAttributes().GetCallbackUrl()
-					matches, err := regexp.MatchString(exp, gVal)
-					require.NoError(err)
-					assert.True(matches, "%q doesn't match %q", gVal, exp)
+					assert.Equal(exp, gVal, "%q doesn't match %q", exp, gVal)
 				}
 
 				assert.EqualValues(3, got.Item.Version)

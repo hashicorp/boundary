@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -839,6 +840,13 @@ func toStorageVaultStore(ctx context.Context, scopeId string, in *pb.CredentialS
 	}
 	if attrs.GetWorkerFilter().GetValue() != "" {
 		opts = append(opts, vault.WithWorkerFilter(attrs.GetWorkerFilter().GetValue()))
+	}
+	if attrs.GetAddress().GetValue() != "" {
+		addr, err := parseutil.NormalizeAddr(attrs.GetAddress().GetValue())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		attrs.Address = wrapperspb.String(addr)
 	}
 
 	// TODO (ICU-1478 and ICU-1479): Update the vault's interface around ca cert to match oidc's,

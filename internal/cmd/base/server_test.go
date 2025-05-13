@@ -526,19 +526,48 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			expPublicAddress: "127.0.0.1:8080",
 		},
 		{
+			name: "setting public address directly with invalid ipv6",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "[2001:4860:4860:0:0:0:8888]",
+				},
+			},
+			inputFlagValue: "",
+			expErr:         true,
+			expErrStr:      "Error normalizing worker address",
+		},
+		{
+			name: "setting public address directly with ipv6 but no brackets",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Worker: &config.Worker{
+					PublicAddr: "2001:4860:4860:0:0:0:0:8888",
+				},
+			},
+			inputFlagValue:   "",
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "[2001:4860:4860::8888]:9202",
+		},
+		{
 			name: "setting public address directly with ipv6",
 			inputConfig: &config.Config{
 				SharedConfig: &configutil.SharedConfig{
 					Listeners: []*listenerutil.ListenerConfig{},
 				},
 				Worker: &config.Worker{
-					PublicAddr: "[2001:4860:4860:0:0:0:0:8888]",
+					PublicAddr: "2001:4860:4860:0:0:0:0:8888",
 				},
 			},
 			inputFlagValue:   "",
 			expErr:           false,
 			expErrStr:        "",
-			expPublicAddress: "[2001:4860:4860:0:0:0:0:8888]:9202",
+			expPublicAddress: "[2001:4860:4860::8888]:9202",
 		},
 		{
 			name: "setting public address directly with ipv6:port",
@@ -553,7 +582,7 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			inputFlagValue:   "",
 			expErr:           false,
 			expErrStr:        "",
-			expPublicAddress: "[2001:4860:4860:0:0:0:0:8888]:8080",
+			expPublicAddress: "[2001:4860:4860::8888]:8080",
 		},
 		{
 			name: "setting public address directly with abbreviated ipv6",
@@ -562,7 +591,7 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 					Listeners: []*listenerutil.ListenerConfig{},
 				},
 				Worker: &config.Worker{
-					PublicAddr: "[2001:4860:4860::8888]",
+					PublicAddr: "2001:4860:4860::8888",
 				},
 			},
 			inputFlagValue:   "",
@@ -782,6 +811,20 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			expPublicAddress: ":9202",
 		},
 		{
+			name: "read unix address from listeners ip only",
+			inputConfig: &config.Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"proxy"}, Address: "someaddr", Type: "unix"},
+					},
+				},
+				Worker: &config.Worker{},
+			},
+			expErr:           false,
+			expErrStr:        "",
+			expPublicAddress: "someaddr:9202",
+		},
+		{
 			name: "using flag value to point to nonexistent file",
 			inputConfig: &config.Config{
 				SharedConfig: &configutil.SharedConfig{
@@ -802,9 +845,9 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 				},
 				Worker: &config.Worker{},
 			},
-			inputFlagValue:   "abc::123",
+			inputFlagValue:   "abc::123:::",
 			expErr:           true,
-			expErrStr:        "Error splitting public adddress host/port: address abc::123: too many colons in address",
+			expErrStr:        "Error splitting public adddress host/port: too many colons in address",
 			expPublicAddress: "",
 		},
 		{
