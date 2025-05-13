@@ -47,4 +47,8 @@ message ProjectRole {
   // itself and when modifying dependent items like principal roles.
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 7;
+
+  // control if this role is granted access to its role scope
+  // @inject_tag: `gorm:"default:false"`
+  bool grant_this_role_scope = 8;
 }
