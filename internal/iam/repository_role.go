@@ -66,11 +66,11 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	case strings.HasPrefix(role.GetScopeId(), globals.ProjectPrefix):
 		roleToCreate = &projectRole{
 			ProjectRole: &store.ProjectRole{
-				PublicId:    id,
-				ScopeId:     role.ScopeId,
-				Name:        role.Name,
-				Description: role.Description,
-				// GrantThisRoleScope: true, will be set in https://github.com/hashicorp/boundary/pull/5738 since the field doesn't exist yet
+				PublicId:           id,
+				ScopeId:            role.ScopeId,
+				Name:               role.Name,
+				Description:        role.Description,
+				GrantThisRoleScope: false,
 			},
 		}
 	default:
