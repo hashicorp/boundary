@@ -9,6 +9,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
 
+### Deprecations/Changes
+
+* Modified parsing logic for various IP/host/address fields across Boundary.
+  Notably, for some fields, Boundary previously required bracket-enclosed 
+  IPv6 addresses (eg: `[::1]`). With this change, if the provided address is
+  just an IPv6 literal, enclosing the address in brackets is not valid.
+  Additionally, an input address containing an IPv6 literal may be modified by
+  Boundary to conform with RFC 5952.
+  ([PR](https://github.com/hashicorp/boundary/pull/5599))
+
 ## 0.19.2 (2025/05/08)
 ### New and Improved
 
