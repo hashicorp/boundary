@@ -74,8 +74,16 @@ type=target;ids=*;actions=authorize-session
 type=auth-token;ids=*;actions=read:self
 ```
 
+HCP Boundary also requires the following grant string for transparent sessions:
+
+```
+type=target;actions=list,read
+```
+
 HashiCorp highly recommends that you also grant users the permission to list resolvable aliases, as the Client Agent periodically fetches a list of aliases to match incoming DNS requests against.
 Without that permission, every DNS request on the system is sent to the Boundary controller, which can easily overwhelm it.
+For HCP Boundary, it is required that you grant users the permission to list resolvable aliases.
+
 You can use the following grant string to grant the permission to list resolvable aliases:
 
 ```
