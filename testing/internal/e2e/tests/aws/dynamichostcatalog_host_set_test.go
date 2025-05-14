@@ -171,10 +171,8 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	require.Greater(t, len(s.Connections), 0)
 	var hostIp string
 	switch c.IpVersion {
-	case "4":
+	case "4", "6", "dual":
 		hostIp = s.Connections[0].EndpointTcpAddress
-	case "6", "dual":
-		hostIp = fmt.Sprintf("[%s]", s.Connections[0].EndpointTcpAddress)
 	default:
 		require.Fail(t, "unknown ip version", c.IpVersion)
 	}
