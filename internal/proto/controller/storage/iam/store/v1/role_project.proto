@@ -51,4 +51,8 @@ message ProjectRole {
   // control if this role is granted access to its role scope
   // @inject_tag: `gorm:"default:false"`
   bool grant_this_role_scope = 8;
+
+  // timestamp when grant_this_role_scope was last updated
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp grant_this_role_scope_update_time = 9;
 }
