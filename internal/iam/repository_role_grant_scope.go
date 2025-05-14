@@ -39,9 +39,6 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
-	if scp.Type == scope.Project.String() {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be added to project roles")
-	}
 
 	// Find existing grant scopes to find duplicate grants
 	originalGrantScopes, err := listRoleGrantScopes(ctx, r.reader, []string{roleId})
@@ -99,7 +96,10 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		if _, ok := originalGrantScopeMap[globals.GrantScopeChildren]; ok {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope children already exists, only one of descendants or children grant scope can be specified")
 		}
-		updateRole.setGrantScope(globals.GrantScopeDescendants)
+		err = updatedRole.setHierarchicalGrantScope(ctx, globals.GrantScopeDescendants)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 		updateMask = append(updateMask, "GrantScope")
 		finalGrantScope = globals.GrantScopeDescendants
 	case addChildren:
@@ -107,7 +107,11 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		if _, ok := originalGrantScopeMap[globals.GrantScopeDescendants]; ok {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope descendants already exists, only one of descendants or children grant scope can be specified")
 		}
-		updateRole.setGrantScope(globals.GrantScopeChildren)
+		err = updatedRole.setHierarchicalGrantScope(ctx, globals.GrantScopeChildren)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
 		updateMask = append(updateMask, "GrantScope")
 		finalGrantScope = globals.GrantScopeChildren
 	default:
@@ -155,7 +159,10 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to split org roles grant scopes"))
 		}
 	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid role scope")
+		// granting individual grant scope to roles is only allowed for roles in global and org scopes
+		if len(individualScopesToAdd) > 0 {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "individual role grant scope can only be set for global roles or org roles")
+		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
@@ -179,10 +186,12 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role"))
 			}
 			if addThis {
-				retRoleGrantScopes = append(retRoleGrantScopes, updateRole.grantThisRoleScope())
+				if g, ok := updatedRole.grantThisRoleScope(); ok {
+					retRoleGrantScopes = append(retRoleGrantScopes, g)
+				}
 			}
 			if addDescendants || addChildren {
-				if g, ok := updateRole.grantScope(); ok {
+				if g, ok := updatedRole.hierarchicalGrantScope(); ok {
 					retRoleGrantScopes = append(retRoleGrantScopes, g)
 				}
 			}
@@ -256,9 +265,6 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
-	if scp.Type == scope.Project.String() {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "grant scope cannot be deleted from a project role")
-	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -316,8 +322,8 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 
 	// handle case where hierarchical grant scope ['children', 'descendants'] is removed
 	// these grants are mutually exclusive so an OR operation is safe here
-	if removeChildren || removeDescendants {
-		updateRole.setGrantScope(globals.GrantScopeIndividual)
+	if (removeChildren || removeDescendants) && scp.Type != scope.Project.String() {
+		updatedRole.removeHierarchicalGrantScope()
 		updateMask = append(updateMask, "GrantScope")
 		// manually bump rows deleted when for deleting hierarchical grant scope since this is now
 		// a DB row update instead of deleting a row.
@@ -354,7 +360,9 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to split org roles grant scopes"))
 		}
 	default:
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "invalid role scope")
+		// granting individual grant scope to roles is only allowed for roles in global and org scopes
+		// but deleting individual grant scopes when the grant scope doesn't exist on a role is allowed
+		// so we don't return an error here and treat this as a no-op
 	}
 
 	_, err = r.writer.DoTx(
@@ -453,9 +461,6 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
 	}
-	if scp.Type == scope.Project.String() {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "cannot modify grant scopes of a project scoped role")
-	}
 
 	// NOTE: Set calculation can safely take place out of the transaction since
 	// we are using roleVersion to ensure that we end up operating on the same
@@ -521,7 +526,6 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	}
 
 	// return early if the there's a conflict in grant_scopes we're trying to add
-	finalGrantScope := globals.GrantScopeIndividual
 	_, addDescendants := toAdd[globals.GrantScopeDescendants]
 	_, addChildren := toAdd[globals.GrantScopeChildren]
 	if addDescendants && addChildren {
@@ -538,19 +542,37 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		totalRowsDeleted++
 	}
 
-	// determine the final hierarchical grant scopes stored in 'grant_scope' column ['descendants', 'children']
+	// finalGrantScopeForIndividualGrantScope is the final value of what 'grant_scope' column of the role will be.
+	// this is only important for global roles with individual scopes IDs granted to the role.
+	// A foreign key between iam_role_global.grant_scope and iam_role_global_individual_project_grant_scope.grant_scope
+	// can either be ['children', 'individual'] which will prevents inserting if the values don't match.
+	// Assuming that the value is 'individual' and only set it to 'children' if we're adding a 'children' grant
+	// the current value in the database does not matter and will be overridden by this method
+	finalGrantScopeForIndividualGrantScope := globals.GrantScopeIndividual
+
+	// determine the final hierarchical grant scopes stored in `grant_scope` column [`descendants`, `children`]
 	// depending on if we're adding or removing grants
+	// if descendants or children is being added, set finalGrantScope to the grant-to-be-added
+	// to resolve the
 	switch {
 	case addDescendants:
-		updateRole.setGrantScope(globals.GrantScopeDescendants)
-		finalGrantScope = globals.GrantScopeDescendants
+		err := updateRole.setHierarchicalGrantScope(ctx, globals.GrantScopeDescendants)
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		}
 		updateMask = append(updateMask, "GrantScope")
 	case addChildren:
-		updateRole.setGrantScope(globals.GrantScopeChildren)
-		finalGrantScope = globals.GrantScopeChildren
+		err := updateRole.setHierarchicalGrantScope(ctx, globals.GrantScopeChildren)
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		}
 		updateMask = append(updateMask, "GrantScope")
+		// set final grant scope to 'children'. finalGrantScopeForIndividualGrantScope will be used later
+		// when constructing entries for individual project grant scope
+		finalGrantScopeForIndividualGrantScope = globals.GrantScopeChildren
+
 	case removeDescendants || removeChildren:
-		updateRole.setGrantScope(globals.GrantScopeIndividual)
+		updateRole.removeHierarchicalGrantScope()
 		updateMask = append(updateMask, "GrantScope")
 	}
 
@@ -591,11 +613,11 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 
 	switch scp.Type {
 	case scope.Global.String():
-		globalRoleIndividualOrgToAdd, globalRoleIndividualProjToAdd, err = individualGlobalRoleGrantScope(ctx, roleId, finalGrantScope, individualScopesToAdd)
+		globalRoleIndividualOrgToAdd, globalRoleIndividualProjToAdd, err = individualGlobalRoleGrantScope(ctx, roleId, finalGrantScopeForIndividualGrantScope, individualScopesToAdd)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("failed to convert global role individual org scopes to scope specific scope object for grant scope addition"))
 		}
-		globalRoleIndividualOrgToRemove, globalRoleIndividualProjToRemove, err = individualGlobalRoleGrantScope(ctx, roleId, finalGrantScope, individualScopesToRemove)
+		globalRoleIndividualOrgToRemove, globalRoleIndividualProjToRemove, err = individualGlobalRoleGrantScope(ctx, roleId, finalGrantScopeForIndividualGrantScope, individualScopesToRemove)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("failed to convert global role individual proj scopes to scope specific scope object for grant scope removal"))
 		}
@@ -609,14 +631,16 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("failed to convert org role individual proj scopes to scope specific scope object for grant scope removal"))
 		}
-
 	default:
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid role scope type %s", scp.Type))
+		if len(individualScopesToRemove) > 0 || len(individualScopesToAdd) > 0 {
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op,
+				fmt.Sprintf("roles in scope type %s does not allow individual role grant scope", scp.Type))
+		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wra pper"))
 	}
 
 	var retGrantScopes []*RoleGrantScope
@@ -823,6 +847,10 @@ func allocRoleScopeGranter(ctx context.Context, roleId string, scopeType string)
 		o := allocOrgRole()
 		o.PublicId = roleId
 		res = &o
+	case scope.Project.String():
+		p := allocProjectRole()
+		p.PublicId = roleId
+		res = &p
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid role scope")
 	}
