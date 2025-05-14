@@ -583,7 +583,7 @@ func Test_AddRoleGrantScope(t *testing.T) {
 			wantRoleVersionChange: 0,
 			wantScopes:            []string{globals.GrantScopeThis},
 			wantErr:               true,
-			wantErrMsg:            `iam.(Repository).AddRoleGrantScopes: iam.(projectRole).setHierarchicalGrantScope: hierarchical grant scope is not allowed for project role: parameter violation: error #100`,
+			wantErrMsg:            `iam.(Repository).AddRoleGrantScopes: iam.(projectRole).setGrantScope: hierarchical grant scope is not allowed for project role: parameter violation: error #100`,
 		},
 		{
 			name: "project role add individual grant scope returns error",
@@ -855,7 +855,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			scopes:                  []string{globals.GrantScopeChildren},
 			expectRoleVersionChange: 0,
 			wantErr:                 true,
-			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: iam.(projectRole).setHierarchicalGrantScope: hierarchical grant scope is not allowed for project role: parameter violation: error #100`,
+			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: iam.(projectRole).setGrantScope: hierarchical grant scope is not allowed for project role: parameter violation: error #100`,
 		},
 		{
 			name: "project setting individual grants return error",

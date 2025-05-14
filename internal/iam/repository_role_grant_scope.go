@@ -96,7 +96,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		if _, ok := originalGrantScopeMap[globals.GrantScopeChildren]; ok {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope children already exists, only one of descendants or children grant scope can be specified")
 		}
-		err = updatedRole.setHierarchicalGrantScope(ctx, globals.GrantScopeDescendants)
+		err = updatedRole.setGrantScope(ctx, globals.GrantScopeDescendants)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -107,7 +107,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		if _, ok := originalGrantScopeMap[globals.GrantScopeDescendants]; ok {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope descendants already exists, only one of descendants or children grant scope can be specified")
 		}
-		err = updatedRole.setHierarchicalGrantScope(ctx, globals.GrantScopeChildren)
+		err = updatedRole.setGrantScope(ctx, globals.GrantScopeChildren)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -191,7 +191,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 				}
 			}
 			if addDescendants || addChildren {
-				if g, ok := updatedRole.hierarchicalGrantScope(); ok {
+				if g, ok := updatedRole.grantScope(); ok {
 					retRoleGrantScopes = append(retRoleGrantScopes, g)
 				}
 			}
@@ -323,7 +323,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 	// handle case where hierarchical grant scope ['children', 'descendants'] is removed
 	// these grants are mutually exclusive so an OR operation is safe here
 	if (removeChildren || removeDescendants) && scp.Type != scope.Project.String() {
-		updatedRole.removeHierarchicalGrantScope()
+		updatedRole.removeGrantScope()
 		updateMask = append(updateMask, "GrantScope")
 		// manually bump rows deleted when for deleting hierarchical grant scope since this is now
 		// a DB row update instead of deleting a row.
@@ -556,13 +556,13 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	// to resolve the
 	switch {
 	case addDescendants:
-		err := updateRole.setHierarchicalGrantScope(ctx, globals.GrantScopeDescendants)
+		err := updateRole.setGrantScope(ctx, globals.GrantScopeDescendants)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 		updateMask = append(updateMask, "GrantScope")
 	case addChildren:
-		err := updateRole.setHierarchicalGrantScope(ctx, globals.GrantScopeChildren)
+		err := updateRole.setGrantScope(ctx, globals.GrantScopeChildren)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
@@ -572,7 +572,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		finalGrantScopeForIndividualGrantScope = globals.GrantScopeChildren
 
 	case removeDescendants || removeChildren:
-		updateRole.removeHierarchicalGrantScope()
+		updateRole.removeGrantScope()
 		updateMask = append(updateMask, "GrantScope")
 	}
 

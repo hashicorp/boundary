@@ -36,21 +36,21 @@ type roleGrantScopeUpdater interface {
 	// whether this role has 'this' scope granted to it
 	setGrantThisRoleScope(grantThis bool)
 
-	// setGrantScope sets value of `GrantScope` column of this role.  The allowed values depends on the scope
+	// setGrantScope sets value of `GrantScope` column of this role. The allowed values depends on the scope
 	// that the role is in
 	// 	- global-role: ['descendants', 'children']
 	// 	- org-role: ['children']
 	//	- project-role: [] (None)
-	// This value controls whether special grant scope is granted to this role
+	// This value controls whether hierarchical grant scope is granted to this role
 	// This method may return error when role does not support hierarchical grant scope (project role)
-	setHierarchicalGrantScope(ctx context.Context, specialGrant string) error
+	setGrantScope(ctx context.Context, specialGrant string) error
 
 	// removeHierarchicalGrantScope removes all hierarchical grant scopes from a role ['children', 'descendants']
+	// and sets 'grant_scope' column to 'individual' if required
 	// 	- global-role: may remove ['descendants', 'children']
 	// 	- org-role: may remove ['children']
 	//	- project-role: no-op as hierarchical grant scope isn't supported for project roles
-	// This value controls whether special grant scope is granted to this role
-	removeHierarchicalGrantScope()
+	removeGrantScope()
 
 	// GrantThisRoleScope return value of `GrantScopeThis` column as *RoleGrantScope.
 	// Prior to the grants refactor, `this` grant scope is granted to a role by
@@ -58,9 +58,9 @@ type roleGrantScopeUpdater interface {
 	// 'this' grant as a dedicated column in the type-specific role tables
 	grantThisRoleScope() (*RoleGrantScope, bool)
 
-	// GrantScope returns special grant scopes ['descendants', 'children'] if available.
-	// returns nil, false if special grant scope is 'individual'
-	hierarchicalGrantScope() (*RoleGrantScope, bool)
+	// grantScope returns hierarchical grant scopes ['descendants', 'children'] if available.
+	// returns nil, false if grant_scope is 'individual'
+	grantScope() (*RoleGrantScope, bool)
 }
 
 // Roles are granted permissions and assignable to Users and Groups.
@@ -215,7 +215,7 @@ type globalRole struct {
 	tableName   string            `gorm:"-"`
 }
 
-func (g *globalRole) removeHierarchicalGrantScope() {
+func (g *globalRole) removeGrantScope() {
 	if g != nil {
 		g.GrantScope = globals.GrantScopeIndividual
 	}
@@ -235,7 +235,7 @@ func (g *globalRole) setGrantThisRoleScope(grantThis bool) {
 	g.GrantThisRoleScope = grantThis
 }
 
-func (g *globalRole) setHierarchicalGrantScope(ctx context.Context, specialGrant string) error {
+func (g *globalRole) setGrantScope(ctx context.Context, specialGrant string) error {
 	if g != nil {
 		g.GrantScope = specialGrant
 	}
@@ -256,7 +256,7 @@ func (g *globalRole) grantThisRoleScope() (*RoleGrantScope, bool) {
 	}, true
 }
 
-func (g *globalRole) hierarchicalGrantScope() (*RoleGrantScope, bool) {
+func (g *globalRole) grantScope() (*RoleGrantScope, bool) {
 	if g == nil {
 		return nil, false
 	}
@@ -352,7 +352,7 @@ type orgRole struct {
 	tableName   string            `gorm:"-"`
 }
 
-func (o *orgRole) removeHierarchicalGrantScope() {
+func (o *orgRole) removeGrantScope() {
 	if o != nil {
 		o.GrantScope = globals.GrantScopeIndividual
 	}
@@ -372,7 +372,7 @@ func (o *orgRole) setGrantThisRoleScope(grantThis bool) {
 	o.GrantThisRoleScope = grantThis
 }
 
-func (o *orgRole) setHierarchicalGrantScope(ctx context.Context, specialGrant string) error {
+func (o *orgRole) setGrantScope(ctx context.Context, specialGrant string) error {
 	if o != nil {
 		o.GrantScope = specialGrant
 	}
@@ -393,7 +393,7 @@ func (o *orgRole) grantThisRoleScope() (*RoleGrantScope, bool) {
 	}, true
 }
 
-func (o *orgRole) hierarchicalGrantScope() (*RoleGrantScope, bool) {
+func (o *orgRole) grantScope() (*RoleGrantScope, bool) {
 	if o == nil {
 		return nil, false
 	}
@@ -489,17 +489,17 @@ type projectRole struct {
 	tableName   string            `gorm:"-"`
 }
 
-func (p *projectRole) removeHierarchicalGrantScope() {
+func (p *projectRole) removeGrantScope() {
 	// no-op since hierarchical isn't supported by project roles
 	return
 }
 
-func (p *projectRole) setHierarchicalGrantScope(ctx context.Context, specialGrant string) error {
-	const op = "iam.(projectRole).setHierarchicalGrantScope"
+func (p *projectRole) setGrantScope(ctx context.Context, specialGrant string) error {
+	const op = "iam.(projectRole).setGrantScope"
 	return errors.New(ctx, errors.InvalidParameter, op, "hierarchical grant scope is not allowed for project role")
 }
 
-func (p *projectRole) hierarchicalGrantScope() (*RoleGrantScope, bool) {
+func (p *projectRole) grantScope() (*RoleGrantScope, bool) {
 	return &RoleGrantScope{}, false
 }
 
