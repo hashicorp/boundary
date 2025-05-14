@@ -410,6 +410,7 @@ proj_role_this_grants (role_id, scope_id_or_special, create_time) as (
          create_time as create_time
     from iam_role_project
    where public_id = any (select role_id from proj_roles)
+     and grant_this_role_scope = true
 ),
 global_role_special_grants (role_id, scope_id_or_special, create_time) as (
   select public_id as role_id,
