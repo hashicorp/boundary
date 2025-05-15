@@ -689,7 +689,7 @@ func (r *Repository) grantsForUserOrgResources(
 						GrantScopeId:      grantScope,
 						Grant:             canonicalGrant,
 					}
-					if grant.grantThisRoleScope || gt.GrantScopeId == "" {
+					if gt.GrantScopeId == "" {
 						gt.GrantScopeId = grant.roleScopeId
 					}
 					ret = append(ret, gt)
@@ -708,7 +708,7 @@ func (r *Repository) grantsForUserOrgResources(
 					GrantScopeId:      grant.grantScope,
 					Grant:             canonicalGrant,
 				}
-				if grant.grantThisRoleScope || gt.GrantScopeId == "" {
+				if gt.GrantScopeId == "" {
 					gt.GrantScopeId = grant.roleScopeId
 				}
 				ret = append(ret, gt)
