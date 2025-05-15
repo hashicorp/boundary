@@ -406,7 +406,7 @@ const (
       select iam_role_org.public_id             as role_id,
              iam_role_org.scope_id              as role_scope_id,
              'global'                           as role_parent_scope_id,
-             iam_role_org.grant_scope           as grant_scope,
+             ''                                 as grant_scope, -- only grant_this_role_scope matters when querying org resources
              iam_role_org.grant_this_role_scope as grant_this_role_scope,
              ''                                 as individual_grant_scope,
              roles_with_grants.canonical_grant  as canonical_grant

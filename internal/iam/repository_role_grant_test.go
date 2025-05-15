@@ -2625,12 +2625,14 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	org1RoleThis := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
 	org1RoleChildren := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
 	org2RoleIndividual := TestRole(t, conn, org2Scope.PublicId)
-	roles = append(roles, org1RoleThis, org1RoleChildren, org2RoleIndividual)
+	org2RoleThisAndChildren := TestRole(t, conn, org2Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+	roles = append(roles, org1RoleThis, org1RoleChildren, org2RoleIndividual, org2RoleThisAndChildren)
 
 	TestRoleGrant(t, conn, org1RoleThis.PublicId, "ids=*;type=*;actions=*")
 	TestRoleGrant(t, conn, org1RoleChildren.PublicId, "ids=*;type=user;actions=add-accounts")
 	TestRoleGrant(t, conn, org2RoleIndividual.PublicId, "ids=*;type=user;actions=list-resolvable-aliases")
 	TestRoleGrant(t, conn, org2RoleIndividual.PublicId, "ids=*;type=policy;actions=list,no-op")
+	TestRoleGrant(t, conn, org2RoleThisAndChildren.PublicId, "ids=*;type=policy;actions=*")
 
 	// Add users to created roles
 	for _, role := range roles {
@@ -2792,6 +2794,13 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 					RoleParentScopeId: "global",
 					GrantScopeId:      org2Scope.PublicId,
 					Grant:             "ids=*;type=policy;actions=list,no-op",
+				},
+				{
+					RoleId:            org2RoleThisAndChildren.PublicId,
+					RoleScopeId:       org2Scope.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      org2Scope.PublicId,
+					Grant:             "ids=*;type=policy;actions=*",
 				},
 			},
 		},
