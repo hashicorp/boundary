@@ -18,22 +18,23 @@ import (
 
 // cases to look at [NA = not-applicable | P = pass | F = fail] - 'FindProblem' query should find all `F` cases
 // [F] Global Role (r_globala_96007) - Grant This, Descendants, individual org, and individual project
-//   - need to remove individual org/proj
+//   - need to remove individual org
+//   - need to remove individual proj
 //
 // [F] Global Role (r_globalb_96007) - Grant This, Children, individual org, and individual project
 //   - need to remove individual org
 //
-// [F] Global Role (r_globalc_96007) - Grant role's self scope ID
-//   - TBD - but probably fail silently and switch to `this` automagically
+// [P] Global Role (r_globalc_96007) - Grant role's self scope ID
+//   - switch to `this` automagically
 //
 // [F] Org Role (r_orgaa___96007) - Grant This, Children, and individual project
 //   - need to remove individual project
 //
-// [F] Org Role (r_orgab___96007) - Grant role self scope ID
-//   - TBD - but probably fail silently and switch to `this` automagically
+// [P] Org Role (r_orgab___96007) - Grant role self scope ID
+//   - switch to `this` automagically
 //
-// [F] Project Role (r_prjaa___96007) - Grant self scope ID
-//   - TBD - but probably fail silently and switch to `this` automagically
+// [P] Project Role (r_prjaa___96007) - Grant self scope ID
+//   - switch to `this` automagically
 //
 // [NA] Org Role - Grant Children AND individual org (different org)
 //   - this cannot be created
