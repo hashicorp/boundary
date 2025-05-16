@@ -8,18 +8,18 @@ const (
       with
 	  global_roles (role_id) as (
 	    select public_id
-          from iam_role 
+          from iam_role
          where scope_id = 'global'
       ),
 	  org_roles (role_id) as (
 	    select public_id
-          from iam_role 
+          from iam_role
          where scope_id like 'o_%'
       ),
       global_descendants_overlap(role_id, role_scope_id, grant_scope_id) as (
         select rgs.role_id as role_id,
                r.scope_id as role_scope_id,
-        	   rgs.scope_id_or_special as grant_scope_id
+               rgs.scope_id_or_special as grant_scope_id
           from iam_role_grant_scope rgs
           join iam_role r on r.public_id = rgs.role_id
          where scope_id_or_special not in ('this', 'children', 'descendants')
@@ -28,7 +28,7 @@ const (
              from iam_role_grant_scope
             where role_id in (select role_id from global_roles)
          group by role_id
-           having 
+           having
              count(*) filter (where scope_id_or_special like 'o_%' or scope_id_or_special like 'p_%') >=1 and
              count(*) filter (where scope_id_or_special = 'descendants') >= 1
          )
@@ -36,7 +36,7 @@ const (
       global_children_overlap(role_id, role_scope_id, grant_scope_id) as (
         select rgs.role_id as role_id,
                r.scope_id as role_scope_id,
-        	   rgs.scope_id_or_special as grant_scope_id
+               rgs.scope_id_or_special as grant_scope_id
           from iam_role_grant_scope rgs
           join iam_role r on r.public_id = rgs.role_id
          where scope_id_or_special not in ('this', 'children', 'descendants')
@@ -46,7 +46,7 @@ const (
              from iam_role_grant_scope
             where role_id in (select role_id from global_roles)
          group by role_id
-           having 
+           having
              count(*) filter (where scope_id_or_special like 'o_%') >= 1 and
              count(*) filter (where scope_id_or_special = 'children') >= 1
          )
@@ -54,7 +54,7 @@ const (
       org_children_overlap(role_id, role_scope_id, grant_scope_id) as (
         select rgs.role_id as role_id,
                r.scope_id as role_scope_id,
-        	   rgs.scope_id_or_special as grant_scope_id
+               rgs.scope_id_or_special as grant_scope_id
           from iam_role_grant_scope rgs
           join iam_role r on r.public_id = rgs.role_id
          where scope_id_or_special not in ('this', 'children', 'descendants')
@@ -63,10 +63,10 @@ const (
              from iam_role_grant_scope
             where role_id in (select role_id from org_roles)
          group by role_id
-           having 
+           having
              count(*) filter (where scope_id_or_special like 'p_%') >= 1 and
              count(*) filter (where scope_id_or_special = 'children') >= 1
-         ) 
+         )
       ),
       problems (role_id, role_scope_id, covered_by_grant_scope, individual_grant_scope) as (
         select role_id        as role_id,
@@ -94,9 +94,9 @@ const (
 
 	deleteIllegalAssociationsQuery = baseQuery + `,
       deleted_grant_scope (role_id, scope_id_or_special) as (
-            delete 
+            delete
               from iam_role_grant_scope
-      	     where (role_id, scope_id_or_special) in (select role_id, 
+              where (role_id, scope_id_or_special) in (select role_id,
                                                              individual_grant_scope
                                                         from problems)
          returning role_id, scope_id_or_special
@@ -107,8 +107,8 @@ const (
                covered_by_grant_scope  as covered_by_grant_scope,
                individual_grant_scope  as individual_grant_scope
           from problems
-         where (role_id, individual_grant_scope) in (select role_id, 
-                                                            scope_id_or_special 
+         where (role_id, individual_grant_scope) in (select role_id,
+                                                            scope_id_or_special
                                                        from deleted_grant_scope)
       )
       select * from deleted_problems;`
