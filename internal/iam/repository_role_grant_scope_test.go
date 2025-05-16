@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_lookupRoleScope(t *testing.T) {
+func Test_listRoleGrantScopes(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -265,6 +265,27 @@ func Test_lookupRoleScope(t *testing.T) {
 						ScopeIdOrSpecial: globals.GrantScopeThis,
 					},
 				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "project role with this grant",
+			setupExpect: func(t *testing.T) ([]*Role, []*RoleGrantScope) {
+				role := TestRole(t, conn, proj1.PublicId)
+				return []*Role{role}, []*RoleGrantScope{
+					{
+						RoleId:           role.PublicId,
+						ScopeIdOrSpecial: globals.GrantScopeThis,
+					},
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "project role without this grant",
+			setupExpect: func(t *testing.T) ([]*Role, []*RoleGrantScope) {
+				role := TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{"testing-none"}))
+				return []*Role{role}, []*RoleGrantScope{}
 			},
 			wantErr: false,
 		},
@@ -532,15 +553,48 @@ func Test_AddRoleGrantScope(t *testing.T) {
 			wantErrMsg:            fmt.Sprintf(`iam.(Repository).AddRoleGrantScopes: db.DoTx: iam.(Repository).AddRoleGrantScopes: unable to add individual project grant scopes for global role: db.CreateItems: project scope_id %s not found in org: integrity violation: error #1104`, proj2.PublicId),
 		},
 		{
-			name: "project role grant_scope cannot be added",
+			name: "project role add this grant_scope",
 			setupRole: func(t *testing.T) *Role {
-				return TestRole(t, conn, proj1.PublicId)
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{"testing-none"}))
+			},
+			inputAddScopes:        []string{globals.GrantScopeThis},
+			wantReturnedScopes:    []string{globals.GrantScopeThis},
+			wantRoleVersionChange: 1,
+			wantScopes:            []string{globals.GrantScopeThis},
+			wantErr:               false,
+		},
+		{
+			name: "project role add this grant scope then this is already set",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+			},
+			inputAddScopes:        []string{globals.GrantScopeThis},
+			wantReturnedScopes:    []string{},
+			wantRoleVersionChange: 0,
+			wantScopes:            []string{globals.GrantScopeThis},
+			wantErr:               false,
+		},
+		{
+			name: "project role add children grant scope returns error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
 			},
 			inputAddScopes:        []string{globals.GrantScopeChildren},
 			wantRoleVersionChange: 0,
 			wantScopes:            []string{globals.GrantScopeThis},
 			wantErr:               true,
-			wantErrMsg:            `iam.(Repository).AddRoleGrantScopes: grant scope cannot be added to project roles: parameter violation: error #100`,
+			wantErrMsg:            `iam.(Repository).AddRoleGrantScopes: iam.(projectRole).setGrantScope: hierarchical grant scope is not allowed for project role: parameter violation: error #100`,
+		},
+		{
+			name: "project role add individual grant scope returns error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+			},
+			inputAddScopes:        []string{proj2.PublicId},
+			wantRoleVersionChange: 0,
+			wantScopes:            []string{globals.GrantScopeThis},
+			wantErr:               true,
+			wantErrMsg:            `iam.(Repository).AddRoleGrantScopes: individual role grant scope can only be set for global roles or org roles: parameter violation: error #100`,
 		},
 	}
 
@@ -681,7 +735,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			expectRoleVersionChange: 0,
 			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeDescendants, proj1.PublicId, proj2.PublicId},
 			wantErr:                 true,
-			wantErrMsg:              "iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to add individual project grant scope for global role during set: db.CreateItems: only_individual_or_children_grant_scope_allowed constraint failed: check constraint violated: integrity violation: error #1000",
+			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to add individual project grant scope for global role during set: db.CreateItems: insert or update on table "iam_role_global_individual_project_grant_scope" violates foreign key constraint "iam_role_global_grant_scope_fkey": integrity violation: error #1003`,
 		},
 		{
 			name: "global role set individual to remove individual grants",
@@ -765,7 +819,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to add individual project grant scope for org role during set: db.CreateItems: insert or update on table "iam_role_org_individual_grant_scope" violates foreign key constraint "iam_role_org_grant_scope_fkey": integrity violation: error #1003`,
 		},
 		{
-			name: "org role setting descendent grants returns error",
+			name: "org role setting descendants grants returns error",
 			setupRole: func(t *testing.T) *Role {
 				return TestRole(t, conn, org1.PublicId)
 			},
@@ -775,13 +829,43 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to update role: db.Update: insert or update on table "iam_role_org" violates foreign key constraint "iam_role_org_grant_scope_enm_fkey": integrity violation: error #1003`,
 		},
 		{
-			name: "project scope role returns error",
+			name: "project scope with 'this' grant sets empty scopes",
 			setupRole: func(t *testing.T) *Role {
-				return TestRole(t, conn, proj1.PublicId)
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
 			},
-			scopes:     []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
-			wantErr:    true,
-			wantErrMsg: `iam.(Repository).SetRoleGrantScopes: cannot modify grant scopes of a project scoped role`,
+			scopes:                  []string{},
+			expectRoleVersionChange: 1,
+			expectRemove:            1,
+			wantErr:                 false,
+		},
+		{
+			name: "project scope with 'this' grant",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{"testing-none"}))
+			},
+			scopes:                  []string{globals.GrantScopeThis},
+			expectRoleVersionChange: 1,
+			wantErr:                 false,
+		},
+		{
+			name: "project setting special grants return error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{"testing-none"}))
+			},
+			scopes:                  []string{globals.GrantScopeChildren},
+			expectRoleVersionChange: 0,
+			wantErr:                 true,
+			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: iam.(projectRole).setGrantScope: hierarchical grant scope is not allowed for project role: parameter violation: error #100`,
+		},
+		{
+			name: "project setting individual grants return error",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{"testing-none"}))
+			},
+			scopes:                  []string{proj2.PublicId},
+			expectRoleVersionChange: 0,
+			wantErr:                 true,
+			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: roles in scope type project does not allow individual role grant scope: parameter violation: error #100`,
 		},
 	}
 	for _, tc := range testcases {
@@ -916,13 +1000,37 @@ func Test_DeleteRoleGrantScope(t *testing.T) {
 			wantErr:                 false,
 		},
 		{
-			name: "project role returns error",
+			name: "project role remove this",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+			},
+			inputScopes:             []string{globals.GrantScopeThis},
+			wantErr:                 false,
+			expectRemove:            1,
+			expectRoleVersionChange: 1,
+			finalScopes:             []string{},
+		},
+		{
+			name: "project role remove this without this grant",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, proj1.PublicId, WithGrantScopeIds([]string{"testing-none"}))
+			},
+			inputScopes:             []string{globals.GrantScopeThis},
+			wantErr:                 false,
+			expectRemove:            0,
+			expectRoleVersionChange: 0,
+			finalScopes:             []string{},
+		},
+		{
+			name: "project role remove this individual scope",
 			setupRole: func(t *testing.T) *Role {
 				return TestRole(t, conn, proj1.PublicId)
 			},
-			inputScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj1.PublicId, proj2.PublicId},
-			wantErr:     true,
-			wantErrMsg:  `iam.(Repository).DeleteRoleGrantScopes: grant scope cannot be deleted from a project role: parameter violation: error #100`,
+			inputScopes:             []string{proj2.PublicId},
+			wantErr:                 false,
+			expectRemove:            0,
+			expectRoleVersionChange: 0,
+			finalScopes:             []string{globals.GrantScopeThis},
 		},
 	}
 	for _, tc := range testcases {

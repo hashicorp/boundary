@@ -203,9 +203,19 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	id, err := newRoleId(ctx)
 	require.NoError(err)
 	grantScopeIds := opts.withGrantScopeIds
-	grantsThis := false
-	if len(grantScopeIds) == 0 || slices.Contains(grantScopeIds, globals.GrantScopeThis) {
-		grantsThis = true
+
+	// finalGrantScopes holds all 'GrantScopes' which will be in the final *Role object
+	var finalGrantScopes []*RoleGrantScope
+
+	grantThis := false
+	// default to `this` when no grant scope is specified - this is done as a part of role creation
+	// to avoid bumping role version with TestRoleGrantScope operation
+	// of in 'role_grant_scope' tables
+	// This is a part of grants refactor in for release 0.20.0 which moves 'this' grants to the role tables instead
+	// Using WithGrantScopeIds to add 'this' grant scope will be handled by TestRoleGrantScope calls later
+	// which bumps the role version to 2 since the 'this' grant scope will be added as a separate operation
+	if len(grantScopeIds) == 0 {
+		grantThis = true
 	}
 	var role *Role
 	switch {
@@ -216,13 +226,19 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 				ScopeId:            scopeId,
 				Name:               opts.withName,
 				Description:        opts.withDescription,
-				GrantThisRoleScope: grantsThis,
+				GrantThisRoleScope: grantThis,
 				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope later
 			},
 		}
 		require.NoError(rw.Create(ctx, g))
 		require.NotEmpty(g.PublicId)
 		role = g.toRole()
+		// adding 'this' role grant scope is done manually to handle cases where 'this' grant is added by default
+		// which will NOT update the role version and will not show up from call later on
+		if grantThis {
+			gs, _ := g.grantThisRoleScope()
+			finalGrantScopes = append(finalGrantScopes, gs)
+		}
 	case strings.HasPrefix(scopeId, globals.OrgPrefix):
 		o := &orgRole{
 			OrgRole: &iamstore.OrgRole{
@@ -230,25 +246,38 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 				ScopeId:            scopeId,
 				Name:               opts.withName,
 				Description:        opts.withDescription,
-				GrantThisRoleScope: grantsThis,
+				GrantThisRoleScope: grantThis,
 				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope later
 			},
 		}
 		require.NoError(rw.Create(ctx, o))
 		require.NotEmpty(o.PublicId)
 		role = o.toRole()
+		// adding 'this' role grant scope is done manually to handle cases where 'this' grant is added by default
+		// which will NOT update the role version and will not show up from call later on
+		if grantThis {
+			gs, _ := o.grantThisRoleScope()
+			finalGrantScopes = append(finalGrantScopes, gs)
+		}
 	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
 		p := &projectRole{
 			ProjectRole: &iamstore.ProjectRole{
-				PublicId:    id,
-				ScopeId:     scopeId,
-				Name:        opts.withName,
-				Description: opts.withDescription,
+				PublicId:           id,
+				ScopeId:            scopeId,
+				Name:               opts.withName,
+				Description:        opts.withDescription,
+				GrantThisRoleScope: grantThis,
 			},
 		}
 		require.NoError(rw.Create(ctx, p))
 		require.NotEmpty(p.PublicId)
 		role = p.toRole()
+		// adding 'this' role grant scope is done manually to handle cases where 'this' grant is added by default
+		// which will NOT update the role version and will not show up from call later on
+		if grantThis {
+			gs, _ := p.grantThisRoleScope()
+			finalGrantScopes = append(finalGrantScopes, gs)
+		}
 	default:
 		t.Logf("invalid scope id: %s", scopeId)
 		t.FailNow()
@@ -259,7 +288,7 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 			continue
 		}
 		gs := TestRoleGrantScope(t, conn, role, gsi)
-		role.GrantScopes = append(role.GrantScopes, gs)
+		finalGrantScopes = append(finalGrantScopes, gs)
 	}
 	require.Equal(opts.withDescription, role.Description)
 	require.Equal(opts.withName, role.Name)
@@ -285,6 +314,7 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 		t.Logf("invalid scope id: %s", scopeId)
 		t.FailNow()
 	}
+	final.GrantScopes = finalGrantScopes
 	return final
 }
 
@@ -409,10 +439,14 @@ func testRoleGrantScopeThis(t testing.TB, conn *db.DB, r *Role) *RoleGrantScope 
 			ScopeIdOrSpecial: globals.GrantScopeThis,
 		}
 	case strings.HasPrefix(r.ScopeId, globals.ProjectPrefix):
-		// roles in project scopes are automatically granted 'this'
+		p := allocProjectRole()
+		p.PublicId = r.PublicId
+		p.GrantThisRoleScope = true
+		_, err := rw.Update(ctx, &p, []string{"GrantThisRoleScope"}, []string{})
+		require.NoError(t, err)
 		result = &RoleGrantScope{
-			CreateTime:       r.CreateTime,
-			RoleId:           r.PublicId,
+			CreateTime:       p.GrantThisRoleScopeUpdateTime,
+			RoleId:           p.PublicId,
 			ScopeIdOrSpecial: globals.GrantScopeThis,
 		}
 	default:

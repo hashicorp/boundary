@@ -16,7 +16,9 @@ begin;
         on update cascade,
     name text,
     description text,
+    grant_this_role_scope boolean not null default false,
     version wt_version,
+    grant_this_role_scope_update_time wt_timestamp,
     create_time wt_timestamp,
     update_time wt_timestamp,
     constraint iam_role_project_name_scope_id_uq
@@ -42,6 +44,12 @@ begin;
 
   create trigger delete_iam_role_subtype after delete on iam_role_project
     for each row execute procedure delete_iam_role_subtype();
+
+  create trigger insert_iam_role_project_grant_this_role_scope_update_time before insert on iam_role_project
+    for each row execute procedure insert_grant_this_role_scope_update_time();
+
+  create trigger update_iam_role_project_grant_this_role_scope_update_time before update on iam_role_project
+    for each row execute procedure insert_grant_this_role_scope_update_time();
 
   create trigger immutable_columns before update on iam_role_project
     for each row execute procedure immutable_columns('scope_id', 'create_time');

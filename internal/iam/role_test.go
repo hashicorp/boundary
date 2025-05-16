@@ -1586,10 +1586,11 @@ func Test_projectRole_Create(t *testing.T) {
 					require.NoError(t, err)
 					r := &projectRole{
 						ProjectRole: &store.ProjectRole{
-							PublicId:    grpId,
-							ScopeId:     proj.PublicId,
-							Name:        "name" + randomUuid,
-							Description: "desc" + randomUuid,
+							PublicId:           grpId,
+							ScopeId:            proj.PublicId,
+							GrantThisRoleScope: false,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
 						},
 					}
 					return r
@@ -1607,10 +1608,11 @@ func Test_projectRole_Create(t *testing.T) {
 					// create a role then return the cloned role with different name
 					r := &projectRole{
 						ProjectRole: &store.ProjectRole{
-							PublicId:    grpId,
-							ScopeId:     proj.PublicId,
-							Name:        "name" + randomUuid,
-							Description: "desc" + randomUuid,
+							PublicId:           grpId,
+							ScopeId:            proj.PublicId,
+							GrantThisRoleScope: true,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
 						},
 					}
 
@@ -1634,10 +1636,11 @@ func Test_projectRole_Create(t *testing.T) {
 					require.NoError(t, err)
 					r := &projectRole{
 						ProjectRole: &store.ProjectRole{
-							PublicId:    grpId,
-							ScopeId:     globals.GlobalPrefix,
-							Name:        "name" + randomUuid,
-							Description: "desc" + randomUuid,
+							PublicId:           grpId,
+							GrantThisRoleScope: true,
+							ScopeId:            globals.GlobalPrefix,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
 						},
 					}
 					return r
@@ -1677,10 +1680,11 @@ func Test_projectRole_Create(t *testing.T) {
 					// create a role then return the cloned role with different name
 					r := &projectRole{
 						ProjectRole: &store.ProjectRole{
-							PublicId:    grpId,
-							ScopeId:     proj.PublicId,
-							Name:        "name" + randomUuid,
-							Description: "desc" + randomUuid,
+							PublicId:           grpId,
+							GrantThisRoleScope: true,
+							ScopeId:            proj.PublicId,
+							Name:               "name" + randomUuid,
+							Description:        "desc" + randomUuid,
 						},
 					}
 
@@ -1801,6 +1805,36 @@ func Test_projectRole_Update(t *testing.T) {
 					updateRole: updated,
 					fieldMask:  []string{},
 					nullPath:   []string{"name", "description"},
+					opts:       []db.Option{},
+				}
+			},
+			wantRowsUpdate: 1,
+			wantErr:        false,
+		},
+		{
+			name: "can update grant_this_role_scope",
+			setupOriginal: func(t *testing.T) *projectRole {
+				roleId, err := newRoleId(ctx)
+				require.NoError(t, err)
+				original := &projectRole{
+					ProjectRole: &store.ProjectRole{
+						PublicId:           roleId,
+						ScopeId:            proj.PublicId,
+						Name:               testId(t),
+						Description:        "desc",
+						GrantThisRoleScope: true,
+					},
+				}
+				require.NoError(t, rw.Create(ctx, original))
+				return original
+			},
+			createInput: func(t *testing.T, original *projectRole) arg {
+				updated := original.Clone().(*projectRole)
+				updated.GrantThisRoleScope = false
+				return arg{
+					updateRole: updated,
+					fieldMask:  []string{"GrantThisRoleScope"},
+					nullPath:   []string{},
 					opts:       []db.Option{},
 				}
 			},
