@@ -562,6 +562,31 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
+			name: "Invalid username_password_domain mapping",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.GenericLibrarySubtype.String(),
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					},
+				},
+				CredentialType: string(globals.UsernamePasswordDomainCredentialType),
+				CredentialMappingOverrides: func() *structpb.Struct {
+					v := map[string]any{
+						usernameAttribute: "user-test",
+						domainAttribute:   "domain-test",
+						"invalid":         "invalid-test",
+					}
+					ret, err := structpb.NewStruct(v)
+					require.NoError(t, err)
+					return ret
+				}(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "Using POST method",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
@@ -759,6 +784,196 @@ func TestCreate(t *testing.T) {
 						v := map[string]any{
 							usernameAttribute: "user-test",
 							passwordAttribute: "pass-test",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid vault CredentialLibrary username_password_domain type",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.GenericLibrarySubtype.String(),
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					},
+				},
+				CredentialType: string(globals.UsernamePasswordDomainCredentialType),
+			}},
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.GenericLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						},
+					},
+					CredentialType:    string(globals.UsernamePasswordDomainCredentialType),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid vault CredentialLibrary username_password_domain type with username mapping",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.GenericLibrarySubtype.String(),
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					},
+				},
+				CredentialMappingOverrides: func() *structpb.Struct {
+					v := map[string]any{
+						usernameAttribute: "user-test",
+					}
+					ret, err := structpb.NewStruct(v)
+					require.NoError(t, err)
+					return ret
+				}(),
+				CredentialType: string(globals.UsernamePasswordDomainCredentialType),
+			}},
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.GenericLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						},
+					},
+					CredentialType: string(globals.UsernamePasswordDomainCredentialType),
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: "user-test",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid vault CredentialLibrary username_password type with username/password mapping",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.GenericLibrarySubtype.String(),
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					},
+				},
+				CredentialMappingOverrides: func() *structpb.Struct {
+					v := map[string]any{
+						usernameAttribute: "user-test",
+						passwordAttribute: "pass-test",
+					}
+					ret, err := structpb.NewStruct(v)
+					require.NoError(t, err)
+					return ret
+				}(),
+				CredentialType: string(globals.UsernamePasswordDomainCredentialType),
+			}},
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.GenericLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						},
+					},
+					CredentialType: string(globals.UsernamePasswordDomainCredentialType),
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: "user-test",
+							passwordAttribute: "pass-test",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid vault CredentialLibrary username_password_domain type with username/password/domain mapping",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.GenericLibrarySubtype.String(),
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					},
+				},
+				CredentialMappingOverrides: func() *structpb.Struct {
+					v := map[string]any{
+						usernameAttribute: "user-test",
+						passwordAttribute: "pass-test",
+						domainAttribute:   "domain-test",
+					}
+					ret, err := structpb.NewStruct(v)
+					require.NoError(t, err)
+					return ret
+				}(),
+				CredentialType: string(globals.UsernamePasswordDomainCredentialType),
+			}},
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.GenericLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						},
+					},
+					CredentialType: string(globals.UsernamePasswordDomainCredentialType),
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: "user-test",
+							passwordAttribute: "pass-test",
+							domainAttribute:   "domain-test",
 						}
 						ret, err := structpb.NewStruct(v)
 						require.NoError(t, err)
@@ -967,8 +1182,22 @@ func TestGet(t *testing.T) {
 				vault.WithOverrideUsernameAttribute("user"),
 				vault.WithOverridePasswordAttribute("pass"),
 			)))
+
 	require.NoError(t, err)
 	userPassLib, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), lib)
+	require.NoError(t, err)
+
+	libDomain, err := vault.NewCredentialLibrary(store.GetPublicId(), "vault/path",
+		vault.WithCredentialType("username_password_domain"),
+		vault.WithMappingOverride(
+			vault.NewUsernamePasswordDomainOverride(
+				vault.WithOverrideUsernameAttribute("user"),
+				vault.WithOverridePasswordAttribute("pass"),
+				vault.WithOverrideDomainAttribute("domain"),
+			)))
+
+	require.NoError(t, err)
+	userPassDomainLib, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), libDomain)
 	require.NoError(t, err)
 
 	lib1, err := vault.NewCredentialLibrary(store.GetPublicId(), "vault/path/ssh",
@@ -1040,6 +1269,39 @@ func TestGet(t *testing.T) {
 						v := map[string]any{
 							usernameAttribute: "user",
 							passwordAttribute: "pass",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+		},
+		{
+			name: "success-UsernamePasswordDomain",
+			id:   userPassDomainLib.GetPublicId(),
+			res: &pbs.GetCredentialLibraryResponse{
+				Item: &pb.CredentialLibrary{
+					Id:                userPassDomainLib.GetPublicId(),
+					CredentialStoreId: userPassDomainLib.GetStoreId(),
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:              vault.GenericLibrarySubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+					CreatedTime:       userPassDomainLib.CreateTime.GetTimestamp(),
+					UpdatedTime:       userPassDomainLib.UpdateTime.GetTimestamp(),
+					Version:           1,
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String(userPassDomainLib.GetVaultPath()),
+							HttpMethod: wrapperspb.String(userPassDomainLib.GetHttpMethod()),
+						},
+					},
+					CredentialType: "username_password_domain",
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: "user",
+							passwordAttribute: "pass",
+							domainAttribute:   "domain",
 						}
 						ret, err := structpb.NewStruct(v)
 						require.NoError(t, err)
@@ -1260,6 +1522,7 @@ func TestUpdate(t *testing.T) {
 
 	usernameAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, usernameAttribute)
 	passwordAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, passwordAttribute)
+	domainAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, domainAttribute)
 	privateKeyAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, privateKeyAttribute)
 	passphraseAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, pkPassphraseAttribute)
 
@@ -1486,6 +1749,218 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "username-password-domain-attributes-change-username-attribute",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+				vault.WithMappingOverride(
+					vault.NewUsernamePasswordDomainOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+						vault.WithOverrideDomainAttribute("orig-domain"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(usernameAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: "changed-user",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[usernameAttribute] = structpb.NewStringValue("changed-user")
+				return out
+			},
+		},
+		{
+			name: "username-password-domain-attributes-change-password-attribute",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+				vault.WithMappingOverride(
+					vault.NewUsernamePasswordDomainOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+						vault.WithOverrideDomainAttribute("orig-domain"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							passwordAttribute: "changed-pass",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[passwordAttribute] = structpb.NewStringValue("changed-pass")
+				return out
+			},
+		},
+		{
+			name: "username-password-domain-attributes-change-domain-attribute",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+				vault.WithMappingOverride(
+					vault.NewUsernamePasswordDomainOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+						vault.WithOverrideDomainAttribute("orig-domain"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(domainAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							domainAttribute: "changed-domain",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[domainAttribute] = structpb.NewStringValue("changed-domain")
+				return out
+			},
+		},
+		{
+			name: "username-password-domain-attributes-change-username-and-password-attributes",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+				vault.WithMappingOverride(
+					vault.NewUsernamePasswordDomainOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+						vault.WithOverrideDomainAttribute("orig-domain"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: "changed-user",
+							passwordAttribute: "changed-pass",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[usernameAttribute] = structpb.NewStringValue("changed-user")
+				out.CredentialMappingOverrides.Fields[passwordAttribute] = structpb.NewStringValue("changed-pass")
+				return out
+			},
+		},
+		{
+			name: "username-password-domain-attributes-change-username-password-and-domain-attributes",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+				vault.WithMappingOverride(
+					vault.NewUsernamePasswordDomainOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+						vault.WithOverrideDomainAttribute("orig-domain"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField, domainAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: "changed-user",
+							passwordAttribute: "changed-pass",
+							domainAttribute:   "changed-domain",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[usernameAttribute] = structpb.NewStringValue("changed-user")
+				out.CredentialMappingOverrides.Fields[passwordAttribute] = structpb.NewStringValue("changed-pass")
+				out.CredentialMappingOverrides.Fields[domainAttribute] = structpb.NewStringValue("changed-domain")
+				return out
+			},
+		},
+		{
+			name: "no-mapping-override-change-username-password-and-domain-attributes",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField, domainAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: "new-user",
+							passwordAttribute: "new-pass",
+							domainAttribute:   "new-domain",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				v := map[string]any{
+					usernameAttribute: "new-user",
+					passwordAttribute: "new-pass",
+					domainAttribute:   "new-domain",
+				}
+				var err error
+				out.CredentialMappingOverrides, err = structpb.NewStruct(v)
+				require.NoError(t, err)
+				return out
+			},
+		},
+		{
+			name: "username-password-domain-attributes-delete-mapping-override",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+				vault.WithMappingOverride(
+					vault.NewUsernamePasswordDomainOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+						vault.WithOverrideDomainAttribute("orig-domain"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(credentialMappingPathField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: nil,
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides = nil
+				return out
+			},
+		},
+		{
 			name: "no-mapping-override-delete-mapping-override",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
@@ -1533,6 +2008,38 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "username-password-attributes-delete-mapping-override-field-specific",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+				vault.WithMappingOverride(
+					vault.NewUsernamePasswordDomainOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+						vault.WithOverrideDomainAttribute("orig-domain"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField, domainAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: nil,
+							passwordAttribute: nil,
+							domainAttribute:   nil,
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides = nil
+				return out
+			},
+		},
+		{
 			name: "no-mapping-override-delete-mapping-override-field-specific",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
@@ -1544,6 +2051,32 @@ func TestUpdate(t *testing.T) {
 						v := map[string]any{
 							usernameAttribute: nil,
 							passwordAttribute: nil,
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides = nil
+				return out
+			},
+		},
+		{
+			name: "no-mapping-override-delete-mapping-override-field-specific",
+			opts: []vault.Option{
+				vault.WithCredentialType("username_password_domain"),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField, domainAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]any{
+							usernameAttribute: nil,
+							passwordAttribute: nil,
+							domainAttribute:   nil,
 						}
 						ret, err := structpb.NewStruct(v)
 						require.NoError(t, err)

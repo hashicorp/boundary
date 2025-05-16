@@ -52,6 +52,7 @@ const (
 const (
 	usernameAttribute     string = "username_attribute"
 	passwordAttribute     string = "password_attribute"
+	domainAttribute       string = "domain_attribute"
 	privateKeyAttribute   string = "private_key_attribute"
 	pkPassphraseAttribute string = "private_key_passphrase_attribute"
 )
@@ -80,6 +81,7 @@ var (
 		globals.UsernamePasswordCredentialType,
 		globals.SshPrivateKeyCredentialType,
 		globals.UnspecifiedCredentialType,
+		globals.UsernamePasswordDomainCredentialType,
 	}
 
 	validKeyTypes = []string{
@@ -760,6 +762,17 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 						m[passwordAttribute] = mapping.PasswordAttribute
 					}
 
+				case *vault.UsernamePasswordDomainOverride:
+					if mapping.UsernameAttribute != "" {
+						m[usernameAttribute] = mapping.UsernameAttribute
+					}
+					if mapping.PasswordAttribute != "" {
+						m[passwordAttribute] = mapping.PasswordAttribute
+					}
+					if mapping.DomainAttribute != "" {
+						m[domainAttribute] = mapping.DomainAttribute
+					}
+
 				case *vault.SshPrivateKeyOverride:
 					if mapping.UsernameAttribute != "" {
 						m[usernameAttribute] = mapping.UsernameAttribute
@@ -882,6 +895,23 @@ func toStorageVaultLibrary(ctx context.Context, storeId string, in *pb.Credentia
 		}
 		if len(mapOpts) > 0 {
 			opts = append(opts, vault.WithMappingOverride(vault.NewUsernamePasswordOverride(mapOpts...)))
+		}
+
+	case globals.UsernamePasswordDomainCredentialType:
+		opts = append(opts, vault.WithCredentialType(credentialType))
+		overrides := in.CredentialMappingOverrides.AsMap()
+		var mapOpts []vault.Option
+		if username := overrides[usernameAttribute]; username != nil {
+			mapOpts = append(mapOpts, vault.WithOverrideUsernameAttribute(username.(string)))
+		}
+		if password := overrides[passwordAttribute]; password != nil {
+			mapOpts = append(mapOpts, vault.WithOverridePasswordAttribute(password.(string)))
+		}
+		if domain := overrides[domainAttribute]; domain != nil {
+			mapOpts = append(mapOpts, vault.WithOverrideDomainAttribute(domain.(string)))
+		}
+		if len(mapOpts) > 0 {
+			opts = append(opts, vault.WithMappingOverride(vault.NewUsernamePasswordDomainOverride(mapOpts...)))
 		}
 
 	case globals.SshPrivateKeyCredentialType:
@@ -1183,6 +1213,10 @@ func validateMapping(badFields map[string]string, credentialType globals.Credent
 		validFields[usernameAttribute] = true
 		validFields[privateKeyAttribute] = true
 		validFields[pkPassphraseAttribute] = true
+	case globals.UsernamePasswordDomainCredentialType:
+		validFields[usernameAttribute] = true
+		validFields[passwordAttribute] = true
+		validFields[domainAttribute] = true
 	default:
 		badFields[globals.CredentialTypeField] = fmt.Sprintf("Unknown credential type %q", credentialType)
 		return
@@ -1272,7 +1306,34 @@ func getMappingUpdates(credentialType globals.CredentialType, current vault.Mapp
 		default:
 			ret[passwordAttribute] = currentPass
 		}
+	case globals.UsernamePasswordDomainCredentialType:
+		var currentUser, currentPass, currentDomain any
+		if overrides, ok := current.(*vault.UsernamePasswordDomainOverride); ok {
+			currentUser = overrides.UsernameAttribute
+			currentPass = overrides.PasswordAttribute
+			currentDomain = overrides.DomainAttribute
+		}
 
+		switch {
+		case masks[usernameAttribute]:
+			ret[usernameAttribute] = new[usernameAttribute]
+		default:
+			ret[usernameAttribute] = currentUser
+		}
+
+		switch {
+		case masks[passwordAttribute]:
+			ret[passwordAttribute] = new[passwordAttribute]
+		default:
+			ret[passwordAttribute] = currentPass
+		}
+
+		switch {
+		case masks[domainAttribute]:
+			ret[domainAttribute] = new[domainAttribute]
+		default:
+			ret[domainAttribute] = currentDomain
+		}
 	case globals.SshPrivateKeyCredentialType:
 		var currentUser, currentpPass, currentPk any
 		if overrides, ok := current.(*vault.SshPrivateKeyOverride); ok {

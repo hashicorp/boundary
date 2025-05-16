@@ -102,6 +102,19 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 		credType = string(l.CredentialType())
 
 		switch c := cred.(type) {
+		case credential.UsernamePasswordDomain:
+			credData, err = handlers.ProtoToStruct(
+				ctx,
+				&pb.UsernamePasswordDomainCredential{
+					Username: c.Username(),
+					Password: string(c.Password()),
+					Domain:   c.Domain(),
+				},
+			)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
+			}
+
 		case credential.UsernamePassword:
 			credData, err = handlers.ProtoToStruct(
 				ctx,
