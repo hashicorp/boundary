@@ -263,7 +263,29 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	}
 	require.Equal(opts.withDescription, role.Description)
 	require.Equal(opts.withName, role.Name)
-	return role
+
+	var final *Role
+	switch {
+	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
+		g := allocGlobalRole()
+		g.PublicId = id
+		require.NoError(rw.LookupByPublicId(ctx, &g))
+		final = g.toRole()
+	case strings.HasPrefix(scopeId, globals.OrgPrefix):
+		o := allocOrgRole()
+		o.PublicId = id
+		require.NoError(rw.LookupByPublicId(ctx, &o))
+		final = o.toRole()
+	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
+		p := allocProjectRole()
+		p.PublicId = id
+		require.NoError(rw.LookupByPublicId(ctx, &p))
+		final = p.toRole()
+	default:
+		t.Logf("invalid scope id: %s", scopeId)
+		t.FailNow()
+	}
+	return final
 }
 
 // TestRoleWithGrants creates a role suitable for testing along with grants
