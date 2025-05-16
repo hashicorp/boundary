@@ -36,7 +36,7 @@ message OrgRole {
   }];
 
   // control if this role is granted access to its role scope
-  // @inject_tag: `gorm:"default:true"`
+  // @inject_tag: `gorm:"default:false"`
   bool grant_this_role_scope = 5;
 
   // control type of grant scope granted to this role ['descendant', 'children', 'individual']

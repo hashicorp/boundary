@@ -48,7 +48,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 				ScopeId:            role.ScopeId,
 				Name:               role.Name,
 				Description:        role.Description,
-				GrantThisRoleScope: false,
+				GrantThisRoleScope: true,
 				GrantScope:         globals.GrantScopeIndividual,
 			},
 		}
@@ -59,7 +59,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 				ScopeId:            role.ScopeId,
 				Name:               role.Name,
 				Description:        role.Description,
-				GrantThisRoleScope: false,
+				GrantThisRoleScope: true,
 				GrantScope:         globals.GrantScopeIndividual,
 			},
 		}
@@ -70,6 +70,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 				ScopeId:     role.ScopeId,
 				Name:        role.Name,
 				Description: role.Description,
+				// GrantThisRoleScope: true, will be set in https://github.com/hashicorp/boundary/pull/5738 since the field doesn't exist yet
 			},
 		}
 	default:
