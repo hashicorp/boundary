@@ -96,7 +96,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		if _, ok := originalGrantScopeMap[globals.GrantScopeChildren]; ok {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope children already exists, only one of descendants or children grant scope can be specified")
 		}
-		err = updatedRole.setGrantScope(ctx, globals.GrantScopeDescendants)
+		err = updateRole.setGrantScope(ctx, globals.GrantScopeDescendants)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -107,7 +107,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 		if _, ok := originalGrantScopeMap[globals.GrantScopeDescendants]; ok {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "grant scope descendants already exists, only one of descendants or children grant scope can be specified")
 		}
-		err = updatedRole.setGrantScope(ctx, globals.GrantScopeChildren)
+		err = updateRole.setGrantScope(ctx, globals.GrantScopeChildren)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -186,12 +186,12 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role"))
 			}
 			if addThis {
-				if g, ok := updatedRole.grantThisRoleScope(); ok {
+				if g, ok := updateRole.grantThisRoleScope(); ok {
 					retRoleGrantScopes = append(retRoleGrantScopes, g)
 				}
 			}
 			if addDescendants || addChildren {
-				if g, ok := updatedRole.grantScope(); ok {
+				if g, ok := updateRole.grantScope(); ok {
 					retRoleGrantScopes = append(retRoleGrantScopes, g)
 				}
 			}
@@ -323,7 +323,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 	// handle case where hierarchical grant scope ['children', 'descendants'] is removed
 	// these grants are mutually exclusive so an OR operation is safe here
 	if (removeChildren || removeDescendants) && scp.Type != scope.Project.String() {
-		updatedRole.removeGrantScope()
+		updateRole.removeGrantScope()
 		updateMask = append(updateMask, "GrantScope")
 		// manually bump rows deleted when for deleting hierarchical grant scope since this is now
 		// a DB row update instead of deleting a row.
