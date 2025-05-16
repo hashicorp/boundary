@@ -22,6 +22,7 @@ import (
 // canceled sessions is not included.
 func TestCliPaginateSessions(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -105,6 +106,7 @@ func TestCliPaginateSessions(t *testing.T) {
 // canceled sessions is not included.
 func TestApiPaginateSessions(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 

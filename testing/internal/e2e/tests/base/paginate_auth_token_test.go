@@ -25,6 +25,7 @@ import (
 // all auth tokens in a single invocation.
 func TestCliPaginateAuthTokens(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -134,6 +135,7 @@ func TestCliPaginateAuthTokens(t *testing.T) {
 // all auth tokens in a single invocation.
 func TestApiPaginateAuthTokens(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
