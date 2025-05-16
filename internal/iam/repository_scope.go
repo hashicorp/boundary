@@ -138,10 +138,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		case scope.Project.String():
 			adminRole = &projectRole{
 				ProjectRole: &store.ProjectRole{
-					PublicId:    adminRolePublicId,
-					ScopeId:     scopePublicId,
-					Name:        "Administration",
-					Description: fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
+					PublicId:           adminRolePublicId,
+					ScopeId:            scopePublicId,
+					GrantThisRoleScope: true,
+					Name:               "Administration",
+					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
 				},
 			}
 		}
@@ -191,10 +192,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		case scope.Project.String():
 			defaultRole = &projectRole{
 				ProjectRole: &store.ProjectRole{
-					PublicId:    defaultRolePublicId,
-					ScopeId:     scopePublicId,
-					Name:        "Default Grants",
-					Description: fmt.Sprintf("Role created to provide default grants to users of scope %s at its creation time", scopePublicId),
+					PublicId:           defaultRolePublicId,
+					ScopeId:            scopePublicId,
+					Name:               "Default Grants",
+					GrantThisRoleScope: true,
+					Description:        fmt.Sprintf("Role created to provide default grants to users of scope %s at its creation time", scopePublicId),
 				},
 			}
 		}
