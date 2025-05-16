@@ -25,6 +25,7 @@ import (
 // all accounts in a single invocation.
 func TestCliPaginateAccounts(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -125,6 +126,7 @@ func TestCliPaginateAccounts(t *testing.T) {
 // all accounts in a single invocation.
 func TestApiPaginateAccounts(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 

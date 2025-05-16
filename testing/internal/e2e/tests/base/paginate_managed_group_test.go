@@ -24,6 +24,7 @@ import (
 // all managed groups in a single invocation.
 func TestCliPaginateManagedGroups(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -124,6 +125,7 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 // all managedgroups in a single invocation.
 func TestApiPaginateManagedGroups(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
