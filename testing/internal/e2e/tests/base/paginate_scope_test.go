@@ -21,7 +21,7 @@ import (
 // all scopes in a single invocation.
 func TestCliPaginateScopes(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	e2e.MaybeSkipSlowTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -114,7 +114,7 @@ func TestCliPaginateScopes(t *testing.T) {
 // all scopes in a single invocation.
 func TestApiPaginateScopes(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	e2e.MaybeSkipSlowTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 

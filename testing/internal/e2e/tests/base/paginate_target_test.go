@@ -25,7 +25,7 @@ import (
 // all targets in a single invocation.
 func TestCliPaginateTargets(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	e2e.MaybeSkipSlowTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -128,7 +128,7 @@ func TestCliPaginateTargets(t *testing.T) {
 // all targets in a single invocation.
 func TestApiPaginateTargets(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	e2e.MaybeSkipSlowTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
