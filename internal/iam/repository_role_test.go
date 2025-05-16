@@ -242,9 +242,13 @@ func TestRepository_CreateRole(t *testing.T) {
 			assert.NotNil(grp.CreateTime)
 			assert.NotNil(grp.UpdateTime)
 
-			foundGrp, _, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
+			foundGrp, _, _, grantScopes, err := repo.LookupRole(context.Background(), grp.PublicId)
 			assert.NoError(err)
 			assert.Equal(foundGrp, grp)
+
+			// by default, all created roles has `this` role grant scope
+			assert.Len(grantScopes, 1)
+			assert.Equal(grantScopes[0].ScopeIdOrSpecial, globals.GrantScopeThis)
 
 			err = db.TestVerifyOplog(t, rw, grp.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
