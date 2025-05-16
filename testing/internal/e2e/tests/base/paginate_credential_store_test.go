@@ -23,6 +23,7 @@ import (
 // all credential stores in a single invocation.
 func TestCliPaginateCredentialStores(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -117,6 +118,7 @@ func TestCliPaginateCredentialStores(t *testing.T) {
 // all credential stores in a single invocation.
 func TestApiPaginateCredentialStores(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	e2e.MaybeSkipSlowTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
