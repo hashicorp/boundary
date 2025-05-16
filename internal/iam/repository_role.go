@@ -70,7 +70,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 				ScopeId:            role.ScopeId,
 				Name:               role.Name,
 				Description:        role.Description,
-				GrantThisRoleScope: false,
+				GrantThisRoleScope: true,
 			},
 		}
 	default:

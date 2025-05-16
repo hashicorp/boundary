@@ -819,7 +819,7 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			wantErrMsg:              `iam.(Repository).SetRoleGrantScopes: db.DoTx: iam.(Repository).SetRoleGrantScopes: unable to add individual project grant scope for org role during set: db.CreateItems: insert or update on table "iam_role_org_individual_grant_scope" violates foreign key constraint "iam_role_org_grant_scope_fkey": integrity violation: error #1003`,
 		},
 		{
-			name: "org role setting descendent grants returns error",
+			name: "org role setting descendants grants returns error",
 			setupRole: func(t *testing.T) *Role {
 				return TestRole(t, conn, org1.PublicId)
 			},
