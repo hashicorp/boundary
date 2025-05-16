@@ -2430,6 +2430,13 @@ func SetupChildGrantScopes(t *testing.T, conn *db.DB, repo *Repository) (childGr
 	return
 }
 
+// testInput is used to pass test inputs into the various grantsForUser functions
+type testInput struct {
+	userId   string
+	resource resource.Type
+	scope    *Scope
+}
+
 func TestGrantsForUserGlobalResources(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -2461,11 +2468,6 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 	for _, role := range []*Role{roleThis, roleOrg1, roleThisAndOrg2, roleDescendants, roleThisAndChildren} {
 		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
 		require.NoError(t, err)
-	}
-
-	type testInput struct {
-		userId   string
-		resource resource.Type
 	}
 
 	testcases := []struct {
@@ -2638,12 +2640,6 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	for _, role := range roles {
 		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
 		require.NoError(t, err)
-	}
-
-	type testInput struct {
-		userId   string
-		resource resource.Type
-		scope    *Scope
 	}
 
 	testcases := []struct {
