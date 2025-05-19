@@ -2607,6 +2607,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	// Create scopes
 	org1Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
 	org2Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	emptyScope := AllocScope()
 
 	// Create & grant roles
 	roles := make([]*Role, 0)
@@ -2879,6 +2880,15 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			},
 			errorMsg: "missing user id",
 		},
+		{
+			name: "missing scope id should return error",
+			input: testInput{
+				resource: resource.User,
+				userId:   user.PublicId,
+				scope:    &emptyScope,
+			},
+			errorMsg: "missing request scope id",
+		},
 	}
 
 	for _, tc := range testcases {
@@ -2910,6 +2920,8 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	proj1a := TestProject(t, repo, org1.PublicId, WithSkipDefaultRoleCreation(true))
 	proj1b := TestProject(t, repo, org1.PublicId, WithSkipDefaultRoleCreation(true))
 	proj2 := TestProject(t, repo, org2.PublicId, WithSkipDefaultRoleCreation(true))
+
+	emptyScope := AllocScope()
 
 	// Create & grant roles
 	roles := make([]*Role, 0)
@@ -3234,6 +3246,15 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				scope:    proj2,
 			},
 			errorMsg: "missing user id",
+		},
+		{
+			name: "missing scope id should return error",
+			input: testInput{
+				resource: resource.Target,
+				userId:   user.PublicId,
+				scope:    &emptyScope,
+			},
+			errorMsg: "missing request scope id",
 		},
 	}
 
