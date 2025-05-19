@@ -1049,7 +1049,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []requestauth.Option{requestauth.WithType(resource.Account), requestauth.WithAction(a)}
+	opts := []requestauth.Option{requestauth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1129,7 +1129,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		authMeth = am
 	}
 	opts = append(opts, requestauth.WithScopeId(authMeth.GetScopeId()), requestauth.WithPin(parentId))
-	return authMeth, requestauth.Verify(ctx, opts...)
+	return authMeth, requestauth.Verify(ctx, resource.Account, opts...)
 }
 
 func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.Account, error) {

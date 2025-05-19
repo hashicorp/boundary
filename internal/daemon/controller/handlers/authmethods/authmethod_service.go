@@ -770,7 +770,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) reque
 	res := requestauth.VerifyResults{}
 
 	var parentId string
-	opts := []requestauth.Option{requestauth.WithType(resource.AuthMethod), requestauth.WithAction(a)}
+	opts := []requestauth.Option{requestauth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -847,7 +847,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) reque
 		opts = append(opts, requestauth.WithId(id))
 	}
 	opts = append(opts, requestauth.WithScopeId(parentId))
-	return requestauth.Verify(ctx, opts...)
+	return requestauth.Verify(ctx, resource.AuthMethod, opts...)
 }
 
 func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {

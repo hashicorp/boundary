@@ -608,7 +608,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.CredentialLibrary), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -668,7 +668,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		return res
 	}
 
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.CredentialLibrary, opts...)
 }
 
 func newOutputOpts(
