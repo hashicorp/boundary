@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +24,6 @@ func Test_GetOpts(t *testing.T) {
 		WithPin("bar"),
 		WithId("zip"),
 		WithAction(action.AddHosts),
-		WithType(resource.Group),
 		WithUserId("user"),
 		WithKms(withKms),
 		WithRecoveryTokenNotAllowed(true),
@@ -38,7 +36,6 @@ func Test_GetOpts(t *testing.T) {
 		withPin:                     "bar",
 		withId:                      "zip",
 		withAction:                  action.AddHosts,
-		withType:                    resource.Group,
 		withUserId:                  "user",
 		withKms:                     withKms,
 		withRecoveryTokenNotAllowed: true,
