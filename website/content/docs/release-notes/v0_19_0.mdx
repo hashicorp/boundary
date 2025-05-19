@@ -289,5 +289,35 @@ description: >-
     </td>
   </tr>
 
+  <tr id="hcp-grants">
+    <td style={{verticalAlign: 'middle'}}>
+    0.19.0
+    <br /><br />
+    (Fixed in 0.19.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    500 error when sending requests to aliases
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In HCP Boundary, you may receive a 500 error when you attempt to connect to an alias. This is a known issue that is caused by the way default grants were previously configured in HCP Boundary. The issue has been resolved, and any clusters that were created after May 1, 2025 should not have the connection issue.
+    <br /><br />
+    For any clusters created before May 1, 2025, you can perform the following workaround to resolve connection issues:
+    <ol>
+    <li>Create a role in the <code>global</code> scope and assign it to the <code>u_auth</code> user.</li>
+    <li>Configure the role to apply to all <code>descendants</code> in the <code>global</code> scope.</li> <li>Assign the following grants to the role:
+    <br /><br />
+    <code>ids=&#123;&#123;.User.Id&#125;&#125;;type=user;actions=list-resolvable-aliases</code><br />
+    <code>ids=*;type=target;actions=list,read</code>
+    </li></ol>
+    Learn more:
+    <ul>
+    <li><a href="/boundary/docs/api-clients/client-agent#grants">Boundary Client Agent grants</a> requirements</li>
+    <li><a href="/boundary/docs/commands/roles/create"><code>roles create</code></a> command documentation</li>
+    <li><a href="/boundary/docs/comands/roles/add-grant-scopes"><code>roles add-grant-scopes</code></a> command documentation</li>
+    <li><a href="/boundary/docs/commands/roles/add-grants"><code>roles add-grants</code></a> command documentation</li>
+    </ul>
+    </td>
+  </tr>
+
   </tbody>
 </table>
