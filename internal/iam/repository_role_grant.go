@@ -463,7 +463,7 @@ type grantsForUserResults struct {
 	canonicalGrants []string
 }
 
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) (perms.GrantTuples, error) {
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resource.Type, reqScopeId string, opt ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
