@@ -443,7 +443,7 @@ message UsernamePasswordDomainCredential {
   string password = 2; // @gotags: `class:"secret"`
 
   // Domain of the credential
-  string domain = 3; // @gotags: `class:"sensitive"`
+  string domain = 3; // @gotags: `class:"public"`
 }
 
 // The layout of the struct for "credential" field in SessionCredential for a ssh_private_key credential type.

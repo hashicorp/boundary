@@ -1359,7 +1359,7 @@ type UsernamePasswordDomainCredential struct {
 	// Password of the credential
 	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Domain of the credential
-	Domain        string `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Domain        string `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

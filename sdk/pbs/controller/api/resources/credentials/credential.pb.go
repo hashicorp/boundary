@@ -257,7 +257,7 @@ func (*Credential_UsernamePasswordDomainAttributes) isCredential_Attrs() {}
 type UsernamePasswordAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"public"` // @gotags: `class:"public"`
+	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Input only. The password associated with the credential.
 	Password *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the password.
@@ -320,7 +320,7 @@ func (x *UsernamePasswordAttributes) GetPasswordHmac() string {
 type UsernamePasswordDomainAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"public"` // @gotags: `class:"public"`
+	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Input only. The password associated with the credential.
 	Password *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the password.
@@ -392,7 +392,7 @@ func (x *UsernamePasswordDomainAttributes) GetDomain() *wrapperspb.StringValue {
 type SshPrivateKeyAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username associated with the credential.
-	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"public"` // @gotags: `class:"public"`
+	Username *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Input only. The SSH private key associated with the credential.
 	PrivateKey *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=private_key,proto3" json:"private_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the SSH private key.
