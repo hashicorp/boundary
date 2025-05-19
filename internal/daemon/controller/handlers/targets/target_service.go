@@ -1555,7 +1555,7 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	a := action.Create
-	opts := []auth.Option{auth.WithType(resource.Alias), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a)}
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
 		res.Error = err
@@ -1571,7 +1571,7 @@ func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) aut
 		return res
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	ret := auth.Verify(ctx, opts...)
+	ret := auth.Verify(ctx, resource.Alias, opts...)
 	return ret
 }
 
@@ -1580,7 +1580,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 
 	var parentId string
 	var t target.Target
-	opts := []auth.Option{auth.WithType(resource.Target), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1623,7 +1623,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	ret := auth.Verify(ctx, opts...)
+	ret := auth.Verify(ctx, resource.Target, opts...)
 	ret.RoundTripValue = t
 	return ret
 }

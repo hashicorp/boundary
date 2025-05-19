@@ -117,9 +117,8 @@ func (s Service) MonthlyActiveUsers(ctx context.Context, req *pbs.MonthlyActiveU
 
 func (s Service) authResult(ctx context.Context, a action.Type) auth.VerifyResults {
 	opts := []auth.Option{
-		auth.WithType(resource.Billing),
 		auth.WithAction(a),
 		auth.WithScopeId(scope.Global.String()),
 	}
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.Billing, opts...)
 }

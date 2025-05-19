@@ -1030,7 +1030,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.Role), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1057,7 +1057,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.Role, opts...)
 }
 
 func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole, grants []*iam.RoleGrant, grantScopes []*iam.RoleGrantScope, opt ...handlers.Option) (*pb.Role, error) {

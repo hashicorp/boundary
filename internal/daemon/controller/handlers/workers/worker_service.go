@@ -760,7 +760,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.Worker), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a)}
 	switch a {
 	case action.List, action.CreateWorkerLed, action.CreateControllerLed, action.ReadCertificateAuthority, action.ReinitializeCertificateAuthority:
 		parentId = id
@@ -778,7 +778,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.Worker, opts...)
 }
 
 func (s Service) listCertificateAuthorityFromRepo(ctx context.Context) (*types.RootCertificates, error) {

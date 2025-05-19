@@ -547,7 +547,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.Host), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -605,7 +605,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		cat = plcat
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetProjectId()), auth.WithPin(parentId))
-	return cat, auth.Verify(ctx, opts...)
+	return cat, auth.Verify(ctx, resource.Host, opts...)
 }
 
 func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
