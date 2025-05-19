@@ -559,10 +559,8 @@ const (
         from iam_role_org
         join roles_with_grants
           on roles_with_grants.role_id = iam_role_org.public_id
-        join iam_scope_org
-          on iam_scope_org.scope_id = iam_role_org.scope_id
         join iam_scope_project
-          on iam_scope_project.parent_id = iam_scope_org.scope_id
+          on iam_scope_project.parent_id = iam_role_org.scope_id
          and iam_scope_project.scope_id = @request_scope
        where iam_role_org.grant_scope = 'children'
     ),
