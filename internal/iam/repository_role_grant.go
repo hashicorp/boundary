@@ -715,3 +715,63 @@ func (r *Repository) grantsForUserProjectResources(
 	}
 	return grants, nil
 }
+
+// grantsForUserGlobalAndOrgResourcesRecursive returns the grants for the user for resources that can
+// exist in global and org scopes.
+func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
+	ctx context.Context,
+	userId,
+	reqScopeId string,
+	res resource.Type,
+	opt ...Option,
+) (perms.GrantTuples, error) {
+	const op = "iam.(Repository).grantsForUserGlobalAndOrgResourcesRecursive"
+	if userId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+	}
+	if reqScopeId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
+	}
+
+	var (
+		args      []any
+		userIds   []string
+		resources []string
+	)
+	switch userId {
+	case globals.AnonymousUserId:
+		userIds = []string{globals.AnonymousUserId}
+	default:
+		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
+	}
+	resources = []string{res.String(), "unknown", "*"}
+
+	args = append(args,
+		sql.Named("user_ids", pq.Array(userIds)),
+		sql.Named("resources", pq.Array(resources)),
+	)
+
+	var grants []perms.GrantTuple
+	rows, err := r.reader.Query(ctx, grantsForUserGlobalAndOrgResourcesQuery, args)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var g perms.GrantTuple
+		if err := rows.Scan(
+			&g.RoleId,
+			&g.RoleScopeId,
+			&g.RoleParentScopeId,
+			&g.GrantScopeId,
+			&g.Grant,
+		); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		grants = append(grants, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return grants, nil
+}
