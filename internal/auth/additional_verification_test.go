@@ -127,11 +127,10 @@ func TestFetchActionSetForId(t *testing.T) {
 			if tt.typeOverride != resource.Unknown {
 				typ = tt.typeOverride
 			}
-			res := auth.Verify(ctx, []auth.Option{
+			res := auth.Verify(ctx, typ, []auth.Option{
 				auth.WithId("ttcp_foo"),
 				auth.WithAction(action.Read),
 				auth.WithScopeId(org.PublicId),
-				auth.WithType(typ),
 			}...)
 			req.NoError(res.Error)
 			assert.Equal(t, tt.allowed, res.FetchActionSetForId(ctx, tt.id, tt.avail))
