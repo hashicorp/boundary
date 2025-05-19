@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
@@ -1752,7 +1753,7 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	require.NotNil(tar)
 
 	vaultStore := vault.TestCredentialStores(t, conn, wrapper, params.ProjectId, 1)[0]
-	libIds := vault.TestCredentialLibraries(t, conn, wrapper, vaultStore.GetPublicId(), 2)
+	libIds := vault.TestCredentialLibraries(t, conn, wrapper, vaultStore.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, params.ProjectId)
 	upCreds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", staticStore.GetPublicId(), params.ProjectId, 2)

@@ -108,7 +108,7 @@ func TestList(t *testing.T) {
 
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	var wantLibraries []*pb.CredentialLibrary
-	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 10) {
+	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), globals.UnspecifiedCredentialType, 10) {
 		wantLibraries = append(wantLibraries, vaultCredentialLibraryToProto(l, prj))
 	}
 	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 10) {
@@ -268,7 +268,7 @@ func TestList_Attributes(t *testing.T) {
 	storeGeneric, storeSSHCertificate := ts[0], ts[1]
 	var wantLibrariesGeneric []*pb.CredentialLibrary
 	var wantLibrariesSSHCertificate []*pb.CredentialLibrary
-	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, storeGeneric.GetPublicId(), 5) {
+	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, storeGeneric.GetPublicId(), globals.UnspecifiedCredentialType, 5) {
 		wantLibrariesGeneric = append(wantLibrariesGeneric, vaultCredentialLibraryToProto(l, prj))
 	}
 	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, storeSSHCertificate.GetPublicId(), 10) {
@@ -382,7 +382,7 @@ func TestCreate(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	defaultCL := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
+	defaultCL := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 	defaultCreated := defaultCL.GetCreateTime().GetTimestamp()
 
 	cases := []struct {
@@ -1169,7 +1169,7 @@ func TestGet(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	unspecifiedLib := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
+	unspecifiedLib := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 	s, err := NewService(ctx, iamRepoFn, repoFn, 1000)
 	require.NoError(t, err)
 	repo, err := repoFn()
@@ -1427,7 +1427,7 @@ func TestDelete(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
+	vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 	vl2 := vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
 	s, err := NewService(ctx, iamRepoFn, repoFn, 1000)
 	require.NoError(t, err)
@@ -3286,7 +3286,7 @@ func TestListPagination(t *testing.T) {
 
 	credStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	var allCredentialLibraries []*pb.CredentialLibrary
-	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 5) {
+	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 5) {
 		allCredentialLibraries = append(allCredentialLibraries, vaultCredentialLibraryToProto(l, prj))
 	}
 	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 5) {
@@ -3407,7 +3407,7 @@ func TestListPagination(t *testing.T) {
 	)
 
 	// Create another credential library
-	newCredLib := vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0]
+	newCredLib := vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 	pbNewCredLib := vaultCredentialLibraryToProto(newCredLib, prj)
 	// Prepend since this is the newest library
 	allCredentialLibraries = append([]*pb.CredentialLibrary{pbNewCredLib}, allCredentialLibraries...)

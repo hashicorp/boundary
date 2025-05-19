@@ -314,4 +314,10 @@ final as (
     from final
 order by update_time desc, public_id desc;
 `
+
+	getCredentialLibraryCredentialTypeQuery = `
+select credential_type
+  from credential_library
+ where public_id = ?
+`
 )

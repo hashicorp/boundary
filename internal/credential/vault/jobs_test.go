@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -866,7 +867,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
-	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId(), string(cl.CredentialType()))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1066,7 +1067,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
-	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId(), string(cl.CredentialType()))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1369,7 +1370,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
-	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId(), string(cl.CredentialType()))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1613,7 +1614,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
-	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId(), string(cl.CredentialType()))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -2187,7 +2188,7 @@ func TestVaultJobsCorrelationId(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId, "http://vault", "vault-token", "accessor")
-	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, 1)[0]
+	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, globals.UnspecifiedCredentialType, 1)[0]
 	token := cs.Token()
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -2352,11 +2353,11 @@ func TestVaultJobsWorkerFilters(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId, "http://vault", "vault-token", "accessor", WithWorkerFilter("true == true"))
-	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, 1)[0]
+	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, globals.UnspecifiedCredentialType, 1)[0]
 	token := cs.Token()
 
 	csNoFilter := TestCredentialStore(t, conn, wrapper, prj.PublicId, "http://vault", "vault-token-no-filter", "accessor")
-	libNoFilter := TestCredentialLibraries(t, conn, wrapper, csNoFilter.PublicId, 1)[0]
+	libNoFilter := TestCredentialLibraries(t, conn, wrapper, csNoFilter.PublicId, globals.UnspecifiedCredentialType, 1)[0]
 	tokenNoFilter := csNoFilter.Token()
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)

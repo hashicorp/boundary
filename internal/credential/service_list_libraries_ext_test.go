@@ -45,9 +45,9 @@ func TestLibraryService_List(t *testing.T) {
 	fiveDaysAgo := time.Now().AddDate(0, 0, -5)
 	credStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	libs := []credential.Library{
-		vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
+		vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0],
 		vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
-		vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
+		vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0],
 		vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
 		vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0],
 	}
@@ -437,7 +437,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.Empty(t, resp6.Items)
 
 		// Create some new libraries
-		newLib1 := vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0]
+		newLib1 := vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 1)[0]
 		newLib2 := vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 1)[0]
 		t.Cleanup(func() {
 			_, err := repo.DeleteCredentialLibrary(ctx, credStore.ProjectId, newLib1.GetPublicId())
@@ -517,7 +517,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.Empty(t, resp3.Items)
 
 		// Create some new libraries
-		newLibs1 := vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 2)
+		newLibs1 := vault.TestCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), globals.UnspecifiedCredentialType, 2)
 		newLibs2 := vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, credStore.GetPublicId(), 2)
 		t.Cleanup(func() {
 			_, err := repo.DeleteCredentialLibrary(ctx, credStore.ProjectId, newLibs1[0].GetPublicId())
