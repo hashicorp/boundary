@@ -2430,6 +2430,13 @@ func SetupChildGrantScopes(t *testing.T, conn *db.DB, repo *Repository) (childGr
 	return
 }
 
+// testInput is used to pass test inputs into the various grantsForUser functions
+type testInput struct {
+	userId   string
+	resource resource.Type
+	scope    *Scope
+}
+
 func TestGrantsForUserGlobalResources(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -2461,11 +2468,6 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 	for _, role := range []*Role{roleThis, roleOrg1, roleThisAndOrg2, roleDescendants, roleThisAndChildren} {
 		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
 		require.NoError(t, err)
-	}
-
-	type testInput struct {
-		userId   string
-		resource resource.Type
 	}
 
 	testcases := []struct {
@@ -2605,6 +2607,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	// Create scopes
 	org1Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
 	org2Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	emptyScope := AllocScope()
 
 	// Create & grant roles
 	roles := make([]*Role, 0)
@@ -2638,12 +2641,6 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	for _, role := range roles {
 		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
 		require.NoError(t, err)
-	}
-
-	type testInput struct {
-		userId   string
-		resource resource.Type
-		scope    *Scope
 	}
 
 	testcases := []struct {
@@ -2883,12 +2880,388 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			},
 			errorMsg: "missing user id",
 		},
+		{
+			name: "missing scope id should return error",
+			input: testInput{
+				resource: resource.User,
+				userId:   user.PublicId,
+				scope:    &emptyScope,
+			},
+			errorMsg: "missing request scope id",
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			require.NotNil(t, tc.input.scope)
 			got, err := repo.grantsForUserOrgResources(ctx, tc.input.userId, tc.input.resource, *tc.input.scope)
+			if tc.errorMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorMsg)
+				return
+			}
+			require.NoError(t, err)
+			assert.ElementsMatch(t, got, tc.output)
+		})
+	}
+}
+
+func TestGrantsForUserProjectResources(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	user := TestUser(t, repo, "global")
+
+	// Create scopes
+	org1 := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	org2 := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+
+	proj1a := TestProject(t, repo, org1.PublicId, WithSkipDefaultRoleCreation(true))
+	proj1b := TestProject(t, repo, org1.PublicId, WithSkipDefaultRoleCreation(true))
+	proj2 := TestProject(t, repo, org2.PublicId, WithSkipDefaultRoleCreation(true))
+
+	emptyScope := AllocScope()
+
+	// Create & grant roles
+	roles := make([]*Role, 0)
+
+	globalRoleDescendants := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
+	globalRoleThisAndProj1a := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, proj1a.PublicId}))
+	globalRoleProj2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{proj2.PublicId}))
+	roles = append(roles, globalRoleProj2, globalRoleThisAndProj1a, globalRoleDescendants)
+
+	TestRoleGrant(t, conn, globalRoleDescendants.PublicId, "ids=*;type=*;actions=read")
+	TestRoleGrant(t, conn, globalRoleThisAndProj1a.PublicId, "ids=*;type=target;actions=set-credential-sources")
+	TestRoleGrant(t, conn, globalRoleProj2.PublicId, "ids=*;type=scope;actions=list,read")
+	TestRoleGrant(t, conn, globalRoleProj2.PublicId, "ids=*;type=target;actions=create,update")
+
+	org1RoleProj1b := TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{proj1b.PublicId}))
+	org2RoleThisAndChildren := TestRole(t, conn, org2.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+	roles = append(roles, org1RoleProj1b, org2RoleThisAndChildren)
+
+	TestRoleGrant(t, conn, org1RoleProj1b.PublicId, "ids=*;type=target;actions=list-resolvable-aliases")
+	TestRoleGrant(t, conn, org1RoleProj1b.PublicId, "ids=*;type=scope;actions=list,no-op")
+	TestRoleGrant(t, conn, org2RoleThisAndChildren.PublicId, "ids=*;type=scope;actions=list-keys,read")
+
+	proj1bRoleThis := TestRole(t, conn, proj1b.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	proj2RoleThis := TestRole(t, conn, proj2.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	roles = append(roles, proj1bRoleThis, proj2RoleThis)
+
+	TestRoleGrant(t, conn, proj1bRoleThis.PublicId, "ids=*;type=*;actions=*")
+	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=*;type=target;actions=add-host-sources,remove-host-sources")
+	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=*;type=scope;actions=attach-storage-policy,detach-storage-policy")
+
+	// Add users to created roles
+	for _, role := range roles {
+		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
+		require.NoError(t, err)
+	}
+
+	testcases := []struct {
+		name     string
+		input    testInput
+		output   []perms.GrantTuple
+		errorMsg string
+	}{
+		{
+			name: "return grants for target resource at proj1a request scope",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Target,
+				scope:    proj1a,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+				{
+					RoleId:            globalRoleThisAndProj1a.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      proj1a.PublicId,
+					Grant:             "ids=*;type=target;actions=set-credential-sources",
+				},
+			},
+		},
+		{
+			name: "return grants for target resource at proj1b request scope",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Target,
+				scope:    proj1b,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+				{
+					RoleId:            org1RoleProj1b.PublicId,
+					RoleScopeId:       org1.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      proj1b.PublicId,
+					Grant:             "ids=*;type=target;actions=list-resolvable-aliases",
+				},
+				{
+					RoleId:            proj1bRoleThis.PublicId,
+					RoleScopeId:       proj1b.PublicId,
+					RoleParentScopeId: org1.PublicId,
+					GrantScopeId:      proj1b.PublicId,
+					Grant:             "ids=*;type=*;actions=*",
+				},
+			},
+		},
+		{
+			name: "return grants for target resource at proj2 request scope",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Target,
+				scope:    proj2,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+				{
+					RoleId:            globalRoleProj2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      proj2.PublicId,
+					Grant:             "ids=*;type=target;actions=create,update",
+				},
+				{
+					RoleId:            proj2RoleThis.PublicId,
+					RoleScopeId:       proj2.PublicId,
+					RoleParentScopeId: org2.PublicId,
+					GrantScopeId:      proj2.PublicId,
+					Grant:             "ids=*;type=target;actions=add-host-sources,remove-host-sources",
+				},
+			},
+		},
+		{
+			name: "return grants for scope resource at proj1a request scope",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Scope,
+				scope:    proj1a,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+			},
+		},
+		{
+			name: "return grants for scope resource at proj1b request scope",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Scope,
+				scope:    proj1b,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+				{
+					RoleId:            org1RoleProj1b.PublicId,
+					RoleScopeId:       org1.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      proj1b.PublicId,
+					Grant:             "ids=*;type=scope;actions=list,no-op",
+				},
+				{
+					RoleId:            proj1bRoleThis.PublicId,
+					RoleScopeId:       proj1b.PublicId,
+					RoleParentScopeId: org1.PublicId,
+					GrantScopeId:      proj1b.PublicId,
+					Grant:             "ids=*;type=*;actions=*",
+				},
+			},
+		},
+		{
+			name: "return grants for scope resource at proj2 request scope",
+			input: testInput{
+				userId:   user.PublicId,
+				resource: resource.Scope,
+				scope:    proj2,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+				{
+					RoleId:            globalRoleProj2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      proj2.PublicId,
+					Grant:             "ids=*;type=scope;actions=list,read",
+				},
+				{
+					RoleId:            org2RoleThisAndChildren.PublicId,
+					RoleScopeId:       org2.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeChildren,
+					Grant:             "ids=*;type=scope;actions=list-keys,read",
+				},
+				{
+					RoleId:            proj2RoleThis.PublicId,
+					RoleScopeId:       proj2.PublicId,
+					RoleParentScopeId: org2.PublicId,
+					GrantScopeId:      proj2.PublicId,
+					Grant:             "ids=*;type=scope;actions=attach-storage-policy,detach-storage-policy",
+				},
+			},
+		},
+		{
+			name: "return '*' and 'unknown' grants when no resource specified at proj1a request scope",
+			input: testInput{
+				userId: user.PublicId,
+				scope:  proj1a,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+			},
+		},
+		{
+			name: "return '*' and 'unknown' grants when no resource specified at proj1b request scope",
+			input: testInput{
+				userId: user.PublicId,
+				scope:  proj1b,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+				{
+					RoleId:            proj1bRoleThis.PublicId,
+					RoleScopeId:       proj1b.PublicId,
+					RoleParentScopeId: org1.PublicId,
+					GrantScopeId:      proj1b.PublicId,
+					Grant:             "ids=*;type=*;actions=*",
+				},
+			},
+		},
+		{
+			name: "return '*' and 'unknown' grants when no resource specified at proj2 request scope",
+			input: testInput{
+				userId: user.PublicId,
+				scope:  proj2,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=read",
+				},
+			},
+		},
+		{
+			name: "u_anon should return no grants at proj1a request scope",
+			input: testInput{
+				userId: globals.AnonymousUserId,
+				scope:  proj1a,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_anon should return no grants at proj1b request scope",
+			input: testInput{
+				userId: globals.AnonymousUserId,
+				scope:  proj1b,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_anon should return no grants at proj2 request scope",
+			input: testInput{
+				userId: globals.AnonymousUserId,
+				scope:  proj2,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_auth should return no grants at proj1a request scope",
+			input: testInput{
+				userId: globals.AnyAuthenticatedUserId,
+				scope:  proj1a,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_auth should return no grants at proj1b request scope",
+			input: testInput{
+				userId: globals.AnyAuthenticatedUserId,
+				scope:  proj1b,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_auth should return no grants at proj2 request scope",
+			input: testInput{
+				userId: globals.AnyAuthenticatedUserId,
+				scope:  proj2,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "missing user id should return error",
+			input: testInput{
+				resource: resource.Target,
+				scope:    proj2,
+			},
+			errorMsg: "missing user id",
+		},
+		{
+			name: "missing scope id should return error",
+			input: testInput{
+				resource: resource.Target,
+				userId:   user.PublicId,
+				scope:    &emptyScope,
+			},
+			errorMsg: "missing request scope id",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NotNil(t, tc.input.scope)
+			got, err := repo.grantsForUserProjectResources(ctx, tc.input.userId, tc.input.resource, *tc.input.scope)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
