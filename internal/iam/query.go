@@ -281,34 +281,28 @@ const (
     )`
 
 	grantsForUserGlobalResourcesQuery = resourceRoleGrantsForUsers + `,
-    global_roles as (
-      select iam_role_global.public_id             as role_id,
-             iam_role_global.scope_id              as role_scope_id,
-             iam_scope.type                        as role_type,
-             'global'                              as role_parent_scope_id, -- manually set to global because we are only looking at global roles and the parent scope is always global
-             iam_role_global.grant_scope           as grant_scope,
-             iam_role_global.grant_this_role_scope as grant_this_role_scope,
-             roles_with_grants.canonical_grant     as canonical_grant
+    global_roles_this_grant_scope as (
+      select iam_role_global.public_id         as role_id,
+             iam_role_global.scope_id          as role_scope_id,
+             'global'                          as role_parent_scope_id, -- manually set to global because we are only looking at global roles and the parent scope is always global
+             'global'                          as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
         from iam_role_global
         join roles_with_grants
           on roles_with_grants.role_id = iam_role_global.public_id
-        join iam_scope
-          on iam_scope.public_id = iam_role_global.scope_id
+       where iam_role_global.grant_this_role_scope
     )
     select role_id,
            role_scope_id,
            role_parent_scope_id,
            grant_scope,
-           grant_this_role_scope,
-           null as individual_grant_scopes, -- individual grant scopes do not apply to resources in the global scope
-           array_agg(distinct(canonical_grant)) as canonical_grants
-      from global_roles
-     where global_roles.grant_this_role_scope = true
+           canonical_grant as grant
+      from global_roles_this_grant_scope
   group by role_id,
            role_scope_id,
            role_parent_scope_id,
            grant_scope,
-           grant_this_role_scope;
+           canonical_grant;
     `
 
 	grantsForUserOrgResourcesQuery = resourceRoleGrantsForUsers + `,
