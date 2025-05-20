@@ -334,7 +334,7 @@ const (
           on roles_with_grants.role_id = iam_role_global.public_id
         join iam_role_global_individual_org_grant_scope individual
           on individual.role_id = iam_role_global.public_id
-       where individual.scope_id = @request_scope
+       where individual.scope_id = @request_scope_id
     ),
     org_roles_this_grant_scope as (
       select iam_role_org.public_id            as role_id,
@@ -346,7 +346,7 @@ const (
         join roles_with_grants
           on roles_with_grants.role_id = iam_role_org.public_id
        where iam_role_org.grant_this_role_scope
-         and iam_role_org.scope_id = @request_scope
+         and iam_role_org.scope_id = @request_scope_id
     ),
     global_and_org_roles as (
       select role_id,
@@ -406,7 +406,7 @@ const (
           on roles_with_grants.role_id = iam_role_global.public_id
         join iam_role_global_individual_project_grant_scope individual
           on individual.role_id = iam_role_global.public_id
-       where individual.scope_id = @request_scope
+       where individual.scope_id = @request_scope_id
     ),
     org_roles_with_children_grant_scopes as (
       select iam_role_org.public_id            as role_id,
@@ -419,7 +419,7 @@ const (
           on roles_with_grants.role_id = iam_role_org.public_id
         join iam_scope_project
           on iam_scope_project.parent_id = iam_role_org.scope_id
-         and iam_scope_project.scope_id = @request_scope
+         and iam_scope_project.scope_id = @request_scope_id
        where iam_role_org.grant_scope = 'children'
     ),
     org_roles_with_individual_grant_scopes as (
@@ -433,7 +433,7 @@ const (
           on roles_with_grants.role_id = iam_role_org.public_id
         join iam_role_org_individual_grant_scope individual
           on individual.role_id = iam_role_org.public_id
-       where individual.scope_id = @request_scope
+       where individual.scope_id = @request_scope_id
     ),
     project_roles_this_grant_scope as (
       select iam_role_project.public_id        as role_id,
@@ -447,7 +447,7 @@ const (
         join iam_scope_project
           on iam_scope_project.scope_id = iam_role_project.scope_id
        where iam_role_project.grant_this_role_scope
-         and iam_role_project.scope_id = @request_scope
+         and iam_role_project.scope_id = @request_scope_id
     ),
     all_roles as (
       select role_id,

@@ -615,17 +615,16 @@ func (r *Repository) grantsForUserGlobalResources(
 // only be org scoped.
 func (r *Repository) grantsForUserOrgResources(
 	ctx context.Context,
-	userId string,
+	userId,
+	reqScopeId string,
 	res resource.Type,
-	reqScope Scope,
 	opt ...Option,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserOrgResources"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
-	requestScope := reqScope.GetPublicId()
-	if requestScope == "" {
+	if reqScopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
 	}
 
@@ -645,7 +644,7 @@ func (r *Repository) grantsForUserOrgResources(
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
 		sql.Named("resources", pq.Array(resources)),
-		sql.Named("request_scope", requestScope),
+		sql.Named("request_scope_id", reqScopeId),
 	)
 
 	var grants []perms.GrantTuple
@@ -677,17 +676,16 @@ func (r *Repository) grantsForUserOrgResources(
 // only be project scoped.
 func (r *Repository) grantsForUserProjectResources(
 	ctx context.Context,
-	userId string,
+	userId,
+	reqScopeId string,
 	res resource.Type,
-	reqScope Scope,
 	opt ...Option,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserProjectResources"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
-	requestScope := reqScope.GetPublicId()
-	if requestScope == "" {
+	if reqScopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
 	}
 
@@ -707,7 +705,7 @@ func (r *Repository) grantsForUserProjectResources(
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
 		sql.Named("resources", pq.Array(resources)),
-		sql.Named("request_scope", requestScope),
+		sql.Named("request_scope_id", reqScopeId),
 	)
 
 	var grants []perms.GrantTuple
