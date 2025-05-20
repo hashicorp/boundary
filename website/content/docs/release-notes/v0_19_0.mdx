@@ -53,6 +53,19 @@ description: >-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Error when sending requests to aliases using HCP Boundary
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A known issue that was caused by the way default grants were previously configured in HCP Boundary could cause you to receive 500 errors when you attempted to connect to an alias. The issue has been resolved. Any clusters that you created after May 1, 2025 should not have the connection issue.
+    <br /><br />
+    You can perform a workaround to resolve connection issues for any older clusters that exhibit this behavior.
+    <br /><br />
+    Learn more:&nbsp; <a href="#hcp-grants">Known issues and breaking changes </a>
+    </td>
+  </tr>
+
   </tbody>
 </table>
 

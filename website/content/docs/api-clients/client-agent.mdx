@@ -58,21 +58,12 @@ $ boundary client-agent sessions
 
 ### Grants
 
-The default grants that Boundary creates for anonymous and authenticated users are sufficient to get started with the Client Agent for the public beta.
-However, in a production scenario, you may want to provide the least amount of privileges necessary for users.
+In a production environment, you may want to provide the least amount of privileges necessary for users.
 For a Boundary user to be able to use the Client Agent to establish a transparent session, they must:
 
 - be able to authenticate using an auth method.
 - have read permissions for their auth token.
 - have permission to establish a session to one or more targets.
-
-<Note>
-
-A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to connnect to an alias.
-
-For more information, refer to the [known issue](/boundary/docs/release-notes/v0_19_0#hcp-grants).
-
-</Note>
 
 You can use the following grant strings to grant those permissions:
 
@@ -97,6 +88,14 @@ You can use the following grant string to grant the permission to list resolvabl
 ```
 type=user;ids=*;actions=list-resolvable-aliases
 ```
+
+<Note>
+
+A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to connnect to an alias.
+
+For more information, refer to the [known issue](/boundary/docs/release-notes/v0_19_0#hcp-grants).
+
+</Note>
 
 ## Configuration
 
