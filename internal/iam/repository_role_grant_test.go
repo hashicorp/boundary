@@ -2432,9 +2432,9 @@ func SetupChildGrantScopes(t *testing.T, conn *db.DB, repo *Repository) (childGr
 
 // testInput is used to pass test inputs into the various grantsForUser functions
 type testInput struct {
-	userId   string
-	resource resource.Type
-	scope    *Scope
+	userId     string
+	reqScopeId string
+	resource   resource.Type
 }
 
 func TestGrantsForUserGlobalResources(t *testing.T) {
@@ -2607,7 +2607,6 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	// Create scopes
 	org1Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
 	org2Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
-	emptyScope := AllocScope()
 
 	// Create & grant roles
 	roles := make([]*Role, 0)
@@ -2652,9 +2651,9 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "return grants for user resource at org1 request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.User,
-				scope:    org1Scope,
+				userId:     user.PublicId,
+				reqScopeId: org1Scope.PublicId,
+				resource:   resource.User,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -2690,9 +2689,9 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "return grants for user resource at org2 request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.User,
-				scope:    org2Scope,
+				userId:     user.PublicId,
+				reqScopeId: org2Scope.PublicId,
+				resource:   resource.User,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -2728,9 +2727,9 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "return grants for policy resource at org1 request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.Policy,
-				scope:    org1Scope,
+				userId:     user.PublicId,
+				reqScopeId: org1Scope.PublicId,
+				resource:   resource.Policy,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -2766,9 +2765,9 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "return grants for policy resource at org2 request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.Policy,
-				scope:    org2Scope,
+				userId:     user.PublicId,
+				reqScopeId: org2Scope.PublicId,
+				resource:   resource.Policy,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -2804,8 +2803,8 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "return '*' and 'unknown' grants when no resource specified at org1 request scope",
 			input: testInput{
-				userId: user.PublicId,
-				scope:  org1Scope,
+				userId:     user.PublicId,
+				reqScopeId: org1Scope.PublicId,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -2827,8 +2826,8 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "return '*' and 'unknown' grants when no resource specified at org2 request scope",
 			input: testInput{
-				userId: user.PublicId,
-				scope:  org2Scope,
+				userId:     user.PublicId,
+				reqScopeId: org2Scope.PublicId,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -2843,49 +2842,49 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "u_anon should return no grants at org1 request scope",
 			input: testInput{
-				userId: globals.AnonymousUserId,
-				scope:  org1Scope,
+				userId:     globals.AnonymousUserId,
+				reqScopeId: org1Scope.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_anon should return no grants at org2 request scope",
 			input: testInput{
-				userId: globals.AnonymousUserId,
-				scope:  org2Scope,
+				userId:     globals.AnonymousUserId,
+				reqScopeId: org2Scope.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_auth should return no grants at org1 request scope",
 			input: testInput{
-				userId: globals.AnyAuthenticatedUserId,
-				scope:  org1Scope,
+				userId:     globals.AnyAuthenticatedUserId,
+				reqScopeId: org1Scope.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_auth should return no grants at org2 request scope",
 			input: testInput{
-				userId: globals.AnyAuthenticatedUserId,
-				scope:  org2Scope,
+				userId:     globals.AnyAuthenticatedUserId,
+				reqScopeId: org2Scope.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "missing user id should return error",
 			input: testInput{
-				resource: resource.User,
-				scope:    org1Scope,
+				resource:   resource.User,
+				reqScopeId: org1Scope.PublicId,
 			},
 			errorMsg: "missing user id",
 		},
 		{
 			name: "missing scope id should return error",
 			input: testInput{
-				resource: resource.User,
-				userId:   user.PublicId,
-				scope:    &emptyScope,
+				userId:     user.PublicId,
+				reqScopeId: "",
+				resource:   resource.User,
 			},
 			errorMsg: "missing request scope id",
 		},
@@ -2893,8 +2892,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			require.NotNil(t, tc.input.scope)
-			got, err := repo.grantsForUserOrgResources(ctx, tc.input.userId, tc.input.resource, *tc.input.scope)
+			got, err := repo.grantsForUserOrgResources(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
@@ -2920,8 +2918,6 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	proj1a := TestProject(t, repo, org1.PublicId, WithSkipDefaultRoleCreation(true))
 	proj1b := TestProject(t, repo, org1.PublicId, WithSkipDefaultRoleCreation(true))
 	proj2 := TestProject(t, repo, org2.PublicId, WithSkipDefaultRoleCreation(true))
-
-	emptyScope := AllocScope()
 
 	// Create & grant roles
 	roles := make([]*Role, 0)
@@ -2967,9 +2963,9 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return grants for target resource at proj1a request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.Target,
-				scope:    proj1a,
+				userId:     user.PublicId,
+				reqScopeId: proj1a.PublicId,
+				resource:   resource.Target,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -2991,9 +2987,9 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return grants for target resource at proj1b request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.Target,
-				scope:    proj1b,
+				userId:     user.PublicId,
+				reqScopeId: proj1b.PublicId,
+				resource:   resource.Target,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -3022,9 +3018,9 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return grants for target resource at proj2 request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.Target,
-				scope:    proj2,
+				userId:     user.PublicId,
+				reqScopeId: proj2.PublicId,
+				resource:   resource.Target,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -3053,9 +3049,9 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return grants for scope resource at proj1a request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.Scope,
-				scope:    proj1a,
+				userId:     user.PublicId,
+				reqScopeId: proj1a.PublicId,
+				resource:   resource.Scope,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -3070,9 +3066,9 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return grants for scope resource at proj1b request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.Scope,
-				scope:    proj1b,
+				userId:     user.PublicId,
+				reqScopeId: proj1b.PublicId,
+				resource:   resource.Scope,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -3101,9 +3097,9 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return grants for scope resource at proj2 request scope",
 			input: testInput{
-				userId:   user.PublicId,
-				resource: resource.Scope,
-				scope:    proj2,
+				userId:     user.PublicId,
+				reqScopeId: proj2.PublicId,
+				resource:   resource.Scope,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -3139,8 +3135,8 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return '*' and 'unknown' grants when no resource specified at proj1a request scope",
 			input: testInput{
-				userId: user.PublicId,
-				scope:  proj1a,
+				userId:     user.PublicId,
+				reqScopeId: proj1a.PublicId,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -3155,8 +3151,8 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return '*' and 'unknown' grants when no resource specified at proj1b request scope",
 			input: testInput{
-				userId: user.PublicId,
-				scope:  proj1b,
+				userId:     user.PublicId,
+				reqScopeId: proj1b.PublicId,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -3178,8 +3174,8 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "return '*' and 'unknown' grants when no resource specified at proj2 request scope",
 			input: testInput{
-				userId: user.PublicId,
-				scope:  proj2,
+				userId:     user.PublicId,
+				reqScopeId: proj2.PublicId,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -3194,65 +3190,65 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		{
 			name: "u_anon should return no grants at proj1a request scope",
 			input: testInput{
-				userId: globals.AnonymousUserId,
-				scope:  proj1a,
+				userId:     globals.AnonymousUserId,
+				reqScopeId: proj1a.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_anon should return no grants at proj1b request scope",
 			input: testInput{
-				userId: globals.AnonymousUserId,
-				scope:  proj1b,
+				userId:     globals.AnonymousUserId,
+				reqScopeId: proj1b.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_anon should return no grants at proj2 request scope",
 			input: testInput{
-				userId: globals.AnonymousUserId,
-				scope:  proj2,
+				userId:     globals.AnonymousUserId,
+				reqScopeId: proj2.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_auth should return no grants at proj1a request scope",
 			input: testInput{
-				userId: globals.AnyAuthenticatedUserId,
-				scope:  proj1a,
+				userId:     globals.AnyAuthenticatedUserId,
+				reqScopeId: proj1a.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_auth should return no grants at proj1b request scope",
 			input: testInput{
-				userId: globals.AnyAuthenticatedUserId,
-				scope:  proj1b,
+				userId:     globals.AnyAuthenticatedUserId,
+				reqScopeId: proj1b.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_auth should return no grants at proj2 request scope",
 			input: testInput{
-				userId: globals.AnyAuthenticatedUserId,
-				scope:  proj2,
+				userId:     globals.AnyAuthenticatedUserId,
+				reqScopeId: proj2.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "missing user id should return error",
 			input: testInput{
-				resource: resource.Target,
-				scope:    proj2,
+				resource:   resource.Target,
+				reqScopeId: proj2.PublicId,
 			},
 			errorMsg: "missing user id",
 		},
 		{
 			name: "missing scope id should return error",
 			input: testInput{
-				resource: resource.Target,
-				userId:   user.PublicId,
-				scope:    &emptyScope,
+				userId:     user.PublicId,
+				reqScopeId: "",
+				resource:   resource.Target,
 			},
 			errorMsg: "missing request scope id",
 		},
@@ -3260,8 +3256,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			require.NotNil(t, tc.input.scope)
-			got, err := repo.grantsForUserProjectResources(ctx, tc.input.userId, tc.input.resource, *tc.input.scope)
+			got, err := repo.grantsForUserProjectResources(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
