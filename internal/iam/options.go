@@ -30,6 +30,7 @@ type options struct {
 	withName                      string
 	withDescription               string
 	withLimit                     int
+	withRecursive                 bool
 	withGrantScopeIds             []string
 	withSkipVetForWrite           bool
 	withDisassociate              bool
@@ -52,6 +53,7 @@ func getDefaultOptions() options {
 		withDescription:     "",
 		withLimit:           0,
 		withSkipVetForWrite: false,
+		withRecursive:       false,
 	}
 }
 
@@ -66,6 +68,13 @@ func WithPublicId(id string) Option {
 func WithDescription(desc string) Option {
 	return func(o *options) {
 		o.withDescription = desc
+	}
+}
+
+// WithRecursive indicates that this request is a recursive request
+func WithRecursive() Option {
+	return func(o *options) {
+		o.withRecursive = true
 	}
 }
 

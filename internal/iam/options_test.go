@@ -99,4 +99,11 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
 		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 	})
+	t.Run("WithRecursive", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithRecursive())
+		testOpts := getDefaultOptions()
+		assert.False(testOpts.withRecursive)
+		assert.True(opts.withRecursive)
+	})
 }
