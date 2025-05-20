@@ -3267,3 +3267,228 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 		})
 	}
 }
+
+func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+	user := TestUser(t, repo, "global")
+
+	// Create scopes
+	org1Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	org2Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+
+	// Create & grant roles
+	roles := make([]*Role, 0)
+
+	globalRoleThis := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	globalRoleChildren := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
+	globalRoleDescendants := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
+	globalRoleOrg1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1Scope.PublicId}))
+	globalRoleThisAndOrg2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2Scope.PublicId}))
+	roles = append(roles, globalRoleThis, globalRoleOrg1, globalRoleThisAndOrg2, globalRoleDescendants, globalRoleChildren)
+
+	TestRoleGrant(t, conn, globalRoleThis.PublicId, "ids=*;type=account;actions=create,update")
+	TestRoleGrant(t, conn, globalRoleChildren.PublicId, "ids=*;type=account;actions=set-password")
+	TestRoleGrant(t, conn, globalRoleDescendants.PublicId, "ids=*;type=*;actions=update")
+	TestRoleGrant(t, conn, globalRoleOrg1.PublicId, "ids=*;type=account;actions=list,read")
+	TestRoleGrant(t, conn, globalRoleThisAndOrg2.PublicId, "ids=*;type=account;actions=*")
+
+	org1RoleThis := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	org1RoleChildren := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
+	org2RoleThisAndChildren := TestRole(t, conn, org2Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+	roles = append(roles, org1RoleThis, org1RoleChildren, org2RoleThisAndChildren)
+
+	TestRoleGrant(t, conn, org1RoleThis.PublicId, "ids=*;type=*;actions=*")
+	TestRoleGrant(t, conn, org1RoleChildren.PublicId, "ids=*;type=account;actions=change-password")
+	TestRoleGrant(t, conn, org2RoleThisAndChildren.PublicId, "ids=*;type=account;actions=delete")
+
+	// Add users to created roles
+	for _, role := range roles {
+		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
+		require.NoError(t, err)
+	}
+
+	testcases := []struct {
+		name     string
+		input    testInput
+		output   []perms.GrantTuple
+		errorMsg string
+	}{
+		{
+			name: "return grants for account resource at global request scope",
+			input: testInput{
+				userId:     user.PublicId,
+				reqScopeId: globals.GlobalPrefix,
+				resource:   resource.Account,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleThis.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=account;actions=create,update",
+				},
+				{
+					RoleId:            globalRoleChildren.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeChildren,
+					Grant:             "ids=*;type=account;actions=set-password",
+				},
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=update",
+				},
+				{
+					RoleId:            globalRoleOrg1.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      org1Scope.PublicId,
+					Grant:             "ids=*;type=account;actions=list,read",
+				},
+				{
+					RoleId:            globalRoleThisAndOrg2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=account;actions=*",
+				},
+				{
+					RoleId:            globalRoleThisAndOrg2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      org2Scope.PublicId,
+					Grant:             "ids=*;type=account;actions=*",
+				},
+				{
+					RoleId:            org1RoleThis.PublicId,
+					RoleScopeId:       org1Scope.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      org1Scope.PublicId,
+					Grant:             "ids=*;type=*;actions=*",
+				},
+				{
+					RoleId:            org2RoleThisAndChildren.PublicId,
+					RoleScopeId:       org2Scope.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      org2Scope.PublicId,
+					Grant:             "ids=*;type=account;actions=delete",
+				},
+			},
+		},
+		{
+			name: "return org grants when trying to recursively list grants at a non-recursive request scope (org scope)",
+			input: testInput{
+				userId:     user.PublicId,
+				reqScopeId: org1Scope.PublicId,
+				resource:   resource.Account,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleChildren.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeChildren,
+					Grant:             "ids=*;type=account;actions=set-password",
+				},
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=update",
+				},
+				{
+					RoleId:            globalRoleOrg1.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      org1Scope.PublicId,
+					Grant:             "ids=*;type=account;actions=list,read",
+				},
+				{
+					RoleId:            org1RoleThis.PublicId,
+					RoleScopeId:       org1Scope.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      org1Scope.PublicId,
+					Grant:             "ids=*;type=*;actions=*",
+				},
+			},
+		},
+		{
+			name: "return error when trying to recursively list grants at an unknown request scope",
+			input: testInput{
+				userId:     user.PublicId,
+				reqScopeId: scope.Unknown.String(),
+			},
+			errorMsg: "request scope must be global scope or an org scope",
+		},
+		{
+			name: "u_anon should return no grants at org1 request scope",
+			input: testInput{
+				userId:     globals.AnonymousUserId,
+				reqScopeId: globals.GlobalPrefix,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_anon should return no grants at org2 request scope",
+			input: testInput{
+				userId:     globals.AnonymousUserId,
+				reqScopeId: globals.GlobalPrefix,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_auth should return no grants at org1 request scope",
+			input: testInput{
+				userId:     globals.AnyAuthenticatedUserId,
+				reqScopeId: globals.GlobalPrefix,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "u_auth should return no grants at org2 request scope",
+			input: testInput{
+				userId:     globals.AnyAuthenticatedUserId,
+				reqScopeId: globals.GlobalPrefix,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "missing user id should return error",
+			input: testInput{
+				resource:   resource.Account,
+				reqScopeId: globals.GlobalPrefix,
+			},
+			errorMsg: "missing user id",
+		},
+		{
+			name: "missing scope id should return error",
+			input: testInput{
+				userId:     user.PublicId,
+				reqScopeId: "",
+				resource:   resource.Account,
+			},
+			errorMsg: "missing request scope id",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := repo.grantsForUserGlobalAndOrgResourcesRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+			if tc.errorMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorMsg)
+				return
+			}
+			require.NoError(t, err)
+			assert.ElementsMatch(t, got, tc.output)
+		})
+	}
+}
