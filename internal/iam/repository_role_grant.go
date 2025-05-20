@@ -463,6 +463,9 @@ type grantsForUserResults struct {
 	canonicalGrants []string
 }
 
+// GrantsForUser returns perms.GrantTuples associated to a userId scoped down to the requested scope and resource type.
+// Use WithRecursive option to indicate that the request is a recursive list request
+// Supported option includes WithRecursive, WithTestCacheMultiGrantTuples
 func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resource.Type, reqScopeId string, opt ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
