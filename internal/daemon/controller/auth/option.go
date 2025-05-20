@@ -28,6 +28,7 @@ type options struct {
 	withAction                  action.Type
 	withUserId                  string
 	withKms                     *kms.Kms
+	withRecursive               bool
 	withRecoveryTokenNotAllowed bool
 	withAnonymousUserNotAllowed bool
 	withResource                *perms.Resource
@@ -36,6 +37,12 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{}
+}
+
+func WithRecursive() Option {
+	return func(o *options) {
+		o.withRecursive = true
+	}
 }
 
 func WithScopeId(id string) Option {
