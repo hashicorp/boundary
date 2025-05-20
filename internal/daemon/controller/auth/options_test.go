@@ -19,6 +19,10 @@ func Test_GetOpts(t *testing.T) {
 	withKms := new(kms.Kms)
 	res := new(perms.Resource)
 
+	// test default values
+	defaultOpts := getDefaultOptions()
+	assert.False(t, defaultOpts.withRecursive)
+
 	opts := getOpts(
 		WithScopeId("foo"),
 		WithPin("bar"),
@@ -28,6 +32,7 @@ func Test_GetOpts(t *testing.T) {
 		WithKms(withKms),
 		WithRecoveryTokenNotAllowed(true),
 		WithAnonymousUserNotAllowed(true),
+		WithRecursive(),
 		WithResource(res),
 		WithActions([]string{"callback"}),
 	)
@@ -40,6 +45,7 @@ func Test_GetOpts(t *testing.T) {
 		withKms:                     withKms,
 		withRecoveryTokenNotAllowed: true,
 		withAnonymousUserNotAllowed: true,
+		withRecursive:               true,
 		withResource:                res,
 		withActions:                 []string{"callback"},
 	}
