@@ -544,7 +544,6 @@ func (r *Repository) grantsForUserGlobalResources(
 	ctx context.Context,
 	userId string,
 	res resource.Type,
-	opt ...Option,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserGlobalResources"
 	if userId == "" {
@@ -601,7 +600,6 @@ func (r *Repository) grantsForUserOrgResources(
 	userId,
 	reqScopeId string,
 	res resource.Type,
-	opt ...Option,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserOrgResources"
 	if userId == "" {
@@ -662,7 +660,6 @@ func (r *Repository) grantsForUserProjectResources(
 	userId,
 	reqScopeId string,
 	res resource.Type,
-	opt ...Option,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserProjectResources"
 	if userId == "" {
@@ -723,7 +720,6 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	userId,
 	reqScopeId string,
 	res resource.Type,
-	opt ...Option,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserGlobalAndOrgResourcesRecursive"
 	if userId == "" {
@@ -734,7 +730,7 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	}
 	// Can't recursely list any further at org scope
 	if strings.HasPrefix(reqScopeId, globals.OrgPrefix) {
-		return r.grantsForUserOrgResources(ctx, userId, reqScopeId, res, opt...)
+		return r.grantsForUserOrgResources(ctx, userId, reqScopeId, res)
 	}
 	if reqScopeId != scope.Global.String() {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope or an org scope")
