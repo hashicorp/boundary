@@ -3293,16 +3293,22 @@ func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
 	TestRoleGrant(t, conn, globalRoleChildren.PublicId, "ids=*;type=account;actions=set-password")
 	TestRoleGrant(t, conn, globalRoleDescendants.PublicId, "ids=*;type=*;actions=update")
 	TestRoleGrant(t, conn, globalRoleOrg1.PublicId, "ids=*;type=account;actions=list,read")
-	TestRoleGrant(t, conn, globalRoleThisAndOrg2.PublicId, "ids=*;type=account;actions=*")
+	TestRoleGrant(t, conn, globalRoleThisAndOrg2.PublicId, "ids=acctpw_12345;actions=read")
 
 	org1RoleThis := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
 	org1RoleChildren := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
 	org2RoleThisAndChildren := TestRole(t, conn, org2Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
 	roles = append(roles, org1RoleThis, org1RoleChildren, org2RoleThisAndChildren)
 
-	TestRoleGrant(t, conn, org1RoleThis.PublicId, "ids=*;type=*;actions=*")
+	// TestRoleGrant(t, conn, org1RoleThis.PublicId, "ids=ampw_12345;type=auth-method;actions=read")
+	TestRoleGrant(t, conn, org1RoleThis.PublicId, "ids=ampw_12345;actions=read")
 	TestRoleGrant(t, conn, org1RoleChildren.PublicId, "ids=*;type=account;actions=change-password")
 	TestRoleGrant(t, conn, org2RoleThisAndChildren.PublicId, "ids=*;type=account;actions=delete")
+
+	projRoleThis := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	roles = append(roles, projRoleThis)
+
+	TestRoleGrant(t, conn, projRoleThis.PublicId, "ids=*;type=group;actions=read")
 
 	// Add users to created roles
 	for _, role := range roles {
@@ -3357,21 +3363,21 @@ func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
 					GrantScopeId:      "global",
-					Grant:             "ids=*;type=account;actions=*",
+					Grant:             "ids=acctpw_12345;actions=read",
 				},
 				{
 					RoleId:            globalRoleThisAndOrg2.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
 					GrantScopeId:      org2Scope.PublicId,
-					Grant:             "ids=*;type=account;actions=*",
+					Grant:             "ids=acctpw_12345;actions=read",
 				},
 				{
 					RoleId:            org1RoleThis.PublicId,
 					RoleScopeId:       org1Scope.PublicId,
 					RoleParentScopeId: "global",
 					GrantScopeId:      org1Scope.PublicId,
-					Grant:             "ids=*;type=*;actions=*",
+					Grant:             "ids=ampw_12345;actions=read",
 				},
 				{
 					RoleId:            org2RoleThisAndChildren.PublicId,
@@ -3416,7 +3422,7 @@ func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
 					RoleScopeId:       org1Scope.PublicId,
 					RoleParentScopeId: "global",
 					GrantScopeId:      org1Scope.PublicId,
-					Grant:             "ids=*;type=*;actions=*",
+					Grant:             "ids=ampw_12345;actions=read",
 				},
 			},
 		},
@@ -3427,6 +3433,53 @@ func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
 				reqScopeId: scope.Unknown.String(),
 			},
 			errorMsg: "request scope must be global scope or an org scope",
+		},
+		{
+			name: "return no grants for a resource that has no permissions granted for it",
+			input: testInput{
+				userId:     globals.AnonymousUserId,
+				reqScopeId: globals.GlobalPrefix,
+				resource:   resource.AuthMethod,
+			},
+			output: []perms.GrantTuple{},
+		},
+		{
+			name: "return grants where the resource type is '*' or isn't expliticly specified when querying for 'unknown' resources",
+			input: testInput{
+				userId:     user.PublicId,
+				reqScopeId: globals.GlobalPrefix,
+				resource:   resource.Unknown,
+			},
+			output: []perms.GrantTuple{
+				{
+					RoleId:            globalRoleThisAndOrg2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=acctpw_12345;actions=read",
+				},
+				{
+					RoleId:            globalRoleThisAndOrg2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      org2Scope.PublicId,
+					Grant:             "ids=acctpw_12345;actions=read",
+				},
+				{
+					RoleId:            org1RoleThis.PublicId,
+					RoleScopeId:       org1Scope.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      org1Scope.PublicId,
+					Grant:             "ids=ampw_12345;actions=read",
+				},
+				{
+					RoleId:            globalRoleDescendants.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeDescendants,
+					Grant:             "ids=*;type=*;actions=update",
+				},
+			},
 		},
 		{
 			name: "u_anon should return no grants at org1 request scope",
