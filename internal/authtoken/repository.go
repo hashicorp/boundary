@@ -5,7 +5,6 @@ package authtoken
 
 import (
 	"context"
-	"crypto/subtle"
 	"database/sql"
 	"fmt"
 	"time"
@@ -241,7 +240,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		return nil, nil
 	}
 
-	if subtle.ConstantTimeCompare([]byte(retAT.GetToken()), []byte(token)) == 0 {
+	if retAT.GetToken() != token {
 		return nil, nil
 	}
 	// retAT.Token set to empty string so the value is not returned as described in the methods' doc.

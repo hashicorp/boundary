@@ -49,7 +49,7 @@ service AuthTokenService {
 }
 
 message GetAuthTokenRequest {
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetAuthTokenResponse {

@@ -69,7 +69,6 @@ scenario "e2e_ui_docker" {
 
     variables {
       license_path = local.license_path
-      license      = var.boundary_license
     }
   }
 

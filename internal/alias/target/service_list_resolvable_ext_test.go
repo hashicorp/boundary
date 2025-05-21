@@ -88,27 +88,6 @@ func TestService_ListResolvableAliases(t *testing.T) {
 			All:          true,
 		},
 	}
-
-	// Test the scenario where permissions are provided to the ListResolvableAliases service,
-	// but none of the permissions include grant scopes corresponding to scopes of which targets reside.
-	noTargetScopePerms := []perms.Permission{
-		{
-			RoleScopeId:  scope.Global.String(),
-			GrantScopeId: globals.GrantScopeChildren,
-			Resource:     resource.Target,
-			Action:       action.ListResolvableAliases,
-			OnlySelf:     false,
-			All:          true,
-		},
-		{
-			RoleScopeId:  scope.Global.String(),
-			GrantScopeId: scope.Global.String(),
-			Resource:     resource.Target,
-			Action:       action.ListResolvableAliases,
-			OnlySelf:     false,
-			All:          true,
-		},
-	}
 	// Reverse since we read items in descending order (newest first)
 	slices.Reverse(byScopeResources)
 
@@ -179,13 +158,6 @@ func TestService_ListResolvableAliases(t *testing.T) {
 			t.Parallel()
 			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, nil)
 			require.ErrorContains(t, err, "missing target permissions")
-		})
-		t.Run("no valid target permissions", func(t *testing.T) {
-			t.Parallel()
-			res, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, noTargetScopePerms)
-			require.NoError(t, err)
-			require.NotNil(t, res)
-			require.Empty(t, res.Items)
 		})
 	})
 	t.Run("ListPage validation", func(t *testing.T) {

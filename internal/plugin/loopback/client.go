@@ -71,10 +71,6 @@ func NewWrappingPluginStorageClient(s plgpb.StoragePluginServiceServer) *Wrappin
 	return &WrappingPluginStorageClient{Server: s}
 }
 
-func (tpc *WrappingPluginStorageClient) NormalizeStorageBucketData(ctx context.Context, req *plgpb.NormalizeStorageBucketDataRequest, opts ...grpc.CallOption) (*plgpb.NormalizeStorageBucketDataResponse, error) {
-	return tpc.Server.NormalizeStorageBucketData(ctx, req)
-}
-
 func (tpc *WrappingPluginStorageClient) OnCreateStorageBucket(ctx context.Context, req *plgpb.OnCreateStorageBucketRequest, opts ...grpc.CallOption) (*plgpb.OnCreateStorageBucketResponse, error) {
 	return tpc.Server.OnCreateStorageBucket(ctx, req)
 }

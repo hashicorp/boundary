@@ -6,6 +6,7 @@ package hosts
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -772,12 +773,14 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 					len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
 					badFields[globals.AttributesAddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 				} else {
-					_, port, err := util.SplitHostPort(attrs.GetAddress().GetValue())
-					if err != nil && !errors.Is(err, util.ErrMissingPort) {
-						badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
-					}
-					if port != "" {
+					_, _, err := net.SplitHostPort(attrs.GetAddress().GetValue())
+					switch {
+					case err == nil:
 						badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
+					case strings.Contains(err.Error(), globals.MissingPortErrStr):
+						// Bare hostname, which we want
+					default:
+						badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 					}
 				}
 			}
@@ -807,12 +810,14 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 						len(strings.TrimSpace(attrs.GetAddress().GetValue())) > static.MaxHostAddressLength {
 						badFields[globals.AttributesAddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
 					} else {
-						_, port, err := util.SplitHostPort(attrs.GetAddress().GetValue())
-						if err != nil && !errors.Is(err, util.ErrMissingPort) {
-							badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
-						}
-						if port != "" {
+						_, _, err := net.SplitHostPort(attrs.GetAddress().GetValue())
+						switch {
+						case err == nil:
 							badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
+						case strings.Contains(err.Error(), globals.MissingPortErrStr):
+							// Bare hostname, which we want
+						default:
+							badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 						}
 					}
 				}

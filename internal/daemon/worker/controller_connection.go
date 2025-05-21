@@ -52,7 +52,7 @@ func (w *Worker) StartControllerConnections() error {
 			initialAddrs = append(initialAddrs, addr)
 		default:
 			host, port, err := util.SplitHostPort(addr)
-			if err != nil && !errors.Is(err, util.ErrMissingPort) {
+			if err != nil {
 				return fmt.Errorf("error parsing upstream address: %w", err)
 			}
 			if port == "" {

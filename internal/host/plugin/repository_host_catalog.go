@@ -51,7 +51,6 @@ func normalizeCatalogAttributes(ctx context.Context, plgClient plgpb.HostPluginS
 	})
 	switch {
 	case err == nil:
-		// TODO: this should be updated to return these attributes rather than updating them in-place
 		if ret.Attributes != nil {
 			plgHc.Attrs = &pb.HostCatalog_Attributes{
 				Attributes: ret.Attributes,

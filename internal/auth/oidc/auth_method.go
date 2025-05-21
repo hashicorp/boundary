@@ -412,6 +412,10 @@ func (am *AuthMethod) convertAccountClaimMaps(ctx context.Context) ([]*AccountCl
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	newAccountClaimMaps := make([]*AccountClaimMap, 0, len(am.AccountClaimMaps))
+	const (
+		from = 0
+		to   = 1
+	)
 	acms, err := ParseAccountClaimMaps(ctx, am.AccountClaimMaps...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

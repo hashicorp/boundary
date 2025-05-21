@@ -39,8 +39,6 @@
 // ENTERPRISE ONLY
 // Path to a license file
 // boundary_license_path = "./support/boundary.hclic"
-// Directly set the boundary license. Overrides boundary license file.
-// boundary_license = ""
 
 // ==============================================================================
 // OPTIONAL VARIABLES

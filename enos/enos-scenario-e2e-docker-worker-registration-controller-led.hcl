@@ -86,7 +86,6 @@ scenario "e2e_docker_worker_registration_controller_led" {
 
     variables {
       license_path = local.license_path
-      license      = var.boundary_license
     }
   }
 

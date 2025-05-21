@@ -4,21 +4,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### New and Improved
-
-* Adds support to parse User-Agent headers and emit them in telemetry events
-  ([PR](https://github.com/hashicorp/boundary/pull/5645)).
-
-### Deprecations/Changes
-
-* Modified parsing logic for various IP/host/address fields across Boundary.
-  Notably, for some fields, Boundary previously required bracket-enclosed 
-  IPv6 addresses (eg: `[::1]`). With this change, if the provided address is
-  just an IPv6 literal, enclosing the address in brackets is not valid.
-  Additionally, an input address containing an IPv6 literal may be modified by
-  Boundary to conform with RFC 5952.
-  ([PR](https://github.com/hashicorp/boundary/pull/5599))
-
 ## 0.19.2 (2025/05/08)
 ### New and Improved
 
@@ -102,47 +87,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Go Cryptography dependency update to address CVE-2024-45337
     ([PR](https://github.com/hashicorp/boundary/pull/5354)).
 
-## 0.18.3 (2025/02/10) (Enterprise only)
-### Bug fixes
-
-* Fix bug where database transactions were not using the correct reader & writer functions
-  and context.
-    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
-* Remove unnecessary subquery from alias refresh
-    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
-
-### Security
-
-* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
-    ([PR])(https://github.com/hashicorp/boundary/pull/5406).
-* Go Cryptography dependency update to address CVE-2024-45337
-    ([PR](https://github.com/hashicorp/boundary/pull/5365)).
-
-## 0.17.4 (2025/02/10) (Enterprise only)
-### Bug fixes
-
-* Fix bug where database transactions were not using the correct reader & writer functions
-  and context.
-    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
-* Remove unnecessary subquery from alias refresh
-    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
-
-### Security
-
-* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
-    ([PR])(https://github.com/hashicorp/boundary/pull/5528).
-* Go Cryptography dependency update to address CVE-2024-45337
-    ([PR](https://github.com/hashicorp/boundary/pull/5366)).
-
 ## 0.18.2 (2024/12/12)
-### Bug fixes
-
-* Fixed an issue where session recordings would fail when large numbers of
-  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
-* Fixed an issue where the controller would incorrectly handle HTTP requests
-  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
-
-## 0.17.3 (2024/12/12)
 ### Bug fixes
 
 * Fixed an issue where session recordings would fail when large numbers of

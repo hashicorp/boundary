@@ -175,12 +175,6 @@ variable "boundary_license_path" {
   default     = null
 }
 
-variable "boundary_license" {
-  description = "Boundary license"
-  type        = string
-  default     = null
-}
-
 variable "vault_license_path" {
   description = "Vault license path"
   type        = string

@@ -145,7 +145,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			want: &Host{
 				Host: &store.Host{
 					CatalogId: catalog.PublicId,
-					Address:   "2001:4860:4860::8888",
+					Address:   "2001:4860:4860:0:0:0:0:8888",
 				},
 			},
 		},
@@ -158,6 +158,36 @@ func TestRepository_CreateHost(t *testing.T) {
 				},
 			},
 			wantIsErr: errors.InvalidAddress,
+		},
+		{
+			name: "valid-abbreviated-[ipv6]-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860::8888]",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860::8888]",
+				},
+			},
+		},
+		{
+			name: "valid-[ipv6]-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860:0:0:0:0:8888]",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "[2001:4860:4860:0:0:0:0:8888]",
+				},
+			},
 		},
 		{
 			name: "valid-with-name",
@@ -711,7 +741,39 @@ func TestRepository_UpdateHost(t *testing.T) {
 			masks: []string{"Address"},
 			want: &Host{
 				Host: &store.Host{
-					Address: "2001:4860:4860::8888",
+					Address: "2001:4860:4860:0:0:0:0:8888",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-abbreviated-[ipv6]-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn: changeAddress("[2001:4860:4860::8888]"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "[2001:4860:4860::8888]",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-[ipv6]-address",
+			orig: &Host{
+				Host: &store.Host{
+					Address: "127.0.0.1",
+				},
+			},
+			chgFn: changeAddress("[2001:4860:4860:0:0:0:0:8888]"),
+			masks: []string{"Address"},
+			want: &Host{
+				Host: &store.Host{
+					Address: "[2001:4860:4860:0:0:0:0:8888]",
 				},
 			},
 			wantCount: 1,
