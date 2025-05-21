@@ -58,9 +58,9 @@ description: >-
     Error when sending requests to aliases using HCP Boundary
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    A known issue that was caused by the way default grants were previously configured in HCP Boundary could cause you to receive 500 errors when you attempted to connect to an alias. The issue has been resolved. Any clusters that you created after May 1, 2025 should not have the connection issue.
+    A known issue that was caused by the way default grants were previously configured in HCP Boundary could cause you to receive 500 errors when you attempted to list resolvable aliases. The issue has been resolved. Any clusters that you created after May 1, 2025 should not have the issue.
     <br /><br />
-    You can perform a workaround to resolve connection issues for any older clusters that exhibit this behavior.
+    You can perform a workaround to resolve the error for any older clusters that exhibit this behavior.
     <br /><br />
     Learn more:&nbsp; <a href="#hcp-grants">Known issues and breaking changes </a>
     </td>
@@ -312,9 +312,9 @@ description: >-
     500 error when sending requests to aliases
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    In HCP Boundary, you may receive a 500 error when you attempt to connect to an alias. This is a known issue that is caused by the way default grants were previously configured in HCP Boundary. The issue has been resolved, and any clusters that were created after May 1, 2025 should not have the connection issue.
+    In HCP Boundary, you may receive a 500 error when you attempt to list resolvable aliases. This is a known issue that is caused by the way default grants were previously configured in HCP Boundary. The issue has been resolved, and any clusters that were created after May 1, 2025 should not have the issue.
     <br /><br />
-    For any clusters created before May 1, 2025, you can perform the following workaround to resolve connection issues:
+    For any clusters created before May 1, 2025, you can perform the following workaround to resolve the error:
     <ol>
     <li>Create a role in the <code>global</code> scope and assign it to the <code>u_auth</code> user.</li>
     <li>Configure the role to apply to all <code>descendants</code> in the <code>global</code> scope.</li> <li>Assign the following grants to the role:
