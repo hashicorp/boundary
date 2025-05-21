@@ -73,7 +73,7 @@ type=target;ids=*;actions=authorize-session
 type=auth-token;ids=*;actions=read:self
 ```
 
-HCP Boundary also requires the following grant string for transparent sessions:
+Boundary also requires the following grant string for transparent sessions so that you can resolve the aliases associated with targets:
 
 ```
 type=target;actions=list,read
@@ -91,7 +91,7 @@ type=user;ids=*;actions=list-resolvable-aliases
 
 <Note>
 
-A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to connnect to an alias.
+A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to list resolvable aliases.
 
 For more information, refer to the [known issue](/boundary/docs/release-notes/v0_19_0#hcp-grants).
 
