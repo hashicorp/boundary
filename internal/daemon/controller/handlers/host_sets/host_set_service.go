@@ -68,6 +68,8 @@ var (
 	)
 )
 
+const domain = "host"
+
 func init() {
 	var err error
 	if maskManager[static.Subtype], err = handlers.NewMaskManager(

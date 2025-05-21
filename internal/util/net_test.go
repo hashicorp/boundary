@@ -195,11 +195,11 @@ func Test_SplitHostPort(t *testing.T) {
 	})
 
 	tests := []struct {
-		name         string
-		hostport     string
-		expectedHost string
-		expectedPort string
-		expectedErr  error
+		name           string
+		hostport       string
+		expectedHost   string
+		expectedPort   string
+		expectedErrMsg string
 	}{
 		{
 			name:         "local-ipv4",
@@ -214,10 +214,9 @@ func Test_SplitHostPort(t *testing.T) {
 			expectedPort: "80",
 		},
 		{
-			name:         "ipv4-missing-port",
+			name:         "ipv4-ignore-missing-port",
 			hostport:     "8.8.8.8",
 			expectedHost: "8.8.8.8",
-			expectedErr:  ErrMissingPort,
 		},
 		{
 			name:         "ipv4-empty-port",
@@ -225,22 +224,20 @@ func Test_SplitHostPort(t *testing.T) {
 			expectedHost: "8.8.8.8",
 		},
 		{
-			name:         "ipv4-square-brackets",
+			name:         "ipv4-square-bracket",
 			hostport:     "[8.8.8.8]:80",
 			expectedHost: "8.8.8.8",
 			expectedPort: "80",
 		},
 		{
-			name:         "ipv6-square-brackets",
-			hostport:     "::1:80",
-			expectedHost: "::1:80",
-			expectedErr:  ErrMissingPort,
+			name:           "ipv6-missing-square-brackets",
+			hostport:       "::1:80",
+			expectedErrMsg: "address ::1:80: too many colons in address",
 		},
 		{
-			name:         "ipv6-missing-port",
+			name:         "ipv6-ignore-missing-port",
 			hostport:     "[::1]",
 			expectedHost: "::1",
-			expectedErr:  ErrMissingPort,
 		},
 		{
 			name:         "ipv6-empty-port",
@@ -269,14 +266,16 @@ func Test_SplitHostPort(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
 			actualHost, actualPort, err := SplitHostPort(tt.hostport)
-			if tt.expectedErr != nil {
-				require.ErrorIs(t, err, tt.expectedErr)
-			} else {
-				require.NoError(t, err)
+			if tt.expectedErrMsg != "" {
+				require.Error(err)
+				assert.ErrorContains(err, tt.expectedErrMsg)
+				return
 			}
-			require.Equal(t, tt.expectedHost, actualHost)
-			require.Equal(t, tt.expectedPort, actualPort)
+			require.NoError(err)
+			assert.Equal(tt.expectedHost, actualHost)
+			assert.Equal(tt.expectedPort, actualPort)
 		})
 	}
 }
@@ -334,14 +333,14 @@ func Test_ParseAddress(t *testing.T) {
 			expectedAddress: "2001:4860:4860::8888",
 		},
 		{
-			name:           "valid-[ipv6]",
-			address:        "[2001:4860:4860:0:0:0:0:8888]",
-			expectedErrMsg: "address cannot be encapsulated by brackets",
+			name:            "valid-[ipv6]",
+			address:         "[2001:4860:4860:0:0:0:0:8888]",
+			expectedAddress: "2001:4860:4860:0:0:0:0:8888",
 		},
 		{
-			name:           "valid-[ipv6]:",
-			address:        "[2001:4860:4860:0:0:0:0:8888]:",
-			expectedErrMsg: "url has malformed host: missing port value after colon",
+			name:            "valid-[ipv6]:",
+			address:         "[2001:4860:4860:0:0:0:0:8888]:",
+			expectedAddress: "2001:4860:4860:0:0:0:0:8888",
 		},
 		{
 			name:           "invalid-ipv6-with-port",
@@ -354,14 +353,14 @@ func Test_ParseAddress(t *testing.T) {
 			expectedAddress: "2001:4860:4860::8888",
 		},
 		{
-			name:           "valid-abbreviated-[ipv6]",
-			address:        "[2001:4860:4860::8888]",
-			expectedErrMsg: "address cannot be encapsulated by brackets",
+			name:            "valid-abbreviated-[ipv6]",
+			address:         "[2001:4860:4860::8888]",
+			expectedAddress: "2001:4860:4860::8888",
 		},
 		{
-			name:           "valid-abbreviated-[ipv6]:",
-			address:        "[2001:4860:4860::8888]:",
-			expectedErrMsg: "url has malformed host: missing port value after colon",
+			name:            "valid-abbreviated-[ipv6]:",
+			address:         "[2001:4860:4860::8888]:",
+			expectedAddress: "2001:4860:4860::8888",
 		},
 		{
 			name:           "invalid-abbreviated-[ipv6]-with-port",

@@ -14,9 +14,8 @@ type config struct {
 	WorkerTagEgress     string `envconfig:"E2E_WORKER_TAG_EGRESS" required:"true"`     // e.g. "egress"
 	WorkerTagCollocated string `envconfig:"E2E_WORKER_TAG_COLLOCATED" required:"true"` // e.g. "collocated"
 	// VaultAddr is the address that the Boundary server uses to interact with the running Vault instance
-	VaultAddr        string `envconfig:"E2E_VAULT_ADDR_PUBLIC" required:"true"`  // e.g. "http://127.0.0.1:8200"
-	VaultAddrPrivate string `envconfig:"E2E_VAULT_ADDR_PRIVATE" required:"true"` // e.g. "http://10.10.10.10:8200"
-	VaultSecretPath  string `envconfig:"E2E_VAULT_SECRET_PATH" default:"e2e_secrets"`
+	VaultAddr       string `envconfig:"E2E_VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
+	VaultSecretPath string `envconfig:"E2E_VAULT_SECRET_PATH" default:"e2e_secrets"`
 }
 
 func loadTestConfig() (*config, error) {

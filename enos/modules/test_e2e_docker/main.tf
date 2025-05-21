@@ -94,14 +94,13 @@ variable "target_ca_key" {
   type        = string
   default     = ""
 }
-variable "vault_addr_public" {
-  description = "Public address to a vault instance"
+variable "vault_addr" {
+  description = "External network address of Vault. Will be converted to a URL below"
   type        = string
   default     = ""
 }
-
-variable "vault_addr_private" {
-  description = "Private address to a vault instance"
+variable "vault_addr_internal" {
+  description = "Internal network address of Vault (i.e. within a docker network). Will be converted to a URL below"
   type        = string
   default     = ""
 }
@@ -315,11 +314,10 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_SSH_USER                  = var.target_user
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path
     E2E_SSH_CA_KEY                = var.target_ca_key
-    VAULT_ADDR                    = var.vault_addr_public
-    VAULT_ADDR_INTERNAL           = var.vault_addr_private
+    VAULT_ADDR                    = var.vault_addr
+    VAULT_ADDR_INTERNAL           = var.vault_addr_internal
     VAULT_TOKEN                   = var.vault_root_token
-    E2E_VAULT_ADDR_PUBLIC         = var.vault_addr_public
-    E2E_VAULT_ADDR_PRIVATE        = var.vault_addr_private
+    E2E_VAULT_ADDR                = var.vault_addr_internal
     E2E_BUCKET_NAME               = var.bucket_name
     E2E_BUCKET_ENDPOINT_URL       = var.bucket_endpoint_url
     E2E_BUCKET_USER_ID            = var.bucket_user_id

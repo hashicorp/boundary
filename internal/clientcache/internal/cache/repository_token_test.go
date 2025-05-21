@@ -829,6 +829,12 @@ var infinityValue = infinityDate{
 	IsInfinity: true,
 }
 
+// negInfinityValue represents a time.Time that is negative infinity
+var negInfinityValue = infinityDate{
+	Time:          time.Time{},
+	IsNegInfinity: true,
+}
+
 // infinityDate is used to represent a time.Time that can be infinity, neg
 // infinity or a regular time.Time
 type infinityDate struct {

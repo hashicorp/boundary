@@ -95,22 +95,6 @@ func TestUnixListener(t *testing.T) {
 	helper.ExpectWorkers(t, c1)
 
 	require.NoError(c1.Controller().Shutdown())
-
-	conf, err = config.DevController()
-	require.NoError(err)
-
-	for _, l := range conf.Listeners {
-		switch l.Purpose[0] {
-		case "api":
-			l.Address = path.Join(tempDir, "api")
-			l.Type = "unix"
-
-		case "cluster":
-			l.Address = path.Join(tempDir, "cluster")
-			l.Type = "unix"
-		}
-	}
-
 	c2 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                        conf,
 		Logger:                        logger.Named("c2"),

@@ -59,7 +59,7 @@ func (c *Certificate) validate(ctx context.Context, caller errors.Op) error {
 	}
 	_, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("failed to parse certificate: %s", err.Error()), errors.WithWrap(err))
+		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("failed to parse certificate: %s"+err.Error()), errors.WithWrap(err))
 	}
 	return nil
 }

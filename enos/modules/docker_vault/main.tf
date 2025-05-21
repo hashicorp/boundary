@@ -132,11 +132,11 @@ resource "enos_local_exec" "check_health" {
   inline = ["timeout 10s bash -c 'until vault status; do sleep 2; done'"]
 }
 
-output "address_public" {
+output "address" {
   value = "http://${var.container_name}:${var.vault_port}"
 }
 
-output "address_private" {
+output "address_internal" {
   value = "http://${var.container_name}:${var.vault_port_internal}"
 }
 

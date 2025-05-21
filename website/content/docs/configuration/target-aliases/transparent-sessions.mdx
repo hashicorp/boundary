@@ -15,9 +15,27 @@ description: >-
 
 Before you configure transparent sessions, you must:
 
-- Ensure that the Boundary CLI and Boundary Desktop are not installed in the environment in which you want to run the transparent sessions beta.
+- If you have previous versions of the Boundary Desktop or CLI client in your local environment, ensure that they are fully uninstalled before you install with the latest Boundary installer.
 - Download the appropriate Boundary installer for your Windows or MacOS environment from the [Install Boundary](/boundary/install#installer) page or the [releases](https://releases.hashicorp.com/boundary-installer) page.
 - Ensure that both IPv4 and IPv6 protocols are enabled for your environment. The [Client Agent](/boundary/docs/api-clients/client-agent) requires both protocols to start and perform DNS lookups.
+
+Once Boundary is installed, you should make sure you have the appropriate grants configured so that you can resolve aliases and establish transparent sessions.
+For more information, refer to the [Grants](/boundary/docs/api-clients/client-agent#grants) section in the Client Agent documentation.
+
+   <Warning>
+
+   A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to list resolvable aliases.
+   Clusters created before April 26, 2025 may be missing the following grants:
+
+   `ids={{.User.Id}};type=user;actions=list-resolvable-aliases`
+
+   `ids=*;type=target;actions=list,read`
+
+   If your cluster is missing these grants, HashiCorp recommends adding them.
+
+   For more information, refer to the [known issue](/boundary/docs/release-notes/v0_19_0#hcp-grants).
+
+   </Warning>
 
 ## Install the Boundary clients
 
@@ -41,11 +59,13 @@ The following section details how to configure targets and test the transparent 
 
 <Tip>
 
-  If you use a cluster that was created earlier than release 0.16.0, you must add the grant `list-resolvable-aliases` so that the client agent can populate the local alias cache.
+If you use a cluster that was created earlier than release 0.16.0, you must add the grant `list-resolvable-aliases` so that the client agent can populate the local alias cache.
 
-  As an example, you could add the grant:
+As an example, you could add the grant:
 
-  `type=user;actions=list-resolvable-aliases;ids=*`.
+`type=user;actions=list-resolvable-aliases;ids=*`.
+
+For more information, refer to the [Grants](/boundary/docs/api-clients/client-agent#grants) section in the Client Agent documentation.
 
 </Tip>
 

@@ -23,7 +23,6 @@ import (
 // all roles in a single invocation.
 func TestCliPaginateRoles(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -121,7 +120,6 @@ func TestCliPaginateRoles(t *testing.T) {
 // all roles in a single invocation.
 func TestApiPaginateRoles(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 

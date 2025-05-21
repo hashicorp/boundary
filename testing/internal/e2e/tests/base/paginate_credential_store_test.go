@@ -23,7 +23,6 @@ import (
 // all credential stores in a single invocation.
 func TestCliPaginateCredentialStores(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -118,7 +117,6 @@ func TestCliPaginateCredentialStores(t *testing.T) {
 // all credential stores in a single invocation.
 func TestApiPaginateCredentialStores(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 

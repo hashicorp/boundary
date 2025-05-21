@@ -152,7 +152,6 @@ resource "aws_instance" "worker" {
     volume_type = var.ebs_type
     throughput  = var.ebs_throughput
     tags        = local.common_tags
-    encrypted   = true
   }
 
   tags = merge(
