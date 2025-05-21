@@ -85,7 +85,7 @@ type=user;ids=*;actions=list-resolvable-aliases
 <Warning>
 
 A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to list resolvable aliases.
-Clusters created before May 1, 2025 may be missing the following grants:
+Clusters created before April 26, 2025 may be missing the following grants:
    - `ids={{.User.Id}};type=user;actions=list-resolvable-aliases`
    - `ids=*;type=target;actions=list,read`
 
