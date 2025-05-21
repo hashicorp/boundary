@@ -732,6 +732,13 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	if reqScopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
 	}
+	// Can't recursely list any further at org scope
+	if strings.HasPrefix(reqScopeId, globals.OrgPrefix) {
+		return r.grantsForUserOrgResources(ctx, userId, reqScopeId, res, opt...)
+	}
+	if reqScopeId != scope.Global.String() {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope or an org scope")
+	}
 
 	var (
 		args      []any
