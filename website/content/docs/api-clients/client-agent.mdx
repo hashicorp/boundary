@@ -86,8 +86,10 @@ type=user;ids=*;actions=list-resolvable-aliases
 
 A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to list resolvable aliases.
 Clusters created before April 26, 2025 may be missing the following grants:
-   - `ids={{.User.Id}};type=user;actions=list-resolvable-aliases`
-   - `ids=*;type=target;actions=list,read`
+
+   `ids={{.User.Id}};type=user;actions=list-resolvable-aliases`
+
+   `ids=*;type=target;actions=list,read`
 
 If your cluster is missing these grants, HashiCorp recommends adding them.
 
