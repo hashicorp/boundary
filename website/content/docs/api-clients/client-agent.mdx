@@ -73,15 +73,8 @@ type=target;ids=*;actions=authorize-session
 type=auth-token;ids=*;actions=read:self
 ```
 
-Boundary also requires the following grant string for transparent sessions so that you can resolve the aliases associated with targets:
-
-```
-type=target;actions=list,read
-```
-
 HashiCorp highly recommends that you also grant users the permission to list resolvable aliases, as the Client Agent periodically fetches a list of aliases to match incoming DNS requests against.
 Without that permission, every DNS request on the system is sent to the Boundary controller, which can easily overwhelm it.
-For HCP Boundary, it is required that you grant users the permission to list resolvable aliases.
 
 You can use the following grant string to grant the permission to list resolvable aliases:
 
@@ -89,13 +82,18 @@ You can use the following grant string to grant the permission to list resolvabl
 type=user;ids=*;actions=list-resolvable-aliases
 ```
 
-<Note>
+<Warning>
 
 A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to list resolvable aliases.
+Clusters created before May 1, 2025 may be missing the following grants:
+   - `ids={{.User.Id}};type=user;actions=list-resolvable-aliases`
+   - `ids=*;type=target;actions=list,read`
+
+If your cluster is missing these grants, HashiCorp recommends adding them.
 
 For more information, refer to the [known issue](/boundary/docs/release-notes/v0_19_0#hcp-grants).
 
-</Note>
+</Warning>
 
 ## Configuration
 

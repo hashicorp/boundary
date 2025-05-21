@@ -309,7 +309,7 @@ description: >-
     (Fixed in 0.19.2)
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    500 error when sending requests to aliases
+    500 error when attempting to list resolvable aliases
     </td>
     <td style={{verticalAlign: 'middle'}}>
     In HCP Boundary, you may receive a 500 error when you attempt to list resolvable aliases. This is a known issue that is caused by the way default grants were previously configured in HCP Boundary. The issue has been resolved, and any clusters that were created after May 1, 2025 should not have the issue.
