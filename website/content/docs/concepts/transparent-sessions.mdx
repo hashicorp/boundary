@@ -9,8 +9,6 @@ description: >-
 
 @include 'alerts/enterprise-only.mdx'
 
-@include 'alerts/beta.mdx'
-
 Transparent sessions shift Boundary from an active connection model to a passive connection model. Boundary operates in the background instead of requiring you to remember specific resource IDs or ephemeral ports to connect to targets.
 
 As long as Boundary authenticates a user and the user is authorized to access the target, Boundary intercepts the DNS call and routes traffic through a session automatically.
@@ -19,13 +17,13 @@ Transparent sessions require [aliases](/boundary/docs/concepts/aliases) and the 
 
 The Boundary Desktop client facilitates quick target discovery and session establishment using your preferred client. If you configure aliases for your targets, install the Boundary Client Agent, and ensure you are authenticated to the cluster, connections are transparent to the user. Boundary provides OS notifications to make it clear when you connect to a target using a transparent session.
 
-Boundary supports Windows and MacOS for the transparent sessions public beta.
+Boundary supports Windows and MacOS for transparent sessions.
 
 Refer to the [Configure transparent sessions](/boundary/docs/configuration/target-aliases/transparent-sessions) page to get started.
 
 ## Known issues
 
-Refer to the following table for known issues that may affect the public beta:
+Refer to the following table for known issues:
 
 | Issue | Description |
 | ----- | ----------- |
