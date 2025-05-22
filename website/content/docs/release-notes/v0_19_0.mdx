@@ -53,6 +53,19 @@ description: >-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    Error when sending requests to aliases using HCP Boundary
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    A known issue that was caused by the way default grants were previously configured in HCP Boundary could cause you to receive 500 errors when you attempted to list resolvable aliases. The issue has been resolved. Any clusters that you created on or after April 26, 2025 should not have the issue.
+    <br /><br />
+    You can add grants to resolve the error for any older clusters that exhibit this behavior.
+    <br /><br />
+    Learn more:&nbsp; <a href="#hcp-grants">Known issues and breaking changes </a>
+    </td>
+  </tr>
+
   </tbody>
 </table>
 
@@ -286,6 +299,36 @@ description: >-
     <a href="https://github.com/golang/go/issues/73555">CVE-2025-22873</a>
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr id="hcp-grants">
+    <td style={{verticalAlign: 'middle'}}>
+    0.19.0
+    <br /><br />
+    (Fixed in 0.19.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    500 error when attempting to list resolvable aliases
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In HCP Boundary, you may receive a 500 error when you attempt to list resolvable aliases. This is a known issue that is caused by the way default grants were previously configured in HCP Boundary. The issue has been resolved, and any clusters that were created on or after April 26, 2025 should not have the issue.
+    <br /><br />
+    For any clusters created before April 26, 2025, you can add grants to resolve the error:
+    <ol>
+    <li>Create a role in the <code>global</code> scope and assign it to the <code>u_auth</code> user.</li>
+    <li>Configure the role to apply to all <code>descendants</code> in the <code>global</code> scope.</li> <li>Assign the following grants to the role:
+    <br /><br />
+    <code>ids=&#123;&#123;.User.Id&#125;&#125;;type=user;actions=list-resolvable-aliases</code><br />
+    <code>ids=*;type=target;actions=list,read</code>
+    </li></ol>
+    Learn more:
+    <ul>
+    <li><a href="/boundary/docs/api-clients/client-agent#grants">Boundary Client Agent grants</a> requirements</li>
+    <li><a href="/boundary/docs/commands/roles/create"><code>roles create</code></a> command documentation</li>
+    <li><a href="/boundary/docs/comands/roles/add-grant-scopes"><code>roles add-grant-scopes</code></a> command documentation</li>
+    <li><a href="/boundary/docs/commands/roles/add-grants"><code>roles add-grants</code></a> command documentation</li>
+    </ul>
     </td>
   </tr>
 
