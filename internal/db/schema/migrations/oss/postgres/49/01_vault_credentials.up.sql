@@ -168,6 +168,7 @@ begin;
     'This view should only be used when issuing credentials from a Vault credential library. Each row may contain encrypted data. '
     'This view should not be used to retrieve data which will be returned external to boundary.';
 
+  -- Replaced in 99901/02_username_password_domain_vault.up.sql
   create view credential_vault_library_list_lookup as
   with
     password_override (library_id, username_attribute, password_attribute) as (

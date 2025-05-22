@@ -9,6 +9,7 @@ begin;
 
   -- Add new constraint that only allows known types
   -- This replaces the constraint defined in 39/01_static_ssh_private_key_creds_up
+  -- This constraint is replaced in 99901/01_credential_static_username_password_domain_credential.up.sql
   alter table credential_type_enm
     add constraint only_predefined_credential_types_allowed
       check (

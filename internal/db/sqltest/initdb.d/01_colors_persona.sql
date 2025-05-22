@@ -501,6 +501,13 @@ begin;
     ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'csu__rcolors', 'Red username password cred',   'ruser',  'rpasswd-enc'::bytea, 'rpasswd-hmac'::bytea),
     ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'csu__gcolors', 'Green username password cred', 'guser',  'gpasswd-enc'::bytea, 'gpasswd-hmac'::bytea);
 
+  insert into credential_static_username_password_domain_credential
+    (key_id,         project_id,     store_id,       public_id,      name,                           username,  password_encrypted,   password_hmac,         domain)
+    values
+    ('kdkv__colors', 'p____bcolors', 'css__bcolors', 'csud_bcolors', 'Blue username password cred',  'buser',   'bpasswd-enc'::bytea, 'bpasswd-hmac'::bytea, 'blue.domain'),
+    ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'csud_rcolors', 'Red username password cred',   'ruser',   'rpasswd-enc'::bytea, 'rpasswd-hmac'::bytea, 'red.domain'),
+    ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'csud_gcolors', 'Green username password cred', 'guser',   'gpasswd-enc'::bytea, 'gpasswd-hmac'::bytea, 'green.domain');
+
   insert into credential_static_ssh_private_key_credential
     (key_id,         project_id,     store_id,       public_id,      name,                           username, private_key_encrypted, private_key_hmac)
   values
@@ -515,7 +522,9 @@ begin;
     ('p____bcolors', 'tssh______cb', 'csj__bcolors',       'injected_application'),
     ('p____gcolors', 'tssh______cg', 'csj__gcolors',       'brokered'),
     ('p____gcolors', 'tssh______cg', 'csu__gcolors',       'brokered'),
-    ('p____gcolors', 'tssh______cg', 'cspk_gcolors',       'injected_application');
+    ('p____gcolors', 'tssh______cg', 'cspk_gcolors',       'injected_application'),
+    ('p____gcolors', 'tssh______cg', 'csud_gcolors',       'brokered');
+    ;
 
   insert into target_credential_library
     (project_id,     target_id,      credential_library_id, credential_purpose)
@@ -560,6 +569,7 @@ begin;
     ('s1______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
     ('s1______cora', 'csu__gcolors',       'brokered'),             -- tssh______cg
     ('s1______cora', 'cspk_gcolors',       'injected_application'), -- tssh______cg
+    ('s1______cora', 'csud_gcolors',       'brokered'),             -- tssh______cg
     ('s2______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
     ('s2______cora', 'cspk_gcolors',       'injected_application'); -- tssh______cg
 
