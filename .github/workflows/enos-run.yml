@@ -38,7 +38,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -110,7 +110,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up Go
-        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -126,7 +126,7 @@ jobs:
             ${{ runner.os }}-go
           fail-on-cache-miss: false
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           # the terraform wrapper will break Terraform execution in enos because
           # it changes the output to text when we expect it to be JSON.
@@ -144,7 +144,7 @@ jobs:
           echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
           cat ~/.gnupg/gpg.conf
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 # v4.1.0
+        uses: aws-actions/configure-aws-credentials@b47578312673ae6fa5b5096b330d9fbac3d116df # v4.2.1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
@@ -155,7 +155,7 @@ jobs:
       - name: Configure GCP credentials
         if: contains(matrix.filter, 'gcp')
         id: gcp_auth
-        uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935 # v2.1.8
+        uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193 # v2.1.10
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
           access_token_lifetime: '3600s'
@@ -214,7 +214,7 @@ jobs:
           ssh -V
       - name: Download Boundary Linux AMD64 bundle
         id: download
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ${{ inputs.artifact-name }}
           path: ./enos/support/downloads
@@ -224,7 +224,7 @@ jobs:
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
       - name: Download Boundary Linux AMD64 docker image
         if: contains(matrix.filter, 'e2e_docker')
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         id: download-docker
         with:
           name: ${{ inputs.docker-image-file }}
@@ -234,7 +234,7 @@ jobs:
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         if: contains(matrix.filter, 'e2e_ui')
         with:
           node-version: '16.x'
@@ -343,7 +343,7 @@ jobs:
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
       - name: Send Slack message if Run and Retry fails (or if something else went wrong)
-        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        uses: slackapi/slack-github-action@b0fa283ad8fea605de13dc3f449259339835fc52 # v2.1.0
         # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
         # failure() captures errors before `Run Enos scenario`
         # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
@@ -355,7 +355,7 @@ jobs:
             channel: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
             text: ":x: e2e tests failed (${{ matrix.filter }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
       - name: Send Slack message if Run but Retry passes
-        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        uses: slackapi/slack-github-action@b0fa283ad8fea605de13dc3f449259339835fc52 # v2.1.0
         if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
         with:
           method: chat.postMessage
