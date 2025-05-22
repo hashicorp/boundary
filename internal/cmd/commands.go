@@ -603,6 +603,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}
 		}),
+		"credentials create username-password-domain": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.UsernamePasswordDomainCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}
+		}),
 		"credentials create ssh-private-key": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentialscmd.SshPrivateKeyCommand{
 				Command: base.NewCommand(ui, opts...),
@@ -623,6 +629,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		}),
 		"credentials update username-password": wrapper.Wrap(func() wrapper.WrappableCommand {
 			return &credentialscmd.UsernamePasswordCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}
+		}),
+		"credentials update username-password-domain": wrapper.Wrap(func() wrapper.WrappableCommand {
+			return &credentialscmd.UsernamePasswordDomainCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}
