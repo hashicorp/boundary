@@ -30,6 +30,7 @@ const (
 	testCredentialsFile = "testdata/credential.json"
 	testPemFile         = "testdata/private-key.pem"
 	testPassword        = "password"
+	testDomain          = "domain.com"
 )
 
 // TestCliStaticCredentialStore validates various credential-store operations using the cli
@@ -79,6 +80,8 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	jsonCredentialId, err := boundary.CreateStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
 	require.NoError(t, err)
+	updCredentialId, err := boundary.CreateStaticCredentialPasswordDomainCli(t, ctx, storeId, c.TargetSshUser, testPassword, testDomain)
+	require.NoError(t, err)
 
 	// Get credentials for target (expect empty)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -96,6 +99,8 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, jsonCredentialId)
 	require.NoError(t, err)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, pwCredentialId)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, updCredentialId)
 	require.NoError(t, err)
 
 	// Get credentials for target
@@ -125,6 +130,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	expectedCredentials := []map[string]any{
 		{"username": c.TargetSshUser, "password": testPassword},
 		{"username": c.TargetSshUser, "private_key": sshPrivateKey},
+		{"username": c.TargetSshUser, "password": testPassword, "domain": testDomain},
 		expectedJsonCredentials,
 	}
 
@@ -233,11 +239,15 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	newCredentialsId := newCredentialsResult.Item.Id
 	t.Logf("Created Credentials: %s", newCredentialsId)
 
+	updCredentialId, err := boundary.CreateStaticCredentialPasswordDomainApi(t, ctx, client, storeId, c.TargetSshUser, testPassword, testDomain)
+	require.NoError(t, err)
+	t.Logf("Created Credentials: %s", updCredentialId)
+
 	// Add credentials to target
 	tClient := targets.NewClient(client)
 	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
 		targets.WithAutomaticVersioning(true),
-		targets.WithBrokeredCredentialSourceIds([]string{newCredentialsId}),
+		targets.WithBrokeredCredentialSourceIds([]string{newCredentialsId, updCredentialId}),
 	)
 	require.NoError(t, err)
 
@@ -249,7 +259,16 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.True(t, ok)
 	retrievedKey, ok := newSessionAuthorization.Credentials[0].Credential["private_key"].(string)
 	require.True(t, ok)
+	retrievedDomainUser, ok := newSessionAuthorization.Credentials[1].Credential["username"].(string)
+	require.True(t, ok)
+	retrievedDomainPW, ok := newSessionAuthorization.Credentials[1].Credential["password"].(string)
+	require.True(t, ok)
+	retrievedDomain, ok := newSessionAuthorization.Credentials[1].Credential["domain"].(string)
+	require.True(t, ok)
 	assert.Equal(t, c.TargetSshUser, retrievedUser)
+	assert.Equal(t, c.TargetSshUser, retrievedDomainUser)
+	assert.Equal(t, testPassword, retrievedDomainPW)
+	assert.Equal(t, testDomain, retrievedDomain)
 	require.Equal(t, string(k), retrievedKey)
 	t.Log("Successfully retrieved credentials for target")
 }

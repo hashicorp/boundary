@@ -76,6 +76,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	// Create credentials in vault
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
 	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
+	domainSecretName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com", kvPolicyFilePath)
 	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
@@ -129,6 +130,16 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// Create a credential library for the Domain
+	domainCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+		t,
+		ctx,
+		storeId,
+		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, domainSecretName),
+		"username_password_domain",
+	)
+	require.NoError(t, err)
+
 	// Get credentials for target (expect empty)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
@@ -144,6 +155,8 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, passwordCredentialLibraryId)
 	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, domainCredentialLibraryId)
+	require.NoError(t, err)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
@@ -154,10 +167,11 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	require.Len(t, newSessionAuthorization.Credentials, 2)
+	require.Len(t, newSessionAuthorization.Credentials, 3)
 
 	for _, v := range newSessionAuthorization.Credentials {
-		if v.CredentialSource.CredentialType == "ssh_private_key" {
+		switch v.CredentialSource.CredentialType {
+		case "ssh_private_key":
 			retrievedUser, ok := v.Credential["username"].(string)
 			require.True(t, ok)
 			retrievedKey, ok := v.Credential["private_key"].(string)
@@ -168,7 +182,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, string(keyData), retrievedKey)
 			t.Log("Successfully retrieved private key credentials for target")
-		} else if v.CredentialSource.CredentialType == "username_password" {
+		case "username_password":
 			retrievedUser, ok := v.Credential["username"].(string)
 			require.True(t, ok)
 			retrievedPassword, ok := v.Credential["password"].(string)
@@ -176,6 +190,17 @@ func TestCliVaultCredentialStore(t *testing.T) {
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
 			assert.Equal(t, password, retrievedPassword)
 			t.Log("Successfully retrieved password credentials for target")
+		case "username_password_domain":
+			retrievedUser, ok := v.Credential["username"].(string)
+			require.True(t, ok)
+			retrievedPassword, ok := v.Credential["password"].(string)
+			require.True(t, ok)
+			retrievedDomain, ok := v.Credential["domain"].(string)
+			require.True(t, ok)
+			assert.Equal(t, c.TargetSshUser, retrievedUser)
+			assert.Equal(t, domainPassword, retrievedPassword)
+			assert.Equal(t, "domain.com", retrievedDomain)
+			t.Log("Successfully retrieved username/password/domain credentials for target")
 		}
 	}
 }
@@ -229,6 +254,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	// Create credential in vault
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
 	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
+	domainSecretName, domainPassword := vault.CreateKvPasswordDomainCredential(t, c.VaultSecretPath, c.TargetSshUser, "domain.com", kvPolicyFilePath)
 	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Log("Created Vault Credentials")
 
@@ -281,6 +307,15 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	newPasswordCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newPasswordCredentialLibraryId)
 
+	// Create a credential library for the domain
+	newCredentialLibraryResult, err = clClient.Create(ctx, "vault-generic", newCredentialStoreId,
+		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+domainSecretName),
+		credentiallibraries.WithCredentialType("username_password_domain"),
+	)
+	require.NoError(t, err)
+	newDomainCredentialLibraryId := newCredentialLibraryResult.Item.Id
+	t.Logf("Created Credential Library: %s", newDomainCredentialLibraryId)
+
 	// Add private key brokered credentials to target
 	tClient := targets.NewClient(client)
 	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
@@ -296,14 +331,22 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// Add password brokered credentials to target
+	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
+		targets.WithBrokeredCredentialSourceIds([]string{newDomainCredentialLibraryId}),
+		targets.WithAutomaticVersioning(true),
+	)
+	require.NoError(t, err)
+
 	// Get credentials for target
 	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, targetId)
 	require.NoError(t, err)
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	require.Len(t, newSessionAuthorization.Credentials, 2)
+	require.Len(t, newSessionAuthorization.Credentials, 3)
 
 	for _, v := range newSessionAuthorization.Credentials {
-		if v.CredentialSource.CredentialType == "ssh_private_key" {
+		switch v.CredentialSource.CredentialType {
+		case "ssh_private_key":
 			retrievedUser, ok := v.Credential["username"].(string)
 			require.True(t, ok)
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
@@ -315,7 +358,8 @@ func TestApiVaultCredentialStore(t *testing.T) {
 			keysMatch := string(k) == retrievedKey // This is done to prevent printing out key info
 			require.True(t, keysMatch, "Key retrieved from vault does not match expected value")
 			t.Log("Successfully retrieved credentials for target")
-		} else if v.CredentialSource.CredentialType == "username_password" {
+
+		case "username_password":
 			retrievedUser, ok := v.Credential["username"].(string)
 			require.True(t, ok)
 			retrievedPassword, ok := v.Credential["password"].(string)
@@ -323,6 +367,18 @@ func TestApiVaultCredentialStore(t *testing.T) {
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
 			assert.Equal(t, password, retrievedPassword)
 			t.Log("Successfully retrieved password credentials for target")
+		case "username_password_domain":
+			retrievedUser, ok := v.Credential["username"].(string)
+			require.True(t, ok)
+			retrievedPassword, ok := v.Credential["password"].(string)
+			require.True(t, ok)
+			retrievedDomain, ok := v.Credential["domain"].(string)
+			require.True(t, ok)
+			assert.Equal(t, c.TargetSshUser, retrievedUser)
+			assert.Equal(t, domainPassword, retrievedPassword)
+			assert.Equal(t, "domain.com", retrievedDomain)
+			t.Log("Successfully retrieved username/password/domain credentials for target")
+
 		}
 	}
 }
