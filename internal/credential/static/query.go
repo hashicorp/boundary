@@ -55,6 +55,7 @@ select sum(reltuples::bigint) as estimate
  where oid in (
   'credential_static_json_credential'::regclass,
   'credential_static_username_password_credential'::regclass,
+  'credential_static_username_password_domain_credential'::regclass,
   'credential_static_ssh_private_key_credential'::regclass
  )
 `
@@ -77,6 +78,11 @@ upw_creds as (
     from credential_static_username_password_credential
    where public_id in (select public_id from credentials)
 ),
+upd_creds as (
+  select * 
+    from credential_static_username_password_domain_credential
+  where public_id in (select public_id from credentials)
+),
 ssh_creds as (
   select *
     from credential_static_ssh_private_key_credential
@@ -92,6 +98,7 @@ final as (
          update_time,
          version,
          null as username,     -- Add this to make the union uniform
+         null as domain,       -- Add this to make the union uniform
          key_id,
          object_hmac as hmac1,
          null::bytea as hmac2, -- Add this to make the union uniform
@@ -107,11 +114,28 @@ final as (
          update_time,
          version,
          username,
+         null as domain,       -- Add this to make the union uniform
          key_id,
          password_hmac as hmac1,
          null::bytea as hmac2, -- Add this to make the union uniform
          'upw' as type
     from upw_creds
+    union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         username,
+         domain,
+         key_id,
+         password_hmac as hmac1,
+         null::bytea as hmac2, -- Add this to make the union uniform
+         'upd' as type
+    from upd_creds
    union
   select public_id,
          store_id,
@@ -122,6 +146,7 @@ final as (
          update_time,
          version,
          username,
+         null as domain,       -- Add this to make the union uniform
          key_id,
          private_key_hmac as hmac1,
          private_key_passphrase_hmac as hmac2,
@@ -152,6 +177,11 @@ upw_creds as (
     from credential_static_username_password_credential
    where public_id in (select public_id from credentials)
 ),
+upd_creds as (
+  select *
+    from credential_static_username_password_domain_credential
+   where public_id in (select public_id from credentials)
+),
 ssh_creds as (
   select *
     from credential_static_ssh_private_key_credential
@@ -167,6 +197,7 @@ final as (
          update_time,
          version,
          null as username,     -- Add this to make the union uniform
+         null as domain,       -- Add this to make the union uniform
          key_id,
          object_hmac as hmac1,
          null::bytea as hmac2, -- Add this to make the union uniform
@@ -182,6 +213,7 @@ final as (
          update_time,
          version,
          username,
+         null as domain,       -- Add this to make the union uniform
          key_id,
          password_hmac as hmac1,
          null::bytea as hmac2, -- Add this to make the union uniform
@@ -197,6 +229,23 @@ final as (
          update_time,
          version,
          username,
+         domain,
+         key_id,
+         password_hmac as hmac1,
+         null::bytea as hmac2, -- Add this to make the union uniform
+         'upd' as type
+    from upd_creds
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         username,
+         null as domain,       -- Add this to make the union uniform
          key_id,
          private_key_hmac as hmac1,
          private_key_passphrase_hmac as hmac2,
@@ -227,6 +276,11 @@ upw_creds as (
     from credential_static_username_password_credential
    where public_id in (select public_id from credentials)
 ),
+upd_creds as (
+  select *
+    from credential_static_username_password_domain_credential
+   where public_id in (select public_id from credentials)
+),
 ssh_creds as (
   select *
     from credential_static_ssh_private_key_credential
@@ -242,6 +296,7 @@ final as (
          update_time,
          version,
          null as username,     -- Add this to make the union uniform
+         null as domain,       -- Add this to make the union uniform
          key_id,
          object_hmac as hmac1,
          null::bytea as hmac2, -- Add this to make the union uniform
@@ -257,6 +312,7 @@ final as (
          update_time,
          version,
          username,
+         null as domain,       -- Add this to make the union uniform
          key_id,
          password_hmac as hmac1,
          null::bytea as hmac2, -- Add this to make the union uniform
@@ -272,6 +328,23 @@ final as (
          update_time,
          version,
          username,
+         domain,
+         key_id,
+         password_hmac as hmac1,
+         null::bytea as hmac2, -- Add this to make the union uniform
+         'upd' as type
+    from upd_creds
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         username,
+         null as domain,       -- Add this to make the union uniform
          key_id,
          private_key_hmac as hmac1,
          private_key_passphrase_hmac as hmac2,
@@ -303,6 +376,11 @@ upw_creds as (
     from credential_static_username_password_credential
    where public_id in (select public_id from credentials)
 ),
+upd_creds as (
+  select *
+    from credential_static_username_password_domain_credential
+   where public_id in (select public_id from credentials)
+),
 ssh_creds as (
   select *
     from credential_static_ssh_private_key_credential
@@ -318,6 +396,7 @@ final as (
          update_time,
          version,
          null as username,     -- Add this to make the union uniform
+         null as domain,       -- Add this to make the union uniform
          key_id,
          object_hmac as hmac1,
          null::bytea as hmac2, -- Add this to make the union uniform
@@ -333,6 +412,7 @@ final as (
          update_time,
          version,
          username,
+         null as domain,       -- Add this to make the union uniform
          key_id,
          password_hmac as hmac1,
          null::bytea as hmac2, -- Add this to make the union uniform
@@ -348,6 +428,23 @@ final as (
          update_time,
          version,
          username,
+         domain,
+         key_id,
+         password_hmac as hmac1,
+         null::bytea as hmac2, -- Add this to make the union uniform
+         'upd' as type
+    from upd_creds
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         username,
+         null as domain,       -- Add this to make the union uniform
          key_id,
          private_key_hmac as hmac1,
          private_key_passphrase_hmac as hmac2,

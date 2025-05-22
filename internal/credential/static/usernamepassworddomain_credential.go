@@ -33,8 +33,9 @@ type UsernamePasswordDomainCredential struct {
 func NewUsernamePasswordDomainCredential(
 	storeId string,
 	username string,
-	domain string,
 	password credential.Password,
+	domain string,
+
 	opt ...Option,
 ) (*UsernamePasswordDomainCredential, error) {
 	opts := getOpts(opt...)

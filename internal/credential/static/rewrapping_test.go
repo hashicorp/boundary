@@ -284,7 +284,8 @@ func TestRewrap_credStaticUsernamePasswordDomainRewrapFn(t *testing.T) {
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
-		cred, err := NewUsernamePasswordDomainCredential(cs.GetPublicId(), "username", "domain", "password")
+
+		cred, err := NewUsernamePasswordDomainCredential(cs.GetPublicId(), "username", "password", "domain")
 		assert.NoError(t, err)
 
 		cred.PublicId, err = credential.NewUsernamePasswordCredentialId(ctx)

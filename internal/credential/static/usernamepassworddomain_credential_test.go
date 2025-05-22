@@ -173,7 +173,8 @@ func TestUsernamePasswordDomainCredential_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
-			got, err := NewUsernamePasswordDomainCredential(tt.args.storeId, tt.args.username, tt.args.domain, tt.args.password, tt.args.options...)
+
+			got, err := NewUsernamePasswordDomainCredential(tt.args.storeId, tt.args.username, tt.args.password, tt.args.domain, tt.args.options...)
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Emptyf(got.PublicId, "PublicId set")
