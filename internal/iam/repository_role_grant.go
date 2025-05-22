@@ -735,6 +735,9 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	if reqScopeId != scope.Global.String() {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope or an org scope")
 	}
+	if res == resource.All || res == resource.Unknown {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "a specific resource type must be specified")
+	}
 
 	var (
 		args      []any

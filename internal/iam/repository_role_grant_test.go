@@ -3444,48 +3444,29 @@ func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
 			output: []perms.GrantTuple{},
 		},
 		{
-			name: "return grants where the resource type is '*' or isn't expliticly specified when querying for 'unknown' resources",
+			name: "unknown resource type should return error",
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: globals.GlobalPrefix,
 				resource:   resource.Unknown,
 			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleThisAndOrg2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      "global",
-					Grant:             "ids=acctpw_12345;actions=read",
-				},
-				{
-					RoleId:            globalRoleThisAndOrg2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
-					Grant:             "ids=acctpw_12345;actions=read",
-				},
-				{
-					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1Scope.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
-					Grant:             "ids=ampw_12345;actions=read",
-				},
-				{
-					RoleId:            globalRoleDescendants.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
+			errorMsg: "a specific resource type must be specified",
+		},
+		{
+			name: "'*' resource type should return error",
+			input: testInput{
+				userId:     user.PublicId,
+				reqScopeId: globals.GlobalPrefix,
+				resource:   resource.All,
 			},
+			errorMsg: "a specific resource type must be specified",
 		},
 		{
 			name: "u_anon should return no grants at org1 request scope",
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: globals.GlobalPrefix,
+				resource:   resource.Account,
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -3494,6 +3475,7 @@ func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: globals.GlobalPrefix,
+				resource:   resource.Account,
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -3502,6 +3484,7 @@ func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: globals.GlobalPrefix,
+				resource:   resource.Account,
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -3510,6 +3493,7 @@ func TestGrantsForUserGlobalAndOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: globals.GlobalPrefix,
+				resource:   resource.Account,
 			},
 			output: []perms.GrantTuple{},
 		},
