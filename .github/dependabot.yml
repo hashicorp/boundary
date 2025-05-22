@@ -11,6 +11,3 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every weekday
       interval: "daily"
-    allow:
-      # Allow updates for internal actions
-      - dependency-name: "hashicorp/*"
