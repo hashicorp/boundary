@@ -17,6 +17,8 @@ import (
 )
 
 // TestScopePermissions tests an issue with listing scopes
+// When a user is only given permission to only list single project in a scope,
+// the user should only see that project and no error should be displayed
 func TestScopePermissions(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	bc, err := boundary.LoadConfig()
@@ -39,7 +41,7 @@ func TestScopePermissions(t *testing.T) {
 	_, err = boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
 
-	//Create new account
+	// Create new account
 	const testAccountName = "test-account"
 	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, testAccountName)
 	require.NoError(t, err)
@@ -51,7 +53,7 @@ func TestScopePermissions(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	//create new user
+	// Create new user
 	userId, err := boundary.CreateUserCli(t, ctx, "global")
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -64,7 +66,7 @@ func TestScopePermissions(t *testing.T) {
 	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
 	require.NoError(t, err)
 
-	//Find Ids of the roles to be modified
+	// Find Ids of the roles to be modified
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("roles", "list", "-format", "json"))
 	var rolesListResult roles.RoleListResult
 	err = json.Unmarshal(output.Stdout, &rolesListResult)
@@ -89,7 +91,7 @@ func TestScopePermissions(t *testing.T) {
 		}
 	}
 
-	//Modify login and default grants role
+	// Modify login and default grants role
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "remove-grants", "-id", loginAndDefaultGrantsRoleId, "-grant", "ids=*;type=scope;actions=list,no-op"))
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -97,18 +99,7 @@ func TestScopePermissions(t *testing.T) {
 		e2e.WithArgs("roles", "add-grants", "-id", loginAndDefaultGrantsRoleId, "-grant", "ids=*;type=scope;actions=list"))
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("roles", "remove-grants", "-id", loginAndDefaultGrantsRoleId, "-grant", "ids=*;type=scope;actions=list"))
-		require.NoError(t, output.Err, string(output.Stderr))
-		output = e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("roles", "add-grants", "-id", loginAndDefaultGrantsRoleId, "-grant", "ids=*;type=scope;actions=list,no-op"),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
-	//Modify login grants role
+	// Modify login grants role
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "remove-grants", "-id", loginGrantsRoleId, "-grant", "ids=*;type=scope;actions=list,no-op"))
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -127,7 +118,7 @@ func TestScopePermissions(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	//modify authenticated user role
+	// Modify authenticated user role
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "remove-grants", "-id", authenticatedUserGrantsRoleId, "-grant", "ids=*;type=scope;actions=read"))
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -140,28 +131,28 @@ func TestScopePermissions(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	//Create role in global scope
+	// Create role in global scope
 	roleId, err := boundary.CreateRoleCli(t, ctx, orgId)
 	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "add-grants", "-id", roleId, "-grant", fmt.Sprintf(`ids=%s;type=scope;actions=list,read`, projectId)),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	//Add user as a principal for the role
+	// Add user as a principal for the role
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "add-principals", "-id", roleId, "-principal", userId),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	//login as created user
+	// Log in as created user
 	boundary.AuthenticateCli(t, ctx, bc.AuthMethodId, testAccountName, acctPassword)
 	require.NoError(t, err)
 
-	//List scopes as the user
+	// List scopes as the user
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("scopes", "list", "-scope-id", orgId, "-format", "json"))
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	//Only the new project should be listed
+	// Only the new project should be listed
 	var scopesListResult scopes.ScopeListResult
 	err = json.Unmarshal(output.Stdout, &scopesListResult)
 	require.NoError(t, err)
