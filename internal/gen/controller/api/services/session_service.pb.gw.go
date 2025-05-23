@@ -10,6 +10,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -24,176 +25,141 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
+var (
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = errors.New
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
+)
 
 func request_SessionService_GetSession_0(ctx context.Context, marshaler runtime.Marshaler, client SessionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetSessionRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetSessionRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	io.Copy(io.Discard, req.Body)
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.GetSession(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_SessionService_GetSession_0(ctx context.Context, marshaler runtime.Marshaler, server SessionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetSessionRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetSessionRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.GetSession(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_SessionService_ListSessions_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
+var filter_SessionService_ListSessions_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
 func request_SessionService_ListSessions_0(ctx context.Context, marshaler runtime.Marshaler, client SessionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListSessionsRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq ListSessionsRequest
+		metadata runtime.ServerMetadata
+	)
+	io.Copy(io.Discard, req.Body)
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SessionService_ListSessions_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.ListSessions(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_SessionService_ListSessions_0(ctx context.Context, marshaler runtime.Marshaler, server SessionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListSessionsRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq ListSessionsRequest
+		metadata runtime.ServerMetadata
+	)
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SessionService_ListSessions_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.ListSessions(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_SessionService_CancelSession_0(ctx context.Context, marshaler runtime.Marshaler, client SessionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CancelSessionRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq CancelSessionRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.CancelSession(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_SessionService_CancelSession_0(ctx context.Context, marshaler runtime.Marshaler, server SessionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CancelSessionRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq CancelSessionRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.CancelSession(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterSessionServiceHandlerServer registers the http handlers for service SessionService to "mux".
 // UnaryRPC     :call SessionServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterSessionServiceHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server SessionServiceServer) error {
-
-	mux.Handle("GET", pattern_SessionService_GetSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_SessionService_GetSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -205,20 +171,15 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_SessionService_GetSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_SessionService_GetSession_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_SessionService_GetSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_SessionService_GetSession_0{resp.(*GetSessionResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("GET", pattern_SessionService_ListSessions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_SessionService_ListSessions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/ListSessions", runtime.WithHTTPPathPattern("/v1/sessions"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/ListSessions", runtime.WithHTTPPathPattern("/v1/sessions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -230,20 +191,15 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_SessionService_ListSessions_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_SessionService_CancelSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_SessionService_CancelSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}:cancel"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}:cancel"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -255,9 +211,7 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_SessionService_CancelSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_SessionService_CancelSession_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_SessionService_CancelSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_SessionService_CancelSession_0{resp.(*CancelSessionResponse)}, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
@@ -266,25 +220,24 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 // RegisterSessionServiceHandlerFromEndpoint is same as RegisterSessionServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterSessionServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
-
 	return RegisterSessionServiceHandler(ctx, mux, conn)
 }
 
@@ -298,16 +251,13 @@ func RegisterSessionServiceHandler(ctx context.Context, mux *runtime.ServeMux, c
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "SessionServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "SessionServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "SessionServiceClient" to call the correct interceptors.
+// "SessionServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client SessionServiceClient) error {
-
-	mux.Handle("GET", pattern_SessionService_GetSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_SessionService_GetSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -318,18 +268,13 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_SessionService_GetSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_SessionService_GetSession_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_SessionService_GetSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_SessionService_GetSession_0{resp.(*GetSessionResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("GET", pattern_SessionService_ListSessions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_SessionService_ListSessions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/ListSessions", runtime.WithHTTPPathPattern("/v1/sessions"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/ListSessions", runtime.WithHTTPPathPattern("/v1/sessions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -340,18 +285,13 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_SessionService_ListSessions_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_SessionService_CancelSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_SessionService_CancelSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}:cancel"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}:cancel"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -362,44 +302,35 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_SessionService_CancelSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_SessionService_CancelSession_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_SessionService_CancelSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_SessionService_CancelSession_0{resp.(*CancelSessionResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
 	return nil
 }
 
 type response_SessionService_GetSession_0 struct {
-	proto.Message
+	*GetSessionResponse
 }
 
 func (m response_SessionService_GetSession_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*GetSessionResponse)
-	return response.Item
+	return m.Item
 }
 
 type response_SessionService_CancelSession_0 struct {
-	proto.Message
+	*CancelSessionResponse
 }
 
 func (m response_SessionService_CancelSession_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*CancelSessionResponse)
-	return response.Item
+	return m.Item
 }
 
 var (
-	pattern_SessionService_GetSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "sessions", "id"}, ""))
-
-	pattern_SessionService_ListSessions_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "sessions"}, ""))
-
+	pattern_SessionService_GetSession_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "sessions", "id"}, ""))
+	pattern_SessionService_ListSessions_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "sessions"}, ""))
 	pattern_SessionService_CancelSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "sessions", "id"}, "cancel"))
 )
 
 var (
-	forward_SessionService_GetSession_0 = runtime.ForwardResponseMessage
-
-	forward_SessionService_ListSessions_0 = runtime.ForwardResponseMessage
-
+	forward_SessionService_GetSession_0    = runtime.ForwardResponseMessage
+	forward_SessionService_ListSessions_0  = runtime.ForwardResponseMessage
 	forward_SessionService_CancelSession_0 = runtime.ForwardResponseMessage
 )

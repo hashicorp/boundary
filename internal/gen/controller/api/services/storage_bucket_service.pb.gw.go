@@ -10,6 +10,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -24,158 +25,137 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
+var (
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = errors.New
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
+)
 
 func request_StorageBucketService_GetStorageBucket_0(ctx context.Context, marshaler runtime.Marshaler, client StorageBucketServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetStorageBucketRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetStorageBucketRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	io.Copy(io.Discard, req.Body)
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.GetStorageBucket(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StorageBucketService_GetStorageBucket_0(ctx context.Context, marshaler runtime.Marshaler, server StorageBucketServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetStorageBucketRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetStorageBucketRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.GetStorageBucket(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_StorageBucketService_ListStorageBuckets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
+var filter_StorageBucketService_ListStorageBuckets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
 func request_StorageBucketService_ListStorageBuckets_0(ctx context.Context, marshaler runtime.Marshaler, client StorageBucketServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListStorageBucketsRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq ListStorageBucketsRequest
+		metadata runtime.ServerMetadata
+	)
+	io.Copy(io.Discard, req.Body)
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_StorageBucketService_ListStorageBuckets_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.ListStorageBuckets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StorageBucketService_ListStorageBuckets_0(ctx context.Context, marshaler runtime.Marshaler, server StorageBucketServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListStorageBucketsRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq ListStorageBucketsRequest
+		metadata runtime.ServerMetadata
+	)
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_StorageBucketService_ListStorageBuckets_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.ListStorageBuckets(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_StorageBucketService_CreateStorageBucket_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
+var filter_StorageBucketService_CreateStorageBucket_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
 func request_StorageBucketService_CreateStorageBucket_0(ctx context.Context, marshaler runtime.Marshaler, client StorageBucketServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateStorageBucketRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
+	var (
+		protoReq CreateStorageBucketRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_StorageBucketService_CreateStorageBucket_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.CreateStorageBucket(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StorageBucketService_CreateStorageBucket_0(ctx context.Context, marshaler runtime.Marshaler, server StorageBucketServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateStorageBucketRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
+	var (
+		protoReq CreateStorageBucketRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_StorageBucketService_CreateStorageBucket_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.CreateStorageBucket(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_StorageBucketService_UpdateStorageBucket_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
+var filter_StorageBucketService_UpdateStorageBucket_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 
 func request_StorageBucketService_UpdateStorageBucket_0(ctx context.Context, marshaler runtime.Marshaler, client StorageBucketServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateStorageBucketRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq UpdateStorageBucketRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
@@ -185,45 +165,35 @@ func request_StorageBucketService_UpdateStorageBucket_0(ctx context.Context, mar
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_StorageBucketService_UpdateStorageBucket_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.UpdateStorageBucket(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StorageBucketService_UpdateStorageBucket_0(ctx context.Context, marshaler runtime.Marshaler, server StorageBucketServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateStorageBucketRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq UpdateStorageBucketRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
@@ -233,103 +203,74 @@ func local_request_StorageBucketService_UpdateStorageBucket_0(ctx context.Contex
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_StorageBucketService_UpdateStorageBucket_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.UpdateStorageBucket(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_StorageBucketService_DeleteStorageBucket_0(ctx context.Context, marshaler runtime.Marshaler, client StorageBucketServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteStorageBucketRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteStorageBucketRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	io.Copy(io.Discard, req.Body)
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.DeleteStorageBucket(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StorageBucketService_DeleteStorageBucket_0(ctx context.Context, marshaler runtime.Marshaler, server StorageBucketServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteStorageBucketRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteStorageBucketRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.DeleteStorageBucket(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterStorageBucketServiceHandlerServer registers the http handlers for service StorageBucketService to "mux".
 // UnaryRPC     :call StorageBucketServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterStorageBucketServiceHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterStorageBucketServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server StorageBucketServiceServer) error {
-
-	mux.Handle("GET", pattern_StorageBucketService_GetStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StorageBucketService_GetStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/GetStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/GetStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -341,20 +282,15 @@ func RegisterStorageBucketServiceHandlerServer(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_StorageBucketService_GetStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_GetStorageBucket_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_StorageBucketService_GetStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_GetStorageBucket_0{resp.(*GetStorageBucketResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("GET", pattern_StorageBucketService_ListStorageBuckets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StorageBucketService_ListStorageBuckets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/ListStorageBuckets", runtime.WithHTTPPathPattern("/v1/storage-buckets"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/ListStorageBuckets", runtime.WithHTTPPathPattern("/v1/storage-buckets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -366,20 +302,15 @@ func RegisterStorageBucketServiceHandlerServer(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StorageBucketService_ListStorageBuckets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_StorageBucketService_CreateStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_StorageBucketService_CreateStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/CreateStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/CreateStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -391,20 +322,15 @@ func RegisterStorageBucketServiceHandlerServer(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_StorageBucketService_CreateStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_CreateStorageBucket_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_StorageBucketService_CreateStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_CreateStorageBucket_0{resp.(*CreateStorageBucketResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("PATCH", pattern_StorageBucketService_UpdateStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_StorageBucketService_UpdateStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/UpdateStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/UpdateStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -416,20 +342,15 @@ func RegisterStorageBucketServiceHandlerServer(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_StorageBucketService_UpdateStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_UpdateStorageBucket_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_StorageBucketService_UpdateStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_UpdateStorageBucket_0{resp.(*UpdateStorageBucketResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("DELETE", pattern_StorageBucketService_DeleteStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_StorageBucketService_DeleteStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/DeleteStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/DeleteStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -441,9 +362,7 @@ func RegisterStorageBucketServiceHandlerServer(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StorageBucketService_DeleteStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -452,25 +371,24 @@ func RegisterStorageBucketServiceHandlerServer(ctx context.Context, mux *runtime
 // RegisterStorageBucketServiceHandlerFromEndpoint is same as RegisterStorageBucketServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterStorageBucketServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
-
 	return RegisterStorageBucketServiceHandler(ctx, mux, conn)
 }
 
@@ -484,16 +402,13 @@ func RegisterStorageBucketServiceHandler(ctx context.Context, mux *runtime.Serve
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "StorageBucketServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "StorageBucketServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "StorageBucketServiceClient" to call the correct interceptors.
+// "StorageBucketServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterStorageBucketServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client StorageBucketServiceClient) error {
-
-	mux.Handle("GET", pattern_StorageBucketService_GetStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StorageBucketService_GetStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/GetStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/GetStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -504,18 +419,13 @@ func RegisterStorageBucketServiceHandlerClient(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_StorageBucketService_GetStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_GetStorageBucket_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_StorageBucketService_GetStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_GetStorageBucket_0{resp.(*GetStorageBucketResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("GET", pattern_StorageBucketService_ListStorageBuckets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StorageBucketService_ListStorageBuckets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/ListStorageBuckets", runtime.WithHTTPPathPattern("/v1/storage-buckets"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/ListStorageBuckets", runtime.WithHTTPPathPattern("/v1/storage-buckets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -526,18 +436,13 @@ func RegisterStorageBucketServiceHandlerClient(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StorageBucketService_ListStorageBuckets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_StorageBucketService_CreateStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_StorageBucketService_CreateStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/CreateStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/CreateStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -548,18 +453,13 @@ func RegisterStorageBucketServiceHandlerClient(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_StorageBucketService_CreateStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_CreateStorageBucket_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_StorageBucketService_CreateStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_CreateStorageBucket_0{resp.(*CreateStorageBucketResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("PATCH", pattern_StorageBucketService_UpdateStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_StorageBucketService_UpdateStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/UpdateStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/UpdateStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -570,18 +470,13 @@ func RegisterStorageBucketServiceHandlerClient(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_StorageBucketService_UpdateStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_UpdateStorageBucket_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_StorageBucketService_UpdateStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, response_StorageBucketService_UpdateStorageBucket_0{resp.(*UpdateStorageBucketResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("DELETE", pattern_StorageBucketService_DeleteStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_StorageBucketService_DeleteStorageBucket_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/DeleteStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.StorageBucketService/DeleteStorageBucket", runtime.WithHTTPPathPattern("/v1/storage-buckets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -592,61 +487,47 @@ func RegisterStorageBucketServiceHandlerClient(ctx context.Context, mux *runtime
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StorageBucketService_DeleteStorageBucket_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
 	return nil
 }
 
 type response_StorageBucketService_GetStorageBucket_0 struct {
-	proto.Message
+	*GetStorageBucketResponse
 }
 
 func (m response_StorageBucketService_GetStorageBucket_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*GetStorageBucketResponse)
-	return response.Item
+	return m.Item
 }
 
 type response_StorageBucketService_CreateStorageBucket_0 struct {
-	proto.Message
+	*CreateStorageBucketResponse
 }
 
 func (m response_StorageBucketService_CreateStorageBucket_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*CreateStorageBucketResponse)
-	return response.Item
+	return m.Item
 }
 
 type response_StorageBucketService_UpdateStorageBucket_0 struct {
-	proto.Message
+	*UpdateStorageBucketResponse
 }
 
 func (m response_StorageBucketService_UpdateStorageBucket_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*UpdateStorageBucketResponse)
-	return response.Item
+	return m.Item
 }
 
 var (
-	pattern_StorageBucketService_GetStorageBucket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "storage-buckets", "id"}, ""))
-
-	pattern_StorageBucketService_ListStorageBuckets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "storage-buckets"}, ""))
-
+	pattern_StorageBucketService_GetStorageBucket_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "storage-buckets", "id"}, ""))
+	pattern_StorageBucketService_ListStorageBuckets_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "storage-buckets"}, ""))
 	pattern_StorageBucketService_CreateStorageBucket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "storage-buckets"}, ""))
-
 	pattern_StorageBucketService_UpdateStorageBucket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "storage-buckets", "id"}, ""))
-
 	pattern_StorageBucketService_DeleteStorageBucket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "storage-buckets", "id"}, ""))
 )
 
 var (
-	forward_StorageBucketService_GetStorageBucket_0 = runtime.ForwardResponseMessage
-
-	forward_StorageBucketService_ListStorageBuckets_0 = runtime.ForwardResponseMessage
-
+	forward_StorageBucketService_GetStorageBucket_0    = runtime.ForwardResponseMessage
+	forward_StorageBucketService_ListStorageBuckets_0  = runtime.ForwardResponseMessage
 	forward_StorageBucketService_CreateStorageBucket_0 = runtime.ForwardResponseMessage
-
 	forward_StorageBucketService_UpdateStorageBucket_0 = runtime.ForwardResponseMessage
-
 	forward_StorageBucketService_DeleteStorageBucket_0 = runtime.ForwardResponseMessage
 )

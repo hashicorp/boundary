@@ -207,7 +207,6 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, projectId string, set
 		}
 		return nil
 	})
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -318,7 +317,6 @@ func (r *Repository) SetSetMembers(ctx context.Context, projectId string, setId 
 			}
 			return nil
 		})
-
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
