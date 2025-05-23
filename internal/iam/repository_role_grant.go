@@ -561,7 +561,7 @@ func (r *Repository) grantsForUserGlobalResources(
 	default:
 		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-	resources = []string{res.String(), "unknown", "*"}
+	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
 
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
@@ -620,7 +620,7 @@ func (r *Repository) grantsForUserOrgResources(
 	default:
 		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-	resources = []string{res.String(), "unknown", "*"}
+	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
 
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
@@ -680,7 +680,7 @@ func (r *Repository) grantsForUserProjectResources(
 	default:
 		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-	resources = []string{res.String(), "unknown", "*"}
+	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
 
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
@@ -750,7 +750,7 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	default:
 		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-	resources = []string{res.String(), "unknown", "*"}
+	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
 
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
