@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/hashicorp/boundary-plugin-minio v0.1.7
-	github.com/hashicorp/boundary/sdk v0.0.52
+	github.com/hashicorp/boundary/sdk v0.0.51
 )
 
 require (
