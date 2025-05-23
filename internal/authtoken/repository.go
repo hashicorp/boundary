@@ -140,7 +140,6 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 			return nil
 		},
 	)
-
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -456,7 +455,6 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(id))
 	}
