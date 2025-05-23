@@ -187,7 +187,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -340,7 +340,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -380,7 +380,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -427,7 +427,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -467,7 +467,7 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -485,7 +485,7 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 	if err := validateAddHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddHostSources)
+	authResults := s.authResult(ctx, req.GetId(), action.AddHostSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -527,7 +527,7 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 	if err := validateSetHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetHostSources)
+	authResults := s.authResult(ctx, req.GetId(), action.SetHostSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -567,7 +567,7 @@ func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTar
 	if err := validateRemoveHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSources)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -607,7 +607,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 	if err := validateAddCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialSources)
+	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -648,7 +648,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 	if err := validateSetCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialSources)
+	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -689,7 +689,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	if err := validateRemoveCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialSources)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialSources, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -752,7 +752,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession,
+	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession, false,
 		target.WithName(req.GetName()),
 		target.WithProjectId(req.GetScopeId()),
 		target.WithProjectName(req.GetScopeName()),
@@ -1575,7 +1575,7 @@ func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) aut
 	return ret
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool, lookupOpt ...target.Option) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
@@ -1623,6 +1623,9 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
+	if isRecursive {
+		opts = append(opts, auth.WithRecursive())
+	}
 	ret := auth.Verify(ctx, resource.Target, opts...)
 	ret.RoundTripValue = t
 	return ret
