@@ -118,7 +118,7 @@ func TestScopePermissions(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	// In global, prevent the user from being able to read all specs
+	// In global, prevent the user from being able to read all scopes
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "remove-grants", "-id", authenticatedUserGrantsRoleId, "-grant", "ids=*;type=scope;actions=read"))
 	require.NoError(t, output.Err, string(output.Stderr))
