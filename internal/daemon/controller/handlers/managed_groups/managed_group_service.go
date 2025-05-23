@@ -123,7 +123,7 @@ func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGrou
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -302,7 +302,7 @@ func (s Service) GetManagedGroup(ctx context.Context, req *pbs.GetManagedGroupRe
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -344,7 +344,7 @@ func (s Service) CreateManagedGroup(ctx context.Context, req *pbs.CreateManagedG
 		return nil, err
 	}
 
-	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -383,7 +383,7 @@ func (s Service) UpdateManagedGroup(ctx context.Context, req *pbs.UpdateManagedG
 		return nil, err
 	}
 
-	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -419,7 +419,7 @@ func (s Service) DeleteManagedGroup(ctx context.Context, req *pbs.DeleteManagedG
 	if err := validateDeleteRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -708,7 +708,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, requestauth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type, isRecursive bool) (auth.AuthMethod, requestauth.VerifyResults) {
 	const op = "managed_groups.(Service)."
 	res := requestauth.VerifyResults{}
 	oidcRepo, err := s.oidcRepoFn()
@@ -789,6 +789,9 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		return nil, res
 	}
 	opts = append(opts, requestauth.WithPin(parentId))
+	if isRecursive {
+		opts = append(opts, requestauth.WithRecursive())
+	}
 	return authMeth, requestauth.Verify(ctx, resource.ManagedGroup, opts...)
 }
 

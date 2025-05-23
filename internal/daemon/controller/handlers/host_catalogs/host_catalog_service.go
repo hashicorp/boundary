@@ -162,7 +162,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -318,7 +318,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -375,7 +375,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -435,7 +435,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -489,7 +489,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -692,7 +692,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
@@ -753,6 +753,9 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		}
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
+	if isRecursive {
+		opts = append(opts, auth.WithRecursive())
+	}
 	return auth.Verify(ctx, resource.HostCatalog, opts...)
 }
 

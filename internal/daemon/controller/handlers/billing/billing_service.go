@@ -63,7 +63,7 @@ func NewService(
 func (s Service) MonthlyActiveUsers(ctx context.Context, req *pbs.MonthlyActiveUsersRequest) (*pbs.MonthlyActiveUsersResponse, error) {
 	const op = "billing.(Service).MonthlyActiveUsers"
 
-	authResults := s.authResult(ctx, action.MonthlyActiveUsers)
+	authResults := s.authResult(ctx, action.MonthlyActiveUsers, false)
 	if authResults.Error != nil {
 		return nil, errors.Wrap(ctx, authResults.Error, op)
 	}
@@ -115,10 +115,13 @@ func (s Service) MonthlyActiveUsers(ctx context.Context, req *pbs.MonthlyActiveU
 	return &pbs.MonthlyActiveUsersResponse{Items: activeUsers}, nil
 }
 
-func (s Service) authResult(ctx context.Context, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, a action.Type, isRecursive bool) auth.VerifyResults {
 	opts := []auth.Option{
 		auth.WithAction(a),
 		auth.WithScopeId(scope.Global.String()),
+	}
+	if isRecursive {
+		opts = append(opts, auth.WithRecursive())
 	}
 	return auth.Verify(ctx, resource.Billing, opts...)
 }
