@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1106,7 +1107,6 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	}
 
 	t.Run("Non-recursive (Project) request scopes", func(t *testing.T) {
-
 		testcases := append([]testcase{},
 			testcase{
 				name: "return grants for target resource at proj1a request scope",
