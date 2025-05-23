@@ -28,6 +28,8 @@ import (
 	exec "golang.org/x/sys/execabs"
 )
 
+const sessionCancelTimeout = 10 * time.Second
+
 type SessionInfo struct {
 	Address         string                       `json:"address"`
 	Port            int                          `json:"port"`
@@ -475,7 +477,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		proxyAddr := clientProxy.ListenerAddress(context.Background())
 		var clientProxyHost, clientProxyPort string
 		clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
-		if err != nil && !errors.Is(err, util.ErrMissingPort) {
+		if err != nil {
 			c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
 			return base.CommandCliError
 		}
@@ -600,7 +602,7 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	var host, port string
 	var err error
 	host, port, err = util.SplitHostPort(addr)
-	if err != nil && !errors.Is(err, util.ErrMissingPort) {
+	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error splitting listener addr: %w", err))
 		c.execCmdReturnValue.Store(int32(3))
 		return

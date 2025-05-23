@@ -5,10 +5,11 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/server/store"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -37,8 +38,10 @@ func TestScheduler(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
-
-	controller := server.NewController(fmt.Sprintf("test-server-job%s", id), server.WithAddress("127.0.0.1"))
+	controller := &store.Controller{
+		PrivateId: "test-job-server-" + id,
+		Address:   "127.0.0.1",
+	}
 	_, err = serversRepo.UpsertController(ctx, controller)
 	require.NoError(t, err)
 

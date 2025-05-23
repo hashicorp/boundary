@@ -82,20 +82,24 @@ Perform the following steps to set up a host catalog using [AssumeRole](https://
 
 1. Deploy a self-managed worker in your AWS account. The worker must be in the same VPC as the hosts you want to access using the dynamic host catalog. Consider [adding worker tags](/boundary/docs/concepts/filtering/worker-tags) to make it easier to route traffic through it using a worker filter later on.
 
-1. Create an IAM role with the `AmazonEC2ReadOnlyAccess` policy attached, or define a custom policy with the `ec2:DescribeInstances` action allowed for all resources. This policy should contain the following, at least:
+1. Create an IAM role with the `AmazonEC2ReadOnlyAccess` policy attached. This policy should match the following:
 
    ```json
    {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Action": [
-           "ec2:DescribeInstances"
-         ],
-         "Effect": "Allow",
-         "Resource": "*"
-       }
-     ]
+       "Version": "2012-10-17",
+       "Statement": [
+           {
+               "Effect": "Allow",
+               "Action": [
+                   "sts:AssumeRole"
+               ],
+               "Principal": {
+                   "Service": [
+                       "ec2.amazonaws.com"
+                   ]
+               }
+           }
+       ]
    }
    ```
 

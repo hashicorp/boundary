@@ -150,9 +150,9 @@ resource "enos_remote_exec" "wait" {
 }
 
 output "target_private_ips" {
-  value = var.ip_version == "4" ? aws_instance.target.*.private_ip : flatten(aws_instance.target.*.ipv6_addresses)
+  value = var.ip_version == "4" ? aws_instance.target.*.private_ip : formatlist("[%s]", flatten(aws_instance.target.*.ipv6_addresses))
 }
 
 output "target_public_ips" {
-  value = var.ip_version == "4" ? aws_instance.target.*.public_ip : flatten(aws_instance.target.*.ipv6_addresses)
+  value = var.ip_version == "4" ? aws_instance.target.*.public_ip : formatlist("[%s]", flatten(aws_instance.target.*.ipv6_addresses))
 }

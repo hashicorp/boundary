@@ -55,6 +55,13 @@ For this reason, if you expect any Windows users to use an alias, it should cont
 
 Refer to the [transparent sessions](/boundary/docs/concepts/transparent-sessions) documentation for more information.
 
+### HTTPS websites
+
+If you create an alias for a website that uses HTTPS, the alias must match the website's hostname.
+You may receive connection errors if the alias does not match the website's hostname exactly.
+
+For example, if you want to create an alias to connect to https://www.hashicorp.com, you must name the alias `www.hashicorp.com`.
+
 ## Scopes
 
 You can only create aliases in the `global` scope. However, you can associate aliases with targets or hosts from any scope. Support for additional resource types may be added in the future.
