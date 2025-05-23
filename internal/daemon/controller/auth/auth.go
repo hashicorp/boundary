@@ -491,7 +491,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 	}
 }
 
-func (v verifier) performAuthCheck(ctx context.Context, resourceType resource.Type, recursive bool) (
+func (v verifier) performAuthCheck(ctx context.Context, resourceType resource.Type, isRecursiveRequest bool) (
 	aclResults perms.ACLResults,
 	userData template.Data,
 	scopeInfo *scopes.ScopeInfo,
@@ -651,7 +651,11 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType resource.Ty
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
-	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id, resourceType, scopeInfo.Id)
+	var iamOpt []iam.Option
+	if isRecursiveRequest {
+		iamOpt = append(iamOpt, iam.WithRecursive())
+	}
+	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id, resourceType, scopeInfo.Id, iamOpt...)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op)
 		return

@@ -84,7 +84,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf, false)
+	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf, false, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -139,7 +139,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, false)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, false, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -290,7 +290,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, err
 	}
 	// Ignore decryption failures to ensure the user can always cancel a session.
-	authResults := s.authResult(ctx, req.GetId(), action.CancelSelf, true)
+	authResults := s.authResult(ctx, req.GetId(), action.CancelSelf, true, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -384,7 +384,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*session.Session, 
 	return sess, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, ignoreSessionDecryptionFailure bool) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, ignoreSessionDecryptionFailure, isRecursive bool) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
@@ -428,6 +428,9 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, ignor
 		return res
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
+	if isRecursive {
+		opts = append(opts, auth.WithRecursive())
+	}
 	return auth.Verify(ctx, resource.Session, opts...)
 }
 

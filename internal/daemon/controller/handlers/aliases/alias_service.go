@@ -98,7 +98,7 @@ func (s Service) ListAliases(ctx context.Context, req *pbs.ListAliasesRequest) (
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -240,7 +240,7 @@ func (s Service) GetAlias(ctx context.Context, req *pbs.GetAliasRequest) (*pbs.G
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -278,7 +278,7 @@ func (s Service) CreateAlias(ctx context.Context, req *pbs.CreateAliasRequest) (
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -316,7 +316,7 @@ func (s Service) UpdateAlias(ctx context.Context, req *pbs.UpdateAliasRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -352,7 +352,7 @@ func (s Service) DeleteAlias(ctx context.Context, req *pbs.DeleteAliasRequest) (
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -467,7 +467,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
@@ -508,6 +508,9 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
+	if isRecursive {
+		opts = append(opts, auth.WithRecursive())
+	}
 	return auth.Verify(ctx, resource.Alias, opts...)
 }
 
