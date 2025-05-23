@@ -17,7 +17,7 @@ worker {
     region = ["${region}"]
   }
 
-  auth_storage_path = "/tmp/boundary/worker"
+  auth_storage_path = "${auth_storage_path}/worker"
   recording_storage_path = "${recording_storage_path}"
 }
 

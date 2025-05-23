@@ -9,7 +9,7 @@ fail() {
   exit 1
 }
 
-[[ -z "$LOG_DIR" ]] && fail "LOG_DIR env variable has not been set"
+[[ -z "$NEW_DIR" ]] && fail "NEW_DIR env variable has not been set"
 [[ -z "$SERVICE_USER" ]] && fail "SERVICE_USER env variable has not been set"
 
 function retry {
@@ -34,5 +34,5 @@ function retry {
 
 retry 7 id -a "$SERVICE_USER"
 
-sudo mkdir -p "$LOG_DIR"
-sudo chown -R "$SERVICE_USER":"$SERVICE_USER" "$LOG_DIR"
+sudo mkdir -p "$NEW_DIR"
+sudo chown -R "$SERVICE_USER":"$SERVICE_USER" "$NEW_DIR"
