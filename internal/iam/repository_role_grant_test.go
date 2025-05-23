@@ -1044,14 +1044,15 @@ func TestGrantsForUser(t *testing.T) {
 			},
 		},
 		{
-			name: "recursive request global scope target resource returns only relevant grants",
+			name: "recursive request global scope target resource returns only relevant grants mix assignments",
 			setupInputExpect: func(t *testing.T, repo *Repository, conn *db.DB) (arg, perms.GrantTuples) {
-				user := TestUser(t, repo, "global")
 				org, proj := TestScopes(t, repo)
 				org2, proj2 := TestScopes(t, repo)
 				proj3 := TestProject(t, repo, org.PublicId)
 				proj4 := TestProject(t, repo, org.PublicId)
-
+				group := TestGroup(t, conn, globals.GlobalPrefix)
+				user := TestUser(t, repo, "global")
+				TestGroupMember(t, conn, group.PublicId, user.PublicId)
 				// ======= these roles are expected in the result ========
 				//  descendants grant
 				//	returns 2 tuple
@@ -1079,9 +1080,9 @@ func TestGrantsForUser(t *testing.T) {
 					[]string{globals.GrantScopeThis, globals.GrantScopeChildren, proj3.PublicId, proj4.PublicId},
 					[]string{"ids=hst_12345;actions=update"})
 				TestUserRole(t, conn, role1.PublicId, user.PublicId)
-				TestUserRole(t, conn, role2.PublicId, user.PublicId)
+				TestGroupRole(t, conn, role2.PublicId, group.PublicId)
 				TestUserRole(t, conn, role3.PublicId, user.PublicId)
-				TestUserRole(t, conn, role4.PublicId, user.PublicId)
+				TestGroupRole(t, conn, role4.PublicId, group.PublicId)
 				TestUserRole(t, conn, role5.PublicId, user.PublicId)
 				// ========================================================
 
@@ -1246,7 +1247,7 @@ func TestGrantsForUser(t *testing.T) {
 			},
 		},
 		{
-			name: "recursive request global scope target resource returns only relevant grants",
+			name: "recursive request org scope target resource returns only relevant grants",
 			setupInputExpect: func(t *testing.T, repo *Repository, conn *db.DB) (arg, perms.GrantTuples) {
 				user := TestUser(t, repo, "global")
 				org, proj := TestScopes(t, repo)
@@ -1337,8 +1338,8 @@ func TestGrantsForUser(t *testing.T) {
 
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.Target,
-						requestScopeId: globals.GlobalPrefix,
+						resourceType:   resource.Group,
+						requestScopeId: org.PublicId,
 						opt:            []Option{WithRecursive()},
 					}, perms.GrantTuples{
 						// role 1
@@ -1455,8 +1456,8 @@ func TestGrantsForUser(t *testing.T) {
 			repo := TestRepo(t, conn, wrap)
 			input, want := tc.setupInputExpect(t, repo, conn)
 			grantTuples, err := repo.GrantsForUser(ctx, input.userId, input.resourceType, input.requestScopeId, input.opt...)
-			require.NoError(t, err)
-			require.ElementsMatch(t, want, grantTuples)
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, want, grantTuples)
 		})
 	}
 }
