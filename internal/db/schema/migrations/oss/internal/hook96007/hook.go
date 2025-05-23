@@ -65,15 +65,16 @@ func FindIllegalAssociations(ctx context.Context, tx *sql.Tx) (migration.Problem
 	return nil, nil
 }
 
-// RepairIllegalAssociations executes a query to remove redundant grant scopes from an org if the grant scope is redundant.
+// RepairIllegalAssociations executes a query to remove redundant grant scopes from roles.
 //
-// A redundant grant scopes are defined as individual scopes granted to roles which are already granted permissions to
-// to those scopes by special grant scopes ['children', 'descendants']
-// It returns migration.Repairs if any illegal associations were removed; nil if no illegal
-// associations were found or an error. Implements the RepairFunc definition from
-// the migration package.
+// Redundant grant scopes are individual scopes assigned to roles that are already granted the same permissions by broader, special grant scopes
+// ['children', 'descendants']. These broader grant scopes automatically include permissions to the individual
+// scopes, making the individual assignments unnecessary.
 //
-// An example of a migration repair:
+// It returns migration.Repairs if any redundant grant scopes were removed, nil if none were found, or an error.
+// Implements the RepairFunc definition from the migration package.
+//
+// Example migration repair message:
 // "Remove redundant grant scopes 'o_ta___96007' association from role 'r_globala_96007' in scope 'global' because it overlaps with 'descendants'"
 func RepairIllegalAssociations(ctx context.Context, tx *sql.Tx) (migration.Repairs, error) {
 	if tx == nil {

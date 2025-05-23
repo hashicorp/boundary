@@ -47,7 +47,7 @@ import (
 //
 // [NA] Global Role - Grant Descendants and Children
 //   - this cannot be created
-func TestMigrationHook_FindIllegal(t *testing.T) {
+func TestMigrationHook96007_FindIllegal(t *testing.T) {
 	const (
 		priorMigration = 95001
 	)

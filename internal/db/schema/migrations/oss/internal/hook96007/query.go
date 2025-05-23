@@ -94,12 +94,12 @@ const (
 
 	deleteIllegalAssociationsQuery = baseQuery + `,
       deleted_grant_scope (role_id, scope_id_or_special) as (
-            delete
-              from iam_role_grant_scope
-              where (role_id, scope_id_or_special) in (select role_id,
-                                                             individual_grant_scope
-                                                        from problems)
-         returning role_id, scope_id_or_special
+           delete
+             from iam_role_grant_scope
+            where (role_id, scope_id_or_special) in (select role_id,
+                                                            individual_grant_scope
+                                                       from problems)
+        returning role_id, scope_id_or_special
       ),
       deleted_problems (role_id, role_scope_id, covered_by_grant_scope, individual_grant_scope) as (
         select role_id                 as role_id,
