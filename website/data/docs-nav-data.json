@@ -202,7 +202,7 @@
       {
         "title": "Transparent sessions",
         "badge": {
-          "text": "HCP/ENT BETA",
+          "text": "HCP/ENT",
           "type": "outlined",
           "color": "neutral"
         },
@@ -609,7 +609,7 @@
           {
             "title": "Connect using transparent sessions",
             "badge": {
-              "text": "HCP/ENT BETA",
+              "text": "HCP/ENT",
               "type": "outlined",
               "color": "neutral"
             },
@@ -1689,7 +1689,7 @@
       {
         "title": "Client Agent",
         "badge": {
-          "text": "HCP/ENT BETA",
+          "text": "HCP/ENT",
           "type": "outlined",
           "color": "neutral"
         },
