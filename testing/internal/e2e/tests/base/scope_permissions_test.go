@@ -38,7 +38,7 @@ func TestScopePermissions(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	_, err = boundary.CreateProjectCli(t, ctx, orgId)
+	projectId2, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
 
 	// Create new account
@@ -91,7 +91,7 @@ func TestScopePermissions(t *testing.T) {
 		}
 	}
 
-	// Modify login and default grants role
+	// In the org, prevent the user from being able to list all scopes
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "remove-grants", "-id", loginAndDefaultGrantsRoleId, "-grant", "ids=*;type=scope;actions=list,no-op"))
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -99,7 +99,7 @@ func TestScopePermissions(t *testing.T) {
 		e2e.WithArgs("roles", "add-grants", "-id", loginAndDefaultGrantsRoleId, "-grant", "ids=*;type=scope;actions=list"))
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	// Modify login grants role
+	// In global, remove the no-op permission from the login role
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "remove-grants", "-id", loginGrantsRoleId, "-grant", "ids=*;type=scope;actions=list,no-op"))
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -118,7 +118,7 @@ func TestScopePermissions(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	// Modify authenticated user role
+	// In global, prevent the user from being able to read all specs
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("roles", "remove-grants", "-id", authenticatedUserGrantsRoleId, "-grant", "ids=*;type=scope;actions=read"))
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -131,7 +131,7 @@ func TestScopePermissions(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	// Create role in global scope
+	// Create role in org and add ability to list and read a project in the org
 	roleId, err := boundary.CreateRoleCli(t, ctx, orgId)
 	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
@@ -162,4 +162,13 @@ func TestScopePermissions(t *testing.T) {
 	}
 	require.Equal(t, 1, len(listedIds))
 	require.Equal(t, projectId, listedIds[0])
+
+	// Check user can only read the assigned project
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("scopes", "read", "-id", projectId))
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("scopes", "read", "-id", projectId2))
+	require.Error(t, output.Err, "Error from controller when performing read on scope")
 }
