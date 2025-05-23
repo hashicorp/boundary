@@ -472,8 +472,6 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resou
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 
-	opts := getOpts(opt...)
-
 	const (
 		anonUser = `where public_id in (?)`
 		authUser = `where public_id in ('u_anon', 'u_auth', ?)`
@@ -519,14 +517,6 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resou
 				ret = append(ret, gt)
 			}
 		}
-	}
-
-	if opts.withTestCacheMultiGrantTuples != nil {
-		for i, grant := range grants {
-			grant.TestStableSort()
-			grants[i] = grant
-		}
-		*opts.withTestCacheMultiGrantTuples = grants
 	}
 
 	return ret, nil
