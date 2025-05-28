@@ -781,3 +781,72 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	}
 	return grants, nil
 }
+
+// grantsForUserProjectResourcesRecursiveScopes returns the grants for the user for resources that can
+// only be project scoped.
+func (r *Repository) grantsForUserProjectResourcesRecursiveScopes(
+	ctx context.Context,
+	userId,
+	reqScopeId string,
+	res resource.Type,
+) (perms.GrantTuples, error) {
+	const op = "iam.(Repository).grantsForUserProjectResourcesRecursiveScopes"
+	if userId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+	}
+	if reqScopeId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
+	}
+	// If not global scope nor org scope, return an error
+	isOrgScope := strings.HasPrefix(reqScopeId, globals.OrgPrefix)
+	if reqScopeId != globals.GlobalPrefix && !isOrgScope {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope or an org scope")
+	}
+
+	var (
+		args      []any
+		userIds   []string
+		resources []string
+	)
+	switch userId {
+	case globals.AnonymousUserId:
+		userIds = []string{globals.AnonymousUserId}
+	default:
+		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
+	}
+	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
+
+	query := grantsForUserProjectResourcesGlobalScopeQuery
+	args = append(args,
+		sql.Named("user_ids", pq.Array(userIds)),
+		sql.Named("resources", pq.Array(resources)),
+	)
+	if isOrgScope {
+		query = grantsForUserProjectResourcesOrgScopeQuery
+		args = append(args, sql.Named("request_scope_id", reqScopeId))
+	}
+
+	var grants []perms.GrantTuple
+	rows, err := r.reader.Query(ctx, query, args)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var g perms.GrantTuple
+		if err := rows.Scan(
+			&g.RoleId,
+			&g.RoleScopeId,
+			&g.RoleParentScopeId,
+			&g.GrantScopeId,
+			&g.Grant,
+		); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		grants = append(grants, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return grants, nil
+}
