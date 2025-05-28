@@ -16,13 +16,22 @@ HashiCorp engineering has tested and confirmed that you can use the following th
 Transparent sessions may operate with other versions of the products listed below or with other products, but they have not been tested.
 We will update the list of products as we test them.
 
+<Note>
+
+On May 27, 2025 new versions of the Boundary Client Agent and installer were released with a numbering scheme that more closely follows Boundary's release numbers.
+Those versions were released as 0.19.5 to match the major Boundary version 0.19.x.
+Going forward, the Client Agent and installer will use the same major number as the current Boundary release.
+Any patches or updates will be reflected in the minor number.
+
+</Note>
+
 <table>
   <thead>
     <tr>
       <th style={{verticalAlign: 'middle', width: '25%'}}>Product</th>
       <th style={{verticalAlign: 'middle'}}>Boundary installer versions</th>
       <th style={{veritcalAlign: 'middle'}}>Boundary Client Agent versions</th>
-      <th style={{verticalAlign: 'middle', width: '25%'}}>OS versions</th>
+      <th style={{verticalAlign: 'middle', width: '25%'}}>OS versions tested</th>
       <th style={{veritcalAlign: 'middle'}}>Conflicts and workarounds</th>
     </tr>
   </thead>
@@ -30,20 +39,22 @@ We will update the list of products as we test them.
 
 <tr>
     <td style={{verticalAlign: 'middle'}}>
-    CloudFlare WARP client
+    CloudFlare WARP
     <br /><br />
-    2024.12.554.0
+    <b>MacOS version</b>: 2025.2.600.0
+    <br />
+    <b>Windows version</b>: 2025.2.600.0
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1, 0.1.2
+    0.1.4, 0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1, 0.1.2
+    0.1.4, 0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    MacOS 14.6, 15.3
-    <br /><br />
-    Windows 10 Pro, 11 Pro
+    <b>MacOS</b>: 14.6, 15.3
+    <br />
+    <b>Windows</b>: 10 Pro, 11 Pro
     </td>
     <td style={{verticalAlign: 'middle'}}>
     Refer to <a href="/boundary/docs/api-clients/client-agent#cloudflare-warp-client">Conflicting software</a>
@@ -54,46 +65,40 @@ We will update the list of products as we test them.
     <td style={{verticalAlign: 'middle'}}>
     Huntress
     <br /><br />
-    <b>MacOS</b>: 0.13.228
-    <br /><br />
-    <b>Windows</b>: 0.13.234
+    <b>MacOS version</b>: 0.14.10
+    <br />
+    <b>Windows version</b>: 0.14.14
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1
+    0.1.4
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1
+    0.1.4
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    MacOS 14.6
-    <br /><br />
-    Windows 11 Pro, version 24H2
+    <b>MacOS</b>: 14.6, 15.3
+    <br />
+    <b>Windows</b>: 10 Pro, 11 Pro
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Refer to <a href="/boundary/docs/api-clients/client-agent#huntress-edr-client">Conflicting software</a>
+    Refer to <a href="/boundary/docs/api-clients/client-agent#huntress-edr-client-windows">Conflicting software</a>
     </td>
 </tr>
 
 <tr>
     <td style={{verticalAlign: 'middle'}}>
-    OpenVPN
-    <br /><br />
-    <b>MacOS</b>: OpenVPN v3 client 3.5.0 (5200)
-    <br/ ><br />
-    <b>Server</b>: OpenVPN 2.6.12 on AWS EC2 Ubuntu cluster (x86)
-    <br /><br />
-    <b>Windows</b>: OpenVPN v3 client 3.5.1 (3946)
+    Microsoft Defender for Endpoint
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1
+    0.1.4, 0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1
+    0.1.4, 0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    MacOS 14.7.1
-    <br /><br />
-    Windows 11 Pro, version 24H2
+    <b>MacOS</b>: 14, 15
+    <br />
+    <b>Windows</b>: 10, 11 Pro
     </td>
     <td style={{verticalAlign: 'middle'}}>
     &nbsp;
@@ -105,37 +110,15 @@ We will update the list of products as we test them.
     Palo Alto GlobalProtect
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1, 0.1.2
+    0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1, 0.1.2
+    0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    MacOS 15
-    <br /><br />
-    Windows 11
-    </td>
-    <td style={{verticalAlign: 'middle'}}>
-    &nbsp;
-    </td>
-</tr>
-
-<tr>
-    <td style={{verticalAlign: 'middle'}}>
-    Tailscale
-    <br /><br />
-    1.78.1
-    </td>
-    <td style={{verticalAlign: 'middle'}}>
-    0.1.1, 0.1.2
-    </td>
-    <td style={{verticalAlign: 'middle'}}>
-    0.1.1, 0.1.2
-    </td>
-    <td style={{verticalAlign: 'middle'}}>
-    MacOS 15
-    <br /><br />
-    Windows 11
+    <b>MacOS</b>: 14, 15
+    <br />
+    <b>Windows</b>: 10, 11
     </td>
     <td style={{verticalAlign: 'middle'}}>
     &nbsp;
@@ -144,22 +127,18 @@ We will update the list of products as we test them.
 
 <tr>
     <td style={{verticalAlign: 'middle'}}>
-    WireGuard
-    <br /><br />
-    <b>MacOS</b>: WireGuard client version 1.0.16 (27)
-    <br /><br />
-    <b>Windows</b>: WireGuard client version 0.5.3
+    SentinelOne Singularity
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1
+    0.1.4, 0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1
+    0.1.4, 0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    MacOS 14.7.1
-    <br /><br />
-    Windows 11 Pro, version 24H2
+    <b>MacOS</b>: 14, 15.2
+    <br />
+    <b>Windows</b>: 10, 11
     </td>
     <td style={{verticalAlign: 'middle'}}>
     &nbsp;
@@ -168,20 +147,18 @@ We will update the list of products as we test them.
 
 <tr>
     <td style={{verticalAlign: 'middle'}}>
-    ZeroTier
-    <br /><br />
-    1.14.0
+    Zscaler ZPA
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1, 0.1.2
+    0.1.4, 0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    0.1.1, 0.1.2
+    0.1.4, 0.19.5
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    MacOS 15
-    <br /><br />
-    Windows 11
+    <b>MacOS</b>: 15
+    <br />
+    <b>Windows</b>: 11
     </td>
     <td style={{verticalAlign: 'middle'}}>
     &nbsp;
