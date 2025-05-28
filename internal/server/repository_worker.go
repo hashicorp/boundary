@@ -255,7 +255,7 @@ func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt .
 	defer rows.Close()
 	for rows.Next() {
 		var worker Worker
-		if err := reader.ScanRows(context.Background(), rows, &worker); err != nil {
+		if err := reader.ScanRows(ctx, rows, &worker); err != nil {
 			return nil, err
 		}
 		workers = append(workers, &worker)
@@ -600,7 +600,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId())
+			ret.RemoteStorageStates, err = r.ListWorkerStorageBucketCredentialState(ctx, ret.GetPublicId(), WithReaderWriter(reader, w))
 			if err != nil {
 				return err
 			}
@@ -893,7 +893,6 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 		}
 		return nil
 	})
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -925,7 +924,7 @@ func (r *Repository) SelectSessionWorkers(ctx context.Context,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rows, err := r.reader.Query(ctx, query, []any{})
+			rows, err := reader.Query(ctx, query, []any{})
 			if err != nil {
 				return err
 			}
@@ -935,7 +934,7 @@ func (r *Repository) SelectSessionWorkers(ctx context.Context,
 				// a Worker object can hold, only a subset. Check the query to
 				// learn exactly what fields are present.
 				var worker Worker
-				if err := r.reader.ScanRows(ctx, rows, &worker); err != nil {
+				if err := reader.ScanRows(ctx, rows, &worker); err != nil {
 					return err
 				}
 				livingWorkers = append(livingWorkers, &worker)

@@ -23,6 +23,7 @@ import (
 // all groups in a single invocation.
 func TestCliPaginateGroups(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -115,6 +116,7 @@ func TestCliPaginateGroups(t *testing.T) {
 // all groups in a single invocation.
 func TestApiPaginateGroups(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 

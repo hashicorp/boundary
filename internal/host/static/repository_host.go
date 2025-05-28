@@ -87,7 +87,6 @@ func (r *Repository) CreateHost(ctx context.Context, projectId string, h *Host, 
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", h.CatalogId, h.Name)))
@@ -171,7 +170,7 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 	var rowsUpdated int
 	var returnedHost *Host
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(r db.Reader, w db.Writer) error {
 			returnedHost = h.clone()
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedHost, dbMask, nullFields,
@@ -186,14 +185,13 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 			ha := &hostAgg{
 				PublicId: h.PublicId,
 			}
-			if err := r.reader.LookupByPublicId(ctx, ha); err != nil {
+			if err := r.LookupByPublicId(ctx, ha); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup host after update"))
 			}
 			returnedHost.SetIds = ha.getSetIds()
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", h.PublicId, h.Name)))
@@ -356,7 +354,6 @@ func (r *Repository) DeleteHost(ctx context.Context, projectId string, publicId 
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", publicId)))
 	}

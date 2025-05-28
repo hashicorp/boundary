@@ -5,7 +5,6 @@ package oidc
 
 import (
 	"context"
-	"net/url"
 	"sort"
 	"testing"
 
@@ -35,7 +34,6 @@ func TestAuthMethod_Create(t *testing.T) {
 
 	type args struct {
 		scopeId      string
-		issuer       *url.URL
 		clientId     string
 		clientSecret ClientSecret
 		opt          []Option

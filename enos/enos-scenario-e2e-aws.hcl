@@ -51,6 +51,7 @@ scenario "e2e_aws" {
 
     variables {
       license_path = local.boundary_license_path
+      license      = var.boundary_license
     }
   }
 

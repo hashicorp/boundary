@@ -475,7 +475,7 @@ func (p *Postgres) GetMigrationLog(ctx context.Context, opt ...log.Option) ([]*l
 		entries = append(entries, e)
 	}
 	if rows.Err() != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, rows.Err(), op)
 	}
 	opts := log.GetOpts(opt...)
 	if opts.WithDeleteLog {

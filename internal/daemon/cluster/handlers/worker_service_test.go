@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
-	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -1015,10 +1014,7 @@ func TestSessionInfo(t *testing.T) {
 
 				serverRepo, err := server.NewRepository(ctx, rw, rw, testKms)
 				require.NoError(err)
-				c := &store.Controller{
-					PrivateId: "test_controller1",
-					Address:   "127.0.0.1",
-				}
+				c := server.NewController("test_controller1", server.WithAddress("127.0.0.1"))
 				_, err = serverRepo.UpsertController(ctx, c)
 				require.NoError(err)
 
@@ -1158,10 +1154,7 @@ func TestRoutingInfo(t *testing.T) {
 	_ = server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w2KeyId))
 	w3 := server.TestKmsWorker(t, conn, wrapper, server.WithName("testworker3"))
 
-	c := &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "1.2.3.4",
-	}
+	c := server.NewController("test_controller1", server.WithAddress("1.2.3.4"))
 	_, err = serverRepo.UpsertController(ctx, c)
 	require.NoError(t, err)
 

@@ -210,7 +210,6 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", s.CatalogId, s.Name)))
@@ -541,7 +540,6 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newSet.PublicId, newSet.Name)))
@@ -776,7 +774,6 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", s.PublicId)))
 	}
@@ -804,6 +801,15 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		limit = opts.WithLimit
 	}
 
+	reader := r.reader
+	writer := r.writer
+	if !util.IsNil(opts.WithReader) {
+		reader = opts.WithReader
+	}
+	if !util.IsNil(opts.WithWriter) {
+		writer = opts.WithWriter
+	}
+
 	args := make([]any, 0, 1)
 	var where string
 
@@ -825,7 +831,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 	}
 
 	var aggHostSets []*hostSetAgg
-	if err := r.reader.SearchWhere(ctx, &aggHostSets, where, args, dbArgs...); err != nil {
+	if err := reader.SearchWhere(ctx, &aggHostSets, where, args, dbArgs...); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", publicId)))
 	}
 
@@ -844,7 +850,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 	}
 	var plg *plugin.Plugin
 	if plgId != "" {
-		plg, err = r.getPlugin(ctx, plgId)
+		plg, err = r.getPlugin(ctx, plgId, WithReaderWriter(reader, writer))
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}

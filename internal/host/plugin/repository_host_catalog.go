@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -50,6 +51,7 @@ func normalizeCatalogAttributes(ctx context.Context, plgClient plgpb.HostPluginS
 	})
 	switch {
 	case err == nil:
+		// TODO: this should be updated to return these attributes rather than updating them in-place
 		if ret.Attributes != nil {
 			plgHc.Attrs = &pb.HostCatalog_Attributes{
 				Attributes: ret.Attributes,
@@ -210,7 +212,6 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s: name %s already exists", c.ProjectId, c.Name)))
@@ -404,7 +405,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(read db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
 			ticket, err := w.GetTicket(ctx, newCatalog)
 			if err != nil {
@@ -528,7 +529,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			if needSetSync {
 				// We also need to mark all host sets in this catalog to be
 				// synced as well.
-				setsForCatalog, _, err := r.getSets(ctx, "", returnedCatalog.PublicId)
+				setsForCatalog, _, err := r.getSets(ctx, "", returnedCatalog.PublicId, host.WithReaderWriter(read, w))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get sets for host catalog"))
 				}
@@ -561,7 +562,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newCatalog.PublicId, newCatalog.Name)))
@@ -684,7 +684,6 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", c.PublicId)))
 	}
@@ -713,14 +712,19 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, *
 	return c, p, nil
 }
 
-func (r *Repository) getPlugin(ctx context.Context, plgId string) (*plg.Plugin, error) {
+func (r *Repository) getPlugin(ctx context.Context, plgId string, opts ...Option) (*plg.Plugin, error) {
 	const op = "plugin.(Repository).getPlugin"
 	if plgId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
 	}
+	opt := getOpts(opts...)
+	reader := r.reader
+	if !util.IsNil(opt.WithReader) {
+		reader = opt.WithReader
+	}
 	plg := plg.NewPlugin()
 	plg.PublicId = plgId
-	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
+	if err := reader.LookupByPublicId(ctx, plg); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", plgId)))
 	}
 	return plg, nil

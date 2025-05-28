@@ -36,7 +36,6 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -56,28 +55,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const (
-	credentialDomain = "credential"
-	hostDomain       = "host"
-)
-
-// extraWorkerFilterFunc takes in a set of workers and returns another set,
-// after any filtering it wishes to perform. When calling one of these
-// functions, the current set should be passed in and the returned set should be
-// used if there is no error; it is up to the filter writer to ensure that what
-// is returned, if no filtering is desired, is the input set.
-//
-// This is generally used to take in a set selected already from the database
-// and possible filtered via target worker filters and provide additional
-// filtering capabilities on those remaining workers.
-type extraWorkerFilterFunc func(ctx context.Context, workers []*server.Worker, host, port string) ([]*server.Worker, error)
-
 var (
-	// ExtraWorkerFilters contains any custom worker filters that should be
-	// layered in at session authorization time. These will be executed in-order
-	// with the results from one fed into the next.
-	ExtraWorkerFilters []extraWorkerFilterFunc
-
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.NewActionSet(
@@ -790,11 +768,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if authResults.RoundTripValue == nil {
 		return nil, stderrors.New("authorize session: expected to get a target back from auth results")
 	}
-	t, ok := authResults.RoundTripValue.(target.Target)
+	roundTripTarget, ok := authResults.RoundTripValue.(target.Target)
 	if !ok {
 		return nil, stderrors.New("authorize session: round tripped auth results value is not a target")
 	}
-	if t == nil {
+	if roundTripTarget == nil {
 		return nil, stderrors.New("authorize session: round tripped target is nil")
 	}
 
@@ -816,7 +794,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, handlers.ForbiddenError()
 	}
 
-	if t.GetDefaultPort() == 0 {
+	if roundTripTarget.GetDefaultPort() == 0 {
 		return nil, handlers.ConflictErrorf("Target does not have default port defined.")
 	}
 
@@ -825,15 +803,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, err = repo.LookupTarget(ctx, t.GetPublicId())
+	t, err := repo.LookupTarget(ctx, roundTripTarget.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
+			return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
 		}
 		return nil, err
 	}
 	if t == nil {
-		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
+		return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
 	}
 	hostSources := t.GetHostSources()
 	credSources := t.GetCredentialSources()
@@ -932,9 +910,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			"No host was discovered after checking target address and host sources.")
 	}
 
-	// Ensure we don't have a port from the address
-	_, err = util.ParseAddress(ctx, h)
-	if err != nil {
+	// Ensure we don't have a port from the address and that any ipv6 addresses
+	// are formatted properly
+	if h, err = util.ParseAddress(ctx, h); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoint host address"))
 	}
 
@@ -1839,15 +1817,13 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			}
 		}
 		if address := item.GetAddress(); address != nil {
-			if len(address.GetValue()) < static.MinHostAddressLength ||
-				len(address.GetValue()) > static.MaxHostAddressLength {
-				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			}
-			_, _, err := net.SplitHostPort(address.GetValue())
+			_, err := util.ParseAddress(context.Background(), address.GetValue())
 			switch {
 			case err == nil:
+			case errors.Is(err, util.ErrInvalidAddressLength):
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			case errors.Is(err, util.ErrInvalidAddressContainsPort):
 				badFields[globals.AddressField] = "Address does not support a port."
-			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
@@ -1919,15 +1895,13 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			}
 		}
 		if address := item.GetAddress(); address != nil {
-			if len(address.GetValue()) < static.MinHostAddressLength ||
-				len(address.GetValue()) > static.MaxHostAddressLength {
-				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			}
-			_, _, err := net.SplitHostPort(address.GetValue())
+			_, err := util.ParseAddress(context.Background(), address.GetValue())
 			switch {
 			case err == nil:
+			case errors.Is(err, util.ErrInvalidAddressLength):
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			case errors.Is(err, util.ErrInvalidAddressContainsPort):
 				badFields[globals.AddressField] = "Address does not support a port."
-			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
