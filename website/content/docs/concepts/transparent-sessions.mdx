@@ -36,6 +36,7 @@ Refer to the following table for known issues:
 | Windows installer does not support partial installations | The Windows installer fails to start the Client Agent if the Desktop client is not installed at the same time. |
 | Alias connection failures inside containers/VMs | Using transparent sessions rely on network access to the local network of the computer the Client Agent is running on. Network enclaves such as those created by Docker containers and VMs cannot reach this network. |
 | DNS lookup is broken on MacOS 15.1 and 15.2 | MacOS 15.1 and 15.2 may incorrectly block DNS lookups for the Client Agent. This issue is resolved in MacOS 15.3 and later. |
+| DNS resolution fails after switching network interfaces | If you switch network interfaces while the Client Agent is running, DNS resolution can fail and you may lose connectivity for some applications. This failure can occur when you switch from an ethernet connection to a wireless network, for example. |
 
 ## More information
 
