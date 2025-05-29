@@ -810,9 +810,9 @@ func (r *Repository) grantsForUserProjectResourcesRecursiveScopes(
 	)
 	switch {
 	case reqScopeId == globals.GlobalPrefix:
-		query = grantsForUserProjectResourcesGlobalScopeQuery
+		query = grantsForUserProjectResourcesGlobalScopeRecursiveQuery
 	case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
-		query = grantsForUserProjectResourcesOrgScopeQuery
+		query = grantsForUserProjectResourcesOrgScopeRecursiveQuery
 		args = append(args, sql.Named("request_scope_id", reqScopeId))
 	case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
 		// Can't recursely list any further at project scope

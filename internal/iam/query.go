@@ -580,7 +580,7 @@ const (
            canonical_grant;
     `
 
-	grantsForUserProjectResourcesGlobalScopeQuery = resourceRoleGrantsForUsers + `,
+	grantsForUserProjectResourcesGlobalScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
     global_roles_with_descendant_grant_scopes as (
       select iam_role_global.public_id         as role_id,
              iam_role_global.scope_id          as role_scope_id,
@@ -689,7 +689,7 @@ const (
            canonical_grant;
     `
 
-	grantsForUserProjectResourcesOrgScopeQuery = resourceRoleGrantsForUsers + `,
+	grantsForUserProjectResourcesOrgScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
     org_roles_with_children_grant_scopes as (
       select iam_role_org.public_id            as role_id,
              iam_role_org.scope_id             as role_scope_id,
