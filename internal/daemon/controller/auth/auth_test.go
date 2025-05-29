@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/tests/api"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
@@ -243,7 +244,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 			ctx := NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, testKms, &requestInfo)
 
 			_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
-			_ = Verify(ctx, tt.opt...)
+			_ = Verify(ctx, resource.Scope, tt.opt...)
 			got := api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
 			if tt.wantAuthAuditData {
@@ -285,6 +286,7 @@ func TestGrantsHash(t *testing.T) {
 	}
 
 	o, _ := iam.TestScopes(t, iamRepo)
+	resourceType := resource.Scope
 	req := httptest.NewRequest("GET", "http://127.0.0.1/v1/scopes/"+o.GetPublicId(), nil)
 
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
@@ -302,7 +304,7 @@ func TestGrantsHash(t *testing.T) {
 	verifierCtx := NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 
 	// Create auth result from token
-	res := Verify(verifierCtx, WithScopeId(o.GetPublicId()))
+	res := Verify(verifierCtx, resourceType, WithScopeId(o.GetPublicId()))
 	hash1, err := res.GrantsHash(ctx)
 	require.NoError(t, err)
 
@@ -325,7 +327,7 @@ func TestGrantsHash(t *testing.T) {
 	verifierCtx = NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 
 	// Create auth result from token
-	res = Verify(verifierCtx, WithScopeId(o.GetPublicId()))
+	res = Verify(verifierCtx, resourceType, WithScopeId(o.GetPublicId()))
 	hash2, err := res.GrantsHash(ctx)
 	require.NoError(t, err)
 
@@ -337,7 +339,7 @@ func TestGrantsHash(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, newRole.GetPublicId(), user.GetPublicId())
 
 	// Recreate auth result with new grants, should have a new hash
-	res = Verify(verifierCtx, WithScopeId(o.GetPublicId()))
+	res = Verify(verifierCtx, resourceType, WithScopeId(o.GetPublicId()))
 	hash3, err := res.GrantsHash(ctx)
 	require.NoError(t, err)
 	assert.False(t, bytes.Equal(hash1, hash3))
