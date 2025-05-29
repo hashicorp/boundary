@@ -53,16 +53,13 @@ under continuous load.
 ## Hardware considerations
 
 The Boundary controller and worker nodes perform two different tasks.
-
 The Boundary controller nodes handle requests for authentication and
 configuration.
-
 The Boundary worker nodes proxy client connections to Boundary
 targets which may require additional resources.
 
 Depending on the number of clients connecting to Boundary targets at any given
 time, Boundary workers can become memory or file descriptor constrained.
-
 As your users create new sessions, the Boundary worker node opens more sockets and
 ultimately creates additional file descriptors. Monitor both the
 file descriptor usage and the memory consumption of each Boundary worker node.
@@ -70,10 +67,9 @@ file descriptor usage and the memory consumption of each Boundary worker node.
 ## Network considerations
 
 The amount of network bandwidth used by the Boundary controllers and workers
-depends on your specific usage patterns. 
-
+depends on your specific usage patterns.
 For the Boundary controller, even a high request volume does not
-translate to a large amount of network bandwidth consumption. 
+translate to a large amount of network bandwidth consumption.
 
 Boundary worker nodes proxy client sessions to Boundary targets. The
 bandwidth consumption depends on the amount of potential clients,
@@ -82,7 +78,6 @@ between the user and the Boundary targets.
 
 It is also important to consider bandwidth requirements to other external
 systems such as monitoring and logging collectors.
-
 It may be necessary to increase the size of the virtual machine to take
 advantage of additional throughput in certain circumstances.
 
@@ -166,7 +161,6 @@ termination.
 
 Boundary clusters depend on a PostgreSQL database for managing state and
 configuration.
-
 Ensure you are using a version of PostgreSQL covered under [Boundary's supported
 version
 policy](https://developer.hashicorp.com/boundary/docs/enterprise/supported-versions#postgresql-support-policy).
