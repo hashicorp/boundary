@@ -3619,7 +3619,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	})
 }
 
-func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
+func TestGrantsForUserGlobalOrOrgOrProjectResources(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -3627,38 +3627,50 @@ func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
 	user := TestUser(t, repo, "global")
 
 	// Create scopes
-	org1Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
-	org2Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	org1 := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	org2 := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	proj1a := TestProject(t, repo, org1.PublicId, WithSkipDefaultRoleCreation(true))
+	proj1b := TestProject(t, repo, org1.PublicId, WithSkipDefaultRoleCreation(true))
+	proj2 := TestProject(t, repo, org2.PublicId, WithSkipDefaultRoleCreation(true))
 
 	// Create & grant roles
 	roles := make([]*Role, 0)
 
 	globalRoleThis := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis}))
 	globalRoleChildren := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
-	globalRoleDescendants := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
-	globalRoleOrg1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1Scope.PublicId}))
-	globalRoleThisAndOrg2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2Scope.PublicId}))
-	roles = append(roles, globalRoleThis, globalRoleOrg1, globalRoleThisAndOrg2, globalRoleDescendants, globalRoleChildren)
+	globalRoleThisAndDescendants := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeDescendants}))
+	globalRoleOrg1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1.PublicId}))
+	globalRoleOrg2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2.PublicId}))
+	globalRoleProj1a := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{proj1a.PublicId}))
+	globalRoleProj2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{proj2.PublicId}))
+	roles = append(roles, globalRoleThis, globalRoleChildren, globalRoleThisAndDescendants, globalRoleOrg1, globalRoleOrg2, globalRoleProj1a, globalRoleProj2)
 
-	TestRoleGrant(t, conn, globalRoleThis.PublicId, "ids=*;type=account;actions=create,update")
-	TestRoleGrant(t, conn, globalRoleChildren.PublicId, "ids=*;type=account;actions=set-password")
-	TestRoleGrant(t, conn, globalRoleDescendants.PublicId, "ids=*;type=*;actions=update")
-	TestRoleGrant(t, conn, globalRoleOrg1.PublicId, "ids=*;type=account;actions=list,read")
-	TestRoleGrant(t, conn, globalRoleThisAndOrg2.PublicId, "ids=acctpw_12345;actions=read")
+	TestRoleGrant(t, conn, globalRoleThis.PublicId, "ids=*;type=group;actions=create,update")
+	TestRoleGrant(t, conn, globalRoleChildren.PublicId, "ids=*;type=group;actions=set-password")
+	TestRoleGrant(t, conn, globalRoleThisAndDescendants.PublicId, "ids=*;type=*;actions=update")
+	TestRoleGrant(t, conn, globalRoleOrg1.PublicId, "ids=*;type=group;actions=list,read")
+	TestRoleGrant(t, conn, globalRoleOrg2.PublicId, "ids=g_12345;actions=read")
 
-	org1RoleThis := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
-	org1RoleChildren := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
-	org2RoleThisAndChildren := TestRole(t, conn, org2Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
-	roles = append(roles, org1RoleThis, org1RoleChildren, org2RoleThisAndChildren)
+	org1RoleThis := TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	org1RoleChildren := TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
+	org2RoleThisAndChildren := TestRole(t, conn, org2.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+	org1RoleProj1b := TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{proj1b.PublicId}))
+	org2RoleProj2 := TestRole(t, conn, org2.PublicId, WithGrantScopeIds([]string{proj2.PublicId}))
+	roles = append(roles, org1RoleThis, org1RoleChildren, org1RoleProj1b, org2RoleThisAndChildren, org2RoleProj2)
 
 	TestRoleGrant(t, conn, org1RoleThis.PublicId, "ids=ampw_12345;actions=read")
-	TestRoleGrant(t, conn, org1RoleChildren.PublicId, "ids=*;type=account;actions=change-password")
-	TestRoleGrant(t, conn, org2RoleThisAndChildren.PublicId, "ids=*;type=account;actions=delete")
+	TestRoleGrant(t, conn, org1RoleChildren.PublicId, "ids=*;type=group;actions=read,set-group-members")
+	TestRoleGrant(t, conn, org2RoleThisAndChildren.PublicId, "ids=*;type=group;actions=delete")
+	TestRoleGrant(t, conn, org1RoleProj1b.PublicId, "ids=*;type=group;actions=*")
+	TestRoleGrant(t, conn, org2RoleProj2.PublicId, "ids=*;type=group;actions=read")
 
-	projRoleThis := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis}))
-	roles = append(roles, projRoleThis)
+	proj1bRoleThis := TestRole(t, conn, proj1b.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	proj2RoleThis := TestRole(t, conn, proj2.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	roles = append(roles, proj1bRoleThis, proj2RoleThis)
 
-	TestRoleGrant(t, conn, projRoleThis.PublicId, "ids=*;type=group;actions=read")
+	TestRoleGrant(t, conn, proj1bRoleThis.PublicId, "ids=*;type=*;actions=*")
+	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=tssh_12345;actions=add-group-members,remove-group-members")
+	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=*;type=group;actions=set-group-members")
 
 	// Add users to created roles
 	for _, role := range roles {
@@ -3695,7 +3707,7 @@ func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
 					Grant:             "ids=*;type=account;actions=set-password",
 				},
 				{
-					RoleId:            globalRoleDescendants.PublicId,
+					RoleId:            globalRoleThisAndDescendants.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
 					GrantScopeId:      globals.GrantScopeDescendants,
@@ -3705,35 +3717,35 @@ func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
 					RoleId:            globalRoleOrg1.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=*;type=account;actions=list,read",
 				},
 				{
-					RoleId:            globalRoleThisAndOrg2.PublicId,
+					RoleId:            globalRoleOrg2.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
 					GrantScopeId:      "global",
 					Grant:             "ids=acctpw_12345;actions=read",
 				},
 				{
-					RoleId:            globalRoleThisAndOrg2.PublicId,
+					RoleId:            globalRoleOrg2.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
+					GrantScopeId:      org2.PublicId,
 					Grant:             "ids=acctpw_12345;actions=read",
 				},
 				{
 					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1Scope.PublicId,
+					RoleScopeId:       org1.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=ampw_12345;actions=read",
 				},
 				{
 					RoleId:            org2RoleThisAndChildren.PublicId,
-					RoleScopeId:       org2Scope.PublicId,
+					RoleScopeId:       org2.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
+					GrantScopeId:      org2.PublicId,
 					Grant:             "ids=*;type=account;actions=delete",
 				},
 			},
@@ -3742,7 +3754,7 @@ func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
 			name: "return org grants when trying to recursively list grants at a non-recursive request scope (org scope)",
 			input: testInput{
 				userId:     user.PublicId,
-				reqScopeId: org1Scope.PublicId,
+				reqScopeId: org1.PublicId,
 				resource:   resource.Account,
 			},
 			output: []perms.GrantTuple{
@@ -3754,7 +3766,7 @@ func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
 					Grant:             "ids=*;type=account;actions=set-password",
 				},
 				{
-					RoleId:            globalRoleDescendants.PublicId,
+					RoleId:            globalRoleThisAndDescendants.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
 					GrantScopeId:      globals.GrantScopeDescendants,
@@ -3764,14 +3776,14 @@ func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
 					RoleId:            globalRoleOrg1.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=*;type=account;actions=list,read",
 				},
 				{
 					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1Scope.PublicId,
+					RoleScopeId:       org1.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=ampw_12345;actions=read",
 				},
 			},
