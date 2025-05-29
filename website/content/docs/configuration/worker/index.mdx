@@ -16,12 +16,14 @@ ways to register them so that registration of workers can fit into any workflow:
 The sub-pages linked at the bottom of this page explain the differences in their configuration.
 
 You must register workers using the worker-led or controller-led methods in the system with an API call. These workers require storage on disk to store the current set of credentials. Workers using an external KMS auto-register after authenticating. This makes them an easy mechanism to use for automatic scaling.
-use for automatic scaling. This also means they do not need to store
+This also means they do not need to store
 credentials locally; the KMS re-authenticates them each time they connect.
 
-<Note title="Important"> 
+<Note title="Important">
+
 Before version 0.15 of Boundary, there were two different types of workers, PKI & KMS workers.
 If you are using pre-0.15 workers with pre-0.15 upstream configurations, please switch the documentation version to `0.13.x` - `0.14.x`. This will ensure you have the correct information.
+
 </Note>
 
 ## Common worker parameters
@@ -70,7 +72,7 @@ worker {
   reaching the Boundary cluster. The port will default to `:9201` if not
   specified. This value can be a direct access string array with the addresses,
   or it can refer to a file on disk (`file://`) from which the addresses will be
-  read, or an environment variable (`env://`) from which to read the addresses from. When
+  read, or an environment variable (`env://`) from which to read the addresses. When
   using environment variable or file, their contents must formatted as a JSON array:
   `["127.0.0.1", "192.168.0.1", "10.0.0.1"]`
 
@@ -86,14 +88,14 @@ worker {
    Boundary stores session recordings in the local storage while they are in progress.
    When the session is complete, Boundary moves the local session recording to remote storage and deletes the local copy.
 
-- `recording_storage_minimum_available_capacity` - A value measured in bytes that 
-   defines the worker's local storage state.  Boundary uses this value to compare with the available local disk space found in the `recording_storage_path` and determines if a worker can perform session recording operations.
+- `recording_storage_minimum_available_capacity` - A value measured in bytes that
+   defines the worker's local storage state.  Boundary compares this value to the available local disk space found in the `recording_storage_path` and determines if a worker can perform session recording operations.
    The supported suffixes are kb, kib, mb, mib, gb, gib, tb, tib, which are not case sensitive. Example: 2GB, 2gb, 2GiB, 2gib.
    The possible storage states based on the `recording_storage_minimum_available_capacity` are:
     - Available - The worker has storage above the threshold and can proxy sessions that have session recording enabled.
     - Low storage - The worker has storage below the threshold. It allows existing sessions to continue without interruption but prevents proxying new sessions that have session recording enabled. The worker cannot record new sessions or play back existing recordings.
     - Critically low storage - The worker falls below half the storage threshold. It forcefully closes existing sessions with session recording. The worker cannot record new sessions or play back existing recordings.
-    - Out of storage - The worker runs out of local disk space. It cannot record new sessions or play back existing recordings. The worker enters an unrecoverable state, requiring an administrator to intervene and resolve the issue.
+    - Out of storage - The worker is out of local disk space. It cannot record new sessions or play back existing recordings. The worker enters an unrecoverable state, requiring an administrator to intervene and resolve the issue.
     - Not configured - The worker lacks a configured local storage path.
     - Unknown - The worker starts with this default local storage state. This state indicates that the worker's local storage state is not yet known.
 
