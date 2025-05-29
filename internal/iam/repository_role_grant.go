@@ -797,17 +797,30 @@ func (r *Repository) grantsForUserProjectResourcesRecursiveScopes(
 	if reqScopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
 	}
-	// If not global scope nor org scope, return an error
-	isOrgScope := strings.HasPrefix(reqScopeId, globals.OrgPrefix)
-	if reqScopeId != globals.GlobalPrefix && !isOrgScope {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope or an org scope")
+	if res == resource.All || res == resource.Unknown {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "a specific resource type must be specified")
 	}
 
+	// Determine which query to use based on the request scope
 	var (
 		args      []any
 		userIds   []string
 		resources []string
+		query     string
 	)
+	switch {
+	case reqScopeId == globals.GlobalPrefix:
+		query = grantsForUserProjectResourcesGlobalScopeQuery
+	case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
+		query = grantsForUserProjectResourcesOrgScopeQuery
+		args = append(args, sql.Named("request_scope_id", reqScopeId))
+	case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
+		// Can't recursely list any further at project scope
+		return r.grantsForUserProjectResources(ctx, userId, reqScopeId, res)
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope, an org scope, or a project scope")
+	}
+
 	switch userId {
 	case globals.AnonymousUserId:
 		userIds = []string{globals.AnonymousUserId}
@@ -816,15 +829,10 @@ func (r *Repository) grantsForUserProjectResourcesRecursiveScopes(
 	}
 	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
 
-	query := grantsForUserProjectResourcesGlobalScopeQuery
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
 		sql.Named("resources", pq.Array(resources)),
 	)
-	if isOrgScope {
-		query = grantsForUserProjectResourcesOrgScopeQuery
-		args = append(args, sql.Named("request_scope_id", reqScopeId))
-	}
 
 	var grants []perms.GrantTuple
 	rows, err := r.reader.Query(ctx, query, args)

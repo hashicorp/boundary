@@ -2945,7 +2945,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	roles = append(roles, proj1bRoleThis, proj2RoleThis)
 
 	TestRoleGrant(t, conn, proj1bRoleThis.PublicId, "ids=*;type=*;actions=*")
-	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=*;type=target;actions=add-host-sources,remove-host-sources")
+	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=tssh_12345;actions=add-host-sources,remove-host-sources")
 	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=*;type=scope;actions=attach-storage-policy,detach-storage-policy")
 
 	// Add users to created roles
@@ -3046,7 +3046,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						RoleScopeId:       proj2.PublicId,
 						RoleParentScopeId: org2.PublicId,
 						GrantScopeId:      proj2.PublicId,
-						Grant:             "ids=*;type=target;actions=add-host-sources,remove-host-sources",
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
 					},
 				},
 			},
@@ -3134,6 +3134,13 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						GrantScopeId:      proj2.PublicId,
 						Grant:             "ids=*;type=scope;actions=attach-storage-policy,detach-storage-policy",
 					},
+					{
+						RoleId:            proj2RoleThis.PublicId,
+						RoleScopeId:       proj2.PublicId,
+						RoleParentScopeId: org2.PublicId,
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
+					},
 				},
 			},
 			testcase{
@@ -3188,6 +3195,13 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						RoleParentScopeId: "global",
 						GrantScopeId:      globals.GrantScopeDescendants,
 						Grant:             "ids=*;type=*;actions=read",
+					},
+					{
+						RoleId:            proj2RoleThis.PublicId,
+						RoleScopeId:       proj2.PublicId,
+						RoleParentScopeId: org2.PublicId,
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
 					},
 				},
 			},
@@ -3322,7 +3336,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						RoleScopeId:       proj2.PublicId,
 						RoleParentScopeId: org2.PublicId,
 						GrantScopeId:      proj2.PublicId,
-						Grant:             "ids=*;type=target;actions=add-host-sources,remove-host-sources",
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
 					},
 				},
 			},
@@ -3363,7 +3377,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						RoleScopeId:       proj2.PublicId,
 						RoleParentScopeId: org2.PublicId,
 						GrantScopeId:      proj2.PublicId,
-						Grant:             "ids=*;type=target;actions=add-host-sources,remove-host-sources",
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
 					},
 				},
 			},
@@ -3417,6 +3431,13 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						GrantScopeId:      proj2.PublicId,
 						Grant:             "ids=*;type=scope;actions=attach-storage-policy,detach-storage-policy",
 					},
+					{
+						RoleId:            proj2RoleThis.PublicId,
+						RoleScopeId:       proj2.PublicId,
+						RoleParentScopeId: org2.PublicId,
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
+					},
 				},
 			},
 			testcase{
@@ -3465,60 +3486,39 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						GrantScopeId:      proj2.PublicId,
 						Grant:             "ids=*;type=scope;actions=attach-storage-policy,detach-storage-policy",
 					},
+					{
+						RoleId:            proj2RoleThis.PublicId,
+						RoleScopeId:       proj2.PublicId,
+						RoleParentScopeId: org2.PublicId,
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
+					},
 				},
 			},
 			testcase{
-				name: "return '*' and 'unknown' grants when no resource specified at global request scope",
+				name: "unknown resource type should return error",
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
+					resource:   resource.Unknown,
 				},
-				output: []perms.GrantTuple{
-					{
-						RoleId:            globalRoleDescendants.PublicId,
-						RoleScopeId:       "global",
-						RoleParentScopeId: "global",
-						GrantScopeId:      globals.GrantScopeDescendants,
-						Grant:             "ids=*;type=*;actions=read",
-					},
-					{
-						RoleId:            proj1bRoleThis.PublicId,
-						RoleScopeId:       proj1b.PublicId,
-						RoleParentScopeId: org1.PublicId,
-						GrantScopeId:      proj1b.PublicId,
-						Grant:             "ids=*;type=*;actions=*",
-					},
-				},
+				errorMsg: "a specific resource type must be specified",
 			},
 			testcase{
-				name: "return '*' and 'unknown' grants when no resource specified at org1 request scope",
+				name: "'*' resource type should return error",
 				input: testInput{
 					userId:     user.PublicId,
-					reqScopeId: org1.PublicId,
+					reqScopeId: globals.GlobalPrefix,
+					resource:   resource.All,
 				},
-				output: []perms.GrantTuple{
-					{
-						RoleId:            proj1bRoleThis.PublicId,
-						RoleScopeId:       proj1b.PublicId,
-						RoleParentScopeId: org1.PublicId,
-						GrantScopeId:      proj1b.PublicId,
-						Grant:             "ids=*;type=*;actions=*",
-					},
-				},
-			},
-			testcase{
-				name: "return '*' and 'unknown' grants when no resource specified at org2 request scope",
-				input: testInput{
-					userId:     user.PublicId,
-					reqScopeId: org2.PublicId,
-				},
-				output: []perms.GrantTuple{},
+				errorMsg: "a specific resource type must be specified",
 			},
 			testcase{
 				name: "u_anon should return no grants at global request scope",
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: globals.GlobalPrefix,
+					resource:   resource.Target,
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -3527,6 +3527,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: org1.PublicId,
+					resource:   resource.Target,
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -3535,6 +3536,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: org2.PublicId,
+					resource:   resource.Target,
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -3543,6 +3545,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: globals.GlobalPrefix,
+					resource:   resource.Target,
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -3551,6 +3554,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: org1.PublicId,
+					resource:   resource.Target,
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -3559,6 +3563,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: org2.PublicId,
+					resource:   resource.Target,
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -3578,6 +3583,24 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 					resource:   resource.Target,
 				},
 				errorMsg: "missing request scope id",
+			},
+			testcase{
+				name: "return error when trying to recursively list grants at an unknown request scope",
+				input: testInput{
+					userId:     user.PublicId,
+					reqScopeId: scope.Unknown.String(),
+					resource:   resource.Target,
+				},
+				errorMsg: "request scope must be global scope, an org scope, or a project scope",
+			},
+			testcase{
+				name: "return no grants for a resource that has no permissions granted for it",
+				input: testInput{
+					userId:     globals.AnonymousUserId,
+					reqScopeId: globals.GlobalPrefix,
+					resource:   resource.Session,
+				},
+				output: []perms.GrantTuple{},
 			},
 		)
 
