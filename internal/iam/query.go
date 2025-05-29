@@ -492,7 +492,7 @@ const (
            canonical_grant;
     `
 
-	grantsForUserGlobalAndOrgResourcesQuery = resourceRoleGrantsForUsers + `,
+	grantsForUserGlobalOrOrgResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_this_grant_scope as (
       select iam_role_global.public_id         as role_id,
              iam_role_global.scope_id          as role_scope_id,

@@ -713,15 +713,15 @@ func (r *Repository) grantsForUserProjectResources(
 	return grants, nil
 }
 
-// grantsForUserGlobalAndOrgResourcesRecursive returns the grants for the user for resources that can
+// grantsForUserGlobalOrOrgResourcesRecursive returns the grants for the user for resources that can
 // exist in global and org scopes.
-func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
+func (r *Repository) grantsForUserGlobalOrOrgResourcesRecursive(
 	ctx context.Context,
 	userId,
 	reqScopeId string,
 	res resource.Type,
 ) (perms.GrantTuples, error) {
-	const op = "iam.(Repository).grantsForUserGlobalAndOrgResourcesRecursive"
+	const op = "iam.(Repository).grantsForUserGlobalOrOrgResourcesRecursive"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
@@ -758,7 +758,7 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	)
 
 	var grants []perms.GrantTuple
-	rows, err := r.reader.Query(ctx, grantsForUserGlobalAndOrgResourcesQuery, args)
+	rows, err := r.reader.Query(ctx, grantsForUserGlobalOrOrgResourcesQuery, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
