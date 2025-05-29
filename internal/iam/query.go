@@ -580,6 +580,189 @@ const (
            canonical_grant;
     `
 
+	grantsForUserProjectResourcesGlobalScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
+    global_roles_with_descendant_grant_scopes as (
+      select iam_role_global.public_id         as role_id,
+             iam_role_global.scope_id          as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_global.grant_scope       as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_global
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_global.public_id
+       where iam_role_global.grant_scope = 'descendants'
+    ),
+    global_roles_with_individual_grant_scopes as (
+      select iam_role_global.public_id         as role_id,
+             iam_role_global.scope_id          as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             individual.scope_id               as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_global
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_global.public_id
+        join iam_role_global_individual_project_grant_scope individual
+          on individual.role_id = iam_role_global.public_id
+    ),
+    org_roles_with_children_grant_scopes as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_org.grant_scope          as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+       where iam_role_org.grant_scope = 'children'
+    ),
+    org_roles_with_individual_grant_scopes as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             individual.scope_id               as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+        join iam_role_org_individual_grant_scope individual
+          on individual.role_id = iam_role_org.public_id
+    ),
+    project_roles_this_grant_scope as (
+      select iam_role_project.public_id        as role_id,
+             iam_role_project.scope_id         as role_scope_id,
+             iam_scope_project.parent_id       as role_parent_scope_id,
+             iam_role_project.scope_id         as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_project
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_project.public_id
+        join iam_scope_project
+          on iam_scope_project.scope_id = iam_role_project.scope_id
+       where iam_role_project.grant_this_role_scope
+    ),
+    all_roles as (
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from global_roles_with_descendant_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from global_roles_with_individual_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_with_children_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_with_individual_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from project_roles_this_grant_scope
+    )
+    select role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           canonical_grant as grant
+      from all_roles
+  group by role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           canonical_grant;
+    `
+
+	grantsForUserProjectResourcesOrgScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
+    org_roles_with_children_grant_scopes as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_org.grant_scope          as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+       where iam_role_org.grant_scope = 'children'
+         and iam_role_org.scope_id = @request_scope_id
+    ),
+    org_roles_with_individual_grant_scopes as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             individual.scope_id               as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+        join iam_role_org_individual_grant_scope individual
+          on individual.role_id = iam_role_org.public_id
+       where iam_role_org.scope_id = @request_scope_id
+    ),
+    project_roles_grant_scopes as (
+      select iam_role_project.public_id        as role_id,
+             iam_role_project.scope_id         as role_scope_id,
+             iam_scope_project.parent_id       as role_parent_scope_id,
+             iam_role_project.scope_id         as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_project
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_project.public_id
+        join iam_scope_project
+          on iam_scope_project.scope_id = iam_role_project.scope_id
+         and iam_scope_project.parent_id = @request_scope_id
+    ),
+    all_roles as (
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_with_children_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_with_individual_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from project_roles_grant_scopes
+    )
+    select role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           canonical_grant as grant
+      from all_roles
+  group by role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           canonical_grant;
+    `
+
 	estimateCountRoles = `
 		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)
 	`
