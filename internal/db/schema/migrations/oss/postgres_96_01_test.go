@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss/internal/hook96007"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
 )
@@ -77,109 +78,29 @@ const (
 		grant_scope
 	from iam_role_org_individual_grant_scope;
 	`
-	selectProblemsQuery = `
-	 with
-	  global_roles (role_id) as (
-	    select public_id
-          from iam_role
-         where scope_id = 'global'
-      ),
-	  org_roles (role_id) as (
-	    select public_id
-          from iam_role
-         where scope_id like 'o_%'
-      ),
-    global_descendants_overlap(role_id, role_scope_id, grant_scope_id) as (
-      select rgs.role_id as role_id,
-              r.scope_id as role_scope_id,
-              rgs.scope_id_or_special as grant_scope_id
-        from iam_role_grant_scope rgs
-        join iam_role r on r.public_id = rgs.role_id
-        where scope_id_or_special not in ('this', 'children', 'descendants')
-          and role_id in (
-          select role_id
-            from iam_role_grant_scope
-          where role_id in (select role_id from global_roles)
-        group by role_id
-          having
-            count(*) filter (where scope_id_or_special like 'o_%' or scope_id_or_special like 'p_%') >=1 and
-            count(*) filter (where scope_id_or_special = 'descendants') >= 1
-        )
-    ),
-    global_children_overlap(role_id, role_scope_id, grant_scope_id) as (
-      select rgs.role_id as role_id,
-              r.scope_id as role_scope_id,
-              rgs.scope_id_or_special as grant_scope_id
-        from iam_role_grant_scope rgs
-        join iam_role r on r.public_id = rgs.role_id
-        where scope_id_or_special not in ('this', 'children', 'descendants')
-          and scope_id_or_special not like 'p_%' -- filter out projects because children + project is valid
-          and role_id in (
-          select role_id
-            from iam_role_grant_scope
-          where role_id in (select role_id from global_roles)
-        group by role_id
-          having
-            count(*) filter (where scope_id_or_special like 'o_%') >= 1 and
-            count(*) filter (where scope_id_or_special = 'children') >= 1
-        )
-    ),
-    org_children_overlap(role_id, role_scope_id, grant_scope_id) as (
-      select rgs.role_id as role_id,
-              r.scope_id as role_scope_id,
-              rgs.scope_id_or_special as grant_scope_id
-        from iam_role_grant_scope rgs
-        join iam_role r on r.public_id = rgs.role_id
-        where scope_id_or_special not in ('this', 'children', 'descendants')
-          and role_id in (
-          select role_id
-            from iam_role_grant_scope
-          where role_id in (select role_id from org_roles)
-        group by role_id
-          having
-            count(*) filter (where scope_id_or_special like 'p_%') >= 1 and
-            count(*) filter (where scope_id_or_special = 'children') >= 1
-        )
-    ),
-    problems (role_id, role_scope_id, covered_by_grant_scope, individual_grant_scope) as (
-      select role_id        as role_id,
-              role_scope_id  as role_scope_id,
-              'descendants'  as covered_by_grant_scope,
-              grant_scope_id as individual_grant_scope
-        from global_descendants_overlap
-        union
-      select role_id        as role_id,
-              role_scope_id  as role_scope_id,
-              'children'     as covered_by_grant_scope,
-              grant_scope_id as individual_grant_scope
-        from global_children_overlap
-        union
-      select role_id        as role_id,
-              role_scope_id  as role_scope_id,
-              'children'     as covered_by_grant_scope,
-              grant_scope_id as individual_grant_scope
-        from org_children_overlap
-    ),
-    deleted_grant_scope (role_id, scope_id_or_special) as (
-          delete
-            from iam_role_grant_scope
-            where (role_id, scope_id_or_special) in (select role_id,
-                                                            individual_grant_scope
-                                                      from problems)
-        returning role_id, scope_id_or_special
-    ),
-    deleted_problems (role_id, role_scope_id, covered_by_grant_scope, individual_grant_scope) as (
-      select role_id                 as role_id,
-              role_scope_id           as role_scope_id,
-              covered_by_grant_scope  as covered_by_grant_scope,
-              individual_grant_scope  as individual_grant_scope
-        from problems
-        where (role_id, individual_grant_scope) in (select role_id,
-                                                          scope_id_or_special
-                                                      from deleted_grant_scope)
-    )
-  select * from deleted_problems;
-  `
+	selectCountOriginalIamRoleGrantScopeQuery = `
+	select count(*) from iam_role_grant_scope;
+	`
+	selectCountSubTableRolesQuery = `
+	select (
+		-- Count iam_role_global with grant_this_role_scope = true
+		(select count(*) from iam_role_global where grant_this_role_scope = true) +
+		-- Count iam_role_global with grant_scope != 'individual'
+		(select count(*) from iam_role_global where grant_scope != 'individual') +
+		-- Count iam_role_org with grant_this_role_scope = true
+		(select count(*) from iam_role_org where grant_this_role_scope = true) +
+		-- Count iam_role_org with grant_scope != 'individual'
+		(select count(*) from iam_role_org where grant_scope != 'individual') +
+		-- Count iam_role_project with grant_this_role_scope = true
+		(select count(*) from iam_role_project where grant_this_role_scope = true) +
+		-- Count iam_role_global_individual_org_grant_scope
+		(select count(*) from iam_role_global_individual_org_grant_scope) +
+		-- Count iam_role_global_individual_project_grant_scope
+		(select count(*) from iam_role_global_individual_project_grant_scope) +
+		-- Count iam_role_org_individual_grant_scope
+		(select count(*) from iam_role_org_individual_grant_scope)
+	) as total_count;
+	`
 )
 
 func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
@@ -287,11 +208,15 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 	   -- Global Role (r_globala__test) - Grant This, Descendants, individual org, and individual project
 	  ('r_globala__test', 'this',               '2025-03-01 16:43:15.489'),
 	  ('r_globala__test', 'descendants',        '2025-03-01 16:43:15.489'),
+	  ('r_globala__test', 'o_ta____test',       '2025-03-01 16:43:15.489'),
+	  ('r_globala__test', 'p_pA____test',       '2025-03-01 16:43:15.489'),
   	   -- Global Role (r_globalb__test) - Grant This, Children, individual org, and individual project
 	  ('r_globalb__test', 'this',               '2025-03-01 16:43:15.489'),
 	  ('r_globalb__test', 'children',           '2025-03-01 16:43:15.489'),
+	  ('r_globalb__test', 'o_ta____test',       '2025-03-01 16:43:15.489'),
+	  ('r_globalb__test', 'p_pA____test',       '2025-03-01 16:43:15.489'),
 	  -- Org Role (r_orgaa____test) - Grant This, Children, and individual project 
- 	  ('r_orgaa____test', 'this',               '2025-03-01 16:43:15.489'),
+ 	  ('r_orgaa____test', 'o_ta____test',       '2025-03-01 16:43:15.489'),
  	  ('r_orgaa____test', 'children',           '2025-03-01 16:43:15.489'),
 	  ('r_orgaa____test', 'p_pA____test',       '2025-03-01 16:43:15.489');
 	`
@@ -315,6 +240,20 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
       ('r_pp_gc__mix', 'ids=*;type=group;actions=delete-members',          'ids=*;type=group;actions=delete-members');
 	`
 	_, err = d.ExecContext(ctx, insertRoleGrants)
+	require.NoError(err)
+
+	tx, err := d.BeginTx(ctx, nil)
+	require.NoError(err)
+
+	// Run hook check
+	_, err = hook96007.FindIllegalAssociations(ctx, tx)
+	require.NoError(err)
+
+	// Run hook repair
+	_, err = hook96007.RepairIllegalAssociations(ctx, tx)
+	require.NoError(err)
+
+	err = tx.Commit()
 	require.NoError(err)
 
 	// now we're ready for the migration we want to test.
@@ -360,7 +299,7 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		}
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
-		require.Len(globalRoles, 6)
+		require.Len(globalRoles, 10)
 		require.Equal([]testRole{
 			{
 				role_id:               "r_go____name",
@@ -416,6 +355,42 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 				grant_this_role_scope: true,
 				grant_scope:           "children",
 			},
+			{
+				role_id:               "r_globalc__test",
+				scope_id:              "global",
+				name:                  "Migration test global role C",
+				description:           "Migration test global role C",
+				version:               14,
+				grant_this_role_scope: false,
+				grant_scope:           "individual",
+			},
+			{
+				role_id:               "r_globald__test",
+				scope_id:              "global",
+				name:                  "Migration test global role D",
+				description:           "Migration test global role D",
+				version:               15,
+				grant_this_role_scope: false,
+				grant_scope:           "individual",
+			},
+			{
+				role_id:               "r_globale__test",
+				scope_id:              "global",
+				name:                  "Migration test global role E",
+				description:           "Migration test global role E",
+				version:               16,
+				grant_this_role_scope: false,
+				grant_scope:           "individual",
+			},
+			{
+				role_id:               "r_globalf__test",
+				scope_id:              "global",
+				name:                  "Migration test global role f",
+				description:           "Migration test global role f",
+				version:               17,
+				grant_this_role_scope: false,
+				grant_scope:           "individual",
+			},
 		}, globalRoles)
 	})
 
@@ -438,7 +413,7 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		}
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
-		require.Len(orgRoles, 4)
+		require.Len(orgRoles, 6)
 		require.Equal([]testRole{
 			{
 				role_id:               "r_op_bc__art",
@@ -473,8 +448,26 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 				name:                  "Migration test org A role A",
 				description:           "Migration test org A role A",
 				version:               18,
-				grant_this_role_scope: true,
+				grant_this_role_scope: false,
 				grant_scope:           "children",
+			},
+			{
+				role_id:               "r_oo_____art",
+				scope_id:              "o_____colors",
+				name:                  "Color Artist",
+				description:           "Creates colors",
+				version:               7,
+				grant_this_role_scope: false,
+				grant_scope:           "individual",
+			},
+			{
+				role_id:               "r_orgab____test",
+				scope_id:              "o_ta____test",
+				name:                  "Migration test org A role B",
+				description:           "Migration test org A role B",
+				version:               19,
+				grant_this_role_scope: false,
+				grant_scope:           "individual",
 			},
 		}, orgRoles)
 	})
@@ -582,12 +575,17 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		}
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
-		require.Len(individualProjRoles, 1)
+		require.Len(individualProjRoles, 2)
 		require.Equal([]testRole{
 			{
 				role_id:     "r_gp____spec",
 				scope_id:    "p____bcolors",
 				grant_scope: "individual",
+			},
+			{
+				role_id:     "r_globalb__test",
+				scope_id:    "p_pA____test",
+				grant_scope: "children",
 			},
 		}, individualProjRoles)
 	})
@@ -607,13 +605,28 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 		}
 		require.NoError(rows.Err())
 		require.NoError(rows.Close())
-		require.Len(individualOrgRoles, 1)
+		require.Len(individualOrgRoles, 2)
 		require.Equal([]testRole{
 			{
-				role_id:     "r_go____name",
-				scope_id:    "o_____colors",
+				role_id:     "r_op_rc__art",
+				scope_id:    "p____rcolors",
+				grant_scope: "individual",
+			},
+			{
+				role_id:     "r_op_gc__art",
+				scope_id:    "p____gcolors",
 				grant_scope: "individual",
 			},
 		}, individualOrgRoles)
+	})
+
+	t.Run("compare prior and new table counts", func(t *testing.T) {
+		var before, after int
+		row := d.QueryRowContext(ctx, selectCountOriginalIamRoleGrantScopeQuery)
+		require.NoError(row.Scan(&before))
+
+		row = d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
+		require.NoError(row.Scan(&after))
+		require.Equal(before, after)
 	})
 }

@@ -10,6 +10,12 @@ begin;
     ('children'),
     ('individual');
 
+   -- Insert the predefined grant scope types for iam_role_org
+  insert into iam_role_org_grant_scope_enm (name)
+  values
+    ('children'),
+    ('individual');
+
   with aggregated_iam_role_grant_scope as (
     select
       r.role_id,
@@ -100,47 +106,34 @@ begin;
   join iam_scope s on s.public_id = r.scope_id
   where s.type = 'global';
 
-  insert into iam_role_global_individual_org_grant_scope (
-    role_id,
-    grant_scope,
+  insert into iam_role_global (
+    public_id,
     scope_id,
-    create_time
+    name,
+    description,
+    version,
+    grant_this_role_scope,
+    grant_scope,
+    grant_this_role_scope_update_time,
+    grant_scope_update_time,
+    create_time,
+    update_time
   )
   select
-    rs.role_id,
-    'individual',
-    rs.scope_id_or_special,
-    rs.create_time
-  from iam_role_grant_scope rs
-  join iam_role r         on r.public_id = rs.role_id
-  join iam_scope s        on s.public_id = r.scope_id
-  where
-    s.type = 'global' and
-    rs.scope_id_or_special like 'o_%';
-
-  insert into iam_role_global_individual_project_grant_scope (
-    role_id,
-    grant_scope,
+    public_id,
     scope_id,
-    create_time
-  )
-  select
-    rs.role_id,
+    name,
+    description,
+    version,
+    false,
     'individual',
-    rs.scope_id_or_special,
-    rs.create_time
-  from iam_role_grant_scope rs
-  join iam_role r         on r.public_id = rs.role_id
-  join iam_scope s        on s.public_id = r.scope_id
-  where
-    s.type = 'global' and
-    rs.scope_id_or_special like 'p_%';
-
-  -- Insert the predefined grant scope types for iam_role_org
-  insert into iam_role_org_grant_scope_enm (name)
-  values
-    ('children'),
-    ('individual');       
+    create_time,
+    create_time,
+    create_time,
+    update_time
+  from iam_role 
+  where scope_id = 'global'
+  on conflict (public_id) do nothing;
 
   with aggregated_iam_role_grant_scope as (
     select
@@ -225,6 +218,35 @@ begin;
   join iam_scope s on s.public_id = r.scope_id
   where s.type = 'org';
 
+  insert into iam_role_org (
+    public_id,
+    scope_id,
+    name,
+    description,
+    version,
+    grant_this_role_scope,
+    grant_scope,
+    grant_this_role_scope_update_time,
+    grant_scope_update_time,
+    create_time,
+    update_time
+  )
+  select
+    public_id,
+    scope_id,
+    name,
+    description,
+    version,
+    false,
+    'individual',
+    create_time,
+    create_time,
+    create_time,
+    update_time
+  from iam_role 
+  where scope_id like 'o_%'
+  on conflict (public_id) do nothing;
+
   with grant_scope_this as (
     select
       gs.role_id,
@@ -307,6 +329,54 @@ begin;
     ('unknown'),
     ('user'),
     ('worker');
+
+  insert into iam_role_global_individual_org_grant_scope (
+    role_id,
+    grant_scope,
+    scope_id,
+    create_time
+  )
+  select
+    rs.role_id,
+    r.grant_scope,
+    rs.scope_id_or_special,
+    rs.create_time
+  from iam_role_grant_scope rs
+  join iam_role_global r         on r.public_id = rs.role_id
+  where
+    rs.scope_id_or_special like 'o_%';
+
+  insert into iam_role_global_individual_project_grant_scope (
+    role_id,
+    grant_scope,
+    scope_id,
+    create_time
+  )
+  select
+    rs.role_id,
+    r.grant_scope,
+    rs.scope_id_or_special,
+    rs.create_time
+  from iam_role_grant_scope rs
+  join iam_role_global r         on r.public_id = rs.role_id
+  where
+    rs.scope_id_or_special like 'p_%';
+
+  insert into iam_role_org_individual_grant_scope (
+    role_id,
+    grant_scope,
+    scope_id,
+    create_time
+  )
+  select
+    rs.role_id,
+    r.grant_scope,
+    rs.scope_id_or_special,
+    rs.create_time
+  from iam_role_grant_scope rs  
+  join iam_role_org r     on r.public_id = rs.role_id
+ where 
+    rs.scope_id_or_special like 'p_%';
 
   insert into oplog_ticket (name, version)
   values ('iam_role_global',1),
