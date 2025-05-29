@@ -47,7 +47,7 @@ import (
 //
 // [NA] Global Role - Grant Descendants and Children
 //   - this cannot be created
-func TestMigrationHook96007_FindIllegal(t *testing.T) {
+func TestMigrationHook96007(t *testing.T) {
 	const (
 		priorMigration = 95001
 	)
@@ -163,11 +163,11 @@ func TestMigrationHook96007_FindIllegal(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run hook check
-	checkReport, err := hook96007.FindIllegalAssociations(ctx, tx)
+	checkReport, err := hook96007.FindInvalidAssociations(ctx, tx)
 	require.NoError(t, err)
 
 	// Run hook repair
-	repairReport, err := hook96007.RepairIllegalAssociations(ctx, tx)
+	repairReport, err := hook96007.RepairInvalidAssociations(ctx, tx)
 	require.NoError(t, err)
 
 	err = tx.Commit()

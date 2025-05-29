@@ -88,11 +88,11 @@ const (
           from org_children_overlap
       )`
 
-	getIllegalAssociationsQuery = baseQuery + `
+	getInvalidGrantsAssociationsQuery = baseQuery + `
 	    select * from problems order by role_id, individual_grant_scope;
 	`
 
-	deleteIllegalAssociationsQuery = baseQuery + `,
+	deleteInvalidGrantsAssociationsQuery = baseQuery + `,
       deleted_grant_scope (role_id, scope_id_or_special) as (
            delete
              from iam_role_grant_scope
