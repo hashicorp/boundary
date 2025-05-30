@@ -22,6 +22,7 @@ type invalidAssociation struct {
 	IndividualGrantScope string `db:"individual_grant_scope"`
 }
 
+
 func (e *invalidAssociation) problemString() string {
 	return fmt.Sprintf(`Role '%s' in scope '%s' has the '%s' grant scope which covers '%s'`,
 		e.RoleId, e.RoleScopeId, e.CoveredByGrantScope, e.IndividualGrantScope)
@@ -99,7 +100,6 @@ func query(ctx context.Context, tx *sql.Tx, query string) ([]invalidAssociation,
 		return nil, err
 	}
 	defer rows.Close()
-
 	invalid := make([]invalidAssociation, 0)
 	for rows.Next() {
 		var r invalidAssociation
