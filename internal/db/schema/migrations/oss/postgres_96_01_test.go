@@ -246,11 +246,11 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 	require.NoError(err)
 
 	// Run hook check
-	_, err = hook96007.FindIllegalAssociations(ctx, tx)
+	_, err = hook96007.FindInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	// Run hook repair
-	_, err = hook96007.RepairIllegalAssociations(ctx, tx)
+	_, err = hook96007.RepairInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	err = tx.Commit()
