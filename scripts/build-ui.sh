@@ -58,11 +58,6 @@ if which gh &> /dev/null;  then
     fi
 fi
 
-if ! which yarn &> /dev/null; then
-    echo "Yarn must be installed to build ui assets from a git clone.\nPlease ensure Node v14+ and Yarn v1.22.10+ are installed."
-    exit 1
-fi
-
 tempdir="$(dirname "${UI_CLONE_DIR}")"
 
 mkdir -p "${tempdir}"
@@ -81,6 +76,29 @@ git checkout "${UI_COMMITISH}"
 git pull --ff-only origin "${UI_COMMITISH}"
 git reset --hard "${UI_COMMITISH}"
 
-yarn install
-EDITION=${UI_EDITION} yarn build
+# Check for pnpm-lock.yaml file
+if [ -f "pnpm-lock.yaml" ]; then
+  if ! which pnpm &> /dev/null; then
+    echo "Pnpm must be installed to build ui assets from a git clone.\nPlease ensure Node v20+ and Pnpm v10+ are installed."
+    exit 1
+  fi
+
+  echo "Installing dependencies with pnpm"
+  pnpm install
+  EDITION=${UI_EDITION} pnpm build
+# Check for yarn.lock file
+elif [ -f "yarn.lock" ]; then
+  if ! which pnpm &> /dev/null; then
+    echo "Yarn must be installed to build ui assets from a git clone.\nPlease ensure Node v20+ and Yarn v4+ are installed."
+    exit 1
+  fi
+
+  echo "Installing dependencies with yarn"
+  yarn install
+  EDITION=${UI_EDITION} yarn build
+else
+  echo "Error: Neither pnpm-lock.yaml nor yarn.lock found, unable to determine package manager"
+  exit 1
+fi
+
 popd
