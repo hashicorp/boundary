@@ -7,6 +7,7 @@ set -eux -o pipefail
 env
 
 # Requirements
+npm install --global pnpm || true
 npm install --global yarn || true
 
 # Go to the root of the boundary repo
