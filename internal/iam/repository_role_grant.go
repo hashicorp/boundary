@@ -889,8 +889,8 @@ func (r *Repository) grantsForUserGlobalOrOrgOrProjectResources(
 	case reqScopeId == globals.GlobalPrefix:
 		query = grantsForUserGlobalOrOrgOrProjectResourcesGlobalScopeRecursiveQuery
 	case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
-		// query = grantsForUserGlobalOrOrgOrProjectResourcesOrgScopeRecursiveQuery
-		// args = append(args, sql.Named("request_scope_id", reqScopeId))
+		query = grantsForUserGlobalOrOrgOrProjectResourcesOrgScopeRecursiveQuery
+		args = append(args, sql.Named("request_scope_id", reqScopeId))
 	case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
 		return r.grantsForUserProjectResources(ctx, userId, reqScopeId, res)
 	default:
