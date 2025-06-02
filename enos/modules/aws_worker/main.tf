@@ -246,11 +246,11 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
   ]
 
   environment = {
-    LOG_DIR      = local.audit_log_directory
+    NEW_DIR      = local.audit_log_directory
     SERVICE_USER = local.service_user
   }
 
-  scripts = [abspath("${path.module}/scripts/create-audit-log-dir.sh")]
+  scripts = [abspath("${path.module}/scripts/create-dir.sh")]
 
   transport = {
     ssh = {
