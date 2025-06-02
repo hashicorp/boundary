@@ -16,6 +16,7 @@ begin;
     ('children'),
     ('individual');
 
+  -- Insert any global roles that have an associated grant scope
   with aggregated_iam_role_grant_scope as (
     select
       r.role_id,
@@ -102,10 +103,12 @@ begin;
     r.create_time,
     r.update_time
   from grant_scope_values rs
-  join iam_role r on rs.role_id = r.public_id
+  join iam_role r  on rs.role_id = r.public_id
   join iam_scope s on s.public_id = r.scope_id
-  where s.type = 'global';
+ where s.type = 'global';
 
+  -- Insert any remaining global roles that do not have an associated grant scope
+  -- These roles will have a grant_scope of 'individual' and grant_this_role_scope of false
   insert into iam_role_global (
     public_id,
     scope_id,
@@ -132,9 +135,10 @@ begin;
     create_time,
     update_time
   from iam_role 
-  where scope_id = 'global'
-  on conflict (public_id) do nothing;
+ where scope_id = 'global'
+    on conflict (public_id) do nothing;
 
+  -- Insert any org-level roles with the appropriate grant scopes
   with aggregated_iam_role_grant_scope as (
     select
       r.role_id,
@@ -214,10 +218,12 @@ begin;
     r.create_time,
     r.update_time
   from grant_scope_values rs
-  join iam_role r on rs.role_id = r.public_id
+  join iam_role r  on rs.role_id = r.public_id
   join iam_scope s on s.public_id = r.scope_id
-  where s.type = 'org';
+ where s.type = 'org';
 
+  -- Insert any org roles that do not have an associated grant scope
+  -- These roles will have a grant_scope of 'individual' and grant_this_role_scope of false
   insert into iam_role_org (
     public_id,
     scope_id,
@@ -244,25 +250,27 @@ begin;
     create_time,
     update_time
   from iam_role 
-  where scope_id like 'o_%'
-  on conflict (public_id) do nothing;
+ where scope_id like 'o_%'
+    on conflict (public_id) do nothing;
 
+  -- Update the iam_role_org table to set the grant_this_role_scope
+  -- and grant_this_role_scope_update_time based on if they are granted 'this' 
   with grant_scope_this as (
     select
       gs.role_id,
       gs.create_time 
     from iam_role_grant_scope gs
     join iam_role_org o on gs.role_id = o.public_id
-    where scope_id_or_special = 'this' 
-    or    scope_id_or_special = o.scope_id
+   where scope_id_or_special = o.scope_id
   )
   update iam_role_org
   set
     grant_this_role_scope = true,
     grant_this_role_scope_update_time = grant_scope_this.create_time
   from grant_scope_this
-  where iam_role_org.public_id = grant_scope_this.role_id;
+ where iam_role_org.public_id = grant_scope_this.role_id;
 
+  -- Migrate project roles (if they have a scope_id, they get migrated)
   insert into iam_role_project (
     public_id,
     scope_id,
@@ -284,8 +292,10 @@ begin;
     r.update_time
   from iam_role r
   join iam_scope s on s.public_id = r.scope_id
-  where s.type = 'project';
+ where s.type = 'project';
 
+  -- Update the iam_role_project table to set the grant_this_role_scope
+  -- and grant_this_role_scope_update_time based on if they are granted 'this' 
   with grant_scope_this as (
     select
       gs.role_id,
@@ -299,7 +309,7 @@ begin;
     grant_this_role_scope = true,
     grant_this_role_scope_update_time = grant_scope_this.create_time
   from grant_scope_this
-  where iam_role_project.public_id = grant_scope_this.role_id;
+ where iam_role_project.public_id = grant_scope_this.role_id;
 
   -- Insert the predefined resource types
   insert into iam_grant_resource_enm (name)
@@ -330,6 +340,7 @@ begin;
     ('user'),
     ('worker');
 
+  -- any global roles that are granted specific org scopes are migrated to its individual grant scope table
   insert into iam_role_global_individual_org_grant_scope (
     role_id,
     grant_scope,
@@ -342,10 +353,10 @@ begin;
     rs.scope_id_or_special,
     rs.create_time
   from iam_role_grant_scope rs
-  join iam_role_global r         on r.public_id = rs.role_id
-  where
-    rs.scope_id_or_special like 'o_%';
+  join iam_role_global r on r.public_id = rs.role_id
+ where rs.scope_id_or_special like 'o_%';
 
+  -- any global roles that are granted specific project scopes are migrated to its individual grant scope table
   insert into iam_role_global_individual_project_grant_scope (
     role_id,
     grant_scope,
@@ -358,10 +369,10 @@ begin;
     rs.scope_id_or_special,
     rs.create_time
   from iam_role_grant_scope rs
-  join iam_role_global r         on r.public_id = rs.role_id
-  where
-    rs.scope_id_or_special like 'p_%';
+  join iam_role_global r on r.public_id = rs.role_id
+ where rs.scope_id_or_special like 'p_%';
 
+  -- any org roles that are granted specific project scopes are migrated to its individual grant scope table
   insert into iam_role_org_individual_grant_scope (
     role_id,
     grant_scope,
@@ -374,9 +385,8 @@ begin;
     rs.scope_id_or_special,
     rs.create_time
   from iam_role_grant_scope rs  
-  join iam_role_org r     on r.public_id = rs.role_id
- where 
-    rs.scope_id_or_special like 'p_%';
+  join iam_role_org r on r.public_id = rs.role_id
+ where rs.scope_id_or_special like 'p_%';
 
   insert into oplog_ticket (name, version)
   values ('iam_role_global',1),
