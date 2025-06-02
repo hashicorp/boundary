@@ -150,22 +150,22 @@ func TestCliCreateGcpDynamicHostCatalogWithHostSet(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-
-	parts := strings.Fields(string(output.Stdout))
-	hostIp := parts[len(parts)-1]
 	t.Log("Successfully connected to the target")
 
-	// Check if connected host exists in the host set
+	addresses := strings.Fields(string(output.Stdout))
+	addressFound := false
 	var targetIps []string
 	err = json.Unmarshal([]byte(c.GcpHostSetIps), &targetIps)
 	require.NoError(t, err)
-	hostIpInList := false
-	for _, v := range targetIps {
-		if v == hostIp {
-			hostIpInList = true
+	for _, address := range addresses {
+		for _, targetIp := range targetIps {
+			if address == targetIp {
+				addressFound = true
+				break
+			}
 		}
 	}
-	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps))
+	require.True(t, addressFound, "Connected host (%s) is not in expected list (%s)", string(output.Stdout), c.GcpHostSetIps)
 }
 
 // TestApiCreateGcpDynamicHostCatalog uses the Go api to create a host catalog with the GCP plugin.
