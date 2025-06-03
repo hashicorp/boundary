@@ -2962,7 +2962,6 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	}
 
 	t.Run("Non-recursive request scopes", func(t *testing.T) {
-
 		testcases := append([]testcase{},
 			testcase{
 				name: "return grants for target resource at proj1a request scope",
@@ -4124,6 +4123,13 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 					Grant:             "ids=g_67890;actions=read",
 				},
 				{
+					RoleId:            org1RoleChildren.PublicId,
+					RoleScopeId:       org1.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeChildren,
+					Grant:             "ids=*;type=group;actions=read,set-members",
+				},
+				{
 					RoleId:            org1RoleProj1b.PublicId,
 					RoleScopeId:       org1.PublicId,
 					RoleParentScopeId: "global",
@@ -4152,6 +4158,13 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 					RoleScopeId:       org2.PublicId,
 					RoleParentScopeId: "global",
 					GrantScopeId:      org2.PublicId,
+					Grant:             "ids=*;type=group;actions=delete",
+				},
+				{
+					RoleId:            org2RoleThisAndChildren.PublicId,
+					RoleScopeId:       org2.PublicId,
+					RoleParentScopeId: "global",
+					GrantScopeId:      globals.GrantScopeChildren,
 					Grant:             "ids=*;type=group;actions=delete",
 				},
 				{

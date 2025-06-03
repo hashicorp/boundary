@@ -941,6 +941,18 @@ const (
        where iam_role_org.grant_this_role_scope
          and iam_role_org.scope_id = @request_scope_id
     ),
+    org_roles_children_grant_scope as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_org.grant_scope          as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+       where iam_role_org.grant_scope = 'children'
+         and iam_role_org.scope_id = @request_scope_id
+    ),
     org_roles_with_individual_grant_scopes as (
       select iam_role_org.public_id            as role_id,
              iam_role_org.scope_id             as role_scope_id,
@@ -974,6 +986,13 @@ const (
              grant_scope,
              canonical_grant
         from org_roles_this_grant_scope
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_children_grant_scope
        union
       select role_id,
              role_scope_id,
