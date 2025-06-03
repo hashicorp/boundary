@@ -3619,7 +3619,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	})
 }
 
-func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
+func TestGrantsForUserGlobalOrgResources(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -3886,7 +3886,7 @@ func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserGlobalOrOrgResourcesRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+			got, err := repo.grantsForUserGlobalOrgResourcesRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
@@ -3898,7 +3898,7 @@ func TestGrantsForUserGlobalOrOrgResources(t *testing.T) {
 	}
 }
 
-func TestGrantsForUserGlobalOrOrgOrProjectResources(t *testing.T) {
+func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -4416,7 +4416,7 @@ func TestGrantsForUserGlobalOrOrgOrProjectResources(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserGlobalOrOrgOrProjectResources(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+			got, err := repo.grantsForUserGlobalOrgProjectResources(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)

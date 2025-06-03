@@ -280,6 +280,7 @@ const (
          and iam_grant.resource = any(@resources)
     )`
 
+	// grantsForUserGlobalResourcesQuery gets a user's grants for resources only applicable to global scopes.
 	grantsForUserGlobalResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_this_grant_scope as (
       select iam_role_global.public_id         as role_id,
@@ -305,6 +306,7 @@ const (
            canonical_grant;
     `
 
+	// grantsForUserOrgResourcesQuery gets a user's grants for resources only applicable to org scopes.
 	grantsForUserOrgResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_with_special_grant_scopes as (
       select iam_role_global.public_id         as role_id,
@@ -377,6 +379,7 @@ const (
            canonical_grant;
     `
 
+	// grantsForUserProjectResourcesQuery gets a user's grants for resources only applicable to project scopes.
 	grantsForUserProjectResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_with_descendant_grant_scopes as (
       select iam_role_global.public_id         as role_id,
@@ -492,7 +495,9 @@ const (
            canonical_grant;
     `
 
-	grantsForUserGlobalOrOrgResourcesQuery = resourceRoleGrantsForUsers + `,
+	// grantsForUserGlobalOrgResourcesQuery gets a user's grants for resources
+	// applicable to both global and org scopes.
+	grantsForUserGlobalOrgResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_this_grant_scope as (
       select iam_role_global.public_id         as role_id,
              iam_role_global.scope_id          as role_scope_id,
@@ -580,6 +585,8 @@ const (
            canonical_grant;
     `
 
+	// grantsForUserProjectResourcesGlobalScopeRecursiveQuery gets a user's grants for project resources
+	// at the global request scope.
 	grantsForUserProjectResourcesGlobalScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
     global_roles_with_descendant_grant_scopes as (
       select iam_role_global.public_id         as role_id,
@@ -689,6 +696,8 @@ const (
            canonical_grant;
     `
 
+	// grantsForUserProjectResourcesOrgScopeRecursiveQuery gets a user's grants for project resources
+	// at a specific org request scope.
 	grantsForUserProjectResourcesOrgScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
     org_roles_with_children_grant_scopes as (
       select iam_role_org.public_id            as role_id,
@@ -763,7 +772,9 @@ const (
            canonical_grant;
     `
 
-	grantsForUserGlobalOrOrgOrProjectResourcesGlobalScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
+	// grantsForUserGlobalOrgProjectResourcesGlobalScopeRecursiveQuery gets a user's grants for resources
+	// applicable to all scopes at the global request scope.
+	grantsForUserGlobalOrgProjectResourcesGlobalScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
     global_individual_grant_scopes (role_id, scope_id) as (
       select role_id, scope_id
         from iam_role_global_individual_org_grant_scope
@@ -915,7 +926,9 @@ const (
            canonical_grant;
     `
 
-	grantsForUserGlobalOrOrgOrProjectResourcesOrgScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
+	// grantsForUserGlobalOrgProjectResourcesOrgScopeRecursiveQuery gets a user's grants for resources
+	// applicable to all scopes at a specific org request scope.
+	grantsForUserGlobalOrgProjectResourcesOrgScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
     org_roles_this_grant_scope as (
       select iam_role_org.public_id            as role_id,
              iam_role_org.scope_id             as role_scope_id,
