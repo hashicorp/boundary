@@ -7,7 +7,7 @@ set -eux -o pipefail
 env
 
 # Requirements
-npm install --global yarn || true
+npm install --global pnpm || true
 
 # Go to the root of the boundary repo
 root_dir="$(git rev-parse --show-toplevel)"
