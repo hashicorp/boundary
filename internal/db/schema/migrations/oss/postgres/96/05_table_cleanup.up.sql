@@ -3,12 +3,12 @@
 
 begin;
 
-  -- for the following foreign key constraint to work, 
+  -- for the following foreign key constraint to work,
   -- we need to ensure that all canonical_grant values in iam_role_grant exist in iam_grant.
   insert into iam_grant (canonical_grant)
   select canonical_grant
-  from iam_role_grant
-  on conflict do nothing;
+    from iam_role_grant
+      on conflict do nothing;
 
   -- Add a foreign key constraint to the iam_role_grant table to ensure that the canonical_grant exists in the iam_grant table.
   -- Alter to add foreign key constraint to the iam_role_grant table defined in 01/06_iam.up.sql
