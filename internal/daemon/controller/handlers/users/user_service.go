@@ -492,18 +492,12 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 	if !ok {
 		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
-	acl := authResults.ACL()
-	grantsHash, err := authResults.GrantsHash(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
 
-	if req.GetId() != authResults.UserId {
-		var err error
-		acl, grantsHash, err = s.aclAndGrantHashForUser(ctx, req.GetId())
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
-		}
+	// fetch ACL and grantsHash for target resource so we can resolve ListResolvableAliasesPermissions
+	// because permissions in authResults only contains permissions relevant to resource.User
+	acl, grantsHash, err := s.aclAndGrantHashForUser(ctx, req.GetId(), resource.Target)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	permissions := acl.ListResolvableAliasesPermissions(resource.Target, targets.IdActions)
@@ -597,7 +591,7 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 
 // aclAndGrantHashForUser returns an ACL from the grants provided to the user and
 // the hash of those grants.
-func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string) (perms.ACL, []byte, error) {
+func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string, resourceType resource.Type) (perms.ACL, []byte, error) {
 	const op = "users.(Service).aclAndGrantHashForUser"
 	iamRepo, err := s.repoFn()
 	if err != nil {
@@ -607,7 +601,10 @@ func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string) (per
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
-	grantTuples, err := iamRepo.GrantsForUser(ctx, userId, resource.User, u.ScopeId)
+	// Need to resolve all possible permissions for a user on a specific resource type because this request
+	// does not have a request scope. Use user's scope with recursive=true to fetch all grants for
+	// specified resource type to ensure that we have a complete list
+	grantTuples, err := iamRepo.GrantsForUser(ctx, userId, resourceType, u.ScopeId, iam.WithRecursive())
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
