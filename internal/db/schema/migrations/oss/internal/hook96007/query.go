@@ -28,7 +28,7 @@ const (
           count(*) filter (where scope_id_or_special = 'descendants') >= 1
       ),
       -- find all individual org or project grant scopes associated with role ids found to have overlapping grants
-      -- filter out all special grants because they don't affect the results set
+      -- filter out all special grants because we want to keep them and delete individual grant scopes
       global_descendants_overlap(role_id, role_scope_id, grant_scope_id) as (
         select rgs.role_id as role_id,
                r.scope_id as role_scope_id,
@@ -52,7 +52,7 @@ const (
           count(*) filter (where scope_id_or_special = 'children') >= 1
       ),
       -- find all individual project grant scopes associated with role ids found to have overlapping grants
-      -- filter out all special grants because they don't affect the results set
+      -- filter out all special grants because we want to keep them and delete individual grant scopes
       global_children_overlap(role_id, role_scope_id, grant_scope_id) as (
         select rgs.role_id as role_id,
                r.scope_id as role_scope_id,
@@ -76,7 +76,7 @@ const (
           count(*) filter (where scope_id_or_special = 'children') >= 1
       ),
       -- find all individual project grant scopes associated with role ids found to have overlapping grants
-      -- filter out all special grants because they don't affect the results set
+      -- filter out all special grants because we want to keep them and delete individual grant scopes
       org_children_overlap(role_id, role_scope_id, grant_scope_id) as (
         select rgs.role_id as role_id,
                r.scope_id as role_scope_id,
