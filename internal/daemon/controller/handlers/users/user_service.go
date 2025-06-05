@@ -597,14 +597,12 @@ func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string, reso
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
-	u, _, err := iamRepo.LookupUser(ctx, userId)
-	if err != nil {
-		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
-	}
 	// Need to resolve all possible permissions for a user on a specific resource type because this request
-	// does not have a request scope. Use user's scope with recursive=true to fetch all grants for
-	// specified resource type to ensure that we have a complete list
-	grantTuples, err := iamRepo.GrantsForUser(ctx, userId, resourceType, u.ScopeId, iam.WithRecursive())
+	// does not have a request scope. A user may be associated with a role at a higher-level scope
+	// (e.g. user in an org can be a principal of a role in the global scope) so we always have to
+	// look up the user's grants as if the request is a global-scoped to resolve the user's
+	// full permissions tree
+	grantTuples, err := iamRepo.GrantsForUser(ctx, userId, resourceType, globals.GlobalPrefix, iam.WithRecursive())
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
