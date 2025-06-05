@@ -107,6 +107,5 @@ func Test_GetOpts(t *testing.T) {
 		assert.True(opts.withRecursive)
 		falseRecurse := getOpts(WithRecursive(false))
 		assert.False(falseRecurse.withRecursive)
-
 	})
 }
