@@ -65,7 +65,8 @@ and the second event is an observation event.
 
 To filter an event sink which was configured for every event type to
 only include the above events, use the following sink configuration:
-```
+
+```hcl
 sink "stderr" = {
     name = "all-events"
     description = "All events sent to stderr"
