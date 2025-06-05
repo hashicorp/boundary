@@ -21,7 +21,7 @@ func Test_GetOpts(t *testing.T) {
 
 	// test default values
 	defaultOpts := getDefaultOptions()
-	assert.False(t, defaultOpts.withRecursive)
+	assert.Equal(t, options{}, defaultOpts)
 
 	opts := getOpts(
 		WithScopeId("foo"),
