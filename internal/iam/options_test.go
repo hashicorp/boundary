@@ -101,9 +101,12 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithRecursive", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithRecursive())
-		testOpts := getDefaultOptions()
-		assert.False(testOpts.withRecursive)
+		opts := getOpts(WithRecursive(true))
+		defaultOpts := getDefaultOptions()
+		assert.False(defaultOpts.withRecursive)
 		assert.True(opts.withRecursive)
+		falseRecurse := getOpts(WithRecursive(false))
+		assert.False(falseRecurse.withRecursive)
+
 	})
 }

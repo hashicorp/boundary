@@ -455,7 +455,7 @@ func TestGrantsForUser(t *testing.T) {
 						userId:         user.PublicId,
 						resourceType:   resource.Role,
 						requestScopeId: globals.GlobalPrefix,
-						opt:            []iam.Option{iam.WithRecursive()},
+						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
 						// role 1
 						{
@@ -738,7 +738,7 @@ func TestGrantsForUser(t *testing.T) {
 						userId:         user.PublicId,
 						resourceType:   resource.Role,
 						requestScopeId: org.PublicId,
-						opt:            []iam.Option{iam.WithRecursive()},
+						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
 						// role 1
 						{
@@ -979,7 +979,7 @@ func TestGrantsForUser(t *testing.T) {
 						userId:         user.PublicId,
 						resourceType:   resource.AuthToken,
 						requestScopeId: globals.GlobalPrefix,
-						opt:            []iam.Option{iam.WithRecursive()},
+						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
 						{
 							RoleId:            role1.PublicId,
@@ -1220,7 +1220,7 @@ func TestGrantsForUser(t *testing.T) {
 					userId:         user.PublicId,
 					resourceType:   resource.User,
 					requestScopeId: proj.PublicId,
-					opt:            []iam.Option{iam.WithRecursive()},
+					opt:            []iam.Option{iam.WithRecursive(true)},
 				}, perms.GrantTuples{}
 			},
 			wantErr: true,
@@ -1322,7 +1322,7 @@ func TestGrantsForUser(t *testing.T) {
 						userId:         user.PublicId,
 						resourceType:   resource.Target,
 						requestScopeId: globals.GlobalPrefix,
-						opt:            []iam.Option{iam.WithRecursive()},
+						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
 						// role 1
 						{
@@ -1544,7 +1544,7 @@ func TestGrantsForUser(t *testing.T) {
 						userId:         user.PublicId,
 						resourceType:   resource.HostCatalog,
 						requestScopeId: org.PublicId,
-						opt:            []iam.Option{iam.WithRecursive()},
+						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
 						// role 1
 						{

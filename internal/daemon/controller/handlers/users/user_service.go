@@ -602,7 +602,7 @@ func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string, reso
 	// (e.g. user in an org can be a principal of a role in the global scope) so we always have to
 	// look up the user's grants as if the request is a global-scoped to resolve the user's
 	// full permissions tree
-	grantTuples, err := iamRepo.GrantsForUser(ctx, userId, resourceType, globals.GlobalPrefix, iam.WithRecursive())
+	grantTuples, err := iamRepo.GrantsForUser(ctx, userId, resourceType, globals.GlobalPrefix, iam.WithRecursive(true))
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}

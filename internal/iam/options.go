@@ -71,9 +71,9 @@ func WithDescription(desc string) Option {
 }
 
 // WithRecursive indicates that this request is a recursive request
-func WithRecursive() Option {
+func WithRecursive(isRecursive bool) Option {
 	return func(o *options) {
-		o.withRecursive = true
+		o.withRecursive = isRecursive
 	}
 }
 

@@ -651,10 +651,7 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType resource.Ty
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
-	var iamOpt []iam.Option
-	if isRecursiveRequest {
-		iamOpt = append(iamOpt, iam.WithRecursive())
-	}
+	iamOpt := []iam.Option{iam.WithRecursive(isRecursiveRequest)}
 	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id, resourceType, scopeInfo.Id, iamOpt...)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op)
