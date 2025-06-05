@@ -538,8 +538,7 @@ func (m *MultiGrantTuple) TestStableSort() {
 	m.Grants = strings.Join(gts, "^")
 }
 
-// grantsForUserGlobalResources returns the grants for the user for resources that can
-// only be globally scoped.
+// grantsForUserGlobalResources returns user grants for resources that can only be globally scoped.
 func (r *Repository) grantsForUserGlobalResources(
 	ctx context.Context,
 	userId string,
@@ -593,8 +592,7 @@ func (r *Repository) grantsForUserGlobalResources(
 	return grants, nil
 }
 
-// grantsForUserOrgResources returns the grants for the user for resources that can
-// only be org scoped.
+// grantsForUserOrgResources returns user grants for resources that can be org scoped.
 func (r *Repository) grantsForUserOrgResources(
 	ctx context.Context,
 	userId,
@@ -653,8 +651,7 @@ func (r *Repository) grantsForUserOrgResources(
 	return grants, nil
 }
 
-// grantsForUserProjectResources returns the grants for the user for resources that can
-// only be project scoped.
+// grantsForUserProjectResources returns user grants for resources that can only be project scoped.
 func (r *Repository) grantsForUserProjectResources(
 	ctx context.Context,
 	userId,
@@ -713,15 +710,14 @@ func (r *Repository) grantsForUserProjectResources(
 	return grants, nil
 }
 
-// grantsForUserGlobalAndOrgResourcesRecursive returns the grants for the user for resources that can
-// exist in global and org scopes.
-func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
+// grantsForUserGlobalOrgResourcesRecursive returns user grants for resources applicable to both global and org scopes.
+func (r *Repository) grantsForUserGlobalOrgResourcesRecursive(
 	ctx context.Context,
 	userId,
 	reqScopeId string,
 	res resource.Type,
 ) (perms.GrantTuples, error) {
-	const op = "iam.(Repository).grantsForUserGlobalAndOrgResourcesRecursive"
+	const op = "iam.(Repository).grantsForUserGlobalOrgResourcesRecursive"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
@@ -758,7 +754,7 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	)
 
 	var grants []perms.GrantTuple
-	rows, err := r.reader.Query(ctx, grantsForUserGlobalAndOrgResourcesQuery, args)
+	rows, err := r.reader.Query(ctx, grantsForUserGlobalOrgResourcesQuery, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -782,8 +778,7 @@ func (r *Repository) grantsForUserGlobalAndOrgResourcesRecursive(
 	return grants, nil
 }
 
-// grantsForUserProjectResourcesRecursiveScopes returns the grants for the user for resources that can
-// only be project scoped.
+// grantsForUserProjectResourcesRecursiveScopes returns user grants for project resources at any request scope.
 func (r *Repository) grantsForUserProjectResourcesRecursiveScopes(
 	ctx context.Context,
 	userId,
@@ -816,6 +811,81 @@ func (r *Repository) grantsForUserProjectResourcesRecursiveScopes(
 		args = append(args, sql.Named("request_scope_id", reqScopeId))
 	case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
 		// Can't recursely list any further at project scope
+		return r.grantsForUserProjectResources(ctx, userId, reqScopeId, res)
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope, an org scope, or a project scope")
+	}
+
+	switch userId {
+	case globals.AnonymousUserId:
+		userIds = []string{globals.AnonymousUserId}
+	default:
+		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
+	}
+	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
+
+	args = append(args,
+		sql.Named("user_ids", pq.Array(userIds)),
+		sql.Named("resources", pq.Array(resources)),
+	)
+
+	var grants []perms.GrantTuple
+	rows, err := r.reader.Query(ctx, query, args)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var g perms.GrantTuple
+		if err := rows.Scan(
+			&g.RoleId,
+			&g.RoleScopeId,
+			&g.RoleParentScopeId,
+			&g.GrantScopeId,
+			&g.Grant,
+		); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		grants = append(grants, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return grants, nil
+}
+
+// grantsForUserGlobalOrgProjectResources returns user grants for resources applicable to all scopes, at any request scope.
+func (r *Repository) grantsForUserGlobalOrgProjectResources(
+	ctx context.Context,
+	userId,
+	reqScopeId string,
+	res resource.Type,
+) (perms.GrantTuples, error) {
+	const op = "iam.(Repository).grantsForUserGlobalOrgProjectResources"
+	if userId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+	}
+	if reqScopeId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
+	}
+	if res == resource.All || res == resource.Unknown {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "a specific resource type must be specified")
+	}
+
+	// Determine which query to use based on the request scope
+	var (
+		args      []any
+		userIds   []string
+		resources []string
+		query     string
+	)
+	switch {
+	case reqScopeId == globals.GlobalPrefix:
+		query = grantsForUserGlobalOrgProjectResourcesGlobalScopeRecursiveQuery
+	case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
+		query = grantsForUserGlobalOrgProjectResourcesOrgScopeRecursiveQuery
+		args = append(args, sql.Named("request_scope_id", reqScopeId))
+	case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
 		return r.grantsForUserProjectResources(ctx, userId, reqScopeId, res)
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope, an org scope, or a project scope")

@@ -280,6 +280,7 @@ const (
          and iam_grant.resource = any(@resources)
     )`
 
+	// grantsForUserGlobalResourcesQuery gets a user's grants for resources only applicable to global scopes.
 	grantsForUserGlobalResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_this_grant_scope as (
       select iam_role_global.public_id         as role_id,
@@ -305,6 +306,7 @@ const (
            canonical_grant;
     `
 
+	// grantsForUserOrgResourcesQuery gets a user's grants for resources only applicable to org scopes.
 	grantsForUserOrgResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_with_special_grant_scopes as (
       select iam_role_global.public_id         as role_id,
@@ -377,6 +379,7 @@ const (
            canonical_grant;
     `
 
+	// grantsForUserProjectResourcesQuery gets a user's grants for resources only applicable to project scopes.
 	grantsForUserProjectResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_with_descendant_grant_scopes as (
       select iam_role_global.public_id         as role_id,
@@ -492,7 +495,9 @@ const (
            canonical_grant;
     `
 
-	grantsForUserGlobalAndOrgResourcesQuery = resourceRoleGrantsForUsers + `,
+	// grantsForUserGlobalOrgResourcesQuery gets a user's grants for resources
+	// applicable to both global and org scopes.
+	grantsForUserGlobalOrgResourcesQuery = resourceRoleGrantsForUsers + `,
     global_roles_this_grant_scope as (
       select iam_role_global.public_id         as role_id,
              iam_role_global.scope_id          as role_scope_id,
@@ -580,6 +585,8 @@ const (
            canonical_grant;
     `
 
+	// grantsForUserProjectResourcesGlobalScopeRecursiveQuery gets a user's grants for project resources
+	// at the global request scope.
 	grantsForUserProjectResourcesGlobalScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
     global_roles_with_descendant_grant_scopes as (
       select iam_role_global.public_id         as role_id,
@@ -689,6 +696,8 @@ const (
            canonical_grant;
     `
 
+	// grantsForUserProjectResourcesOrgScopeRecursiveQuery gets a user's grants for project resources
+	// at a specific org request scope.
 	grantsForUserProjectResourcesOrgScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
     org_roles_with_children_grant_scopes as (
       select iam_role_org.public_id            as role_id,
@@ -756,6 +765,255 @@ const (
            grant_scope,
            canonical_grant as grant
       from all_roles
+  group by role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           canonical_grant;
+    `
+
+	// grantsForUserGlobalOrgProjectResourcesGlobalScopeRecursiveQuery gets a user's grants for resources
+	// applicable to all scopes at the global request scope.
+	grantsForUserGlobalOrgProjectResourcesGlobalScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
+    global_individual_grant_scopes (role_id, scope_id) as (
+      select role_id, scope_id
+        from iam_role_global_individual_org_grant_scope
+       union
+      select role_id, scope_id
+        from iam_role_global_individual_project_grant_scope
+    ),
+    global_roles_this_grant_scope as (
+      select iam_role_global.public_id         as role_id,
+             iam_role_global.scope_id          as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_global.scope_id          as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_global
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_global.public_id
+       where iam_role_global.grant_this_role_scope
+    ),
+    global_roles_with_special_grant_scopes as (
+      select iam_role_global.public_id         as role_id,
+             iam_role_global.scope_id          as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_global.grant_scope       as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_global
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_global.public_id
+       where iam_role_global.grant_scope = any('{ children, descendants }')
+    ),
+    global_roles_with_individual_grant_scopes as (
+      select iam_role_global.public_id         as role_id,
+             iam_role_global.scope_id          as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             individual.scope_id               as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_global
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_global.public_id
+        join global_individual_grant_scopes individual
+          on individual.role_id = iam_role_global.public_id
+    ),
+    org_roles_this_grant_scope as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_org.scope_id             as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+       where iam_role_org.grant_this_role_scope
+    ),
+    org_roles_with_children_grant_scopes as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_org.grant_scope          as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+       where iam_role_org.grant_scope = 'children'
+    ),
+    org_roles_with_individual_grant_scopes as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             individual.scope_id               as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+        join iam_role_org_individual_grant_scope individual
+          on individual.role_id = iam_role_org.public_id
+    ),
+    project_roles_this_grant_scope as (
+      select iam_role_project.public_id        as role_id,
+             iam_role_project.scope_id         as role_scope_id,
+             iam_scope_project.parent_id       as role_parent_scope_id,
+             iam_role_project.scope_id         as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_project
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_project.public_id
+        join iam_scope_project
+          on iam_scope_project.scope_id = iam_role_project.scope_id
+       where iam_role_project.grant_this_role_scope
+    ),
+    all_roles as (
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from global_roles_this_grant_scope
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from global_roles_with_special_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from global_roles_with_individual_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_this_grant_scope
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_with_children_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_with_individual_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from project_roles_this_grant_scope
+    )
+    select role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           canonical_grant as grant
+      from all_roles
+  group by role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           canonical_grant;
+    `
+
+	// grantsForUserGlobalOrgProjectResourcesOrgScopeRecursiveQuery gets a user's grants for resources
+	// applicable to all scopes at a specific org request scope.
+	grantsForUserGlobalOrgProjectResourcesOrgScopeRecursiveQuery = resourceRoleGrantsForUsers + `,
+    org_roles_this_grant_scope as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_org.scope_id             as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+       where iam_role_org.grant_this_role_scope
+         and iam_role_org.scope_id = @request_scope_id
+    ),
+    org_roles_children_grant_scope as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             iam_role_org.grant_scope          as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+       where iam_role_org.grant_scope = 'children'
+         and iam_role_org.scope_id = @request_scope_id
+    ),
+    org_roles_with_individual_grant_scopes as (
+      select iam_role_org.public_id            as role_id,
+             iam_role_org.scope_id             as role_scope_id,
+             'global'                          as role_parent_scope_id,
+             individual.scope_id               as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_org
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_org.public_id
+        join iam_role_org_individual_grant_scope individual
+          on individual.role_id = iam_role_org.public_id
+       where iam_role_org.scope_id = @request_scope_id
+    ),
+    project_roles_grant_scopes as (
+      select iam_role_project.public_id        as role_id,
+             iam_role_project.scope_id         as role_scope_id,
+             iam_scope_project.parent_id       as role_parent_scope_id,
+             iam_role_project.scope_id         as grant_scope,
+             roles_with_grants.canonical_grant as canonical_grant
+        from iam_role_project
+        join roles_with_grants
+          on roles_with_grants.role_id = iam_role_project.public_id
+        join iam_scope_project
+          on iam_scope_project.scope_id = iam_role_project.scope_id
+         and iam_scope_project.parent_id = @request_scope_id
+    ),
+    org_and_project_roles as (
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_this_grant_scope
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_children_grant_scope
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from org_roles_with_individual_grant_scopes
+       union
+      select role_id,
+             role_scope_id,
+             role_parent_scope_id,
+             grant_scope,
+             canonical_grant
+        from project_roles_grant_scopes
+    )
+    select role_id,
+           role_scope_id,
+           role_parent_scope_id,
+           grant_scope,
+           canonical_grant as grant
+      from org_and_project_roles
   group by role_id,
            role_scope_id,
            role_parent_scope_id,
