@@ -32,7 +32,7 @@ func Test_GetOpts(t *testing.T) {
 		WithKms(withKms),
 		WithRecoveryTokenNotAllowed(true),
 		WithAnonymousUserNotAllowed(true),
-		WithRecursive(),
+		WithRecursive(true),
 		WithResource(res),
 		WithActions([]string{"callback"}),
 	)

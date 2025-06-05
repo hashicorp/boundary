@@ -119,9 +119,7 @@ func (s Service) authResult(ctx context.Context, a action.Type, isRecursive bool
 	opts := []auth.Option{
 		auth.WithAction(a),
 		auth.WithScopeId(scope.Global.String()),
-	}
-	if isRecursive {
-		opts = append(opts, auth.WithRecursive())
+		auth.WithRecursive(isRecursive),
 	}
 	return auth.Verify(ctx, resource.Billing, opts...)
 }

@@ -1580,7 +1580,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 
 	var parentId string
 	var t target.Target
-	opts := []auth.Option{auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1623,9 +1623,6 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	if isRecursive {
-		opts = append(opts, auth.WithRecursive())
-	}
 	ret := auth.Verify(ctx, resource.Target, opts...)
 	ret.RoundTripValue = t
 	return ret

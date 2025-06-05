@@ -770,7 +770,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	res := requestauth.VerifyResults{}
 
 	var parentId string
-	opts := []requestauth.Option{requestauth.WithAction(a)}
+	opts := []requestauth.Option{requestauth.WithAction(a), requestauth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -847,9 +847,6 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 		opts = append(opts, requestauth.WithId(id))
 	}
 	opts = append(opts, requestauth.WithScopeId(parentId))
-	if isRecursive {
-		opts = append(opts, requestauth.WithRecursive())
-	}
 	return requestauth.Verify(ctx, resource.AuthMethod, opts...)
 }
 

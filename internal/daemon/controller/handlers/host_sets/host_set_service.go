@@ -869,7 +869,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -929,9 +929,6 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		cat = pc
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetProjectId()), auth.WithPin(parentId))
-	if isRecursive {
-		opts = append(opts, auth.WithRecursive())
-	}
 	return cat, auth.Verify(ctx, resource.HostSet, opts...)
 }
 

@@ -608,7 +608,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -666,9 +666,6 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	default:
 		res.Error = errors.New(ctx, errors.InvalidParameter, op, "unrecognized credential store subtype from id")
 		return res
-	}
-	if isRecursive {
-		opts = append(opts, auth.WithRecursive())
 	}
 	return auth.Verify(ctx, resource.CredentialLibrary, opts...)
 }
