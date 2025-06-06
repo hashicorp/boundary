@@ -605,6 +605,8 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 	TestRoleGrant(t, conn, roleOrg1.PublicId, "ids=*;type=alias;actions=create,update,read,list")
 	TestRoleGrant(t, conn, roleOrg1.PublicId, "ids=*;type=alias;actions=delete")
 	TestRoleGrant(t, conn, roleThisAndOrg2.PublicId, "ids=*;type=alias;actions=delete")
+	TestRoleGrant(t, conn, roleThisAndOrg2.PublicId, "ids=*;type=alias;actions=read")
+	TestRoleGrant(t, conn, roleThisAndOrg2.PublicId, "ids=*;type=alias;actions=update")
 	TestRoleGrant(t, conn, roleDescendants.PublicId, "ids=*;type=*;actions=update")
 	TestRoleGrant(t, conn, roleThisAndChildren.PublicId, "ids=*;type=account;actions=create,update")
 	TestRoleGrant(t, conn, roleThisAndChildren.PublicId, "ids=*;type=group;actions=read;output_fields=id")
@@ -641,6 +643,20 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 					RoleParentScopeId: "global",
 					GrantScopeId:      "global",
 					Grant:             "ids=*;type=alias;actions=delete",
+				},
+				{
+					RoleId:            roleThisAndOrg2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=alias;actions=read",
+				},
+				{
+					RoleId:            roleThisAndOrg2.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      "global",
+					Grant:             "ids=*;type=alias;actions=update",
 				},
 			},
 		},
