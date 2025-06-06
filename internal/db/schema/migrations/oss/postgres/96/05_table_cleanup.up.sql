@@ -1,0 +1,22 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: BUSL-1.1
+
+begin;
+
+  -- for the following foreign key constraint to work,
+  -- we need to ensure that all canonical_grant values in iam_role_grant exist in iam_grant.
+  insert into iam_grant (canonical_grant)
+  select canonical_grant
+    from iam_role_grant
+      on conflict do nothing;
+
+  -- Add a foreign key constraint to the iam_role_grant table to ensure that the canonical_grant exists in the iam_grant table.
+  -- Alter to add foreign key constraint to the iam_role_grant table defined in 01/06_iam.up.sql
+  alter table iam_role_grant
+    add constraint iam_grant_fkey
+     foreign key (canonical_grant)
+        references iam_grant(canonical_grant)
+        on delete cascade
+        on update cascade;
+
+commit;
