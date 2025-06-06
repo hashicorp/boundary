@@ -2954,6 +2954,8 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	TestRoleGrant(t, conn, globalRoleDescendants.PublicId, "ids=*;type=*;actions=read")
 	TestRoleGrant(t, conn, globalRoleThisAndProj1a.PublicId, "ids=*;type=target;actions=set-credential-sources")
 	TestRoleGrant(t, conn, globalRoleProj2.PublicId, "ids=*;type=scope;actions=list,read")
+	TestRoleGrant(t, conn, globalRoleProj2.PublicId, "ids=*;type=scope;actions=destroy-key-version")
+	TestRoleGrant(t, conn, globalRoleProj2.PublicId, "ids=*;type=scope;actions=rotate-keys")
 	TestRoleGrant(t, conn, globalRoleProj2.PublicId, "ids=*;type=target;actions=create,update")
 
 	org1RoleProj1b := TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{proj1b.PublicId}))
@@ -3142,6 +3144,20 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						RoleParentScopeId: "global",
 						GrantScopeId:      proj2.PublicId,
 						Grant:             "ids=*;type=scope;actions=list,read",
+					},
+					{
+						RoleId:            globalRoleProj2.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=*;type=scope;actions=destroy-key-version",
+					},
+					{
+						RoleId:            globalRoleProj2.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=*;type=scope;actions=rotate-keys",
 					},
 					{
 						RoleId:            org2RoleThisAndChildren.PublicId,
