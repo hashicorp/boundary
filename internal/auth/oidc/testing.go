@@ -211,13 +211,13 @@ func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, filter string, 
 }
 
 // TestManagedGroupMember adds given account IDs to a managed group
-func TestManagedGroupMember(t testing.TB, conn *db.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
+func TestManagedGroupMember(t testing.TB, conn *db.DB, managedGroupId, accountId string, opt ...Option) *ManagedGroupMemberAccount {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	mg, err := NewManagedGroupMemberAccount(ctx, managedGroupId, memberId, opt...)
+	mg, err := NewManagedGroupMemberAccount(ctx, managedGroupId, accountId, opt...)
 	require.NoError(err)
 
 	require.NoError(rw.Create(ctx, mg))
