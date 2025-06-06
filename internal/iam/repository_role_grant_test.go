@@ -750,14 +750,14 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	user := TestUser(t, repo, "global")
 
 	// Create scopes
-	org1Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
-	org2Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	org1 := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	org2 := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
 
 	// Create & grant roles
 	roles := make([]*Role, 0)
 
-	globalRoleOrg1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1Scope.PublicId}))
-	globalRoleThisAndOrg2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2Scope.PublicId}))
+	globalRoleOrg1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1.PublicId}))
+	globalRoleThisAndOrg2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2.PublicId}))
 	globalRoleDescendants := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
 	globalRoleThisAndChildren := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
 	roles = append(roles, globalRoleOrg1, globalRoleThisAndOrg2, globalRoleDescendants, globalRoleThisAndChildren)
@@ -769,16 +769,16 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	TestRoleGrant(t, conn, globalRoleThisAndChildren.PublicId, "ids=*;type=user;actions=set-accounts")
 	TestRoleGrant(t, conn, globalRoleThisAndChildren.PublicId, "ids=*;type=policy;actions=read;output_fields=id")
 
-	org1RoleThis := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
-	org1RoleChildren := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
-	org2RoleIndividual := TestRole(t, conn, org2Scope.PublicId)
-	org2RoleThisAndChildren := TestRole(t, conn, org2Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
-	roles = append(roles, org1RoleThis, org1RoleChildren, org2RoleIndividual, org2RoleThisAndChildren)
+	org1RoleThis := TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
+	org1RoleChildren := TestRole(t, conn, org1.PublicId, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
+	org2RoleThis := TestRole(t, conn, org2.PublicId)
+	org2RoleThisAndChildren := TestRole(t, conn, org2.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+	roles = append(roles, org1RoleThis, org1RoleChildren, org2RoleThis, org2RoleThisAndChildren)
 
 	TestRoleGrant(t, conn, org1RoleThis.PublicId, "ids=*;type=*;actions=*")
 	TestRoleGrant(t, conn, org1RoleChildren.PublicId, "ids=*;type=user;actions=add-accounts")
-	TestRoleGrant(t, conn, org2RoleIndividual.PublicId, "ids=*;type=user;actions=list-resolvable-aliases")
-	TestRoleGrant(t, conn, org2RoleIndividual.PublicId, "ids=*;type=policy;actions=list,no-op")
+	TestRoleGrant(t, conn, org2RoleThis.PublicId, "ids=*;type=user;actions=list-resolvable-aliases")
+	TestRoleGrant(t, conn, org2RoleThis.PublicId, "ids=*;type=policy;actions=list,no-op")
 	TestRoleGrant(t, conn, org2RoleThisAndChildren.PublicId, "ids=*;type=policy;actions=*")
 
 	// Add users to created roles
@@ -797,7 +797,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "return grants for user resource at org1 request scope",
 			input: testInput{
 				userId:     user.PublicId,
-				reqScopeId: org1Scope.PublicId,
+				reqScopeId: org1.PublicId,
 				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{
@@ -805,7 +805,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 					RoleId:            globalRoleOrg1.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=*;type=user;actions=create,update",
 				},
 				{
@@ -824,9 +824,9 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 				},
 				{
 					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1Scope.PublicId,
+					RoleScopeId:       org1.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=*;type=*;actions=*",
 				},
 			},
@@ -835,7 +835,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "return grants for user resource at org2 request scope",
 			input: testInput{
 				userId:     user.PublicId,
-				reqScopeId: org2Scope.PublicId,
+				reqScopeId: org2.PublicId,
 				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{
@@ -843,7 +843,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 					RoleId:            globalRoleThisAndOrg2.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
+					GrantScopeId:      org2.PublicId,
 					Grant:             "ids=*;type=user;actions=*",
 				},
 				{
@@ -861,10 +861,10 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 					Grant:             "ids=*;type=user;actions=set-accounts",
 				},
 				{
-					RoleId:            org2RoleIndividual.PublicId,
-					RoleScopeId:       org2Scope.PublicId,
+					RoleId:            org2RoleThis.PublicId,
+					RoleScopeId:       org2.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
+					GrantScopeId:      org2.PublicId,
 					Grant:             "ids=*;type=user;actions=list-resolvable-aliases",
 				},
 			},
@@ -873,7 +873,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "return grants for policy resource at org1 request scope",
 			input: testInput{
 				userId:     user.PublicId,
-				reqScopeId: org1Scope.PublicId,
+				reqScopeId: org1.PublicId,
 				resource:   []resource.Type{resource.Policy},
 			},
 			output: []perms.GrantTuple{
@@ -881,7 +881,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 					RoleId:            globalRoleOrg1.PublicId,
 					RoleScopeId:       "global",
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=*;type=policy;actions=list,read",
 				},
 				{
@@ -900,9 +900,9 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 				},
 				{
 					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1Scope.PublicId,
+					RoleScopeId:       org1.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=*;type=*;actions=*",
 				},
 			},
@@ -911,7 +911,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "return grants for policy resource at org2 request scope",
 			input: testInput{
 				userId:     user.PublicId,
-				reqScopeId: org2Scope.PublicId,
+				reqScopeId: org2.PublicId,
 				resource:   []resource.Type{resource.Policy},
 			},
 			output: []perms.GrantTuple{
@@ -930,17 +930,17 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 					Grant:             "ids=*;type=policy;actions=read;output_fields=id",
 				},
 				{
-					RoleId:            org2RoleIndividual.PublicId,
-					RoleScopeId:       org2Scope.PublicId,
+					RoleId:            org2RoleThis.PublicId,
+					RoleScopeId:       org2.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
+					GrantScopeId:      org2.PublicId,
 					Grant:             "ids=*;type=policy;actions=list,no-op",
 				},
 				{
 					RoleId:            org2RoleThisAndChildren.PublicId,
-					RoleScopeId:       org2Scope.PublicId,
+					RoleScopeId:       org2.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
+					GrantScopeId:      org2.PublicId,
 					Grant:             "ids=*;type=policy;actions=*",
 				},
 			},
@@ -949,7 +949,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "return '*' and 'unknown' grants when no resource specified at org1 request scope",
 			input: testInput{
 				userId:     user.PublicId,
-				reqScopeId: org1Scope.PublicId,
+				reqScopeId: org1.PublicId,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -961,9 +961,9 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 				},
 				{
 					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1Scope.PublicId,
+					RoleScopeId:       org1.PublicId,
 					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
+					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=*;type=*;actions=*",
 				},
 			},
@@ -972,7 +972,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "return '*' and 'unknown' grants when no resource specified at org2 request scope",
 			input: testInput{
 				userId:     user.PublicId,
-				reqScopeId: org2Scope.PublicId,
+				reqScopeId: org2.PublicId,
 			},
 			output: []perms.GrantTuple{
 				{
@@ -988,7 +988,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "u_anon should return no grants at org1 request scope",
 			input: testInput{
 				userId:     globals.AnonymousUserId,
-				reqScopeId: org1Scope.PublicId,
+				reqScopeId: org1.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -996,7 +996,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "u_anon should return no grants at org2 request scope",
 			input: testInput{
 				userId:     globals.AnonymousUserId,
-				reqScopeId: org2Scope.PublicId,
+				reqScopeId: org2.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -1004,7 +1004,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "u_auth should return no grants at org1 request scope",
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
-				reqScopeId: org1Scope.PublicId,
+				reqScopeId: org1.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -1012,7 +1012,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "u_auth should return no grants at org2 request scope",
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
-				reqScopeId: org2Scope.PublicId,
+				reqScopeId: org2.PublicId,
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -1020,7 +1020,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			name: "missing user id should return error",
 			input: testInput{
 				resource:   []resource.Type{resource.User},
-				reqScopeId: org1Scope.PublicId,
+				reqScopeId: org1.PublicId,
 			},
 			errorMsg: "missing user id",
 		},
