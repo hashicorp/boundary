@@ -781,20 +781,22 @@ func (r *Repository) grantsForUserProjectResources(
 		sql.Named("request_scope_id", reqScopeId),
 	)
 
-	var grants []perms.GrantTuple
+	var grants []grantsForUserResults
 	rows, err := r.reader.Query(ctx, grantsForUserProjectResourcesQuery, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g perms.GrantTuple
+		var g grantsForUserResults
 		if err := rows.Scan(
-			&g.RoleId,
-			&g.RoleScopeId,
-			&g.RoleParentScopeId,
-			&g.GrantScopeId,
-			&g.Grant,
+			&g.roleId,
+			&g.roleScopeId,
+			&g.roleParentScopeId,
+			&g.grantScope,
+			&g.grantThisRoleScope,
+			pq.Array(&g.individualGrantScopes),
+			pq.Array(&g.canonicalGrants),
 		); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -803,7 +805,46 @@ func (r *Repository) grantsForUserProjectResources(
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return grants, nil
+	ret := make(perms.GrantTuples, 0, len(grants)*3)
+	for _, grant := range grants {
+		// If the role has individual grant scopes, iterate over them and create a grant tuple for each
+		if grant.grantScope == globals.GrantScopeIndividual && len(grant.individualGrantScopes) > 0 {
+			for _, grantScope := range grant.individualGrantScopes {
+				for _, canonicalGrant := range grant.canonicalGrants {
+					gt := perms.GrantTuple{
+						RoleId:            grant.roleId,
+						RoleScopeId:       grant.roleScopeId,
+						RoleParentScopeId: grant.roleParentScopeId,
+						GrantScopeId:      grantScope,
+						Grant:             canonicalGrant,
+					}
+
+					if gt.GrantScopeId == globals.GrantScopeThis || gt.GrantScopeId == "" {
+						gt.GrantScopeId = grant.roleScopeId
+					}
+					ret = append(ret, gt)
+				}
+			}
+		}
+		// If the role does not have any individual grant scopes, create a grant tuple for each canonical grant
+		if grant.grantScope != globals.GrantScopeIndividual || len(grant.individualGrantScopes) == 0 {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.grantScope,
+					Grant:             canonicalGrant,
+				}
+
+				if gt.GrantScopeId == globals.GrantScopeThis || gt.GrantScopeId == "" {
+					gt.GrantScopeId = grant.roleScopeId
+				}
+				ret = append(ret, gt)
+			}
+		}
+	}
+	return ret, nil
 }
 
 // grantsForUserRecursive returns user grants for resources applicable to all scopes, at any request scope.
