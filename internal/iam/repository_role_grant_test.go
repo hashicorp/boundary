@@ -1807,7 +1807,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				got, err := repo.grantsForUserProjectResourcesRecursiveScopes(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+				got, err := repo.grantsForUserRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
 				if tc.errorMsg != "" {
 					require.Error(t, err)
 					assert.Contains(t, err.Error(), tc.errorMsg)
@@ -2694,7 +2694,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserGlobalOrgProjectRecursiveResources(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+			got, err := repo.grantsForUserRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
