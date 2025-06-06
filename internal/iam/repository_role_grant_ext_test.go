@@ -1452,7 +1452,7 @@ func TestGrantsForUser(t *testing.T) {
 					[]string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					[]string{"ids=*;type=*;actions=*"})
 				// children grant
-				//	returns 2 tuples - this, children
+				//	returns 1 tuples - children
 				role2 := iam.TestRoleWithGrants(t, conn, org.PublicId,
 					[]string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					[]string{"ids=*;type=host-catalog;actions=authorize-session"})
@@ -1462,7 +1462,7 @@ func TestGrantsForUser(t *testing.T) {
 					[]string{globals.GrantScopeThis},
 					[]string{"ids=*;type=host-catalog;actions=read"})
 				// direct grant multiple scopes
-				//	returns 3 tuples - this, proj3, proj4
+				//	returns 3 tuples - proj3, proj4
 				role4 := iam.TestRoleWithGrants(t, conn, org.PublicId,
 					[]string{globals.GrantScopeThis, proj3.PublicId, proj4.PublicId},
 					[]string{"ids=*;type=host-catalog;actions=update"})
@@ -1545,13 +1545,6 @@ func TestGrantsForUser(t *testing.T) {
 							RoleId:            role2.PublicId,
 							RoleScopeId:       role2.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
-							GrantScopeId:      role2.ScopeId,
-							Grant:             "ids=*;type=host-catalog;actions=authorize-session",
-						},
-						{
-							RoleId:            role2.PublicId,
-							RoleScopeId:       role2.ScopeId,
-							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      globals.GrantScopeChildren,
 							Grant:             "ids=*;type=host-catalog;actions=authorize-session",
 						},
@@ -1564,13 +1557,6 @@ func TestGrantsForUser(t *testing.T) {
 							Grant:             "ids=*;type=host-catalog;actions=read",
 						},
 						// role 4
-						{
-							RoleId:            role4.PublicId,
-							RoleScopeId:       role4.ScopeId,
-							RoleParentScopeId: globals.GlobalPrefix,
-							GrantScopeId:      role4.ScopeId,
-							Grant:             "ids=*;type=host-catalog;actions=update",
-						},
 						{
 							RoleId:            role4.PublicId,
 							RoleScopeId:       role4.ScopeId,
