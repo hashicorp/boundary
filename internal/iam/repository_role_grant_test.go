@@ -779,6 +779,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 	roles = append(roles, globalRoleOrg1, globalRoleThisAndOrg2, globalRoleDescendants, globalRoleThisAndChildren)
 
 	TestRoleGrant(t, conn, globalRoleOrg1.PublicId, "ids=*;type=user;actions=create,update")
+	TestRoleGrant(t, conn, globalRoleOrg1.PublicId, "ids=*;type=user;actions=delete,read")
 	TestRoleGrant(t, conn, globalRoleOrg1.PublicId, "ids=*;type=policy;actions=list,read")
 	TestRoleGrant(t, conn, globalRoleThisAndOrg2.PublicId, "ids=*;type=user;actions=*")
 	TestRoleGrant(t, conn, globalRoleDescendants.PublicId, "ids=*;type=*;actions=update")
@@ -823,6 +824,13 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 					RoleParentScopeId: "global",
 					GrantScopeId:      org1.PublicId,
 					Grant:             "ids=*;type=user;actions=create,update",
+				},
+				{
+					RoleId:            globalRoleOrg1.PublicId,
+					RoleScopeId:       "global",
+					RoleParentScopeId: "global",
+					GrantScopeId:      org1.PublicId,
+					Grant:             "ids=*;type=user;actions=delete,read",
 				},
 				{
 					RoleId:            globalRoleDescendants.PublicId,
