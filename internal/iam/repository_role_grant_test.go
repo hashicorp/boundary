@@ -2962,7 +2962,6 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	}
 
 	t.Run("Non-recursive request scopes", func(t *testing.T) {
-
 		testcases := append([]testcase{},
 			testcase{
 				name: "return grants for target resource at proj1a request scope",

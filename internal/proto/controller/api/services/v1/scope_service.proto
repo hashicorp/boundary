@@ -203,6 +203,8 @@ message CreateScopeRequest {
   bool skip_admin_role_creation = 1; // @gotags: `class:"public"`
   bool skip_default_role_creation = 2; // @gotags: `class:"public"`
   resources.scopes.v1.Scope item = 3;
+  bool create_admin_role = 4; // @gotags: `class:"public"`
+  bool create_default_role = 5; // @gotags: `class:"public"`
 }
 
 message CreateScopeResponse {
