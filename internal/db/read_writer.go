@@ -41,7 +41,11 @@ const (
 	DescendingOrderBy
 )
 
-// Reader interface defines lookups/searching for resources
+// TxHandler defines a handler for a func that writes a transaction for use with DoTx
+type TxHandler func(Reader, Writer) error
+
+// Reader interface defines lookups/searching for resources. It does
+// not allow for writing to the db.
 type Reader interface {
 	// LookupById will lookup a resource by its primary key id, which must be
 	// unique. If the resource implements either ResourcePublicIder or
@@ -169,9 +173,6 @@ type RetryInfo struct {
 	Retries int
 	Backoff time.Duration
 }
-
-// TxHandler defines a handler for a func that writes a transaction for use with DoTx
-type TxHandler func(Reader, Writer) error
 
 // ResourcePublicIder defines an interface that LookupByPublicId() can use to
 // get the resource's public id.
