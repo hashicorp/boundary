@@ -632,6 +632,7 @@ func TestGrantsForUser(t *testing.T) {
 			setupInputExpect: func(t *testing.T, repo *iam.Repository, conn *db.DB, wrapper wrapping.Wrapper) (arg, perms.GrantTuples) {
 				kmsCache := kms.TestKms(t, conn, wrapper)
 				databaseWrapper, err := kmsCache.GetWrapper(ctx, globals.GlobalPrefix, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
 				oidcAuthMethod := oidc.TestAuthMethod(
 					t, conn, databaseWrapper, globals.GlobalPrefix, oidc.ActivePrivateState,
 					"alice-rp", "fido",
@@ -887,6 +888,7 @@ func TestGrantsForUser(t *testing.T) {
 			setupInputExpect: func(t *testing.T, repo *iam.Repository, conn *db.DB, wrapper wrapping.Wrapper) (arg, perms.GrantTuples) {
 				kmsCache := kms.TestKms(t, conn, wrapper)
 				databaseWrapper, err := kmsCache.GetWrapper(ctx, globals.GlobalPrefix, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
 				oidcAuthMethod := oidc.TestAuthMethod(
 					t, conn, databaseWrapper, globals.GlobalPrefix, oidc.ActivePrivateState,
 					"alice-rp", "fido",
@@ -1420,6 +1422,7 @@ func TestGrantsForUser(t *testing.T) {
 			setupInputExpect: func(t *testing.T, repo *iam.Repository, conn *db.DB, wrapper wrapping.Wrapper) (arg, perms.GrantTuples) {
 				kmsCache := kms.TestKms(t, conn, wrapper)
 				databaseWrapper, err := kmsCache.GetWrapper(ctx, globals.GlobalPrefix, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
 				oidcAuthMethod := oidc.TestAuthMethod(
 					t, conn, databaseWrapper, globals.GlobalPrefix, oidc.ActivePrivateState,
 					"alice-rp", "fido",
