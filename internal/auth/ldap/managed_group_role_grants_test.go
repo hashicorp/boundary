@@ -113,7 +113,7 @@ func TestLdapManagedGroupRoleGrants(t *testing.T) {
 	_ = iam.TestRoleGrant(t, testConn, testRole2.GetPublicId(), testGrant)
 	iam.TestManagedGroupRole(t, testConn, testRole2.GetPublicId(), testOidcManagedGrp.GetPublicId())
 
-	tuples, err = iamRepo.GrantsForUser(testCtx, testUser.GetPublicId(), resource.Credential, testScopeId)
+	tuples, err = iamRepo.GrantsForUser(testCtx, testUser.GetPublicId(), resource.SessionRecording, testScopeId)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(tuples))
 	t.Log("tuples:", tuples)
