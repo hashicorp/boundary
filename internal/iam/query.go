@@ -206,8 +206,8 @@ const (
            role_parent_scope_id,
            grant_scope,
            grant_this_role_scope,
-           null                                 as individual_grant_scopes,
-           array_agg(distinct(canonical_grant)) as canonical_grants
+           array_agg(distinct(individual_grant_scope)) filter (where individual_grant_scope is not null) as individual_grant_scopes,
+           array_agg(distinct(canonical_grant))        as canonical_grants
       from global_roles_this_grant_scope
   group by role_id,
            role_scope_id,
@@ -224,7 +224,7 @@ const (
              'global'                              as role_parent_scope_id,
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
-             coalesce(individual.scope_id, '')     as individual_grant_scope,
+             individual.scope_id                   as individual_grant_scope,
              roles_with_grants.canonical_grant     as canonical_grant
         from iam_role_global
         join roles_with_grants
@@ -238,9 +238,9 @@ const (
       select iam_role_org.public_id             as role_id,
              iam_role_org.scope_id              as role_scope_id,
              'global'                           as role_parent_scope_id,
-             ''                                 as grant_scope,
+             'individual'                       as grant_scope,
              iam_role_org.grant_this_role_scope as grant_this_role_scope,
-             ''                                 as individual_grant_scope,
+             null                               as individual_grant_scope,
              roles_with_grants.canonical_grant  as canonical_grant
         from iam_role_org
         join roles_with_grants
@@ -272,7 +272,7 @@ const (
            role_parent_scope_id,
            grant_scope,
            grant_this_role_scope,
-           array_agg(distinct(individual_grant_scope)) as individual_grant_scopes,
+           array_agg(distinct(individual_grant_scope)) filter (where individual_grant_scope is not null) as individual_grant_scopes,
            array_agg(distinct(canonical_grant))        as canonical_grants
       from global_and_org_roles
   group by role_id,
@@ -290,7 +290,7 @@ const (
              'global'                              as role_parent_scope_id,
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
-             coalesce(individual.scope_id, '')     as individual_grant_scope,
+             individual.scope_id                   as individual_grant_scope,
              roles_with_grants.canonical_grant     as canonical_grant
         from iam_role_global
         join roles_with_grants
@@ -306,7 +306,7 @@ const (
              'global'                           as role_parent_scope_id,
              iam_role_org.grant_scope           as grant_scope,
              iam_role_org.grant_this_role_scope as grant_this_role_scope,
-             coalesce(individual.scope_id, '')  as individual_grant_scope,
+             individual.scope_id                as individual_grant_scope,
              roles_with_grants.canonical_grant  as canonical_grant
         from iam_role_org
         join roles_with_grants
@@ -325,9 +325,9 @@ const (
       select iam_role_project.public_id             as role_id,
              iam_role_project.scope_id              as role_scope_id,
              iam_scope_project.parent_id            as role_parent_scope_id,
-             iam_role_project.scope_id              as grant_scope,
+             'individual'                           as grant_scope,
              iam_role_project.grant_this_role_scope as grant_this_role_scope,
-             ''                                     as individual_grant_scope,
+             null                                   as individual_grant_scope,
              roles_with_grants.canonical_grant      as canonical_grant
         from iam_role_project
         join roles_with_grants
@@ -370,8 +370,8 @@ const (
            role_parent_scope_id,
            grant_scope,
            grant_this_role_scope,
-           array_agg(distinct(individual_grant_scope)) as individual_grant_scopes,
-           array_agg(distinct(canonical_grant))        as canonical_grants
+           array_agg(distinct(individual_grant_scope)) filter (where individual_grant_scope is not null) as individual_grant_scopes,
+           array_agg(distinct(canonical_grant))                                                          as canonical_grants
       from all_roles
   group by role_id,
            role_scope_id,
