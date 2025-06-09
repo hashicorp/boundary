@@ -623,10 +623,6 @@ func (r *Repository) grantsForUserGlobalResources(
 					GrantScopeId:      grant.roleScopeId,
 					Grant:             canonicalGrant,
 				}
-
-				if gt.GrantScopeId == globals.GrantScopeThis || gt.GrantScopeId == "" {
-					gt.GrantScopeId = grant.roleScopeId
-				}
 				ret = append(ret, gt)
 			}
 		}
@@ -735,10 +731,6 @@ func (r *Repository) grantsForUserOrgResources(
 					GrantScopeId:      grant.roleScopeId,
 					Grant:             canonicalGrant,
 				}
-
-				if gt.GrantScopeId == globals.GrantScopeThis || gt.GrantScopeId == "" {
-					gt.GrantScopeId = grant.roleScopeId
-				}
 				ret = append(ret, gt)
 			}
 		}
@@ -845,10 +837,6 @@ func (r *Repository) grantsForUserProjectResources(
 					RoleParentScopeId: grant.roleParentScopeId,
 					GrantScopeId:      grant.roleScopeId,
 					Grant:             canonicalGrant,
-				}
-
-				if gt.GrantScopeId == globals.GrantScopeThis || gt.GrantScopeId == "" {
-					gt.GrantScopeId = grant.roleScopeId
 				}
 				ret = append(ret, gt)
 			}
