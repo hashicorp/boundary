@@ -672,7 +672,7 @@ combined_role_types (role_id) as (
     select public_id
       from iam_role
      where %s -- the where clause is programmatically generated
-     order by update_time desc, public_id desc
+     order by create_time desc, public_id desc
      limit @limit
 )
 select public_id,
