@@ -123,13 +123,25 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   flagSkipInitialLoginRoleName,
 		Target: &c.initFlags.flagSkipInitialLoginRoleCreation,
-		Usage:  "If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+		Usage:  "Deprecated: If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   flagSkipInitialAuthenticatedUserRoleName,
 		Target: &c.initFlags.flagSkipInitialAuthenticatedUserRoleCreation,
-		Usage:  "If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
+		Usage:  "Deprecated: If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   flagCreateInitialLoginRoleName,
+		Target: &c.initFlags.flagCreateInitialLoginRole,
+		Usage:  "If set, a role providing necessary grants for logging in will be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   flagCreateInitialAuthenticatedUserRoleName,
+		Target: &c.initFlags.flagCreateInitialAuthenticatedUserRole,
+		Usage:  "If set, a role providing initial grants for any authenticated user will be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{

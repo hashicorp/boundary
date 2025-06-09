@@ -160,10 +160,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return nil
 	}
 
-	if _, _, err := b.CreateInitialScopes(ctx, WithIamOptions(
-		iam.WithSkipAdminRoleCreation(true),
-		iam.WithSkipDefaultRoleCreation(true),
-	)); err != nil {
+	if _, _, err := b.CreateInitialScopes(ctx); err != nil {
 		return err
 	}
 
