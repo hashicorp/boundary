@@ -192,9 +192,9 @@ const (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
              'global'                              as role_parent_scope_id,
-             'global'                              as grant_scope,
+             'individual'                          as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
-             ''                                    as individual_grant_scope, -- individual_grant_scopes are not applicable to global roles
+             null                                  as individual_grant_scope, -- individual_grant_scopes are not applicable to global roles
              roles_with_grants.canonical_grant     as canonical_grant
         from iam_role_global
         join roles_with_grants
@@ -206,8 +206,8 @@ const (
            role_parent_scope_id,
            grant_scope,
            grant_this_role_scope,
-           array_agg(distinct(individual_grant_scope)) as individual_grant_scopes,
-           array_agg(distinct(canonical_grant))        as canonical_grants
+           null                                 as individual_grant_scopes,
+           array_agg(distinct(canonical_grant)) as canonical_grants
       from global_roles_this_grant_scope
   group by role_id,
            role_scope_id,
