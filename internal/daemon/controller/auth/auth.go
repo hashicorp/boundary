@@ -284,10 +284,7 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 		v.decryptToken(ctx)
 	}
 
-	resourcesToFetchGrants := []resource.Type{resourceType}
-	for _, r := range opts.withFetchAdditionalResourceGrants {
-		resourcesToFetchGrants = append(resourcesToFetchGrants, r)
-	}
+	resourcesToFetchGrants := append([]resource.Type{resourceType}, opts.withFetchAdditionalResourceGrants...)
 
 	var authResults perms.ACLResults
 	var userData template.Data
