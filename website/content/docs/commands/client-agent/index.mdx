@@ -1,0 +1,59 @@
+---
+layout: docs
+page_title: client-agent - Command
+description: >-
+  The "client-agent" command lets you interact with the Boundary Client Agent.
+---
+
+# client-agent
+
+Command: `boundary client-agent`
+
+The `client-agent` command lets you interact with the Boundary Client Agent.
+You can check the Client Agent's status, pause it, resume it, or list the active transparent sessions the Client Agent is managing.
+
+## Examples
+
+The following command lets you check the status of the Client Agent to ensure it is running:
+
+```shell-session
+$ boundary client-agent status
+```
+
+The following command retrieves information about any sessions that the Client Agent is managing:
+
+```shell-session
+$ boundary client-agent sessions
+```
+
+You can temporarily disable the Client Agent by pausing it with the following command:
+
+```shell-session
+$ boundary client-agent pause
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary client-agent <subcommand> [options] [args]
+
+  # ...
+
+Subcommands:
+    pause       Pauses the running boundary client agent
+    resume      Resumes the paused boundary client agent
+    sessions    List active transparent sessions managed by the client agent.
+    status      Get the status information of the running boundary client agent
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [pause](/boundary/docs/commands/client-agent/pause)
+- [resume](/boundary/docs/commands/client-agent/resume)
+- [sessions](/boundary/docs/commands/client-agent/sessions)
+- [status](/boundary/docs/commands/client-agent/status)
