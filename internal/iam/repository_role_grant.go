@@ -799,6 +799,13 @@ func (r *Repository) grantsForUserRecursive(
 	if res == resource.All || res == resource.Unknown {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "a specific resource type must be specified")
 	}
+	switch {
+	case strings.HasPrefix(reqScopeId, globals.GlobalPrefix):
+	case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
+	case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope, an org scope, or a project scope")
+	}
 
 	// Determine which query to use based on the request scope
 	var (
