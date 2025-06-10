@@ -579,7 +579,7 @@ func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
 type testInput struct {
 	userId     string
 	reqScopeId string
-	resource   resource.Type
+	resource   []resource.Type
 }
 
 func TestGrantsForUserGlobalResources(t *testing.T) {
@@ -625,7 +625,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 			name: "alias resource should return alias and '*' grants",
 			input: testInput{
 				userId:   user.PublicId,
-				resource: resource.Alias,
+				resource: []resource.Type{resource.Alias},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -648,7 +648,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 			name: "account resource should return account and '*' grants",
 			input: testInput{
 				userId:   user.PublicId,
-				resource: resource.Account,
+				resource: []resource.Type{resource.Account},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -671,7 +671,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 			name: "group resource should return group and '*' grants",
 			input: testInput{
 				userId:   user.PublicId,
-				resource: resource.Group,
+				resource: []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -722,7 +722,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 		{
 			name: "missing user id should return error",
 			input: testInput{
-				resource: resource.Alias,
+				resource: []resource.Type{resource.Alias},
 			},
 			errorMsg: "missing user id",
 		},
@@ -798,7 +798,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org1Scope.PublicId,
-				resource:   resource.User,
+				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -836,7 +836,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org2Scope.PublicId,
-				resource:   resource.User,
+				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -874,7 +874,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org1Scope.PublicId,
-				resource:   resource.Policy,
+				resource:   []resource.Type{resource.Policy},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -912,7 +912,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org2Scope.PublicId,
-				resource:   resource.Policy,
+				resource:   []resource.Type{resource.Policy},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -1019,7 +1019,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "missing user id should return error",
 			input: testInput{
-				resource:   resource.User,
+				resource:   []resource.Type{resource.User},
 				reqScopeId: org1Scope.PublicId,
 			},
 			errorMsg: "missing user id",
@@ -1029,7 +1029,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: "",
-				resource:   resource.User,
+				resource:   []resource.Type{resource.User},
 			},
 			errorMsg: "missing request scope id",
 		},
@@ -1113,7 +1113,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj1a.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1137,7 +1137,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj1b.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1168,7 +1168,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj2.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1199,7 +1199,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj1a.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1216,7 +1216,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj1b.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1247,7 +1247,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj2.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1400,7 +1400,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 			testcase{
 				name: "missing user id should return error",
 				input: testInput{
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 					reqScopeId: proj2.PublicId,
 				},
 				errorMsg: "missing user id",
@@ -1410,7 +1410,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: "",
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				errorMsg: "missing request scope id",
 			},
@@ -1437,7 +1437,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1496,7 +1496,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: org1.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1555,7 +1555,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: org2.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1614,7 +1614,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1680,7 +1680,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: org1.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1747,7 +1747,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: org2.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1813,7 +1813,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Unknown,
+					resource:   []resource.Type{resource.Unknown},
 				},
 				errorMsg: "a specific resource type must be specified",
 			},
@@ -1822,7 +1822,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.All,
+					resource:   []resource.Type{resource.All},
 				},
 				errorMsg: "a specific resource type must be specified",
 			},
@@ -1831,7 +1831,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1840,7 +1840,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: org1.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1849,7 +1849,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: org2.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1858,7 +1858,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1867,7 +1867,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: org1.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1876,14 +1876,14 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: org2.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
 			testcase{
 				name: "missing user id should return error",
 				input: testInput{
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 					reqScopeId: proj2.PublicId,
 				},
 				errorMsg: "missing user id",
@@ -1893,7 +1893,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: "",
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				errorMsg: "request scope must be global scope, an org scope, or a project scope",
 			},
@@ -1902,7 +1902,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: scope.Unknown.String(),
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				errorMsg: "request scope must be global scope, an org scope, or a project scope",
 			},
@@ -1911,7 +1911,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Session,
+					resource:   []resource.Type{resource.Session},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1993,7 +1993,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// If there's a list permission any where in the scope tree, the user should be able to perform recursive list at the global scope
+	// If there's a list permission anywhere in the scope tree, the user should be able to perform recursive list at the global scope
 	listResultSet := []perms.GrantTuple{
 		{
 			RoleId:            globalRoleOrg1AndProj2.PublicId,
@@ -2141,7 +2141,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: listResultSet,
 		},
@@ -2150,7 +2150,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org1.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: listResultSet,
 		},
@@ -2159,7 +2159,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org2.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: listResultSet,
 		},
@@ -2168,7 +2168,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: proj1a.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: listResultSet,
 		},
@@ -2177,7 +2177,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: proj1b.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: listResultSet,
 		},
@@ -2186,7 +2186,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: proj2.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: listResultSet,
 		},
@@ -2195,7 +2195,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: scope.Unknown.String(),
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			errorMsg: "request scope must be global scope, an org scope, or a project scope",
 		},
@@ -2204,7 +2204,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Role,
+				resource:   []resource.Type{resource.Role},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2213,7 +2213,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Unknown,
+				resource:   []resource.Type{resource.Unknown},
 			},
 			errorMsg: "a specific resource type must be specified",
 		},
@@ -2222,7 +2222,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.All,
+				resource:   []resource.Type{resource.All},
 			},
 			errorMsg: "a specific resource type must be specified",
 		},
@@ -2231,7 +2231,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2240,7 +2240,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: org1.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2249,7 +2249,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: org2.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2258,7 +2258,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2267,7 +2267,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: org1.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2276,14 +2276,14 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: org2.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "missing user id should return error",
 			input: testInput{
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 				reqScopeId: globals.GlobalPrefix,
 			},
 			errorMsg: "missing user id",
@@ -2293,7 +2293,7 @@ func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: "",
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			errorMsg: "request scope must be global scope, an org scope, or a project scope",
 		},

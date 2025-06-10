@@ -284,10 +284,15 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 		v.decryptToken(ctx)
 	}
 
+	resourcesToFetchGrants := []resource.Type{resourceType}
+	for _, r := range opts.withFetchAdditionalResourceGrants {
+		resourcesToFetchGrants = append(resourcesToFetchGrants, r)
+	}
+
 	var authResults perms.ACLResults
 	var userData template.Data
 	var err error
-	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx, resourceType, opts.withRecursive)
+	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx, resourcesToFetchGrants, opts.withRecursive)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error performing authn/authz check"))
 		return
@@ -491,7 +496,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 	}
 }
 
-func (v verifier) performAuthCheck(ctx context.Context, resourceType resource.Type, isRecursiveRequest bool) (
+func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.Type, isRecursiveRequest bool) (
 	aclResults perms.ACLResults,
 	userData template.Data,
 	scopeInfo *scopes.ScopeInfo,

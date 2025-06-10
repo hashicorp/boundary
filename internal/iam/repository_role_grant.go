@@ -467,15 +467,15 @@ type grantsForUserResults struct {
 // GrantsForUser returns perms.GrantTuples associated to a userId scoped down to the requested scope and resource type.
 // Use WithRecursive option to indicate that the request is a recursive list request
 // Supported options: WithRecursive
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resource.Type, reqScopeId string, opt ...Option) (perms.GrantTuples, error) {
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, res []resource.Type, reqScopeId string, opt ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
-	if res == resource.Unknown {
+	if slices.Contains(res, resource.Unknown) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type cannot be unknown")
 	}
-	if res == resource.All {
+	if slices.Contains(res, resource.All) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type cannot be all")
 	}
 	if reqScopeId == "" {
@@ -484,9 +484,15 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resou
 
 	opts := getOpts(opt...)
 
-	resourceAllowedIn, err := scope.AllowedIn(ctx, res)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	var resourceAllowedIn []scope.Type
+	for _, re := range res {
+		a, err := scope.AllowedIn(ctx, re)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if len(a) > len(resourceAllowedIn) {
+			resourceAllowedIn = a
+		}
 	}
 
 	if opts.withRecursive {
@@ -495,7 +501,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resou
 	switch {
 	case slices.Equal(resourceAllowedIn, []scope.Type{scope.Global}):
 		if reqScopeId != globals.GlobalPrefix {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be global for %s resource", res.String()))
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be global for %s resources", res))
 		}
 		return r.grantsForUserGlobalResources(ctx, userId, res)
 	case slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org}):
@@ -505,7 +511,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resou
 		case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
 			return r.grantsForUserOrgResources(ctx, userId, reqScopeId, res)
 		default:
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be global or org for %s resource", res.String()))
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be global or org for %s resources", res))
 		}
 	case slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org, scope.Project}):
 		switch {
@@ -520,7 +526,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resou
 		}
 	case slices.Equal(resourceAllowedIn, []scope.Type{scope.Project}):
 		if !strings.HasPrefix(reqScopeId, globals.ProjectPrefix) {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be project for %s resource", res.String()))
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be project for %s resources", res))
 		}
 		return r.grantsForUserProjectResources(ctx, userId, reqScopeId, res)
 	}
@@ -540,7 +546,7 @@ func (m *MultiGrantTuple) TestStableSort() {
 func (r *Repository) grantsForUserGlobalResources(
 	ctx context.Context,
 	userId string,
-	res resource.Type,
+	res []resource.Type,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserGlobalResources"
 	if userId == "" {
@@ -558,8 +564,10 @@ func (r *Repository) grantsForUserGlobalResources(
 	default:
 		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-
-	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
+	resources = []string{resource.Unknown.String(), resource.All.String()}
+	for _, res := range res {
+		resources = append(resources, res.String())
+	}
 
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
@@ -596,7 +604,7 @@ func (r *Repository) grantsForUserOrgResources(
 	ctx context.Context,
 	userId,
 	reqScopeId string,
-	res resource.Type,
+	res []resource.Type,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserOrgResources"
 	if userId == "" {
@@ -617,7 +625,11 @@ func (r *Repository) grantsForUserOrgResources(
 	default:
 		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
+
+	resources = []string{resource.Unknown.String(), resource.All.String()}
+	for _, res := range res {
+		resources = append(resources, res.String())
+	}
 
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
@@ -655,7 +667,7 @@ func (r *Repository) grantsForUserProjectResources(
 	ctx context.Context,
 	userId,
 	reqScopeId string,
-	res resource.Type,
+	res []resource.Type,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserProjectResources"
 	if userId == "" {
@@ -676,7 +688,10 @@ func (r *Repository) grantsForUserProjectResources(
 	default:
 		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
+	resources = []string{resource.Unknown.String(), resource.All.String()}
+	for _, res := range res {
+		resources = append(resources, res.String())
+	}
 
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),
@@ -714,13 +729,13 @@ func (r *Repository) grantsForUserRecursive(
 	ctx context.Context,
 	userId,
 	reqScopeId string,
-	res resource.Type,
+	res []resource.Type,
 ) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).grantsForUserRecursive"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
-	if res == resource.All || res == resource.Unknown {
+	if slices.Contains(res, resource.All) || slices.Contains(res, resource.Unknown) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "a specific resource type must be specified")
 	}
 	switch {
@@ -745,7 +760,11 @@ func (r *Repository) grantsForUserRecursive(
 	default:
 		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
 	}
-	resources = []string{res.String(), resource.Unknown.String(), resource.All.String()}
+
+	resources = []string{resource.Unknown.String(), resource.All.String()}
+	for _, res := range res {
+		resources = append(resources, res.String())
+	}
 
 	args = append(args,
 		sql.Named("user_ids", pq.Array(userIds)),

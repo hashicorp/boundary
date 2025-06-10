@@ -73,6 +73,11 @@ var (
 		},
 	}
 
+	additionalResourceGrants = []resource.Type{
+		resource.HostSet,
+		resource.Host,
+	}
+
 	validateWorkerFilterFn = validateWorkerFilterUnsupported
 	workerFilterToProto    = false
 )

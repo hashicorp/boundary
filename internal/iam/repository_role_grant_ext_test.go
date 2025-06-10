@@ -28,7 +28,7 @@ func TestGrantsForUser(t *testing.T) {
 	ctx := context.Background()
 	type arg struct {
 		userId         string
-		resourceType   resource.Type
+		resourceType   []resource.Type
 		requestScopeId string
 		opt            []iam.Option
 	}
@@ -54,7 +54,7 @@ func TestGrantsForUser(t *testing.T) {
 				iam.TestUserRole(t, conn, role1.PublicId, user.PublicId)
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.Role,
+						resourceType:   []resource.Type{resource.Role},
 						requestScopeId: globals.GlobalPrefix,
 					},
 					perms.GrantTuples{
@@ -135,7 +135,7 @@ func TestGrantsForUser(t *testing.T) {
 				iam.TestUserRole(t, conn, role6.PublicId, user.PublicId)
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.AuthMethod,
+						resourceType:   []resource.Type{resource.AuthMethod},
 						requestScopeId: globals.GlobalPrefix,
 					}, perms.GrantTuples{
 						{
@@ -280,7 +280,7 @@ func TestGrantsForUser(t *testing.T) {
 					[]string{"ids=*;type=*;actions=*"})
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.Worker,
+						resourceType:   []resource.Type{resource.Worker},
 						requestScopeId: globals.GlobalPrefix,
 					}, perms.GrantTuples{
 						{
@@ -321,7 +321,7 @@ func TestGrantsForUser(t *testing.T) {
 				org := iam.TestOrg(t, repo)
 				return arg{
 					userId:         user.PublicId,
-					resourceType:   resource.Worker,
+					resourceType:   []resource.Type{resource.Worker},
 					requestScopeId: org.PublicId,
 				}, perms.GrantTuples{}
 			},
@@ -335,7 +335,7 @@ func TestGrantsForUser(t *testing.T) {
 				_, proj := iam.TestScopes(t, repo)
 				return arg{
 					userId:         user.PublicId,
-					resourceType:   resource.Billing,
+					resourceType:   []resource.Type{resource.Billing},
 					requestScopeId: proj.PublicId,
 				}, perms.GrantTuples{}
 			},
@@ -464,7 +464,7 @@ func TestGrantsForUser(t *testing.T) {
 
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.Role,
+						resourceType:   []resource.Type{resource.Role},
 						requestScopeId: globals.GlobalPrefix,
 						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
@@ -749,7 +749,7 @@ func TestGrantsForUser(t *testing.T) {
 
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.Role,
+						resourceType:   []resource.Type{resource.Role},
 						requestScopeId: org.PublicId,
 						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
@@ -1000,7 +1000,7 @@ func TestGrantsForUser(t *testing.T) {
 
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.AuthToken,
+						resourceType:   []resource.Type{resource.AuthToken},
 						requestScopeId: globals.GlobalPrefix,
 						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
@@ -1179,7 +1179,7 @@ func TestGrantsForUser(t *testing.T) {
 
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.SessionRecording,
+						resourceType:   []resource.Type{resource.SessionRecording},
 						requestScopeId: org.PublicId,
 					}, perms.GrantTuples{
 						{
@@ -1241,7 +1241,7 @@ func TestGrantsForUser(t *testing.T) {
 				_, proj := iam.TestScopes(t, repo)
 				return arg{
 					userId:         user.PublicId,
-					resourceType:   resource.User,
+					resourceType:   []resource.Type{resource.User},
 					requestScopeId: proj.PublicId,
 					opt:            []iam.Option{iam.WithRecursive(true)},
 				}, perms.GrantTuples{}
@@ -1342,7 +1342,7 @@ func TestGrantsForUser(t *testing.T) {
 
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.Target,
+						resourceType:   []resource.Type{resource.Target},
 						requestScopeId: globals.GlobalPrefix,
 						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
@@ -1531,7 +1531,7 @@ func TestGrantsForUser(t *testing.T) {
 
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.HostCatalog,
+						resourceType:   []resource.Type{resource.HostCatalog},
 						requestScopeId: org.PublicId,
 						opt:            []iam.Option{iam.WithRecursive(true)},
 					}, perms.GrantTuples{
@@ -1700,7 +1700,7 @@ func TestGrantsForUser(t *testing.T) {
 
 				return arg{
 						userId:         user.PublicId,
-						resourceType:   resource.Target,
+						resourceType:   []resource.Type{resource.Target},
 						requestScopeId: proj.PublicId,
 					}, perms.GrantTuples{
 						{
@@ -1762,7 +1762,7 @@ func TestGrantsForUser(t *testing.T) {
 				user := iam.TestUser(t, repo, "global")
 				return arg{
 					userId:         user.PublicId,
-					resourceType:   resource.Target,
+					resourceType:   []resource.Type{resource.Target},
 					requestScopeId: globals.GlobalPrefix,
 					opt:            []iam.Option{iam.WithRecursive(true)},
 				}, perms.GrantTuples{}
@@ -1774,7 +1774,7 @@ func TestGrantsForUser(t *testing.T) {
 				user := iam.TestUser(t, repo, "global")
 				return arg{
 					userId:         user.PublicId,
-					resourceType:   resource.Target,
+					resourceType:   []resource.Type{resource.Target},
 					requestScopeId: globals.GlobalPrefix,
 				}, perms.GrantTuples{}
 			},
@@ -1788,7 +1788,7 @@ func TestGrantsForUser(t *testing.T) {
 				org, _ := iam.TestScopes(t, repo)
 				return arg{
 					userId:         user.PublicId,
-					resourceType:   resource.Target,
+					resourceType:   []resource.Type{resource.Target},
 					requestScopeId: org.PublicId,
 				}, perms.GrantTuples{}
 			},

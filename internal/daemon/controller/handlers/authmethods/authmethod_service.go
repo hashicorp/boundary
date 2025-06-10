@@ -78,6 +78,11 @@ var (
 		resource.Account:      accounts.CollectionActions,
 		resource.ManagedGroup: managed_groups.CollectionActions,
 	}
+
+	additionalResourceGrants = []resource.Type{
+		resource.Account,
+		resource.ManagedGroup,
+	}
 )
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
@@ -770,7 +775,11 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	res := requestauth.VerifyResults{}
 
 	var parentId string
-	opts := []requestauth.Option{requestauth.WithAction(a), requestauth.WithRecursive(isRecursive)}
+	opts := []requestauth.Option{
+		requestauth.WithAction(a),
+		requestauth.WithRecursive(isRecursive),
+		requestauth.WithFetchAdditionalResourceGrants(additionalResourceGrants...)}
+	
 	switch a {
 	case action.List, action.Create:
 		parentId = id
