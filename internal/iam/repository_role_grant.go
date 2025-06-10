@@ -489,14 +489,6 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resou
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	// while technically scopes may only exist in global, and org, a project is also a scope. In order to resolve
-	// grants at a given scope, if the resource type is a scope, we must take into consideration that the scope
-	// might be in a project (even when the scope is the project).
-	// For example, calling `list-key-version-destruction-jobs` at scope `p_abcd1234`
-	if res == resource.Scope {
-		resourceAllowedIn = []scope.Type{scope.Global, scope.Org, scope.Project}
-	}
-
 	if opts.withRecursive {
 		return r.grantsForUserRecursive(ctx, userId, reqScopeId, res)
 	}
