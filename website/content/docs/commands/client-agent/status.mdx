@@ -1,0 +1,37 @@
+---
+layout: docs
+page_title: client-agent status - Command
+description: >-
+  The "client-agent status" command provides the status of the Client Agent so you can ensure that it is running.
+---
+
+# client-agent status
+
+Command: `boundary client-agent status`
+
+The `boundary client-agent status` command provides the status of the Client Agent so you can ensure that it is running.
+
+## Example
+
+The following command provides the current status of the Client Agent:
+
+```shell-session
+$ boundary client-agent status
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary client-agent status [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `client-agent--port=<uint>` - Specifies the port on which the Client Agent listens.
+You can also specify the port using the **BOUNDARY_CLIENT_AGENT_LISTENING_PORT** environment variable.
+
+@include 'cmd-option-note.mdx'
