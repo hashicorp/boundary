@@ -967,6 +967,14 @@ func TestGrantsForUser(t *testing.T) {
 				role7 := iam.TestRoleWithGrants(t, conn, org.PublicId,
 					[]string{globals.GrantScopeThis},
 					[]string{"ids=ttcp_123456;actions=delete"})
+				// pinned id grant (individual org & project scopes) - resource type = unknown
+				role8 := iam.TestRoleWithGrants(t, conn, globals.GlobalPrefix,
+					[]string{proj2.PublicId, proj3.PublicId, proj4.PublicId},
+					[]string{"ids=hst_123456;actions=read"})
+				// project grants are fetched for global/org resources in recursive requests
+				role9 := iam.TestRoleWithGrants(t, conn, proj3.PublicId,
+					[]string{globals.GrantScopeThis},
+					[]string{"ids=*;type=*;actions=*"})
 
 				iam.TestManagedGroupRole(t, conn, role1.PublicId, oidcMgmtGroup.PublicId)
 				iam.TestManagedGroupRole(t, conn, role2.PublicId, ldapMgmtGroup.PublicId)
@@ -975,6 +983,8 @@ func TestGrantsForUser(t *testing.T) {
 				iam.TestManagedGroupRole(t, conn, role5.PublicId, oidcMgmtGroup.PublicId)
 				iam.TestManagedGroupRole(t, conn, role6.PublicId, ldapMgmtGroup.PublicId)
 				iam.TestManagedGroupRole(t, conn, role7.PublicId, oidcMgmtGroup.PublicId)
+				iam.TestManagedGroupRole(t, conn, role8.PublicId, ldapMgmtGroup.PublicId)
+				iam.TestManagedGroupRole(t, conn, role9.PublicId, oidcMgmtGroup.PublicId)
 				// ========================================================
 
 				// add random grants and scopes to ensure that unnecessary grants aren't returned
@@ -991,40 +1001,20 @@ func TestGrantsForUser(t *testing.T) {
 				unnecessaryRole3 := iam.TestRoleWithGrants(t, conn, org2.PublicId,
 					[]string{globals.GrantScopeThis},
 					[]string{"ids=*;type=account;actions=*"})
-				// project grants not applied for global/org resource
-				unnecessaryRole4 := iam.TestRoleWithGrants(t, conn, proj2.PublicId,
-					[]string{globals.GrantScopeThis},
-					[]string{"ids=*;type=*;actions=*"})
-				// project grants not applied for global/org resource
-				unnecessaryRole5 := iam.TestRoleWithGrants(t, conn, proj3.PublicId,
-					[]string{globals.GrantScopeThis},
-					[]string{"ids=*;type=*;actions=*"})
-				// project grants not applied for global/org resource
-				unnecessaryRole6 := iam.TestRoleWithGrants(t, conn, proj4.PublicId,
-					[]string{globals.GrantScopeThis},
-					[]string{"ids=*;type=*;actions=*"})
 				// correct scope wrong type
-				unnecessaryRole7 := iam.TestRoleWithGrants(t, conn, globals.GlobalPrefix,
+				unnecessaryRole4 := iam.TestRoleWithGrants(t, conn, globals.GlobalPrefix,
 					[]string{proj.PublicId},
 					[]string{"ids=*;type=credential;actions=*"})
 				// superset of type but incorrect scope
-				unnecessaryRole8 := iam.TestRoleWithGrants(t, conn, globals.GlobalPrefix,
+				unnecessaryRole5 := iam.TestRoleWithGrants(t, conn, globals.GlobalPrefix,
 					[]string{proj2.PublicId, proj3.PublicId, proj4.PublicId},
 					[]string{"ids=*;type=target;actions=*"})
-				// pinned id wrong scope
-				unnecessaryRole9 := iam.TestRoleWithGrants(t, conn, globals.GlobalPrefix,
-					[]string{proj2.PublicId, proj3.PublicId, proj4.PublicId},
-					[]string{"ids=hst_123456;actions=read"})
 
 				iam.TestManagedGroupRole(t, conn, unnecessaryRole1.PublicId, ldapMgmtGroup.PublicId)
 				iam.TestManagedGroupRole(t, conn, unnecessaryRole2.PublicId, oidcMgmtGroup.PublicId)
 				iam.TestManagedGroupRole(t, conn, unnecessaryRole3.PublicId, ldapMgmtGroup.PublicId)
-				iam.TestManagedGroupRole(t, conn, unnecessaryRole4.PublicId, oidcMgmtGroup.PublicId)
-				iam.TestManagedGroupRole(t, conn, unnecessaryRole5.PublicId, ldapMgmtGroup.PublicId)
-				iam.TestManagedGroupRole(t, conn, unnecessaryRole6.PublicId, oidcMgmtGroup.PublicId)
-				iam.TestManagedGroupRole(t, conn, unnecessaryRole7.PublicId, ldapMgmtGroup.PublicId)
-				iam.TestManagedGroupRole(t, conn, unnecessaryRole8.PublicId, oidcMgmtGroup.PublicId)
-				iam.TestManagedGroupRole(t, conn, unnecessaryRole9.PublicId, ldapMgmtGroup.PublicId)
+				iam.TestManagedGroupRole(t, conn, unnecessaryRole4.PublicId, ldapMgmtGroup.PublicId)
+				iam.TestManagedGroupRole(t, conn, unnecessaryRole5.PublicId, oidcMgmtGroup.PublicId)
 
 				return arg{
 						userId:         user.PublicId,
@@ -1122,6 +1112,34 @@ func TestGrantsForUser(t *testing.T) {
 							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      role7.ScopeId,
 							Grant:             "ids=ttcp_123456;actions=delete",
+						},
+						{
+							RoleId:            role8.PublicId,
+							RoleScopeId:       globals.GlobalPrefix,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj2.PublicId,
+							Grant:             "ids=hst_123456;actions=read",
+						},
+						{
+							RoleId:            role8.PublicId,
+							RoleScopeId:       globals.GlobalPrefix,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj3.PublicId,
+							Grant:             "ids=hst_123456;actions=read",
+						},
+						{
+							RoleId:            role8.PublicId,
+							RoleScopeId:       globals.GlobalPrefix,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj4.PublicId,
+							Grant:             "ids=hst_123456;actions=read",
+						},
+						{
+							RoleId:            role9.PublicId,
+							RoleScopeId:       proj3.PublicId,
+							RoleParentScopeId: org.PublicId,
+							GrantScopeId:      proj3.PublicId,
+							Grant:             "ids=*;type=*;actions=*",
 						},
 					}
 			},
