@@ -1,0 +1,38 @@
+---
+layout: docs
+page_title: client-agent pause - Command
+description: >-
+  The "client-agent pause" command pauses the Client Agent so that it does not intercept DNS requests.
+---
+
+# client-agent pause
+
+Command: `boundary client-agent pause`
+
+The `boundary client-agent pause` command lets you temporarily stop the Client Agent.
+When the Client Agent is paused, it does not intercept DNS requests and you cannot use transparent sessions.
+
+## Example
+
+The following command pauses the Client Agent:
+
+```shell-session
+$ boundary client-agent pause
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary client-agent pause [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `client-agent-port=<uint>` - Specifies the port on which the Client Agent listens.
+You can also specify the port using the **BOUNDARY_CLIENT_AGENT_LISTENING_PORT** environment variable.
+
+@include 'cmd-option-note.mdx'
