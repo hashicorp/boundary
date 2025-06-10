@@ -472,6 +472,9 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res []res
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
+	if res == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing resource type")
+	}
 	if slices.Contains(res, resource.Unknown) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type cannot be unknown")
 	}
