@@ -778,8 +778,9 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	opts := []requestauth.Option{
 		requestauth.WithAction(a),
 		requestauth.WithRecursive(isRecursive),
-		requestauth.WithFetchAdditionalResourceGrants(additionalResourceGrants...)}
-	
+		requestauth.WithFetchAdditionalResourceGrants(additionalResourceGrants...),
+	}
+
 	switch a {
 	case action.List, action.Create:
 		parentId = id
