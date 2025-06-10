@@ -326,7 +326,7 @@ func TestGrantsForUser(t *testing.T) {
 				}, perms.GrantTuples{}
 			},
 			wantErr:    true,
-			wantErrMsg: "iam.(Repository).GrantsForUser: request scope id must be global for worker resource: parameter violation: error #100",
+			wantErrMsg: "iam.(Repository).GrantsForUser: request scope id must be global for [worker] resources: parameter violation: error #100",
 		},
 		{
 			name: "global only resource (billing) project scope request",
@@ -340,7 +340,7 @@ func TestGrantsForUser(t *testing.T) {
 				}, perms.GrantTuples{}
 			},
 			wantErr:    true,
-			wantErrMsg: "iam.(Repository).GrantsForUser: request scope id must be global for billing resource: parameter violation: error #100",
+			wantErrMsg: "iam.(Repository).GrantsForUser: request scope id must be global for [billing] resources: parameter violation: error #100",
 		},
 		{
 			name: "global org and project resource (role) global scope request recursive",
@@ -1777,7 +1777,7 @@ func TestGrantsForUser(t *testing.T) {
 				}, perms.GrantTuples{}
 			},
 			wantErr:    true,
-			wantErrMsg: "iam.(Repository).GrantsForUser: request scope id must be project for target resource: parameter violation: error #100",
+			wantErrMsg: "iam.(Repository).GrantsForUser: request scope id must be project for [target] resources: parameter violation: error #100",
 		},
 		{
 			name: "project only resource (target) org scope request non recursive",
@@ -1791,7 +1791,7 @@ func TestGrantsForUser(t *testing.T) {
 				}, perms.GrantTuples{}
 			},
 			wantErr:    true,
-			wantErrMsg: "iam.(Repository).GrantsForUser: request scope id must be project for target resource: parameter violation: error #100",
+			wantErrMsg: "iam.(Repository).GrantsForUser: request scope id must be project for [target] resources: parameter violation: error #100",
 		},
 	}
 	for _, tc := range testcases {
