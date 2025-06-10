@@ -758,6 +758,13 @@ func TestGrantsForUser(t *testing.T) {
 							RoleId:            role1.PublicId,
 							RoleScopeId:       role1.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      globals.GlobalPrefix,
+							Grant:             "ids=*;type=*;actions=*",
+						},
+						{
+							RoleId:            role1.PublicId,
+							RoleScopeId:       role1.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      globals.GrantScopeDescendants,
 							Grant:             "ids=*;type=*;actions=*",
 						},
@@ -796,7 +803,21 @@ func TestGrantsForUser(t *testing.T) {
 							RoleId:            role4.PublicId,
 							RoleScopeId:       role4.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      org2.PublicId,
+							Grant:             "ids=*;type=role;actions=update",
+						},
+						{
+							RoleId:            role4.PublicId,
+							RoleScopeId:       role4.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      proj.PublicId,
+							Grant:             "ids=*;type=role;actions=update",
+						},
+						{
+							RoleId:            role4.PublicId,
+							RoleScopeId:       role4.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj2.PublicId,
 							Grant:             "ids=*;type=role;actions=update",
 						},
 						{
@@ -827,6 +848,13 @@ func TestGrantsForUser(t *testing.T) {
 							RoleScopeId:       role6.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      globals.GrantScopeChildren,
+							Grant:             "ids=hst_123456;actions=read",
+						},
+						{
+							RoleId:            role6.PublicId,
+							RoleScopeId:       role6.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj2.PublicId,
 							Grant:             "ids=hst_123456;actions=read",
 						},
 						{
@@ -1044,6 +1072,34 @@ func TestGrantsForUser(t *testing.T) {
 							RoleScopeId:       role4.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      org2.PublicId,
+							Grant:             "ids=*;type=auth-token;actions=update",
+						},
+						{
+							RoleId:            role4.PublicId,
+							RoleScopeId:       role4.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj.PublicId,
+							Grant:             "ids=*;type=auth-token;actions=update",
+						},
+						{
+							RoleId:            role4.PublicId,
+							RoleScopeId:       role4.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj2.PublicId,
+							Grant:             "ids=*;type=auth-token;actions=update",
+						},
+						{
+							RoleId:            role4.PublicId,
+							RoleScopeId:       role4.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj3.PublicId,
+							Grant:             "ids=*;type=auth-token;actions=update",
+						},
+						{
+							RoleId:            role4.PublicId,
+							RoleScopeId:       role4.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      proj4.PublicId,
 							Grant:             "ids=*;type=auth-token;actions=update",
 						},
 						{
@@ -1352,12 +1408,26 @@ func TestGrantsForUser(t *testing.T) {
 							GrantScopeId:      globals.GrantScopeDescendants,
 							Grant:             "ids=*;type=*;actions=*",
 						},
+						{
+							RoleId:            role1.PublicId,
+							RoleScopeId:       role1.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      globals.GlobalPrefix,
+							Grant:             "ids=*;type=*;actions=*",
+						},
 						// role 2
 						{
 							RoleId:            role2.PublicId,
 							RoleScopeId:       role2.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      globals.GrantScopeChildren,
+							Grant:             "ids=*;type=target;actions=authorize-session",
+						},
+						{
+							RoleId:            role2.PublicId,
+							RoleScopeId:       role2.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      org.PublicId,
 							Grant:             "ids=*;type=target;actions=authorize-session",
 						},
 						// role 3
@@ -1369,6 +1439,13 @@ func TestGrantsForUser(t *testing.T) {
 							Grant:             "ids=*;type=target;actions=read",
 						},
 						// role 4
+						{
+							RoleId:            role4.PublicId,
+							RoleScopeId:       role4.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      org2.PublicId,
+							Grant:             "ids=*;type=target;actions=update",
+						},
 						{
 							RoleId:            role4.PublicId,
 							RoleScopeId:       role4.ScopeId,
@@ -1398,6 +1475,20 @@ func TestGrantsForUser(t *testing.T) {
 							Grant:             "ids=*;type=target;actions=update",
 						},
 						// role 5
+						{
+							RoleId:            role5.PublicId,
+							RoleScopeId:       role5.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      globals.GlobalPrefix,
+							Grant:             "ids=hst_12345;actions=update",
+						},
+						{
+							RoleId:            role5.PublicId,
+							RoleScopeId:       role5.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      globals.GrantScopeChildren,
+							Grant:             "ids=hst_12345;actions=update",
+						},
 						{
 							RoleId:            role5.PublicId,
 							RoleScopeId:       role5.ScopeId,
@@ -1538,6 +1629,13 @@ func TestGrantsForUser(t *testing.T) {
 							RoleId:            role1.PublicId,
 							RoleScopeId:       role1.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      globals.GlobalPrefix,
+							Grant:             "ids=*;type=*;actions=*",
+						},
+						{
+							RoleId:            role1.PublicId,
+							RoleScopeId:       role1.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      globals.GrantScopeDescendants,
 							Grant:             "ids=*;type=*;actions=*",
 						},
@@ -1547,6 +1645,13 @@ func TestGrantsForUser(t *testing.T) {
 							RoleScopeId:       role2.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      globals.GrantScopeChildren,
+							Grant:             "ids=*;type=host-catalog;actions=authorize-session",
+						},
+						{
+							RoleId:            role2.PublicId,
+							RoleScopeId:       role2.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      org.PublicId,
 							Grant:             "ids=*;type=host-catalog;actions=authorize-session",
 						},
 						// role 3
@@ -1562,6 +1667,13 @@ func TestGrantsForUser(t *testing.T) {
 							RoleId:            role4.PublicId,
 							RoleScopeId:       role4.ScopeId,
 							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      org.PublicId,
+							Grant:             "ids=*;type=host-catalog;actions=update",
+						},
+						{
+							RoleId:            role4.PublicId,
+							RoleScopeId:       role4.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
 							GrantScopeId:      proj3.PublicId,
 							Grant:             "ids=*;type=host-catalog;actions=update",
 						},
@@ -1573,6 +1685,13 @@ func TestGrantsForUser(t *testing.T) {
 							Grant:             "ids=*;type=host-catalog;actions=update",
 						},
 						// role 5
+						{
+							RoleId:            role5.PublicId,
+							RoleScopeId:       role5.ScopeId,
+							RoleParentScopeId: globals.GlobalPrefix,
+							GrantScopeId:      globals.GlobalPrefix,
+							Grant:             "ids=hcplg_Ia7R4E39oF;actions=update",
+						},
 						{
 							RoleId:            role5.PublicId,
 							RoleScopeId:       role5.ScopeId,
