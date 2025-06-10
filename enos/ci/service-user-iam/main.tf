@@ -110,6 +110,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "ec2:DescribeVpcs",
       "ec2:DetachInternetGateway",
       "ec2:DisassociateRouteTable",
+      "ec2:GetPasswordData",
       "ec2:ImportKeyPair",
       "ec2:ModifyInstanceAttribute",
       "ec2:ModifySubnetAttribute",
