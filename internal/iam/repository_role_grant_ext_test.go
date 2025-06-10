@@ -1238,7 +1238,7 @@ func TestGrantsForUser(t *testing.T) {
 			name: "global and org resource (users) proj scope request",
 			setupInputExpect: func(t *testing.T, repo *iam.Repository, conn *db.DB, wrapper wrapping.Wrapper) (arg, perms.GrantTuples) {
 				user := iam.TestUser(t, repo, "global")
-				_, proj := iam.TestScopes(t, repo)
+				_, proj := iam.TestScopes(t, repo, iam.WithSkipDefaultRoleCreation(true))
 				return arg{
 					userId:         user.PublicId,
 					resourceType:   []resource.Type{resource.User},
@@ -1246,8 +1246,6 @@ func TestGrantsForUser(t *testing.T) {
 					opt:            []iam.Option{iam.WithRecursive(true)},
 				}, perms.GrantTuples{}
 			},
-			wantErr:    true,
-			wantErrMsg: "iam.(Repository).grantsForUserGlobalOrgResourcesRecursive: request scope must be global scope or an org scope: parameter violation: error #100",
 		},
 		{
 			name: "project only resource (target) global scope request recursive",
