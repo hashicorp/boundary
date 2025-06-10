@@ -18,12 +18,7 @@ output "instance_private_ips" {
 
 output "instance_addresses" {
   description = "Addresses of Vault instances"
-  value       = var.ip_version == "4" ? [for instance in aws_instance.vault_instance : "http://${instance.public_ip}:8200"] : flatten([for instance in aws_instance.vault_instance : instance.ipv6_addresses])
-}
-
-output "instance_addresses_private" {
-  description = "Private addresses of Vault instances"
-  value       = [for instance in aws_instance.vault_instance : "http://${instance.private_ip}:8200"]
+  value       = [for instance in aws_instance.vault_instance : "http://${instance.public_ip}:8200"]
 }
 
 output "key_id" {

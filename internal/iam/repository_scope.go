@@ -394,6 +394,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("scope %s/%s already exists", scopePublicId, s.Name))

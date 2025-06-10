@@ -10,7 +10,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 
@@ -25,147 +24,166 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var (
-	_ codes.Code
-	_ io.Reader
-	_ status.Status
-	_ = errors.New
-	_ = runtime.String
-	_ = utilities.NewDoubleArray
-	_ = metadata.Join
-)
+var _ codes.Code
+var _ io.Reader
+var _ status.Status
+var _ = runtime.String
+var _ = utilities.NewDoubleArray
+var _ = metadata.Join
 
 func request_WorkerService_GetWorker_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetWorkerRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq GetWorkerRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	io.Copy(io.Discard, req.Body)
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.GetWorker(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_GetWorker_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetWorkerRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq GetWorkerRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.GetWorker(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_WorkerService_ListWorkers_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+var (
+	filter_WorkerService_ListWorkers_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
 
 func request_WorkerService_ListWorkers_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ListWorkersRequest
-		metadata runtime.ServerMetadata
-	)
-	io.Copy(io.Discard, req.Body)
+	var protoReq ListWorkersRequest
+	var metadata runtime.ServerMetadata
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_WorkerService_ListWorkers_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.ListWorkers(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_ListWorkers_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ListWorkersRequest
-		metadata runtime.ServerMetadata
-	)
+	var protoReq ListWorkersRequest
+	var metadata runtime.ServerMetadata
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_WorkerService_ListWorkers_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.ListWorkers(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_WorkerService_CreateWorkerLed_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq CreateWorkerLedRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq CreateWorkerLedRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.CreateWorkerLed(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_CreateWorkerLed_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq CreateWorkerLedRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq CreateWorkerLedRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.CreateWorkerLed(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_WorkerService_CreateControllerLed_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq CreateControllerLedRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq CreateControllerLedRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.CreateControllerLed(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_CreateControllerLed_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq CreateControllerLedRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq CreateControllerLedRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.CreateControllerLed(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_WorkerService_UpdateWorker_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+var (
+	filter_WorkerService_UpdateWorker_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+)
 
 func request_WorkerService_UpdateWorker_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq UpdateWorkerRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
+	var protoReq UpdateWorkerRequest
+	var metadata runtime.ServerMetadata
+
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
@@ -175,35 +193,45 @@ func request_WorkerService_UpdateWorker_0(ctx context.Context, marshaler runtime
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_WorkerService_UpdateWorker_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.UpdateWorker(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_UpdateWorker_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq UpdateWorkerRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
+	var protoReq UpdateWorkerRequest
+	var metadata runtime.ServerMetadata
+
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
@@ -213,266 +241,355 @@ func local_request_WorkerService_UpdateWorker_0(ctx context.Context, marshaler r
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_WorkerService_UpdateWorker_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.UpdateWorker(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_WorkerService_DeleteWorker_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteWorkerRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq DeleteWorkerRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	io.Copy(io.Discard, req.Body)
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.DeleteWorker(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_DeleteWorker_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteWorkerRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq DeleteWorkerRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.DeleteWorker(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_WorkerService_AddWorkerTags_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq AddWorkerTagsRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq AddWorkerTagsRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.AddWorkerTags(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_AddWorkerTags_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq AddWorkerTagsRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq AddWorkerTagsRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.AddWorkerTags(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_WorkerService_SetWorkerTags_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq SetWorkerTagsRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq SetWorkerTagsRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.SetWorkerTags(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_SetWorkerTags_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq SetWorkerTagsRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq SetWorkerTagsRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.SetWorkerTags(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_WorkerService_RemoveWorkerTags_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq RemoveWorkerTagsRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq RemoveWorkerTagsRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.RemoveWorkerTags(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_RemoveWorkerTags_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq RemoveWorkerTagsRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq RemoveWorkerTagsRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.RemoveWorkerTags(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_WorkerService_ReadCertificateAuthority_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+var (
+	filter_WorkerService_ReadCertificateAuthority_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
 
 func request_WorkerService_ReadCertificateAuthority_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ReadCertificateAuthorityRequest
-		metadata runtime.ServerMetadata
-	)
-	io.Copy(io.Discard, req.Body)
+	var protoReq ReadCertificateAuthorityRequest
+	var metadata runtime.ServerMetadata
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_WorkerService_ReadCertificateAuthority_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.ReadCertificateAuthority(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_ReadCertificateAuthority_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ReadCertificateAuthorityRequest
-		metadata runtime.ServerMetadata
-	)
+	var protoReq ReadCertificateAuthorityRequest
+	var metadata runtime.ServerMetadata
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_WorkerService_ReadCertificateAuthority_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.ReadCertificateAuthority(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_WorkerService_ReinitializeCertificateAuthority_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+var (
+	filter_WorkerService_ReinitializeCertificateAuthority_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
 
 func request_WorkerService_ReinitializeCertificateAuthority_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ReinitializeCertificateAuthorityRequest
-		metadata runtime.ServerMetadata
-	)
-	io.Copy(io.Discard, req.Body)
+	var protoReq ReinitializeCertificateAuthorityRequest
+	var metadata runtime.ServerMetadata
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_WorkerService_ReinitializeCertificateAuthority_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.ReinitializeCertificateAuthority(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_WorkerService_ReinitializeCertificateAuthority_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ReinitializeCertificateAuthorityRequest
-		metadata runtime.ServerMetadata
-	)
+	var protoReq ReinitializeCertificateAuthorityRequest
+	var metadata runtime.ServerMetadata
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_WorkerService_ReinitializeCertificateAuthority_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.ReinitializeCertificateAuthority(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 // RegisterWorkerServiceHandlerServer registers the http handlers for service WorkerService to "mux".
 // UnaryRPC     :call WorkerServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterWorkerServiceHandlerFromEndpoint instead.
-// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server WorkerServiceServer) error {
-	mux.Handle(http.MethodGet, pattern_WorkerService_GetWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_WorkerService_GetWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/GetWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/GetWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -484,15 +601,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_GetWorker_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_GetWorker_0{resp.(*GetWorkerResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_GetWorker_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_GetWorker_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodGet, pattern_WorkerService_ListWorkers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_WorkerService_ListWorkers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ListWorkers", runtime.WithHTTPPathPattern("/v1/workers"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ListWorkers", runtime.WithHTTPPathPattern("/v1/workers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -504,15 +626,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_WorkerService_ListWorkers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_CreateWorkerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_CreateWorkerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateWorkerLed", runtime.WithHTTPPathPattern("/v1/workers:create:worker-led"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateWorkerLed", runtime.WithHTTPPathPattern("/v1/workers:create:worker-led"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -524,15 +651,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_CreateWorkerLed_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_CreateWorkerLed_0{resp.(*CreateWorkerLedResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_CreateWorkerLed_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_CreateWorkerLed_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_CreateControllerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_CreateControllerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateControllerLed", runtime.WithHTTPPathPattern("/v1/workers:create:controller-led"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateControllerLed", runtime.WithHTTPPathPattern("/v1/workers:create:controller-led"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -544,15 +676,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_CreateControllerLed_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_CreateControllerLed_0{resp.(*CreateControllerLedResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_CreateControllerLed_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_CreateControllerLed_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPatch, pattern_WorkerService_UpdateWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("PATCH", pattern_WorkerService_UpdateWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/UpdateWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/UpdateWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -564,15 +701,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_UpdateWorker_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_UpdateWorker_0{resp.(*UpdateWorkerResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_UpdateWorker_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_UpdateWorker_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodDelete, pattern_WorkerService_DeleteWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("DELETE", pattern_WorkerService_DeleteWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/DeleteWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/DeleteWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -584,15 +726,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_WorkerService_DeleteWorker_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_AddWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_AddWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/AddWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:add-worker-tags"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/AddWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:add-worker-tags"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -604,15 +751,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_AddWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_AddWorkerTags_0{resp.(*AddWorkerTagsResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_AddWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_AddWorkerTags_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_SetWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_SetWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/SetWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:set-worker-tags"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/SetWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:set-worker-tags"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -624,15 +776,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_SetWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_SetWorkerTags_0{resp.(*SetWorkerTagsResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_SetWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_SetWorkerTags_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_RemoveWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_RemoveWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/RemoveWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:remove-worker-tags"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/RemoveWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:remove-worker-tags"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -644,15 +801,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_RemoveWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_RemoveWorkerTags_0{resp.(*RemoveWorkerTagsResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_RemoveWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_RemoveWorkerTags_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodGet, pattern_WorkerService_ReadCertificateAuthority_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_WorkerService_ReadCertificateAuthority_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ReadCertificateAuthority", runtime.WithHTTPPathPattern("/v1/workers:read-certificate-authority"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ReadCertificateAuthority", runtime.WithHTTPPathPattern("/v1/workers:read-certificate-authority"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -664,15 +826,20 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_ReadCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReadCertificateAuthority_0{resp.(*ReadCertificateAuthorityResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_ReadCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReadCertificateAuthority_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_ReinitializeCertificateAuthority_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_ReinitializeCertificateAuthority_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ReinitializeCertificateAuthority", runtime.WithHTTPPathPattern("/v1/workers:reinitialize-certificate-authority"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ReinitializeCertificateAuthority", runtime.WithHTTPPathPattern("/v1/workers:reinitialize-certificate-authority"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -684,7 +851,9 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_ReinitializeCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReinitializeCertificateAuthority_0{resp.(*ReinitializeCertificateAuthorityResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_ReinitializeCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReinitializeCertificateAuthority_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil
@@ -693,24 +862,25 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 // RegisterWorkerServiceHandlerFromEndpoint is same as RegisterWorkerServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterWorkerServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.NewClient(endpoint, opts...)
+	conn, err := grpc.DialContext(ctx, endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
+
 	return RegisterWorkerServiceHandler(ctx, mux, conn)
 }
 
@@ -724,13 +894,16 @@ func RegisterWorkerServiceHandler(ctx context.Context, mux *runtime.ServeMux, co
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "WorkerServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "WorkerServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "WorkerServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
+// "WorkerServiceClient" to call the correct interceptors.
 func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client WorkerServiceClient) error {
-	mux.Handle(http.MethodGet, pattern_WorkerService_GetWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_WorkerService_GetWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/GetWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/GetWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -741,13 +914,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_GetWorker_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_GetWorker_0{resp.(*GetWorkerResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_GetWorker_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_GetWorker_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodGet, pattern_WorkerService_ListWorkers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_WorkerService_ListWorkers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ListWorkers", runtime.WithHTTPPathPattern("/v1/workers"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ListWorkers", runtime.WithHTTPPathPattern("/v1/workers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -758,13 +936,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_WorkerService_ListWorkers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_CreateWorkerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_CreateWorkerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateWorkerLed", runtime.WithHTTPPathPattern("/v1/workers:create:worker-led"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateWorkerLed", runtime.WithHTTPPathPattern("/v1/workers:create:worker-led"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -775,13 +958,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_CreateWorkerLed_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_CreateWorkerLed_0{resp.(*CreateWorkerLedResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_CreateWorkerLed_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_CreateWorkerLed_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_CreateControllerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_CreateControllerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateControllerLed", runtime.WithHTTPPathPattern("/v1/workers:create:controller-led"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateControllerLed", runtime.WithHTTPPathPattern("/v1/workers:create:controller-led"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -792,13 +980,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_CreateControllerLed_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_CreateControllerLed_0{resp.(*CreateControllerLedResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_CreateControllerLed_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_CreateControllerLed_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPatch, pattern_WorkerService_UpdateWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("PATCH", pattern_WorkerService_UpdateWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/UpdateWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/UpdateWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -809,13 +1002,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_UpdateWorker_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_UpdateWorker_0{resp.(*UpdateWorkerResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_UpdateWorker_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_UpdateWorker_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodDelete, pattern_WorkerService_DeleteWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("DELETE", pattern_WorkerService_DeleteWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/DeleteWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/DeleteWorker", runtime.WithHTTPPathPattern("/v1/workers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -826,13 +1024,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_WorkerService_DeleteWorker_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_AddWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_AddWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/AddWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:add-worker-tags"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/AddWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:add-worker-tags"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -843,13 +1046,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_AddWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_AddWorkerTags_0{resp.(*AddWorkerTagsResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_AddWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_AddWorkerTags_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_SetWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_SetWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/SetWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:set-worker-tags"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/SetWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:set-worker-tags"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -860,13 +1068,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_SetWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_SetWorkerTags_0{resp.(*SetWorkerTagsResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_SetWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_SetWorkerTags_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_RemoveWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_RemoveWorkerTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/RemoveWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:remove-worker-tags"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/RemoveWorkerTags", runtime.WithHTTPPathPattern("/v1/workers/{id}:remove-worker-tags"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -877,13 +1090,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_RemoveWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_RemoveWorkerTags_0{resp.(*RemoveWorkerTagsResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_RemoveWorkerTags_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_RemoveWorkerTags_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodGet, pattern_WorkerService_ReadCertificateAuthority_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_WorkerService_ReadCertificateAuthority_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ReadCertificateAuthority", runtime.WithHTTPPathPattern("/v1/workers:read-certificate-authority"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ReadCertificateAuthority", runtime.WithHTTPPathPattern("/v1/workers:read-certificate-authority"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -894,13 +1112,18 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_ReadCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReadCertificateAuthority_0{resp.(*ReadCertificateAuthorityResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_ReadCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReadCertificateAuthority_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_WorkerService_ReinitializeCertificateAuthority_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_WorkerService_ReinitializeCertificateAuthority_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ReinitializeCertificateAuthority", runtime.WithHTTPPathPattern("/v1/workers:reinitialize-certificate-authority"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/ReinitializeCertificateAuthority", runtime.WithHTTPPathPattern("/v1/workers:reinitialize-certificate-authority"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -911,107 +1134,139 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_WorkerService_ReinitializeCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReinitializeCertificateAuthority_0{resp.(*ReinitializeCertificateAuthorityResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_WorkerService_ReinitializeCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReinitializeCertificateAuthority_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
+
 	return nil
 }
 
 type response_WorkerService_GetWorker_0 struct {
-	*GetWorkerResponse
+	proto.Message
 }
 
 func (m response_WorkerService_GetWorker_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*GetWorkerResponse)
+	return response.Item
 }
 
 type response_WorkerService_CreateWorkerLed_0 struct {
-	*CreateWorkerLedResponse
+	proto.Message
 }
 
 func (m response_WorkerService_CreateWorkerLed_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*CreateWorkerLedResponse)
+	return response.Item
 }
 
 type response_WorkerService_CreateControllerLed_0 struct {
-	*CreateControllerLedResponse
+	proto.Message
 }
 
 func (m response_WorkerService_CreateControllerLed_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*CreateControllerLedResponse)
+	return response.Item
 }
 
 type response_WorkerService_UpdateWorker_0 struct {
-	*UpdateWorkerResponse
+	proto.Message
 }
 
 func (m response_WorkerService_UpdateWorker_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*UpdateWorkerResponse)
+	return response.Item
 }
 
 type response_WorkerService_AddWorkerTags_0 struct {
-	*AddWorkerTagsResponse
+	proto.Message
 }
 
 func (m response_WorkerService_AddWorkerTags_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*AddWorkerTagsResponse)
+	return response.Item
 }
 
 type response_WorkerService_SetWorkerTags_0 struct {
-	*SetWorkerTagsResponse
+	proto.Message
 }
 
 func (m response_WorkerService_SetWorkerTags_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*SetWorkerTagsResponse)
+	return response.Item
 }
 
 type response_WorkerService_RemoveWorkerTags_0 struct {
-	*RemoveWorkerTagsResponse
+	proto.Message
 }
 
 func (m response_WorkerService_RemoveWorkerTags_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*RemoveWorkerTagsResponse)
+	return response.Item
 }
 
 type response_WorkerService_ReadCertificateAuthority_0 struct {
-	*ReadCertificateAuthorityResponse
+	proto.Message
 }
 
 func (m response_WorkerService_ReadCertificateAuthority_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*ReadCertificateAuthorityResponse)
+	return response.Item
 }
 
 type response_WorkerService_ReinitializeCertificateAuthority_0 struct {
-	*ReinitializeCertificateAuthorityResponse
+	proto.Message
 }
 
 func (m response_WorkerService_ReinitializeCertificateAuthority_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.Message.(*ReinitializeCertificateAuthorityResponse)
+	return response.Item
 }
 
 var (
-	pattern_WorkerService_GetWorker_0                        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, ""))
-	pattern_WorkerService_ListWorkers_0                      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers"}, ""))
-	pattern_WorkerService_CreateWorkerLed_0                  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers:create"}, "worker-led"))
-	pattern_WorkerService_CreateControllerLed_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers:create"}, "controller-led"))
-	pattern_WorkerService_UpdateWorker_0                     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, ""))
-	pattern_WorkerService_DeleteWorker_0                     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, ""))
-	pattern_WorkerService_AddWorkerTags_0                    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, "add-worker-tags"))
-	pattern_WorkerService_SetWorkerTags_0                    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, "set-worker-tags"))
-	pattern_WorkerService_RemoveWorkerTags_0                 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, "remove-worker-tags"))
-	pattern_WorkerService_ReadCertificateAuthority_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers"}, "read-certificate-authority"))
+	pattern_WorkerService_GetWorker_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, ""))
+
+	pattern_WorkerService_ListWorkers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers"}, ""))
+
+	pattern_WorkerService_CreateWorkerLed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers:create"}, "worker-led"))
+
+	pattern_WorkerService_CreateControllerLed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers:create"}, "controller-led"))
+
+	pattern_WorkerService_UpdateWorker_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, ""))
+
+	pattern_WorkerService_DeleteWorker_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, ""))
+
+	pattern_WorkerService_AddWorkerTags_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, "add-worker-tags"))
+
+	pattern_WorkerService_SetWorkerTags_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, "set-worker-tags"))
+
+	pattern_WorkerService_RemoveWorkerTags_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, "remove-worker-tags"))
+
+	pattern_WorkerService_ReadCertificateAuthority_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers"}, "read-certificate-authority"))
+
 	pattern_WorkerService_ReinitializeCertificateAuthority_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers"}, "reinitialize-certificate-authority"))
 )
 
 var (
-	forward_WorkerService_GetWorker_0                        = runtime.ForwardResponseMessage
-	forward_WorkerService_ListWorkers_0                      = runtime.ForwardResponseMessage
-	forward_WorkerService_CreateWorkerLed_0                  = runtime.ForwardResponseMessage
-	forward_WorkerService_CreateControllerLed_0              = runtime.ForwardResponseMessage
-	forward_WorkerService_UpdateWorker_0                     = runtime.ForwardResponseMessage
-	forward_WorkerService_DeleteWorker_0                     = runtime.ForwardResponseMessage
-	forward_WorkerService_AddWorkerTags_0                    = runtime.ForwardResponseMessage
-	forward_WorkerService_SetWorkerTags_0                    = runtime.ForwardResponseMessage
-	forward_WorkerService_RemoveWorkerTags_0                 = runtime.ForwardResponseMessage
-	forward_WorkerService_ReadCertificateAuthority_0         = runtime.ForwardResponseMessage
+	forward_WorkerService_GetWorker_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_ListWorkers_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_CreateWorkerLed_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_CreateControllerLed_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_UpdateWorker_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_DeleteWorker_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_AddWorkerTags_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_SetWorkerTags_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_RemoveWorkerTags_0 = runtime.ForwardResponseMessage
+
+	forward_WorkerService_ReadCertificateAuthority_0 = runtime.ForwardResponseMessage
+
 	forward_WorkerService_ReinitializeCertificateAuthority_0 = runtime.ForwardResponseMessage
 )

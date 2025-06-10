@@ -22,7 +22,6 @@ import (
 // canceled sessions is not included.
 func TestCliPaginateSessions(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -106,7 +105,6 @@ func TestCliPaginateSessions(t *testing.T) {
 // canceled sessions is not included.
 func TestApiPaginateSessions(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 

@@ -152,7 +152,6 @@ resource "aws_instance" "worker" {
     volume_type = var.ebs_type
     throughput  = var.ebs_throughput
     tags        = local.common_tags
-    encrypted   = true
   }
 
   tags = merge(
@@ -246,11 +245,11 @@ resource "enos_remote_exec" "create_worker_audit_log_dir" {
   ]
 
   environment = {
-    NEW_DIR      = local.audit_log_directory
+    LOG_DIR      = local.audit_log_directory
     SERVICE_USER = local.service_user
   }
 
-  scripts = [abspath("${path.module}/scripts/create-dir.sh")]
+  scripts = [abspath("${path.module}/scripts/create-audit-log-dir.sh")]
 
   transport = {
     ssh = {

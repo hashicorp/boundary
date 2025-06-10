@@ -57,16 +57,6 @@ See [enos.vars.hcl](./enos.vars.hcl) for complete descriptions of each variable.
 You can either modify `enos.vars.hcl` directly or create your own copy at
 `enos-local.vars.hcl` which gets ignored by git.
 
-### System File Modifications
-
-For docker-based scenarios, you will need to modify `/etc/hosts` to include the
-following lines
-```
-127.0.0.1       localhost       boundary
-127.0.0.1       localhost       worker
-127.0.0.1       localhost       vault
-```
-
 ## Executing Scenarios
 From the `enos` directory:
 

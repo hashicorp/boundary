@@ -119,6 +119,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("in auth method %s: name %q or loginName %q already exists",
@@ -276,6 +277,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 			return nil
 		},
 	)
+
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(withPublicId))
 	}
@@ -389,6 +391,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op,

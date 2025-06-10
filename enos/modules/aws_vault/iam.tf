@@ -36,10 +36,9 @@ data "aws_iam_policy_document" "vault_profile" {
 }
 
 resource "aws_iam_role" "vault_instance_role" {
-  count                 = var.deploy ? 1 : 0
-  name                  = "vault_instance_role-${random_string.cluster_id.result}"
-  assume_role_policy    = data.aws_iam_policy_document.vault_instance_role.json
-  force_detach_policies = true
+  count              = var.deploy ? 1 : 0
+  name               = "vault_instance_role-${random_string.cluster_id.result}"
+  assume_role_policy = data.aws_iam_policy_document.vault_instance_role.json
 }
 
 resource "aws_iam_instance_profile" "vault_profile" {
