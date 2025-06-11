@@ -399,6 +399,9 @@ func TestRoleGrant(t testing.TB, conn *db.DB, roleId, grant string, opt ...Optio
 
 func TestRoleGrantScope(t testing.TB, conn *db.DB, r *Role, grantScopeId string, opt ...Option) *RoleGrantScope {
 	t.Helper()
+	if r.ScopeId == grantScopeId {
+		grantScopeId = globals.GrantScopeThis
+	}
 	switch grantScopeId {
 	case globals.GrantScopeThis:
 		return testRoleGrantScopeThis(t, conn, r)

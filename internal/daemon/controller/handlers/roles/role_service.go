@@ -952,7 +952,7 @@ func (s Service) addGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 
 	deduped := strutil.RemoveDuplicates(req.GetGrantScopeIds(), false)
 
-	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
+	if err := validateAndCleanRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
@@ -980,7 +980,7 @@ func (s Service) setGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 
 	deduped := strutil.RemoveDuplicates(req.GetGrantScopeIds(), false)
 
-	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
+	if err := validateAndCleanRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
@@ -1005,7 +1005,6 @@ func (s Service) removeGrantScopesInRepo(ctx context.Context, req grantScopeRequ
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-
 	_, err = repo.DeleteRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
@@ -1458,13 +1457,15 @@ func validateRoleGrantScopesRequest(ctx context.Context, req grantScopeRequest) 
 	return nil
 }
 
-// validateRoleGrantScopesHierarchy is the companion to the domain-side logic to
+// validateAndCleanRoleGrantScopesHierarchy is the companion to the domain-side logic to
 // validate scopes. It doesn't do all of the same checking but will allow for
 // better error messages when possible. We perform this check after
 // authentication to limit the possibility of an anonymous user causing DB load
 // due to this lookup, which is not a cheap one.
-func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository, roleId string, grantScopes []string) error {
-	const op = "service.(Service).validateRoleGrantScopesHierarchy"
+// This function also converts grant scope that is the role's scope ID to 'this'
+// by mutating grantScopes input
+func validateAndCleanRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository, roleId string, grantScopes []string) error {
+	const op = "service.(Service).validateAndCleanRoleGrantScopesHierarchy"
 	// We want to ensure that the values being passed in make sense to whatever
 	// extent we can right now, so we can provide nice errors back instead of DB
 	// errors.
@@ -1474,12 +1475,18 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 	}
 	switch {
 	case role.ScopeId == scope.Global.String():
-		// Nothing, any grant scope is allowed for global
+		for i, grantScope := range grantScopes {
+			if grantScope == scope.Global.String() {
+				grantScopes[i] = globals.GrantScopeThis
+			}
+		}
 	case strings.HasPrefix(role.ScopeId, scope.Project.Prefix()):
 		// In this case only "this" or the same project scope is allowed
-		for _, grantScope := range grantScopes {
+		for i, grantScope := range grantScopes {
 			switch grantScope {
-			case globals.GrantScopeThis, role.ScopeId:
+			case globals.GrantScopeThis:
+			case role.ScopeId:
+				grantScopes[i] = globals.GrantScopeThis
 			default:
 				return handlers.InvalidArgumentErrorf(
 					"Invalid grant scope.",
@@ -1490,10 +1497,11 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 		}
 	case strings.HasPrefix(role.ScopeId, scope.Org.Prefix()):
 		// Orgs can have "this", its own scope, a project scope, or "children"
-		for _, grantScope := range grantScopes {
+		for i, grantScope := range grantScopes {
 			switch {
-			case grantScope == role.ScopeId,
-				grantScope == globals.GrantScopeThis,
+			case grantScope == role.ScopeId:
+				grantScopes[i] = globals.GrantScopeThis
+			case grantScope == globals.GrantScopeThis,
 				grantScope == globals.GrantScopeChildren,
 				strings.HasPrefix(grantScope, scope.Project.Prefix()):
 			default:

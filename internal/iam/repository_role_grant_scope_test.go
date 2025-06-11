@@ -1622,7 +1622,7 @@ func TestGrantsForUser_ACL_Allowed(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, tc.res.Type, tc.res.ScopeId)
+			grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, []resource.Type{tc.res.Type}, tc.res.ScopeId)
 			require.NoError(t, err)
 			grants := make([]perms.Grant, 0, len(grantTuples))
 			for _, gt := range grantTuples {
@@ -1788,7 +1788,7 @@ func TestGrantsForUser_ACL_parsing(t *testing.T) {
 	t.Run("acl-grants", func(t *testing.T) {
 		// ACLs have to be calculated for each test because they care about different resources
 		t.Run("descendant-grants", func(t *testing.T) {
-			grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, resource.Credential, globals.GlobalPrefix, WithRecursive(true))
+			grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, []resource.Type{resource.Credential}, globals.GlobalPrefix, WithRecursive(true))
 			require.NoError(t, err)
 			grants := make([]perms.Grant, 0, len(grantTuples))
 			for _, gt := range grantTuples {
@@ -1813,7 +1813,7 @@ func TestGrantsForUser_ACL_parsing(t *testing.T) {
 		})
 
 		t.Run("child-grants", func(t *testing.T) {
-			grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, resource.Session, globals.GlobalPrefix, WithRecursive(true))
+			grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, []resource.Type{resource.Session}, globals.GlobalPrefix, WithRecursive(true))
 			require.NoError(t, err)
 			grants := make([]perms.Grant, 0, len(grantTuples))
 			for _, gt := range grantTuples {
@@ -1851,7 +1851,7 @@ func TestGrantsForUser_ACL_parsing(t *testing.T) {
 		})
 
 		t.Run("direct-grants", func(t *testing.T) {
-			grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, resource.Role, globals.GlobalPrefix, WithRecursive(true))
+			grantTuples, err := repo.GrantsForUser(ctx, user.PublicId, []resource.Type{resource.Role}, globals.GlobalPrefix, WithRecursive(true))
 			require.NoError(t, err)
 			grants := make([]perms.Grant, 0, len(grantTuples))
 			for _, gt := range grantTuples {

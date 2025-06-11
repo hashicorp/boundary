@@ -579,7 +579,7 @@ func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
 type testInput struct {
 	userId     string
 	reqScopeId string
-	resource   resource.Type
+	resource   []resource.Type
 }
 
 func TestGrantsForUserGlobalResources(t *testing.T) {
@@ -625,7 +625,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 			name: "alias resource should return alias and '*' grants",
 			input: testInput{
 				userId:   user.PublicId,
-				resource: resource.Alias,
+				resource: []resource.Type{resource.Alias},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -648,7 +648,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 			name: "account resource should return account and '*' grants",
 			input: testInput{
 				userId:   user.PublicId,
-				resource: resource.Account,
+				resource: []resource.Type{resource.Account},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -671,7 +671,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 			name: "group resource should return group and '*' grants",
 			input: testInput{
 				userId:   user.PublicId,
-				resource: resource.Group,
+				resource: []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -722,7 +722,7 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 		{
 			name: "missing user id should return error",
 			input: testInput{
-				resource: resource.Alias,
+				resource: []resource.Type{resource.Alias},
 			},
 			errorMsg: "missing user id",
 		},
@@ -798,7 +798,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org1Scope.PublicId,
-				resource:   resource.User,
+				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -836,7 +836,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org2Scope.PublicId,
-				resource:   resource.User,
+				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -874,7 +874,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org1Scope.PublicId,
-				resource:   resource.Policy,
+				resource:   []resource.Type{resource.Policy},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -912,7 +912,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org2Scope.PublicId,
-				resource:   resource.Policy,
+				resource:   []resource.Type{resource.Policy},
 			},
 			output: []perms.GrantTuple{
 				{
@@ -1019,7 +1019,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 		{
 			name: "missing user id should return error",
 			input: testInput{
-				resource:   resource.User,
+				resource:   []resource.Type{resource.User},
 				reqScopeId: org1Scope.PublicId,
 			},
 			errorMsg: "missing user id",
@@ -1029,7 +1029,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: "",
-				resource:   resource.User,
+				resource:   []resource.Type{resource.User},
 			},
 			errorMsg: "missing request scope id",
 		},
@@ -1113,7 +1113,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj1a.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1137,7 +1137,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj1b.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1168,7 +1168,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj2.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1199,7 +1199,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj1a.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1216,7 +1216,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj1b.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1247,7 +1247,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: proj2.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1400,7 +1400,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 			testcase{
 				name: "missing user id should return error",
 				input: testInput{
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 					reqScopeId: proj2.PublicId,
 				},
 				errorMsg: "missing user id",
@@ -1410,7 +1410,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: "",
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				errorMsg: "missing request scope id",
 			},
@@ -1437,7 +1437,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1446,6 +1446,13 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						RoleParentScopeId: "global",
 						GrantScopeId:      globals.GrantScopeDescendants,
 						Grant:             "ids=*;type=*;actions=read",
+					},
+					{
+						RoleId:            globalRoleThisAndProj1a.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      "global",
+						Grant:             "ids=*;type=target;actions=set-credential-sources",
 					},
 					{
 						RoleId:            globalRoleThisAndProj1a.PublicId,
@@ -1489,9 +1496,37 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: org1.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{
+					{
+						RoleId:            globalRoleProj2.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=*;type=target;actions=create,update",
+					},
+					{
+						RoleId:            globalRoleDescendants.PublicId,
+						RoleScopeId:       globals.GlobalPrefix,
+						RoleParentScopeId: "global",
+						GrantScopeId:      globals.GrantScopeDescendants,
+						Grant:             "ids=*;type=*;actions=read",
+					},
+					{
+						RoleId:            globalRoleThisAndProj1a.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      "global",
+						Grant:             "ids=*;type=target;actions=set-credential-sources",
+					},
+					{
+						RoleId:            globalRoleThisAndProj1a.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj1a.PublicId,
+						Grant:             "ids=*;type=target;actions=set-credential-sources",
+					},
 					{
 						RoleId:            org1RoleProj1b.PublicId,
 						RoleScopeId:       org1.PublicId,
@@ -1506,16 +1541,6 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						GrantScopeId:      proj1b.PublicId,
 						Grant:             "ids=*;type=*;actions=*",
 					},
-				},
-			},
-			testcase{
-				name: "return grants for target resource at org2 request scope",
-				input: testInput{
-					userId:     user.PublicId,
-					reqScopeId: org2.PublicId,
-					resource:   resource.Target,
-				},
-				output: []perms.GrantTuple{
 					{
 						RoleId:            proj2RoleThis.PublicId,
 						RoleScopeId:       proj2.PublicId,
@@ -1526,11 +1551,70 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				},
 			},
 			testcase{
+				name: "return grants for target resource at org2 request scope",
+				input: testInput{
+					userId:     user.PublicId,
+					reqScopeId: org2.PublicId,
+					resource:   []resource.Type{resource.Target},
+				},
+				output: []perms.GrantTuple{
+					{
+						RoleId:            globalRoleDescendants.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      globals.GrantScopeDescendants,
+						Grant:             "ids=*;type=*;actions=read",
+					},
+					{
+						RoleId:            globalRoleProj2.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=*;type=target;actions=create,update",
+					},
+					{
+						RoleId:            globalRoleThisAndProj1a.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      "global",
+						Grant:             "ids=*;type=target;actions=set-credential-sources",
+					},
+					{
+						RoleId:            org1RoleProj1b.PublicId,
+						RoleScopeId:       org1.PublicId,
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj1b.PublicId,
+						Grant:             "ids=*;type=target;actions=list-resolvable-aliases",
+					},
+					{
+						RoleId:            globalRoleThisAndProj1a.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj1a.PublicId,
+						Grant:             "ids=*;type=target;actions=set-credential-sources",
+					},
+					{
+						RoleId:            proj2RoleThis.PublicId,
+						RoleScopeId:       proj2.PublicId,
+						RoleParentScopeId: org2.PublicId,
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
+					},
+					{
+						RoleId:            proj1bRoleThis.PublicId,
+						RoleScopeId:       proj1b.PublicId,
+						RoleParentScopeId: org1.PublicId,
+						GrantScopeId:      proj1b.PublicId,
+						Grant:             "ids=*;type=*;actions=*",
+					},
+				},
+			},
+			testcase{
 				name: "return grants for scope resource at global request scope",
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
 					{
@@ -1553,6 +1637,13 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						RoleParentScopeId: "global",
 						GrantScopeId:      proj1b.PublicId,
 						Grant:             "ids=*;type=scope;actions=list,no-op",
+					},
+					{
+						RoleId:            org2RoleThisAndChildren.PublicId,
+						RoleScopeId:       org2.PublicId,
+						RoleParentScopeId: "global",
+						GrantScopeId:      org2.PublicId,
+						Grant:             "ids=*;type=scope;actions=list-keys,read",
 					},
 					{
 						RoleId:            org2RoleThisAndChildren.PublicId,
@@ -1589,9 +1680,16 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: org1.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
+					{
+						RoleId:            globalRoleDescendants.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      globals.GrantScopeDescendants,
+						Grant:             "ids=*;type=*;actions=read",
+					},
 					{
 						RoleId:            org1RoleProj1b.PublicId,
 						RoleScopeId:       org1.PublicId,
@@ -1606,6 +1704,42 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						GrantScopeId:      proj1b.PublicId,
 						Grant:             "ids=*;type=*;actions=*",
 					},
+
+					{
+						RoleId:            proj2RoleThis.PublicId,
+						RoleScopeId:       proj2.PublicId,
+						RoleParentScopeId: org2.PublicId,
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=*;type=scope;actions=attach-storage-policy,detach-storage-policy",
+					},
+					{
+						RoleId:            proj2RoleThis.PublicId,
+						RoleScopeId:       proj2.PublicId,
+						RoleParentScopeId: org2.PublicId,
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
+					},
+					{
+						RoleId:            globalRoleProj2.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=*;type=scope;actions=list,read",
+					},
+					{
+						RoleId:            org2RoleThisAndChildren.PublicId,
+						RoleScopeId:       org2.PublicId,
+						RoleParentScopeId: "global",
+						GrantScopeId:      "children",
+						Grant:             "ids=*;type=scope;actions=list-keys,read",
+					},
+					{
+						RoleId:            org2RoleThisAndChildren.PublicId,
+						RoleScopeId:       org2.PublicId,
+						RoleParentScopeId: "global",
+						GrantScopeId:      org2.PublicId,
+						Grant:             "ids=*;type=scope;actions=list-keys,read",
+					},
 				},
 			},
 			testcase{
@@ -1613,9 +1747,23 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: org2.PublicId,
-					resource:   resource.Scope,
+					resource:   []resource.Type{resource.Scope},
 				},
 				output: []perms.GrantTuple{
+					{
+						RoleId:            globalRoleDescendants.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      globals.GrantScopeDescendants,
+						Grant:             "ids=*;type=*;actions=read",
+					},
+					{
+						RoleId:            org2RoleThisAndChildren.PublicId,
+						RoleScopeId:       org2.PublicId,
+						RoleParentScopeId: "global",
+						GrantScopeId:      org2.PublicId,
+						Grant:             "ids=*;type=scope;actions=list-keys,read",
+					},
 					{
 						RoleId:            org2RoleThisAndChildren.PublicId,
 						RoleScopeId:       org2.PublicId,
@@ -1631,11 +1779,32 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 						Grant:             "ids=*;type=scope;actions=attach-storage-policy,detach-storage-policy",
 					},
 					{
+						RoleId:            globalRoleProj2.PublicId,
+						RoleScopeId:       "global",
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj2.PublicId,
+						Grant:             "ids=*;type=scope;actions=list,read",
+					},
+					{
 						RoleId:            proj2RoleThis.PublicId,
 						RoleScopeId:       proj2.PublicId,
 						RoleParentScopeId: org2.PublicId,
 						GrantScopeId:      proj2.PublicId,
 						Grant:             "ids=tssh_12345;actions=add-host-sources,remove-host-sources",
+					},
+					{
+						RoleId:            proj1bRoleThis.PublicId,
+						RoleScopeId:       proj1b.PublicId,
+						RoleParentScopeId: org1.PublicId,
+						GrantScopeId:      proj1b.PublicId,
+						Grant:             "ids=*;type=*;actions=*",
+					},
+					{
+						RoleId:            org1RoleProj1b.PublicId,
+						RoleScopeId:       org1.PublicId,
+						RoleParentScopeId: "global",
+						GrantScopeId:      proj1b.PublicId,
+						Grant:             "ids=*;type=scope;actions=list,no-op",
 					},
 				},
 			},
@@ -1644,7 +1813,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Unknown,
+					resource:   []resource.Type{resource.Unknown},
 				},
 				errorMsg: "a specific resource type must be specified",
 			},
@@ -1653,7 +1822,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.All,
+					resource:   []resource.Type{resource.All},
 				},
 				errorMsg: "a specific resource type must be specified",
 			},
@@ -1662,7 +1831,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1671,7 +1840,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: org1.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1680,7 +1849,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: org2.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1689,7 +1858,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1698,7 +1867,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: org1.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1707,14 +1876,14 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnyAuthenticatedUserId,
 					reqScopeId: org2.PublicId,
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				output: []perms.GrantTuple{},
 			},
 			testcase{
 				name: "missing user id should return error",
 				input: testInput{
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 					reqScopeId: proj2.PublicId,
 				},
 				errorMsg: "missing user id",
@@ -1724,16 +1893,16 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: "",
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
-				errorMsg: "missing request scope id",
+				errorMsg: "request scope must be global scope, an org scope, or a project scope",
 			},
 			testcase{
 				name: "return error when trying to recursively list grants at an unknown request scope",
 				input: testInput{
 					userId:     user.PublicId,
 					reqScopeId: scope.Unknown.String(),
-					resource:   resource.Target,
+					resource:   []resource.Type{resource.Target},
 				},
 				errorMsg: "request scope must be global scope, an org scope, or a project scope",
 			},
@@ -1742,7 +1911,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 				input: testInput{
 					userId:     globals.AnonymousUserId,
 					reqScopeId: globals.GlobalPrefix,
-					resource:   resource.Session,
+					resource:   []resource.Type{resource.Session},
 				},
 				output: []perms.GrantTuple{},
 			},
@@ -1750,7 +1919,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				got, err := repo.grantsForUserProjectResourcesRecursiveScopes(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+				got, err := repo.grantsForUserRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
 				if tc.errorMsg != "" {
 					require.Error(t, err)
 					assert.Contains(t, err.Error(), tc.errorMsg)
@@ -1763,286 +1932,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	})
 }
 
-func TestGrantsForUserGlobalOrgResources(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrap := db.TestWrapper(t)
-	repo := TestRepo(t, conn, wrap)
-	user := TestUser(t, repo, "global")
-
-	// Create scopes
-	org1Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
-	org2Scope := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
-
-	// Create & grant roles
-	roles := make([]*Role, 0)
-
-	globalRoleThis := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis}))
-	globalRoleChildren := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
-	globalRoleDescendants := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
-	globalRoleOrg1 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{org1Scope.PublicId}))
-	globalRoleThisAndOrg2 := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, org2Scope.PublicId}))
-	roles = append(roles, globalRoleThis, globalRoleOrg1, globalRoleThisAndOrg2, globalRoleDescendants, globalRoleChildren)
-
-	TestRoleGrant(t, conn, globalRoleThis.PublicId, "ids=*;type=account;actions=create,update")
-	TestRoleGrant(t, conn, globalRoleChildren.PublicId, "ids=*;type=account;actions=set-password")
-	TestRoleGrant(t, conn, globalRoleDescendants.PublicId, "ids=*;type=*;actions=update")
-	TestRoleGrant(t, conn, globalRoleOrg1.PublicId, "ids=*;type=account;actions=list,read")
-	TestRoleGrant(t, conn, globalRoleThisAndOrg2.PublicId, "ids=acctpw_12345;actions=read")
-
-	org1RoleThis := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis}))
-	org1RoleChildren := TestRole(t, conn, org1Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeChildren}))
-	org2RoleThisAndChildren := TestRole(t, conn, org2Scope.PublicId, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
-	roles = append(roles, org1RoleThis, org1RoleChildren, org2RoleThisAndChildren)
-
-	TestRoleGrant(t, conn, org1RoleThis.PublicId, "ids=ampw_12345;actions=read")
-	TestRoleGrant(t, conn, org1RoleChildren.PublicId, "ids=*;type=account;actions=change-password")
-	TestRoleGrant(t, conn, org2RoleThisAndChildren.PublicId, "ids=*;type=account;actions=delete")
-
-	projRoleThis := TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis}))
-	roles = append(roles, projRoleThis)
-
-	TestRoleGrant(t, conn, projRoleThis.PublicId, "ids=*;type=group;actions=read")
-
-	// Add users to created roles
-	for _, role := range roles {
-		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
-		require.NoError(t, err)
-	}
-
-	testcases := []struct {
-		name     string
-		input    testInput
-		output   []perms.GrantTuple
-		errorMsg string
-	}{
-		{
-			name: "return grants for account resource at global request scope",
-			input: testInput{
-				userId:     user.PublicId,
-				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Account,
-			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleThis.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      "global",
-					Grant:             "ids=*;type=account;actions=create,update",
-				},
-				{
-					RoleId:            globalRoleChildren.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=account;actions=set-password",
-				},
-				{
-					RoleId:            globalRoleDescendants.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
-				{
-					RoleId:            globalRoleOrg1.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
-					Grant:             "ids=*;type=account;actions=list,read",
-				},
-				{
-					RoleId:            globalRoleThisAndOrg2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      "global",
-					Grant:             "ids=acctpw_12345;actions=read",
-				},
-				{
-					RoleId:            globalRoleThisAndOrg2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
-					Grant:             "ids=acctpw_12345;actions=read",
-				},
-				{
-					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1Scope.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
-					Grant:             "ids=ampw_12345;actions=read",
-				},
-				{
-					RoleId:            org2RoleThisAndChildren.PublicId,
-					RoleScopeId:       org2Scope.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      org2Scope.PublicId,
-					Grant:             "ids=*;type=account;actions=delete",
-				},
-			},
-		},
-		{
-			name: "return org grants when trying to recursively list grants at a non-recursive request scope (org scope)",
-			input: testInput{
-				userId:     user.PublicId,
-				reqScopeId: org1Scope.PublicId,
-				resource:   resource.Account,
-			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleChildren.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=account;actions=set-password",
-				},
-				{
-					RoleId:            globalRoleDescendants.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
-				{
-					RoleId:            globalRoleOrg1.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
-					Grant:             "ids=*;type=account;actions=list,read",
-				},
-				{
-					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1Scope.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      org1Scope.PublicId,
-					Grant:             "ids=ampw_12345;actions=read",
-				},
-			},
-		},
-		{
-			name: "return error when trying to recursively list grants at an unknown request scope",
-			input: testInput{
-				userId:     user.PublicId,
-				reqScopeId: scope.Unknown.String(),
-			},
-			errorMsg: "request scope must be global scope or an org scope",
-		},
-		{
-			name: "return no grants for a resource that has no permissions granted for it",
-			input: testInput{
-				userId:     globals.AnonymousUserId,
-				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.AuthMethod,
-			},
-			output: []perms.GrantTuple{},
-		},
-		{
-			name: "unknown resource type should return error",
-			input: testInput{
-				userId:     user.PublicId,
-				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Unknown,
-			},
-			errorMsg: "a specific resource type must be specified",
-		},
-		{
-			name: "'*' resource type should return error",
-			input: testInput{
-				userId:     user.PublicId,
-				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.All,
-			},
-			errorMsg: "a specific resource type must be specified",
-		},
-		{
-			name: "u_anon should return no grants at global request scope",
-			input: testInput{
-				userId:     globals.AnonymousUserId,
-				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Account,
-			},
-			output: []perms.GrantTuple{},
-		},
-		{
-			name: "u_anon should return no grants at org1 request scope",
-			input: testInput{
-				userId:     globals.AnonymousUserId,
-				reqScopeId: org1Scope.PublicId,
-				resource:   resource.Account,
-			},
-			output: []perms.GrantTuple{},
-		},
-		{
-			name: "u_anon should return no grants at org2 request scope",
-			input: testInput{
-				userId:     globals.AnonymousUserId,
-				reqScopeId: org2Scope.PublicId,
-				resource:   resource.Account,
-			},
-			output: []perms.GrantTuple{},
-		},
-		{
-			name: "u_auth should return no grants at global request scope",
-			input: testInput{
-				userId:     globals.AnyAuthenticatedUserId,
-				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Account,
-			},
-			output: []perms.GrantTuple{},
-		},
-		{
-			name: "u_auth should return no grants at org1 request scope",
-			input: testInput{
-				userId:     globals.AnyAuthenticatedUserId,
-				reqScopeId: org1Scope.PublicId,
-				resource:   resource.Account,
-			},
-			output: []perms.GrantTuple{},
-		},
-		{
-			name: "u_auth should return no grants at org2 request scope",
-			input: testInput{
-				userId:     globals.AnyAuthenticatedUserId,
-				reqScopeId: org2Scope.PublicId,
-				resource:   resource.Account,
-			},
-			output: []perms.GrantTuple{},
-		},
-		{
-			name: "missing user id should return error",
-			input: testInput{
-				resource:   resource.Account,
-				reqScopeId: globals.GlobalPrefix,
-			},
-			errorMsg: "missing user id",
-		},
-		{
-			name: "missing scope id should return error",
-			input: testInput{
-				userId:     user.PublicId,
-				reqScopeId: "",
-				resource:   resource.Account,
-			},
-			errorMsg: "missing request scope id",
-		},
-	}
-
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserGlobalOrgResourcesRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
-			if tc.errorMsg != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorMsg)
-				return
-			}
-			require.NoError(t, err)
-			assert.ElementsMatch(t, got, tc.output)
-		})
-	}
-}
-
-func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
+func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -2097,10 +1987,147 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=g_12345;actions=add-members,remove-members")
 	TestRoleGrant(t, conn, proj2RoleThis.PublicId, "ids=*;type=group;actions=set-members")
 
-	// Add users to created roles
+	// Add user to created roles (some containing the list action)
 	for _, role := range roles {
 		_, err := repo.AddPrincipalRoles(ctx, role.PublicId, role.Version, []string{user.PublicId})
 		require.NoError(t, err)
+	}
+
+	// If there's a list permission anywhere in the scope tree, the user should be able to perform recursive list at the global scope
+	listResultSet := []perms.GrantTuple{
+		{
+			RoleId:            globalRoleOrg1AndProj2.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      org1.PublicId,
+			Grant:             "ids=*;type=group;actions=list,read",
+		},
+		{
+			RoleId:            globalRoleThisAndProj2.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      "global",
+			Grant:             "ids=g_12345,g_67890;actions=delete",
+		},
+		{
+			RoleId:            globalRoleOrg2.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      org2.PublicId,
+			Grant:             "ids=g_12345;actions=read",
+		},
+		{
+			RoleId:            globalRoleProj1a.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      proj1a.PublicId,
+			Grant:             "ids=*;type=group;actions=create,delete,read",
+		},
+		{
+			RoleId:            globalRoleThisAndDescendants.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      "global",
+			Grant:             "ids=*;type=*;actions=update",
+		},
+		{
+			RoleId:            org1RoleThis.PublicId,
+			RoleScopeId:       org1.PublicId,
+			RoleParentScopeId: "global",
+			GrantScopeId:      org1.PublicId,
+			Grant:             "ids=g_67890;actions=read",
+		},
+		{
+			RoleId:            org2RoleThisAndChildren.PublicId,
+			RoleScopeId:       org2.PublicId,
+			RoleParentScopeId: "global",
+			GrantScopeId:      org2.PublicId,
+			Grant:             "ids=*;type=group;actions=delete",
+		},
+		{
+			RoleId:            globalRoleChildren.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      "children",
+			Grant:             "ids=*;type=group;actions=set-members",
+		},
+		{
+			RoleId:            globalRoleThis.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      "global",
+			Grant:             "ids=*;type=group;actions=create,update",
+		},
+		{
+			RoleId:            proj1bRoleThis.PublicId,
+			RoleScopeId:       proj1b.PublicId,
+			RoleParentScopeId: org1.PublicId,
+			GrantScopeId:      proj1b.PublicId,
+			Grant:             "ids=*;type=*;actions=*",
+		},
+		{
+			RoleId:            org1RoleChildren.PublicId,
+			RoleScopeId:       org1.PublicId,
+			RoleParentScopeId: "global",
+			GrantScopeId:      "children",
+			Grant:             "ids=*;type=group;actions=read,set-members",
+		},
+		{
+			RoleId:            org1RoleProj1b.PublicId,
+			RoleScopeId:       org1.PublicId,
+			RoleParentScopeId: "global",
+			GrantScopeId:      proj1b.PublicId,
+			Grant:             "ids=*;type=group;actions=*",
+		},
+		{
+			RoleId:            globalRoleThisAndDescendants.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      globals.GrantScopeDescendants,
+			Grant:             "ids=*;type=*;actions=update",
+		},
+		{
+			RoleId:            globalRoleOrg1AndProj2.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      proj2.PublicId,
+			Grant:             "ids=*;type=group;actions=list,read",
+		},
+		{
+			RoleId:            globalRoleThisAndProj2.PublicId,
+			RoleScopeId:       "global",
+			RoleParentScopeId: "global",
+			GrantScopeId:      proj2.PublicId,
+			Grant:             "ids=g_12345,g_67890;actions=delete",
+		},
+		{
+			RoleId:            org2RoleThisAndChildren.PublicId,
+			RoleScopeId:       org2.PublicId,
+			RoleParentScopeId: "global",
+			GrantScopeId:      globals.GrantScopeChildren,
+			Grant:             "ids=*;type=group;actions=delete",
+		},
+		{
+			RoleId:            org2RoleProj2.PublicId,
+			RoleScopeId:       org2.PublicId,
+			RoleParentScopeId: "global",
+			GrantScopeId:      proj2.PublicId,
+			Grant:             "ids=*;type=group;actions=read",
+		},
+		{
+			RoleId:            proj2RoleThis.PublicId,
+			RoleScopeId:       proj2.PublicId,
+			RoleParentScopeId: org2.PublicId,
+			GrantScopeId:      proj2.PublicId,
+			Grant:             "ids=g_12345;actions=add-members,remove-members",
+		},
+		{
+			RoleId:            proj2RoleThis.PublicId,
+			RoleScopeId:       proj2.PublicId,
+			RoleParentScopeId: org2.PublicId,
+			GrantScopeId:      proj2.PublicId,
+			Grant:             "ids=*;type=group;actions=set-members",
+		},
 	}
 
 	testcases := []struct {
@@ -2114,361 +2141,61 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleThis.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      "global",
-					Grant:             "ids=*;type=group;actions=create,update",
-				},
-				{
-					RoleId:            globalRoleChildren.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=group;actions=set-members",
-				},
-				{
-					RoleId:            globalRoleThisAndDescendants.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      "global",
-					Grant:             "ids=*;type=*;actions=update",
-				},
-				{
-					RoleId:            globalRoleThisAndDescendants.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
-				{
-					RoleId:            globalRoleOrg1AndProj2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      org1.PublicId,
-					Grant:             "ids=*;type=group;actions=list,read",
-				},
-				{
-					RoleId:            globalRoleOrg1AndProj2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=*;type=group;actions=list,read",
-				},
-				{
-					RoleId:            globalRoleOrg2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      org2.PublicId,
-					Grant:             "ids=g_12345;actions=read",
-				},
-				{
-					RoleId:            globalRoleProj1a.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj1a.PublicId,
-					Grant:             "ids=*;type=group;actions=create,delete,read",
-				},
-				{
-					RoleId:            globalRoleThisAndProj2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      "global",
-					Grant:             "ids=g_12345,g_67890;actions=delete",
-				},
-				{
-					RoleId:            globalRoleThisAndProj2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=g_12345,g_67890;actions=delete",
-				},
-				{
-					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      org1.PublicId,
-					Grant:             "ids=g_67890;actions=read",
-				},
-				{
-					RoleId:            org1RoleChildren.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=group;actions=read,set-members",
-				},
-				{
-					RoleId:            org2RoleThisAndChildren.PublicId,
-					RoleScopeId:       org2.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      org2.PublicId,
-					Grant:             "ids=*;type=group;actions=delete",
-				},
-				{
-					RoleId:            org2RoleThisAndChildren.PublicId,
-					RoleScopeId:       org2.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=group;actions=delete",
-				},
-				{
-					RoleId:            org1RoleProj1b.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj1b.PublicId,
-					Grant:             "ids=*;type=group;actions=*",
-				},
-				{
-					RoleId:            org2RoleProj2.PublicId,
-					RoleScopeId:       org2.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=*;type=group;actions=read",
-				},
-				{
-					RoleId:            proj1bRoleThis.PublicId,
-					RoleScopeId:       proj1b.PublicId,
-					RoleParentScopeId: org1.PublicId,
-					GrantScopeId:      proj1b.PublicId,
-					Grant:             "ids=*;type=*;actions=*",
-				},
-				{
-					RoleId:            proj2RoleThis.PublicId,
-					RoleScopeId:       proj2.PublicId,
-					RoleParentScopeId: org2.PublicId,
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=g_12345;actions=add-members,remove-members",
-				},
-				{
-					RoleId:            proj2RoleThis.PublicId,
-					RoleScopeId:       proj2.PublicId,
-					RoleParentScopeId: org2.PublicId,
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=*;type=group;actions=set-members",
-				},
-			},
+			output: listResultSet,
 		},
 		{
 			name: "return grants for group resource at org1 request scope",
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org1.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      org1.PublicId,
-					Grant:             "ids=g_67890;actions=read",
-				},
-				{
-					RoleId:            org1RoleChildren.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=group;actions=read,set-members",
-				},
-				{
-					RoleId:            org1RoleProj1b.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj1b.PublicId,
-					Grant:             "ids=*;type=group;actions=*",
-				},
-				{
-					RoleId:            proj1bRoleThis.PublicId,
-					RoleScopeId:       proj1b.PublicId,
-					RoleParentScopeId: org1.PublicId,
-					GrantScopeId:      proj1b.PublicId,
-					Grant:             "ids=*;type=*;actions=*",
-				},
-			},
+			output: listResultSet,
 		},
 		{
 			name: "return grants for group resource at org2 request scope",
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: org2.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            org2RoleThisAndChildren.PublicId,
-					RoleScopeId:       org2.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      org2.PublicId,
-					Grant:             "ids=*;type=group;actions=delete",
-				},
-				{
-					RoleId:            org2RoleThisAndChildren.PublicId,
-					RoleScopeId:       org2.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=group;actions=delete",
-				},
-				{
-					RoleId:            org2RoleProj2.PublicId,
-					RoleScopeId:       org2.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=*;type=group;actions=read",
-				},
-				{
-					RoleId:            proj2RoleThis.PublicId,
-					RoleScopeId:       proj2.PublicId,
-					RoleParentScopeId: org2.PublicId,
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=g_12345;actions=add-members,remove-members",
-				},
-				{
-					RoleId:            proj2RoleThis.PublicId,
-					RoleScopeId:       proj2.PublicId,
-					RoleParentScopeId: org2.PublicId,
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=*;type=group;actions=set-members",
-				},
-			},
+			output: listResultSet,
 		},
 		{
 			name: "return grants for group resource at proj1a request scope",
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: proj1a.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleThisAndDescendants.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
-				{
-					RoleId:            globalRoleProj1a.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj1a.PublicId,
-					Grant:             "ids=*;type=group;actions=create,delete,read",
-				},
-				{
-					RoleId:            org1RoleChildren.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=group;actions=read,set-members",
-				},
-			},
+			output: listResultSet,
 		},
 		{
 			name: "return grants for group resource at proj1b request scope",
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: proj1b.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleThisAndDescendants.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
-				{
-					RoleId:            org1RoleChildren.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=group;actions=read,set-members",
-				},
-				{
-					RoleId:            org1RoleProj1b.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj1b.PublicId,
-					Grant:             "ids=*;type=group;actions=*",
-				},
-				{
-					RoleId:            proj1bRoleThis.PublicId,
-					RoleScopeId:       proj1b.PublicId,
-					RoleParentScopeId: org1.PublicId,
-					GrantScopeId:      proj1b.PublicId,
-					Grant:             "ids=*;type=*;actions=*",
-				},
-			},
+			output: listResultSet,
 		},
 		{
 			name: "return grants for group resource at proj2 request scope",
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: proj2.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleThisAndDescendants.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
-				{
-					RoleId:            globalRoleOrg1AndProj2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=*;type=group;actions=list,read",
-				},
-				{
-					RoleId:            globalRoleThisAndProj2.PublicId,
-					RoleScopeId:       "global",
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=g_12345,g_67890;actions=delete",
-				},
-				{
-					RoleId:            org2RoleThisAndChildren.PublicId,
-					RoleScopeId:       org2.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      globals.GrantScopeChildren,
-					Grant:             "ids=*;type=group;actions=delete",
-				},
-				{
-					RoleId:            org2RoleProj2.PublicId,
-					RoleScopeId:       org2.PublicId,
-					RoleParentScopeId: "global",
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=*;type=group;actions=read",
-				},
-				{
-					RoleId:            proj2RoleThis.PublicId,
-					RoleScopeId:       proj2.PublicId,
-					RoleParentScopeId: org2.PublicId,
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=g_12345;actions=add-members,remove-members",
-				},
-				{
-					RoleId:            proj2RoleThis.PublicId,
-					RoleScopeId:       proj2.PublicId,
-					RoleParentScopeId: org2.PublicId,
-					GrantScopeId:      proj2.PublicId,
-					Grant:             "ids=*;type=group;actions=set-members",
-				},
-			},
+			output: listResultSet,
 		},
 		{
 			name: "return error when trying to recursively list grants at an unknown request scope",
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: scope.Unknown.String(),
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			errorMsg: "request scope must be global scope, an org scope, or a project scope",
 		},
@@ -2477,7 +2204,7 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Role,
+				resource:   []resource.Type{resource.Role},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2486,7 +2213,7 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Unknown,
+				resource:   []resource.Type{resource.Unknown},
 			},
 			errorMsg: "a specific resource type must be specified",
 		},
@@ -2495,7 +2222,7 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.All,
+				resource:   []resource.Type{resource.All},
 			},
 			errorMsg: "a specific resource type must be specified",
 		},
@@ -2504,7 +2231,7 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2513,7 +2240,7 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: org1.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2522,7 +2249,7 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: org2.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2531,7 +2258,7 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: globals.GlobalPrefix,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2540,7 +2267,7 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: org1.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -2549,14 +2276,14 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: org2.PublicId,
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "missing user id should return error",
 			input: testInput{
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 				reqScopeId: globals.GlobalPrefix,
 			},
 			errorMsg: "missing user id",
@@ -2566,15 +2293,15 @@ func TestGrantsForUserGlobalOrgProjectResources(t *testing.T) {
 			input: testInput{
 				userId:     user.PublicId,
 				reqScopeId: "",
-				resource:   resource.Group,
+				resource:   []resource.Type{resource.Group},
 			},
-			errorMsg: "missing request scope id",
+			errorMsg: "request scope must be global scope, an org scope, or a project scope",
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserGlobalOrgProjectResources(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+			got, err := repo.grantsForUserRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)

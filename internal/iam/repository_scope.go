@@ -172,7 +172,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				GlobalRole: &store.GlobalRole{
 					PublicId:           defaultRolePublicId,
 					ScopeId:            scopePublicId,
-					Name:               "Default Grants",
+					Name:               "Login and Default Grants",
 					Description:        fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", scopePublicId),
 					GrantThisRoleScope: true,
 					GrantScope:         globals.GrantScopeIndividual,
@@ -183,7 +183,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				OrgRole: &store.OrgRole{
 					PublicId:           defaultRolePublicId,
 					ScopeId:            scopePublicId,
-					Name:               "Default Grants",
+					Name:               "Login and Default Grants",
 					Description:        fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", scopePublicId),
 					GrantThisRoleScope: true,
 					GrantScope:         globals.GrantScopeIndividual,

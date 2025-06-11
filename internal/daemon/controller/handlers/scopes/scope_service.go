@@ -117,6 +117,23 @@ var (
 			resource.Target:  targets.CollectionActions,
 		},
 	}
+	additionalResourceGrants = []resource.Type{
+		resource.Alias,
+		resource.AuthMethod,
+		resource.AuthToken,
+		resource.StorageBucket,
+		resource.Group,
+		resource.Role,
+		resource.Scope,
+		resource.User,
+		resource.SessionRecording,
+		resource.Policy,
+		resource.CredentialStore,
+		resource.HostCatalog,
+		resource.Worker,
+		resource.Session,
+		resource.Target,
+	}
 )
 
 func init() {
@@ -168,7 +185,10 @@ func (s *Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
+
+	// Hard-coding 'isRecursive' to true because list scope returns child scopes which requires
+	// additional grants for those child-scopes (recursive) to calculate authorized_actions on the returned scope
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, true)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -776,7 +796,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive), auth.WithFetchAdditionalResourceGrants(additionalResourceGrants...)}
 	switch a {
 	case action.List, action.Create, action.ListScopeKeys, action.ListScopeKeyVersionDestructionJobs, action.DestroyScopeKeyVersion:
 		parentId = id

@@ -4499,7 +4499,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 
 	// targets must be in a project scope so we're passing in a scope ID which we expect the user to have access to
 	// which is the project under the role's org
-	grants, err := iamRepo.GrantsForUser(ctx, user.GetPublicId(), resource.Target, proj.PublicId)
+	grants, err := iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
 	require.NoError(t, err)
 
 	// Verify we see both grants
@@ -4523,7 +4523,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	assert.Equal(t, 1, numDeleted)
 
 	// Verify we don't see the ldap grant anymore
-	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), resource.Target, proj.PublicId)
+	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
 	require.NoError(t, err)
 	foundOidc = false
 	foundLdap = false
@@ -4546,7 +4546,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	assert.Equal(t, 1, numDeleted)
 
 	// Verify we don't see the oidc grant anymore
-	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), resource.Target, proj.PublicId)
+	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
 	require.NoError(t, err)
 	foundOidc = false
 	foundLdap = false

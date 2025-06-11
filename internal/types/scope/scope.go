@@ -52,9 +52,9 @@ func AllowedIn(ctx context.Context, r resource.Type) ([]Type, error) {
 	switch r {
 	case resource.Alias, resource.Billing, resource.Worker:
 		return []Type{Global}, nil
-	case resource.Account, resource.AuthMethod, resource.AuthToken, resource.ManagedGroup, resource.Policy, resource.Scope, resource.SessionRecording, resource.StorageBucket, resource.User:
+	case resource.Account, resource.AuthMethod, resource.AuthToken, resource.ManagedGroup, resource.Policy, resource.SessionRecording, resource.StorageBucket, resource.User:
 		return []Type{Global, Org}, nil
-	case resource.Group, resource.Role:
+	case resource.Group, resource.Role, resource.Scope:
 		return []Type{Global, Org, Project}, nil
 	case resource.CredentialLibrary, resource.Credential, resource.CredentialStore, resource.HostCatalog, resource.HostSet, resource.Host, resource.Session, resource.Target:
 		return []Type{Project}, nil

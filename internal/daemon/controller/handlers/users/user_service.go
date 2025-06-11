@@ -495,7 +495,7 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 
 	// fetch ACL and grantsHash for target resource so we can resolve ListResolvableAliasesPermissions
 	// because permissions in authResults only contains permissions relevant to resource.User
-	acl, grantsHash, err := s.aclAndGrantHashForUser(ctx, req.GetId(), resource.Target)
+	acl, grantsHash, err := s.aclAndGrantHashForUser(ctx, req.GetId(), []resource.Type{resource.Target})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
@@ -591,7 +591,7 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 
 // aclAndGrantHashForUser returns an ACL from the grants provided to the user and
 // the hash of those grants.
-func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string, resourceType resource.Type) (perms.ACL, []byte, error) {
+func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string, resourceType []resource.Type) (perms.ACL, []byte, error) {
 	const op = "users.(Service).aclAndGrantHashForUser"
 	iamRepo, err := s.repoFn()
 	if err != nil {

@@ -40,11 +40,9 @@ func TestListPassword_Grants(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 
-	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	orgAM := password.TestAuthMethod(t, conn, org.GetPublicId())
-	projAM := password.TestAuthMethod(t, conn, proj.GetPublicId())
 	orgPWAccounts := password.TestMultipleAccounts(t, conn, orgAM.GetPublicId(), 3)
-	projPWAccounts := password.TestMultipleAccounts(t, conn, projAM.GetPublicId(), 3)
 
 	testcases := []struct {
 		name           string
@@ -67,22 +65,6 @@ func TestListPassword_Grants(t *testing.T) {
 				},
 			},
 			wantAccountIDs: []string{orgPWAccounts[0].PublicId, orgPWAccounts[1].PublicId, orgPWAccounts[2].PublicId},
-			wantErr:        nil,
-		},
-		{
-			name: "children grants org scope list project accounts return project accounts",
-			input: &pbs.ListAccountsRequest{
-				AuthMethodId: projAM.PublicId,
-				PageSize:     100,
-			},
-			roleRequest: []authtoken.TestRoleGrantsForToken{
-				{
-					RoleScopeID:  org.GetPublicId(),
-					GrantStrings: []string{"ids=*;type=*;actions=list,read"},
-					GrantScopes:  []string{globals.GrantScopeChildren},
-				},
-			},
-			wantAccountIDs: []string{projPWAccounts[0].PublicId, projPWAccounts[1].PublicId, projPWAccounts[2].PublicId},
 			wantErr:        nil,
 		},
 	}
