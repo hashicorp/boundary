@@ -321,6 +321,52 @@ func TestGrants_ReadActions(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("authorized action", func(t *testing.T) {
+		testcases := []struct {
+			name                  string
+			input                 *pbs.ListAliasesRequest
+			userFunc              func() (*iam.User, auth.Account)
+			wantErr               error
+			wantAuthorizedActions []string
+		}{
+			{
+				name: "global role grant this with wildcard returns all created aliases",
+				input: &pbs.ListAliasesRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr:               nil,
+				wantAuthorizedActions: []string{"read", "update", "delete", "no-op"},
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.name, func(t *testing.T) {
+				user, accountID := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, accountID.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				got, finalErr := s.ListAliases(fullGrantAuthCtx, tc.input)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, finalErr, tc.wantErr)
+					return
+				}
+				require.NoError(t, finalErr)
+				for _, item := range got.Items {
+					require.ElementsMatch(t, tc.wantAuthorizedActions, item.AuthorizedActions)
+				}
+			})
+		}
+	})
+
 }
 
 // TestGrants_WriteActions tests write actions to assert that grants are being applied properly

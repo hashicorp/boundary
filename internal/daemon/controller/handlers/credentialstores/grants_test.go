@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
@@ -87,11 +88,13 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 	}
 
 	testcases := []struct {
-		name     string
-		input    *pbs.ListCredentialStoresRequest
-		userFunc func() (*iam.User, authdomain.Account)
-		wantErr  error
-		wantIDs  []string
+		name                                 string
+		input                                *pbs.ListCredentialStoresRequest
+		userFunc                             func() (*iam.User, authdomain.Account)
+		wantErr                              error
+		wantIDs                              []string
+		wantIdAuthorizedActionsMap           map[string][]string
+		wantIdAuthorizedCollectionActionsMap map[string][]string
 	}{
 		{
 			name: "global role grant this returns all created credential stores",
@@ -312,6 +315,41 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 			require.ElementsMatch(t, tc.wantIDs, gotIDs)
 		})
 	}
+
+	t.Run("authorized actions", func(t *testing.T) {
+		user, account := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			{
+				RoleScopeId: globals.GlobalPrefix,
+				Grants:      []string{"ids=*;type=*;actions=*"},
+				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			},
+		})()
+		tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+		require.NoError(t, err)
+		fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+		got, err := s.ListCredentialStores(fullGrantAuthCtx, &pbs.ListCredentialStoresRequest{
+			ScopeId:   globals.GlobalPrefix,
+			Recursive: true,
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Items, len(slices.Concat(proj1Stores, proj2Stores, proj3Stores)))
+		for _, item := range got.Items {
+			switch item.Type {
+			case "vault":
+				require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete"})
+				require.Len(t, item.AuthorizedCollectionActions, 1)
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.CredentialLibrary.PluralString()].AsSlice(), []string{"list", "create"})
+			case "static":
+				require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete"})
+				require.Len(t, item.AuthorizedCollectionActions, 1)
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Credential.PluralString()].AsSlice(), []string{"list", "create"})
+			default:
+				t.Fatalf("unknown item type: %s", item.Type)
+			}
+
+		}
+
+	})
 }
 
 func TestGrants_GetCredentialStores(t *testing.T) {

@@ -223,6 +223,7 @@ func TestGrants_ListAccounts(t *testing.T) {
 			require.ElementsMatch(t, tc.wantAccountIDs, gotIDs)
 		})
 	}
+
 }
 
 func TestGrants_GetAccounts(t *testing.T) {
@@ -958,4 +959,146 @@ func TestGrants_UpdateAccount(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGrants_AuthorizedActions(t *testing.T) {
+	t.Run("password", func(t *testing.T) {
+		ctx := context.TODO()
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
+		wrap := db.TestWrapper(t)
+		kmsCache := kms.TestKms(t, conn, wrap)
+		iamRepo := iam.TestRepo(t, conn, wrap)
+		pwRepoFn := func() (*password.Repository, error) {
+			return password.NewRepository(ctx, rw, rw, kmsCache)
+		}
+		// not using OIDC or LDAP in this test so no need to set them up
+		oidcRepoFn := func() (*oidc.Repository, error) {
+			return &oidc.Repository{}, nil
+		}
+		ldapRepoFn := func() (*ldap.Repository, error) {
+			return &ldap.Repository{}, nil
+		}
+		atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+
+		globalAM := password.TestAuthMethod(t, conn, globals.GlobalPrefix)
+		user, account := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			{
+				RoleScopeId: globals.GlobalPrefix,
+				Grants:      []string{"ids=*;type=*;actions=*"},
+				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			},
+		})()
+		password.TestAccount(t, conn, globalAM.PublicId, "user1")
+		password.TestAccount(t, conn, globalAM.PublicId, "user2")
+		password.TestAccount(t, conn, globalAM.PublicId, "user3")
+		s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
+		require.NoError(t, err)
+
+		tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+		require.NoError(t, err)
+		fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+		got, err := s.ListAccounts(fullGrantAuthCtx, &pbs.ListAccountsRequest{
+			AuthMethodId: globalAM.PublicId,
+		})
+		require.NoError(t, err)
+		for _, item := range got.Items {
+			require.ElementsMatch(t, item.AuthorizedActions, []string{"read", "no-op", "delete", "set-password", "change-password", "update"})
+		}
+	})
+	t.Run("ldap", func(t *testing.T) {
+		ctx := context.TODO()
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
+		wrap := db.TestWrapper(t)
+		iamRepo := iam.TestRepo(t, conn, wrap)
+		kmsCache := kms.TestKms(t, conn, wrap)
+		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), globals.GlobalPrefix, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		ldapAM := ldap.TestAuthMethod(t, conn, databaseWrapper, globals.GlobalPrefix, []string{"ldaps://ldap1"})
+		_ = ldap.TestAccount(t, conn, ldapAM, "testacct")
+		_ = ldap.TestAccount(t, conn, ldapAM, "testacct2")
+		_ = ldap.TestAccount(t, conn, ldapAM, "testacct3")
+		pwRepoFn := func() (*password.Repository, error) {
+			return &password.Repository{}, nil
+		}
+		oidcRepoFn := func() (*oidc.Repository, error) {
+			return &oidc.Repository{}, nil
+		}
+		ldapRepoFn := func() (*ldap.Repository, error) {
+			return ldap.NewRepository(ctx, rw, rw, kmsCache)
+		}
+		atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		user, account := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			{
+				RoleScopeId: globals.GlobalPrefix,
+				Grants:      []string{"ids=*;type=*;actions=*"},
+				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			},
+		})()
+		s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
+		require.NoError(t, err)
+
+		tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+		require.NoError(t, err)
+		fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+		got, err := s.ListAccounts(fullGrantAuthCtx, &pbs.ListAccountsRequest{
+			AuthMethodId: ldapAM.PublicId,
+		})
+		require.NoError(t, err)
+		for _, item := range got.Items {
+			require.ElementsMatch(t, item.AuthorizedActions, []string{"read", "update", "delete", "no-op"})
+		}
+	})
+	t.Run("oidc", func(t *testing.T) {
+		ctx := context.TODO()
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
+		wrap := db.TestWrapper(t)
+		iamRepo := iam.TestRepo(t, conn, wrap)
+		kmsCache := kms.TestKms(t, conn, wrap)
+		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), globals.GlobalPrefix, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		oidcAM := oidc.TestAuthMethod(t, conn, databaseWrapper, globals.GlobalPrefix, oidc.ActivePublicState,
+			"alice-rp", "fido",
+			oidc.WithSigningAlgs(oidc.RS256),
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice2.com")[0]),
+			oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		)
+		oidc.TestAccount(t, conn, oidcAM, "testacct")
+		oidc.TestAccount(t, conn, oidcAM, "testacct2")
+		oidc.TestAccount(t, conn, oidcAM, "testacct3")
+		pwRepoFn := func() (*password.Repository, error) {
+			return &password.Repository{}, nil
+		}
+		ldapRepoFn := func() (*ldap.Repository, error) { return &ldap.Repository{}, nil }
+		oidcRepoFn := func() (*oidc.Repository, error) {
+			return oidc.NewRepository(ctx, rw, rw, kmsCache)
+		}
+		atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		user, account := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			{
+				RoleScopeId: globals.GlobalPrefix,
+				Grants:      []string{"ids=*;type=*;actions=*"},
+				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			},
+		})()
+		s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
+		require.NoError(t, err)
+
+		tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+		require.NoError(t, err)
+		fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+		got, err := s.ListAccounts(fullGrantAuthCtx, &pbs.ListAccountsRequest{
+			AuthMethodId: oidcAM.PublicId,
+		})
+		require.NoError(t, err)
+		for _, item := range got.Items {
+			require.ElementsMatch(t, item.AuthorizedActions, []string{"read", "update", "delete", "no-op"})
+		}
+	})
+
 }
