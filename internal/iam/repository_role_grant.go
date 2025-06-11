@@ -463,13 +463,14 @@ type grantsForUserResults struct {
 	canonicalGrants []string
 }
 
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) (perms.GrantTuples, error) {
+// GrantsForUser returns perms.GrantTuples associated to a userId scoped down to the requested scope and resource type.
+// Use WithRecursive option to indicate that the request is a recursive list request
+// Supported options: WithRecursive
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, res resource.Type, reqScopeId string, opt ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
-
-	opts := getOpts(opt...)
 
 	const (
 		anonUser = `where public_id in (?)`
@@ -516,14 +517,6 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Op
 				ret = append(ret, gt)
 			}
 		}
-	}
-
-	if opts.withTestCacheMultiGrantTuples != nil {
-		for i, grant := range grants {
-			grant.TestStableSort()
-			grants[i] = grant
-		}
-		*opts.withTestCacheMultiGrantTuples = grants
 	}
 
 	return ret, nil
