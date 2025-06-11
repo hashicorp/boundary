@@ -205,7 +205,7 @@ begin;
     primary key(role_id, scope_id)
   );
   comment on table iam_role_org_individual_grant_scope is
-    'iam_role_org_individual_grant_scope is the subtype table for the org role with grant_scope as individual.';
+    'iam_role_org_individual_grant_scope is a list of individually granted project scope to org roles with grant_scope of individual';
 
   create table iam_role_project (
     public_id wt_role_id primary key
