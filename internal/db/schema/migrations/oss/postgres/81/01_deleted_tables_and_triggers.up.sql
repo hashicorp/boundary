@@ -23,6 +23,7 @@ begin;
   -- ids too.
   -- Note: does not end in _deleted so as
   -- not to be attached a trigger in the below function.
+  -- replaced in 99902/02_rdp_targets.up.sql
   create view target_all_subtypes_deleted_view
   as
     select public_id, delete_time from target_tcp_deleted

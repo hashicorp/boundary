@@ -2,52 +2,142 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  
-  create function validate_target_storage_bucket() returns trigger
-    as $$
-    declare storage_bucket_scope_id text;
-    begin
-      -- Ensure enable_session_recording is not true if no storage_bucket is associated
-      if new.enable_session_recording = true and new.storage_bucket_id is null then
-        raise exception 'session recording enabled without storage bucket';
-      end if;
+  create table target_rdp (
+    public_id wt_public_id primary key
+      constraint target_fkey
+        references target(public_id)
+        on delete cascade
+        on update cascade,
+    project_id wt_scope_id not null,
+    name text not null, -- name is not optional for a target subtype
+    description text,
+    default_port int, -- default port can be null
+    -- max duration of the session in seconds. default is 8 hours
+    session_max_seconds int not null default 28800
+      constraint session_max_seconds_must_be_greater_than_0
+      check(session_max_seconds > 0),
+    -- limit on number of session connections allowed. -1 equals no limit
+    session_connection_limit int not null default 1
+      constraint session_connection_limit_must_be_greater_than_0_or_negative_1
+      check(session_connection_limit > 0 or session_connection_limit = -1),
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    worker_filter wt_bexprfilter,
+    egress_worker_filter wt_bexprfilter,
+    ingress_worker_filter wt_bexprfilter,
+    default_client_port int,
+    enable_session_recording bool not null default false,
+    storage_bucket_id wt_public_id,
+    constraint storage_plugin_storage_bucket_fkey foreign key (storage_bucket_id)
+      references storage_plugin_storage_bucket (public_id)
+      on delete set null
+      on update cascade,
+    constraint target_rdp_project_id_name_uq
+      unique(project_id, name) -- name must be unique within a project scope.
+  );
+  comment on table target_rdp is
+    'target_rdp is a table where each row is a resource that represents an rdp target. '
+    'It is a target subtype.';
 
-      -- If storage bucket is null no need to validate further
-      if new.storage_bucket_id is null then 
-        return new; 
-      end if;
+  create trigger insert_target_subtype before insert on target_rdp
+    for each row execute procedure insert_target_subtype();
 
-      -- Look up the scope ID for the storage bucket
-      select sb.scope_id from storage_plugin_storage_bucket sb where sb.public_id = new.storage_bucket_id into strict storage_bucket_scope_id;
+  create trigger delete_target_subtype after delete on target_rdp
+    for each row execute procedure delete_target_subtype();
 
-      -- Global storage bucket can be associated with any target
-      if storage_bucket_scope_id = 'global' then
-        return new;
-      end if;
-      
-      -- Validate that the target project id parents scope is the storage bucket scope id
-      perform from iam_scope_project where scope_id = new.project_id and parent_id = storage_bucket_scope_id;
-      if not found then
-        raise exception 'invalid scope type for target storage bucket association';
-      end if;
-      return new;
-    end;
-    $$ language plpgsql;
-  comment on function validate_target_storage_bucket() is
-    'validate_target_storage_bucket validates that the storage bucket associated with target_ssh, '
-    'is within the global scope or within the org scope that is the parent of the target_ssh projectId. '
-    'It also validates that enable_session_recording is only set if a valid storage_bucket_id is also set.';
- 
-  create trigger validate_target_storage_bucket after insert or update on target_ssh
+  create trigger immutable_columns before update on target_rdp
+    for each row execute procedure immutable_columns('public_id', 'project_id', 'create_time');
+
+  create trigger update_version_column after update on target_rdp
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on target_rdp
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on target_rdp
+    for each row execute procedure default_create_time();
+
+  create trigger update_rdp_target_filter_validate before update on target_rdp
+    for each row execute procedure validate_filter_values_on_update();
+
+  create trigger insert_rdp_target_filter_validate before insert on target_rdp
+    for each row execute procedure validate_filter_values_on_insert();
+
+  create trigger validate_target_storage_bucket after insert or update on target_rdp
     for each row execute procedure validate_target_storage_bucket();
 
-  alter table target_ssh
-    add column enable_session_recording bool not null default false,
-    add column storage_bucket_id wt_public_id, -- storage_bucket_id can be null
-    add constraint storage_plugin_storage_bucket_fkey foreign key (storage_bucket_id)
-        references storage_plugin_storage_bucket (public_id)
-        on delete set null
-        on update cascade;
+  create trigger update_target_table_update_time before update on target_rdp
+    for each row execute procedure update_target_table_update_time();
+
+  insert into oplog_ticket
+    (name,         version)
+  values
+    ('target_rdp', 1)
+  on conflict do nothing;
+
+  create table target_rdp_hst(
+    public_id wt_public_id not null,
+    project_id wt_scope_id not null,
+    name text not null,
+    description text null,
+    default_port integer null,
+    session_max_seconds integer not null,
+    session_connection_limit integer not null,
+    worker_filter wt_bexprfilter null,
+    egress_worker_filter wt_bexprfilter null,
+    ingress_worker_filter wt_bexprfilter null,
+    default_client_port integer null,
+    enable_session_recording boolean not null default false,
+    storage_bucket_id wt_public_id null,
+    history_id wt_url_safe_id default wt_url_safe_id() primary key
+      constraint target_history_base_fkey
+        references target_history_base (history_id)
+        on delete cascade
+        on update cascade,
+    valid_range tstzrange not null default tstzrange(current_timestamp, null),
+    constraint target_rdp_hst_valid_range_excl
+      exclude using gist (public_id with =, valid_range with &&)
+  );
+  comment on table target_rdp_hst is
+    'target_rdp_hst is a history table where each row contains the values from a row '
+    'in the target_rdp table during the time range in the valid_range column.';
+
+  create trigger hst_on_insert after insert on target_rdp
+    for each row execute function hst_on_insert();
+  create trigger hst_on_update after update on target_rdp
+    for each row execute function hst_on_update();
+  create trigger hst_on_delete after delete on target_rdp
+    for each row execute function hst_on_delete();
+  create trigger hst_before_insert before insert on target_rdp_hst
+    for each row execute function insert_target_history_subtype();
+  create trigger hst_after_delete after delete on target_rdp_hst
+    for each row execute function delete_target_history_subtype();
+
+  create table target_rdp_deleted (
+    public_id wt_public_id primary key,
+    delete_time wt_timestamp not null
+  );
+  comment on table target_rdp_deleted is
+    'target_rdp_deleted holds the ID and delete_time of every deleted RDP target. '
+    'It is automatically trimmed of records older than 30 days by a job.';
+
+  create index target_rdp_deleted_delete_time_idx on target_rdp_deleted (delete_time);
+
+  create trigger insert_deleted_id after delete on target_rdp
+    for each row execute function insert_deleted_id('target_rdp_deleted');
+
+  -- replaces target_all_subtypes_deleted_view defined in 81/01_deleted_tables_and_triggers.up.sql
+  drop view target_all_subtypes_deleted_view;
+  create view target_all_subtypes_deleted_view
+  as
+    select public_id, delete_time from target_tcp_deleted
+    union
+    select public_id, delete_time from target_ssh_deleted
+    union
+    select public_id, delete_time from target_rdp_deleted;
+  comment on view target_all_subtypes_deleted_view is
+    'target_all_subtypes_deleted_view holds the ID and delete_time of every deleted target.';
 
   -- The whx_* views here depend on target_all_subtypes, so we need to drop
   -- these first.
@@ -55,8 +145,7 @@ begin;
   drop view whx_credential_dimension_source;
   drop view target_all_subtypes;
 
-  -- replaces target_all_subtypes defined in oss/64/01_ssh_targets.up.sql
-  -- replaced in 99902/02_rdp_targets.up.sql
+  -- replaces target_all_subtypes defined 71/07_targets.up.sql
   create view target_all_subtypes as
   select
     public_id,
@@ -97,12 +186,32 @@ begin;
     enable_session_recording,
     'ssh' as type
   from
-    target_ssh;
+    target_ssh
+  union
+  select
+    public_id,
+    project_id,
+    name,
+    description,
+    default_port,
+    session_max_seconds,
+    session_connection_limit,
+    version,
+    create_time,
+    update_time,
+    worker_filter,
+    egress_worker_filter,
+    ingress_worker_filter,
+    default_client_port,
+    storage_bucket_id,
+    enable_session_recording,
+    'rdp' as type
+  from
+    target_rdp;
 
-  -- replaces whx_host_dimension_source defined in oss/64/01_ssh_targets.up.sql
-  -- replaced in 99902/02_rdp_targets.up.sql
+  -- replaces whx_host_dimension_source defined in 71/07_targets.up.sql
   create view whx_host_dimension_source as
-  with 
+  with
   host_sources (
     host_id, host_type, host_name, host_description,
     host_set_id, host_set_type, host_set_name, host_set_description,
@@ -114,49 +223,60 @@ begin;
   ) as (
     select -- id is the first column in the target view
       h.public_id                     as host_id,
-      case when sh.public_id is not null then 'static host'
-          when ph.public_id is not null then 'plugin host'
-          else 'Unknown' end          as host_type,
-      case when sh.public_id is not null then coalesce(sh.name, 'None')
-          when ph.public_id is not null then coalesce(ph.name, 'None')
-          else 'Unknown' end          as host_name,
-      case when sh.public_id is not null then coalesce(sh.description, 'None')
-          when ph.public_id is not null then coalesce(ph.description, 'None')
-          else 'Unknown' end          as host_description,
-      hs.public_id                     as host_set_id,
-      case when shs.public_id is not null then 'static host set'
-          when phs.public_id is not null then 'plugin host set'
-          else 'Unknown' end          as host_set_type,
+      case
+        when sh.public_id is not null then 'static host'
+        when ph.public_id is not null then 'plugin host'
+        else 'Unknown'
+      end                             as host_type,
+      case
+        when sh.public_id is not null then coalesce(sh.name, 'None')
+        when ph.public_id is not null then coalesce(ph.name, 'None')
+        else 'Unknown'
+      end                             as host_name,
+      case
+        when sh.public_id is not null then coalesce(sh.description, 'None')
+        when ph.public_id is not null then coalesce(ph.description, 'None')
+        else 'Unknown'
+      end                             as host_description,
+      hs.public_id                    as host_set_id,
+      case
+        when shs.public_id is not null then 'static host set'
+        when phs.public_id is not null then 'plugin host set'
+        else 'Unknown'
+      end                             as host_set_type,
       case
         when shs.public_id is not null then coalesce(shs.name, 'None')
         when phs.public_id is not null then coalesce(phs.name, 'None')
         else 'None'
-        end                            as host_set_name,
+      end                             as host_set_name,
       case
         when shs.public_id is not null then coalesce(shs.description, 'None')
         when phs.public_id is not null then coalesce(phs.description, 'None')
         else 'None'
-        end                            as host_set_description,
-      hc.public_id                     as host_catalog_id,
-      case when shc.public_id is not null then 'static host catalog'
-          when phc.public_id is not null then 'plugin host catalog'
-          else 'Unknown' end          as host_catalog_type,
+      end                             as host_set_description,
+      hc.public_id                    as host_catalog_id,
+      case
+        when shc.public_id is not null then 'static host catalog'
+        when phc.public_id is not null then 'plugin host catalog'
+        else 'Unknown'
+      end                             as host_catalog_type,
       case
         when shc.public_id is not null then coalesce(shc.name, 'None')
         when phc.public_id is not null then coalesce(phc.name, 'None')
         else 'None'
-        end                            as host_catalog_name,
+      end                             as host_catalog_name,
       case
         when shc.public_id is not null then coalesce(shc.description, 'None')
         when phc.public_id is not null then coalesce(phc.description, 'None')
         else 'None'
-        end                            as host_catalog_description,
+      end                             as host_catalog_description,
       t.public_id                     as target_id,
       case
         when t.type = 'tcp' then 'tcp target'
         when t.type = 'ssh' then 'ssh target'
+        when t.type = 'rdp' then 'rdp target'
         else 'Unknown'
-        end                           as target_type,
+      end                             as target_type,
       coalesce(t.name, 'None')        as target_name,
       coalesce(t.description, 'None') as target_description,
       coalesce(t.default_port, 0)     as target_default_port_number,
@@ -209,8 +329,9 @@ begin;
       case
         when t.type = 'tcp' then 'tcp target'
         when t.type = 'ssh' then 'ssh target'
+        when t.type = 'rdp' then 'rdp target'
         else 'Unknown'
-        end                           as target_type,
+      end                             as target_type,
       coalesce(t.name, 'None')        as target_name,
       coalesce(t.description, 'None') as target_description,
       coalesce(t.default_port, 0)     as target_default_port_number,
@@ -223,9 +344,9 @@ begin;
       coalesce(o.name, 'None')        as organization_name,
       coalesce(o.description, 'None') as organization_description
     from target_all_subtypes as t
-    right join target_address as ta on t.public_id = ta.target_id
-    left join iam_scope as p        on p.public_id = t.project_id
-    left join iam_scope as o        on o.public_id = p.parent_id
+      right join target_address as ta on t.public_id = ta.target_id
+      left join iam_scope as p        on p.public_id = t.project_id
+      left join iam_scope as o        on o.public_id = p.parent_id
   )
   select * from host_sources
   union
@@ -233,8 +354,7 @@ begin;
 
   -- The whx_credential_dimension_source view shows the current values in the
   -- operational tables of the credential dimension.
-  -- Replaces whx_credential_dimension_source defined in oss/64/01_ssh_targets.up.sql.sql
-  -- Replaced in 99902/02_rdp_targets.up.sql
+  -- Replaces whx_credential_dimension_source defined in 71/07_targets.up.sql
   create view whx_credential_dimension_source as
     with vault_generic_library as (
       select vcl.public_id                                        as public_id,
@@ -291,6 +411,7 @@ begin;
                  case
                    when tt.type = 'tcp' then 'tcp target'
                    when tt.type = 'ssh' then 'ssh target'
+                   when tt.type = 'rdp' then 'rdp target'
                    else 'Unknown'
                  end                                                      as target_type,
                  coalesce(tt.name,               'None')                  as target_name,
@@ -349,3 +470,4 @@ begin;
       from final;
 
 commit;
+

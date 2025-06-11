@@ -440,6 +440,13 @@ begin;
     ('p____rcolors', 'tssh______cr', 'Red Color SSH Target',   false,                    null),
     ('p____gcolors', 'tssh______cg', 'Green Color SSH Target', true,                     'sb____colors');
 
+  insert into target_rdp
+    (project_id,     public_id,      name,                     enable_session_recording, storage_bucket_id)
+  values
+    ('p____bcolors', 'trdp______cb', 'Blue Color RDP Target',  true,                     'sb____global'),
+    ('p____rcolors', 'trdp______cr', 'Red Color RDP Target',   false,                    null),
+    ('p____gcolors', 'trdp______cg', 'Green Color RDP Target', true,                     'sb____colors');
+
   insert into target_host_set
     (project_id,     target_id,      host_set_id)
   values
@@ -451,13 +458,19 @@ begin;
     ('p____bcolors', 'tssh______cb', 'hs__st____b2'),
     ('p____bcolors', 'tssh______cb', 'hs__plg___b1'),
     ('p____rcolors', 'tssh______cr', 'hs__st____r1'),
-    ('p____rcolors', 'tssh______cr', 'hs__st____r2');
+    ('p____rcolors', 'tssh______cr', 'hs__st____r2'),
+    ('p____bcolors', 'trdp______cb', 'hs__st____b1'),
+    ('p____bcolors', 'trdp______cb', 'hs__st____b2'),
+    ('p____bcolors', 'trdp______cb', 'hs__plg___b1'),
+    ('p____rcolors', 'trdp______cr', 'hs__st____r1'),
+    ('p____rcolors', 'trdp______cr', 'hs__st____r2');
 
   insert into target_address
     (target_id,      address)
   values
     ('t_________cg', '8.8.8.8'),
-    ('tssh______cg', '8.8.8.8');
+    ('tssh______cg', '8.8.8.8'),
+    ('trdp______cg', '8.8.8.8');
 
   insert into credential_vault_store
     (project_id,     public_id,      name,                description, vault_address,               namespace)
