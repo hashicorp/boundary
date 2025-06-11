@@ -590,7 +590,6 @@ func TestGrants_ReadActions(t *testing.T) {
 			}
 		}
 	})
-
 }
 
 // TestGrants_WriteActions tests write actions to assert that grants are being applied properly

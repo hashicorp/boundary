@@ -223,7 +223,6 @@ func TestGrants_ListAccounts(t *testing.T) {
 			require.ElementsMatch(t, tc.wantAccountIDs, gotIDs)
 		})
 	}
-
 }
 
 func TestGrants_GetAccounts(t *testing.T) {
@@ -1100,5 +1099,4 @@ func TestGrants_AuthorizedActions(t *testing.T) {
 			require.ElementsMatch(t, item.AuthorizedActions, []string{"read", "update", "delete", "no-op"})
 		}
 	})
-
 }

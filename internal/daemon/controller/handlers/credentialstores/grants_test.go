@@ -346,9 +346,7 @@ func TestGrants_ListCredentialStores(t *testing.T) {
 			default:
 				t.Fatalf("unknown item type: %s", item.Type)
 			}
-
 		}
-
 	})
 }
 

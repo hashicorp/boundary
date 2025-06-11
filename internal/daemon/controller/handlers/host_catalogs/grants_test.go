@@ -565,7 +565,6 @@ func TestGrants_ReadActions(t *testing.T) {
 				t.Fatalf("unknown subtype: %s", item.GetType())
 			}
 		}
-
 	})
 }
 
