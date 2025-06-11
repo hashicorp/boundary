@@ -19,4 +19,13 @@ begin;
         on delete cascade
         on update cascade;
 
+  -- remove iam_role_grant_scope
+  drop table iam_role_grant_scope;
+
+  -- remove name, description, version from iam_role
+  alter table iam_role
+    drop column name,
+    drop column description,
+    drop column version;
+
 commit;
