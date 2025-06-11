@@ -19,18 +19,18 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/go-hclog"
-	"google.golang.org/genproto/protobuf/field_mask"
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/protobuf/field_mask"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // expectedOutput consolidates common output fields for the test cases
@@ -536,6 +536,58 @@ func TestGrants_ReadActions(t *testing.T) {
 					require.NoError(t, err)
 				}
 			})
+		}
+	})
+
+	t.Run("authorized action", func(t *testing.T) {
+		input := &pbs.ListAuthMethodsRequest{
+			ScopeId:   globals.GlobalPrefix,
+			Recursive: true,
+		}
+		userFunc := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+			{
+				RoleScopeId: globals.GlobalPrefix,
+				Grants:      []string{"ids=*;type=*;actions=*"},
+				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			},
+		})
+
+		// Call function to create direct/indirect relationship
+		user, account := userFunc()
+
+		// Create auth token for the user
+		tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+		require.NoError(t, err)
+
+		// Create auth context from the auth token
+		fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+		// auth method created during token generation will not be taken into considerations during this test
+		// adding to the ignoreList so it can be ignored later
+		ignoreList = append(ignoreList, tok.GetAuthMethodId())
+
+		got, finalErr := s.ListAuthMethods(fullGrantAuthCtx, input)
+		require.NoError(t, finalErr)
+		for _, item := range got.Items {
+			switch item.Type {
+			case "password":
+				require.ElementsMatch(t, item.AuthorizedActions, []string{"read", "delete", "authenticate", "no-op", "update"})
+				require.Len(t, item.AuthorizedCollectionActions, 2)
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Account.PluralString()].AsSlice(), []string{"create", "list"})
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.ManagedGroup.PluralString()].AsSlice(), []string{"create", "list"})
+			case "ldap":
+				require.ElementsMatch(t, item.AuthorizedActions, []string{"read", "delete", "authenticate", "no-op", "update"})
+				require.Len(t, item.AuthorizedCollectionActions, 2)
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Account.PluralString()].AsSlice(), []string{"create", "list"})
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.ManagedGroup.PluralString()].AsSlice(), []string{"create", "list"})
+			case "oidc":
+				require.ElementsMatch(t, item.AuthorizedActions, []string{"read", "delete", "authenticate", "change-state", "no-op", "update"})
+				require.Len(t, item.AuthorizedCollectionActions, 2)
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Account.PluralString()].AsSlice(), []string{"create", "list"})
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.ManagedGroup.PluralString()].AsSlice(), []string{"create", "list"})
+			default:
+				t.Fatalf("unknown auth method type: %s", item.Type)
+			}
 		}
 	})
 }

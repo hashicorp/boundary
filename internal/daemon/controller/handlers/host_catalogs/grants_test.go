@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/require"
@@ -80,6 +81,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	require.NoError(t, err)
 
 	org, proj := iam.TestScopes(t, iamRepo)
+	catalogTypeMap := map[string]string{}
 
 	var allHcs []string
 	for range 5 {
@@ -94,18 +96,23 @@ func TestGrants_ReadActions(t *testing.T) {
 			hostplugin.WithSecretsHmac([]byte("foobar")),
 		)
 		allHcs = append(allHcs, hc.GetPublicId())
-
+		catalogTypeMap[hc.PublicId] = "plugin"
 		_ = hostplugin.TestSet(t, conn, kmsCache, sche, hc, plgm)
+	}
+	for range 5 {
+		hc := static.TestCatalog(t, conn, proj.PublicId)
+		catalogTypeMap[hc.PublicId] = "static"
+		allHcs = append(allHcs, hc.GetPublicId())
 	}
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name            string
-			input           *pbs.ListHostCatalogsRequest
-			userFunc        func() (user *iam.User, account auth.Account)
-			wantErr         error
-			wantIDs         []string
-			expectOutfields []string
+			name                  string
+			input                 *pbs.ListHostCatalogsRequest
+			userFunc              func() (user *iam.User, account auth.Account)
+			wantErr               error
+			wantIDs               []string
+			expectOutfieldsByType map[string][]string
 		}{
 			{
 				name: "direct association - global role with host-catalog type, list, read actions, grant scope: this and descendants returns all created host catalogs",
@@ -120,9 +127,12 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
-				wantErr:         nil,
-				wantIDs:         allHcs,
-				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+				wantErr: nil,
+				wantIDs: allHcs,
+				expectOutfieldsByType: map[string][]string{
+					"static": {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					"plugin": {globals.IdField, globals.ScopeIdField, globals.TypeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+				},
 			},
 			{
 				name: "group association - global role with host-catalog type, list, read actions, grant scope: this and descendants returns all created host catalogs",
@@ -137,8 +147,11 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
-				wantIDs:         allHcs,
-				expectOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField},
+				wantIDs: allHcs,
+				expectOutfieldsByType: map[string][]string{
+					"static": {globals.IdField, globals.ScopeIdField, globals.TypeField},
+					"plugin": {globals.IdField, globals.ScopeIdField, globals.TypeField},
+				},
 			},
 			{
 				name: "managed group association - global role with host-catalog type, list, read actions, grant scope: this and descendants returns all created host catalogs",
@@ -153,8 +166,11 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
 				}),
-				wantIDs:         allHcs,
-				expectOutfields: []string{globals.IdField, globals.AttributesField},
+				wantIDs: allHcs,
+				expectOutfieldsByType: map[string][]string{
+					"static": {globals.IdField},
+					"plugin": {globals.IdField, globals.AttributesField},
+				},
 			},
 			{
 				name: "org role with host-catalog type, list, read actions, grant scope: this and children returns all created host catalogs",
@@ -169,8 +185,11 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
 				}),
-				wantIDs:         allHcs,
-				expectOutfields: []string{globals.IdField, globals.AuthorizedActionsField, globals.SecretsHmacField, globals.CreatedTimeField, globals.UpdatedTimeField},
+				wantIDs: allHcs,
+				expectOutfieldsByType: map[string][]string{
+					"static": {globals.IdField, globals.AuthorizedActionsField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					"plugin": {globals.IdField, globals.AuthorizedActionsField, globals.SecretsHmacField, globals.CreatedTimeField, globals.UpdatedTimeField},
+				},
 			},
 			{
 				name: "org role with host-catalog type, list, read actions, grant scope children returns all created host catalogs",
@@ -185,8 +204,11 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeChildren},
 					},
 				}),
-				wantIDs:         allHcs,
-				expectOutfields: []string{globals.IdField, globals.TypeField},
+				wantIDs: allHcs,
+				expectOutfieldsByType: map[string][]string{
+					"static": {globals.IdField, globals.TypeField},
+					"plugin": {globals.IdField, globals.TypeField},
+				},
 			},
 			{
 				name: "project role with host-catalog type, list, read actions, grant scope: this returns all created host catalogs",
@@ -201,8 +223,11 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
-				wantIDs:         allHcs,
-				expectOutfields: []string{globals.IdField, globals.TypeField},
+				wantIDs: allHcs,
+				expectOutfieldsByType: map[string][]string{
+					"static": {globals.IdField, globals.TypeField},
+					"plugin": {globals.IdField, globals.TypeField},
+				},
 			},
 			{
 				name: "project role with host-catalog type, list action, grant scope: does not return any host catalogs",
@@ -232,8 +257,11 @@ func TestGrants_ReadActions(t *testing.T) {
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
 				}),
-				wantIDs:         allHcs,
-				expectOutfields: []string{globals.IdField},
+				wantIDs: allHcs,
+				expectOutfieldsByType: map[string][]string{
+					"static": {globals.IdField},
+					"plugin": {globals.IdField},
+				},
 			},
 			{
 				name: "project role with non-applicable type, list and no-op actions, grant scope: this returns forbidden error",
@@ -309,7 +337,8 @@ func TestGrants_ReadActions(t *testing.T) {
 				}
 				require.ElementsMatch(t, tc.wantIDs, gotIDs)
 				for _, item := range got.Items {
-					handlers.TestAssertOutputFields(t, item, tc.expectOutfields)
+					catalogType := catalogTypeMap[item.Id]
+					handlers.TestAssertOutputFields(t, item, tc.expectOutfieldsByType[catalogType])
 				}
 			})
 		}
@@ -501,6 +530,40 @@ func TestGrants_ReadActions(t *testing.T) {
 					handlers.TestAssertOutputFields(t, got.Item, tc.expectOutfields)
 				}
 			})
+		}
+	})
+
+	t.Run("authorized action", func(t *testing.T) {
+		user, account := iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+			{
+				RoleScopeId: globals.GlobalPrefix,
+				Grants:      []string{"ids=*;type=*;actions=*"},
+				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			},
+		})()
+		tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+		require.NoError(t, err)
+		fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+		got, err := s.ListHostCatalogs(fullGrantAuthCtx, &pbs.ListHostCatalogsRequest{
+			ScopeId:   globals.GlobalPrefix,
+			Recursive: true,
+		})
+		require.NoError(t, err)
+		for _, item := range got.Items {
+			switch item.GetType() {
+			case "static":
+				require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete"})
+				require.Len(t, item.AuthorizedCollectionActions, 2)
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.HostSet.PluralString()].AsSlice(), []string{"create", "list"})
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Host.PluralString()].AsSlice(), []string{"create", "list"})
+			case "plugin":
+				require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete"})
+				require.Len(t, item.AuthorizedCollectionActions, 2)
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.HostSet.PluralString()].AsSlice(), []string{"create", "list"})
+				require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Host.PluralString()].AsSlice(), []string{"list"})
+			default:
+				t.Fatalf("unknown subtype: %s", item.GetType())
+			}
 		}
 	})
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
@@ -15,6 +16,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -109,4 +111,76 @@ func TestGrants_ReadActions(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestGrants_List_AuthorizedAction(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	_, _ = iam.TestScopes(t, iamRepo)
+	_, _ = iam.TestScopes(t, iamRepo)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := scopes.NewServiceFn(ctx, repoFn, kmsCache, 1000)
+	require.NoError(t, err)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	user, account := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+		{
+			RoleScopeId: globals.GlobalPrefix,
+			Grants:      []string{"ids=*;type=*;actions=*"},
+			GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+		},
+	})()
+	tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+	require.NoError(t, err)
+	fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+	got, err := s.ListScopes(fullGrantAuthCtx, &pbs.ListScopesRequest{ScopeId: globals.GlobalPrefix, Recursive: true})
+	require.NoError(t, err)
+	for _, item := range got.Items {
+		switch item.GetType() {
+		case "global":
+			require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete", "attach-storage-policy", "detach-storage-policy"})
+			require.Len(t, item.AuthorizedCollectionActions, 11)
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Alias.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AuthMethod.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.StorageBucket.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AuthToken.PluralString()].AsSlice(), []string{"list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Group.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Role.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Scope.PluralString()].AsSlice(), []string{"create", "list", "list-keys", "rotate-keys", "list-key-version-destruction-jobs", "destroy-key-version"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.User.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Worker.PluralString()].AsSlice(), []string{"read-certificate-authority", "create-controller-led", "create-worker-led", "reinitialize-certificate-authority", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.SessionRecording.PluralString()].AsSlice(), []string{"list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Policy.PluralString()].AsSlice(), []string{"create", "list"})
+		case "org":
+			require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete", "attach-storage-policy", "detach-storage-policy"})
+			require.Len(t, item.AuthorizedCollectionActions, 9)
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AuthMethod.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.StorageBucket.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.AuthToken.PluralString()].AsSlice(), []string{"list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Group.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Role.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Scope.PluralString()].AsSlice(), []string{"create", "list", "list-keys", "rotate-keys", "list-key-version-destruction-jobs", "destroy-key-version"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.User.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.SessionRecording.PluralString()].AsSlice(), []string{"list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Policy.PluralString()].AsSlice(), []string{"create", "list"})
+		case "project":
+			require.ElementsMatch(t, item.AuthorizedActions, []string{"no-op", "read", "update", "delete"})
+			require.Len(t, item.AuthorizedCollectionActions, 7)
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.CredentialStore.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Group.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.HostCatalog.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Role.PluralString()].AsSlice(), []string{"create", "list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Scope.PluralString()].AsSlice(), []string{"list-keys", "rotate-keys", "list-key-version-destruction-jobs", "destroy-key-version"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Session.PluralString()].AsSlice(), []string{"list"})
+			require.ElementsMatch(t, item.AuthorizedCollectionActions[resource.Target.PluralString()].AsSlice(), []string{"create", "list"})
+		default:
+			t.Fatalf("unknown item type: %s", item.GetType())
+		}
+	}
 }
