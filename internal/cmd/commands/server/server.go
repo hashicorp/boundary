@@ -217,6 +217,7 @@ func (c *Command) Run(args []string) int {
 	c.WorkerAuthDebuggingEnabled.Store(c.Config.EnableWorkerAuthDebugging)
 
 	base.StartMemProfiler(c.Context)
+	base.StartPproff(c.Context)
 
 	// Note: the checks directly after this must remain where they are because
 	// they rely on the state of configured KMSes.
