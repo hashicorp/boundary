@@ -2014,7 +2014,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 	})
 }
 
-func TestGrantsForUserGlobalOrgProjectResourcesWithRecursive(t *testing.T) {
+func TestGrantsForUserRecursive(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
