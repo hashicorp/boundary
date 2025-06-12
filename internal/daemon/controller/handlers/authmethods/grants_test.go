@@ -1138,7 +1138,8 @@ func TestGrants_Authentication(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
-
+	pwRepo, err := password.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -1149,7 +1150,7 @@ func TestGrants_Authentication(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kmsCache)
+		return pwRepo, nil
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return atRepo, nil
@@ -1170,9 +1171,6 @@ func TestGrants_Authentication(t *testing.T) {
 	require.NoError(t, err)
 	org1, p1 := iam.TestScopes(t, iamRepo)
 
-	pwRepo, err := pwRepoFn()
-	require.NoError(t, err)
-
 	// We need a sys eventer in order to authenticate
 	eventConfig := event.TestEventerConfig(t, "TestGrants_WriteActions", event.TestWithObservationSink(t))
 	testLock := &sync.Mutex{}
@@ -1189,18 +1187,17 @@ func TestGrants_Authentication(t *testing.T) {
 	})
 
 	testcases := []struct {
-		name          string
-		scopeId       string
-		input         *pbs.AuthenticateRequest
-		userFunc      func() (*iam.User, auth.Account)
-		rolesToCreate []authtoken.TestRoleGrantsForToken
-		wantErr       error
+		name     string
+		scopeId  string
+		input    *pbs.AuthenticateRequest
+		userFunc func() (*iam.User, auth.Account)
+		wantErr  error
 	}{
 		{
 			name:    "global role grant this and children can authenticate against a global auth method",
 			scopeId: globals.GlobalPrefix,
 			input: &pbs.AuthenticateRequest{
-				TokenType: "token",
+				Type: "token",
 				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
 					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
 						LoginName: testLoginName,
@@ -1215,17 +1212,12 @@ func TestGrants_Authentication(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			rolesToCreate: []authtoken.TestRoleGrantsForToken{{
-				RoleScopeId:  globals.GlobalPrefix,
-				GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
-				GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-			}},
 		},
 		{
 			name:    "org role can't authenticate against a global auth method",
 			scopeId: globals.GlobalPrefix,
 			input: &pbs.AuthenticateRequest{
-				TokenType: "token",
+				Type: "token",
 				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
 					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
 						LoginName: testLoginName,
@@ -1233,18 +1225,20 @@ func TestGrants_Authentication(t *testing.T) {
 					},
 				},
 			},
-			rolesToCreate: []authtoken.TestRoleGrantsForToken{{
-				RoleScopeId:  org1.PublicId,
-				GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
-				GrantScopes:  []string{globals.GrantScopeThis},
-			}},
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org1.PublicId,
+					Grants:      []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
 			wantErr: handlers.ForbiddenError(),
 		},
 		{
 			name:    "no grants returns 403 error for a global auth method",
 			scopeId: globals.GlobalPrefix,
 			input: &pbs.AuthenticateRequest{
-				TokenType: "token",
+				Type: "token",
 				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
 					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
 						LoginName: testLoginName,
@@ -1252,13 +1246,15 @@ func TestGrants_Authentication(t *testing.T) {
 					},
 				},
 			},
-			wantErr: handlers.ForbiddenError(),
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{}),
+			wantErr:  handlers.ForbiddenError(),
 		},
 		{
-			name:    "org auth methods, by default, grant anyone permission to authenticate (and list) auth methods",
-			scopeId: org1.PublicId,
+			name:     "org auth methods, by default, grant anyone permission to authenticate (and list) auth methods",
+			scopeId:  org1.PublicId,
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{}),
 			input: &pbs.AuthenticateRequest{
-				TokenType: "token",
+				Type: "token",
 				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
 					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
 						LoginName: testLoginName,
@@ -1271,7 +1267,7 @@ func TestGrants_Authentication(t *testing.T) {
 			name:    "project role can authenticate against org auth methods because by default, org auth methods grant anyone permission to authenticate (and list) auth methods",
 			scopeId: org1.PublicId,
 			input: &pbs.AuthenticateRequest{
-				TokenType: "token",
+				Type: "token",
 				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
 					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
 						LoginName: testLoginName,
@@ -1279,17 +1275,19 @@ func TestGrants_Authentication(t *testing.T) {
 					},
 				},
 			},
-			rolesToCreate: []authtoken.TestRoleGrantsForToken{{
-				RoleScopeId:  p1.PublicId,
-				GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
-				GrantScopes:  []string{globals.GrantScopeThis},
-			}},
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: p1.PublicId,
+					Grants:      []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
 		},
 		{
 			name:    "granting authenticate again at the org scope allows authentication",
 			scopeId: org1.PublicId,
 			input: &pbs.AuthenticateRequest{
-				TokenType: "token",
+				Type: "token",
 				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
 					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
 						LoginName: testLoginName,
@@ -1297,17 +1295,19 @@ func TestGrants_Authentication(t *testing.T) {
 					},
 				},
 			},
-			rolesToCreate: []authtoken.TestRoleGrantsForToken{{
-				RoleScopeId:  org1.PublicId,
-				GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
-				GrantScopes:  []string{globals.GrantScopeThis},
-			}},
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org1.PublicId,
+					Grants:      []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
 		},
 		{
 			name:    "project role can't authenticate against global auth methods",
 			scopeId: globals.GlobalPrefix,
 			input: &pbs.AuthenticateRequest{
-				TokenType: "token",
+				Type: "token",
 				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
 					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
 						LoginName: testLoginName,
@@ -1315,46 +1315,35 @@ func TestGrants_Authentication(t *testing.T) {
 					},
 				},
 			},
-			rolesToCreate: []authtoken.TestRoleGrantsForToken{{
-				RoleScopeId:  p1.PublicId,
-				GrantStrings: []string{"ids=*;type=auth-method;actions=authenticate"},
-				GrantScopes:  []string{globals.GrantScopeThis},
-			}},
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: p1.PublicId,
+					Grants:      []string{"ids=*;type=auth-method;actions=authenticate"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
 			wantErr: handlers.ForbiddenError(),
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create auth method
-			if tc.scopeId == globals.GlobalPrefix {
-				tc.input.AuthMethodId = password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
-			} else {
-				tc.input.AuthMethodId = password.TestAuthMethod(t, conn, org1.PublicId).PublicId
-			}
-
-			// Create account for the auth method
-			account, err := password.NewAccount(ctx, tc.input.AuthMethodId, password.WithLoginName(testLoginName))
+			// set up an identity that we'll use to call authenticate request on. We'll use this credentials
+			// and auth method to make authenticate request on
+			tc.input.AuthMethodId = password.TestAuthMethod(t, conn, tc.scopeId).PublicId
+			newAcct, err := password.NewAccount(ctx, tc.input.AuthMethodId, password.WithLoginName(testLoginName))
 			require.NoError(t, err)
-			account, err = pwRepo.CreateAccount(context.Background(), tc.scopeId, account, password.WithPassword(testPassword))
+			acctToLogin, err := pwRepo.CreateAccount(context.Background(), tc.scopeId, newAcct, password.WithPassword(testPassword))
 			require.NoError(t, err)
-			require.NotNil(t, account)
+			user := iam.TestUser(t, iamRepo, tc.scopeId, iam.WithAccountIds(acctToLogin.PublicId))
 
-			// Create user linked to the account
-			user := iam.TestUser(t, iamRepo, tc.scopeId, iam.WithAccountIds(account.PublicId))
-
-			// Create the desired role/grants for the user
-			for _, roleToCreate := range tc.rolesToCreate {
-				role := iam.TestRoleWithGrants(t, conn, roleToCreate.RoleScopeId, roleToCreate.GrantScopes, roleToCreate.GrantStrings)
-				iam.TestUserRole(t, conn, role.PublicId, user.PublicId)
-			}
-
-			// Create auth token for the user
-			tok, err := atRepo.CreateAuthToken(ctx, user, account.PublicId)
+			// set up an identity that we'll use to call authenticate request
+			// Authentication API will rely on this user's grants to authorize the request
+			user, acctLoggingIn := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, acctLoggingIn.GetPublicId())
 			require.NoError(t, err)
-			ctx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
-
-			_, err = s.Authenticate(ctx, tc.input)
+			fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+			_, err = s.Authenticate(fullGrantAuthCtx, tc.input)
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)
 				return
