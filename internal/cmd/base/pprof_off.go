@@ -10,8 +10,7 @@ import (
 	"context"
 )
 
-func StartPproff(_ context.Context) {
+func StartPprof(_ context.Context) {
 	go func() {
 	}()
-
 }

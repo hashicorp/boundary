@@ -709,7 +709,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	base.StartMemProfiler(c.Context)
-	base.StartPproff(c.Context)
+	base.StartPprof(c.Context)
 
 	if err := c.SetupEventing(
 		c.Context,
