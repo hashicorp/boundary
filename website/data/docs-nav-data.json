@@ -1,55 +1,49 @@
 [
   {
-    "title": "Introduction",
+    "heading": "Get started"
+  },
+  {
+    "title": "What is Boundary?",
+    "path": "what-is-boundary"
+  },
+  {
+    "title": "Why choose Boundary?",
     "routes": [
-      {
-        "title": "What is Boundary?",
-        "path": "overview/what-is-boundary"
-      },
       {
         "title": "Use cases",
         "path": "overview/use-cases"
       },
       {
-        "title": "Boundary vs. other software",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "overview/vs/other-software"
-          },
-          {
-            "title": "Zero trust",
-            "path": "overview/vs/zero-trust"
-          },
-          {
-            "title": "Bastion hosts",
-            "path": "overview/vs/bastion-hosts"
-          },
-          {
-            "title": "VPNs",
-            "path": "overview/vs/vpn"
-          },
-          {
-            "title": "Privileged access management",
-            "path": "overview/vs/pam"
-          },
-          {
-            "title": "Software-defined perimeter",
-            "path": "overview/vs/sdp"
-          },
-          {
-            "title": "Secrets management tools",
-            "path": "overview/vs/secrets-management"
-          }
-        ]
+        "title": "Zero trust",
+        "path": "overview/zero-trust"
+      },
+      {
+        "title": "Bastion hosts",
+        "path": "overview/bastion-hosts"
+      },
+      {
+        "title": "VPNs",
+        "path": "overview/vpn"
+      },
+      {
+        "title": "Privileged access management",
+        "path": "overview/pam"
+      },
+      {
+        "title": "Software-defined perimeter",
+        "path": "overview/sdp"
+      },
+      {
+        "title": "Secrets management tools",
+        "path": "overview/secrets-management"
       }
     ]
   },
   {
-    "title": "Get started",
+    "title": "Quickstart",
     "routes": [
       {
-        "title": "Overview",
+        "title": "Get started",
         "path": "getting-started"
       },
       {
@@ -80,104 +74,7 @@
     ]
   },
   {
-    "title": "Install Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "install-boundary"
-      },
-      {
-        "title": "Architecture",
-        "routes": [
-          {
-            "title": "System requirements",
-            "path": "install-boundary/architecture/system-requirements"
-          },
-          {
-            "title": "Recommended architecture",
-            "path": "install-boundary/architecture/recommended-architecture"
-          },
-          {
-            "title": "Fault tolerance",
-            "path": "install-boundary/architecture/fault-tolerance"
-          },
-          {
-            "title": "High availability",
-            "path": "install-boundary/architecture/high-availability"
-          }
-        ]
-      },
-      {
-        "title": "Deploy Boundary",
-        "path": "install-boundary/deploy"
-      },
-      {
-        "title": "Configure controllers",
-        "path": "install-boundary/configure-controllers"
-      },
-      {
-        "title": "Configure workers",
-        "path": "install-boundary/configure-workers"
-      },
-      {
-        "title": "Initialize Boundary",
-        "path": "install-boundary/initialize"
-      },
-      {
-        "title": "Install Boundary clients",
-        "path": "install-boundary/install-clients"
-      },
-      {
-        "title": "Systemd install",
-        "hidden": true,
-        "path": "install-boundary/systemd"
-      },
-      {
-        "title": "Terraform patterns",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "install-boundary/terraform-patterns"
-          },
-          {
-            "title": "Scopes",
-            "path": "install-boundary/terraform-patterns/terraform-scopes"
-          },
-          {
-            "title": "Users and auth methods",
-            "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
-          },
-          {
-            "title": "Groups and RBAC",
-            "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
-          },
-          {
-            "title": "Hosts and host management",
-            "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
-          },
-          {
-            "title": "Credentials and credential stores",
-            "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
-          },
-          {
-            "title": "Session recording",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "install-boundary/terraform-patterns/terraform-session-recording"
-          },
-          {
-            "title": "Targets",
-            "path": "install-boundary/terraform-patterns/terraform-targets"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "title": "Concepts",
+    "title": "Key concepts",
     "routes": [
       {
         "title": "Overview",
@@ -269,14 +166,6 @@
           {
             "title": "Overview",
             "path": "concepts/security"
-          },
-          {
-            "title": "Data encryption",
-            "path": "concepts/security/data-encryption"
-          },
-          {
-            "title": "Connections/TLS",
-            "path": "concepts/security/connections-tls"
           }
         ]
       },
@@ -400,16 +289,226 @@
             "path": "concepts/filtering/resource-listing"
           },
           {
-            "title": "Worker tags",
-            "path": "concepts/filtering/worker-tags"
-          },
-          {
             "title": "Events",
             "path": "concepts/filtering/events"
           }
         ]
       }
     ]
+  },
+  {
+    "title": "Architecture",
+    "routes": [
+      {
+        "title": "System requirements",
+        "path": "architecture/system-requirements"
+      },
+      {
+        "title": "Recommended architecture",
+        "path": "architecture/recommended-architecture"
+      },
+      {
+        "title": "Fault tolerance",
+        "path": "architecture/fault-tolerance"
+      },
+      {
+        "title": "High availability",
+        "path": "architecture/high-availability"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Boundary operations"
+  },
+  {
+    "title": "Deploy Boundary",
+    "routes": [
+      {
+        "title": "In a self-managed environment",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "install-boundary/self-managed"
+          },
+          {
+            "title": "Deploy Boundary",
+            "path": "install-boundary/self-managed/deploy"
+          },
+          {
+            "title": "Configure controllers",
+            "path": "install-boundary/self-managed/configure-controllers"
+          },
+          {
+            "title": "Configure workers",
+            "path": "install-boundary/self-managed/configure-workers"
+          },
+          {
+            "title": "Initialize Boundary",
+            "path": "install-boundary/self-managed/initialize"
+          },
+          {
+            "title": "Install Boundary clients",
+            "path": "install-boundary/self-managed/install-clients"
+          },
+          {
+            "title": "Systemd install",
+            "hidden": true,
+            "path": "install-boundary/self-managed/systemd"
+          }
+        ]
+      },
+      {
+        "title": "Terraform patterns",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "install-boundary/terraform-patterns"
+          },
+          {
+            "title": "Scopes",
+            "path": "install-boundary/terraform-patterns/terraform-scopes"
+          },
+          {
+            "title": "Users and auth methods",
+            "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
+          },
+          {
+            "title": "Groups and RBAC",
+            "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
+          },
+          {
+            "title": "Hosts and host management",
+            "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
+          },
+          {
+            "title": "Credentials and credential stores",
+            "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
+          },
+          {
+            "title": "Session recording",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "install-boundary/terraform-patterns/terraform-session-recording"
+          },
+          {
+            "title": "Targets",
+            "path": "install-boundary/terraform-patterns/terraform-targets"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Secure Boundary",
+    "routes": [
+      {
+        "title": "Encrypt resources",
+        "routes": [
+          {
+            "title": "Data encryption",
+            "path": "security/encrypt/data-encryption"
+          },
+          {
+            "title": "Connections/TLS",
+            "path": "security/encrypt/connections-tls"
+          }
+        ]
+      },
+      {
+        "title": "Control access using worker tags",
+        "path": "security/worker-tags"
+      }
+    ]
+  },
+  {
+    "title": "Monitor Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "monitor"
+      },
+      {
+        "title": "Configure listener addresses and ports",
+        "routes": [
+          {
+            "title": "Listeners",
+            "path": "monitor/listener"
+          },
+          {
+            "title": "TCP listeners",
+            "path": "monitor/listener/tcp"
+          },
+          {
+            "title": "Unix listeners",
+            "path": "monitor/listener/unix"
+          }
+        ]
+      },
+      {
+        "title": "Monitor metrics",
+        "path": "monitor/metrics"
+      },
+      {
+        "title": "Monitor health",
+        "path": "monitor/health"
+      },
+      {
+        "title": "Monitor events",
+        "routes": [
+          {
+            "title": "Events",
+            "path": "monitor/events"
+          },
+          {
+            "title": "Common sink parameters",
+            "path": "monitor/events/common"
+          },
+          {
+            "title": "File sink",
+            "path": "monitor/events/file"
+          },
+          {
+            "title": "Stderr sink",
+            "path": "monitor/events/stderr"
+          }
+        ]
+      },
+      {
+        "title": "Session recordings",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "monitor/session-recordings"
+          },
+          {
+            "title": "Find and view recorded sessions",
+            "path": "monitor/session-recordings/manage-recorded-sessions"
+          },
+          {
+            "title": "Validate recorded sessions",
+            "path": "monitor/session-recordings/validate-session-recordings"
+          },
+          {
+            "title": "Validate external data store",
+            "path": "monitor/session-recordings/validate-data-store"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "divider": true
   },
   {
     "title": "Configuration",
@@ -428,23 +527,6 @@
           {
             "title": "Configuration",
             "path": "configuration/worker/worker-configuration"
-          }
-        ]
-      },
-      {
-        "title": "Listener",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/listener"
-          },
-          {
-            "title": "TCP",
-            "path": "configuration/listener/tcp"
-          },
-          {
-            "title": "Unix",
-            "path": "configuration/listener/unix"
           }
         ]
       },
@@ -627,76 +709,12 @@
         ]
       },
       {
-        "title": "Events",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/events"
-          },
-          {
-            "title": "Common sink parameters",
-            "path": "configuration/events/common"
-          },
-          {
-            "title": "File sink",
-            "path": "configuration/events/file"
-          },
-          {
-            "title": "Stderr sink",
-            "path": "configuration/events/stderr"
-          }
-        ]
-      },
-      {
         "title": "Controller",
         "path": "configuration/controller"
       },
       {
         "title": "Plugins",
         "path": "configuration/plugins"
-      }
-    ]
-  },
-  {
-    "title": "Operations",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "operations"
-      },
-      {
-        "title": "Metrics",
-        "path": "operations/metrics"
-      },
-      {
-        "title": "Health endpoint",
-        "path": "operations/health"
-      },
-      {
-        "title": "Session recordings",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "operations/session-recordings"
-          },
-          {
-            "title": "Find and view recorded sessions",
-            "path": "operations/session-recordings/manage-recorded-sessions"
-          },
-          {
-            "title": "Validate recorded sessions",
-            "path": "operations/session-recordings/validate-session-recordings"
-          },
-          {
-            "title": "Validate external data store",
-            "path": "operations/session-recordings/validate-data-store"
-          }
-        ]
       }
     ]
   },

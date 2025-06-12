@@ -5,7 +5,7 @@ description: >-
   Learn how key management services protect the encryption keys used for securing data. Understand key lifecycle management best practices.
 ---
 
-# Data security in Boundary
+# Data encryption in Boundary
 
 Boundary has multiple mechanisms to ensure secure end-to-end behavior of the
 system. A key part of this is [support for various Key Management
@@ -128,7 +128,7 @@ You can configure `previous-root` KMS keys for self-managed Enterprise or Commun
 
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
 to authenticate a Worker to the Controller. Specifics of this mechanism can be
-found on the [Connections/TLS page](/boundary/docs/concepts/security/connections-tls). If
+found on the [Connections/TLS page](/boundary/docs/security/encryption/connections-tls). If
 a worker is registered with [worker-led or controller-led
 methods](/boundary/docs/configuration/worker/worker-configuration) this is unnecessary.
 
