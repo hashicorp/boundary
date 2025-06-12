@@ -20,6 +20,12 @@ import (
 ...
 ```
 
+Tracing can also be enabled by building with the `pprof` build tag or running
+
+```
+make build-pprof 
+```
+
 This will create a new HTTP endpoint on `localhost:6060` of the running binary. As such, it's only accessible to the users on the same machine.
 Remember to remove this code again once you're done testing.
 
