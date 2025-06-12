@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -43,16 +44,17 @@ func TestGrants_ReadActions(t *testing.T) {
 	}
 	s, err := scopes.NewServiceFn(ctx, repoFn, kmsCache, 1000)
 	require.NoError(t, err)
-
+	rw := db.New(conn)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	org1, proj1 := iam.TestScopes(t, iamRepo)
-
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name          string
-			input         *pbs.ListScopesRequest
-			rolesToCreate []authtoken.TestRoleGrantsForToken
-			wantErr       error
-			wantIDs       []string
+			name     string
+			input    *pbs.ListScopesRequest
+			userFunc func() (*iam.User, auth.Account)
+			wantErr  error
+			wantIDs  []string
 		}{
 			{
 				name: "global role grant this returns all created scopes",
@@ -60,13 +62,13 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=scope;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=scope;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: []string{
 					org1.PublicId,
@@ -79,13 +81,13 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  org1.PublicId,
-						GrantStrings: []string{"ids=*;type=scope;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=scope;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: []string{
 					proj1.PublicId,
@@ -95,8 +97,10 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, finalErr := s.ListScopes(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
@@ -138,7 +142,7 @@ func TestGrants_List_AuthorizedAction(t *testing.T) {
 	})()
 	tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 	require.NoError(t, err)
-	fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+	fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 	got, err := s.ListScopes(fullGrantAuthCtx, &pbs.ListScopesRequest{ScopeId: globals.GlobalPrefix, Recursive: true})
 	require.NoError(t, err)
 	for _, item := range got.Items {
