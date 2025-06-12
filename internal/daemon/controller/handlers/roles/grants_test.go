@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -46,13 +48,16 @@ func TestGrants_ReadActions(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrap)
 	s, err := roles.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err)
+	rw := db.New(conn)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 
 	org1, _ := iam.TestScopes(t, iamRepo)
 	org2, proj2 := iam.TestScopes(t, iamRepo)
 	proj3 := iam.TestProject(t, iamRepo, org2.PublicId)
 
 	var defaultOrg1Roles []string
-	org1Roles, err := s.ListRoles(auth.DisabledAuthTestContext(repoFn, org1.GetPublicId()), &pbs.ListRolesRequest{
+	org1Roles, err := s.ListRoles(controllerauth.DisabledAuthTestContext(repoFn, org1.GetPublicId()), &pbs.ListRolesRequest{
 		ScopeId: org1.GetPublicId(),
 	})
 	require.NoError(t, err)
@@ -60,7 +65,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		defaultOrg1Roles = append(defaultOrg1Roles, r.GetId())
 	}
 
-	org2Roles, err := s.ListRoles(auth.DisabledAuthTestContext(repoFn, org2.GetPublicId()), &pbs.ListRolesRequest{
+	org2Roles, err := s.ListRoles(controllerauth.DisabledAuthTestContext(repoFn, org2.GetPublicId()), &pbs.ListRolesRequest{
 		ScopeId: org2.GetPublicId(),
 	})
 	require.NoError(t, err)
@@ -69,7 +74,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		defaultOrg2Roles = append(defaultOrg2Roles, r.GetId())
 	}
 
-	proj2Roles, err := s.ListRoles(auth.DisabledAuthTestContext(repoFn, proj2.GetPublicId()), &pbs.ListRolesRequest{
+	proj2Roles, err := s.ListRoles(controllerauth.DisabledAuthTestContext(repoFn, proj2.GetPublicId()), &pbs.ListRolesRequest{
 		ScopeId: proj2.GetPublicId(),
 	})
 	require.NoError(t, err)
@@ -78,7 +83,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		defaultProj2Roles = append(defaultProj2Roles, r.GetId())
 	}
 
-	proj3Roles, err := s.ListRoles(auth.DisabledAuthTestContext(repoFn, proj3.GetPublicId()), &pbs.ListRolesRequest{
+	proj3Roles, err := s.ListRoles(controllerauth.DisabledAuthTestContext(repoFn, proj3.GetPublicId()), &pbs.ListRolesRequest{
 		ScopeId: proj3.GetPublicId(),
 	})
 	require.NoError(t, err)
@@ -97,7 +102,7 @@ func TestGrants_ReadActions(t *testing.T) {
 		testcases := []struct {
 			name                string
 			input               *pbs.ListRolesRequest
-			rolesToCreate       []authtoken.TestRoleGrantsForToken
+			userFunc            func() (*iam.User, auth.Account)
 			wantErr             error
 			addRolesAtThisScope bool
 			wantIDs             []string
@@ -108,13 +113,13 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=role;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=role;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
-				},
+				}),
 				addRolesAtThisScope: true,
 				wantErr:             nil,
 				wantIDs: append(append([]string{
@@ -128,13 +133,13 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   org2.PublicId,
 					Recursive: true,
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, oidc.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  org2.PublicId,
-						GrantStrings: []string{"ids=*;type=role;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeId: org2.PublicId,
+						Grants:      []string{"ids=*;type=role;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
-				},
+				}),
 				addRolesAtThisScope: true,
 				wantErr:             nil,
 				wantIDs: append(append([]string{
@@ -146,15 +151,17 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 
 				// TestAuthTokenWithRoles creates a default role, so we need to add it to the expected list
 				// if the grant scope contains 'this'
 				// This will add the default roles to the expected list of roles
 				if tc.addRolesAtThisScope {
 					var rolesAtThisScope []string
-					rolesAtThisScopeList, err := s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.input.ScopeId), &pbs.ListRolesRequest{
+					rolesAtThisScopeList, err := s.ListRoles(controllerauth.DisabledAuthTestContext(repoFn, tc.input.ScopeId), &pbs.ListRolesRequest{
 						ScopeId: tc.input.ScopeId,
 					})
 					require.NoError(t, err)
