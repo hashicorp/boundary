@@ -11,6 +11,4 @@ import (
 )
 
 func StartPprof(_ context.Context) {
-	go func() {
-	}()
 }

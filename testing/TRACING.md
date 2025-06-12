@@ -1,26 +1,7 @@
 # Tracing in Boundary
 
 Boundary includes a small number of runtime tracing user regions, which can be used to see where Boundary spends its time during execution.
-To create a trace, we first need to expose the pprof endpoint. It is disabled by default. Exposing the pprof endpoint is as simple as importing the correct package and starting a HTTP server anywhere in Boundary:
-
-```go
-package anything
-
-import (
-    "log"
-    "net/http"
-
-    _ "net/http/pprof"
-)
-
-...
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-...
-```
-
-Tracing can also be enabled by building with the `pprof` build tag or running
+To create a trace, we first need to expose the pprof endpoint. It is disabled by default. Exposing the pprof endpoint is as simple as building with the `pprof` build tag or running
 
 ```
 make build-pprof 

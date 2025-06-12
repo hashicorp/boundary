@@ -709,7 +709,6 @@ func (c *Command) Run(args []string) int {
 	}
 
 	base.StartMemProfiler(c.Context)
-	base.StartPprof(c.Context)
 
 	if err := c.SetupEventing(
 		c.Context,
@@ -722,6 +721,8 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
+
+	base.StartPprof(c.Context)
 
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey

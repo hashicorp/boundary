@@ -8,14 +8,21 @@ package base
 
 import (
 	"context"
-	"log"
+	"errors"
 	"net/http"
+
+	"github.com/hashicorp/boundary/internal/event"
 
 	_ "net/http/pprof"
 )
 
-func StartPprof(_ context.Context) {
+func StartPprof(ctx context.Context) {
+	const op = "base.StartPprof"
 	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
+		const addr = "localhost:6060"
+		event.WriteSysEvent(ctx, op, "starting pprof HTTP server", "addr", addr)
+		if err := http.ListenAndServe(addr, nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			event.WriteSysEvent(ctx, op, "failed to serve pprof HTTP server", "error", err.Error())
+		}
 	}()
 }
