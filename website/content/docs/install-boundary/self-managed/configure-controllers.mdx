@@ -50,7 +50,7 @@ If you do not add a BSR key to your controller configuration, you receive an err
 
 There are other optional KMS keys that you can configure for different encryption scenarios.
 These scenarios include Boundary worker PKI auth encryption and Boundary worker or controller configuration encryption.
-Refer to [Data security in Boundary](/boundary/docs/concepts/security/data-encryption) for more information.
+Refer to [Data security in Boundary](/boundary/docs/security/encryption/data-encryption) for more information.
 
 <Note>
 There are two types of Boundary workers, distinguished by the method by which they authenticate with the Boundary controllers.
@@ -285,7 +285,7 @@ If present, `boundary server` starts a controller subprocess.
    The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
    This configuration may or may not work for your organization's logging solution.
 
-- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/concepts/security/data-encryption).
+- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/security/encryption/data-encryption).
 
    Refer to the links below for configuration information for the different cloud KMS blocks:
 
@@ -338,11 +338,11 @@ Run the following commands to start the service:
 Upon logging in to Boundary for the first time, HashiCorp recommends creating an admin user for the global and project level scopes to manage Boundary.
 Creating an admin user allows you to configure targets within those scopes and manage them.
 
-HashiCorp recommends that you use the [KMS recovery workflow](/boundary/docs/install-boundary/initialize#log-in-with-recovery-kms) to log in to Boundary for the first time.
-Refer to [Creating your first login account](/boundary/docs/install-boundary/initialize#create-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.
+HashiCorp recommends that you use the [KMS recovery workflow](/boundary/docs/install-boundary/self-managed/initialize#log-in-with-recovery-kms) to log in to Boundary for the first time.
+Refer to [Creating your first login account](/boundary/docs/install-boundary/self-managed/initialize#create-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.
 
 After configuring the controller, you should:
 
-- [Configure Boundary workers](/boundary/docs/install-boundary/configure-workers)
-- [Initialize Boundary](/boundary/docs/install-boundary/initialize)
-- [Install the Boundary Clients](/boundary/docs/install-boundary/install-clients)
+- [Configure Boundary workers](/boundary/docs/install-boundary/self-managed/configure-workers)
+- [Initialize Boundary](/boundary/docs/install-boundary/self-managed/initialize)
+- [Install the Boundary Clients](/boundary/docs/install-boundary/self-managed/install-clients)
