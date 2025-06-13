@@ -191,7 +191,7 @@ const (
     global_roles_this_grant_scope as (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
-             'global'                              as role_parent_scope_id,
+             ''                                    as role_parent_scope_id,
              'individual'                          as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
              null                                  as individual_grant_scope, -- individual_grant_scopes are not applicable to global roles
@@ -221,7 +221,7 @@ const (
     global_roles_with_individual_or_special_grant_scopes as (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
-             'global'                              as role_parent_scope_id,
+             ''                                    as role_parent_scope_id,
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
              individual.scope_id                   as individual_grant_scope,
@@ -287,7 +287,7 @@ const (
     global_roles_with_individual_or_descendant_grant_scopes as (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
-             'global'                              as role_parent_scope_id,
+             ''                                    as role_parent_scope_id,
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
              individual.scope_id                   as individual_grant_scope,
@@ -393,7 +393,7 @@ const (
     global_roles_this_grant_scope as (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
-             'global'                              as role_parent_scope_id,
+             ''                                    as role_parent_scope_id,
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
              null                                  as individual_grant_scope,
@@ -406,7 +406,7 @@ const (
     global_roles_with_special_grant_scopes as (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
-             'global'                              as role_parent_scope_id,
+             ''                                    as role_parent_scope_id,
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
              null                                  as individual_grant_scope,
@@ -419,7 +419,7 @@ const (
     global_roles_with_individual_grant_scopes as (
       select iam_role_global.public_id             as role_id,
              iam_role_global.scope_id              as role_scope_id,
-             'global'                              as role_parent_scope_id,
+             ''                                    as role_parent_scope_id,
              iam_role_global.grant_scope           as grant_scope,
              iam_role_global.grant_this_role_scope as grant_this_role_scope,
              individual.scope_id                   as individual_grant_scope,
