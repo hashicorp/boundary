@@ -331,7 +331,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	if shouldSkip, reason := c.initFlags.SkipInitialLoginRoleCreation(); shouldSkip {
+	shouldSkip, reason, err := c.initFlags.SkipInitialLoginRoleCreation()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("error determining whether to skip initial login role creation, continuing with creating initial login role: %w", err).Error())
+	}
+	if shouldSkip {
 		c.UI.Info(fmt.Sprintf("Skipping creation of initial login role: %s", reason))
 	} else {
 		loginRole, err := c.CreateInitialLoginRole(c.Context)
@@ -351,7 +355,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	if shouldSkip, reason := c.initFlags.SkipInitialAuthenticatedUserRoleCreation(); shouldSkip {
+	shouldSkip, reason, err = c.initFlags.SkipInitialAuthenticatedUserRoleCreation()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("error determining whether to skip initial global-scoped authenticated user role creation, continuing with creating initial global-scoped authenticated user role: %w", err).Error())
+	}
+	if shouldSkip {
 		c.UI.Info(fmt.Sprintf("Skipping creation of initial global-scoped authenticated user role: %s", reason))
 	} else {
 		role, err := c.CreateInitialAuthenticatedUserRole(c.Context)
