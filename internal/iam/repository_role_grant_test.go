@@ -582,6 +582,172 @@ type testInput struct {
 	resource   []resource.Type
 }
 
+func TestResolveQuery(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrap)
+
+	scopeSuffix := "_12345"
+
+	testcases := []struct {
+		name        string
+		input       testInput
+		isRecursive bool
+		wantQuery   string
+		errorMsg    string
+	}{
+		{
+			name: "global request scope should return the global query",
+			input: testInput{
+				resource:   []resource.Type{resource.Alias},
+				reqScopeId: globals.GlobalPrefix,
+			},
+			wantQuery: grantsForUserGlobalResourcesQuery,
+		},
+		{
+			name: "org request scope should return the org query",
+			input: testInput{
+				resource:   []resource.Type{resource.AuthToken},
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
+			},
+			wantQuery: grantsForUserOrgResourcesQuery,
+		},
+		{
+			name: "project request scope should return the project query",
+			input: testInput{
+				resource:   []resource.Type{resource.HostCatalog},
+				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+			},
+			wantQuery: grantsForUserProjectResourcesQuery,
+		},
+		{
+			name: "recursive request should return the recursive query regardless of request scope",
+			input: testInput{
+				resource:   []resource.Type{resource.HostCatalog},
+				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+			},
+			isRecursive: true,
+			wantQuery:   grantsForUserRecursiveQuery,
+		},
+		{
+			name: "missing resource type should return an error",
+			input: testInput{
+				reqScopeId: globals.GlobalPrefix,
+			},
+			errorMsg: "missing resource type",
+		},
+		{
+			name: "unknown resource type should return an error",
+			input: testInput{
+				resource:   []resource.Type{resource.Unknown},
+				reqScopeId: globals.GlobalPrefix,
+			},
+			errorMsg: "resource type cannot be unknown",
+		},
+		{
+			name: "all resource type should return an error",
+			input: testInput{
+				resource:   []resource.Type{resource.All},
+				reqScopeId: globals.GlobalPrefix,
+			},
+			errorMsg: "resource type cannot be all",
+		},
+		{
+			name: "missing request scope should return an error",
+			input: testInput{
+				resource: []resource.Type{resource.Alias},
+			},
+			errorMsg: "missing request scope id",
+		},
+		{
+			name: "invalid resource type returns error",
+			input: testInput{
+				resource:   []resource.Type{resource.Type(999)},
+				reqScopeId: globals.GlobalPrefix,
+			},
+			errorMsg: "invalid resource type: 999",
+		},
+		{
+			name: "global resources without a global request scope returns error",
+			input: testInput{
+				resource:   []resource.Type{resource.Alias, resource.Billing},
+				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+			},
+			errorMsg: fmt.Sprintf("request scope id must be global for %s resources", []resource.Type{resource.Alias, resource.Billing}),
+		},
+		{
+			name: "global and org resources without a global or org request scope returns error",
+			input: testInput{
+				resource:   []resource.Type{resource.Account, resource.AuthMethod, resource.AuthToken, resource.ManagedGroup, resource.Policy, resource.SessionRecording, resource.StorageBucket, resource.User},
+				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+			},
+			errorMsg: fmt.Sprintf("request scope id must be global or org for %s resources", []resource.Type{resource.Account, resource.AuthMethod, resource.AuthToken, resource.ManagedGroup, resource.Policy, resource.SessionRecording, resource.StorageBucket, resource.User}),
+		},
+		{
+			name: "global and org and project resources without a global or org or project request scope returns error",
+			input: testInput{
+				resource:   []resource.Type{resource.Group, resource.Role, resource.Scope},
+				reqScopeId: "junk scope",
+			},
+			errorMsg: "invalid scope id junk scope",
+		},
+		{
+			name: "project resources without a project request scope returns error",
+			input: testInput{
+				resource:   []resource.Type{resource.CredentialLibrary, resource.Credential, resource.CredentialStore, resource.HostCatalog, resource.HostSet, resource.Host, resource.Session, resource.Target},
+				reqScopeId: globals.GlobalPrefix,
+			},
+			errorMsg: fmt.Sprintf("request scope id must be project for %s resources", []resource.Type{resource.CredentialLibrary, resource.Credential, resource.CredentialStore, resource.HostCatalog, resource.HostSet, resource.Host, resource.Session, resource.Target}),
+		},
+		{
+			name: "global resource followed by a project resource returns the global query",
+			input: testInput{
+				resource:   []resource.Type{resource.Alias, resource.Host},
+				reqScopeId: globals.GlobalPrefix,
+			},
+			wantQuery: grantsForUserGlobalResourcesQuery,
+		},
+		{
+			name: "project resource followed by a global resource returns the project query",
+			input: testInput{
+				resource:   []resource.Type{resource.Host, resource.Alias},
+				reqScopeId: globals.ProjectPrefix + scopeSuffix,
+			},
+			wantQuery: grantsForUserProjectResourcesQuery,
+		},
+		{
+			name: "global and org resource followed by a global resource returns the org query for an org request scope",
+			input: testInput{
+				resource:   []resource.Type{resource.AuthMethod, resource.Alias},
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
+			},
+			wantQuery: grantsForUserOrgResourcesQuery,
+		},
+		{
+			name: "global and org and project resource followed by a project resource returns the org query for an org request scope",
+			input: testInput{
+				resource:   []resource.Type{resource.Group, resource.Host},
+				reqScopeId: globals.OrgPrefix + scopeSuffix,
+			},
+			wantQuery: grantsForUserOrgResourcesQuery,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotQuery, err := repo.resolveQuery(ctx, tc.input.resource, tc.input.reqScopeId, tc.isRecursive)
+			if tc.errorMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorMsg)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, gotQuery, tc.wantQuery)
+		})
+	}
+}
+
 func TestGrantsForUserGlobalResources(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -707,31 +873,18 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 			},
 		},
 		{
-			name: "no resource specified should return '*' and 'unknown' grants",
-			input: testInput{
-				userId: user.PublicId,
-			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            roleThis.PublicId,
-					RoleScopeId:       globals.GlobalPrefix,
-					RoleParentScopeId: "",
-					GrantScopeId:      globals.GlobalPrefix,
-					Grant:             "ids=*;type=*;actions=*",
-				},
-			},
-		},
-		{
 			name: "u_anon should return no grants",
 			input: testInput{
-				userId: globals.AnonymousUserId,
+				userId:   globals.AnonymousUserId,
+				resource: []resource.Type{resource.Alias},
 			},
 			output: []perms.GrantTuple{},
 		},
 		{
 			name: "u_auth should return no grants",
 			input: testInput{
-				userId: globals.AnyAuthenticatedUserId,
+				userId:   globals.AnyAuthenticatedUserId,
+				resource: []resource.Type{resource.Alias},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -742,11 +895,18 @@ func TestGrantsForUserGlobalResources(t *testing.T) {
 			},
 			errorMsg: "missing user id",
 		},
+		{
+			name: "missing resource type should return error",
+			input: testInput{
+				userId: user.PublicId,
+			},
+			errorMsg: "missing resource type",
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserGlobalResources(ctx, tc.input.userId, tc.input.resource)
+			got, err := repo.GrantsForUser(ctx, tc.input.userId, tc.input.resource, globals.GlobalPrefix)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
@@ -970,49 +1130,11 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			},
 		},
 		{
-			name: "return '*' and 'unknown' grants when no resource specified at org1 request scope",
-			input: testInput{
-				userId:     user.PublicId,
-				reqScopeId: org1.PublicId,
-			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleDescendants.PublicId,
-					RoleScopeId:       globals.GlobalPrefix,
-					RoleParentScopeId: "",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
-				{
-					RoleId:            org1RoleThis.PublicId,
-					RoleScopeId:       org1.PublicId,
-					RoleParentScopeId: globals.GlobalPrefix,
-					GrantScopeId:      org1.PublicId,
-					Grant:             "ids=*;type=*;actions=*",
-				},
-			},
-		},
-		{
-			name: "return '*' and 'unknown' grants when no resource specified at org2 request scope",
-			input: testInput{
-				userId:     user.PublicId,
-				reqScopeId: org2.PublicId,
-			},
-			output: []perms.GrantTuple{
-				{
-					RoleId:            globalRoleDescendants.PublicId,
-					RoleScopeId:       globals.GlobalPrefix,
-					RoleParentScopeId: "",
-					GrantScopeId:      globals.GrantScopeDescendants,
-					Grant:             "ids=*;type=*;actions=update",
-				},
-			},
-		},
-		{
 			name: "u_anon should return no grants at org1 request scope",
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: org1.PublicId,
+				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -1021,6 +1143,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnonymousUserId,
 				reqScopeId: org2.PublicId,
+				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -1029,6 +1152,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: org1.PublicId,
+				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -1037,6 +1161,7 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			input: testInput{
 				userId:     globals.AnyAuthenticatedUserId,
 				reqScopeId: org2.PublicId,
+				resource:   []resource.Type{resource.User},
 			},
 			output: []perms.GrantTuple{},
 		},
@@ -1057,11 +1182,19 @@ func TestGrantsForUserOrgResources(t *testing.T) {
 			},
 			errorMsg: "missing request scope id",
 		},
+		{
+			name: "missing resource type should return error",
+			input: testInput{
+				userId:     user.PublicId,
+				reqScopeId: org1.PublicId,
+			},
+			errorMsg: "missing resource type",
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserOrgResources(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+			got, err := repo.GrantsForUser(ctx, tc.input.userId, tc.input.resource, tc.input.reqScopeId)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
@@ -1407,7 +1540,7 @@ func TestGrantsForUserProjectResources(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserProjectResources(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+			got, err := repo.GrantsForUser(ctx, tc.input.userId, tc.input.resource, tc.input.reqScopeId)
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
@@ -1702,7 +1835,7 @@ func TestGrantsForUserRecursive(t *testing.T) {
 				reqScopeId: globals.GlobalPrefix,
 				resource:   []resource.Type{resource.Unknown},
 			},
-			errorMsg: "a specific resource type must be specified",
+			errorMsg: "resource type cannot be unknown",
 		},
 		{
 			name: "'*' resource type should return error",
@@ -1711,7 +1844,7 @@ func TestGrantsForUserRecursive(t *testing.T) {
 				reqScopeId: globals.GlobalPrefix,
 				resource:   []resource.Type{resource.All},
 			},
-			errorMsg: "a specific resource type must be specified",
+			errorMsg: "resource type cannot be all",
 		},
 		{
 			name: "u_anon should return no grants at global request scope",
@@ -1782,13 +1915,13 @@ func TestGrantsForUserRecursive(t *testing.T) {
 				reqScopeId: "",
 				resource:   []resource.Type{resource.Group},
 			},
-			errorMsg: "request scope must be global scope, an org scope, or a project scope",
+			errorMsg: "missing request scope id",
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := repo.grantsForUserRecursive(ctx, tc.input.userId, tc.input.reqScopeId, tc.input.resource)
+			got, err := repo.GrantsForUser(ctx, tc.input.userId, tc.input.resource, tc.input.reqScopeId, WithRecursive(true))
 			if tc.errorMsg != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
