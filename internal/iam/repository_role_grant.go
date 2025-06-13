@@ -574,20 +574,22 @@ func (r *Repository) grantsForUserGlobalResources(
 		sql.Named("resources", pq.Array(resources)),
 	)
 
-	var grants []perms.GrantTuple
+	var grants []grantsForUserResults
 	rows, err := r.reader.Query(ctx, grantsForUserGlobalResourcesQuery, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g perms.GrantTuple
+		var g grantsForUserResults
 		if err := rows.Scan(
-			&g.RoleId,
-			&g.RoleScopeId,
-			&g.RoleParentScopeId,
-			&g.GrantScopeId,
-			&g.Grant,
+			&g.roleId,
+			&g.roleScopeId,
+			&g.roleParentScopeId,
+			&g.grantScope,
+			&g.grantThisRoleScope,
+			pq.Array(&g.individualGrantScopes),
+			pq.Array(&g.canonicalGrants),
 		); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -596,7 +598,50 @@ func (r *Repository) grantsForUserGlobalResources(
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return grants, nil
+	ret := make(perms.GrantTuples, 0, len(grants))
+	for _, grant := range grants {
+
+		if grant.grantScope != globals.GrantScopeIndividual {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.grantScope,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+
+		if grant.grantThisRoleScope {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.roleScopeId,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+
+		// loop over grants creating tuple with grant_scope = s.ScopeId
+		for _, individualGrantScope := range grant.individualGrantScopes {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      individualGrantScope,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+	}
+	return ret, nil
 }
 
 // grantsForUserOrgResources returns user grants for resources that can be org scoped.
@@ -637,20 +682,22 @@ func (r *Repository) grantsForUserOrgResources(
 		sql.Named("request_scope_id", reqScopeId),
 	)
 
-	var grants []perms.GrantTuple
+	var grants []grantsForUserResults
 	rows, err := r.reader.Query(ctx, grantsForUserOrgResourcesQuery, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g perms.GrantTuple
+		var g grantsForUserResults
 		if err := rows.Scan(
-			&g.RoleId,
-			&g.RoleScopeId,
-			&g.RoleParentScopeId,
-			&g.GrantScopeId,
-			&g.Grant,
+			&g.roleId,
+			&g.roleScopeId,
+			&g.roleParentScopeId,
+			&g.grantScope,
+			&g.grantThisRoleScope,
+			pq.Array(&g.individualGrantScopes),
+			pq.Array(&g.canonicalGrants),
 		); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -659,7 +706,50 @@ func (r *Repository) grantsForUserOrgResources(
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return grants, nil
+	ret := make(perms.GrantTuples, 0, len(grants)*3)
+	for _, grant := range grants {
+
+		if grant.grantScope != globals.GrantScopeIndividual {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.grantScope,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+
+		if grant.grantThisRoleScope && reqScopeId == grant.roleScopeId {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.roleScopeId,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+
+		// loop over grants creating tuple with grant_scope = s.ScopeId
+		for _, individualGrantScope := range grant.individualGrantScopes {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      individualGrantScope,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+	}
+	return ret, nil
 }
 
 // grantsForUserProjectResources returns user grants for resources that can only be project scoped.
@@ -699,20 +789,22 @@ func (r *Repository) grantsForUserProjectResources(
 		sql.Named("request_scope_id", reqScopeId),
 	)
 
-	var grants []perms.GrantTuple
+	var grants []grantsForUserResults
 	rows, err := r.reader.Query(ctx, grantsForUserProjectResourcesQuery, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g perms.GrantTuple
+		var g grantsForUserResults
 		if err := rows.Scan(
-			&g.RoleId,
-			&g.RoleScopeId,
-			&g.RoleParentScopeId,
-			&g.GrantScopeId,
-			&g.Grant,
+			&g.roleId,
+			&g.roleScopeId,
+			&g.roleParentScopeId,
+			&g.grantScope,
+			&g.grantThisRoleScope,
+			pq.Array(&g.individualGrantScopes),
+			pq.Array(&g.canonicalGrants),
 		); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -721,7 +813,50 @@ func (r *Repository) grantsForUserProjectResources(
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return grants, nil
+	ret := make(perms.GrantTuples, 0, len(grants)*3)
+	for _, grant := range grants {
+
+		if grant.grantScope != globals.GrantScopeIndividual {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.grantScope,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+
+		if grant.grantThisRoleScope && reqScopeId == grant.roleScopeId {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.roleScopeId,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+
+		// loop over grants creating tuple with grant_scope = s.ScopeId
+		for _, individualGrantScope := range grant.individualGrantScopes {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      individualGrantScope,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+	}
+	return ret, nil
 }
 
 // grantsForUserRecursive returns user grants for resources applicable to all scopes, at any request scope.
@@ -771,20 +906,22 @@ func (r *Repository) grantsForUserRecursive(
 		sql.Named("resources", pq.Array(resources)),
 	)
 
-	var grants []perms.GrantTuple
+	var grants []grantsForUserResults
 	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g perms.GrantTuple
+		var g grantsForUserResults
 		if err := rows.Scan(
-			&g.RoleId,
-			&g.RoleScopeId,
-			&g.RoleParentScopeId,
-			&g.GrantScopeId,
-			&g.Grant,
+			&g.roleId,
+			&g.roleScopeId,
+			&g.roleParentScopeId,
+			&g.grantScope,
+			&g.grantThisRoleScope,
+			pq.Array(&g.individualGrantScopes),
+			pq.Array(&g.canonicalGrants),
 		); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -793,5 +930,48 @@ func (r *Repository) grantsForUserRecursive(
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return grants, nil
+	ret := make(perms.GrantTuples, 0, len(grants))
+	for _, grant := range grants {
+
+		if grant.grantScope != globals.GrantScopeIndividual {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.grantScope,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+
+		if grant.grantThisRoleScope {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      grant.roleScopeId,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+
+		// loop over grants creating tuple with grant_scope = s.ScopeId
+		for _, individualGrantScope := range grant.individualGrantScopes {
+			for _, canonicalGrant := range grant.canonicalGrants {
+				gt := perms.GrantTuple{
+					RoleId:            grant.roleId,
+					RoleScopeId:       grant.roleScopeId,
+					RoleParentScopeId: grant.roleParentScopeId,
+					GrantScopeId:      individualGrantScope,
+					Grant:             canonicalGrant,
+				}
+				ret = append(ret, gt)
+			}
+		}
+	}
+	return ret, nil
 }
