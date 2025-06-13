@@ -1453,7 +1453,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			errStr: "unable to create target alias",
+			errStr: "PermissionDenied",
 		},
 		{
 			name: "Create a target with duplicate aliasses",

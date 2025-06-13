@@ -146,7 +146,7 @@ func Test_AllowedIn(t *testing.T) {
 		{
 			testName:   "Scope",
 			resource:   resource.Scope,
-			wantScopes: []Type{Global, Org},
+			wantScopes: []Type{Global, Org, Project},
 		},
 		{
 			testName:   "SessionRecording",
