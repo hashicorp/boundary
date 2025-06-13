@@ -66,6 +66,12 @@ install: build
 install-no-plugins: export SKIP_PLUGIN_BUILD=1
 install-no-plugins: install
 
+.PHONY: build-pprof
+build-pprof: BUILD_TAGS+=pprof
+build-pprof:
+	@echo "==> Building Boundary with memory pprof enabled"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+
 .PHONY: build-memprof
 build-memprof: BUILD_TAGS+=memprofiler
 build-memprof:
