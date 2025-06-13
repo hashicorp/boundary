@@ -60,6 +60,10 @@ func TestGrants_ListWorkers(t *testing.T) {
 	globalWorker1 := server.TestPkiWorker(t, conn, wrapper,
 		server.WithName("worker-1"),
 		server.WithDescription("worker-1"),
+		server.WithWorkerTags(&server.Tag{
+			Key:   "worker",
+			Value: "1",
+		}),
 		server.WithNewIdFunc(func(ctx context.Context) (string, error) {
 			return server.NewWorkerIdFromScopeAndName(ctx, scope.Global.String(), "worker-1")
 		}),
@@ -67,17 +71,33 @@ func TestGrants_ListWorkers(t *testing.T) {
 	globalWorker2 := server.TestPkiWorker(t, conn, wrapper,
 		server.WithName("worker-2"),
 		server.WithDescription("worker-2"),
+		server.WithWorkerTags(&server.Tag{
+			Key:   "worker",
+			Value: "2",
+		}),
 		server.WithNewIdFunc(func(ctx context.Context) (string, error) {
 			return server.NewWorkerIdFromScopeAndName(ctx, scope.Global.String(), "worker-2")
 		}),
 	)
+	globalWorker3 := server.TestPkiWorker(t, conn, wrapper,
+		server.WithName("worker-3"),
+		server.WithDescription("worker-3"),
+		server.WithWorkerTags(&server.Tag{
+			Key:   "worker",
+			Value: "3",
+		}),
+		server.WithNewIdFunc(func(ctx context.Context) (string, error) {
+			return server.NewWorkerIdFromScopeAndName(ctx, scope.Global.String(), "worker-3")
+		}),
+	)
 
 	testcases := []struct {
-		name     string
-		input    *pbs.ListWorkersRequest
-		userFunc func() (*iam.User, auth.Account)
-		wantErr  error
-		wantIDs  []string
+		name             string
+		input            *pbs.ListWorkersRequest
+		userFunc         func() (*iam.User, auth.Account)
+		wantErr          error
+		wantIds          []string
+		wantOutputFields []string
 	}{
 		{
 			name: "global role grant this returns all created workers",
@@ -88,12 +108,30 @@ func TestGrants_ListWorkers(t *testing.T) {
 			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=worker;actions=list,no-op"},
+					Grants:      []string{"ids=*;type=worker;actions=list,read;output_fields=id,name,description,created_time,updated_time"},
 					GrantScopes: []string{globals.GrantScopeThis},
 				},
 			}),
-			wantErr: nil,
-			wantIDs: []string{globalWorker1.PublicId, globalWorker2.PublicId},
+			wantErr:          nil,
+			wantIds:          []string{globalWorker1.PublicId, globalWorker2.PublicId, globalWorker3.PublicId},
+			wantOutputFields: []string{globals.IdField, globals.NameField, globals.DescriptionField, globals.CreatedTimeField, globals.UpdatedTimeField},
+		},
+		{
+			name: "global role grant this returns all created workers different output fields",
+			input: &pbs.ListWorkersRequest{
+				ScopeId:   globals.GlobalPrefix,
+				Recursive: false,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=worker;actions=list,read;output_fields=id,version,canonical_tags,config_tags,authorized_actions,local_storage_state"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantErr:          nil,
+			wantIds:          []string{globalWorker1.PublicId, globalWorker2.PublicId, globalWorker3.PublicId},
+			wantOutputFields: []string{globals.IdField, globals.VersionField, globals.CanonicalTagsField, globals.ConfigTagsField, globals.AuthorizedActionsField, globals.LocalStorageStateField},
 		},
 		{
 			name: "global role grant this with a non-applicable type returns an error",
@@ -123,7 +161,6 @@ func TestGrants_ListWorkers(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeDescendants},
 				},
 			}),
-			wantIDs: []string{},
 		},
 		{
 			name: "global role grant descendants non-recursive list returns error",
@@ -153,7 +190,6 @@ func TestGrants_ListWorkers(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			wantIDs: []string{},
 		},
 		{
 			name: "org role grant this and children non-recursive list returns error",
@@ -184,11 +220,12 @@ func TestGrants_ListWorkers(t *testing.T) {
 				return
 			}
 			require.NoError(t, finalErr)
-			var gotIDs []string
-			for _, g := range got.Items {
-				gotIDs = append(gotIDs, g.GetId())
+			var gotIds []string
+			for _, item := range got.Items {
+				gotIds = append(gotIds, item.GetId())
+				handlers.TestAssertOutputFields(t, item, tc.wantOutputFields)
 			}
-			require.ElementsMatch(t, tc.wantIDs, gotIDs)
+			require.ElementsMatch(t, gotIds, tc.wantIds)
 		})
 	}
 
