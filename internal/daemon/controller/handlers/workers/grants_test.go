@@ -30,10 +30,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestGrants_ListWorkers(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -231,6 +233,7 @@ func TestGrants_ListWorkers(t *testing.T) {
 
 }
 func TestGrants_GetWorker(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -379,6 +382,7 @@ func TestGrants_GetWorker(t *testing.T) {
 	}
 }
 func TestGrants_CreateWorkerLed(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -542,6 +546,7 @@ func TestGrants_CreateWorkerLed(t *testing.T) {
 	}
 }
 func TestGrants_CreateControllerLed(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -681,6 +686,411 @@ func TestGrants_CreateControllerLed(t *testing.T) {
 				return
 			}
 			require.NoError(t, finalErr)
+		})
+	}
+}
+func TestGrants_ReadCertificateAuthority(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+	// Store CA and check that initial version updates
+	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
+	require.NoError(t, err)
+	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	org, proj := iam.TestScopes(t, iamRepo)
+	testcases := []struct {
+		name     string
+		input    *pbs.ReadCertificateAuthorityRequest
+		userFunc func() (*iam.User, auth.Account)
+		wantErr  error
+	}{
+		{
+			name: "valid specific grants success",
+			input: &pbs.ReadCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=worker;actions=read-certificate-authority"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+		},
+		{
+			name: "valid grants success",
+			input: &pbs.ReadCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=worker;actions=*"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+		},
+		{
+			name: "no actions grant returns error",
+			input: &pbs.ReadCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=*;actions=list,read,no-op,set-worker-tags"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+		{
+			name: "org role scope grant this returns error",
+			input: &pbs.ReadCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org.PublicId,
+					Grants:      []string{"ids=*;type=*;actions=*"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+		{
+			name: "proj role scope grant this returns error",
+			input: &pbs.ReadCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj.PublicId,
+					Grants:      []string{"ids=*;type=*;actions=*"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+		{
+			name: "wrong scope grants returns error",
+			input: &pbs.ReadCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=*;actions=*"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, accountID := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, accountID.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrapper, tok, iamRepo)
+			_, finalErr := s.ReadCertificateAuthority(fullGrantAuthCtx, tc.input)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, finalErr, tc.wantErr)
+				return
+			}
+			require.NoError(t, finalErr)
+		})
+	}
+}
+func TestGrants_ReinitializeCertificateAuthority(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+	// Store CA and check that initial version updates
+	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
+	require.NoError(t, err)
+	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	org, proj := iam.TestScopes(t, iamRepo)
+	testcases := []struct {
+		name     string
+		input    *pbs.ReinitializeCertificateAuthorityRequest
+		userFunc func() (*iam.User, auth.Account)
+		wantErr  error
+	}{
+		{
+			name: "valid specific grants success",
+			input: &pbs.ReinitializeCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=worker;actions=reinitialize-certificate-authority"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+		},
+		{
+			name: "valid grants success",
+			input: &pbs.ReinitializeCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=worker;actions=*"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+		},
+		{
+			name: "no actions grant returns error",
+			input: &pbs.ReinitializeCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=*;actions=create,list,read-certificate-authority"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+		{
+			name: "org role scope grant this returns error",
+			input: &pbs.ReinitializeCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: org.PublicId,
+					Grants:      []string{"ids=*;type=*;actions=*"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+		{
+			name: "proj role scope grant this returns error",
+			input: &pbs.ReinitializeCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: proj.PublicId,
+					Grants:      []string{"ids=*;type=*;actions=*"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+		{
+			name: "wrong scope grants returns error",
+			input: &pbs.ReinitializeCertificateAuthorityRequest{
+				ScopeId: globals.GlobalPrefix,
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=*;actions=*"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, accountID := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, accountID.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrapper, tok, iamRepo)
+			_, finalErr := s.ReinitializeCertificateAuthority(fullGrantAuthCtx, tc.input)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, finalErr, tc.wantErr)
+				return
+			}
+			require.NoError(t, finalErr)
+		})
+	}
+}
+func TestGrants_AddWorkerTags(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+	// Store CA and check that initial version updates
+	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
+	require.NoError(t, err)
+	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	worker := server.TestPkiWorker(t, conn, wrapper,
+		server.WithName("worker-1"),
+		server.WithDescription("worker-1"),
+		server.WithWorkerTags(&server.Tag{
+			Key:   "worker",
+			Value: "1",
+		}),
+		server.WithNewIdFunc(func(ctx context.Context) (string, error) {
+			return server.NewWorkerIdFromScopeAndName(ctx, scope.Global.String(), "worker-1")
+		}),
+	)
+	testcases := []struct {
+		name             string
+		input            func() *pbs.AddWorkerTagsRequest
+		userFunc         func() (*iam.User, auth.Account)
+		wantErr          error
+		wantOutputFields []string
+	}{
+		{
+			name: "valid specific grants success",
+			input: func() *pbs.AddWorkerTagsRequest {
+				randomTag, _ := uuid.GenerateUUID()
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						randomTag: {Values: []*structpb.Value{structpb.NewStringValue(randomTag)}},
+					},
+				}
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=worker;actions=add-worker-tags;output_fields=id,version,scope_id,name,description"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantOutputFields: []string{globals.IdField, globals.VersionField, globals.ScopeIdField, globals.NameField, globals.DescriptionField},
+		},
+		{
+			name: "valid grants success",
+			input: func() *pbs.AddWorkerTagsRequest {
+				randomTag, _ := uuid.GenerateUUID()
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						randomTag: {Values: []*structpb.Value{structpb.NewStringValue(randomTag)}},
+					},
+				}
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=worker;actions=*;output_fields=id,version,type,api_tags,authorized_actions"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantOutputFields: []string{globals.IdField, globals.VersionField, globals.TypeField, globals.ApiTagsField, globals.AuthorizedActionsField},
+		},
+		{
+			name: "no actions grant returns error",
+			input: func() *pbs.AddWorkerTagsRequest {
+				randomTag, _ := uuid.GenerateUUID()
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						randomTag: {Values: []*structpb.Value{structpb.NewStringValue(randomTag)}},
+					},
+				}
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=*;actions=create,list,read-certificate-authority"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+		{
+			name: "wrong scope grants returns error",
+			input: func() *pbs.AddWorkerTagsRequest {
+				randomTag, _ := uuid.GenerateUUID()
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						randomTag: {Values: []*structpb.Value{structpb.NewStringValue(randomTag)}},
+					},
+				}
+			},
+			userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=*;actions=*"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, accountID := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, accountID.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := cauth.TestAuthContextFromToken(t, conn, wrapper, tok, iamRepo)
+			out, finalErr := s.AddWorkerTags(fullGrantAuthCtx, tc.input())
+			if tc.wantErr != nil {
+				require.ErrorIs(t, finalErr, tc.wantErr)
+				return
+			}
+			worker.Version = out.Item.Version
+			require.NoError(t, finalErr)
+			handlers.TestAssertOutputFields(t, out.Item, tc.wantOutputFields)
 		})
 	}
 }
