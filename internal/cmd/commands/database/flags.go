@@ -53,22 +53,41 @@ type initFlags struct {
 // Returns:
 // - bool: True if the creation should be skipped, false otherwise.
 // - string: A reason string explaining why the creation is skipped, or an empty string if not skipped.
-func (f *initFlags) SkipInitialLoginRoleCreation() (bool, string) {
+func (f *initFlags) SkipInitialLoginRoleCreation() (bool, string, error) {
+	// If the version supports both creating default and admin roles and skipping their creation,
+	// we check both flags for creating and skipping the initial login role.
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) &&
+		version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		// If both flags are set, we return an error indicating that only one can be set at a time.
+		if f.flagCreateInitialLoginRole && f.flagSkipInitialLoginRoleCreation {
+			return false, "", fmt.Errorf("both `-%s` and `-%s` flags were set, only one can be set at a time", flagCreateInitialLoginRoleName, flagSkipInitialLoginRoleName)
+		}
+		if f.flagCreateInitialLoginRole && !f.flagSkipInitialLoginRoleCreation {
+			return false, "", nil
+		}
+		if f.flagSkipInitialLoginRoleCreation && !f.flagCreateInitialLoginRole {
+			return true, reasonFlagWasSet(flagSkipInitialLoginRoleName), nil
+		}
+		if !f.flagCreateInitialLoginRole && !f.flagSkipInitialLoginRoleCreation {
+			return false, "", fmt.Errorf("flag `-%s` is being deprecated, please use `-%s` instead", flagSkipInitialLoginRoleName, flagCreateInitialLoginRoleName)
+		}
+	}
+
 	// If the version supports creating default and admin roles, we check the flag for creating the initial login role.
 	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
-		// The flag for creating the initial login role takes precedence over the skip flag.
-		if f.flagCreateInitialLoginRole {
-			return false, reasonFlagWasSet(flagCreateInitialLoginRoleName)
+		if !f.flagCreateInitialLoginRole {
+			return true, fmt.Sprintf("flag `-%s` was not set", flagCreateInitialLoginRoleName), nil
 		}
 	}
 
 	// TODO: Deprecated in 0.22
+	// If the version supports skipping default and admin role creation, we check the skip flag.
 	if version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
 		if f.flagSkipInitialLoginRoleCreation {
-			return true, reasonFlagWasSet(flagSkipInitialLoginRoleName)
+			return true, reasonFlagWasSet(flagSkipInitialLoginRoleName), nil
 		}
 	}
-	return false, ""
+	return false, "", nil
 }
 
 // SkipInitialAuthenticatedUserRoleCreation checks if the creation of the initial authenticated user role should be skipped.
@@ -81,21 +100,37 @@ func (f *initFlags) SkipInitialLoginRoleCreation() (bool, string) {
 // Returns:
 // - bool: True if the creation of the initial authenticated user role should be skipped, false otherwise.
 // - string: A reason string explaining why the creation is skipped, or an empty string if not skipped.
-func (f *initFlags) SkipInitialAuthenticatedUserRoleCreation() (bool, string) {
+func (f *initFlags) SkipInitialAuthenticatedUserRoleCreation() (bool, string, error) {
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) &&
+		version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		// If both flags are set, we return an error indicating that only one can be set at a time.
+		if f.flagCreateInitialAuthenticatedUserRole && f.flagSkipInitialAuthenticatedUserRoleCreation {
+			return false, "", fmt.Errorf("both `-%s` and `-%s` flags were set, only one can be set at a time", flagCreateInitialAuthenticatedUserRoleName, flagSkipInitialAuthenticatedUserRoleName)
+		}
+		if f.flagCreateInitialAuthenticatedUserRole && !f.flagSkipInitialAuthenticatedUserRoleCreation {
+			return false, "", nil
+		}
+		if f.flagSkipInitialAuthenticatedUserRoleCreation && !f.flagCreateInitialAuthenticatedUserRole {
+			return true, reasonFlagWasSet(flagSkipInitialAuthenticatedUserRoleName), nil
+		}
+		if !f.flagCreateInitialAuthenticatedUserRole && !f.flagSkipInitialAuthenticatedUserRoleCreation {
+			return false, "", fmt.Errorf("flag `-%s` is being deprecated, please use `-%s` instead", flagSkipInitialAuthenticatedUserRoleName, flagCreateInitialLoginRoleName)
+		}
+	}
+
 	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
-		// The flag for creating the initial login role takes precedence over the skip flag.
-		if f.flagCreateInitialAuthenticatedUserRole {
-			return false, reasonFlagWasSet(flagCreateInitialAuthenticatedUserRoleName)
+		if !f.flagCreateInitialAuthenticatedUserRole {
+			return true, fmt.Sprintf("flag `-%s` was not set", flagCreateInitialAuthenticatedUserRoleName), nil
 		}
 	}
 
 	// TODO: Deprecated in 0.22
 	if version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
 		if f.flagSkipInitialAuthenticatedUserRoleCreation {
-			return true, reasonFlagWasSet(flagSkipInitialAuthenticatedUserRoleName)
+			return true, reasonFlagWasSet(flagSkipInitialAuthenticatedUserRoleName), nil
 		}
 	}
-	return false, ""
+	return false, "", nil
 }
 
 // CreateInitialLoginRole checks if the initial anonymous login role should be created.
