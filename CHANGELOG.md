@@ -12,7 +12,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### Deprecations/Changes
 
 * Modified parsing logic for various IP/host/address fields across Boundary.
-  Notably, for some fields, Boundary previously required bracket-enclosed 
+  Notably, for some fields, Boundary previously required bracket-enclosed
   IPv6 addresses (eg: `[::1]`). With this change, if the provided address is
   just an IPv6 literal, enclosing the address in brackets is not valid.
   Additionally, an input address containing an IPv6 literal may be modified by
@@ -990,7 +990,7 @@ open-source release of 0.12.3; the same fixes will be in 0.13.0 OSS.
   Encryption Keys (KEKs) and Data Encryption Keys (DEKs) using the new key rotation
   and key version destruction functionality. To learn more about this new feature,
   refer to the
-  [documentation](https://developer.hashicorp.com/boundary/docs/concepts/security/data-encryption).
+  [documentation](https://developer.hashicorp.com/boundary/docs/security/encryption/data-encryption).
 
   Upgrade notice: If the Database purpose DEK for a scope is destroyed, you must use
   the API to cancel any sessions that predate the upgrade.

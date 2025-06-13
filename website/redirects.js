@@ -13,8 +13,8 @@ module.exports = [
   //   permanent: true,
   // },
   {
-    source: '/boundary/docs/what-is-boundary',
-    destination: '/boundary/docs/overview/what-is-boundary',
+    source: '/boundary/docs/overview/what-is-boundary',
+    destination: '/boundary/docs/what-is-boundary',
     permanent: true,
   },
   {
@@ -24,7 +24,42 @@ module.exports = [
   },
   {
     source: '/boundary/docs/roadmap',
-    destination: 'boundary/docs/overview/what-is-boundary',
+    destination: 'boundary/docs/what-is-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/bastion-hosts',
+    destination: '/boundary/docs/overview/bastion-hosts',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/other-software',
+    destination: 'boundary/docs/overview/use-cases',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/pam',
+    destination: 'boundary/docs/overview/pam',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/sdp',
+    destination: 'boundary/docs/overview/pam',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/secrets-management',
+    destination: 'boundary/docs/overview/secrets-management',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/vpn',
+    destination: 'boundary/docs/overview/vpn',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/overview/vs/zero-trust',
+    destination: 'boundary/dos/overview/zero-trust',
     permanent: true,
   },
   {
@@ -35,6 +70,61 @@ module.exports = [
   {
     source: '/boundary/docs/getting-started/deploy-and-login',
     destination: '/boundary/docs/hcp/get-started/deploy-and-login',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/architecture/fault-tolerance',
+    destination: '/boundary/docs/architecture/fault-tolerance',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/architecture/high-availability',
+    destination: '/boundary/docs/architecture/high-availability',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/architecture/recommended-architecture',
+    destination: '/boundary/docs/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source: 'boundary/docs/install-boundary/architecture/system-requirements',
+    destination: 'boundary/docs/architecture/system-requirements',
+    permanent: true,
+  },
+  {
+    source: 'boundary/docs/install-boundary/index',
+    destination: 'boundary/docs/install-boundary/self-managed/index',
+    permanent: true,
+  },
+  {
+    source: 'boundary/docs/install-boundary/configure-controllers',
+    destination: 'boundary/docs/install-boundary/self-managed/configure-controllers',
+    permanent: true,
+  },
+  {
+    source: 'boundary/docs/install-boundary/configure-workers',
+    destination: 'boundary/docs/install-boundary/self-managed/configure-workers',
+    permanent: true,
+  },
+  {
+    source: 'boundary/docs/install-boundary/deploy',
+    destination: 'boundary/docs/install-boundary/self-managed/deploy',
+    permanent: true,
+  },
+  {
+    source: 'boundary/docs/install-boundary/self-managed/initialize',
+    destination: 'boundary/docs/install-boundary/self-managed/initialize',
+    permanent: true,
+  },
+  {
+    source: 'boundary/docs/install-boundary/install-clients',
+    destination: 'boundary/docs/install-boundary/self-managed/install-clients',
+    permanent: true,
+  },
+  {
+    source: 'boundary/docs/install-boundary/systemd',
+    destination: 'boundary/docs/install-boundary/self-managed/systemd',
     permanent: true,
   },
   {
@@ -95,7 +185,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/install-boundary/install',
-    destination: '/boundary/docs/install-boundary/deploy',
+    destination: '/boundary/docs/install-boundary/self-managed/deploy',
     permanent: true,
   },
   {
@@ -125,7 +215,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/install-boundary/no-gen-resources',
-    destination: '/boundary/docs/install-boundary/initialize',
+    destination: '/boundary/docs/install-boundary/self-managed/initialize',
     permanent: true,
   },
   {
@@ -161,6 +251,21 @@ module.exports = [
   {
     source: '/boundary/docs/oss',
     destination: '/boundary/docs/community',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/security/data-encryption',
+    destination: '/boundary/docs/security/encryption/data-encryption',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/security/connections-tls',
+    destination: '/boundary/docs/security/encryption/connections-tls',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/filtering/worker-tags',
+    destination: '/boundary/docs/security/worker-tags',
     permanent: true,
   },
   {

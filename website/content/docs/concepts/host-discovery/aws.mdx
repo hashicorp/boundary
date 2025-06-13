@@ -27,7 +27,7 @@ HashiCorp recommends using dynamic credentials when possible. Select a credentia
 
 Boundary needs the following IAM privileges, at the very least, to be attached to a configured IAM user.
 
-Configure `DescribeInstances` to `*`. `DescribeInstances` cannot be scoped to a resource ARN. 
+Configure `DescribeInstances` to `*`. `DescribeInstances` cannot be scoped to a resource ARN.
 
 Example policy:
 
@@ -74,13 +74,13 @@ To allow static credential rotation, add the `iam:GetUser`, `iam:CreateAccessKey
 
 </Note>
 
-This feature requires a self-managed Boundary [worker](/boundary/docs/install-boundary/configure-workers).
+This feature requires a self-managed Boundary [worker](/boundary/docs/install-boundary/self-managed/configure-workers).
 
 To set up a dynamic host catalog using an AWS role, a self-managed worker must assume the role. You must assign the role to the self-managed worker AWS instance, and then supply a worker filter that matches the AWS worker when you set up the dynamic host catalog.
 
 Perform the following steps to set up a host catalog using [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html):
 
-1. Deploy a self-managed worker in your AWS account. The worker must be in the same VPC as the hosts you want to access using the dynamic host catalog. Consider [adding worker tags](/boundary/docs/concepts/filtering/worker-tags) to make it easier to route traffic through it using a worker filter later on.
+1. Deploy a self-managed worker in your AWS account. The worker must be in the same VPC as the hosts you want to access using the dynamic host catalog. Consider [adding worker tags](/boundary/docs/security/worker-tags) to make it easier to route traffic through it using a worker filter later on.
 
 1. Create an IAM role with the `AmazonEC2ReadOnlyAccess` policy attached, or define a custom policy with the `ec2:DescribeInstances` action allowed for all resources. This policy should contain the following, at least:
 
@@ -218,7 +218,7 @@ The required fields for creating a dynamic host catalog depend on whether you co
     - `role_external_id`: The external ID that you configured for the `AssumeRole` provider.
     - `role_session_name`: The session name that you configured for the `AssumeRole` provider.
     - `role_tags`: The key-value pair tags that you configured for the `AssumeRole` provider.
-    - `worker-filter` A boolean expression to filter which workers can handle dynamic host catalog commands for this host catalog. This should match a valid filter expression for the self-managed worker deployed in AWS. Refer to worker [Filter examples](/boundary/docs/concepts/filtering/worker-tags#filter-workers-using-tags) to learn more.
+    - `worker-filter` A boolean expression to filter which workers can handle dynamic host catalog commands for this host catalog. This should match a valid filter expression for the self-managed worker deployed in AWS. Refer to worker [Filter examples](/boundary/docs/security/worker-tags#filter-workers-using-tags) to learn more.
 
   Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
 
@@ -294,7 +294,7 @@ The `scope_id` and `plugin_name` fields are required when you create a dynamic h
 
 Replace the values in the configuration with the following required AWS secrets and any attributes you want to associate with the host catalog:
 
-  - `worker_filter`: A boolean expression to filter which workers can handle dynamic host catalog commands for this host catalog. This should match a valid filter expression for the self-managed worker deployed in AWS. Refer to worker [Filter examples](/boundary/docs/concepts/filtering/worker-tags#filter-workers-using-tags) to learn more.
+  - `worker_filter`: A boolean expression to filter which workers can handle dynamic host catalog commands for this host catalog. This should match a valid filter expression for the self-managed worker deployed in AWS. Refer to worker [Filter examples](/boundary/docs/security/worker-tags#filter-workers-using-tags) to learn more.
   - `disable_credential_rotation`: When set to `true`, Boundary does not rotate the credentials with AWS automatically.
   You must disable credential rotation to use dynamic credentials.
   - `region`: The region to configure the host catalog for. All host sets in this catalog are configured for this region.

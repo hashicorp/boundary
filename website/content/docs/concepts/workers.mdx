@@ -31,7 +31,7 @@ You can use workers to proxy sessions between clients and targets located in pub
 
 ### Worker authentication
 
-Workers can [authenticate](/boundary/docs/concepts/security/connections-tls#pki-based-worker-authentication) directly to the control plane or through an upstream worker to the control plane. Authenticating through an upstream worker is also referred to as "multi-hop worker authentication."
+Workers can [authenticate](/boundary/docs/security/encryption/connections-tls#pki-based-worker-authentication) directly to the control plane or through an upstream worker to the control plane. Authenticating through an upstream worker is also referred to as "multi-hop worker authentication."
 
 ### Controller proxy
 
@@ -48,7 +48,7 @@ bucket](/boundary/docs/concepts/domain-model/storage-buckets).
 ## Tags
 In multi-datacenter and multi-cloud operating models, patterns of dividing up controllers, workers, and targets into appropriate regions or networks is often
 desired to reduce latency or comply with security standards. You can assign workers [tags](/boundary/tutorials/worker-management/target-aware-workers) that Boundary
-can [filter](/boundary/docs/concepts/filtering/worker-tags) through, to find the appropriate worker to use for a session. For example, Boundary could filter to workers
+can [filter](/boundary/docs/security/worker-tags) through, to find the appropriate worker to use for a session. For example, Boundary could filter to workers
 with tag “A,” to connect to targets in “Network A.”
 
 ![Boundary architecture example showing workers with tags](/img/worker-tags.png)

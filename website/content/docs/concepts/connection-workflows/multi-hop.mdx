@@ -71,15 +71,15 @@ workers are used to access targets.
 
 ## Use HCP-managed workers as ingress workers
 
-Many organizations have strict network policies that prohibit all inbound traffic into their networks. In these scenarios, you can use HCP-managed workers as the ingress workers. To establish a connection into the network, a self-managed worker configured as an egress worker initiates an outbound connection to the HCP-managed worker, creating a persistent connection. As a result, when end users connect to a target, the end user's connection would hop from the Boundary client to the HCP-managed worker (ingress worker) to the self-managed worker (egress worker) to the target (or other intermediary workers if needed). 
+Many organizations have strict network policies that prohibit all inbound traffic into their networks. In these scenarios, you can use HCP-managed workers as the ingress workers. To establish a connection into the network, a self-managed worker configured as an egress worker initiates an outbound connection to the HCP-managed worker, creating a persistent connection. As a result, when end users connect to a target, the end user's connection would hop from the Boundary client to the HCP-managed worker (ingress worker) to the self-managed worker (egress worker) to the target (or other intermediary workers if needed).
 
-### Configure HCP-managed workers for ingress 
+### Configure HCP-managed workers for ingress
 
 To configure end user traffic to ingress through HCP-managed workers, you must configure the self-managed worker (enterprise version). On your self-managed worker that you use for egress to the HCP-managed worker, set the configuration file with the following parameters:
 - `hcp_boundary_cluster_id` - The HCP Boundary cluster ID, which can be found in the HCP Boundary cluster's URL.
 - Omit the `public_addr` parameter. A public address is not needed since the self-managed worker initiates the connection to HCP-managed workers.
-- Omit the `initial_upstreams` parameter. This is not needed because the `hcp_boundary_cluster_id` parameter is sufficent to indicate the HCP-managed workers as the upstream.  
-- Include a [worker tag](/boundary/docs/concepts/filtering/worker-tags#target-worker-filtering) in the `worker` stanza which will be used to select multi-hop routes for each target. 
+- Omit the `initial_upstreams` parameter. This is not needed because the `hcp_boundary_cluster_id` parameter is sufficent to indicate the HCP-managed workers as the upstream.
+- Include a [worker tag](/boundary/docs/security/worker-tags#target-worker-filtering) in the `worker` stanza which will be used to select multi-hop routes for each target.
 
 ### Example self-managed worker configuration:
 ```
@@ -89,7 +89,7 @@ listener "tcp" {
   address = "0.0.0.0:9202"
   purpose = "proxy"
 }
-        
+
 worker {
   auth_storage_path = "/home/ubuntu/boundary/worker1"
   tags {
