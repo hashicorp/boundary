@@ -42,6 +42,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/version"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -670,8 +671,27 @@ func (s *Service) createInRepo(ctx context.Context, authResults auth.VerifyResul
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	opts = append(opts, iam.WithSkipAdminRoleCreation(req.GetSkipAdminRoleCreation()))
-	opts = append(opts, iam.WithSkipDefaultRoleCreation(req.GetSkipDefaultRoleCreation()))
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) &&
+		version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		if req.GetCreateDefaultRole() && req.GetSkipDefaultRoleCreation() {
+			return nil, handlers.InvalidArgumentErrorf("Cannot set both create_default_role and skip_default_role_creation to true.", map[string]string{"create_default_role": "Cannot set both create_default_role and skip_default_role_creation to true."})
+		}
+		if req.GetCreateAdminRole() && req.GetSkipAdminRoleCreation() {
+			return nil, handlers.InvalidArgumentErrorf("Cannot set both create_admin_role and skip_admin_role_creation to true.", map[string]string{"create_admin_role": "Cannot set both create_admin_role and skip_admin_role_creation to true."})
+		}
+	}
+	// If the version supports creating default and admin roles, we check the flag for creating the initial login role.
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
+		opts = append(opts, iam.WithCreateDefaultRole(req.GetCreateDefaultRole()))
+		opts = append(opts, iam.WithCreateAdminRole(req.GetCreateAdminRole()))
+	}
+
+	// TODO: Deprecated in 0.22
+	// If the version supports skipping default and admin role creation, we check the skip flag.
+	if version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		opts = append(opts, iam.WithSkipDefaultRoleCreation(req.GetSkipDefaultRoleCreation()))
+		opts = append(opts, iam.WithSkipAdminRoleCreation(req.GetSkipAdminRoleCreation()))
+	}
 
 	parentScope := authResults.Scope
 	var iamScope *iam.Scope
