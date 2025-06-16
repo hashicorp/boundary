@@ -722,6 +722,8 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
+	base.StartPprof(c.Context)
+
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
