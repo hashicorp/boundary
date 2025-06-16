@@ -408,7 +408,7 @@ description: >-
     <td style={{verticalAlign: 'middle'}}>
     You may have redundant grant scopes if you applied a grant to a scope and the scope also inherited the grant from the <code>this</code>, <code>children</code>, or <code>descendants</code> options. Redundant grant scopes could cause performance issues. As of Boundary version 0.19.3, redundant grant scopes are no longer permitted.
     <br /><br />
-    When you run the <code>boundary database migrate</code> command to upgrade a cluster to Boundary version 0.19.3, the migration will fail with a message, if the database contains any redundant grant scopes. The migration tool provides the following command to automatically repair the grant scopes:
+    When you run the <code>boundary database migrate</code> command to upgrade a cluster to Boundary version 0.19.3, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides the following command to automatically repair the grant scopes:
     <br /><br />
     <code>boundary database migrate -repair=oss:96001</code>
     <br /><br />
@@ -444,7 +444,7 @@ description: >-
       Commmands to skip auto-creation of roles
     </td>
     <td style={{verticalAlign: 'middle'}}>
-      When you create a new scope, Boundary grants the current user administrative access to the newly created scope and also creates a role that grants the anonymous user access to log in by default. You can use the <code>-skip-admin-role-creation</code> and <code>-skip-default-role-creation</code> flags to prevent this default behavior.
+      When you create a new scope, Boundary grants the current user administrative access to the newly created scope and also creates a role that grants the anonymous user access to log. You can use the <code>-skip-admin-role-creation</code> and <code>-skip-default-role-creation</code> flags to prevent this default behavior.
       <br /><br />
       The <code>-skip-admin-role-creation</code> and <code>-skip-default-role-creation</code> flags are being deprecated in Boundary version 0.19.3. They will be removed from the product in two versions, and will be replaced with a new option to create the default roles.
       <br /><br />
