@@ -1190,14 +1190,14 @@ func TestGrants_Authentication(t *testing.T) {
 	org1, p1 := iam.TestScopes(t, iamRepo)
 
 	// We need a sys eventer in order to authenticate
-	eventConfig := event.TestEventerConfig(t, "TestGrants_WriteActions", event.TestWithObservationSink(t))
+	eventConfig := event.TestEventerConfig(t, "TestGrants_Authentication", event.TestWithObservationSink(t))
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 		Name:  "test",
 	})
 
-	require.NoError(t, event.InitSysEventer(testLogger, testLock, "TestGrants_WriteActions", event.WithEventerConfig(&eventConfig.EventerConfig)))
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "TestGrants_Authentication", event.WithEventerConfig(&eventConfig.EventerConfig)))
 	sinkFileName := eventConfig.ObservationEvents.Name()
 	t.Cleanup(func() {
 		require.NoError(t, os.Remove(sinkFileName))
