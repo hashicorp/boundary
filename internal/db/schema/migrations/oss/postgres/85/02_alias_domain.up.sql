@@ -3,6 +3,9 @@
 
 begin;
 
+  -- Constraints wt_alias_too_short, wt_alias_no_suround_spaces, and wt_target_alias_too_long
+  -- have been updated in migration 96/01
+
   -- wt_alias defines a type for alias values
   create domain wt_alias as citext
     constraint wt_alias_too_short
