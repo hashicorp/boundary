@@ -44,6 +44,7 @@ func TestGrants_ListWorkers(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iamRepo)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -231,8 +232,8 @@ func TestGrants_ListWorkers(t *testing.T) {
 			require.ElementsMatch(t, gotIds, tc.wantIds)
 		})
 	}
-
 }
+
 func TestGrants_GetWorker(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -242,6 +243,7 @@ func TestGrants_GetWorker(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iamRepo)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -396,6 +398,7 @@ func TestGrants_GetWorker(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_Delete(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -405,6 +408,7 @@ func TestGrants_Delete(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -540,6 +544,7 @@ func TestGrants_Delete(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_Update(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -549,6 +554,7 @@ func TestGrants_Update(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -777,6 +783,7 @@ func TestGrants_Update(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_CreateWorkerLed(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -786,6 +793,7 @@ func TestGrants_CreateWorkerLed(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -941,6 +949,7 @@ func TestGrants_CreateWorkerLed(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_CreateControllerLed(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -950,6 +959,7 @@ func TestGrants_CreateControllerLed(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -1085,6 +1095,7 @@ func TestGrants_CreateControllerLed(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_ReadCertificateAuthority(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -1094,6 +1105,7 @@ func TestGrants_ReadCertificateAuthority(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -1215,6 +1227,7 @@ func TestGrants_ReadCertificateAuthority(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_ReinitializeCertificateAuthority(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -1224,6 +1237,7 @@ func TestGrants_ReinitializeCertificateAuthority(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -1345,6 +1359,7 @@ func TestGrants_ReinitializeCertificateAuthority(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_AddWorkerTags(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -1354,6 +1369,7 @@ func TestGrants_AddWorkerTags(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -1511,6 +1527,7 @@ func TestGrants_AddWorkerTags(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_SetWorkerTags(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -1520,6 +1537,7 @@ func TestGrants_SetWorkerTags(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -1677,6 +1695,7 @@ func TestGrants_SetWorkerTags(t *testing.T) {
 		})
 	}
 }
+
 func TestGrants_RemoveWorkerTags(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -1686,6 +1705,7 @@ func TestGrants_RemoveWorkerTags(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
