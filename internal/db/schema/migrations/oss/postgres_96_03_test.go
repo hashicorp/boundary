@@ -78,9 +78,6 @@ const (
         grant_scope
     from iam_role_org_individual_grant_scope;
     `
-	selectCountOriginalIamRoleGrantScopeQuery = `
-    select count(*) from iam_role_grant_scope;
-    `
 	selectCountSubTableRolesQuery = `
     select (
         (select count(*) from iam_role_global where grant_this_role_scope = true) +
@@ -610,15 +607,12 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 	})
 
 	t.Run("compare prior and new table counts", func(t *testing.T) {
-		var before, after int
-		row := d.QueryRowContext(ctx, selectCountOriginalIamRoleGrantScopeQuery)
-		require.NoError(row.Scan(&before))
-
 		// the number of sub-table roles should be the same
-		// as the original iam_role_grant_scope table
-		row = d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
-		require.NoError(row.Scan(&after))
-		require.Equal(before, after)
+		// as the original iam_role_grant_scope table (17)
+		var count int
+		row := d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
+		require.NoError(row.Scan(&count))
+		require.Equal(17, count)
 	})
 }
 
@@ -848,15 +842,12 @@ func Test_GlobalMigration(t *testing.T) {
 	})
 
 	t.Run("compare prior and new table counts", func(t *testing.T) {
-		var before, after int
-		row := d.QueryRowContext(ctx, selectCountOriginalIamRoleGrantScopeQuery)
-		require.NoError(row.Scan(&before))
-
 		// the number of sub-table roles should be the same
-		// as the original iam_role_grant_scope table
-		row = d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
-		require.NoError(row.Scan(&after))
-		require.Equal(before, after)
+		// as the original iam_role_grant_scope table (1)
+		var count int
+		row := d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
+		require.NoError(row.Scan(&count))
+		require.Equal(1, count)
 	})
 }
 
@@ -1097,15 +1088,12 @@ func Test_OrgMigration(t *testing.T) {
 	})
 
 	t.Run("compare prior and new table counts", func(t *testing.T) {
-		var before, after int
-		row := d.QueryRowContext(ctx, selectCountOriginalIamRoleGrantScopeQuery)
-		require.NoError(row.Scan(&before))
-
 		// the number of sub-table roles should be the same
-		// as the original iam_role_grant_scope table
-		row = d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
-		require.NoError(row.Scan(&after))
-		require.Equal(before, after)
+		// as the original iam_role_grant_scope table (1)
+		var count int
+		row := d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
+		require.NoError(row.Scan(&count))
+		require.Equal(1, count)
 	})
 }
 
@@ -1357,15 +1345,12 @@ func Test_ProjectMigration(t *testing.T) {
 	})
 
 	t.Run("compare prior and new table counts", func(t *testing.T) {
-		var before, after int
-		row := d.QueryRowContext(ctx, selectCountOriginalIamRoleGrantScopeQuery)
-		require.NoError(row.Scan(&before))
-
 		// the number of sub-table roles should be the same
-		// as the original iam_role_grant_scope table
-		row = d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
-		require.NoError(row.Scan(&after))
-		require.Equal(before, after)
+		// as the original iam_role_grant_scope table (1)
+		var count int
+		row := d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
+		require.NoError(row.Scan(&count))
+		require.Equal(1, count)
 	})
 }
 
@@ -1612,15 +1597,12 @@ func Test_GlobalIndividualOrgMigration(t *testing.T) {
 	})
 
 	t.Run("compare prior and new table counts", func(t *testing.T) {
-		var before, after int
-		row := d.QueryRowContext(ctx, selectCountOriginalIamRoleGrantScopeQuery)
-		require.NoError(row.Scan(&before))
-
 		// the number of sub-table roles should be the same
-		// as the original iam_role_grant_scope table
-		row = d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
-		require.NoError(row.Scan(&after))
-		require.Equal(before, after)
+		// as the original iam_role_grant_scope table (1)
+		var count int
+		row := d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
+		require.NoError(row.Scan(&count))
+		require.Equal(1, count)
 	})
 }
 
@@ -1879,15 +1861,12 @@ func Test_GlobalIndividualProjectMigration(t *testing.T) {
 	})
 
 	t.Run("compare prior and new table counts", func(t *testing.T) {
-		var before, after int
-		row := d.QueryRowContext(ctx, selectCountOriginalIamRoleGrantScopeQuery)
-		require.NoError(row.Scan(&before))
-
 		// the number of sub-table roles should be the same
-		// as the original iam_role_grant_scope table
-		row = d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
-		require.NoError(row.Scan(&after))
-		require.Equal(before, after)
+		// as the original iam_role_grant_scope table (1)
+		var count int
+		row := d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
+		require.NoError(row.Scan(&count))
+		require.Equal(1, count)
 	})
 }
 
@@ -2146,14 +2125,11 @@ func Test_OrgIndividualProjectMigration(t *testing.T) {
 	})
 
 	t.Run("compare prior and new table counts", func(t *testing.T) {
-		var before, after int
-		row := d.QueryRowContext(ctx, selectCountOriginalIamRoleGrantScopeQuery)
-		require.NoError(row.Scan(&before))
-
 		// the number of sub-table roles should be the same
-		// as the original iam_role_grant_scope table
-		row = d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
-		require.NoError(row.Scan(&after))
-		require.Equal(before, after)
+		// as the original iam_role_grant_scope table (1)
+		var count int
+		row := d.QueryRowContext(ctx, selectCountSubTableRolesQuery)
+		require.NoError(row.Scan(&count))
+		require.Equal(1, count)
 	})
 }
