@@ -24,6 +24,33 @@ Within the software itself and elsewhere in the documentation, Boundary reliably
 
 You can only associate certain resources with specific levels of scopes.
 For example, while you can create users at the global or org level, you can only create targets within a project.
+Refer to the table below for a list of resources and their valid scope types:
+
+| Resource             | Valid scope types    |
+| -------------------- | -------------------- |
+| Accounts             | Global, org          |
+| Aliases              | Global               |
+| Auth methods         | Global, org          |
+| Auth tokens          | Global, org          |
+| Billing              | Global               |
+| Credential libraries | Project              |
+| Credentials          | Project              |
+| Credential stores    | Project              |
+| Groups               | Global, org, project |
+| Host catalogs        | Project              |
+| Host sets            | Project              |
+| Hosts                | Project              |
+| Managed groups       | Global, org          |
+| Policies             | Global, org          |
+| Roles                | Global, org, project |
+| Scopes               | Global, org          |
+| Session recordings   | Global, org          |
+| Sessions             | Project              |
+| Storage buckets      | Global, org          |
+| Targets              | Project              |
+| Users                | Global, org          |
+| Workers              | Global               |
+
 You can nest projects within orgs to configure access to resources.
 
 For example, you may create an org scope called `IT-Support` that contains the users or groups that make up your IT department.
