@@ -768,6 +768,8 @@ func TestGrants_Create(t *testing.T) {
 	}
 }
 
+type directGrantUserAccountSetup func() (*iam.User, auth.Account)
+
 func TestGrants_Update(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -812,18 +814,29 @@ func TestGrants_Update(t *testing.T) {
 
 	testcases := []struct {
 		name                string
-		userFunc            func() (*iam.User, auth.Account)
+		setupFunc           func(t *testing.T) (directGrantUserAccountSetup, map[string]expectedOutput)
 		canUpdateAuthMethod func(t *testing.T) map[string]expectedOutput
 	}{
 		{
 			name: "global role grant this and children can update global auth method",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id,scope_id,name,description,type,version"},
-					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-				},
-			}),
+			setupFunc: func(t *testing.T) (directGrantUserAccountSetup, map[string]expectedOutput) {
+				globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
+				org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
+				org2AmId := password.TestAuthMethod(t, conn, org2.PublicId).PublicId
+				wantOutput := map[string]expectedOutput{
+					globalAmId: {wantOutfields: []string{globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.VersionField}},
+					org1AmId:   {wantOutfields: []string{globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.VersionField}},
+					org2AmId:   {wantOutfields: []string{globals.IdField, globals.ScopeIdField, globals.NameField, globals.DescriptionField, globals.TypeField, globals.VersionField}},
+				}
+				userAccountFunc := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id,scope_id,name,description,type,version"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+				})
+				return userAccountFunc, wantOutput
+			},
 			canUpdateAuthMethod: func(t *testing.T) map[string]expectedOutput {
 				globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
 				org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
@@ -837,141 +850,146 @@ func TestGrants_Update(t *testing.T) {
 		},
 		{
 			name: "global role grant this & org role grant this can update their respective auth methods",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id,name,description,version"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-				{
-					RoleScopeId: org1.PublicId,
-					Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id,scope_id,type,version"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-			}),
-			canUpdateAuthMethod: func(t *testing.T) map[string]expectedOutput {
+			setupFunc: func(t *testing.T) (directGrantUserAccountSetup, map[string]expectedOutput) {
 				globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
 				org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
 				org2AmId := password.TestAuthMethod(t, conn, org2.PublicId).PublicId
-				return map[string]expectedOutput{
+				wantOutput := map[string]expectedOutput{
 					globalAmId: {wantOutfields: []string{globals.IdField, globals.NameField, globals.DescriptionField, globals.VersionField}},
 					org1AmId:   {wantOutfields: []string{globals.IdField, globals.ScopeIdField, globals.TypeField, globals.VersionField}},
 					org2AmId:   {wantErr: handlers.ForbiddenError()},
 				}
+				userAccountFunc := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id,name,description,version"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id,scope_id,type,version"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				})
+				return userAccountFunc, wantOutput
 			},
 		},
 		{
 			name: "org role can't update global auth methods",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: org1.PublicId,
-					Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id,version,created_time,updated_time"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-			}),
-			canUpdateAuthMethod: func(t *testing.T) map[string]expectedOutput {
+			setupFunc: func(t *testing.T) (directGrantUserAccountSetup, map[string]expectedOutput) {
 				globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
 				org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
 				org2AmId := password.TestAuthMethod(t, conn, org2.PublicId).PublicId
-				return map[string]expectedOutput{
+				wantOutput := map[string]expectedOutput{
 					globalAmId: {wantErr: handlers.ForbiddenError()},
 					org1AmId:   {wantOutfields: []string{globals.IdField, globals.VersionField, globals.CreatedTimeField, globals.UpdatedTimeField}},
 					org2AmId:   {wantErr: handlers.ForbiddenError()},
 				}
+				userAccountFunc := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id,version,created_time,updated_time"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				})
+				return userAccountFunc, wantOutput
 			},
 		},
 		{
 			name: "global role grant children of global auth method's id can only update children auth methods",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=auth-method;actions=update;output_fields=id"},
-					GrantScopes: []string{globals.GrantScopeChildren},
-				},
-			}),
-			canUpdateAuthMethod: func(t *testing.T) map[string]expectedOutput {
+			setupFunc: func(t *testing.T) (directGrantUserAccountSetup, map[string]expectedOutput) {
 				globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
 				org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
 				org2AmId := password.TestAuthMethod(t, conn, org2.PublicId).PublicId
-				return map[string]expectedOutput{
+				wantOutput := map[string]expectedOutput{
 					globalAmId: {wantErr: handlers.ForbiddenError()},
 					org1AmId:   {wantOutfields: []string{globals.IdField}},
-					org2AmId:   {wantOutfields: []string{globals.IdField}},
+					org2AmId:   {wantErr: handlers.ForbiddenError()},
 				}
+				userAccountFunc := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants: []string{
+							fmt.Sprintf("ids=%s;type=auth-method;actions=update;output_fields=id", org1AmId),
+						},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				})
+				return userAccountFunc, wantOutput
 			},
 		},
 		{
 			name: "incorrect grants returns 403 error",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=auth-method;actions=list,read,create"},
-					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
-				},
-				{
-					RoleScopeId: org1.PublicId,
-					Grants:      []string{"ids=*;type=auth-method;actions=list,read,create"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-			}),
-			canUpdateAuthMethod: func(t *testing.T) map[string]expectedOutput {
+			setupFunc: func(t *testing.T) (directGrantUserAccountSetup, map[string]expectedOutput) {
 				globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
 				org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
 				org2AmId := password.TestAuthMethod(t, conn, org2.PublicId).PublicId
-
-				return map[string]expectedOutput{
+				wantOutput := map[string]expectedOutput{
 					globalAmId: {wantErr: handlers.ForbiddenError()},
 					org1AmId:   {wantErr: handlers.ForbiddenError()},
 					org2AmId:   {wantErr: handlers.ForbiddenError()},
 				}
+				userAccountFunc := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=auth-method;actions=list,read,create"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+					},
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=auth-method;actions=list,read,create"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				})
+				return userAccountFunc, wantOutput
 			},
 		},
 		{
-			name:     "no grants returns 403 error",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{}),
-			canUpdateAuthMethod: func(t *testing.T) map[string]expectedOutput {
+			name: "no grants returns 403 error",
+			setupFunc: func(t *testing.T) (directGrantUserAccountSetup, map[string]expectedOutput) {
 				globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
 				org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
 				org2AmId := password.TestAuthMethod(t, conn, org2.PublicId).PublicId
-
-				return map[string]expectedOutput{
+				wantOutput := map[string]expectedOutput{
 					globalAmId: {wantErr: handlers.ForbiddenError()},
 					org1AmId:   {wantErr: handlers.ForbiddenError()},
 					org2AmId:   {wantErr: handlers.ForbiddenError()},
 				}
+				userAccountFunc := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{})
+				return userAccountFunc, wantOutput
 			},
 		},
 		{
 			name: "project role can't update auth methods in any scope (403)",
-			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
-				{
-					RoleScopeId: p1.GetPublicId(),
-					Grants:      []string{"ids=*;type=*;actions=*"},
-					GrantScopes: []string{globals.GrantScopeThis},
-				},
-			}),
-			canUpdateAuthMethod: func(t *testing.T) map[string]expectedOutput {
+			setupFunc: func(t *testing.T) (directGrantUserAccountSetup, map[string]expectedOutput) {
 				globalAmId := password.TestAuthMethod(t, conn, globals.GlobalPrefix).PublicId
 				org1AmId := password.TestAuthMethod(t, conn, org1.PublicId).PublicId
 				org2AmId := password.TestAuthMethod(t, conn, org2.PublicId).PublicId
-
-				return map[string]expectedOutput{
+				wantOutput := map[string]expectedOutput{
 					globalAmId: {wantErr: handlers.ForbiddenError()},
 					org1AmId:   {wantErr: handlers.ForbiddenError()},
 					org2AmId:   {wantErr: handlers.ForbiddenError()},
 				}
+				userAccountFunc := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: p1.GetPublicId(),
+						Grants:      []string{"ids=*;type=*;actions=*"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				})
+				return userAccountFunc, wantOutput
 			},
 		},
 	}
 
 	for i, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			user, account := tc.userFunc()
+			userAccountFunc, canUpdateAuthMethos := tc.setupFunc(t)
+			user, account := userAccountFunc()
 			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 			require.NoError(t, err)
 			fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
-
-			for amId, expectedOutput := range tc.canUpdateAuthMethod(t) {
+			for amId, expectedOutput := range canUpdateAuthMethos {
 				resp, err := s.UpdateAuthMethod(fullGrantAuthCtx, &pbs.UpdateAuthMethodRequest{
 					Id: amId,
 					UpdateMask: &field_mask.FieldMask{
