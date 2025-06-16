@@ -1353,7 +1353,7 @@ func TestGrants_Authentication(t *testing.T) {
 			require.NoError(t, err)
 			acctToLogin, err := pwRepo.CreateAccount(context.Background(), tc.scopeId, newAcct, password.WithPassword(testPassword))
 			require.NoError(t, err)
-			user := iam.TestUser(t, iamRepo, tc.scopeId, iam.WithAccountIds(acctToLogin.PublicId))
+			_ = iam.TestUser(t, iamRepo, tc.scopeId, iam.WithAccountIds(acctToLogin.PublicId))
 
 			// set up an identity that we'll use to call authenticate request
 			// Authentication API will rely on this user's grants to authorize the request
