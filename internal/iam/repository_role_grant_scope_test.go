@@ -1802,7 +1802,7 @@ func TestGrantsForUser_ACL_parsing(t *testing.T) {
 			expDescendantGrants := []perms.AclGrant{
 				{
 					RoleScopeId:       scope.Global.String(),
-					RoleParentScopeId: scope.Global.String(),
+					RoleParentScopeId: "",
 					GrantScopeId:      globals.GrantScopeDescendants,
 					Id:                "*",
 					Type:              resource.Credential,
