@@ -102,9 +102,10 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 			return nil, handlers.ForbiddenError()
 		}
 		outputFields = authResults.FetchOutputFields(perms.Resource{
-			Id:      ses.GetPublicId(),
-			ScopeId: ses.ProjectId,
-			Type:    resource.Session,
+			Id:            ses.GetPublicId(),
+			ScopeId:       ses.ProjectId,
+			Type:          resource.Session,
+			ParentScopeId: authResults.Scope.ParentScopeId,
 		}, action.Read).SelfOrDefaults(authResults.UserId)
 	} else {
 		var ok bool
@@ -322,9 +323,10 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 			return nil, handlers.ForbiddenError()
 		}
 		outputFields = authResults.FetchOutputFields(perms.Resource{
-			Id:      ses.GetPublicId(),
-			ScopeId: ses.ProjectId,
-			Type:    resource.Session,
+			Id:            ses.GetPublicId(),
+			ScopeId:       ses.ProjectId,
+			Type:          resource.Session,
+			ParentScopeId: authResults.Scope.ParentScopeId,
 		}, action.Cancel).SelfOrDefaults(authResults.UserId)
 	} else {
 		var ok bool
