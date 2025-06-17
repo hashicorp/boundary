@@ -19,8 +19,9 @@ begin;
         on delete cascade
         on update cascade;
 
-  -- remove iam_role_grant_scope
-  drop table iam_role_grant_scope;
+  -- remove iam_role_grant_scope and all cross-table dependencies
+  drop table iam_role_grant_scope cascade;
+  drop trigger cascade_deletion_iam_scope_to_iam_role_grant_scope on iam_scope;
 
   -- remove name, description, version from iam_role
   alter table iam_role
