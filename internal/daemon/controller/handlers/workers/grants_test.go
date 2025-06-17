@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
 	"github.com/hashicorp/boundary/internal/db"
@@ -36,6 +38,8 @@ func TestGrants_ReadActions(t *testing.T) {
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
@@ -67,11 +71,11 @@ func TestGrants_ReadActions(t *testing.T) {
 	)
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name          string
-			input         *pbs.ListWorkersRequest
-			rolesToCreate []authtoken.TestRoleGrantsForToken
-			wantErr       error
-			wantIDs       []string
+			name     string
+			input    *pbs.ListWorkersRequest
+			userFunc func() (*iam.User, auth.Account)
+			wantErr  error
+			wantIDs  []string
 		}{
 			{
 				name: "global role grant this returns all created workers",
@@ -79,13 +83,13 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=worker;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=worker;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: []string{globalWorker1.PublicId, globalWorker2.PublicId},
 			},
@@ -95,21 +99,23 @@ func TestGrants_ReadActions(t *testing.T) {
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kms, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=group;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=group;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis},
 					},
-				},
+				}),
 				wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
 			},
 		}
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				tok := authtoken.TestAuthTokenWithRoles(t, conn, kms, globals.GlobalPrefix, tc.rolesToCreate)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrapper, tok, iamRepo)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrapper, tok, iamRepo)
 				got, finalErr := s.ListWorkers(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)

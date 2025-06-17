@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -52,6 +54,8 @@ func TestGrants_ReadActions(t *testing.T) {
 	}
 	s, err := hosts.NewService(ctx, repoFn, pluginRepoFn, 1000)
 	require.NoError(t, err)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 
 	org, proj := iam.TestScopes(t, iamRepo)
 
@@ -68,24 +72,24 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
-			name          string
-			input         *pbs.ListHostsRequest
-			rolesToCreate []authtoken.TestRoleGrantsForToken
-			wantErr       error
-			wantIDs       []string
+			name     string
+			input    *pbs.ListHostsRequest
+			userFunc func() (*iam.User, auth.Account)
+			wantErr  error
+			wantIDs  []string
 		}{
 			{
 				name: "global role grant this returns all created hosts",
 				input: &pbs.ListHostsRequest{
 					HostCatalogId: hc.GetPublicId(),
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  globals.GlobalPrefix,
-						GrantStrings: []string{"ids=*;type=host;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=host;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: wantHs,
 			},
@@ -94,13 +98,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListHostsRequest{
 					HostCatalogId: hc.GetPublicId(),
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  org.PublicId,
-						GrantStrings: []string{"ids=*;type=host;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis, globals.GrantScopeChildren},
+						RoleScopeId: org.PublicId,
+						Grants:      []string{"ids=*;type=host;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: wantHs,
 			},
@@ -109,13 +113,13 @@ func TestGrants_ReadActions(t *testing.T) {
 				input: &pbs.ListHostsRequest{
 					HostCatalogId: hc.GetPublicId(),
 				},
-				rolesToCreate: []authtoken.TestRoleGrantsForToken{
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
-						RoleScopeId:  proj.PublicId,
-						GrantStrings: []string{"ids=*;type=host;actions=list,read"},
-						GrantScopes:  []string{globals.GrantScopeThis},
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=*;type=host;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeThis},
 					},
-				},
+				}),
 				wantErr: nil,
 				wantIDs: wantHs,
 			},
@@ -123,8 +127,10 @@ func TestGrants_ReadActions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
-				tok := authtoken.TestAuthTokenWithRoles(t, conn, kmsCache, globals.GlobalPrefix, tc.rolesToCreate)
-				fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+				user, account := tc.userFunc()
+				tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+				require.NoError(t, err)
+				fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 				got, finalErr := s.ListHosts(fullGrantAuthCtx, tc.input)
 				if tc.wantErr != nil {
 					require.ErrorIs(t, finalErr, tc.wantErr)
