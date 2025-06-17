@@ -728,16 +728,7 @@ func TestUserGroupGrantsFunc(
 		rw := db.New(conn)
 		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
-		role, err := NewRole(ctx, scopeId)
-		require.NoError(t, err)
-		id, err := newRoleId(ctx)
-		require.NoError(t, err)
-		role.PublicId = id
-		require.NoError(t, rw.Create(ctx, role))
-		require.NotEmpty(t, role.PublicId)
-		require.NoError(t, err)
 		group := TestGroup(t, conn, scopeId)
-		require.NoError(t, err)
 		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
 		for _, trg := range testRoleGrants {
 			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
