@@ -55,24 +55,21 @@ begin;
       ('g___ws-group', 'u_____waylon');
 
     insert into iam_role_org
-      (scope_id, public_id, name, grant_scope)
+      (scope_id, public_id, name, grant_scope, grant_this_role_scope)
     values
-      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer', 'individual'),
-      ('o_____widget', 'r_oo_____eng', 'Widget Engineer', 'individual');
+      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer', 'individual', false),
+      ('o_____widget', 'r_oo_____eng', 'Widget Engineer', 'individual', true);
+
+    insert into iam_role_org_individual_grant_scope
+      (role_id, scope_id, grant_scope)
+    values
+      ('r_op_sw__eng','p____swidget','individual');
 
     insert into iam_role_project
-      (scope_id, public_id, name)
+      (scope_id, public_id, name, grant_this_role_scope)
     values
-      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
-      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder');
-
-    insert into iam_role_grant_scope
-      (role_id,        scope_id_or_special)
-    values
-      ('r_pp_bw__bld', 'p____bwidget'),
-      ('r_pp_sw__bld', 'this'),
-      ('r_op_sw__eng', 'p____swidget'),
-      ('r_oo_____eng', 'o_____widget');
+      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder', true),
+      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder', true);
 
     insert into iam_role_grant
       (role_id, canonical_grant, raw_grant)
