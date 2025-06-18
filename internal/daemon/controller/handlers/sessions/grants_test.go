@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package sessions_test
 
 import (
@@ -39,7 +42,8 @@ func testSession(t *testing.T,
 	wrapper wrapping.Wrapper,
 	targetRepo *target.Repository,
 	sessRepo *session.Repository,
-	projectId string, isActive bool) *session.Session {
+	projectId string, isActive bool,
+) *session.Session {
 	cats := static.TestCatalogs(t, conn, projectId, 1)
 	hosts := static.TestHosts(t, conn, cats[0].PublicId, 1)
 	sets := static.TestSets(t, conn, cats[0].PublicId, 1)
@@ -155,9 +159,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputResultMap: map[*pbs.GetSessionRequest]result{
-					&pbs.GetSessionRequest{Id: proj1Session.PublicId}: {outputFields: []string{globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
-					&pbs.GetSessionRequest{Id: proj2Session.PublicId}: {outputFields: []string{globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
-					&pbs.GetSessionRequest{Id: proj3Session.PublicId}: {outputFields: []string{globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					{Id: proj1Session.PublicId}: {outputFields: []string{globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					{Id: proj2Session.PublicId}: {outputFields: []string{globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+					{Id: proj3Session.PublicId}: {outputFields: []string{globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField}},
 				},
 			},
 			{
@@ -170,9 +174,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputResultMap: map[*pbs.GetSessionRequest]result{
-					&pbs.GetSessionRequest{Id: proj1Session.PublicId}: {outputFields: []string{globals.ExpirationTimeField, globals.AuthTokenIdField, globals.UserIdField, globals.HostSetIdField, globals.HostIdsField}},
-					&pbs.GetSessionRequest{Id: proj2Session.PublicId}: {wantErr: handlers.ForbiddenError()},
-					&pbs.GetSessionRequest{Id: proj3Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj1Session.PublicId}: {outputFields: []string{globals.ExpirationTimeField, globals.AuthTokenIdField, globals.UserIdField, globals.HostSetIdField, globals.HostIdsField}},
+					{Id: proj2Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj3Session.PublicId}: {wantErr: handlers.ForbiddenError()},
 				},
 			},
 			{
@@ -185,9 +189,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputResultMap: map[*pbs.GetSessionRequest]result{
-					&pbs.GetSessionRequest{Id: proj1Session.PublicId}: {wantErr: handlers.ForbiddenError()},
-					&pbs.GetSessionRequest{Id: proj2Session.PublicId}: {outputFields: []string{globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField, globals.ConnectionsField}},
-					&pbs.GetSessionRequest{Id: proj3Session.PublicId}: {outputFields: []string{globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField, globals.TerminationReasonField}},
+					{Id: proj1Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj2Session.PublicId}: {outputFields: []string{globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField, globals.ConnectionsField}},
+					{Id: proj3Session.PublicId}: {outputFields: []string{globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField, globals.TerminationReasonField}},
 				},
 			},
 			{
@@ -200,9 +204,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputResultMap: map[*pbs.GetSessionRequest]result{
-					&pbs.GetSessionRequest{Id: proj1Session.PublicId}: {outputFields: []string{globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField, globals.ConnectionsField}},
-					&pbs.GetSessionRequest{Id: proj2Session.PublicId}: {wantErr: handlers.ForbiddenError()},
-					&pbs.GetSessionRequest{Id: proj3Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj1Session.PublicId}: {outputFields: []string{globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField, globals.ConnectionsField}},
+					{Id: proj2Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj3Session.PublicId}: {wantErr: handlers.ForbiddenError()},
 				},
 			},
 			{
@@ -225,9 +229,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputResultMap: map[*pbs.GetSessionRequest]result{
-					&pbs.GetSessionRequest{Id: proj1Session.PublicId}: {outputFields: []string{globals.AuthorizedActionsField}},
-					&pbs.GetSessionRequest{Id: proj2Session.PublicId}: {outputFields: []string{globals.VersionField}},
-					&pbs.GetSessionRequest{Id: proj3Session.PublicId}: {outputFields: []string{globals.IdField}},
+					{Id: proj1Session.PublicId}: {outputFields: []string{globals.AuthorizedActionsField}},
+					{Id: proj2Session.PublicId}: {outputFields: []string{globals.VersionField}},
+					{Id: proj3Session.PublicId}: {outputFields: []string{globals.IdField}},
 				},
 			},
 			{
@@ -240,9 +244,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputResultMap: map[*pbs.GetSessionRequest]result{
-					&pbs.GetSessionRequest{Id: proj1Session.PublicId}: {wantErr: handlers.ForbiddenError()},
-					&pbs.GetSessionRequest{Id: proj2Session.PublicId}: {wantErr: handlers.ForbiddenError()},
-					&pbs.GetSessionRequest{Id: proj3Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj1Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj2Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj3Session.PublicId}: {wantErr: handlers.ForbiddenError()},
 				},
 			},
 			{
@@ -255,9 +259,9 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				inputResultMap: map[*pbs.GetSessionRequest]result{
-					&pbs.GetSessionRequest{Id: proj1Session.PublicId}: {wantErr: handlers.ForbiddenError()},
-					&pbs.GetSessionRequest{Id: proj2Session.PublicId}: {wantErr: handlers.ForbiddenError()},
-					&pbs.GetSessionRequest{Id: proj3Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj1Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj2Session.PublicId}: {wantErr: handlers.ForbiddenError()},
+					{Id: proj3Session.PublicId}: {wantErr: handlers.ForbiddenError()},
 				},
 			},
 		}
