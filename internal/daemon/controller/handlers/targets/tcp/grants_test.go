@@ -385,7 +385,6 @@ func TestGrants_Create(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 type userFn func() (*iam.User, auth.Account)
