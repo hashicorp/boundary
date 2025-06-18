@@ -425,6 +425,7 @@ func TestGrants_Delete(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(t, err)
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	testcases := []struct {
 		name     string
 		input    func(w *server.Worker) *pbs.DeleteWorkerRequest
@@ -572,6 +573,7 @@ func TestGrants_Update(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(t, err)
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	testcases := []struct {
 		name             string
 		input            func(w *server.Worker) *pbs.UpdateWorkerRequest
@@ -807,6 +809,7 @@ func TestGrants_CreateWorkerLed(t *testing.T) {
 		return workerAuthRepo, nil
 	}
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	// Get an initial set of authorized node credentials
@@ -973,6 +976,7 @@ func TestGrants_CreateControllerLed(t *testing.T) {
 		return workerAuthRepo, nil
 	}
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	org, proj := iam.TestScopes(t, iamRepo)
 	ider := func() string {
 		id, _ := uuid.GenerateUUID()
@@ -1122,6 +1126,7 @@ func TestGrants_ReadCertificateAuthority(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(t, err)
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	org, proj := iam.TestScopes(t, iamRepo)
 	testcases := []struct {
 		name     string
@@ -1254,6 +1259,7 @@ func TestGrants_ReinitializeCertificateAuthority(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(t, err)
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	org, proj := iam.TestScopes(t, iamRepo)
 	testcases := []struct {
 		name     string
@@ -1386,6 +1392,7 @@ func TestGrants_AddWorkerTags(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(t, err)
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	worker := server.TestPkiWorker(t, conn, wrapper,
 		server.WithName("worker-1"),
 		server.WithDescription("worker-1"),
@@ -1554,6 +1561,7 @@ func TestGrants_SetWorkerTags(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(t, err)
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	worker := server.TestPkiWorker(t, conn, wrapper,
 		server.WithName("worker-1"),
 		server.WithDescription("worker-1"),
@@ -1722,6 +1730,7 @@ func TestGrants_RemoveWorkerTags(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(t, err)
 	s, err := workers.NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	require.NoError(t, err)
 	testcases := []struct {
 		name             string
 		input            func(w *server.Worker) *pbs.RemoveWorkerTagsRequest
