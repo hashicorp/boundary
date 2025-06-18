@@ -512,6 +512,180 @@ func TestGrants_CreateScopes(t *testing.T) {
 	}
 }
 
+func TestGrants_ListKeyVersionDestructionJobs(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := scopes.NewServiceFn(ctx, repoFn, kmsCache, 1000)
+	require.NoError(t, err)
+
+	org1 := iam.TestOrg(t, iamRepo, iam.WithName("org1"), iam.WithDescription("test org 1"), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+	org2 := iam.TestOrg(t, iamRepo, iam.WithName("org2"), iam.WithDescription("test org 2"), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+	proj1 := iam.TestProject(t, iamRepo, org1.GetPublicId(), iam.WithName("proj1"), iam.WithDescription("test project 1"), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+	proj2 := iam.TestProject(t, iamRepo, org2.GetPublicId(), iam.WithName("proj2"), iam.WithDescription("test project 2"), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+
+	testcases := []struct {
+		name            string
+		userFunc        func() (*iam.User, auth.Account)
+		canListInScopes map[string]error
+	}{
+		{
+			name:     "no grants cannot list key version destruction jobs",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{}),
+			canListInScopes: map[string]error{
+				scope.Global.String(): handlers.ForbiddenError(),
+				org1.PublicId:         handlers.ForbiddenError(),
+				org2.PublicId:         handlers.ForbiddenError(),
+				proj1.PublicId:        handlers.ForbiddenError(),
+				proj2.PublicId:        handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "global role grant this can list key version destruction jobs in the global scope",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix,
+				password.TestAuthMethodWithAccount,
+				[]iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=scope;actions=list-key-version-destruction-jobs"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+			canListInScopes: map[string]error{
+				scope.Global.String(): nil,
+				org1.PublicId:         handlers.ForbiddenError(),
+				org2.PublicId:         handlers.ForbiddenError(),
+				proj1.PublicId:        handlers.ForbiddenError(),
+				proj2.PublicId:        handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "global role grant children can list key version destruction jobs in org scopes",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix,
+				password.TestAuthMethodWithAccount,
+				[]iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=scope;actions=list-key-version-destruction-jobs"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
+			canListInScopes: map[string]error{
+				scope.Global.String(): handlers.ForbiddenError(),
+				org1.PublicId:         nil,
+				org2.PublicId:         nil,
+				proj1.PublicId:        handlers.ForbiddenError(),
+				proj2.PublicId:        handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "org1 role grant this can list key version destruction jobs in the org1 scope",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix,
+				password.TestAuthMethodWithAccount,
+				[]iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=scope;actions=list-key-version-destruction-jobs"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+			canListInScopes: map[string]error{
+				scope.Global.String(): handlers.ForbiddenError(),
+				org1.PublicId:         nil,
+				org2.PublicId:         handlers.ForbiddenError(),
+				proj1.PublicId:        handlers.ForbiddenError(),
+				proj2.PublicId:        handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "org1 role grant children can list key version destruction jobs in its project scopes",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix,
+				password.TestAuthMethodWithAccount,
+				[]iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=scope;actions=list-key-version-destruction-jobs"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				}),
+			canListInScopes: map[string]error{
+				scope.Global.String(): handlers.ForbiddenError(),
+				org1.PublicId:         handlers.ForbiddenError(),
+				org2.PublicId:         handlers.ForbiddenError(),
+				proj1.PublicId:        nil,
+				proj2.PublicId:        handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "global role grant descendants can list key version destruction jobs in its project scopes",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix,
+				password.TestAuthMethodWithAccount,
+				[]iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=scope;actions=list-key-version-destruction-jobs"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
+			canListInScopes: map[string]error{
+				scope.Global.String(): handlers.ForbiddenError(),
+				org1.PublicId:         nil,
+				org2.PublicId:         nil,
+				proj1.PublicId:        nil,
+				proj2.PublicId:        nil,
+			},
+		},
+		{
+			name: "global role grant org1 scope can list key version destruction jobs in the org1 scope",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix,
+				password.TestAuthMethodWithAccount,
+				[]iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=scope;actions=list-key-version-destruction-jobs"},
+						GrantScopes: []string{org1.PublicId},
+					},
+				}),
+			canListInScopes: map[string]error{
+				scope.Global.String(): handlers.ForbiddenError(),
+				org1.PublicId:         nil,
+				org2.PublicId:         handlers.ForbiddenError(),
+				proj1.PublicId:        handlers.ForbiddenError(),
+				proj2.PublicId:        handlers.ForbiddenError(),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, account := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+			for scopeId, wantErr := range tc.canListInScopes {
+				_, err = s.ListKeyVersionDestructionJobs(fullGrantAuthCtx, &pbs.ListKeyVersionDestructionJobsRequest{
+					ScopeId: scopeId,
+				})
+				if wantErr != nil {
+					require.ErrorIs(t, err, wantErr)
+					continue
+				}
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestGrants_List_AuthorizedAction(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
