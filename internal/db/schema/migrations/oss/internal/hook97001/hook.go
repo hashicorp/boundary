@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package hook97005
+package hook97001
 
 import (
 	"context"
@@ -46,7 +46,7 @@ func (e *invalidAssociation) repairString() string {
 // or an error. Implements the CheckFunc definition from the migration package.
 //
 // An example of a migration problem:
-// Role 'r_orgaa___97005' in scope 'o_ta___97005' has 'children' grant scope which covers 'p_pA___97005'
+// Role 'r_orgaa___97001' in scope 'o_ta___97001' has 'children' grant scope which covers 'p_pA___97001'
 func FindInvalidAssociations(ctx context.Context, tx *sql.Tx) (migration.Problems, error) {
 	if tx == nil {
 		return nil, fmt.Errorf("query to get invalid associations failed: missing transaction")
@@ -74,7 +74,7 @@ func FindInvalidAssociations(ctx context.Context, tx *sql.Tx) (migration.Problem
 // Implements the RepairFunc definition from the migration package.
 //
 // Example migration repair message:
-// "Remove redundant grant scopes 'o_ta___97005' association from role 'r_globala_97005' in scope 'global' because it overlaps with 'descendants'"
+// "Remove redundant grant scopes 'o_ta___97001' association from role 'r_globala_97001' in scope 'global' because it overlaps with 'descendants'"
 func RepairInvalidAssociations(ctx context.Context, tx *sql.Tx) (migration.Repairs, error) {
 	if tx == nil {
 		return nil, fmt.Errorf("query to delete invalid grants associations failed: missing transaction")

@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss/internal/hook97005"
+	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss/internal/hook97001"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
 )
@@ -232,11 +232,11 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 	require.NoError(err)
 
 	// Run hook check
-	_, err = hook97005.FindInvalidAssociations(ctx, tx)
+	_, err = hook97001.FindInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	// Run hook repair
-	_, err = hook97005.RepairInvalidAssociations(ctx, tx)
+	_, err = hook97001.RepairInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	err = tx.Commit()
@@ -677,11 +677,11 @@ func Test_GlobalMigration(t *testing.T) {
 	require.NoError(err)
 
 	// Run hook check
-	_, err = hook97005.FindInvalidAssociations(ctx, tx)
+	_, err = hook97001.FindInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	// Run hook repair
-	_, err = hook97005.RepairInvalidAssociations(ctx, tx)
+	_, err = hook97001.RepairInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	err = tx.Commit()
@@ -923,11 +923,11 @@ func Test_OrgMigration(t *testing.T) {
 	require.NoError(err)
 
 	// Run hook check
-	_, err = hook97005.FindInvalidAssociations(ctx, tx)
+	_, err = hook97001.FindInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	// Run hook repair
-	_, err = hook97005.RepairInvalidAssociations(ctx, tx)
+	_, err = hook97001.RepairInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	err = tx.Commit()
@@ -1170,11 +1170,11 @@ func Test_ProjectMigration(t *testing.T) {
 	require.NoError(err)
 
 	// Run hook check
-	_, err = hook97005.FindInvalidAssociations(ctx, tx)
+	_, err = hook97001.FindInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	// Run hook repair
-	_, err = hook97005.RepairInvalidAssociations(ctx, tx)
+	_, err = hook97001.RepairInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	err = tx.Commit()
@@ -1425,11 +1425,11 @@ func Test_GlobalIndividualOrgMigration(t *testing.T) {
 	require.NoError(err)
 
 	// Run hook check
-	_, err = hook97005.FindInvalidAssociations(ctx, tx)
+	_, err = hook97001.FindInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	// Run hook repair
-	_, err = hook97005.RepairInvalidAssociations(ctx, tx)
+	_, err = hook97001.RepairInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	err = tx.Commit()
@@ -1679,11 +1679,11 @@ func Test_GlobalIndividualProjectMigration(t *testing.T) {
 	require.NoError(err)
 
 	// Run hook check
-	_, err = hook97005.FindInvalidAssociations(ctx, tx)
+	_, err = hook97001.FindInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	// Run hook repair
-	_, err = hook97005.RepairInvalidAssociations(ctx, tx)
+	_, err = hook97001.RepairInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	err = tx.Commit()
@@ -1943,11 +1943,11 @@ func Test_OrgIndividualProjectMigration(t *testing.T) {
 	require.NoError(err)
 
 	// Run hook check
-	_, err = hook97005.FindInvalidAssociations(ctx, tx)
+	_, err = hook97001.FindInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	// Run hook repair
-	_, err = hook97005.RepairInvalidAssociations(ctx, tx)
+	_, err = hook97001.RepairInvalidAssociations(ctx, tx)
 	require.NoError(err)
 
 	err = tx.Commit()

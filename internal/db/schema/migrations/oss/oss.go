@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema/internal/edition"
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
 	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss/internal/hook46001"
-	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss/internal/hook97005"
+	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss/internal/hook97001"
 )
 
 // postgres contains the migrations sql files for postgres oss edition
@@ -27,9 +27,9 @@ var prehooks = map[int]*migration.Hook{
 		RepairDescription: hook46001.RepairDescription,
 	},
 	97001: {
-		CheckFunc:         hook97005.FindInvalidAssociations,
-		RepairFunc:        hook97005.RepairInvalidAssociations,
-		RepairDescription: hook97005.RepairDescription,
+		CheckFunc:         hook97001.FindInvalidAssociations,
+		RepairFunc:        hook97001.RepairInvalidAssociations,
+		RepairDescription: hook97001.RepairDescription,
 	},
 }
 
