@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -433,14 +432,6 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 	return roleGrants, nil
 }
 
-type MultiGrantTuple struct {
-	RoleId            string
-	RoleScopeId       string
-	RoleParentScopeId string
-	GrantScopeIds     string
-	Grants            string
-}
-
 type grantsForUserResults struct {
 	// roleId is the public ID of the role.
 	roleId string
@@ -597,15 +588,6 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, res []res
 		}
 	}
 	return ret, nil
-}
-
-func (m *MultiGrantTuple) TestStableSort() {
-	grantScopeIds := strings.Split(m.GrantScopeIds, "^")
-	sort.Strings(grantScopeIds)
-	m.GrantScopeIds = strings.Join(grantScopeIds, "^")
-	gts := strings.Split(m.Grants, "^")
-	sort.Strings(gts)
-	m.Grants = strings.Join(gts, "^")
 }
 
 func (r *Repository) resolveQuery(
