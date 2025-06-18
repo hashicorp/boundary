@@ -313,6 +313,8 @@ type CreateScopeRequest struct {
 	SkipAdminRoleCreation   bool                   `protobuf:"varint,1,opt,name=skip_admin_role_creation,json=skipAdminRoleCreation,proto3" json:"skip_admin_role_creation,omitempty" class:"public"`       // @gotags: `class:"public"`
 	SkipDefaultRoleCreation bool                   `protobuf:"varint,2,opt,name=skip_default_role_creation,json=skipDefaultRoleCreation,proto3" json:"skip_default_role_creation,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item                    *scopes.Scope          `protobuf:"bytes,3,opt,name=item,proto3" json:"item,omitempty"`
+	CreateAdminRole         bool                   `protobuf:"varint,4,opt,name=create_admin_role,json=createAdminRole,proto3" json:"create_admin_role,omitempty" class:"public"`       // @gotags: `class:"public"`
+	CreateDefaultRole       bool                   `protobuf:"varint,5,opt,name=create_default_role,json=createDefaultRole,proto3" json:"create_default_role,omitempty" class:"public"` // @gotags: `class:"public"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -366,6 +368,20 @@ func (x *CreateScopeRequest) GetItem() *scopes.Scope {
 		return x.Item
 	}
 	return nil
+}
+
+func (x *CreateScopeRequest) GetCreateAdminRole() bool {
+	if x != nil {
+		return x.CreateAdminRole
+	}
+	return false
+}
+
+func (x *CreateScopeRequest) GetCreateDefaultRole() bool {
+	if x != nil {
+		return x.CreateDefaultRole
+	}
+	return false
 }
 
 type CreateScopeResponse struct {
@@ -1197,11 +1213,13 @@ const file_controller_api_services_v1_scope_service_proto_rawDesc = "" +
 	"\asort_by\x18\x04 \x01(\tR\asort_by\x12\x1a\n" +
 	"\bsort_dir\x18\x05 \x01(\tR\bsort_dir\x12 \n" +
 	"\vremoved_ids\x18\x06 \x03(\tR\vremoved_ids\x12&\n" +
-	"\x0eest_item_count\x18\a \x01(\rR\x0eest_item_count\"\xc9\x01\n" +
+	"\x0eest_item_count\x18\a \x01(\rR\x0eest_item_count\"\xa5\x02\n" +
 	"\x12CreateScopeRequest\x127\n" +
 	"\x18skip_admin_role_creation\x18\x01 \x01(\bR\x15skipAdminRoleCreation\x12;\n" +
 	"\x1askip_default_role_creation\x18\x02 \x01(\bR\x17skipDefaultRoleCreation\x12=\n" +
-	"\x04item\x18\x03 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item\"f\n" +
+	"\x04item\x18\x03 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item\x12*\n" +
+	"\x11create_admin_role\x18\x04 \x01(\bR\x0fcreateAdminRole\x12.\n" +
+	"\x13create_default_role\x18\x05 \x01(\bR\x11createDefaultRole\"f\n" +
 	"\x13CreateScopeResponse\x12\x10\n" +
 	"\x03uri\x18\x01 \x01(\tR\x03uri\x12=\n" +
 	"\x04item\x18\x02 \x01(\v2).controller.api.resources.scopes.v1.ScopeR\x04item\"\xa1\x01\n" +
