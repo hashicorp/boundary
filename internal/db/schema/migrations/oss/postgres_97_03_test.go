@@ -97,7 +97,7 @@ func Test_IamRoleAndGrantScopeMigration(t *testing.T) {
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	priorMigration := 95001
+	priorMigration := 96001
 	currentMigration := 97005
 
 	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
@@ -621,7 +621,7 @@ func Test_GlobalMigration(t *testing.T) {
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	priorMigration := 95001
+	priorMigration := 96001
 	currentMigration := 97005
 
 	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
@@ -856,7 +856,7 @@ func Test_OrgMigration(t *testing.T) {
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	priorMigration := 95001
+	priorMigration := 96001
 	currentMigration := 97005
 
 	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
@@ -1102,7 +1102,7 @@ func Test_ProjectMigration(t *testing.T) {
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	priorMigration := 95001
+	priorMigration := 96001
 	currentMigration := 97005
 
 	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
@@ -1359,7 +1359,7 @@ func Test_GlobalIndividualOrgMigration(t *testing.T) {
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	priorMigration := 95001
+	priorMigration := 96001
 	currentMigration := 97005
 
 	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
@@ -1611,7 +1611,7 @@ func Test_GlobalIndividualProjectMigration(t *testing.T) {
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	priorMigration := 95001
+	priorMigration := 96001
 	currentMigration := 97005
 
 	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
@@ -1875,7 +1875,7 @@ func Test_OrgIndividualProjectMigration(t *testing.T) {
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	priorMigration := 95001
+	priorMigration := 96001
 	currentMigration := 97005
 
 	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))

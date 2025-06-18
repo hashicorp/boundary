@@ -49,7 +49,7 @@ import (
 //   - this cannot be created
 func TestMigrationHook97005(t *testing.T) {
 	const (
-		priorMigration = 95001
+		priorMigration = 96001
 	)
 	dialect := dbtest.Postgres
 	ctx := context.Background()
