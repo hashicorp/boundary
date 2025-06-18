@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -388,6 +389,119 @@ func TestGrants_GetScope(t *testing.T) {
 			for input, wantErr := range tc.inputWantErrMap {
 				_, err := s.GetScope(fullGrantAuthCtx, input)
 				// not found means expect error
+				if wantErr != nil {
+					require.ErrorIs(t, err, wantErr)
+					continue
+				}
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestGrants_CreateScopes(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := scopes.NewServiceFn(ctx, repoFn, kmsCache, 1000)
+	require.NoError(t, err)
+
+	org1 := iam.TestOrg(t, iamRepo, iam.WithName("org1"), iam.WithDescription("test org 1"), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+	org2 := iam.TestOrg(t, iamRepo, iam.WithName("org2"), iam.WithDescription("test org 2"), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+
+	testcases := []struct {
+		name              string
+		userFunc          func() (*iam.User, auth.Account)
+		canCreateInScopes map[*pbs.CreateScopeRequest]error
+	}{
+		{
+			name:     "no grants returns no creatable scopes",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{}),
+			canCreateInScopes: map[*pbs.CreateScopeRequest]error{
+				{Item: &pb.Scope{ScopeId: scope.Global.String()}}: handlers.ForbiddenError(),
+				{Item: &pb.Scope{ScopeId: org1.PublicId}}:         handlers.ForbiddenError(),
+				{Item: &pb.Scope{ScopeId: org2.PublicId}}:         handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "global role grant this can create scopes in the global scope",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=scope;actions=create"},
+					GrantScopes: []string{globals.GrantScopeThis},
+				},
+			}),
+			canCreateInScopes: map[*pbs.CreateScopeRequest]error{
+				{Item: &pb.Scope{ScopeId: scope.Global.String()}}: nil,
+				{Item: &pb.Scope{ScopeId: org1.PublicId}}:         handlers.ForbiddenError(),
+				{Item: &pb.Scope{ScopeId: org2.PublicId}}:         handlers.ForbiddenError(),
+			},
+		},
+		{
+			name: "global role grant children can create scopes in org scopes",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=scope;actions=create"},
+					GrantScopes: []string{globals.GrantScopeChildren},
+				},
+			}),
+			canCreateInScopes: map[*pbs.CreateScopeRequest]error{
+				{Item: &pb.Scope{ScopeId: scope.Global.String()}}: handlers.ForbiddenError(),
+				{Item: &pb.Scope{ScopeId: org1.PublicId}}:         nil,
+				{Item: &pb.Scope{ScopeId: org2.PublicId}}:         nil,
+			},
+		},
+		{
+			name: "global role grant descendants can create scopes in org scopes",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=scope;actions=create"},
+					GrantScopes: []string{globals.GrantScopeDescendants},
+				},
+			}),
+			canCreateInScopes: map[*pbs.CreateScopeRequest]error{
+				{Item: &pb.Scope{ScopeId: scope.Global.String()}}: handlers.ForbiddenError(),
+				{Item: &pb.Scope{ScopeId: org1.PublicId}}:         nil,
+				{Item: &pb.Scope{ScopeId: org2.PublicId}}:         nil,
+			},
+		},
+		{
+			name: "global role individual grant to org1 can create scopes in org1 scope",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+				{
+					RoleScopeId: globals.GlobalPrefix,
+					Grants:      []string{"ids=*;type=scope;actions=create"},
+					GrantScopes: []string{org1.PublicId},
+				},
+			}),
+			canCreateInScopes: map[*pbs.CreateScopeRequest]error{
+				{Item: &pb.Scope{ScopeId: scope.Global.String()}}: handlers.ForbiddenError(),
+				{Item: &pb.Scope{ScopeId: org1.PublicId}}:         nil,
+				{Item: &pb.Scope{ScopeId: org2.PublicId}}:         handlers.ForbiddenError(),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			user, account := tc.userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
+
+			for req, wantErr := range tc.canCreateInScopes {
+				_, err := s.CreateScope(fullGrantAuthCtx, req)
 				if wantErr != nil {
 					require.ErrorIs(t, err, wantErr)
 					continue
