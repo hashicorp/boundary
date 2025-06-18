@@ -110,27 +110,6 @@
         "path": "concepts/auditing"
       },
       {
-        "title": "Host discovery",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/host-discovery"
-          },
-          {
-            "title": "AWS dynamic hosts",
-            "path": "concepts/host-discovery/aws"
-          },
-          {
-            "title": "Azure dynamic hosts",
-            "path": "concepts/host-discovery/azure"
-          },
-          {
-            "title": "GCP dynamic hosts",
-            "path": "concepts/host-discovery/gcp"
-          }
-        ]
-      },
-      {
         "title": "Connection workflows",
         "routes": [
           {
@@ -615,6 +594,32 @@
           {
             "title": "Register workers",
             "path": "workers/configure-workers/worker-configuration"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Configure hosts",
+    "routes": [
+      {
+        "title": "Host discovery",
+        "path": "hosts"
+      },
+      {
+        "title": "Sync hosts from my cloud provider",
+        "routes": [
+          {
+            "title": "AWS dynamic hosts",
+            "path": "hosts/discovery/aws"
+          },
+          {
+            "title": "Azure dynamic hosts",
+            "path": "hosts/discovery/azure"
+          },
+          {
+            "title": "GCP dynamic hosts",
+            "path": "hosts/discovery/gcp"
           }
         ]
       }

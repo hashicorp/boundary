@@ -292,10 +292,37 @@ module.exports = [
   {
     source: '/boundary/docs/configuration/worker/index',
     destination: '/boundary/docs/workers/index',
+    permanent: true,
   },
   {
     source: '/boundary/docs/configuration/worker/worker-configuration',
     destination: '/boundary/docs/configure-workers/worker-configuration',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/host-discovery',
+    destination: '/boundary/docs/hosts',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/host-discovery/index',
+    destination: '/boundary/docs/hosts/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/host-discovery/aws',
+    destination: '/boundary/docs/hosts/discovery/aws',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/host-discovery/azure',
+    destination: '/boundary/docs/hosts/discovery/azure',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/host-discovery/gcp',
+    destination: '/boundary/docs/hosts/discovery/gcp',
+    permanent: true,
   },
   {
     source: '/boundary/docs/api-clients/cli',
