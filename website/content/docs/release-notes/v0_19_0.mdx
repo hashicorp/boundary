@@ -410,7 +410,7 @@ description: >-
     <br /><br />
     When you run the <code>boundary database migrate</code> command to upgrade a cluster to Boundary version 0.19.3, the migration will fail with a message if the database contains any redundant grant scopes. The migration tool provides the following command to automatically repair the grant scopes:
     <br /><br />
-    <code>boundary database migrate -repair=oss:96001</code>
+    <code>boundary database migrate -repair=oss:97001</code>
     <br /><br />
     Run the command to remove any redundant grant scopes from roles. Any individually granted scopes that are already covered by <code>descendants</code> or <code>children</code> grants are considered invalid and removed. When the migration is complete, the migration tool produces a message that details any changes.
     <br /><br />
