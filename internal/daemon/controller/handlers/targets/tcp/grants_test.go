@@ -5,12 +5,15 @@ package tcp_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	controllerauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
@@ -383,6 +386,185 @@ func TestGrants_Create(t *testing.T) {
 		})
 	}
 
+}
+
+type userFn func() (*iam.User, auth.Account)
+
+func TestGrants_SetTargetCredentialSources(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	s, err := testService(t, ctx, conn, kmsCache, wrapper)
+	require.NoError(t, err)
+	rw := db.New(conn)
+
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org1, proj1 := iam.TestScopes(t, iamRepo, iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+	_, proj2 := iam.TestScopes(t, iamRepo, iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+
+	proj1Vault := vault.TestCredentialStores(t, conn, wrapper, proj1.GetPublicId(), 1)[0]
+	proj1Cls := vault.TestCredentialLibraries(t, conn, wrapper, proj1Vault.GetPublicId(), 2)
+
+	proj2StoreStatic := credstatic.TestCredentialStore(t, conn, wrapper, proj2.GetPublicId())
+	proj2Creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", proj2StoreStatic.GetPublicId(), proj2.GetPublicId(), 2)
+
+	testcases := []struct {
+		name             string
+		input            *pbs.ListTargetsRequest
+		setup            func(t *testing.T) (*pbs.SetTargetCredentialSourcesRequest, userFn)
+		wantErr          error
+		wantOutputFields []string
+	}{
+		{
+			name: "global role grant descendants returns succeed",
+			setup: func(t *testing.T) (*pbs.SetTargetCredentialSourcesRequest, userFn) {
+				setupUser := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						GrantScopes: []string{globals.GrantScopeDescendants},
+						Grants:      []string{"ids=*;type=target;actions=*;output_fields=id,authorized_actions,scope_id,address"},
+					},
+				})
+				randId, err := uuid.GenerateUUID()
+				require.NoError(t, err)
+				tgt := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), randId, target.WithAddress("8.8.8.8"))
+				return &pbs.SetTargetCredentialSourcesRequest{
+					Id:                          tgt.GetPublicId(),
+					Version:                     tgt.GetVersion(),
+					BrokeredCredentialSourceIds: []string{proj1Cls[0].GetPublicId()},
+				}, setupUser
+			},
+			wantOutputFields: []string{globals.IdField, globals.AuthorizedActionsField, globals.ScopeIdField, globals.AddressField},
+		},
+		{
+			name: "global role grant specific project and pinned id returns succeed",
+			setup: func(t *testing.T) (*pbs.SetTargetCredentialSourcesRequest, userFn) {
+				randId, err := uuid.GenerateUUID()
+				require.NoError(t, err)
+				tgt := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), randId, target.WithAddress("8.8.8.8"))
+				setupUser := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						GrantScopes: []string{proj1.PublicId},
+						Grants:      []string{fmt.Sprintf("ids=%s;actions=set-credential-sources;output_fields=id,authorized_actions,scope_id,address", tgt.GetPublicId())},
+					},
+				})
+				return &pbs.SetTargetCredentialSourcesRequest{
+					Id:                          tgt.GetPublicId(),
+					Version:                     tgt.GetVersion(),
+					BrokeredCredentialSourceIds: []string{proj1Cls[0].GetPublicId()},
+				}, setupUser
+			},
+			wantOutputFields: []string{globals.IdField, globals.AuthorizedActionsField, globals.ScopeIdField, globals.AddressField},
+		},
+		{
+			name: "global role grant specific project and pinned id wrong action error",
+			setup: func(t *testing.T) (*pbs.SetTargetCredentialSourcesRequest, userFn) {
+				randId, err := uuid.GenerateUUID()
+				require.NoError(t, err)
+				tgt := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), randId, target.WithAddress("8.8.8.8"))
+				setupUser := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						GrantScopes: []string{proj1.PublicId},
+						Grants:      []string{fmt.Sprintf("ids=%s;actions=remove-credential-sources;output_fields=id,authorized_actions,scope_id,address", tgt.GetPublicId())},
+					},
+				})
+				return &pbs.SetTargetCredentialSourcesRequest{
+					Id:                          tgt.GetPublicId(),
+					Version:                     tgt.GetVersion(),
+					BrokeredCredentialSourceIds: []string{proj1Cls[0].GetPublicId()},
+				}, setupUser
+			},
+			wantErr: handlers.ForbiddenError(),
+		},
+		{
+			name: "org role grant children returns all succeed",
+			setup: func(t *testing.T) (*pbs.SetTargetCredentialSourcesRequest, userFn) {
+				setupUser := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org1.GetPublicId(),
+						GrantScopes: []string{globals.GrantScopeChildren},
+						Grants:      []string{"ids=*;type=target;actions=*;output_fields=id,authorized_actions,scope_id,address"},
+					},
+				})
+				randId, err := uuid.GenerateUUID()
+				require.NoError(t, err)
+				tgt := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), randId, target.WithAddress("8.8.8.8"))
+				return &pbs.SetTargetCredentialSourcesRequest{
+					Id:                          tgt.GetPublicId(),
+					Version:                     tgt.GetVersion(),
+					BrokeredCredentialSourceIds: []string{proj1Cls[0].GetPublicId()},
+				}, setupUser
+			},
+			wantOutputFields: []string{globals.IdField, globals.AuthorizedActionsField, globals.ScopeIdField, globals.AddressField},
+		},
+		{
+			name: "org role grant this returns error",
+			setup: func(t *testing.T) (*pbs.SetTargetCredentialSourcesRequest, userFn) {
+				setupUser := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: org1.GetPublicId(),
+						GrantScopes: []string{globals.GrantScopeThis},
+						Grants:      []string{"ids=*;type=target;actions=*;output_fields=id,authorized_actions,scope_id,address"},
+					},
+				})
+				randId, err := uuid.GenerateUUID()
+				require.NoError(t, err)
+				tgt := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), randId, target.WithAddress("8.8.8.8"))
+				return &pbs.SetTargetCredentialSourcesRequest{
+					Id:                          tgt.GetPublicId(),
+					Version:                     tgt.GetVersion(),
+					BrokeredCredentialSourceIds: []string{proj1Cls[0].GetPublicId()},
+				}, setupUser
+			},
+			wantErr: handlers.ForbiddenError(),
+		},
+		{
+			name: "project role grant this succeed",
+			setup: func(t *testing.T) (*pbs.SetTargetCredentialSourcesRequest, userFn) {
+				setupUser := iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj2.GetPublicId(),
+						GrantScopes: []string{globals.GrantScopeThis},
+						Grants:      []string{"ids=*;type=target;actions=*;output_fields=id,name,created_time,updated_time,version"},
+					},
+				})
+				randId, err := uuid.GenerateUUID()
+				require.NoError(t, err)
+				tgt := tcp.TestTarget(ctx, t, conn, proj2.GetPublicId(), randId, target.WithAddress("8.8.8.8"))
+				return &pbs.SetTargetCredentialSourcesRequest{
+					Id:                          tgt.GetPublicId(),
+					Version:                     tgt.GetVersion(),
+					BrokeredCredentialSourceIds: []string{proj2Creds[0].GetPublicId()},
+				}, setupUser
+			},
+			wantOutputFields: []string{globals.IdField, globals.NameField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			input, userFunc := tc.setup(t)
+			user, account := userFunc()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
+			fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrapper, tok, iamRepo)
+			got, err := s.SetTargetCredentialSources(fullGrantAuthCtx, input)
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			handlers.TestAssertOutputFields(t, got.Item, tc.wantOutputFields)
+		})
+	}
 }
 
 func validTcpTarget(t *testing.T, scopeId string) *pb.Target {
