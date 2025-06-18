@@ -26,7 +26,7 @@ var prehooks = map[int]*migration.Hook{
 		RepairFunc:        hook46001.RepairIllegalAssociations,
 		RepairDescription: hook46001.RepairDescription,
 	},
-	96001: {
+	97001: {
 		CheckFunc:         hook97005.FindInvalidAssociations,
 		RepairFunc:        hook97005.RepairInvalidAssociations,
 		RepairDescription: hook97005.RepairDescription,
