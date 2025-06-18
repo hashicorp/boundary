@@ -114,6 +114,8 @@ const (
 	TcpTargetPrefix = "ttcp"
 	// SshTargetPrefix is the prefix for TCP targets
 	SshTargetPrefix = "tssh"
+	// RdpTargetPrefix is the prefix for RDP targets
+	RdpTargetPrefix = "trdp"
 
 	// WorkerPrefix is the prefix for workers
 	WorkerPrefix = "w"
@@ -312,6 +314,10 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Subtype: UnknownSubtype,
 	},
 	SshTargetPrefix: {
+		Type:    resource.Target,
+		Subtype: UnknownSubtype,
+	},
+	RdpTargetPrefix: {
 		Type:    resource.Target,
 		Subtype: UnknownSubtype,
 	},
