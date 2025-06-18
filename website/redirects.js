@@ -285,6 +285,19 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/configuration/worker',
+    destination: '/boundary/docs/workers',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/worker/index',
+    destination: '/boundary/docs/workers/index',
+  },
+  {
+    source: '/boundary/docs/configuration/worker/worker-configuration',
+    destination: '/boundary/docs/configure-workers/worker-configuration',
+  },
+  {
     source: '/boundary/docs/api-clients/cli',
     destination: '/boundary/docs/commands/',
     permanent: true,
