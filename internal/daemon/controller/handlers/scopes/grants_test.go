@@ -171,6 +171,12 @@ func TestGrants_ListScopes(t *testing.T) {
 	}
 }
 
+// expectedOutput consolidates common output fields for the test cases
+type expectedOutput struct {
+	err          error
+	outputFields []string
+}
+
 func TestGrants_GetScope(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -193,19 +199,19 @@ func TestGrants_GetScope(t *testing.T) {
 	proj2 := iam.TestProject(t, iamRepo, org2.GetPublicId(), iam.WithName("proj2"), iam.WithDescription("test project 2"), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
 
 	testcases := []struct {
-		name            string
-		userFunc        func() (*iam.User, auth.Account)
-		inputWantErrMap map[*pbs.GetScopeRequest]error
+		name     string
+		userFunc func() (*iam.User, auth.Account)
+		expected map[*pbs.GetScopeRequest]expectedOutput
 	}{
 		{
 			name:     "no grants returns no scopes",
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         handlers.ForbiddenError(),
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        handlers.ForbiddenError(),
-				{Id: proj2.PublicId}:        handlers.ForbiddenError(),
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {err: handlers.ForbiddenError()},
+				{Id: proj2.PublicId}:        {err: handlers.ForbiddenError()},
 			},
 		},
 		{
@@ -213,16 +219,16 @@ func TestGrants_GetScope(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=scope;actions=read"},
+					Grants:      []string{"ids=*;type=scope;actions=read;output_fields=id"},
 					GrantScopes: []string{globals.GrantScopeThis},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: nil,
-				{Id: org1.PublicId}:         nil,
-				{Id: org2.PublicId}:         nil,
-				{Id: proj1.PublicId}:        handlers.ForbiddenError(),
-				{Id: proj2.PublicId}:        handlers.ForbiddenError(),
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {outputFields: []string{globals.IdField}},
+				{Id: org1.PublicId}:         {outputFields: []string{globals.IdField}},
+				{Id: org2.PublicId}:         {outputFields: []string{globals.IdField}},
+				{Id: proj1.PublicId}:        {err: handlers.ForbiddenError()},
+				{Id: proj2.PublicId}:        {err: handlers.ForbiddenError()},
 			},
 		},
 		{
@@ -230,16 +236,16 @@ func TestGrants_GetScope(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=scope;actions=read"},
+					Grants:      []string{"ids=*;type=scope;actions=read;output_fields=id,name"},
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: nil,
-				{Id: org1.PublicId}:         nil,
-				{Id: org2.PublicId}:         nil,
-				{Id: proj1.PublicId}:        nil,
-				{Id: proj2.PublicId}:        nil,
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {outputFields: []string{globals.IdField, globals.NameField}},
+				{Id: org1.PublicId}:         {outputFields: []string{globals.IdField, globals.NameField}},
+				{Id: org2.PublicId}:         {outputFields: []string{globals.IdField, globals.NameField}},
+				{Id: proj1.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField}},
+				{Id: proj2.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField}},
 			},
 		},
 		{
@@ -247,16 +253,16 @@ func TestGrants_GetScope(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=scope;actions=read"},
+					Grants:      []string{"ids=*;type=scope;actions=read;output_fields=id,name,scope_id"},
 					GrantScopes: []string{globals.GrantScopeChildren},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         handlers.ForbiddenError(),
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        nil,
-				{Id: proj2.PublicId}:        nil,
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField, globals.ScopeIdField}},
+				{Id: proj2.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField, globals.ScopeIdField}},
 			},
 		},
 		{
@@ -264,16 +270,16 @@ func TestGrants_GetScope(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=scope;actions=read"},
+					Grants:      []string{"ids=*;type=scope;actions=read;output_fields=id,name,scope_id,description"},
 					GrantScopes: []string{globals.GrantScopeDescendants},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         handlers.ForbiddenError(),
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        nil,
-				{Id: proj2.PublicId}:        nil,
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField, globals.ScopeIdField, globals.DescriptionField}},
+				{Id: proj2.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField, globals.ScopeIdField, globals.DescriptionField}},
 			},
 		},
 		{
@@ -281,16 +287,16 @@ func TestGrants_GetScope(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org1.PublicId,
-					Grants:      []string{"ids=*;type=scope;actions=read"},
+					Grants:      []string{"ids=*;type=scope;actions=read;output_fields=id,name,scope_id,description,version"},
 					GrantScopes: []string{globals.GrantScopeThis},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         handlers.ForbiddenError(),
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        nil,
-				{Id: proj2.PublicId}:        handlers.ForbiddenError(),
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField, globals.ScopeIdField, globals.DescriptionField, globals.VersionField}},
+				{Id: proj2.PublicId}:        {err: handlers.ForbiddenError()},
 			},
 		},
 		{
@@ -302,12 +308,12 @@ func TestGrants_GetScope(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeChildren},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         handlers.ForbiddenError(),
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        handlers.ForbiddenError(),
-				{Id: proj2.PublicId}:        handlers.ForbiddenError(),
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {err: handlers.ForbiddenError()},
+				{Id: proj2.PublicId}:        {err: handlers.ForbiddenError()},
 			},
 		},
 		{
@@ -315,16 +321,16 @@ func TestGrants_GetScope(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: org1.PublicId,
-					Grants:      []string{"ids=*;type=scope;actions=read"},
+					Grants:      []string{"ids=*;type=scope;actions=read;output_fields=id,name,scope_id,description,version,type"},
 					GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeChildren},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         handlers.ForbiddenError(),
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        nil,
-				{Id: proj2.PublicId}:        handlers.ForbiddenError(),
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField, globals.ScopeIdField, globals.DescriptionField, globals.VersionField, globals.TypeField}},
+				{Id: proj2.PublicId}:        {err: handlers.ForbiddenError()},
 			},
 		},
 		{
@@ -336,12 +342,12 @@ func TestGrants_GetScope(t *testing.T) {
 					GrantScopes: []string{globals.GrantScopeThis},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         handlers.ForbiddenError(),
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        handlers.ForbiddenError(),
-				{Id: proj2.PublicId}:        handlers.ForbiddenError(),
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {err: handlers.ForbiddenError()},
+				{Id: proj2.PublicId}:        {err: handlers.ForbiddenError()},
 			},
 		},
 		{
@@ -349,16 +355,16 @@ func TestGrants_GetScope(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{fmt.Sprintf("ids=%s;types=scope;actions=read", org1.PublicId)},
+					Grants:      []string{fmt.Sprintf("ids=%s;types=scope;actions=read;output_fields=id,name,scope_id,description,version,type,authorized_actions", org1.PublicId)},
 					GrantScopes: []string{globals.GrantScopeThis},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         nil,
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        handlers.ForbiddenError(),
-				{Id: proj2.PublicId}:        handlers.ForbiddenError(),
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {outputFields: []string{globals.IdField, globals.NameField, globals.ScopeIdField, globals.DescriptionField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField}},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {err: handlers.ForbiddenError()},
+				{Id: proj2.PublicId}:        {err: handlers.ForbiddenError()},
 			},
 		},
 		{
@@ -366,16 +372,16 @@ func TestGrants_GetScope(t *testing.T) {
 			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 				{
 					RoleScopeId: globals.GlobalPrefix,
-					Grants:      []string{"ids=*;type=scope;actions=read"},
+					Grants:      []string{"ids=*;type=scope;actions=read;output_fields=id,name,scope_id,description,version,type,authorized_actions,created_time,updated_time"},
 					GrantScopes: []string{org1.PublicId},
 				},
 			}),
-			inputWantErrMap: map[*pbs.GetScopeRequest]error{
-				{Id: scope.Global.String()}: handlers.ForbiddenError(),
-				{Id: org1.PublicId}:         handlers.ForbiddenError(),
-				{Id: org2.PublicId}:         handlers.ForbiddenError(),
-				{Id: proj1.PublicId}:        nil,
-				{Id: proj2.PublicId}:        handlers.ForbiddenError(),
+			expected: map[*pbs.GetScopeRequest]expectedOutput{
+				{Id: scope.Global.String()}: {err: handlers.ForbiddenError()},
+				{Id: org1.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: org2.PublicId}:         {err: handlers.ForbiddenError()},
+				{Id: proj1.PublicId}:        {outputFields: []string{globals.IdField, globals.NameField, globals.ScopeIdField, globals.DescriptionField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, globals.CreatedTimeField, globals.UpdatedTimeField}},
+				{Id: proj2.PublicId}:        {err: handlers.ForbiddenError()},
 			},
 		},
 	}
@@ -386,12 +392,16 @@ func TestGrants_GetScope(t *testing.T) {
 			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
 			require.NoError(t, err)
 			fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
-			for input, wantErr := range tc.inputWantErrMap {
-				_, err := s.GetScope(fullGrantAuthCtx, input)
+			for input, expectedOutput := range tc.expected {
+				got, err := s.GetScope(fullGrantAuthCtx, input)
 				// not found means expect error
-				if wantErr != nil {
-					require.ErrorIs(t, err, wantErr)
+				if expectedOutput.err != nil {
+					require.ErrorIs(t, err, expectedOutput.err)
 					continue
+				}
+				// check if the output fields are as expected
+				if expectedOutput.outputFields != nil {
+					handlers.TestAssertOutputFields(t, got.Item, expectedOutput.outputFields)
 				}
 				require.NoError(t, err)
 			}
