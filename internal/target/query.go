@@ -60,7 +60,7 @@ select public_id, project_id from target
 `
 
 	estimateCountTargets = `
-select sum(reltuples::bigint) as estimate from pg_class where oid in ('target_tcp'::regclass, 'target_ssh'::regclass)
+select sum(reltuples::bigint) as estimate from pg_class where oid in ('target_tcp'::regclass, 'target_ssh'::regclass,  'target_rdp'::regclass)
 `
 
 	listTargetsTemplate = `
@@ -79,6 +79,11 @@ tcp_targets as (
 ssh_targets as (
   select *
     from target_ssh
+   where public_id in (select public_id from targets)
+),
+rdp_targets as (
+  select *
+    from target_rdp
    where public_id in (select public_id from targets)
 ),
 final as (
@@ -119,6 +124,25 @@ final as (
          enable_session_recording,
          'ssh' as type
     from ssh_targets
+   union
+  select public_id,
+         project_id,
+         name,
+         description,
+         default_port,
+         session_max_seconds,
+         session_connection_limit,
+         version,
+         create_time,
+         update_time,
+         worker_filter,
+         egress_worker_filter,
+         ingress_worker_filter,
+         default_client_port,
+         storage_bucket_id,
+         enable_session_recording,
+         'rdp' as type
+    from rdp_targets
 )
   select *
     from final
@@ -144,6 +168,11 @@ ssh_targets as (
     from target_ssh
    where public_id in (select public_id from targets)
 ),
+rdp_targets as (
+  select *
+    from target_rdp
+   where public_id in (select public_id from targets)
+),
 final as (
   select public_id,
          project_id,
@@ -182,6 +211,25 @@ final as (
          enable_session_recording,
          'ssh' as type
     from ssh_targets
+   union
+  select public_id,
+         project_id,
+         name,
+         description,
+         default_port,
+         session_max_seconds,
+         session_connection_limit,
+         version,
+         create_time,
+         update_time,
+         worker_filter,
+         egress_worker_filter,
+         ingress_worker_filter,
+         default_client_port,
+         storage_bucket_id,
+         enable_session_recording,
+         'rdp' as type
+    from rdp_targets
 )
   select *
     from final
@@ -207,6 +255,11 @@ ssh_targets as (
     from target_ssh
    where public_id in (select public_id from targets)
 ),
+rdp_targets as (
+  select *
+    from target_rdp
+   where public_id in (select public_id from targets)
+),
 final as (
   select public_id,
          project_id,
@@ -245,6 +298,25 @@ final as (
          enable_session_recording,
          'ssh' as type
     from ssh_targets
+   union
+  select public_id,
+         project_id,
+         name,
+         description,
+         default_port,
+         session_max_seconds,
+         session_connection_limit,
+         version,
+         create_time,
+         update_time,
+         worker_filter,
+         egress_worker_filter,
+         ingress_worker_filter,
+         default_client_port,
+         storage_bucket_id,
+         enable_session_recording,
+         'rdp' as type
+    from rdp_targets
 )
   select *
     from final
@@ -271,6 +343,11 @@ ssh_targets as (
     from target_ssh
    where public_id in (select public_id from targets)
 ),
+rdp_targets as (
+  select *
+    from target_rdp
+   where public_id in (select public_id from targets)
+),
 final as (
   select public_id,
          project_id,
@@ -309,6 +386,25 @@ final as (
          enable_session_recording,
          'ssh' as type
     from ssh_targets
+   union
+  select public_id,
+         project_id,
+         name,
+         description,
+         default_port,
+         session_max_seconds,
+         session_connection_limit,
+         version,
+         create_time,
+         update_time,
+         worker_filter,
+         egress_worker_filter,
+         ingress_worker_filter,
+         default_client_port,
+         storage_bucket_id,
+         enable_session_recording,
+         'rdp' as type
+    from rdp_targets
 )
   select *
     from final
