@@ -167,6 +167,18 @@ func Test_Repository_Scope_Create(t *testing.T) {
 				flags:    []Option{WithCreateAdminRole(true), WithCreateDefaultRole(true), WithSkipAdminRoleCreation(true), WithSkipDefaultRoleCreation(true)},
 				wantErr:  true,
 			},
+			{
+				name:     "create-and-skip-admin",
+				numFound: 0,
+				flags:    []Option{WithCreateAdminRole(true), WithSkipAdminRoleCreation(true)},
+				wantErr:  true,
+			},
+			{
+				name:     "create-and-skip-default",
+				numFound: 0,
+				flags:    []Option{WithCreateDefaultRole(true), WithSkipDefaultRoleCreation(true)},
+				wantErr:  true,
+			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
