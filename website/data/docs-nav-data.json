@@ -36,6 +36,10 @@
       {
         "title": "Secrets management tools",
         "path": "overview/secrets-management"
+      },
+      {
+        "title": "Frequently asked questions",
+        "path": "overview/faq"
       }
     ]
   },
@@ -110,36 +114,6 @@
         "path": "concepts/auditing"
       },
       {
-        "title": "Connection workflows",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/connection-workflows"
-          },
-          {
-            "title": "Connect helpers",
-            "path": "concepts/connection-workflows/connect-helpers"
-          },
-          {
-            "title": "Exec flag",
-            "path": "concepts/connection-workflows/exec-flag"
-          },
-          {
-            "title": "SSH ProxyCommand",
-            "path": "concepts/connection-workflows/workflow-ssh-proxycommand"
-          },
-          {
-            "title": "Multi-hop sessions",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "concepts/connection-workflows/multi-hop"
-          }
-        ]
-      },
-      {
         "title": "Security",
         "routes": [
           {
@@ -149,119 +123,11 @@
         ]
       },
       {
-        "title": "Domain model",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/domain-model"
-          },
-          {
-            "title": "Accounts",
-            "path": "concepts/domain-model/accounts"
-          },
-          {
-            "title": "Aliases",
-            "path": "concepts/domain-model/aliases"
-          },
-          {
-            "title": "Auth methods",
-            "path": "concepts/domain-model/auth-methods"
-          },
-          {
-            "title": "Credentials",
-            "path": "concepts/domain-model/credentials"
-          },
-          {
-            "title": "Credential libraries",
-            "path": "concepts/domain-model/credential-libraries"
-          },
-          {
-            "title": "Credential stores",
-            "path": "concepts/domain-model/credential-stores"
-          },
-          {
-            "title": "Groups",
-            "path": "concepts/domain-model/groups"
-          },
-          {
-            "title": "Hosts",
-            "path": "concepts/domain-model/hosts"
-          },
-          {
-            "title": "Host catalogs",
-            "path": "concepts/domain-model/host-catalogs"
-          },
-          {
-            "title": "Host sets",
-            "path": "concepts/domain-model/host-sets"
-          },
-          {
-            "title": "Managed groups",
-            "path": "concepts/domain-model/managed-groups"
-          },
-          {
-            "title": "Scopes",
-            "path": "concepts/domain-model/scopes"
-          },
-          {
-            "title": "Sessions",
-            "path": "concepts/domain-model/sessions"
-          },
-          {
-            "title": "Session connections",
-            "path": "concepts/domain-model/session-connections"
-          },
-          {
-            "title": "Session recordings",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "concepts/domain-model/session-recordings"
-          },
-          {
-            "title": "Storage buckets",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "concepts/domain-model/storage-buckets"
-          },
-          {
-            "title": "Storage policies",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "concepts/domain-model/storage-policy"
-          },
-          {
-            "title": "Targets",
-            "path": "concepts/domain-model/targets"
-          },
-          {
-            "title": "Roles",
-            "path": "concepts/domain-model/roles"
-          },
-          {
-            "title": "Users",
-            "path": "concepts/domain-model/users"
-          }
-        ]
-      },
-      {
         "title": "Filtering",
         "routes": [
           {
             "title": "Overview",
             "path": "concepts/filtering"
-          },
-          {
-            "title": "Managed groups",
-            "path": "concepts/filtering/managed-groups"
           },
           {
             "title": "Resource listing",
@@ -457,32 +323,6 @@
             "path": "monitor/events/stderr"
           }
         ]
-      },
-      {
-        "title": "Session recordings",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "monitor/session-recordings"
-          },
-          {
-            "title": "Find and view recorded sessions",
-            "path": "monitor/session-recordings/manage-recorded-sessions"
-          },
-          {
-            "title": "Validate recorded sessions",
-            "path": "monitor/session-recordings/validate-session-recordings"
-          },
-          {
-            "title": "Validate external data store",
-            "path": "monitor/session-recordings/validate-data-store"
-          }
-        ]
       }
     ]
   },
@@ -626,217 +466,78 @@
     ]
   },
   {
-    "divider": true
-  },
-  {
-    "title": "Configuration",
+    "title": "Configure targets",
     "routes": [
       {
-        "title": "Overview/top-level parameters",
-        "path": "configuration"
+        "title": "Overview",
+        "path": "targets"
       },
       {
-        "title": "KMS",
+        "title": "Set up a target",
         "routes": [
           {
-            "title": "Overview",
-            "path": "configuration/kms"
-          },
-          {
-            "title": "AEAD",
-            "path": "configuration/kms/aead"
-          },
-          {
-            "title": "AWS KMS",
-            "path": "configuration/kms/awskms"
-          },
-          {
-            "title": "AliCloud KMS",
-            "path": "configuration/kms/alicloudkms"
-          },
-          {
-            "title": "Azure Key Vault",
-            "path": "configuration/kms/azurekeyvault"
-          },
-          {
-            "title": "GCP Cloud KMS",
-            "path": "configuration/kms/gcpckms"
-          },
-          {
-            "title": "OCI KMS",
-            "path": "configuration/kms/ocikms"
-          },
-          {
-            "title": "Vault transit",
-            "path": "configuration/kms/transit"
-          }
-        ]
-      },
-      {
-        "title": "Credential management",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/credential-management"
-          },
-          {
-            "title": "Create a static credential store",
-            "path": "configuration/credential-management/static-cred-boundary"
-          },
-          {
-            "title": "Create a Vault credential store",
-            "path": "configuration/credential-management/static-cred-vault"
-          },
-          {
-            "title": "Configure targets with credential brokering",
-            "path": "configuration/credential-management/configure-credential-brokering"
-          },
-          {
-            "title": "Configure targets with credential injection",
-            "path": "configuration/credential-management/configure-credential-injection",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            }
-          }
-        ]
-      },
-      {
-        "title": "Identity and access management",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/identity-access-management"
-          },
-          {
-            "title": "Assignable permissions",
-            "path": "configuration/identity-access-management/assignable-permissions"
-          },
-          {
-            "title": "Permission grant formats",
-            "path": "configuration/identity-access-management/permission-grant-formats"
-          },
-          {
-            "title": "Manage roles",
-            "href": "common-workflows/manage-roles"
-          },
-          {
-            "title": "Resource table",
-            "path": "configuration/identity-access-management/resource-table"
-          }
-        ]
-      },
-      {
-        "title": "Session recordings",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/session-recording"
-          },
-          {
-            "title": "Configure workers for storage",
-            "path": "configuration/session-recording/configure-worker-storage"
-          },
-          {
-            "title": "Configure storage provider",
-            "routes": [
-              {
-                "title": "Amazon S3",
-                "path": "configuration/session-recording/storage-providers/configure-s3"
-              },
-              {
-                "title": "MinIO",
-                "path": "configuration/session-recording/storage-providers/configure-minio"
-              },
-              {
-                "title": "S3-compliant",
-                "path": "configuration/session-recording/storage-providers/configure-s3-compliant"
-              }
-            ]
-          },
-          {
-            "title": "Create storage buckets",
-            "path": "configuration/session-recording/create-storage-bucket"
-          },
-          {
-            "title": "Enable session recording",
-            "path": "configuration/session-recording/enable-session-recording"
-          },
-          {
-            "title": "Configure storage policies",
-            "path": "configuration/session-recording/configure-storage-policy"
-          },
-          {
-            "title": "Update storage policies",
-            "path": "configuration/session-recording/update-storage-policy"
-          }
-        ]
-      },
-      {
-        "title": "Aliases and transparent sessions",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/target-aliases"
+            "title": "Aliases",
+            "path": "targets/configuration"
           },
           {
             "title": "Create a target alias",
-            "path": "configuration/target-aliases/create-target-alias"
+            "path": "targets/configuration/create-target-alias"
           },
           {
             "title": "Connect using a target alias",
-            "path": "configuration/target-aliases/connect-target-alias"
-          },
-          {
-            "title": "Connect using transparent sessions",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "configuration/target-aliases/transparent-sessions"
-          },
-          {
-            "title": "Transparent sessions interoperability matrix",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "configuration/target-aliases/interoperability-matrix"
+            "path": "targets/configuration/connect-target-alias"
           }
         ]
       },
       {
-        "title": "Controller",
-        "path": "configuration/controller"
-      },
-      {
-        "title": "Plugins",
-        "path": "configuration/plugins"
+        "title": "Connect to a target",
+        "routes": [
+          {
+            "title": "Connection workflows",
+            "path": "targets/connections"
+          },
+          {
+            "title": "Connect helpers",
+            "path": "targets/connections/connect-helpers"
+          },
+          {
+            "title": "Exec flag",
+            "path": "targets/connections/exec-flag"
+          },
+          {
+            "title": "SSH ProxyCommand",
+            "path": "targets/connections/workflow-ssh-proxycommand"
+          },
+          {
+            "title": "Multi-hop sessions",
+            "path": "targets/connections/multi-hop"
+          }
+        ]
       }
     ]
   },
   {
-    "title": "Troubleshoot",
+    "title": "Configure credentials",
     "routes": [
       {
-        "title": "Common error messages",
-        "path": "troubleshoot/common-errors"
+        "title": "Credentials in Boundary",
+        "path": "credentials"
       },
       {
-        "title": "FAQ",
-        "path": "troubleshoot/faq"
+        "title": "Create a static credential store",
+        "path": "credentials/static-cred-boundary"
       },
       {
-        "title": "Recorded sessions",
-        "path": "troubleshoot/troubleshoot-recorded-sessions",
+        "title": "Create a Vault credential store",
+        "path": "credentials/static-cred-vault"
+      },
+      {
+        "title": "Configure targets with credential brokering",
+        "path": "credentials/configure-credential-brokering"
+      },
+      {
+        "title": "Configure targets with credential injection",
+        "path": "credentials/configure-credential-injection",
         "badge": {
           "text": "HCP/ENT",
           "type": "outlined",
@@ -846,32 +547,248 @@
     ]
   },
   {
-    "title": "Common workflows",
-    "hidden": true,
+    "title": "Monitor access",
+    "routes": [
+      {
+        "title": "Session recording",
+        "path": "session-recording",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      },
+      {
+        "title": "Record and play back session activity",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "session-recording/configuration"
+          },
+          {
+            "title": "Configure workers for storage",
+            "path": "session-recording/configuration/configure-worker-storage"
+          },
+          {
+            "title": "Configure storage provider",
+            "routes": [
+              {
+                "title": "Amazon S3",
+                "path": "session-recording/configuration/storage-providers/configure-s3"
+              },
+              {
+                "title": "MinIO",
+                "path": "session-recording/configuration/storage-providers/configure-minio"
+              },
+              {
+                "title": "S3-compliant",
+                "path": "session-recording/configuration/storage-providers/configure-s3-compliant"
+              }
+            ]
+          },
+          {
+            "title": "Create storage buckets",
+            "path": "session-recording/configuration/create-storage-bucket"
+          },
+          {
+            "title": "Enable session recording",
+            "path": "session-recording/configuration/enable-session-recording"
+          },
+          {
+            "title": "Find and view recorded sessions",
+            "path": "session-recording/configuration/manage-recorded-sessions"
+          }
+        ]
+      },
+      {
+        "title": "Implement session recording compliance standards",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "session-recording/compliance"
+          },
+          {
+            "title": "Configure storage policies",
+            "path": "session-recording/compliance/configure-storage-policy"
+          },
+          {
+            "title": "Update storage policies",
+            "path": "session-recording/compliance/update-storage-policy"
+          },
+          {
+            "title": "Validate recorded sessions",
+            "path": "session-recording/compliance/validate-session-recordings"
+          },
+          {
+            "title": "Validate external data store",
+            "path": "session-recording/compliance/validate-data-store"
+          }
+        ]
+      },
+      {
+        "title": "Work with BSR data files",
+        "routes": [
+          {
+            "title": "BSR file data structure",
+            "path": "session-recording/data/bsr-file-structure"
+          },
+          {
+            "title": "Read a BSR file",
+            "path": "session-recording/data/read-bsr-file"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Configure role-based access",
+    "routes": [
+      {
+        "title": "Limit access to resources using RBAC",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "rbac/permissions"
+          },
+          {
+            "title": "Assignable permissions",
+            "path": "rbac/permissions/assignable-permissions"
+          },
+          {
+            "title": "Permission grant formats",
+            "path": "rbac/permissions/permission-grant-formats"
+          },
+          {
+            "title": "Resource tables",
+            "path": "rbac/permissions/resource-table"
+          }
+        ]
+      },
+      {
+        "title": "Manage access to resources dynamically",
+        "routes": [
+          {
+            "title": "Manage principals",
+            "path": "rbac/users/manage-users-groups"
+          },
+          {
+            "title": "Filter managed groups",
+            "path": "rbac/users/managed-groups"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Integrations"
+  },
+  {
+    "title": "Vault",
+    "path": "vault"
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Enterprise solutions"
+  },
+  {
+    "title": "HCP Boundary",
     "routes": [
       {
         "title": "Overview",
-        "path": "common-workflows"
+        "path": "hcp"
       },
       {
-        "title": "Manage roles",
-        "path": "common-workflows/manage-roles"
+        "title": "Get started",
+        "routes": [
+          {
+            "title": "Deploy and log in",
+            "path": "hcp/get-started/deploy-and-login"
+          },
+          {
+            "title": "Connect to a target",
+            "path": "hcp/get-started/connect-to-target"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Boundary Enterprise",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "enterprise"
       },
       {
-        "title": "Manage scopes",
-        "path": "common-workflows/manage-scopes"
+        "title": "Licensing",
+        "path": "enterprise/licensing"
       },
       {
-        "title": "Manage sessions",
-        "path": "common-workflows/manage-sessions"
+        "title": "Automated license reporting",
+        "path": "enterprise/automated-license-reporting"
       },
       {
-        "title": "Manage targets",
-        "path": "common-workflows/manage-targets"
+        "title": "Supported versions policy",
+        "path": "enterprise/supported-versions"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Clients"
+  },
+  {
+    "title": "Client Agent",
+    "badge": {
+      "text": "HCP/ENT",
+      "type": "outlined",
+      "color": "neutral"
+    },
+    "path": "client-agent"
+  },
+  {
+    "title": "Client cache",
+    "path": "client-cache"
+  },
+  {
+    "title": "Desktop",
+    "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
+  },
+  {
+    "title": "Go SDK",
+    "path": "go-sdk"
+  },
+  {
+    "divider": true
+  },
+  {
+    "heading": "Reference documentation"
+  },
+  {
+    "title": "API",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "api"
       },
       {
-        "title": "Manage users and groups",
-        "path": "common-workflows/manage-users-groups"
+        "title": "Rate limiting",
+        "path": "api/rate-limiting"
+      },
+      {
+        "title": "List pagination",
+        "path": "api/pagination"
+      },
+      {
+        "title": "API documentation",
+        "href": "https://developer.hashicorp.com/boundary/api-docs"
       }
     ]
   },
@@ -1820,67 +1737,246 @@
     ]
   },
   {
-    "title": "API and clients",
+    "title": "Domain model",
     "routes": [
       {
         "title": "Overview",
-        "path": "api-clients"
+        "path": "domain-model"
       },
       {
-        "title": "API",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "api-clients/api"
-          },
-          {
-            "title": "Rate limiting",
-            "path": "api-clients/api/rate-limiting"
-          },
-          {
-            "title": "List pagination",
-            "path": "api-clients/api/pagination"
-          }
-        ]
+        "title": "Accounts",
+        "path": "domain-model/accounts"
       },
       {
-        "title": "Client Agent",
+        "title": "Aliases",
+        "path": "domain-model/aliases"
+      },
+      {
+        "title": "Auth methods",
+        "path": "domain-model/auth-methods"
+      },
+      {
+        "title": "Credentials",
+        "path": "domain-model/credentials"
+      },
+      {
+        "title": "Credential libraries",
+        "path": "domain-model/credential-libraries"
+      },
+      {
+        "title": "Credential stores",
+        "path": "domain-model/credential-stores"
+      },
+      {
+        "title": "Groups",
+        "path": "domain-model/groups"
+      },
+      {
+        "title": "Hosts",
+        "path": "domain-model/hosts"
+      },
+      {
+        "title": "Host catalogs",
+        "path": "domain-model/host-catalogs"
+      },
+      {
+        "title": "Host sets",
+        "path": "domain-model/host-sets"
+      },
+      {
+        "title": "Managed groups",
+        "path": "domain-model/managed-groups"
+      },
+      {
+        "title": "Scopes",
+        "path": "domain-model/scopes"
+      },
+      {
+        "title": "Sessions",
+        "path": "domain-model/sessions"
+      },
+      {
+        "title": "Session connections",
+        "path": "domain-model/session-connections"
+      },
+      {
+        "title": "Session recordings",
         "badge": {
           "text": "HCP/ENT",
           "type": "outlined",
           "color": "neutral"
         },
-        "path": "api-clients/client-agent"
+        "path": "domain-model/session-recordings"
       },
       {
-        "title": "Go SDK",
-        "path": "api-clients/go-sdk"
+        "title": "Storage buckets",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "domain-model/storage-buckets"
+      },
+      {
+        "title": "Storage policies",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "domain-model/storage-policy"
+      },
+      {
+        "title": "Targets",
+        "path": "domain-model/targets"
+      },
+      {
+        "title": "Roles",
+        "path": "domain-model/roles"
+      },
+      {
+        "title": "Users",
+        "path": "domain-model/users"
+      }
+    ]
+  },
+  {
+    "title": "Configuration parameters",
+    "routes": [
+      {
+        "title": "Top-level parameters",
+        "path": "configuration"
+      },
+      {
+        "title": "Controller",
+        "path": "configuration/controller"
+      },
+      {
+        "title": "KMS",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/kms"
+          },
+          {
+            "title": "AEAD",
+            "path": "configuration/kms/aead"
+          },
+          {
+            "title": "AWS KMS",
+            "path": "configuration/kms/awskms"
+          },
+          {
+            "title": "AliCloud KMS",
+            "path": "configuration/kms/alicloudkms"
+          },
+          {
+            "title": "Azure Key Vault",
+            "path": "configuration/kms/azurekeyvault"
+          },
+          {
+            "title": "GCP Cloud KMS",
+            "path": "configuration/kms/gcpckms"
+          },
+          {
+            "title": "OCI KMS",
+            "path": "configuration/kms/ocikms"
+          },
+          {
+            "title": "Vault transit",
+            "path": "configuration/kms/transit"
+          }
+        ]
+      },
+      {
+        "title": "Plugins",
+        "path": "configuration/plugins"
+      }
+    ]
+  },
+  {
+    "title": "Common error messages",
+    "path": "errors"
+  },
+  {
+    "divider": true
+  },
+  {
+    "title": "Aliases and transparent sessions",
+    "routes": [
+      {
+        "title": "Connect using transparent sessions",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "target-aliases/transparent-sessions"
+      },
+      {
+        "title": "Transparent sessions interoperability matrix",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "path": "target-aliases/interoperability-matrix"
+      }
+        ]
+  },
+  {
+    "title": "Troubleshoot",
+    "routes": [
+      {
+        "title": "Recorded sessions",
+        "path": "troubleshoot/troubleshoot-recorded-sessions",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Common workflows",
+    "hidden": true,
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "common-workflows"
+      },
+      {
+        "title": "Manage roles",
+        "path": "common-workflows/manage-roles"
+      },
+      {
+        "title": "Manage scopes",
+        "path": "common-workflows/manage-scopes"
+      },
+      {
+        "title": "Manage sessions",
+        "path": "common-workflows/manage-sessions"
+      },
+      {
+        "title": "Manage targets",
+        "path": "common-workflows/manage-targets"
+      }
+    ]
+  },
+  {
+    "title": "API and clients",
+    "hidden": true,
+    "routes": [
+      {
+        "title": "Overview",
+        "hidden": true,
+        "path": "api-clients"
       },
       {
         "title": "Desktop",
         "hidden": true,
         "path": "api-clients/desktop"
-      },
-      {
-        "title": "Desktop",
-        "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
-      },
-      {
-        "title": "Client cache",
-        "path": "api-clients/client-cache"
-      }
-    ]
-  },
-  {
-    "title": "Integrations",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "integrations"
-      },
-      {
-        "title": "Vault",
-        "path": "integrations/vault"
       }
     ]
   },
@@ -1911,56 +2007,6 @@
       {
         "title": "Overview",
         "path": "community"
-      }
-    ]
-  },
-  {
-    "title": "HCP Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "hcp"
-      },
-      {
-        "title": "Get started",
-        "routes": [
-          {
-            "title": "Deploy and login",
-            "path": "hcp/get-started/deploy-and-login"
-          },
-          {
-            "title": "Connect to target",
-            "path": "hcp/get-started/connect-to-target"
-          }
-        ]
-      },
-      {
-        "title": "Documentation",
-        "href": "https://cloud.hashicorp.com/docs/boundary/"
-      }
-    ]
-  },
-  {
-    "divider": true
-  },
-  {
-    "title": "Boundary Enterprise",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "enterprise"
-      },
-      {
-        "title": "Licensing",
-        "path": "enterprise/licensing"
-      },
-      {
-        "title": "Automated license reporting",
-        "path": "enterprise/automated-license-reporting"
-      },
-      {
-        "title": "Supported versions policy",
-        "path": "enterprise/supported-versions"
       }
     ]
   },

@@ -325,6 +325,241 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/configuration/target-aliases',
+    destination: '/boundary/docs/targets/configuration',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/target-aliases/index',
+    destination: '/boundary/docs/targets/configuration/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/target-aliases/connect-target-alias',
+    destination: '/boundary/docs/targets/configuration/connect-target-alias',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/target-aliases/create-target-alias',
+    destination: '/boundary/docs/targets/configuration/create-target-alias',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/connection-workflows',
+    destination: '/boundary/docs/targets/connections',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/connection-workflows/index',
+    destination: '/boundary/docs/targets/connections/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/connection-workflows/connect-helpers',
+    destination: '/boundary/docs/targets/connections/connect-helpers',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/connection-workflows/exec-flag',
+    destination: '/boundary/docs/targets/connections/exec-flag',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/connection-workflows/multi-hop',
+    destination: '/boundary/docs/targets/connections/multi-hop',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand',
+    destination: '/boundary/docs/targets/connections/workflow-ssh-proxycommand',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/credential-management',
+    destination: '/boundary/docs/credentials',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/credential-management/index',
+    destination: '/boundary/docs/credentials/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/credential-management/configure-credential-brokering',
+    destination: '/boundary/docs/credentials/configure-credential-brokering',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/credential-management/configure-credential-injection',
+    destination: '/boundary/docs/credentials/configure-credential-injection',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/credential-management/static-cred-boundary',
+    destination: '/boundary/docs/credentials/static-cred-boundary',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/credential-management/static-cred-vault',
+    destination: '/boundary/docs/credentials/static-cred-vault',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording',
+    destination: '/boundary/docs/session-recording/configuration',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/index',
+    destination: '/boundary/docs/session-recording/configuration/index',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/configure-worker-storage',
+    destination: '/boundary/docs/session-recording/configuration/configure-worker-storage',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/create-storage-bucket',
+    destination: '/boundary/docs/session-recording/configuration/create-storage-bucket',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/enable-session-recording',
+    destination: '/boundary/docs/session-recording/configuration/enable-session-recording',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/monitor/session-recordings/manage-recorded-sessions',
+    destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/storage-providers',
+    destination: '/boundary/docs/session-recording/configuration/storage-providers',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/storage-providers/configure-minio',
+    destination: '/boundary/docs/session-recording/configuration/storage-providers/configure-minio',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/storage-providers/configure-s3-compliant',
+    destination: '/boundary/docs/session-recording/configuration/storage-providers/configure-s3-compliant',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/storage-providers/configure-s3',
+    destination: '/boundary/docs/session-recording/configuration/storage-providers/configure-s3',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/configure-storage-policy',
+    destination: '/boundary/docs/session-recording/compliance/configure-storage-policy',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/session-recording/update-storage-policy',
+    destination: '/boundary/docs/session-recording/compliance/update-storage-policy',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/monitor/session-recordings',
+    destination: '/boundary/docs/session-recordings/compliance',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/monitor/session-recordings/index',
+    destination: '/boundary/docs/session-recordings/compliance/index',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/monitor/session-recordings/validate-data-store',
+    destination: '/boundary/docs/session-recording/compliance/validate-data-store',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/monitor/session-recordings/validate-session-recordings',
+    destination: '/boundary/docs/session-recording/compliance/validate-session-recordings',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/identity-access-management/index',
+    destination: '/boundary/docs/rbac/permissions/index',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/identity-access-management/assignable-permissions',
+    destination: '/boundary/docs/rbac/permissions/assignable-permissions',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/identity-access-management/permission-grant-formats',
+    destination: '/boundary/docs/rbac/permissions/permission-grant-formats',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/configuration/identity-access-management/resource-table',
+    destination: '/boundary/docs/rbac/permissions/resource-table',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/common-workflows/manage-users-groups',
+    destination: '/boundary/docs/rbac/users/manage-users-groups',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/concepts/filtering/managed-groups',
+    destination: '/boundary/docs/rbac/users/managed-groups',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/integrations/vault',
+    destination: '/boundary/docs/vault',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/integrations/vault/index',
+    destination: '/boundary/docs/vault/index',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/api-clients/go-sdk',
+    destination: '/boundary/docs/go-sdk/index',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/api-clients/client-agent',
+    destination: '/boundary/docs/client-agent/index',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/api-clients/client-cache',
+    destination: '/boundary/docs/api/client-cache',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/api-clients/api',
+    destination: '/boundary/docs/api',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/api-clients/api/index',
+    destination: '/boundary/docs/api/index',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/api-clients/api/pagination',
+    destination: '/boundary/docs/api/pagination',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/api-clients/api/rate-limiting',
+    destination: '/boundary/docs/api/rate-limiting',
+    permanent: true
+  },
+  {
     source: '/boundary/docs/api-clients/cli',
     destination: '/boundary/docs/commands/',
     permanent: true,
@@ -367,6 +602,126 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/security/permissions',
     destination: '/boundary/docs/configuration/identity-access-management',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model',
+    destination: '/boundary/docs/domain-model',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/index',
+    destination: '/boundary/docs/domain-model/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/accounts',
+    destination: '/boundary/docs/domain-model/accounts',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/aliases',
+    destination: '/boundary/docs/domain-model/aliases',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/auth-methods',
+    destination: '/boundary/docs/domain-model/auth-methods',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/credential-libraries',
+    destination: '/boundary/docs/domain-model/credential-libraries',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/credential-stores',
+    destination: '/boundary/docs/domain-model/credential-stores',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/credentials',
+    destination: '/boundary/docs/domain-model/credentials',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/groups',
+    destination: '/boundary/docs/domain-model/groups',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/host-catalogs',
+    destination: '/boundary/docs/domain-model/host-catalogs',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/host-sets',
+    destination: '/boundary/docs/domain-model/host-sets',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/hosts',
+    destination: '/boundary/docs/domain-model/hosts',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/managed-groups',
+    destination: '/boundary/docs/domain-model/managed-groups',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/roles',
+    destination: '/boundary/docs/domain-model/roles',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/scopes',
+    destination: '/boundary/docs/domain-model/scopes',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/session-connections',
+    destination: '/boundary/docs/domain-model/session-connections',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/session-recordings',
+    destination: '/boundary/docs/domain-model/session-recordings',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/sessions',
+    destination: '/boundary/docs/domain-model/sessions',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/storage-buckets',
+    destination: '/boundary/docs/domain-model/storage-buckets',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/storage-policy',
+    destination: '/boundary/docs/domain-model/storage-policy',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/targets',
+    destination: '/boundary/docs/domain-model/targets',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/domain-model/users',
+    destination: '/boundary/docs/domain-model/users',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/troubleshoot/faq',
+    destination: '/boundary/docs/overview/faq',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/troubleshoot/common-errors',
+    destination: '/boundary/docs/errors/index',
     permanent: true,
   },
 ]
