@@ -93,6 +93,53 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var adminRole Resource
 	var adminRoleRaw any
 	switch {
+	case opts.withCreateAdminRole:
+		adminRolePublicId, err = newRoleId(ctx)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new admin role"))
+		}
+		switch s.Type {
+		case scope.Global.String():
+			adminRole = &globalRole{
+				GlobalRole: &store.GlobalRole{
+					PublicId:           adminRolePublicId,
+					ScopeId:            scopePublicId,
+					Name:               "Administration",
+					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
+					GrantThisRoleScope: true,
+					GrantScope:         globals.GrantScopeIndividual,
+				},
+			}
+		case scope.Org.String():
+			adminRole = &orgRole{
+				OrgRole: &store.OrgRole{
+					PublicId:           adminRolePublicId,
+					ScopeId:            scopePublicId,
+					Name:               "Administration",
+					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
+					GrantThisRoleScope: true,
+					GrantScope:         globals.GrantScopeIndividual,
+				},
+			}
+		case scope.Project.String():
+			adminRole = &projectRole{
+				ProjectRole: &store.ProjectRole{
+					PublicId:    adminRolePublicId,
+					ScopeId:     scopePublicId,
+					Name:        "Administration",
+					Description: fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
+				},
+			}
+		}
+
+		adminRoleRaw = adminRole
+		adminRoleMetadata = oplog.Metadata{
+			"resource-public-id": []string{adminRolePublicId},
+			"scope-id":           []string{scopePublicId},
+			"scope-type":         []string{s.Type},
+			"resource-type":      []string{resource.Role.String()},
+			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+		}
 	case userId == "",
 		userId == globals.AnonymousUserId,
 		userId == globals.AnyAuthenticatedUserId,
@@ -161,7 +208,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var defaultRoleMetadata oplog.Metadata
 	var defaultRole Resource
 	var defaultRoleRaw any
-	if !opts.withSkipDefaultRoleCreation {
+	if opts.withCreateDefaultRole || !opts.withSkipDefaultRoleCreation {
 		defaultRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new default role"))
