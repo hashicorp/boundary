@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -331,11 +332,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	shouldSkip, reason, err := c.initFlags.SkipInitialLoginRoleCreation()
+	shouldSkipDefault, reason, err := c.initFlags.SkipInitialLoginRoleCreation()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("error determining whether to skip initial login role creation, continuing with creating initial login role: %w", err).Error())
 	}
-	if shouldSkip {
+	if shouldSkipDefault {
 		c.UI.Info(fmt.Sprintf("Skipping creation of initial login role: %s", reason))
 	} else {
 		loginRole, err := c.CreateInitialLoginRole(c.Context)
@@ -355,11 +356,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	shouldSkip, reason, err = c.initFlags.SkipInitialAuthenticatedUserRoleCreation()
+	shouldSkipAdmin, reason, err := c.initFlags.SkipInitialAuthenticatedUserRoleCreation()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("error determining whether to skip initial global-scoped authenticated user role creation, continuing with creating initial global-scoped authenticated user role: %w", err).Error())
 	}
-	if shouldSkip {
+	if shouldSkipAdmin {
 		c.UI.Info(fmt.Sprintf("Skipping creation of initial global-scoped authenticated user role: %s", reason))
 	} else {
 		role, err := c.CreateInitialAuthenticatedUserRole(c.Context)
@@ -410,7 +411,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	if shouldSkip, reason := c.initFlags.SkipScopesCreation(); shouldSkip {
 		c.UI.Info(fmt.Sprintf("Skipping creation of initial scopes: %s", reason))
 	} else {
-		orgScope, projScope, err := c.CreateInitialScopes(c.Context)
+		orgScope, projScope, err := c.CreateInitialScopes(c.Context, base.WithIamOptions(iam.WithCreateAdminRole(!shouldSkipAdmin), iam.WithCreateDefaultRole(!shouldSkipDefault)))
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
 			return base.CommandCliError

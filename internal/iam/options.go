@@ -49,12 +49,16 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		withPublicId:        "",
-		withName:            "",
-		withDescription:     "",
-		withLimit:           0,
-		withSkipVetForWrite: false,
-		withRecursive:       false,
+		withPublicId:                "",
+		withName:                    "",
+		withDescription:             "",
+		withLimit:                   0,
+		withSkipVetForWrite:         false,
+		withRecursive:               false,
+		withCreateAdminRole:         false,
+		withCreateDefaultRole:       false,
+		withSkipAdminRoleCreation:   false,
+		withSkipDefaultRoleCreation: false,
 	}
 }
 

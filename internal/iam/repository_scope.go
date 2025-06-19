@@ -88,12 +88,34 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		scopeMetadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 	}
 
+	createAdminRole := true
+	if opts.withCreateAdminRole && opts.withSkipAdminRoleCreation {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "cannot set both withCreateAdminRole and withSkipAdminRoleCreation")
+	}
+	if opts.withSkipAdminRoleCreation && !opts.withCreateAdminRole {
+		createAdminRole = false
+	}
+
 	var adminRolePublicId string
 	var adminRoleMetadata oplog.Metadata
 	var adminRole Resource
 	var adminRoleRaw any
 	switch {
-	case opts.withCreateAdminRole:
+	case userId == "",
+		userId == globals.AnonymousUserId,
+		userId == globals.AnyAuthenticatedUserId,
+		userId == globals.RecoveryUserId,
+		// TODO: This option will be deprecated in 0.22 and will become the default case
+		!createAdminRole:
+		// TODO: Cause a log entry. The repo doesn't have a logger right now,
+		// and ideally we will be using context to pass around log info scoped
+		// to this request for grouped display in the server log. The only
+		// reason this should ever happen anyways is via the administrative
+		// recovery workflow so it's already a special case.
+
+		// Also, stop linter from complaining
+		_ = adminRole
+	case createAdminRole:
 		adminRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new admin role"))
@@ -140,75 +162,22 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			"resource-type":      []string{resource.Role.String()},
 			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 		}
-	case userId == "",
-		userId == globals.AnonymousUserId,
-		userId == globals.AnyAuthenticatedUserId,
-		userId == globals.RecoveryUserId,
-		opts.withSkipAdminRoleCreation:
-		// TODO: Cause a log entry. The repo doesn't have a logger right now,
-		// and ideally we will be using context to pass around log info scoped
-		// to this request for grouped display in the server log. The only
-		// reason this should ever happen anyways is via the administrative
-		// recovery workflow so it's already a special case.
-
-		// Also, stop linter from complaining
-		_ = adminRole
-
 	default:
-		adminRolePublicId, err = newRoleId(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new admin role"))
-		}
-		switch s.Type {
-		case scope.Global.String():
-			adminRole = &globalRole{
-				GlobalRole: &store.GlobalRole{
-					PublicId:           adminRolePublicId,
-					ScopeId:            scopePublicId,
-					Name:               "Administration",
-					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
-					GrantThisRoleScope: true,
-					GrantScope:         globals.GrantScopeIndividual,
-				},
-			}
-		case scope.Org.String():
-			adminRole = &orgRole{
-				OrgRole: &store.OrgRole{
-					PublicId:           adminRolePublicId,
-					ScopeId:            scopePublicId,
-					Name:               "Administration",
-					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
-					GrantThisRoleScope: true,
-					GrantScope:         globals.GrantScopeIndividual,
-				},
-			}
-		case scope.Project.String():
-			adminRole = &projectRole{
-				ProjectRole: &store.ProjectRole{
-					PublicId:           adminRolePublicId,
-					ScopeId:            scopePublicId,
-					GrantThisRoleScope: true,
-					Name:               "Administration",
-					Description:        fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", scopePublicId, userId),
-				},
-			}
-		}
-
-		adminRoleRaw = adminRole
-		adminRoleMetadata = oplog.Metadata{
-			"resource-public-id": []string{adminRolePublicId},
-			"scope-id":           []string{scopePublicId},
-			"scope-type":         []string{s.Type},
-			"resource-type":      []string{resource.Role.String()},
-			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-		}
+		_ = adminRole
 	}
 
+	createDefaultRole := true
+	if opts.withCreateDefaultRole && opts.withSkipDefaultRoleCreation {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "cannot set both withCreateDefaultRole and withSkipDefaultRoleCreation")
+	}
+	if opts.withSkipDefaultRoleCreation && !opts.withCreateDefaultRole {
+		createDefaultRole = false
+	}
 	var defaultRolePublicId string
 	var defaultRoleMetadata oplog.Metadata
 	var defaultRole Resource
 	var defaultRoleRaw any
-	if opts.withCreateDefaultRole || !opts.withSkipDefaultRoleCreation {
+	if createDefaultRole {
 		defaultRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new default role"))
