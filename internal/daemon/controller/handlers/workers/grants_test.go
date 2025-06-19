@@ -395,6 +395,7 @@ func TestGrants_GetWorker(t *testing.T) {
 			require.NoError(t, finalErr)
 			// validate that we're getting the right ID back
 			require.Equal(t, tc.input.Id, got.GetItem().GetId())
+			handlers.TestAssertOutputFields(t, got.GetItem(), tc.wantOutputFields)
 		})
 	}
 }
