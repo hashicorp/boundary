@@ -133,38 +133,6 @@ func (f *initFlags) SkipInitialAuthenticatedUserRoleCreation() (bool, string, er
 	return false, "", nil
 }
 
-// CreateInitialLoginRole checks if the initial anonymous login role should be created.
-// It returns a boolean indicating whether to create and a reason string if creation is applicable.
-//
-// The initial login role is created if:
-// - The flag for the creation of the initial anonymous user role (`-create-initial-login-role`) is provided.
-//
-// Returns:
-// - bool: True if the role should be created, false otherwise.
-// - string: A reason string explaining why the role is created, or an empty string if not created.
-func (f *initFlags) CreateInitialLoginRole() (bool, string) {
-	if f.flagCreateInitialLoginRole {
-		return true, reasonFlagWasSet(flagCreateInitialLoginRoleName)
-	}
-	return false, ""
-}
-
-// CreateInitialAuthenticatedUserRole checks if the initial authenticated user role should be created.
-// It returns a boolean indicating whether to create and a reason string if creation is applicable.
-//
-// The initial authenticated user role is created if:
-// - The flag for the creation of the initial authenticated user role (`-create-initial-authenticated-user-role`) is provided.
-//
-// Returns:
-// - bool: True if the initial authenticated user role should be created, false otherwise.
-// - string: A reason string explaining why the role is created, or an empty string if not created.
-func (f *initFlags) CreateInitialAuthenticatedUserRole() (bool, string) {
-	if f.flagCreateInitialAuthenticatedUserRole {
-		return true, reasonFlagWasSet(flagCreateInitialAuthenticatedUserRoleName)
-	}
-	return false, ""
-}
-
 // SkipAuthMethodCreation checks if the creation of authentication methods should be skipped.
 // It returns a boolean indicating whether to skip and a reason string explaining why the creation is skipped.
 //
