@@ -673,6 +673,30 @@ func TestGrants_ListKeyVersionDestructionJobs(t *testing.T) {
 				proj2.PublicId:        handlers.ForbiddenError(),
 			},
 		},
+		{
+			name: "global role grant to proj1 and proj2 role grant this can list key version destruction in granted projects",
+			userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix,
+				password.TestAuthMethodWithAccount,
+				[]iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=scope;actions=list-key-version-destruction-jobs"},
+						GrantScopes: []string{proj1.PublicId},
+					},
+					{
+						RoleScopeId: proj2.PublicId,
+						Grants:      []string{"ids=*;type=scope;actions=list-key-version-destruction-jobs"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+			canListInScopes: map[string]error{
+				scope.Global.String(): handlers.ForbiddenError(),
+				org1.PublicId:         handlers.ForbiddenError(),
+				org2.PublicId:         handlers.ForbiddenError(),
+				proj1.PublicId:        nil,
+				proj2.PublicId:        nil,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
