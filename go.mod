@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary
 
-go 1.24.0
+go 1.24.4
 
 replace github.com/hashicorp/boundary/api => ./api
 
@@ -56,7 +56,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/hcl v1.0.1-vault-7
 	github.com/hashicorp/mql v0.1.5
-	github.com/hashicorp/nodeenrollment v0.2.13
+	github.com/hashicorp/nodeenrollment v0.2.14
 	github.com/hashicorp/vault/api v1.20.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgconn v1.14.3
@@ -197,7 +197,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/sethvargo/go-diceware v0.3.0 // indirect
+	github.com/sethvargo/go-diceware v0.5.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
