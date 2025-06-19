@@ -367,7 +367,6 @@ func TestGrants_ReadActions(t *testing.T) {
 			})
 		}
 	})
-
 }
 
 func TestGrants_CreateRole(t *testing.T) {
@@ -529,7 +528,6 @@ func TestGrants_CreateRole(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGrants_SetRoleGrants(t *testing.T) {
@@ -724,5 +722,4 @@ func TestGrants_SetRoleGrants(t *testing.T) {
 			}
 		})
 	}
-
 }
