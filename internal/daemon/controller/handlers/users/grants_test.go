@@ -537,6 +537,45 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 			},
 		},
 		{
+			name: "list other user with list-resolvable-aliases permissions and some targets permissions returns allowed with children grants granting different resources",
+			setupInput: func(t *testing.T) (*iam.User, auth.Account, *pbs.ListResolvableAliasesRequest) {
+				testUser, _ := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj1.PublicId,
+						Grants:      []string{"ids=*;type=target;actions=authorize-session"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+					{
+						RoleScopeId: proj2.PublicId,
+						Grants:      []string{"ids=*;type=target;actions=authorize-session"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+					{
+						RoleScopeId: org1.PublicId,
+						Grants:      []string{"ids=*;type=role;actions=*"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				})()
+
+				listingUser, listingAccount := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants: []string{
+							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value", testUser.PublicId),
+						},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				})()
+				return listingUser, listingAccount, &pbs.ListResolvableAliasesRequest{
+					Id: testUser.PublicId,
+				}
+			},
+			expectIdOutputFieldsMap: map[string][]string{
+				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+			},
+		},
+		{
 			name: "list other user with specific list-resolvable-aliases permissions and specific targets permissions returns allowed targets",
 			setupInput: func(t *testing.T) (*iam.User, auth.Account, *pbs.ListResolvableAliasesRequest) {
 				testUser, _ := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
