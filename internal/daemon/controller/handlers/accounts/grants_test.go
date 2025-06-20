@@ -42,18 +42,18 @@ func TestListPassword_Grants(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
-
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
-
+	atRepo, err := authtoken.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	orgAM := password.TestAuthMethod(t, conn, org.GetPublicId())
 	orgPWAccounts := password.TestMultipleAccounts(t, conn, orgAM.GetPublicId(), 3)
 
 	testcases := []struct {
 		name           string
-		roleRequest    []authtoken.TestRoleGrantsForToken
+		userAcountFunc func(t *testing.T) func() (*iam.User, authdomain.Account)
 		input          *pbs.ListAccountsRequest
 		wantAccountIDs []string
 		wantErr        error
@@ -64,12 +64,14 @@ func TestListPassword_Grants(t *testing.T) {
 				AuthMethodId: orgAM.PublicId,
 				PageSize:     100,
 			},
-			roleRequest: []authtoken.TestRoleGrantsForToken{
-				{
-					RoleScopeId:  globals.GlobalPrefix,
-					GrantStrings: []string{"ids=*;type=*;actions=list,read"},
-					GrantScopes:  []string{globals.GrantScopeChildren},
-				},
+			userAcountFunc: func(t *testing.T) func() (*iam.User, authdomain.Account) {
+				return iam.TestUserDirectGrantsFunc(t, conn, kms, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=*;actions=list,read"},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				})
 			},
 			wantAccountIDs: []string{orgPWAccounts[0].PublicId, orgPWAccounts[1].PublicId, orgPWAccounts[2].PublicId},
 			wantErr:        nil,
@@ -80,7 +82,9 @@ func TestListPassword_Grants(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(t, err, "Couldn't create new user service.")
-			tok := authtoken.TestAuthTokenWithRoles(t, conn, kms, globals.GlobalPrefix, tc.roleRequest)
+			user, account := tc.userAcountFunc(t)()
+			tok, err := atRepo.CreateAuthToken(ctx, user, account.GetPublicId())
+			require.NoError(t, err)
 			fullGrantAuthCtx := auth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			got, gErr := s.ListAccounts(fullGrantAuthCtx, tc.input)
 			if tc.wantErr != nil {
