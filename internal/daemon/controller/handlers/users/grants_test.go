@@ -367,7 +367,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value",
+							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,version,description,value",
 							"ids=*;type=target;actions=*",
 						},
 						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
@@ -378,9 +378,9 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 				}
 			},
 			expectIdOutputFieldsMap: map[string][]string{
-				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
-				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
-				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
+				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
+				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
 			},
 		},
 		{
@@ -390,7 +390,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value",
+							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,value",
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -407,7 +407,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 				}
 			},
 			expectIdOutputFieldsMap: map[string][]string{
-				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
 			},
 		},
 		{
@@ -419,7 +419,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value",
+							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,value",
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -447,7 +447,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value",
+							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,value",
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -475,7 +475,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value",
+							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,value",
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -485,9 +485,9 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 				}
 			},
 			expectIdOutputFieldsMap: map[string][]string{
-				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
-				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
-				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
+				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
+				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
 			},
 		},
 		{
@@ -521,7 +521,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value", testUser.PublicId),
+							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,value", testUser.PublicId),
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -531,9 +531,9 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 				}
 			},
 			expectIdOutputFieldsMap: map[string][]string{
-				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
-				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
-				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
+				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
+				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
 			},
 		},
 		{
@@ -561,7 +561,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value", testUser.PublicId),
+							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,value", testUser.PublicId),
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -571,8 +571,8 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 				}
 			},
 			expectIdOutputFieldsMap: map[string][]string{
-				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
-				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
+				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
 			},
 		},
 		{
@@ -599,7 +599,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value", testUser.PublicId),
+							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,value", testUser.PublicId),
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -609,8 +609,8 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 				}
 			},
 			expectIdOutputFieldsMap: map[string][]string{
-				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
-				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
+				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.ValueField},
 			},
 		},
 		{
@@ -620,7 +620,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							"ids=*;type=user;actions=list;output_fields=id,created_time,name,value",
+							"ids=*;type=user;actions=list;output_fields=id,created_time,value",
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
