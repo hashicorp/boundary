@@ -915,7 +915,12 @@ func toResolvableAliasProto(a *talias.Alias, opt ...handlers.Option) (*aliaspb.A
 	if outputFields.Has(globals.TypeField) {
 		pbItem.Type = "target"
 	}
-
+	if outputFields.Has(globals.NameField) {
+		pbItem.Name = wrapperspb.String(a.GetName())
+	}
+	if outputFields.Has(globals.DescriptionField) {
+		pbItem.Description = wrapperspb.String(a.GetDescription())
+	}
 	return pbItem, nil
 }
 
