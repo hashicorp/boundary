@@ -36,15 +36,9 @@ $ boundary scopes create [options] [args]
 - `-scope-id=<string>` - The scope in which you want to create the scope.
 The default is `global`.
 You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
-- `-skip-admin-role-creation` <sup>DEPRECATED</sup> - If set, Boundary does not create a role that grants the current user administrative access to the newly created scope.
+- `-skip-admin-role-creation` - If set, Boundary does not create a role that grants the current user administrative access to the newly created scope.
 The default value is `false`.
-
-   This option is being deprecated in Boundary version 0.19.3.
-   It will be removed from the product in two releases and will be replaced with a new option to create default roles.
 - `-skip-default-role-creation` <sup>DEPRECATED</sup> - If set, Boundary does not create a role that grants the anonymous user access to log in to auth methods and other actions within the newly created scope.
 The default value is `false`.
-
-   This option is being deprecated in Boundary version 0.19.3.
-   It will be removed from the product in two releases and will be replaced with a new option to create default roles.
 
 @include 'cmd-option-note.mdx'
