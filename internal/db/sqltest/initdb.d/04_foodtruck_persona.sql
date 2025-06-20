@@ -106,15 +106,10 @@ begin;
     ('kdkv___foodtruck', 'apa______bob', 'tok______bob', 'tok______bob'::bytea);
 
   -- Roles
-  insert into iam_role
-    (scope_id, public_id, name)
+  insert into iam_role_project
+    (scope_id, public_id, name, grant_this_role_scope)
   values
-    ('p______tacos', 'r_pp___tacos', 'Tacos');
-
-  insert into iam_role_grant_scope
-    (role_id,        scope_id_or_special )
-  values
-    ('r_pp___tacos', 'p______tacos');
+    ('p______tacos', 'r_pp___tacos', 'Tacos', true);
 
   insert into iam_role_grant
     (role_id,        canonical_grant,                              raw_grant)

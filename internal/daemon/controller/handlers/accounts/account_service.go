@@ -150,7 +150,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -368,7 +368,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -410,7 +410,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 
-	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -449,7 +449,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		return nil, err
 	}
 
-	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -485,7 +485,7 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 	if err := validateDeleteRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -504,7 +504,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -543,7 +543,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -1030,7 +1030,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 	return out, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, requestauth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type, isRecursive bool) (auth.AuthMethod, requestauth.VerifyResults) {
 	res := requestauth.VerifyResults{}
 	pwRepo, err := s.pwRepoFn()
 	if err != nil {
@@ -1049,7 +1049,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []requestauth.Option{requestauth.WithType(resource.Account), requestauth.WithAction(a)}
+	opts := []requestauth.Option{requestauth.WithAction(a), requestauth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1129,7 +1129,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		authMeth = am
 	}
 	opts = append(opts, requestauth.WithScopeId(authMeth.GetScopeId()), requestauth.WithPin(parentId))
-	return authMeth, requestauth.Verify(ctx, opts...)
+	return authMeth, requestauth.Verify(ctx, resource.Account, opts...)
 }
 
 func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
