@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -123,13 +124,25 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   flagSkipInitialLoginRoleName,
 		Target: &c.initFlags.flagSkipInitialLoginRoleCreation,
-		Usage:  "If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+		Usage:  "Deprecated: If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   flagSkipInitialAuthenticatedUserRoleName,
 		Target: &c.initFlags.flagSkipInitialAuthenticatedUserRoleCreation,
-		Usage:  "If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
+		Usage:  "Deprecated: If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   flagCreateInitialLoginRoleName,
+		Target: &c.initFlags.flagCreateInitialLoginRole,
+		Usage:  "If set, a role providing necessary grants for logging in will be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   flagCreateInitialAuthenticatedUserRoleName,
+		Target: &c.initFlags.flagCreateInitialAuthenticatedUserRole,
+		Usage:  "If set, a role providing initial grants for any authenticated user will be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -319,7 +332,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	if shouldSkip, reason := c.initFlags.SkipInitialLoginRoleCreation(); shouldSkip {
+	shouldSkipDefault, reason, err := c.initFlags.SkipInitialLoginRoleCreation()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("error determining whether to skip initial login role creation, continuing with creating initial login role: %w", err).Error())
+	}
+	if shouldSkipDefault {
 		c.UI.Info(fmt.Sprintf("Skipping creation of initial login role: %s", reason))
 	} else {
 		loginRole, err := c.CreateInitialLoginRole(c.Context)
@@ -339,7 +356,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 	}
 
-	if shouldSkip, reason := c.initFlags.SkipInitialAuthenticatedUserRoleCreation(); shouldSkip {
+	shouldSkipAdmin, reason, err := c.initFlags.SkipInitialAuthenticatedUserRoleCreation()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("error determining whether to skip initial global-scoped authenticated user role creation, continuing with creating initial global-scoped authenticated user role: %w", err).Error())
+	}
+	if shouldSkipAdmin {
 		c.UI.Info(fmt.Sprintf("Skipping creation of initial global-scoped authenticated user role: %s", reason))
 	} else {
 		role, err := c.CreateInitialAuthenticatedUserRole(c.Context)
@@ -390,7 +411,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	if shouldSkip, reason := c.initFlags.SkipScopesCreation(); shouldSkip {
 		c.UI.Info(fmt.Sprintf("Skipping creation of initial scopes: %s", reason))
 	} else {
-		orgScope, projScope, err := c.CreateInitialScopes(c.Context)
+		orgScope, projScope, err := c.CreateInitialScopes(c.Context, base.WithIamOptions(iam.WithCreateAdminRole(!shouldSkipAdmin), iam.WithCreateDefaultRole(!shouldSkipDefault)))
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
 			return base.CommandCliError

@@ -3,20 +3,26 @@
 
 package database
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/hashicorp/boundary/version"
+)
 
 const (
-	flagConfigName                           = "config"
-	flagConfigKmsName                        = "config-kms"
-	flagLogLevelName                         = "log-level"
-	flagLogFormatName                        = "log-format"
-	flagSkipInitialLoginRoleName             = "skip-initial-login-role-creation"
-	flagSkipInitialAuthenticatedUserRoleName = "skip-initial-authenticated-user-role-creation"
-	flagSkipAuthMethodName                   = "skip-auth-method-creation"
-	flagSkipScopesName                       = "skip-scopes-creation"
-	flagSkipHostResourcesName                = "skip-host-resources-creation"
-	flagSkipTargetName                       = "skip-target-creation"
-	flagMigrationUrlName                     = "migration-url"
+	flagConfigName                             = "config"
+	flagConfigKmsName                          = "config-kms"
+	flagLogLevelName                           = "log-level"
+	flagLogFormatName                          = "log-format"
+	flagSkipInitialLoginRoleName               = "skip-initial-login-role-creation"
+	flagSkipInitialAuthenticatedUserRoleName   = "skip-initial-authenticated-user-role-creation"
+	flagCreateInitialLoginRoleName             = "create-initial-login-role"
+	flagCreateInitialAuthenticatedUserRoleName = "create-initial-authenticated-user-role"
+	flagSkipAuthMethodName                     = "skip-auth-method-creation"
+	flagSkipScopesName                         = "skip-scopes-creation"
+	flagSkipHostResourcesName                  = "skip-host-resources-creation"
+	flagSkipTargetName                         = "skip-target-creation"
+	flagMigrationUrlName                       = "migration-url"
 )
 
 // initFlags contains the flags for the database init command, including optional
@@ -29,6 +35,8 @@ type initFlags struct {
 	flagMigrationUrl                             string
 	flagSkipInitialLoginRoleCreation             bool
 	flagSkipInitialAuthenticatedUserRoleCreation bool
+	flagCreateInitialLoginRole                   bool
+	flagCreateInitialAuthenticatedUserRole       bool
 	flagSkipAuthMethodCreation                   bool
 	flagSkipScopesCreation                       bool
 	flagSkipHostResourcesCreation                bool
@@ -39,32 +47,90 @@ type initFlags struct {
 // It returns a boolean indicating whether to skip and a reason string if skipping is applicable.
 //
 // The creation of the initial login role is skipped if:
+// - The flag for creating the initial anonymous user role (`-create-initial-login-role`) is not provided.
 // - The flag for skipping the creation of the initial anonymous user role (`-skip-initial-login-role-creation`) is provided.
 //
 // Returns:
 // - bool: True if the creation should be skipped, false otherwise.
 // - string: A reason string explaining why the creation is skipped, or an empty string if not skipped.
-func (f *initFlags) SkipInitialLoginRoleCreation() (bool, string) {
-	if f.flagSkipInitialLoginRoleCreation {
-		return true, reasonFlagWasSet(flagSkipInitialLoginRoleName)
+func (f *initFlags) SkipInitialLoginRoleCreation() (bool, string, error) {
+	// If the version supports both creating default and admin roles and skipping their creation,
+	// we check both flags for creating and skipping the initial login role.
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) &&
+		version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		// If both flags are set, we return an error indicating that only one can be set at a time.
+		if f.flagCreateInitialLoginRole && f.flagSkipInitialLoginRoleCreation {
+			return false, "", fmt.Errorf("both `-%s` and `-%s` flags were set, only one can be set at a time", flagCreateInitialLoginRoleName, flagSkipInitialLoginRoleName)
+		}
+		if f.flagCreateInitialLoginRole && !f.flagSkipInitialLoginRoleCreation {
+			return false, "", nil
+		}
+		if f.flagSkipInitialLoginRoleCreation && !f.flagCreateInitialLoginRole {
+			return true, reasonFlagWasSet(flagSkipInitialLoginRoleName), nil
+		}
+		if !f.flagCreateInitialLoginRole && !f.flagSkipInitialLoginRoleCreation {
+			return false, "", fmt.Errorf("flag `-%s` is being deprecated, please use `-%s` instead", flagSkipInitialLoginRoleName, flagCreateInitialLoginRoleName)
+		}
 	}
-	return false, ""
+
+	// If the version supports creating default and admin roles, we check the flag for creating the initial login role.
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
+		if !f.flagCreateInitialLoginRole {
+			return true, fmt.Sprintf("flag `-%s` was not set", flagCreateInitialLoginRoleName), nil
+		}
+	}
+
+	// TODO: Deprecated in 0.22
+	// If the version supports skipping default and admin role creation, we check the skip flag.
+	if version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		if f.flagSkipInitialLoginRoleCreation {
+			return true, reasonFlagWasSet(flagSkipInitialLoginRoleName), nil
+		}
+	}
+	return false, "", nil
 }
 
 // SkipInitialAuthenticatedUserRoleCreation checks if the creation of the initial authenticated user role should be skipped.
 // It returns a boolean indicating whether to skip and a reason string explaining why the creation is skipped.
 //
 // The creation of the initial authenticated user role is skipped if:
+// - The flag for creating the initial authenticated user role (`-create-initial-authenticated-user-role`) is not provided.
 // - The flag for skipping the creation of the initial authenticated user role (`-skip-initial-authenticated-user-role-creation`) is provided.
 //
 // Returns:
 // - bool: True if the creation of the initial authenticated user role should be skipped, false otherwise.
 // - string: A reason string explaining why the creation is skipped, or an empty string if not skipped.
-func (f *initFlags) SkipInitialAuthenticatedUserRoleCreation() (bool, string) {
-	if f.flagSkipInitialAuthenticatedUserRoleCreation {
-		return true, reasonFlagWasSet(flagSkipInitialAuthenticatedUserRoleName)
+func (f *initFlags) SkipInitialAuthenticatedUserRoleCreation() (bool, string, error) {
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) &&
+		version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		// If both flags are set, we return an error indicating that only one can be set at a time.
+		if f.flagCreateInitialAuthenticatedUserRole && f.flagSkipInitialAuthenticatedUserRoleCreation {
+			return false, "", fmt.Errorf("both `-%s` and `-%s` flags were set, only one can be set at a time", flagCreateInitialAuthenticatedUserRoleName, flagSkipInitialAuthenticatedUserRoleName)
+		}
+		if f.flagCreateInitialAuthenticatedUserRole && !f.flagSkipInitialAuthenticatedUserRoleCreation {
+			return false, "", nil
+		}
+		if f.flagSkipInitialAuthenticatedUserRoleCreation && !f.flagCreateInitialAuthenticatedUserRole {
+			return true, reasonFlagWasSet(flagSkipInitialAuthenticatedUserRoleName), nil
+		}
+		if !f.flagCreateInitialAuthenticatedUserRole && !f.flagSkipInitialAuthenticatedUserRoleCreation {
+			return false, "", fmt.Errorf("flag `-%s` is being deprecated, please use `-%s` instead", flagSkipInitialAuthenticatedUserRoleName, flagCreateInitialLoginRoleName)
+		}
 	}
-	return false, ""
+
+	if version.SupportsFeature(version.Binary, version.CreateDefaultAndAdminRoles) {
+		if !f.flagCreateInitialAuthenticatedUserRole {
+			return true, fmt.Sprintf("flag `-%s` was not set", flagCreateInitialAuthenticatedUserRoleName), nil
+		}
+	}
+
+	// TODO: Deprecated in 0.22
+	if version.SupportsFeature(version.Binary, version.SkipDefaultAndAdminRoleCreation) {
+		if f.flagSkipInitialAuthenticatedUserRoleCreation {
+			return true, reasonFlagWasSet(flagSkipInitialAuthenticatedUserRoleName), nil
+		}
+	}
+	return false, "", nil
 }
 
 // SkipAuthMethodCreation checks if the creation of authentication methods should be skipped.

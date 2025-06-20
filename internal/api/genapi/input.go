@@ -228,6 +228,18 @@ var inputStructs = []*structInfo{
 				FieldType: "bool",
 				Query:     true,
 			},
+			{
+				Name:      "CreateAdminRole",
+				ProtoName: "create_admin_role",
+				FieldType: "bool",
+				Query:     true,
+			},
+			{
+				Name:      "CreateDefaultRole",
+				ProtoName: "create_default_role",
+				FieldType: "bool",
+				Query:     true,
+			},
 		},
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},

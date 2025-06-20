@@ -160,6 +160,8 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return nil
 	}
 
+	// TODO: WithSkipAdminRoleCreation and WithSkipDefaultRoleCreation are
+	// being deprecated in 0.22, so they will need to be removed.
 	if _, _, err := b.CreateInitialScopes(ctx, WithIamOptions(
 		iam.WithSkipAdminRoleCreation(true),
 		iam.WithSkipDefaultRoleCreation(true),

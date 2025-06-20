@@ -34,8 +34,10 @@ type options struct {
 	withGrantScopeIds           []string
 	withSkipVetForWrite         bool
 	withDisassociate            bool
-	withSkipAdminRoleCreation   bool
-	withSkipDefaultRoleCreation bool
+	withSkipAdminRoleCreation   bool // Deprecated in 0.22
+	withSkipDefaultRoleCreation bool // Deprecated in 0.22
+	withCreateDefaultRole       bool
+	withCreateAdminRole         bool
 	withUserId                  string
 	withRandomReader            io.Reader
 	withAccountIds              []string
@@ -47,12 +49,16 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		withPublicId:        "",
-		withName:            "",
-		withDescription:     "",
-		withLimit:           0,
-		withSkipVetForWrite: false,
-		withRecursive:       false,
+		withPublicId:                "",
+		withName:                    "",
+		withDescription:             "",
+		withLimit:                   0,
+		withSkipVetForWrite:         false,
+		withRecursive:               false,
+		withCreateAdminRole:         false,
+		withCreateDefaultRole:       false,
+		withSkipAdminRoleCreation:   false,
+		withSkipDefaultRoleCreation: false,
 	}
 }
 
@@ -119,6 +125,7 @@ func WithDisassociate(enable bool) Option {
 	}
 }
 
+// TODO: Deprecated in 0.22
 // WithSkipAdminRoleCreation provides an option to disable the automatic
 // creation of an admin role when a new scope is created.
 func WithSkipAdminRoleCreation(enable bool) Option {
@@ -127,11 +134,28 @@ func WithSkipAdminRoleCreation(enable bool) Option {
 	}
 }
 
+// TODO: Deprecated in 0.22
 // WithSkipDefaultRoleCreation provides an option to disable the automatic
 // creation of a default role when a new scope is created.
 func WithSkipDefaultRoleCreation(enable bool) Option {
 	return func(o *options) {
 		o.withSkipDefaultRoleCreation = enable
+	}
+}
+
+// WithCreateAdminRole provides an option to enable the automatic
+// creation of an admin role when a new scope is created.
+func WithCreateAdminRole(enable bool) Option {
+	return func(o *options) {
+		o.withCreateAdminRole = enable
+	}
+}
+
+// WithCreateDefaultRole provides an option to enable the automatic
+// creation of a default role when a new scope is created.
+func WithCreateDefaultRole(enable bool) Option {
+	return func(o *options) {
+		o.withCreateDefaultRole = enable
 	}
 }
 

@@ -34,7 +34,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		id := testId(t)
 		s, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
-		s, err = repo.CreateScope(ctx, s, "")
+		s, err = repo.CreateScope(ctx, s, "", WithCreateAdminRole(true), WithCreateDefaultRole(true))
 		require.NoError(err)
 		require.NotNil(s)
 		assert.NotEmpty(s.GetPublicId())
@@ -108,31 +108,104 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert.Error(err)
 		assert.Nil(p2)
 	})
-	for _, skipCreate := range []bool{false, true} {
-		t.Run(fmt.Sprintf("skipping-role-creation-%t", skipCreate), func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			id := testId(t)
-			s, err := NewOrg(ctx, WithName(id))
-			require.NoError(err)
-			s, err = repo.CreateScope(context.Background(), s, user.GetPublicId(), WithSkipAdminRoleCreation(skipCreate), WithSkipDefaultRoleCreation(skipCreate))
-			require.NoError(err)
-			require.NotNil(s)
-			assert.NotEmpty(s.GetPublicId())
-			assert.Equal(s.GetName(), id)
 
-			foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
-			require.NoError(err)
-			assert.True(proto.Equal(foundScope, s))
+	t.Run("create-and-skip-flags", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			numFound int
+			wantErr  bool
+			flags    []Option
+		}{
+			{
+				name:     "no-flags",
+				numFound: 2, // create and skip both default to false, skip takes precedence
+				flags:    []Option{},
+			},
+			{
+				name:     "skip-admin-role",
+				numFound: 1,
+				flags:    []Option{WithSkipAdminRoleCreation(true)},
+			},
+			{
+				name:     "skip-default-role",
+				numFound: 1,
+				flags:    []Option{WithSkipDefaultRoleCreation(true)},
+			},
+			{
+				name:     "skip-both-roles",
+				numFound: 0,
+				flags:    []Option{WithSkipAdminRoleCreation(true), WithSkipDefaultRoleCreation(true)},
+			},
+			{
+				name:     "create-admin-role",
+				numFound: 2, // create admin role, gives 2 because skip-default-role is false and takes precedence
+				flags:    []Option{WithCreateAdminRole(true)},
+			},
+			{
+				name:     "create-default-role",
+				numFound: 2, // create default role, gives 2 because skip-admin-role is false and takes precedence
+				flags:    []Option{WithCreateDefaultRole(true)},
+			},
+			{
+				name:     "create-both-roles",
+				numFound: 2,
+				flags:    []Option{WithCreateAdminRole(true), WithCreateDefaultRole(true)},
+			},
+			{
+				name:     "create-admin-role-and-skip-default-role",
+				numFound: 1,
+				flags:    []Option{WithCreateAdminRole(true), WithSkipDefaultRoleCreation(true)},
+			},
+			{
+				name:     "create-default-role-and-skip-admin-role",
+				numFound: 1,
+				flags:    []Option{WithCreateDefaultRole(true), WithSkipAdminRoleCreation(true)},
+			},
+			{
+				name:     "create-both-roles-and-skip-both",
+				numFound: 0,
+				flags:    []Option{WithCreateAdminRole(true), WithCreateDefaultRole(true), WithSkipAdminRoleCreation(true), WithSkipDefaultRoleCreation(true)},
+				wantErr:  true,
+			},
+			{
+				name:     "create-and-skip-admin",
+				numFound: 0,
+				flags:    []Option{WithCreateAdminRole(true), WithSkipAdminRoleCreation(true)},
+				wantErr:  true,
+			},
+			{
+				name:     "create-and-skip-default",
+				numFound: 0,
+				flags:    []Option{WithCreateDefaultRole(true), WithSkipDefaultRoleCreation(true)},
+				wantErr:  true,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				assert, require := assert.New(t), require.New(t)
+				id := testId(t)
+				s, err := NewOrg(ctx, WithName(id))
+				require.NoError(err)
+				s, err = repo.CreateScope(context.Background(), s, user.GetPublicId(), tt.flags...)
+				if tt.wantErr {
+					require.Error(err)
+					return
+				}
+				require.NoError(err)
+				require.NotNil(s)
+				assert.NotEmpty(s.GetPublicId())
+				assert.Equal(s.GetName(), id)
 
-			foundRoles, _, err := repo.listRoles(context.Background(), []string{foundScope.GetPublicId()})
-			require.NoError(err)
-			numFound := 2
-			if skipCreate {
-				numFound = 0
-			}
-			assert.Len(foundRoles, numFound)
-		})
-	}
+				foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+				require.NoError(err)
+				assert.True(proto.Equal(foundScope, s))
+
+				foundRoles, _, err := repo.listRoles(context.Background(), []string{foundScope.GetPublicId()})
+				require.NoError(err)
+				assert.Len(foundRoles, tt.numFound)
+			})
+		}
+	})
 }
 
 func Test_Repository_Scope_Update(t *testing.T) {
