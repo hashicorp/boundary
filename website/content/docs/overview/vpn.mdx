@@ -1,0 +1,30 @@
+---
+layout: docs
+page_title: Boundary vs. VPNs
+description: >-
+    Learn how Boundary compares to VPNs by using an Identity Provider (IdP) to grant users remote access to specific permitted services, but not the entire network.
+---
+
+# Boundary vs. VPNs
+
+Virtually every company today uses network firewalls to enforce perimeter security.
+To establish a remote connection within the perimeter, organizations often use some form of virtual private network (VPN) to authenticate users, establish a secure tunnel to the private network (such as a corporate or data center network), and allow users to enter the gated walls.
+
+VPNs enable the remote access architecture that is most often used to allow identities on unsecured networks to gain access to key internal organizational services in a secure fashion.
+Data is encrypted in transit, a network connection is established, and the user's access on the network is now predicated on the granularity of 802.1x authentication to the appropriate VLANs and network and application layer firewall rules.
+In practice, this often means that once users log in to a network using a VPN, they have access to far more than they should.
+
+While Boundary can establish remote connections to services within an organization's perimeter, Boundary is **not** a VPN.
+Instead, Boundary proposes an improvement to the current remote access model, where remote access is granted granularly and established to specific permitted services, but **not** the entire network.
+Boundary uses a non-repudiable user identity that is established by your integrated Identity Provider (IdP) of choice, as opposed to relying on network layer concepts such as IP address for access management.
+
+A traditional VPN provides users with **network access**.
+Boundary provides users with **delegated access to services within the network**.
+
+**Can Boundary replace a VPN?**
+
+For many organizations, Boundary's granular network access will be a security improvement from traditional data center VPN solutions that lack granular controls.
+
+**Can Boundary work with a VPN?**
+
+Boundary can work with existing corporate VPNs to provide heightened security when accessing privileged networks such as data centers and cloud VPCs.
