@@ -427,8 +427,13 @@ func (a ACL) ListResolvableAliasesPermissions(requestedType resource.Type, actio
 			p.RoleParentScopeId = scope.Global.String()
 		}
 		if a.buildPermission(&scopes.ScopeInfo{ParentScopeId: scopeId}, requestedType, actions, false, &p) {
+			if p.All {
+				// only cache to childrenScopes when all IDs are granted because if the role with 'children' grant specifies
+				// resource IDs, the IDs may not overlap with the children scope roles which means we cannot skip
+				// parsing permissions on the children roles
+				childrenScopes[scopeId] = struct{}{}
+			}
 			perms = append(perms, p)
-			childrenScopes[scopeId] = struct{}{}
 		}
 	}
 
