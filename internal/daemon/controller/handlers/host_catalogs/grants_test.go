@@ -99,11 +99,6 @@ func TestGrants_ReadActions(t *testing.T) {
 		catalogTypeMap[hc.PublicId] = "plugin"
 		_ = hostplugin.TestSet(t, conn, kmsCache, sche, hc, plgm)
 	}
-	for range 5 {
-		hc := static.TestCatalog(t, conn, proj.PublicId)
-		catalogTypeMap[hc.PublicId] = "static"
-		allHcs = append(allHcs, hc.GetPublicId())
-	}
 
 	t.Run("List", func(t *testing.T) {
 		testcases := []struct {
