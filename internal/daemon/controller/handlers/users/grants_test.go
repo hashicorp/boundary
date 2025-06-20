@@ -678,5 +678,4 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 			}
 		})
 	}
-
 }
