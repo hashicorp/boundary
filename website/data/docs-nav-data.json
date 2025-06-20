@@ -745,6 +745,10 @@
     "heading": "Clients"
   },
   {
+    "title": "Client Agent",
+    "path": "client-agent"
+  },
+  {
     "title": "Client cache",
     "path": "client-cache"
   },
@@ -1968,11 +1972,6 @@
         "title": "Desktop",
         "hidden": true,
         "path": "api-clients/desktop"
-      },
-      {
-        "title": "Client Agent",
-        "hidden": true,
-        "path": "api-clients/client-agent"
       }
     ]
   },
