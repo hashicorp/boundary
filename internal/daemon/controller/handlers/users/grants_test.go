@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 )
 
 func TestGrants_ReadActions(t *testing.T) {
@@ -333,7 +334,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 
 	target1 := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), "test address-1", target.WithAddress("8.8.8.8"))
 	target2 := tcp.TestTarget(ctx, t, conn, proj2.GetPublicId(), "test address-2", target.WithAddress("8.8.8.8"))
-	target3 := tcp.TestTarget(ctx, t, conn, proj3.GetPublicId(), "test address-2", target.WithAddress("8.8.8.8"))
+	target3 := tcp.TestTarget(ctx, t, conn, proj3.GetPublicId(), "test address-3", target.WithAddress("8.8.8.8"))
 
 	alias1 := talias.TestAlias(t, rw, "target1",
 		talias.WithName("target1"),
@@ -351,6 +352,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 		talias.WithDestinationId(target3.GetPublicId()),
 		talias.WithHostId(target3.GetPublicId()))
 
+	fmt.Println(alias1, "\n", alias2, "\n", alias3)
 	testcases := []struct {
 		name string
 		// setting returns user/account of a listing user which may be different than user in ListResolvableAliasesRequest
@@ -482,10 +484,60 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					Id: testUser.PublicId,
 				}
 			},
-			expectIdOutputFieldsMap: map[string][]string{},
+			expectIdOutputFieldsMap: map[string][]string{
+				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+			},
 		},
 		{
 			name: "list other user with list-resolvable-aliases permissions and some targets permissions returns allowed targets",
+			setupInput: func(t *testing.T) (*iam.User, auth.Account, *pbs.ListResolvableAliasesRequest) {
+				testUser, _ := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj3.PublicId,
+						Grants: []string{
+							fmt.Sprintf("ids=%s;type=target;actions=authorize-session", target3.GetPublicId()),
+						},
+						GrantScopes: []string{proj3.PublicId},
+					},
+					{
+						RoleScopeId: proj2.PublicId,
+						Grants: []string{
+							fmt.Sprintf("ids=%s;type=target;actions=authorize-session", "*"),
+						},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+					{
+						RoleScopeId: org1.PublicId,
+						Grants: []string{
+							fmt.Sprintf("ids=%s;type=target;actions=authorize-session", target1.GetPublicId()),
+						},
+						GrantScopes: []string{globals.GrantScopeChildren},
+					},
+				})()
+
+				listingUser, listingAccount := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants: []string{
+							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value", testUser.PublicId),
+						},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				})()
+				return listingUser, listingAccount, &pbs.ListResolvableAliasesRequest{
+					Id: testUser.PublicId,
+				}
+			},
+			expectIdOutputFieldsMap: map[string][]string{
+				alias1.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias2.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
+			},
+		},
+		{
+			name: "list other user with specific list-resolvable-aliases permissions and specific targets permissions returns allowed targets",
 			setupInput: func(t *testing.T) (*iam.User, auth.Account, *pbs.ListResolvableAliasesRequest) {
 				testUser, _ := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
@@ -508,7 +560,7 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants: []string{
-							"ids=*;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value",
+							fmt.Sprintf("ids=%s;type=user;actions=list-resolvable-aliases;output_fields=id,created_time,name,value", testUser.PublicId),
 						},
 						GrantScopes: []string{globals.GrantScopeThis},
 					},
@@ -522,6 +574,44 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 				alias3.PublicId: {globals.IdField, globals.CreatedTimeField, globals.NameField, globals.ValueField},
 			},
 		},
+		{
+			name: "no permissions cannot list resolvable aliases",
+			setupInput: func(t *testing.T) (*iam.User, auth.Account, *pbs.ListResolvableAliasesRequest) {
+				listingUser, listingAccount := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants: []string{
+							"ids=*;type=user;actions=list;output_fields=id,created_time,name,value",
+						},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				})()
+				return listingUser, listingAccount, &pbs.ListResolvableAliasesRequest{
+					Id: listingUser.PublicId,
+				}
+			},
+			wantErr: handlers.ForbiddenError(),
+		},
+		{
+			name: "no permissions cannot list resolvable aliases from another user",
+			setupInput: func(t *testing.T) (*iam.User, auth.Account, *pbs.ListResolvableAliasesRequest) {
+				testUser, _ := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{})()
+
+				listingUser, listingAccount := iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants: []string{
+							fmt.Sprintf("ids=*;type=user;actions=delete"),
+						},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				})()
+				return listingUser, listingAccount, &pbs.ListResolvableAliasesRequest{
+					Id: testUser.PublicId,
+				}
+			},
+			wantErr: handlers.ForbiddenError(),
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -530,12 +620,18 @@ func TestGrants_ListResolvableAliases(t *testing.T) {
 			require.NoError(t, err)
 			fullGrantAuthCtx := controllerauth.TestAuthContextFromToken(t, conn, wrap, tok, iamRepo)
 			got, err := s.ListResolvableAliases(fullGrantAuthCtx, input)
-			require.NoError(t, err)
 			if tc.wantErr != nil {
 				require.ErrorIs(t, tc.wantErr, tc.wantErr)
 				return
 			}
+			require.NoError(t, err)
+			var gotIds []string
+			for _, i := range got.Items {
+				gotIds = append(gotIds, i.Id)
+			}
+			require.ElementsMatch(t, gotIds, maps.Keys(tc.expectIdOutputFieldsMap))
 			require.Len(t, got.Items, len(tc.expectIdOutputFieldsMap))
+
 			for _, item := range got.Items {
 				expectFields, ok := tc.expectIdOutputFieldsMap[item.GetId()]
 				require.True(t, ok)
