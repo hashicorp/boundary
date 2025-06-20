@@ -749,15 +749,6 @@
     "path": "client-cache"
   },
   {
-    "title": "Client Agent",
-    "badge": {
-      "text": "HCP/ENT",
-      "type": "outlined",
-      "color": "neutral"
-    },
-    "path": "client-agent"
-  },
-  {
     "title": "Desktop",
     "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
   },
@@ -1985,6 +1976,11 @@
         "title": "Desktop",
         "hidden": true,
         "path": "api-clients/desktop"
+      },
+      {
+        "title": "Client Agent",
+        "hidden": true,
+        "path": "api-clients/client-agent"
       }
     ]
   },
