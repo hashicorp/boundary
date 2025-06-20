@@ -477,8 +477,22 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		originalGrantScopeMap[rgs.ScopeIdOrSpecial] = struct{}{}
 	}
 
+	// finalGrantScopeForIndividualGrantScope is the final value of what 'grant_scope' column of the role will be.
+	// this is only important for global roles with individual scopes IDs granted to the role.
+	// A foreign key between iam_role_global.grant_scope and iam_role_global_individual_project_grant_scope.grant_scope
+	// can either be ['children', 'individual'] which will prevents inserting if the values don't match.
+	// Assuming that the value is 'individual' and only set it to 'children' if we're adding a 'children' grant
+	// the current value in the database does not matter and will be overridden by this method
+	finalGrantScopeForIndividualGrantScope := globals.GrantScopeIndividual
 	toAdd := make(map[string]struct{})
 	for _, scopeId := range grantScopes {
+		if scopeId == globals.GrantScopeChildren {
+			// set final grant scope to 'children'. finalGrantScopeForIndividualGrantScope will be used later
+			// when constructing entries for individual project grant scope
+			// We have to do this before removing the already exist grants in case the role already contains 'children'
+			// and the caller attempts to set value to 'children' again
+			finalGrantScopeForIndividualGrantScope = scopeId
+		}
 		if _, ok := originalGrantScopeMap[scopeId]; ok {
 			delete(originalGrantScopeMap, scopeId)
 			continue
@@ -542,14 +556,6 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		totalRowsDeleted++
 	}
 
-	// finalGrantScopeForIndividualGrantScope is the final value of what 'grant_scope' column of the role will be.
-	// this is only important for global roles with individual scopes IDs granted to the role.
-	// A foreign key between iam_role_global.grant_scope and iam_role_global_individual_project_grant_scope.grant_scope
-	// can either be ['children', 'individual'] which will prevents inserting if the values don't match.
-	// Assuming that the value is 'individual' and only set it to 'children' if we're adding a 'children' grant
-	// the current value in the database does not matter and will be overridden by this method
-	finalGrantScopeForIndividualGrantScope := globals.GrantScopeIndividual
-
 	// determine the final hierarchical grant scopes stored in `grant_scope` column [`descendants`, `children`]
 	// depending on if we're adding or removing grants
 	// if descendants or children is being added, set finalGrantScope to the grant-to-be-added
@@ -567,9 +573,6 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 		updateMask = append(updateMask, "GrantScope")
-		// set final grant scope to 'children'. finalGrantScopeForIndividualGrantScope will be used later
-		// when constructing entries for individual project grant scope
-		finalGrantScopeForIndividualGrantScope = globals.GrantScopeChildren
 
 	case removeDescendants || removeChildren:
 		updateRole.removeGrantScope()
