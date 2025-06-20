@@ -886,6 +886,8 @@ func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.
 	return &out, nil
 }
 
+// toResolvableAliasProto converts *talias.Alias to *aliaspb.Alias only including fields specified in output_fields.
+// These fields are not included in the result set: Name, Description, Version
 func toResolvableAliasProto(a *talias.Alias, opt ...handlers.Option) (*aliaspb.Alias, error) {
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
@@ -914,12 +916,6 @@ func toResolvableAliasProto(a *talias.Alias, opt ...handlers.Option) (*aliaspb.A
 	}
 	if outputFields.Has(globals.TypeField) {
 		pbItem.Type = "target"
-	}
-	if outputFields.Has(globals.NameField) {
-		pbItem.Name = wrapperspb.String(a.GetName())
-	}
-	if outputFields.Has(globals.DescriptionField) {
-		pbItem.Description = wrapperspb.String(a.GetDescription())
 	}
 	return pbItem, nil
 }
