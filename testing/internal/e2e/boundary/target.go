@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -17,24 +16,18 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
-// CreateTargetApi uses the Go api to create a new target in boundary
+// CreateTargetApi uses the Go API to create a new target of the provided type
+// in Boundary. Automatically sets a random target name.
 // Returns the id of the new target.
-func CreateTargetApi(t testing.TB, ctx context.Context, client *api.Client, projectId string, defaultPort string) (string, error) {
+func CreateTargetApi(t testing.TB, ctx context.Context, client *api.Client, projectId, targetType string, opts ...targets.Option) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
 	}
+	opts = append(opts, targets.WithName(fmt.Sprintf("e2e Target %s", name)))
 
 	tClient := targets.NewClient(client)
-	targetPort, err := strconv.ParseInt(defaultPort, 10, 32)
-	if err != nil {
-		return "", err
-	}
-
-	newTargetResult, err := tClient.Create(ctx, "tcp", projectId,
-		targets.WithName(fmt.Sprintf("e2e Target %s", name)),
-		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
-	)
+	newTargetResult, err := tClient.Create(ctx, targetType, projectId, opts...)
 	if err != nil {
 		return "", err
 	}

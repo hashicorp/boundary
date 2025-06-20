@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -203,6 +204,9 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
+	targetPort, err := strconv.ParseUint(c.TargetPort, 10, 32)
+	require.NoError(t, err)
+
 	orgId, err := boundary.CreateOrgApi(t, ctx, client)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -220,7 +224,7 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, "tcp", targets.WithTcpTargetDefaultPort(uint32(targetPort)))
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 	require.NoError(t, err)
