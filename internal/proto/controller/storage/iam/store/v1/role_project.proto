@@ -1,0 +1,58 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+syntax = "proto3";
+
+package controller.storage.iam.store.v1;
+
+import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
+
+// ProjectRole represent roles that are created at a project scope
+message ProjectRole {
+  // public_id is used to access the Role via an API
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 1;
+
+  // scope id for the role
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 2;
+
+  // name is the optional friendly name used to
+  // access the Role via an API
+  // @inject_tag: `gorm:"default:null"`
+  string name = 3 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
+
+  // description of the role
+  // @inject_tag: `gorm:"default:null"`
+  string description = 4 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 5;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 6;
+
+  // version allows optimistic locking of the role when modifying the role
+  // itself and when modifying dependent items like principal roles.
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 7;
+
+  // control if this role is granted access to its role scope
+  // @inject_tag: `gorm:"default:false"`
+  bool grant_this_role_scope = 8;
+
+  // timestamp when grant_this_role_scope was last updated
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp grant_this_role_scope_update_time = 9;
+}
