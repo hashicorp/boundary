@@ -1100,6 +1100,15 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:        &targets.RdpTargetAttributes{},
+		outFile:        "targets/rdp_target_attributes.gen.go",
+		subtypeName:    "RdpTarget",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &targets.Target{},
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{

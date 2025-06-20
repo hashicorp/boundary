@@ -589,7 +589,7 @@ func validateCreateRequest(req *pbs.CreateAliasRequest) error {
 			badFields[globals.TypeField] = "This field is required. Current supported values are 'target'."
 		}
 		if req.GetItem().GetDestinationId().GetValue() != "" &&
-			!handlers.ValidId(handlers.Id(req.GetItem().GetDestinationId().GetValue()), globals.TcpTargetPrefix, globals.SshTargetPrefix) {
+			!handlers.ValidId(handlers.Id(req.GetItem().GetDestinationId().GetValue()), globals.TcpTargetPrefix, globals.SshTargetPrefix, globals.RdpTargetPrefix) {
 			badFields[globals.DestinationIdField] = "Incorrectly formatted identifier."
 		}
 		if req.GetItem().GetTargetAliasAttributes().GetAuthorizeSessionArguments().GetHostId() != "" {
@@ -611,7 +611,7 @@ func validateUpdateRequest(req *pbs.UpdateAliasRequest) error {
 			badFields["value"] = "This field is required."
 		}
 		if req.GetItem().GetDestinationId().GetValue() != "" &&
-			!handlers.ValidId(handlers.Id(req.GetItem().GetDestinationId().GetValue()), globals.TcpTargetPrefix, globals.SshTargetPrefix) {
+			!handlers.ValidId(handlers.Id(req.GetItem().GetDestinationId().GetValue()), globals.TcpTargetPrefix, globals.SshTargetPrefix, globals.RdpTargetPrefix) {
 			badFields[globals.DestinationIdField] = "Incorrectly formatted identifier."
 		}
 		if req.GetItem().GetTargetAliasAttributes().GetAuthorizeSessionArguments().GetHostId() != "" &&
