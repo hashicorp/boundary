@@ -661,6 +661,16 @@ func Test_SetRoleGrantScope(t *testing.T) {
 			wantErr:                 false,
 		},
 		{
+			name: "global role sets this and children and individual project",
+			setupRole: func(t *testing.T) *Role {
+				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+			},
+			expectRemove:            0,
+			expectRoleVersionChange: 1,
+			scopes:                  []string{globals.GrantScopeThis, globals.GrantScopeChildren, proj2.PublicId},
+			wantErr:                 false,
+		},
+		{
 			name: "global role sets all individual scopes",
 			setupRole: func(t *testing.T) *Role {
 				return TestRole(t, conn, globals.GlobalPrefix, WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeDescendants}))
