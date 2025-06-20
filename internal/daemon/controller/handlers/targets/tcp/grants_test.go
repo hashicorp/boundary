@@ -214,7 +214,7 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
-				name: "org role grant this returns all created targets",
+				name: "org role grant children returns all its created targets",
 				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
 					{
 						RoleScopeId: org1.GetPublicId(),
@@ -235,6 +235,21 @@ func TestGrants_ReadActions(t *testing.T) {
 						RoleScopeId: proj2.GetPublicId(),
 						Grants:      []string{"ids=*;type=target;actions=list,read;output_fields=id,name,created_time,updated_time,version"},
 						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantIdOutputFields: map[string]readTestResult{
+					target1.GetPublicId(): {wantErr: handlers.ForbiddenError()},
+					target2.GetPublicId(): {wantErr: handlers.ForbiddenError()},
+					target3.GetPublicId(): {wantOutputFields: []string{globals.IdField, globals.NameField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField}},
+				},
+			},
+			{
+				name: "global role with individual project grant returns all created targets on the project",
+				userFunc: iam.TestUserDirectGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=target;actions=list,read;output_fields=id,name,created_time,updated_time,version"},
+						GrantScopes: []string{proj2.PublicId},
 					},
 				}),
 				wantIdOutputFields: map[string]readTestResult{
