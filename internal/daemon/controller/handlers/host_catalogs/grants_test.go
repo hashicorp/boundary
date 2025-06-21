@@ -23,14 +23,12 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin"
-	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -73,10 +71,6 @@ func TestGrants_ReadActions(t *testing.T) {
 	catalogServiceFn := func() (*host.CatalogRepository, error) {
 		return host.NewCatalogRepository(ctx, rw, rw)
 	}
-	plg := plugin.TestPlugin(t, conn, "test")
-	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&plgpb.UnimplementedHostPluginServiceServer{}),
-	}
 	s, err := host_catalogs.NewService(ctx, staticRepoFn, pluginHostRepoFn, pluginRepoFn, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(t, err)
 
@@ -85,19 +79,9 @@ func TestGrants_ReadActions(t *testing.T) {
 
 	var allHcs []string
 	for range 5 {
-		hc := hostplugin.TestCatalog(
-			t,
-			conn,
-			proj.GetPublicId(),
-			plg.GetPublicId(),
-			hostplugin.WithAttributes(&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}}),
-			hostplugin.WithWorkerFilter(`"test" in "/tags/type"`),
-			hostplugin.WithSecrets(&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}}),
-			hostplugin.WithSecretsHmac([]byte("foobar")),
-		)
+		hc := static.TestCatalog(t, conn, proj.PublicId)
+		catalogTypeMap[hc.PublicId] = "static"
 		allHcs = append(allHcs, hc.GetPublicId())
-		catalogTypeMap[hc.PublicId] = "plugin"
-		_ = hostplugin.TestSet(t, conn, kmsCache, sche, hc, plgm)
 	}
 
 	t.Run("List", func(t *testing.T) {
