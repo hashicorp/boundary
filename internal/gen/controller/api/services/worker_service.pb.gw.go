@@ -41,7 +41,9 @@ func request_WorkerService_GetWorker_0(ctx context.Context, marshaler runtime.Ma
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_WorkerService_ListWorkers_0(ctx context.Context, marshaler runtime.
 		protoReq ListWorkersRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_WorkerService_CreateWorkerLed_0(ctx context.Context, marshaler runt
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateWorkerLed(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -136,6 +143,9 @@ func request_WorkerService_CreateControllerLed_0(ctx context.Context, marshaler 
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.CreateControllerLed(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -167,6 +177,9 @@ func request_WorkerService_UpdateWorker_0(ctx context.Context, marshaler runtime
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -237,7 +250,9 @@ func request_WorkerService_DeleteWorker_0(ctx context.Context, marshaler runtime
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -276,6 +291,9 @@ func request_WorkerService_AddWorkerTags_0(ctx context.Context, marshaler runtim
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -319,6 +337,9 @@ func request_WorkerService_SetWorkerTags_0(ctx context.Context, marshaler runtim
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -361,6 +382,9 @@ func request_WorkerService_RemoveWorkerTags_0(ctx context.Context, marshaler run
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -401,7 +425,9 @@ func request_WorkerService_ReadCertificateAuthority_0(ctx context.Context, marsh
 		protoReq ReadCertificateAuthorityRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -434,7 +460,9 @@ func request_WorkerService_ReinitializeCertificateAuthority_0(ctx context.Contex
 		protoReq ReinitializeCertificateAuthorityRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -921,7 +949,8 @@ type response_WorkerService_GetWorker_0 struct {
 }
 
 func (m response_WorkerService_GetWorker_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetWorkerResponse
+	return response.Item
 }
 
 type response_WorkerService_CreateWorkerLed_0 struct {
@@ -929,7 +958,8 @@ type response_WorkerService_CreateWorkerLed_0 struct {
 }
 
 func (m response_WorkerService_CreateWorkerLed_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateWorkerLedResponse
+	return response.Item
 }
 
 type response_WorkerService_CreateControllerLed_0 struct {
@@ -937,7 +967,8 @@ type response_WorkerService_CreateControllerLed_0 struct {
 }
 
 func (m response_WorkerService_CreateControllerLed_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateControllerLedResponse
+	return response.Item
 }
 
 type response_WorkerService_UpdateWorker_0 struct {
@@ -945,7 +976,8 @@ type response_WorkerService_UpdateWorker_0 struct {
 }
 
 func (m response_WorkerService_UpdateWorker_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateWorkerResponse
+	return response.Item
 }
 
 type response_WorkerService_AddWorkerTags_0 struct {
@@ -953,7 +985,8 @@ type response_WorkerService_AddWorkerTags_0 struct {
 }
 
 func (m response_WorkerService_AddWorkerTags_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddWorkerTagsResponse
+	return response.Item
 }
 
 type response_WorkerService_SetWorkerTags_0 struct {
@@ -961,7 +994,8 @@ type response_WorkerService_SetWorkerTags_0 struct {
 }
 
 func (m response_WorkerService_SetWorkerTags_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetWorkerTagsResponse
+	return response.Item
 }
 
 type response_WorkerService_RemoveWorkerTags_0 struct {
@@ -969,7 +1003,8 @@ type response_WorkerService_RemoveWorkerTags_0 struct {
 }
 
 func (m response_WorkerService_RemoveWorkerTags_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveWorkerTagsResponse
+	return response.Item
 }
 
 type response_WorkerService_ReadCertificateAuthority_0 struct {
@@ -977,7 +1012,8 @@ type response_WorkerService_ReadCertificateAuthority_0 struct {
 }
 
 func (m response_WorkerService_ReadCertificateAuthority_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.ReadCertificateAuthorityResponse
+	return response.Item
 }
 
 type response_WorkerService_ReinitializeCertificateAuthority_0 struct {
@@ -985,7 +1021,8 @@ type response_WorkerService_ReinitializeCertificateAuthority_0 struct {
 }
 
 func (m response_WorkerService_ReinitializeCertificateAuthority_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.ReinitializeCertificateAuthorityResponse
+	return response.Item
 }
 
 var (

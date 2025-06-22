@@ -41,7 +41,9 @@ func request_HostSetService_GetHostSet_0(ctx context.Context, marshaler runtime.
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_HostSetService_ListHostSets_0(ctx context.Context, marshaler runtim
 		protoReq ListHostSetsRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler runti
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateHostSet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -143,6 +150,9 @@ func request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler runti
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -213,7 +223,9 @@ func request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler runti
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -252,6 +264,9 @@ func request_HostSetService_AddHostSetHosts_0(ctx context.Context, marshaler run
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -295,6 +310,9 @@ func request_HostSetService_SetHostSetHosts_0(ctx context.Context, marshaler run
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -336,6 +354,9 @@ func request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, marshaler 
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -720,7 +741,8 @@ type response_HostSetService_GetHostSet_0 struct {
 }
 
 func (m response_HostSetService_GetHostSet_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetHostSetResponse
+	return response.Item
 }
 
 type response_HostSetService_CreateHostSet_0 struct {
@@ -728,7 +750,8 @@ type response_HostSetService_CreateHostSet_0 struct {
 }
 
 func (m response_HostSetService_CreateHostSet_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateHostSetResponse
+	return response.Item
 }
 
 type response_HostSetService_UpdateHostSet_0 struct {
@@ -736,7 +759,8 @@ type response_HostSetService_UpdateHostSet_0 struct {
 }
 
 func (m response_HostSetService_UpdateHostSet_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateHostSetResponse
+	return response.Item
 }
 
 type response_HostSetService_AddHostSetHosts_0 struct {
@@ -744,7 +768,8 @@ type response_HostSetService_AddHostSetHosts_0 struct {
 }
 
 func (m response_HostSetService_AddHostSetHosts_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddHostSetHostsResponse
+	return response.Item
 }
 
 type response_HostSetService_SetHostSetHosts_0 struct {
@@ -752,7 +777,8 @@ type response_HostSetService_SetHostSetHosts_0 struct {
 }
 
 func (m response_HostSetService_SetHostSetHosts_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetHostSetHostsResponse
+	return response.Item
 }
 
 type response_HostSetService_RemoveHostSetHosts_0 struct {
@@ -760,7 +786,8 @@ type response_HostSetService_RemoveHostSetHosts_0 struct {
 }
 
 func (m response_HostSetService_RemoveHostSetHosts_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveHostSetHostsResponse
+	return response.Item
 }
 
 var (
