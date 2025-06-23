@@ -78,6 +78,11 @@ var (
 		resource.Account:      accounts.CollectionActions,
 		resource.ManagedGroup: managed_groups.CollectionActions,
 	}
+
+	additionalResourceGrants = []resource.Type{
+		resource.Account,
+		resource.ManagedGroup,
+	}
 )
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
@@ -155,7 +160,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -320,7 +325,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 	if err := validateGetRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -365,7 +370,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -410,7 +415,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -464,7 +469,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 	if err := validateChangeStateRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.ChangeState)
+	authResults := s.authResult(ctx, req.GetId(), action.ChangeState, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -512,7 +517,7 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 	if err := validateDeleteRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -546,7 +551,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		}
 	}
 
-	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
+	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -765,12 +770,17 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 	return nil, errors.New(ctx, errors.InvalidParameter, op, "Given auth method type does not support changing state")
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) requestauth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) requestauth.VerifyResults {
 	const op = "authmethods.(Service).authResult"
 	res := requestauth.VerifyResults{}
 
 	var parentId string
-	opts := []requestauth.Option{requestauth.WithType(resource.AuthMethod), requestauth.WithAction(a)}
+	opts := []requestauth.Option{
+		requestauth.WithAction(a),
+		requestauth.WithRecursive(isRecursive),
+		requestauth.WithFetchAdditionalResourceGrants(additionalResourceGrants...),
+	}
+
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -847,7 +857,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) reque
 		opts = append(opts, requestauth.WithId(id))
 	}
 	opts = append(opts, requestauth.WithScopeId(parentId))
-	return requestauth.Verify(ctx, opts...)
+	return requestauth.Verify(ctx, resource.AuthMethod, opts...)
 }
 
 func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {

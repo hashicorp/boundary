@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mr-tron/base58"
@@ -355,7 +356,9 @@ func Test_unaryCtxInterceptor(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			verifyResults := auth.Verify(retCtx.(context.Context))
+			// Use resource.Scope here but resource type shouldn't matter since we're only validating that auth.Verify
+			// can use the 'context' with additional ctx.Value from the interceptor
+			verifyResults := auth.Verify(retCtx.(context.Context), resource.Scope)
 			assert.NotEmpty(verifyResults)
 		})
 	}
@@ -641,7 +644,9 @@ func Test_streamCtxInterceptor(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			verifyResults := auth.Verify(hdCtx.(context.Context))
+			// Use resource.Scope here but resource type shouldn't matter since we're only validating that auth.Verify
+			// can use the 'context' with additional ctx.Value from the interceptor
+			verifyResults := auth.Verify(hdCtx.(context.Context), resource.Scope)
 			assert.NotEmpty(verifyResults)
 		})
 	}

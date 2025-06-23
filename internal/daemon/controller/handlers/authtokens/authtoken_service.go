@@ -84,7 +84,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -224,7 +224,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf)
+	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -276,7 +276,7 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.DeleteSelf)
+	authResults := s.authResult(ctx, req.GetId(), action.DeleteSelf, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -334,11 +334,11 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.AuthToken), auth.WithAction(a)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -375,7 +375,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, resource.AuthToken, opts...)
 }
 
 func toProto(ctx context.Context, in *authtoken.AuthToken, opt ...handlers.Option) (*pb.AuthToken, error) {

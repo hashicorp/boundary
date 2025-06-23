@@ -80,7 +80,6 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", s.CatalogId, s.Name)))
@@ -178,7 +177,6 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", s.PublicId, s.Name)))
@@ -363,7 +361,6 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", s.PublicId)))
 	}

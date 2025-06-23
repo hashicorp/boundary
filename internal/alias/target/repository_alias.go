@@ -71,7 +71,6 @@ func (r *Repository) CreateAlias(ctx context.Context, a *Alias, opt ...Option) (
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			switch {
@@ -170,7 +169,6 @@ func (r *Repository) UpdateAlias(ctx context.Context, a *Alias, version uint32, 
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			switch {
@@ -273,7 +271,6 @@ func (r *Repository) DeleteAlias(ctx context.Context, id string, opt ...Option) 
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", a.PublicId)))
 	}

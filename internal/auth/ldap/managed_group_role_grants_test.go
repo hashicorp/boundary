@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -73,7 +74,8 @@ func TestLdapManagedGroupRoleGrants(t *testing.T) {
 
 	// okay, let's try the CTE and make sure the user has the grants given via
 	// the ldap managed group
-	tuples, err := iamRepo.GrantsForUser(testCtx, testUser.PublicId)
+	// resource type does not matter here since testGrants has type=*
+	tuples, err := iamRepo.GrantsForUser(testCtx, testUser.PublicId, []resource.Type{resource.Scope}, testScopeId)
 	require.NoError(t, err)
 	// De-dupe role IDs
 	roleIds := make(map[string]bool, len(tuples))
@@ -86,7 +88,7 @@ func TestLdapManagedGroupRoleGrants(t *testing.T) {
 
 	// make sure a user without the appropriate managed group doesn't have grants
 	testUserWithoutManagedGroupRole := iam.TestUser(t, iamRepo, testScopeId)
-	tuples, err = iamRepo.GrantsForUser(testCtx, testUserWithoutManagedGroupRole.PublicId)
+	tuples, err = iamRepo.GrantsForUser(testCtx, testUserWithoutManagedGroupRole.PublicId, []resource.Type{resource.Scope}, testScopeId)
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(tuples))
 
@@ -111,7 +113,7 @@ func TestLdapManagedGroupRoleGrants(t *testing.T) {
 	_ = iam.TestRoleGrant(t, testConn, testRole2.GetPublicId(), testGrant)
 	iam.TestManagedGroupRole(t, testConn, testRole2.GetPublicId(), testOidcManagedGrp.GetPublicId())
 
-	tuples, err = iamRepo.GrantsForUser(testCtx, testUser.GetPublicId())
+	tuples, err = iamRepo.GrantsForUser(testCtx, testUser.GetPublicId(), []resource.Type{resource.SessionRecording}, testScopeId)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(tuples))
 	t.Log("tuples:", tuples)

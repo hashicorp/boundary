@@ -893,7 +893,6 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 		}
 		return nil
 	})
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}

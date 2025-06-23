@@ -333,7 +333,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			r.Id == "" &&
 			grant.Type == r.Type &&
 			grant.Type != resource.Unknown &&
-			resource.TopLevelType(r.Type) &&
+			r.Type.TopLevelType() &&
 			(action.List.IsActionOrParent(aType) ||
 				action.Create.IsActionOrParent(aType)):
 
@@ -357,7 +357,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			grant.Id == r.Pin &&
 			grant.Type != resource.Unknown &&
 			(grant.Type == r.Type || grant.Type == resource.All) &&
-			!resource.TopLevelType(r.Type):
+			!r.Type.TopLevelType():
 
 			found = true
 		}
@@ -427,8 +427,13 @@ func (a ACL) ListResolvableAliasesPermissions(requestedType resource.Type, actio
 			p.RoleParentScopeId = scope.Global.String()
 		}
 		if a.buildPermission(&scopes.ScopeInfo{ParentScopeId: scopeId}, requestedType, actions, false, &p) {
+			if p.All {
+				// only cache to childrenScopes when all IDs are granted because if the role with 'children' grant specifies
+				// resource IDs, the IDs may not overlap with the children scope roles which means we cannot skip
+				// parsing permissions on the children roles
+				childrenScopes[scopeId] = struct{}{}
+			}
 			perms = append(perms, p)
-			childrenScopes[scopeId] = struct{}{}
 		}
 	}
 
