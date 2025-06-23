@@ -87,7 +87,6 @@ func (r *Repository) CreateHost(ctx context.Context, projectId string, h *Host, 
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", h.CatalogId, h.Name)))
@@ -193,7 +192,6 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 			return nil
 		},
 	)
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", h.PublicId, h.Name)))
@@ -356,7 +354,6 @@ func (r *Repository) DeleteHost(ctx context.Context, projectId string, publicId 
 			return nil
 		},
 	)
-
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", publicId)))
 	}

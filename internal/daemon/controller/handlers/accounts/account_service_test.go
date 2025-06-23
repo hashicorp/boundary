@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -4401,7 +4402,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -4444,7 +4445,9 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	iam.TestManagedGroupRole(t, conn, ldapRole.GetPublicId(), ldapMg.GetPublicId())
 	iam.TestRoleGrant(t, conn, ldapRole.GetPublicId(), "ids=ttcp_ldap;actions=read")
 
-	grants, err := iamRepo.GrantsForUser(ctx, user.GetPublicId())
+	// targets must be in a project scope so we're passing in a scope ID which we expect the user to have access to
+	// which is the project under the role's org
+	grants, err := iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
 	require.NoError(t, err)
 
 	// Verify we see both grants
@@ -4468,7 +4471,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	assert.Equal(t, 1, numDeleted)
 
 	// Verify we don't see the ldap grant anymore
-	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId())
+	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
 	require.NoError(t, err)
 	foundOidc = false
 	foundLdap = false
@@ -4491,7 +4494,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	assert.Equal(t, 1, numDeleted)
 
 	// Verify we don't see the oidc grant anymore
-	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId())
+	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
 	require.NoError(t, err)
 	foundOidc = false
 	foundLdap = false

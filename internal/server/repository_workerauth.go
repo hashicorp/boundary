@@ -339,7 +339,6 @@ func storeWorkerCertBundle(
 	}
 
 	err = writer.Create(ctx, &workerCertBundle)
-
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

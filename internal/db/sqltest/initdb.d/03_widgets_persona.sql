@@ -54,35 +54,32 @@ begin;
       ('g___wb-group', 'u_____warren'),
       ('g___ws-group', 'u_____waylon');
 
-    insert into iam_role
-      (scope_id, public_id, name)
+    insert into iam_role_org
+      (scope_id, public_id, name, grant_scope, grant_this_role_scope)
     values
-            -- ('global', 'r_gg_____buy', 'Purchaser'),
-            -- ('global', 'r_gg____shop', 'Shopper'),
-      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
-      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
-      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer'),
-      ('o_____widget', 'r_oo_____eng', 'Widget Engineer');
+      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer', 'individual', false),
+      ('o_____widget', 'r_oo_____eng', 'Widget Engineer', 'individual', true);
 
-    insert into iam_role_grant_scope
-      (role_id,        scope_id_or_special)
+    insert into iam_role_org_individual_grant_scope
+      (role_id, scope_id, grant_scope)
     values
-      ('r_pp_bw__bld', 'p____bwidget'),
-      ('r_pp_sw__bld', 'this'),
-      ('r_op_sw__eng', 'p____swidget'),
-      ('r_oo_____eng', 'o_____widget');
+      ('r_op_sw__eng','p____swidget','individual');
+
+    insert into iam_role_project
+      (scope_id, public_id, name, grant_this_role_scope)
+    values
+      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder', true),
+      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder', true);
 
     insert into iam_role_grant
       (role_id, canonical_grant, raw_grant)
     values
-      -- ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
-      -- ('r_gg____shop', 'type=*;action=view',        'view anything'),
-      ('r_oo_____eng', 'type=widget;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=widget;action=design', 'design widget'),
-      ('r_op_sw__eng', 'type=widget;action=tune',   'tune widget'),
-      ('r_op_sw__eng', 'type=widget;action=clean',  'clean widget'),
-      ('r_pp_bw__bld', 'type=widget;action=build',  'build widget'),
-      ('r_pp_sw__bld', 'type=widget;action=build',  'build widget');
+      ('r_oo_____eng', 'ids=*;type=alias;actions=create,update',                                                            'ids=*;type=alias;actions=create,update'),
+      ('r_op_sw__eng', 'ids=*;type=target;actions=add-credential-sources,remove-credential-sources,set-credential-sources', 'ids=*;type=target;actions=add-credential-sources,remove-credential-sources,set-credential-source'),
+      ('r_op_sw__eng', 'ids=*;type=target;actions=add-host-sources,remove-host-sources,set-host-sources',                   'ids=*;type=target;actions=add-host-sources,remove-host-sources,set-host-sources'),
+      ('r_op_sw__eng', 'ids=*;type=host-catalog;actions=read,list',                                                         'ids=*;type=host-catalog;actions=read,list'),
+      ('r_pp_bw__bld', 'ids=*;type=credential-library;actions=create,delete',                                               'ids=*;type=credential-library;actions=create,delete'),
+      ('r_pp_sw__bld', 'ids=*;type=scope;actions=no-op,list',                                                               'ids=*;type=scope;actions=no-op,list');
 
     insert into iam_group_role
       (role_id, principal_id)

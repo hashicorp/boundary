@@ -142,7 +142,7 @@ func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.
 	}
 	for _, err := range l.errs {
 		if err.match(req.GetBucket(), "", OnCreateStorageBucket) {
-			return nil, status.Errorf(err.ErrCode, err.ErrMsg)
+			return nil, status.Error(err.ErrCode, err.ErrMsg)
 		}
 	}
 	secrets := &structpb.Struct{
