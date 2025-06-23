@@ -165,7 +165,32 @@ func TestGrants_ReadActions(t *testing.T) {
 				wantErr:  handlers.ForbiddenError(),
 			},
 			{
-				name: "iss 5003 less permissive grants should not override more permissive ones",
+				name: "iss 5003 less permissive grants should not override more permissive grants with specific type",
+				input: &pbs.ListTargetsRequest{
+					ScopeId:   globals.GlobalPrefix,
+					Recursive: true,
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;actions=authorize-session;output_fields=id,authorized_actions,scope_id,address", target1.GetPublicId())},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"ids=*;type=target;actions=read,list;output_fields=id,authorized_actions,scope_id,address"},
+						GrantScopes: []string{globals.GrantScopeDescendants},
+					},
+				}),
+				wantErr: nil,
+				wantIdOutputFields: map[string][]string{
+					target1.GetPublicId(): {globals.IdField, globals.AuthorizedActionsField, globals.ScopeIdField, globals.AddressField},
+					target2.GetPublicId(): {globals.IdField, globals.AuthorizedActionsField, globals.ScopeIdField, globals.AddressField},
+					target3.GetPublicId(): {globals.IdField, globals.AuthorizedActionsField, globals.ScopeIdField, globals.AddressField},
+				},
+			},
+			{
+				name: "iss 5003 less permissive grants should not override more permissive grants",
 				input: &pbs.ListTargetsRequest{
 					ScopeId:   globals.GlobalPrefix,
 					Recursive: true,
@@ -179,11 +204,6 @@ func TestGrants_ReadActions(t *testing.T) {
 					{
 						RoleScopeId: globals.GlobalPrefix,
 						Grants:      []string{fmt.Sprintf("ids=%s;actions=authorize-session;output_fields=id,authorized_actions,scope_id,address", target1.GetPublicId())},
-						GrantScopes: []string{globals.GrantScopeDescendants},
-					},
-					{
-						RoleScopeId: globals.GlobalPrefix,
-						Grants:      []string{"ids=*;type=target;actions=read,list;output_fields=id,authorized_actions,scope_id,address"},
 						GrantScopes: []string{globals.GrantScopeDescendants},
 					},
 				}),
