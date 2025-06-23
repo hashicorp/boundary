@@ -268,4 +268,18 @@ func Test_GetOpts(t *testing.T) {
 		opts := GetOpts(WithAliases(input))
 		assert.Equal(input, opts.withAliases)
 	})
+	t.Run("WithAlias", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		al, err := talias.NewAlias(context.Background(), "global", "test")
+		require.NoError(err)
+		opts := GetOpts(WithAlias(al))
+		assert.Equal(al, opts.withAlias)
+	})
+	t.Run("WithTargetId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithTargetId("testId"))
+		testOpts := getDefaultOptions()
+		testOpts.withTargetId = "testId"
+		assert.Equal(opts, testOpts)
+	})
 }

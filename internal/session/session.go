@@ -608,3 +608,62 @@ type deletedSession struct {
 func (s *deletedSession) TableName() string {
 	return "session_deleted"
 }
+
+// ProxyCertificate represents a session id to proxy certificate mapping
+// It's stored during session authorization and used at connection authorization
+// time to lookup the proxy certificate, if applicable
+type ProxyCertificate struct {
+	SessionId   string `gorm:"not_null"`
+	Certificate []byte `gorm:"not_null"`
+}
+
+// NewProxyCertificate creates a new in memory ProxyCertificate
+func NewProxyCertificate(ctx context.Context, sessionId string, certificate []byte) (*ProxyCertificate, error) {
+	const op = "session.NewProxyCertificate"
+	switch {
+	case sessionId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
+	case len(certificate) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
+	}
+
+	return &ProxyCertificate{
+		SessionId:   sessionId,
+		Certificate: certificate,
+	}, nil
+}
+
+func alloProxyCertificate() *ProxyCertificate {
+	return &ProxyCertificate{}
+}
+
+// Clone creates a clone of the ProxyCertificate
+func (t *ProxyCertificate) Clone() *ProxyCertificate {
+	spc := &ProxyCertificate{
+		SessionId: t.SessionId,
+	}
+	if t.Certificate != nil {
+		spc.Certificate = make([]byte, len(t.Certificate))
+		copy(spc.Certificate, t.Certificate)
+	}
+
+	return spc
+}
+
+// VetForWrite implements db.VetForWrite() interface and validates the session proxy certificate
+func (t *ProxyCertificate) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+	const op = "session.(ProxyCertificate).VetForWrite"
+	switch {
+	case t.SessionId == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session id")
+	case len(t.Certificate) == 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
+	}
+
+	return nil
+}
+
+// TableName returns the table name.
+func (t *ProxyCertificate) TableName() string {
+	return "session_proxy_certificate"
+}

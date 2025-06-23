@@ -161,6 +161,10 @@ func (t *Target) GetStorageBucketId() string {
 	return ""
 }
 
+func (t *Target) GetProxyServerCertificate() *target.ServerCertificate {
+	return nil
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
@@ -252,6 +256,8 @@ func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
 func (t *Target) SetEnableSessionRecording(_ bool) {}
 
 func (t *Target) SetStorageBucketId(_ string) {}
+
+func (t *Target) SetProxyServerCertificate(*target.ServerCertificate) {}
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return oplog.Metadata{

@@ -433,3 +433,63 @@ func Test_newCert(t *testing.T) {
 		assert.Equal(t, parsedCert.PublicKey.(crypto.PublicKey), ed25519.PrivateKey(key).Public())
 	})
 }
+
+func TestProxyCertificate(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	sId := "test-session-id"
+	cert := make([]byte, 20)
+	if _, err := rand.Read(cert); err != nil {
+		require.NotNil(t, err)
+	}
+
+	tests := []struct {
+		name            string
+		sessionId       string
+		certificate     []byte
+		expected        *ProxyCertificate
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name:        "valid-target-cert",
+			sessionId:   sId,
+			certificate: cert,
+			expected: &ProxyCertificate{
+				SessionId:   sId,
+				Certificate: cert,
+			},
+		},
+		{
+			name:            "missing-session-id",
+			certificate:     cert,
+			wantErr:         true,
+			wantErrContains: "missing session id",
+		},
+		{
+			name:            "missing-cert",
+			sessionId:       sId,
+			wantErr:         true,
+			wantErrContains: "missing certificate",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			gotCert, err := NewProxyCertificate(ctx, tt.sessionId, tt.certificate)
+
+			if tt.wantErr {
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+			require.NotNil(gotCert)
+			assert.Equal(tt.expected.SessionId, gotCert.SessionId)
+			assert.Equal(tt.expected.Certificate, gotCert.Certificate)
+		})
+	}
+}
