@@ -273,7 +273,7 @@ func Test_GetOpts(t *testing.T) {
 		al, err := talias.NewAlias(context.Background(), "global", "test")
 		require.NoError(err)
 		opts := GetOpts(WithAlias(al))
-		assert.Equal(al, opts.withAlias)
+		assert.Equal(al, opts.WithAlias)
 	})
 	t.Run("WithTargetId", func(t *testing.T) {
 		assert := assert.New(t)

@@ -135,6 +135,9 @@ const (
 
 	// TargetAliasPrefix is the prefix for target aliases
 	TargetAliasPrefix = "alt"
+
+	// ProxyServerCertificatePrefix is the prefix for proxy server certificates
+	ProxyServerCertificatePrefix = "psc"
 )
 
 type ResourceInfo struct {

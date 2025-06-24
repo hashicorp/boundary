@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -47,7 +48,7 @@ func generatePrivAndPubKeys(ctx context.Context) (privKeyBytes []byte, pubKeyByt
 }
 
 // generateTargetCert generates a self-signed certificate for the target for localhost with the localhost addresses for ipv4 and ipv6.
-// Supports the option withAlias to pass an alias for use in the cert DNS names field
+// Supports the option WithAlias to pass an alias for use in the cert DNS names field
 func generateTargetCert(ctx context.Context, privKey *ecdsa.PrivateKey, exp time.Time, opt ...Option) ([]byte, error) {
 	const op = "target.generateTargetCert"
 	switch {
@@ -77,8 +78,8 @@ func generateTargetCert(ctx context.Context, privKey *ecdsa.PrivateKey, exp time
 		DNSNames:              []string{"localhost"},
 	}
 
-	if opts.withAlias != nil {
-		template.DNSNames = append(template.DNSNames, opts.withAlias.Value)
+	if opts.WithAlias != nil {
+		template.DNSNames = append(template.DNSNames, opts.WithAlias.Value)
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, &privKey.PublicKey, privKey)
@@ -86,6 +87,25 @@ func generateTargetCert(ctx context.Context, privKey *ecdsa.PrivateKey, exp time
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.GenCert))
 	}
 	return certBytes, nil
+}
+
+func generateKeysAndCert(ctx context.Context, notValidAfter time.Time, opt ...Option) (privKey []byte, pubKey []byte, cert []byte, err error) {
+	const op = "target.generateKeysAndCert"
+
+	privKey, pubKey, err = generatePrivAndPubKeys(ctx)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
+	}
+	parsedKey, err := x509.ParseECPrivateKey(privKey)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
+	}
+	cert, err = generateTargetCert(ctx, parsedKey, notValidAfter, opt...)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
+	}
+
+	return privKey, pubKey, cert, nil
 }
 
 // TargetProxyCertificate represents a proxy certificate for a target
@@ -102,35 +122,26 @@ func NewTargetProxyCertificate(ctx context.Context, opt ...Option) (*TargetProxy
 
 	opts := GetOpts(opt...)
 
-	privKey, pubKey, err := generatePrivAndPubKeys(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating target proxy certificate key"))
-	}
-
 	notValidAfter := time.Now().AddDate(1, 0, 0) // 1 year from now
-	parsedKey, err := x509.ParseECPrivateKey(privKey)
+	privKey, pubKey, cert, err := generateKeysAndCert(ctx, notValidAfter)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing target proxy certificate key"))
-	}
-	certBytes, err := generateTargetCert(ctx, parsedKey, notValidAfter)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating target certificate"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating target proxy cert and keys"))
 	}
 
 	return &TargetProxyCertificate{
 		TargetProxyCertificate: &store.TargetProxyCertificate{
 			PrivateKey:    privKey,
 			PublicKey:     pubKey,
-			Certificate:   certBytes,
+			Certificate:   cert,
 			NotValidAfter: timestamp.New(notValidAfter),
 			TargetId:      opts.withTargetId,
 		},
 	}, nil
 }
 
-// encrypt the target cert key before writing it to the db
-func (t *TargetProxyCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "target.(TargetProxyCertificate).encrypt"
+// Encrypt the target cert key before writing it to the db
+func (t *TargetProxyCertificate) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "target.(TargetProxyCertificate).Encrypt"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
@@ -145,9 +156,9 @@ func (t *TargetProxyCertificate) encrypt(ctx context.Context, cipher wrapping.Wr
 	return nil
 }
 
-// decrypt the target cert key after reading it from the db
-func (t *TargetProxyCertificate) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "target.(TargetProxyCertificate).decrypt"
+// Decrypt the target cert key after reading it from the db
+func (t *TargetProxyCertificate) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "target.(TargetProxyCertificate).Decrypt"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
@@ -197,6 +208,31 @@ func (t *TargetProxyCertificate) TableName() string {
 	return "target_proxy_certificate"
 }
 
+// SetTableName sets the table name
+func (t *TargetProxyCertificate) SetTableName(name string) {
+	t.tableName = name
+}
+
+func (t *TargetProxyCertificate) GetNotValidAfter() *timestamp.Timestamp {
+	return t.NotValidAfter
+}
+
+func (t *TargetProxyCertificate) SetPrivateKey(privKeyBytes []byte) {
+	t.PrivateKey = privKeyBytes
+}
+
+func (t *TargetProxyCertificate) SetPublicKey(pubKeyBytes []byte) {
+	t.PublicKey = pubKeyBytes
+}
+
+func (t *TargetProxyCertificate) SetCertificate(certBytes []byte) {
+	t.Certificate = certBytes
+}
+
+func (t *TargetProxyCertificate) SetNotValidAfter(timestamp *timestamp.Timestamp) {
+	t.NotValidAfter = timestamp
+}
+
 // TargetAliasProxyCertificate represents a certificate for a target accessed with an alias
 type TargetAliasProxyCertificate struct {
 	*store.TargetAliasProxyCertificate
@@ -213,18 +249,10 @@ func NewTargetAliasProxyCertificate(ctx context.Context, targetId string, alias 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target alias")
 	}
 
-	privKey, pubKey, err := generatePrivAndPubKeys(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating target proxy certificate key"))
-	}
 	notValidAfter := time.Now().AddDate(1, 0, 0) // 1 year from now
-	parsedKey, err := x509.ParseECPrivateKey(privKey)
+	privKey, pubKey, cert, err := generateKeysAndCert(ctx, notValidAfter, WithAlias(alias))
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing target proxy certificate key"))
-	}
-	certBytes, err := generateTargetCert(ctx, parsedKey, notValidAfter, WithAlias(alias))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating target certificate"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating target proxy cert and keys"))
 	}
 
 	return &TargetAliasProxyCertificate{
@@ -233,15 +261,15 @@ func NewTargetAliasProxyCertificate(ctx context.Context, targetId string, alias 
 			PrivateKey:    privKey,
 			PublicKey:     pubKey,
 			AliasId:       alias.PublicId,
-			Certificate:   certBytes,
+			Certificate:   cert,
 			NotValidAfter: timestamp.New(notValidAfter),
 		},
 	}, nil
 }
 
-// encrypt the target cert key before writing it to the db
-func (t *TargetAliasProxyCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "target.(TargetAliasProxyCertificate).encrypt"
+// Encrypt the target cert key before writing it to the db
+func (t *TargetAliasProxyCertificate) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "target.(TargetAliasProxyCertificate).Encrypt"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
@@ -257,8 +285,8 @@ func (t *TargetAliasProxyCertificate) encrypt(ctx context.Context, cipher wrappi
 }
 
 // decrypt the target cert key after reading it from the db
-func (t *TargetAliasProxyCertificate) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "target.(TargetAliasProxyCertificate).decrypt"
+func (t *TargetAliasProxyCertificate) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "target.(TargetAliasProxyCertificate).Decrypt"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
@@ -308,4 +336,167 @@ func (t *TargetAliasProxyCertificate) VetForWrite(ctx context.Context, _ db.Read
 // TableName returns the table name.
 func (t *TargetAliasProxyCertificate) TableName() string {
 	return "target_alias_proxy_certificate"
+}
+
+// SetTableName sets the table name
+func (t *TargetAliasProxyCertificate) SetTableName(name string) {
+	t.tableName = name
+}
+
+func (t *TargetAliasProxyCertificate) GetNotValidAfter() *timestamp.Timestamp {
+	return t.NotValidAfter
+}
+
+func (t *TargetAliasProxyCertificate) SetPrivateKey(privKeyBytes []byte) {
+	t.PrivateKey = privKeyBytes
+}
+
+func (t *TargetAliasProxyCertificate) SetPublicKey(pubKeyBytes []byte) {
+	t.PublicKey = pubKeyBytes
+}
+
+func (t *TargetAliasProxyCertificate) SetCertificate(certBytes []byte) {
+	t.Certificate = certBytes
+}
+
+func (t *TargetAliasProxyCertificate) SetNotValidAfter(timestamp *timestamp.Timestamp) {
+	t.NotValidAfter = timestamp
+}
+
+func pemsToServerCertificate(ctx context.Context, certPem, keyPem []byte) (*ServerCertificate, error) {
+	const op = "target.pemsToServerCertificate"
+	switch {
+	case certPem == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing certificate PEM")
+	case keyPem == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private key PEM")
+	}
+
+	cPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certPem,
+	})
+	if certPem == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "error encoding certificate to PEM")
+	}
+
+	kPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: keyPem,
+	})
+	if keyPem == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "error encoding private key to PEM")
+	}
+
+	return &ServerCertificate{
+		CertificatePem: cPem,
+		PrivateKeyPem:  kPem,
+	}, nil
+}
+
+func (t *TargetProxyCertificate) fromServerCertificate(ctx context.Context, serverCert *ServerCertificate) error {
+	const op = "target.(TargetProxyCertificate).fromServerCertificate"
+	switch {
+	case serverCert == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing server certificate")
+	case len(serverCert.CertificatePem) == 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing certificate PEM data")
+	case len(serverCert.PrivateKeyPem) == 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private key PEM data")
+	}
+
+	decodedBlock, _ := pem.Decode(serverCert.CertificatePem)
+	if decodedBlock == nil || decodedBlock.Type != "CERTIFICATE" {
+		return errors.New(ctx, errors.InvalidParameter, op, "invalid PEM data for certificate")
+	}
+
+	cert, err := x509.ParseCertificate(decodedBlock.Bytes)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error parsing PEM data"))
+	}
+	t.Certificate = cert.Raw
+	t.NotValidAfter = timestamp.New(cert.NotAfter)
+
+	decodedKeyBlock, _ := pem.Decode(serverCert.PrivateKeyPem)
+	if decodedKeyBlock == nil || decodedKeyBlock.Type != "EC PRIVATE KEY" {
+		return errors.New(ctx, errors.InvalidParameter, op, "invalid PEM data for EC private key")
+	}
+
+	t.PrivateKey = decodedKeyBlock.Bytes
+	privKey, err := x509.ParseECPrivateKey(t.PrivateKey)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error parsing decoded private key"))
+	}
+	t.PublicKey, err = x509.MarshalPKIXPublicKey(&privKey.PublicKey)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error marshalling public key"))
+	}
+	return nil
+}
+
+// ToServerCertificate converts the target proxy certificate to a server certificate
+func (t *TargetProxyCertificate) ToServerCertificate(ctx context.Context) (*ServerCertificate, error) {
+	const op = "target.(TargetProxyCertificate).ToServerCertificate"
+	switch {
+	case len(t.PrivateKey) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private key")
+	case len(t.Certificate) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
+	}
+
+	return pemsToServerCertificate(ctx, t.Certificate, t.PrivateKey)
+}
+
+func (t *TargetAliasProxyCertificate) fromServerCertificate(ctx context.Context, serverCert *ServerCertificate) error {
+	const op = "target.(TargetAliasProxyCertificate).fromServerCertificate"
+	switch {
+	case serverCert == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing server certificate")
+	case len(serverCert.CertificatePem) == 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing certificate PEM data")
+	case len(serverCert.PrivateKeyPem) == 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private keyPEM data")
+	}
+
+	decodedBlock, _ := pem.Decode(serverCert.CertificatePem)
+	if decodedBlock == nil || decodedBlock.Type != "CERTIFICATE" {
+		return errors.New(ctx, errors.InvalidParameter, op, "invalid PEM data for certificate")
+	}
+
+	cert, err := x509.ParseCertificate(decodedBlock.Bytes)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error parsing PEM data"))
+	}
+	t.Certificate = cert.Raw
+	t.NotValidAfter = timestamp.New(cert.NotAfter)
+
+	decodedKeyBlock, _ := pem.Decode(serverCert.PrivateKeyPem)
+	if decodedKeyBlock == nil || decodedKeyBlock.Type != "EC PRIVATE KEY" {
+		return errors.New(ctx, errors.InvalidParameter, op, "invalid PEM data for EC private key")
+	}
+
+	t.PrivateKey = decodedKeyBlock.Bytes
+	privKey, err := x509.ParseECPrivateKey(t.PrivateKey)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error parsing decoded private key"))
+	}
+	t.PublicKey, err = x509.MarshalPKIXPublicKey(&privKey.PublicKey)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error marshalling public key"))
+	}
+	return nil
+}
+
+// ToServerCertificate converts the target alias proxy certificate to a server certificate
+func (t *TargetAliasProxyCertificate) ToServerCertificate(ctx context.Context) (*ServerCertificate, error) {
+	const op = "target.(TargetAliasProxyCertificate).ToServerCertificate"
+	switch {
+	case len(t.PrivateKey) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private key")
+	case len(t.Certificate) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
+
+	}
+
+	return pemsToServerCertificate(ctx, t.Certificate, t.PrivateKey)
 }

@@ -105,7 +105,7 @@ func TestGenerateTargetCert(t *testing.T) {
 			require.Contains(pCert.DNSNames, "localhost")
 			if tt.opt != nil {
 				opts := GetOpts(tt.opt...)
-				require.Contains(pCert.DNSNames, opts.withAlias.Value)
+				require.Contains(pCert.DNSNames, opts.WithAlias.Value)
 			}
 		})
 	}
@@ -220,7 +220,7 @@ func Test_encrypt_decrypt_TargetCert(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			encryptedCert := tt.certKey.Clone()
-			err = encryptedCert.encrypt(ctx, tt.encryptWrapper)
+			err = encryptedCert.Encrypt(ctx, tt.encryptWrapper)
 			if tt.wantEncryptErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantEncryptErrMatch, err), "expected %q and got err: %+v", tt.wantEncryptErrMatch.Code, err)
@@ -231,7 +231,7 @@ func Test_encrypt_decrypt_TargetCert(t *testing.T) {
 
 			decryptedCert := encryptedCert.Clone()
 			decryptedCert.PrivateKey = []byte("")
-			err = decryptedCert.decrypt(ctx, tt.decryptWrapper)
+			err = decryptedCert.Decrypt(ctx, tt.decryptWrapper)
 			if tt.wantDecryptErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantDecryptErrMatch, err), "expected %q and got err: %+v", tt.wantDecryptErrMatch.Code, err)
@@ -378,7 +378,7 @@ func Test_encrypt_decrypt_TargetAliasCert(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			encryptedCert := tt.certKey.Clone()
-			err = encryptedCert.encrypt(ctx, tt.encryptWrapper)
+			err = encryptedCert.Encrypt(ctx, tt.encryptWrapper)
 			if tt.wantEncryptErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantEncryptErrMatch, err), "expected %q and got err: %+v", tt.wantEncryptErrMatch.Code, err)
@@ -389,7 +389,7 @@ func Test_encrypt_decrypt_TargetAliasCert(t *testing.T) {
 
 			decryptedCert := encryptedCert.Clone()
 			decryptedCert.PrivateKey = []byte("")
-			err = decryptedCert.decrypt(ctx, tt.decryptWrapper)
+			err = decryptedCert.Decrypt(ctx, tt.decryptWrapper)
 			if tt.wantDecryptErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantDecryptErrMatch, err), "expected %q and got err: %+v", tt.wantDecryptErrMatch.Code, err)
@@ -399,4 +399,50 @@ func Test_encrypt_decrypt_TargetAliasCert(t *testing.T) {
 			assert.Equal(tt.certKey.PrivateKey, decryptedCert.PrivateKey)
 		})
 	}
+}
+
+func TestTargetProxyCertToAndFromServerCert(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	cert, err := NewTargetProxyCertificate(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, cert)
+	serverCert, err := cert.ToServerCertificate(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, serverCert.CertificatePem)
+	require.NotEmpty(t, serverCert.PrivateKeyPem)
+
+	newCert := allocTargetProxyCertificate()
+	err = newCert.fromServerCertificate(ctx, serverCert)
+	require.NoError(t, err)
+	require.Equal(t, cert.Certificate, newCert.Certificate)
+}
+
+func TestTargetAliasProxyCertToAndFromServerCert(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	tId := "test-target-id"
+	tAId := "test-alias-id"
+	aliasValue := "test-alias-value"
+	alias := &talias.Alias{
+		Alias: &astore.Alias{
+			PublicId: tAId,
+			Value:    aliasValue,
+		},
+	}
+
+	cert, err := NewTargetAliasProxyCertificate(ctx, tId, alias)
+	require.NoError(t, err)
+	require.NotNil(t, cert)
+	serverCert, err := cert.ToServerCertificate(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, serverCert.CertificatePem)
+	require.NotEmpty(t, serverCert.PrivateKeyPem)
+
+	newCert := allocTargetAliasProxyCertificate()
+	err = newCert.fromServerCertificate(ctx, serverCert)
+	require.NoError(t, err)
+	require.Equal(t, cert.Certificate, newCert.Certificate)
 }

@@ -734,18 +734,20 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
+	var targetAlias *talias.Alias
+	var err error
 	if ctxAlias := alias.FromContext(ctx); ctxAlias != nil {
-		a, err := s.resolveAlias(ctx, ctxAlias.PublicId)
+		targetAlias, err = s.resolveAlias(ctx, ctxAlias.PublicId)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		if a.HostId != "" {
-			if req.GetHostId() != "" && req.GetHostId() != a.HostId {
+		if targetAlias.HostId != "" {
+			if req.GetHostId() != "" && req.GetHostId() != targetAlias.HostId {
 				return nil, handlers.InvalidArgumentErrorf("Errors in provided fields.", map[string]string{
 					"host_id": "The host id specified in the request does not match the one provided by the alias. Consider omitting the host id in the request.",
 				})
 			}
-			req.HostId = a.HostId
+			req.HostId = targetAlias.HostId
 		}
 	}
 
@@ -803,7 +805,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, err := repo.LookupTarget(ctx, roundTripTarget.GetPublicId())
+	t, err := repo.LookupTargetForSessionAuthorization(ctx, roundTripTarget.GetPublicId(), target.WithAlias(targetAlias))
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())

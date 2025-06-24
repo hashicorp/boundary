@@ -36,6 +36,7 @@ type Target struct {
 	HostSource        []target.HostSource       `gorm:"-"`
 	CredentialSources []target.CredentialSource `gorm:"-"`
 	Aliases           []*talias.Alias           `gorm:"-"`
+	ServerCert        *target.ServerCertificate `gorm:"-"`
 }
 
 var (
@@ -162,7 +163,7 @@ func (t *Target) GetStorageBucketId() string {
 }
 
 func (t *Target) GetProxyServerCertificate() *target.ServerCertificate {
-	return nil
+	return t.ServerCert
 }
 
 func (t *Target) Clone() target.Target {
@@ -257,7 +258,9 @@ func (t *Target) SetEnableSessionRecording(_ bool) {}
 
 func (t *Target) SetStorageBucketId(_ string) {}
 
-func (t *Target) SetProxyServerCertificate(*target.ServerCertificate) {}
+func (t *Target) SetProxyServerCertificate(sc *target.ServerCertificate) {
+	t.ServerCert = sc
+}
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return oplog.Metadata{
