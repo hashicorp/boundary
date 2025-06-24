@@ -21,8 +21,8 @@ service StorageBucketService {
       "A storage bucket is an external storage location used to store recordings of user access sessions. "
       "The storage bucket service provides endpoints that let you manage storage buckets in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets";
-      description: "Read about storage buckets in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets"
+      description: "Read about storage buckets in the Boundary domain model"
     }
   };
 
