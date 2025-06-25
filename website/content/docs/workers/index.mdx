@@ -102,7 +102,7 @@ worker {
 - `tags` - A map of key-value pairs where values are an array of strings. Most
   commonly used for [filtering](/boundary/docs/concepts/filtering) targets a
   worker can proxy via [worker
-  tags](/boundary/docs/security/worker-tags). On `SIGHUP`, the tags
+  tags](/boundary/docs/secure/worker-tags). On `SIGHUP`, the tags
   set here will be re-parsed and new values used. It can also be a string
   referring to a file on disk (`file://`) or an environment variable (`env://`).
 
@@ -218,5 +218,5 @@ Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/h
 
 [Worker Configuration Methods]: /boundary/docs/configuration/worker/worker-configuration
 [target]: /boundary/docs/concepts/domain-model/targets
-[target worker filters]: /boundary/docs/security/worker-tags#target-worker-filtering
+[target worker filters]: /boundary/docs/secure/worker-tags#target-worker-filtering
 [session recording]: /boundary/docs/configuration/session-recording
