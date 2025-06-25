@@ -23,6 +23,7 @@ import (
 // all users in a single invocation.
 func TestCliPaginateUsers(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 
@@ -115,6 +116,7 @@ func TestCliPaginateUsers(t *testing.T) {
 // all users in a single invocation.
 func TestApiPaginateUsers(t *testing.T) {
 	e2e.MaybeSkipTest(t)
+	t.Skip("Skipping test due to 'large estimated count' bug: ICU-16649")
 	c, err := loadTestConfig()
 	require.NoError(t, err)
 

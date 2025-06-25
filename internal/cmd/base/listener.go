@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
 	"github.com/pires/go-proxyproto"
@@ -139,7 +140,7 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 	}
 
 	host, port, err := util.SplitHostPort(l.Address)
-	if err != nil {
+	if err != nil && !errors.Is(err, util.ErrMissingPort) {
 		return "", nil, fmt.Errorf("error splitting host/port: %w", err)
 	}
 	if port == "" {
@@ -173,10 +174,15 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 	}
 
 	if l.RandomPort {
-		port = ""
+		port = "0" // net.Listen will choose an available port automatically. Used for tests.
 	}
 
 	finalListenAddr := net.JoinHostPort(host, port)
+	normalizedListenAddr, err := parseutil.NormalizeAddr(finalListenAddr)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to normalize final listen addr %q: %w", finalListenAddr, err)
+	}
+	finalListenAddr = normalizedListenAddr
 
 	ln, err := net.Listen(bindProto, finalListenAddr)
 	if err != nil {

@@ -1071,8 +1071,12 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 					if err != nil {
 						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
-					if !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
-						badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
+					if iss != nil {
+						if !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
+							badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
+						}
+					} else {
+						badFields[issuerField] = "Cannot be parsed as a url"
 					}
 				}
 				if attrs.GetDisableDiscoveredConfigValidation() {
