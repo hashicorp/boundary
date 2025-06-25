@@ -41,7 +41,9 @@ func request_RoleService_GetRole_0(ctx context.Context, marshaler runtime.Marsha
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_RoleService_ListRoles_0(ctx context.Context, marshaler runtime.Mars
 		protoReq ListRolesRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_RoleService_CreateRole_0(ctx context.Context, marshaler runtime.Mar
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateRole(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -143,6 +150,9 @@ func request_RoleService_UpdateRole_0(ctx context.Context, marshaler runtime.Mar
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -213,7 +223,9 @@ func request_RoleService_DeleteRole_0(ctx context.Context, marshaler runtime.Mar
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -252,6 +264,9 @@ func request_RoleService_AddRolePrincipals_0(ctx context.Context, marshaler runt
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -295,6 +310,9 @@ func request_RoleService_SetRolePrincipals_0(ctx context.Context, marshaler runt
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -336,6 +354,9 @@ func request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marshaler r
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -379,6 +400,9 @@ func request_RoleService_AddRoleGrants_0(ctx context.Context, marshaler runtime.
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -420,6 +444,9 @@ func request_RoleService_SetRoleGrants_0(ctx context.Context, marshaler runtime.
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -463,6 +490,9 @@ func request_RoleService_RemoveRoleGrants_0(ctx context.Context, marshaler runti
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -504,6 +534,9 @@ func request_RoleService_AddRoleGrantScopes_0(ctx context.Context, marshaler run
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -547,6 +580,9 @@ func request_RoleService_SetRoleGrantScopes_0(ctx context.Context, marshaler run
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -588,6 +624,9 @@ func request_RoleService_RemoveRoleGrantScopes_0(ctx context.Context, marshaler 
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -1194,7 +1233,8 @@ type response_RoleService_GetRole_0 struct {
 }
 
 func (m response_RoleService_GetRole_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetRoleResponse
+	return response.Item
 }
 
 type response_RoleService_CreateRole_0 struct {
@@ -1202,7 +1242,8 @@ type response_RoleService_CreateRole_0 struct {
 }
 
 func (m response_RoleService_CreateRole_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateRoleResponse
+	return response.Item
 }
 
 type response_RoleService_UpdateRole_0 struct {
@@ -1210,7 +1251,8 @@ type response_RoleService_UpdateRole_0 struct {
 }
 
 func (m response_RoleService_UpdateRole_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateRoleResponse
+	return response.Item
 }
 
 type response_RoleService_AddRolePrincipals_0 struct {
@@ -1218,7 +1260,8 @@ type response_RoleService_AddRolePrincipals_0 struct {
 }
 
 func (m response_RoleService_AddRolePrincipals_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddRolePrincipalsResponse
+	return response.Item
 }
 
 type response_RoleService_SetRolePrincipals_0 struct {
@@ -1226,7 +1269,8 @@ type response_RoleService_SetRolePrincipals_0 struct {
 }
 
 func (m response_RoleService_SetRolePrincipals_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetRolePrincipalsResponse
+	return response.Item
 }
 
 type response_RoleService_RemoveRolePrincipals_0 struct {
@@ -1234,7 +1278,8 @@ type response_RoleService_RemoveRolePrincipals_0 struct {
 }
 
 func (m response_RoleService_RemoveRolePrincipals_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveRolePrincipalsResponse
+	return response.Item
 }
 
 type response_RoleService_AddRoleGrants_0 struct {
@@ -1242,7 +1287,8 @@ type response_RoleService_AddRoleGrants_0 struct {
 }
 
 func (m response_RoleService_AddRoleGrants_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddRoleGrantsResponse
+	return response.Item
 }
 
 type response_RoleService_SetRoleGrants_0 struct {
@@ -1250,7 +1296,8 @@ type response_RoleService_SetRoleGrants_0 struct {
 }
 
 func (m response_RoleService_SetRoleGrants_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetRoleGrantsResponse
+	return response.Item
 }
 
 type response_RoleService_RemoveRoleGrants_0 struct {
@@ -1258,7 +1305,8 @@ type response_RoleService_RemoveRoleGrants_0 struct {
 }
 
 func (m response_RoleService_RemoveRoleGrants_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveRoleGrantsResponse
+	return response.Item
 }
 
 type response_RoleService_AddRoleGrantScopes_0 struct {
@@ -1266,7 +1314,8 @@ type response_RoleService_AddRoleGrantScopes_0 struct {
 }
 
 func (m response_RoleService_AddRoleGrantScopes_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddRoleGrantScopesResponse
+	return response.Item
 }
 
 type response_RoleService_SetRoleGrantScopes_0 struct {
@@ -1274,7 +1323,8 @@ type response_RoleService_SetRoleGrantScopes_0 struct {
 }
 
 func (m response_RoleService_SetRoleGrantScopes_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetRoleGrantScopesResponse
+	return response.Item
 }
 
 type response_RoleService_RemoveRoleGrantScopes_0 struct {
@@ -1282,7 +1332,8 @@ type response_RoleService_RemoveRoleGrantScopes_0 struct {
 }
 
 func (m response_RoleService_RemoveRoleGrantScopes_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveRoleGrantScopesResponse
+	return response.Item
 }
 
 var (

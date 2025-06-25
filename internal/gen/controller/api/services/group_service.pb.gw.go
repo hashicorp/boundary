@@ -41,7 +41,9 @@ func request_GroupService_GetGroup_0(ctx context.Context, marshaler runtime.Mars
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_GroupService_ListGroups_0(ctx context.Context, marshaler runtime.Ma
 		protoReq ListGroupsRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_GroupService_CreateGroup_0(ctx context.Context, marshaler runtime.M
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateGroup(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -143,6 +150,9 @@ func request_GroupService_UpdateGroup_0(ctx context.Context, marshaler runtime.M
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -213,7 +223,9 @@ func request_GroupService_DeleteGroup_0(ctx context.Context, marshaler runtime.M
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -252,6 +264,9 @@ func request_GroupService_AddGroupMembers_0(ctx context.Context, marshaler runti
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -295,6 +310,9 @@ func request_GroupService_SetGroupMembers_0(ctx context.Context, marshaler runti
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -336,6 +354,9 @@ func request_GroupService_RemoveGroupMembers_0(ctx context.Context, marshaler ru
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -720,7 +741,8 @@ type response_GroupService_GetGroup_0 struct {
 }
 
 func (m response_GroupService_GetGroup_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetGroupResponse
+	return response.Item
 }
 
 type response_GroupService_CreateGroup_0 struct {
@@ -728,7 +750,8 @@ type response_GroupService_CreateGroup_0 struct {
 }
 
 func (m response_GroupService_CreateGroup_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateGroupResponse
+	return response.Item
 }
 
 type response_GroupService_UpdateGroup_0 struct {
@@ -736,7 +759,8 @@ type response_GroupService_UpdateGroup_0 struct {
 }
 
 func (m response_GroupService_UpdateGroup_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateGroupResponse
+	return response.Item
 }
 
 type response_GroupService_AddGroupMembers_0 struct {
@@ -744,7 +768,8 @@ type response_GroupService_AddGroupMembers_0 struct {
 }
 
 func (m response_GroupService_AddGroupMembers_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddGroupMembersResponse
+	return response.Item
 }
 
 type response_GroupService_SetGroupMembers_0 struct {
@@ -752,7 +777,8 @@ type response_GroupService_SetGroupMembers_0 struct {
 }
 
 func (m response_GroupService_SetGroupMembers_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetGroupMembersResponse
+	return response.Item
 }
 
 type response_GroupService_RemoveGroupMembers_0 struct {
@@ -760,7 +786,8 @@ type response_GroupService_RemoveGroupMembers_0 struct {
 }
 
 func (m response_GroupService_RemoveGroupMembers_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveGroupMembersResponse
+	return response.Item
 }
 
 var (

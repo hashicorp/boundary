@@ -135,6 +135,7 @@ func TestGrants_ReadActions(t *testing.T) {
 	sessionRepo, err := sessionRepoFn()
 	require.NoError(t, err)
 	proj1Session := testSession(t, conn, kmsCache, wrap, targetRepo, sessionRepo, proj1.PublicId, true)
+	proj1Session2 := testSession(t, conn, kmsCache, wrap, targetRepo, sessionRepo, proj1.PublicId, true)
 	proj2Session := testSession(t, conn, kmsCache, wrap, targetRepo, sessionRepo, proj2.PublicId, true)
 	proj3Session := testSession(t, conn, kmsCache, wrap, targetRepo, sessionRepo, proj3.PublicId, false)
 
@@ -306,9 +307,10 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				idOutputFieldsMap: map[string][]string{
-					proj1Session.PublicId: {globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					proj2Session.PublicId: {globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
-					proj3Session.PublicId: {globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					proj1Session.PublicId:  {globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					proj1Session2.PublicId: {globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					proj2Session.PublicId:  {globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
+					proj3Session.PublicId:  {globals.IdField, globals.TargetIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField},
 				},
 			},
 			{
@@ -326,7 +328,8 @@ func TestGrants_ReadActions(t *testing.T) {
 					IncludeTerminated: true,
 				},
 				idOutputFieldsMap: map[string][]string{
-					proj1Session.PublicId: {globals.IdField, globals.ExpirationTimeField, globals.AuthTokenIdField, globals.UserIdField, globals.HostSetIdField, globals.HostIdsField},
+					proj1Session.PublicId:  {globals.IdField, globals.ExpirationTimeField, globals.AuthTokenIdField, globals.UserIdField, globals.HostSetIdField, globals.HostIdsField},
+					proj1Session2.PublicId: {globals.IdField, globals.ExpirationTimeField, globals.AuthTokenIdField, globals.UserIdField, globals.HostSetIdField, globals.HostIdsField},
 				},
 			},
 			{
@@ -363,7 +366,8 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				idOutputFieldsMap: map[string][]string{
-					proj1Session.PublicId: {globals.IdField, globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField},
+					proj1Session.PublicId:  {globals.IdField, globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField},
+					proj1Session2.PublicId: {globals.IdField, globals.VersionField, globals.TypeField, globals.ScopeIdField, globals.EndpointField, globals.StatesField, globals.StatusField, globals.CertificateField, globals.AuthorizedActionsField},
 				},
 			},
 			{
@@ -391,9 +395,36 @@ func TestGrants_ReadActions(t *testing.T) {
 					},
 				}),
 				idOutputFieldsMap: map[string][]string{
-					proj1Session.PublicId: {globals.IdField, globals.AuthorizedActionsField},
-					proj2Session.PublicId: {globals.IdField, globals.VersionField},
-					proj3Session.PublicId: {globals.IdField, globals.StateField},
+					proj1Session.PublicId:  {globals.IdField, globals.AuthorizedActionsField},
+					proj1Session2.PublicId: {globals.IdField, globals.AuthorizedActionsField},
+					proj2Session.PublicId:  {globals.IdField, globals.VersionField},
+					proj3Session.PublicId:  {globals.IdField, globals.StateField},
+				},
+			},
+			{
+				name: "iss 5003 resource id grant should not override all ids",
+				input: &pbs.ListSessionsRequest{
+					ScopeId:           globals.GlobalPrefix,
+					Recursive:         true,
+					IncludeTerminated: true,
+				},
+				userFunc: iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{"id=*;type=*;actions=*;output_fields=id,authorized_actions"},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+					{
+						RoleScopeId: globals.GlobalPrefix,
+						Grants:      []string{fmt.Sprintf("ids=%s;actions=*;output_fields=id,version", proj1Session2.PublicId)},
+						GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+					},
+				}),
+				idOutputFieldsMap: map[string][]string{
+					proj1Session.PublicId:  {globals.IdField, globals.AuthorizedActionsField},
+					proj1Session2.PublicId: {globals.IdField, globals.AuthorizedActionsField},
+					proj2Session.PublicId:  {globals.IdField, globals.AuthorizedActionsField},
+					proj3Session.PublicId:  {globals.IdField, globals.AuthorizedActionsField},
 				},
 			},
 			{

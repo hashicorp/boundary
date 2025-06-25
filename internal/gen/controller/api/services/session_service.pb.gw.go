@@ -41,7 +41,9 @@ func request_SessionService_GetSession_0(ctx context.Context, marshaler runtime.
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_SessionService_ListSessions_0(ctx context.Context, marshaler runtim
 		protoReq ListSessionsRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_SessionService_CancelSession_0(ctx context.Context, marshaler runti
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -312,7 +319,8 @@ type response_SessionService_GetSession_0 struct {
 }
 
 func (m response_SessionService_GetSession_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetSessionResponse
+	return response.Item
 }
 
 type response_SessionService_CancelSession_0 struct {
@@ -320,7 +328,8 @@ type response_SessionService_CancelSession_0 struct {
 }
 
 func (m response_SessionService_CancelSession_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CancelSessionResponse
+	return response.Item
 }
 
 var (

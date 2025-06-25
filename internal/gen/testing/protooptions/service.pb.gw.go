@@ -41,7 +41,9 @@ func request_TestService_TestMethod_0(ctx context.Context, marshaler runtime.Mar
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_TestService_TestMethod_1(ctx context.Context, marshaler runtime.Mar
 		protoReq TestMethodRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -233,7 +237,8 @@ type response_TestService_TestMethod_0 struct {
 }
 
 func (m response_TestService_TestMethod_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.TestMethodResponse
+	return response.Item
 }
 
 var (

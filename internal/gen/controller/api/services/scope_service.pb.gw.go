@@ -41,7 +41,9 @@ func request_ScopeService_GetScope_0(ctx context.Context, marshaler runtime.Mars
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_ScopeService_ListScopes_0(ctx context.Context, marshaler runtime.Ma
 		protoReq ListScopesRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -114,6 +118,9 @@ func request_ScopeService_CreateScope_0(ctx context.Context, marshaler runtime.M
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
@@ -157,6 +164,9 @@ func request_ScopeService_UpdateScope_0(ctx context.Context, marshaler runtime.M
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -227,7 +237,9 @@ func request_ScopeService_DeleteScope_0(ctx context.Context, marshaler runtime.M
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -264,7 +276,9 @@ func request_ScopeService_ListKeys_0(ctx context.Context, marshaler runtime.Mars
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -303,6 +317,9 @@ func request_ScopeService_RotateKeys_0(ctx context.Context, marshaler runtime.Ma
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.RotateKeys(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -325,7 +342,9 @@ func request_ScopeService_ListKeyVersionDestructionJobs_0(ctx context.Context, m
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["scope_id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
@@ -364,6 +383,9 @@ func request_ScopeService_DestroyKeyVersion_0(ctx context.Context, marshaler run
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.DestroyKeyVersion(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -388,6 +410,9 @@ func request_ScopeService_AttachStoragePolicy_0(ctx context.Context, marshaler r
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -430,6 +455,9 @@ func request_ScopeService_DetachStoragePolicy_0(ctx context.Context, marshaler r
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -925,7 +953,8 @@ type response_ScopeService_GetScope_0 struct {
 }
 
 func (m response_ScopeService_GetScope_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetScopeResponse
+	return response.Item
 }
 
 type response_ScopeService_CreateScope_0 struct {
@@ -933,7 +962,8 @@ type response_ScopeService_CreateScope_0 struct {
 }
 
 func (m response_ScopeService_CreateScope_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateScopeResponse
+	return response.Item
 }
 
 type response_ScopeService_UpdateScope_0 struct {
@@ -941,7 +971,8 @@ type response_ScopeService_UpdateScope_0 struct {
 }
 
 func (m response_ScopeService_UpdateScope_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateScopeResponse
+	return response.Item
 }
 
 type response_ScopeService_AttachStoragePolicy_0 struct {
@@ -949,7 +980,8 @@ type response_ScopeService_AttachStoragePolicy_0 struct {
 }
 
 func (m response_ScopeService_AttachStoragePolicy_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AttachStoragePolicyResponse
+	return response.Item
 }
 
 type response_ScopeService_DetachStoragePolicy_0 struct {
@@ -957,7 +989,8 @@ type response_ScopeService_DetachStoragePolicy_0 struct {
 }
 
 func (m response_ScopeService_DetachStoragePolicy_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.DetachStoragePolicyResponse
+	return response.Item
 }
 
 var (

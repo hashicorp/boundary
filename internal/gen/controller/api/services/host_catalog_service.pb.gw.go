@@ -41,7 +41,9 @@ func request_HostCatalogService_GetHostCatalog_0(ctx context.Context, marshaler 
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_HostCatalogService_ListHostCatalogs_0(ctx context.Context, marshale
 		protoReq ListHostCatalogsRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -114,6 +118,9 @@ func request_HostCatalogService_CreateHostCatalog_0(ctx context.Context, marshal
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
@@ -157,6 +164,9 @@ func request_HostCatalogService_UpdateHostCatalog_0(ctx context.Context, marshal
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -227,7 +237,9 @@ func request_HostCatalogService_DeleteHostCatalog_0(ctx context.Context, marshal
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -497,7 +509,8 @@ type response_HostCatalogService_GetHostCatalog_0 struct {
 }
 
 func (m response_HostCatalogService_GetHostCatalog_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetHostCatalogResponse
+	return response.Item
 }
 
 type response_HostCatalogService_CreateHostCatalog_0 struct {
@@ -505,7 +518,8 @@ type response_HostCatalogService_CreateHostCatalog_0 struct {
 }
 
 func (m response_HostCatalogService_CreateHostCatalog_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateHostCatalogResponse
+	return response.Item
 }
 
 type response_HostCatalogService_UpdateHostCatalog_0 struct {
@@ -513,7 +527,8 @@ type response_HostCatalogService_UpdateHostCatalog_0 struct {
 }
 
 func (m response_HostCatalogService_UpdateHostCatalog_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateHostCatalogResponse
+	return response.Item
 }
 
 var (

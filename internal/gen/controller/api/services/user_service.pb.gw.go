@@ -41,7 +41,9 @@ func request_UserService_GetUser_0(ctx context.Context, marshaler runtime.Marsha
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_UserService_ListUsers_0(ctx context.Context, marshaler runtime.Mars
 		protoReq ListUsersRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_UserService_CreateUser_0(ctx context.Context, marshaler runtime.Mar
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateUser(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -143,6 +150,9 @@ func request_UserService_UpdateUser_0(ctx context.Context, marshaler runtime.Mar
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -213,7 +223,9 @@ func request_UserService_DeleteUser_0(ctx context.Context, marshaler runtime.Mar
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -252,6 +264,9 @@ func request_UserService_AddUserAccounts_0(ctx context.Context, marshaler runtim
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -295,6 +310,9 @@ func request_UserService_SetUserAccounts_0(ctx context.Context, marshaler runtim
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -337,6 +355,9 @@ func request_UserService_RemoveUserAccounts_0(ctx context.Context, marshaler run
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -378,7 +399,9 @@ func request_UserService_ListResolvableAliases_0(ctx context.Context, marshaler 
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -808,7 +831,8 @@ type response_UserService_GetUser_0 struct {
 }
 
 func (m response_UserService_GetUser_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetUserResponse
+	return response.Item
 }
 
 type response_UserService_CreateUser_0 struct {
@@ -816,7 +840,8 @@ type response_UserService_CreateUser_0 struct {
 }
 
 func (m response_UserService_CreateUser_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateUserResponse
+	return response.Item
 }
 
 type response_UserService_UpdateUser_0 struct {
@@ -824,7 +849,8 @@ type response_UserService_UpdateUser_0 struct {
 }
 
 func (m response_UserService_UpdateUser_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateUserResponse
+	return response.Item
 }
 
 type response_UserService_AddUserAccounts_0 struct {
@@ -832,7 +858,8 @@ type response_UserService_AddUserAccounts_0 struct {
 }
 
 func (m response_UserService_AddUserAccounts_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddUserAccountsResponse
+	return response.Item
 }
 
 type response_UserService_SetUserAccounts_0 struct {
@@ -840,7 +867,8 @@ type response_UserService_SetUserAccounts_0 struct {
 }
 
 func (m response_UserService_SetUserAccounts_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetUserAccountsResponse
+	return response.Item
 }
 
 type response_UserService_RemoveUserAccounts_0 struct {
@@ -848,7 +876,8 @@ type response_UserService_RemoveUserAccounts_0 struct {
 }
 
 func (m response_UserService_RemoveUserAccounts_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveUserAccountsResponse
+	return response.Item
 }
 
 var (

@@ -390,7 +390,7 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 		clauses = append(clauses, fmt.Sprintf("project_id = @project_id_%d", inClauseCnt))
 		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.GrantScopeId))
 
-		if len(p.ResourceIds) > 0 {
+		if len(p.ResourceIds) > 0 && !p.All {
 			clauses = append(clauses, fmt.Sprintf("public_id = any(@public_id_%d)", inClauseCnt))
 			args = append(args, sql.Named(fmt.Sprintf("public_id_%d", inClauseCnt), "{"+strings.Join(p.ResourceIds, ",")+"}"))
 		}
