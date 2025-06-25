@@ -18,9 +18,9 @@ In Boundary, you can assign users directly to a role, but a better pattern is to
 This document assumes the reader has:
 
 - An understanding of [Terraform](/terraform/docs) fundamentals
-- An existing Boundary installation. Refer to [Initialize Boundary](/boundary/docs/install-boundary/self-managed/initialize) to learn about deploying Boundary.
-- Configured the [Terraform Boundary provider](/boundary/docs/install-boundary/terraform-patterns/#terraform-provider-configuration).
-- Created Boundary [users and auth methods](/boundary/docs/install-boundary/terraform-patterns/terraform-users-and-auth-methods) to assign to the group you plan to create.
+- An existing Boundary installation. Refer to [Initialize Boundary](/boundary/docs/deploy/self-managed/initialize) to learn about deploying Boundary.
+- Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
+- Created Boundary [users and auth methods](/boundary/docs/deploy/terraform-patterns/terraform-users-and-auth-methods) to assign to the group you plan to create.
 
 ## Group configuration
 
@@ -96,5 +96,5 @@ For more information about managing the following resources using Terraform, ref
 
 ## Next steps
 
-You may want to create [hosts and host sets](/boundary/docs/install-boundary/terraform-patterns/terraform-hosts-and-host-management) so that you can configure targets for your users to connect to.
+You may want to create [hosts and host sets](/boundary/docs/deploy/terraform-patterns/terraform-hosts-and-host-management) so that you can configure targets for your users to connect to.
 Targets require an address or host, and credentials to connect to that host.

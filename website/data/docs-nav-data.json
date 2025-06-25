@@ -85,8 +85,8 @@
         "path": "concepts"
       },
       {
-        "title": "Workers",
-        "path": "concepts/workers"
+        "title": "Auditing",
+        "path": "concepts/auditing"
       },
       {
         "title": "Identity and access management",
@@ -95,6 +95,10 @@
       {
         "title": "Credential management",
         "path": "concepts/credential-management"
+      },
+      {
+        "title": "Workers",
+        "path": "concepts/workers"
       },
       {
         "title": "Aliases",
@@ -108,36 +112,6 @@
           "color": "neutral"
         },
         "path": "concepts/transparent-sessions"
-      },
-      {
-        "title": "Auditing",
-        "path": "concepts/auditing"
-      },
-      {
-        "title": "Security",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/security"
-          }
-        ]
-      },
-      {
-        "title": "Filtering",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "concepts/filtering"
-          },
-          {
-            "title": "Resource listing",
-            "path": "concepts/filtering/resource-listing"
-          },
-          {
-            "title": "Events",
-            "path": "concepts/filtering/events"
-          }
-        ]
       }
     ]
   },
@@ -176,32 +150,32 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "install-boundary/self-managed"
+            "path": "deploy/self-managed"
           },
           {
             "title": "Deploy Boundary",
-            "path": "install-boundary/self-managed/deploy"
+            "path": "deploy/self-managed/deploy"
           },
           {
             "title": "Configure controllers",
-            "path": "install-boundary/self-managed/configure-controllers"
+            "path": "deploy/self-managed/configure-controllers"
           },
           {
             "title": "Configure workers",
-            "path": "install-boundary/self-managed/configure-workers"
+            "path": "deploy/self-managed/configure-workers"
           },
           {
             "title": "Initialize Boundary",
-            "path": "install-boundary/self-managed/initialize"
+            "path": "deploy/self-managed/initialize"
           },
           {
             "title": "Install Boundary clients",
-            "path": "install-boundary/self-managed/install-clients"
+            "path": "deploy/self-managed/install-clients"
           },
           {
             "title": "Systemd install",
             "hidden": true,
-            "path": "install-boundary/self-managed/systemd"
+            "path": "deploy/self-managed/systemd"
           }
         ]
       },
@@ -210,27 +184,27 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "install-boundary/terraform-patterns"
+            "path": "deploy/terraform-patterns"
           },
           {
             "title": "Scopes",
-            "path": "install-boundary/terraform-patterns/terraform-scopes"
+            "path": "deploy/terraform-patterns/terraform-scopes"
           },
           {
             "title": "Users and auth methods",
-            "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
+            "path": "deploy/terraform-patterns/terraform-users-and-auth-methods"
           },
           {
             "title": "Groups and RBAC",
-            "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
+            "path": "deploy/terraform-patterns/terraform-groups-and-rbac"
           },
           {
             "title": "Hosts and host management",
-            "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
+            "path": "deploy/terraform-patterns/terraform-hosts-and-host-management"
           },
           {
             "title": "Credentials and credential stores",
-            "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
+            "path": "deploy/terraform-patterns/terraform-credentials-and-credential-stores"
           },
           {
             "title": "Session recording",
@@ -239,11 +213,11 @@
               "type": "outlined",
               "color": "neutral"
             },
-            "path": "install-boundary/terraform-patterns/terraform-session-recording"
+            "path": "deploy/terraform-patterns/terraform-session-recording"
           },
           {
             "title": "Targets",
-            "path": "install-boundary/terraform-patterns/terraform-targets"
+            "path": "deploy/terraform-patterns/terraform-targets"
           }
         ]
       }
@@ -257,17 +231,17 @@
         "routes": [
           {
             "title": "Data encryption",
-            "path": "security/encrypt/data-encryption"
+            "path": "secure/encryption/data-encryption"
           },
           {
             "title": "Connections/TLS",
-            "path": "security/encrypt/connections-tls"
+            "path": "secure/encryption/connections-tls"
           }
         ]
       },
       {
         "title": "Control access using worker tags",
-        "path": "security/worker-tags"
+        "path": "secure/worker-tags"
       }
     ]
   },
@@ -511,6 +485,15 @@
           {
             "title": "Multi-hop sessions",
             "path": "targets/connections/multi-hop"
+          },
+          {
+            "title": "Connect using transparent sessions",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "targets/connections/transparent-sessions"
           }
         ]
       }
@@ -563,40 +546,89 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "session-recording/configuration"
+            "path": "session-recording/configuration",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Configure workers for storage",
-            "path": "session-recording/configuration/configure-worker-storage"
+            "path": "session-recording/configuration/configure-worker-storage",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Configure storage provider",
             "routes": [
               {
                 "title": "Amazon S3",
-                "path": "session-recording/configuration/storage-providers/configure-s3"
+                "path": "session-recording/configuration/storage-providers/configure-s3",
+                "badge": {
+                  "text": "HCP/ENT",
+                  "type": "outlined",
+                  "color": "neutral"
+                }
               },
               {
                 "title": "MinIO",
-                "path": "session-recording/configuration/storage-providers/configure-minio"
+                "path": "session-recording/configuration/storage-providers/configure-minio",
+                "badge": {
+                  "text": "HCP/ENT",
+                  "type": "outlined",
+                  "color": "neutral"
+                }
               },
               {
                 "title": "S3-compliant",
-                "path": "session-recording/configuration/storage-providers/configure-s3-compliant"
+                "path": "session-recording/configuration/storage-providers/configure-s3-compliant",
+                "badge": {
+                  "text": "HCP/ENT",
+                  "type": "outlined",
+                  "color": "neutral"
+                }
               }
             ]
           },
           {
             "title": "Create storage buckets",
-            "path": "session-recording/configuration/create-storage-bucket"
+            "path": "session-recording/configuration/create-storage-bucket",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Enable session recording",
-            "path": "session-recording/configuration/enable-session-recording"
+            "path": "session-recording/configuration/enable-session-recording",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Find and view recorded sessions",
-            "path": "session-recording/configuration/manage-recorded-sessions"
+            "path": "session-recording/configuration/manage-recorded-sessions",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
+          },
+          {
+            "title": "Troubleshoot recorded sessions",
+            "path": "session-recording/configuration/troubleshoot-recorded-sessions",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           }
         ]
       },
@@ -605,23 +637,48 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "session-recording/compliance"
+            "path": "session-recording/compliance",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Configure storage policies",
-            "path": "session-recording/compliance/configure-storage-policy"
+            "path": "session-recording/compliance/configure-storage-policy",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Update storage policies",
-            "path": "session-recording/compliance/update-storage-policy"
+            "path": "session-recording/compliance/update-storage-policy",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Validate recorded sessions",
-            "path": "session-recording/compliance/validate-session-recordings"
+            "path": "session-recording/compliance/validate-session-recordings",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Validate external data store",
-            "path": "session-recording/compliance/validate-data-store"
+            "path": "session-recording/compliance/validate-data-store",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           }
         ]
       },
@@ -630,11 +687,21 @@
         "routes": [
           {
             "title": "BSR file data structure",
-            "path": "session-recording/data/bsr-file-structure"
+            "path": "session-recording/data/bsr-file-structure",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Read a BSR file",
-            "path": "session-recording/data/read-bsr-file"
+            "path": "session-recording/data/read-bsr-file",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           }
         ]
       }
@@ -746,7 +813,12 @@
   },
   {
     "title": "Client Agent",
-    "path": "client-agent"
+    "path": "client-agent",
+    "badge": {
+      "text": "HCP/ENT",
+      "type": "outlined",
+      "color": "neutral"
+    }
   },
   {
     "title": "Client cache",
@@ -1858,12 +1930,12 @@
             "path": "configuration/kms/aead"
           },
           {
-            "title": "AWS KMS",
-            "path": "configuration/kms/awskms"
-          },
-          {
             "title": "AliCloud KMS",
             "path": "configuration/kms/alicloudkms"
+          },
+          {
+            "title": "AWS KMS",
+            "path": "configuration/kms/awskms"
           },
           {
             "title": "Azure Key Vault",
@@ -1890,48 +1962,34 @@
     ]
   },
   {
+    "title": "Filtering",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "filtering"
+      },
+      {
+        "title": "Resource listing",
+        "path": "filtering/resource-listing"
+      },
+      {
+        "title": "Events",
+        "path": "filtering/events"
+      }
+    ]
+  },
+  {
     "title": "Common error messages",
     "path": "errors"
   },
   {
-    "divider": true
-  },
-  {
-    "title": "Aliases and transparent sessions",
-    "routes": [
-      {
-        "title": "Connect using transparent sessions",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "path": "target-aliases/transparent-sessions"
-      },
-      {
-        "title": "Transparent sessions interoperability matrix",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "path": "target-aliases/interoperability-matrix"
-      }
-        ]
-  },
-  {
-    "title": "Troubleshoot",
-    "routes": [
-      {
-        "title": "Recorded sessions",
-        "path": "troubleshoot/troubleshoot-recorded-sessions",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        }
-      }
-    ]
+    "title": "Transparent sessions interoperability matrix",
+    "badge": {
+      "text": "HCP/ENT",
+      "type": "outlined",
+      "color": "neutral"
+    },
+    "path": "interoperability-matrix"
   },
   {
     "title": "Common workflows",
@@ -1977,6 +2035,7 @@
   },
   {
     "title": "Develop Boundary",
+    "hidden": true,
     "routes": [
       {
         "title": "Overview",
@@ -1993,9 +2052,6 @@
     ]
   },
   {
-    "divider": true
-  },
-  {
     "title": "Boundary Community Edition",
     "hidden": true,
     "routes": [
@@ -2004,8 +2060,5 @@
         "path": "community"
       }
     ]
-  },
-  {
-    "divider": true
   }
 ]

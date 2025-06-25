@@ -9,7 +9,7 @@ description: >-
 
 Before you configure workers, you should have completed the following steps:
 
-- Installed Boundary on at least three [controller nodes](/boundary/docs/install-boundary/self-managed/configure-controllers).
+- Installed Boundary on at least three [controller nodes](/boundary/docs/deploy/self-managed/configure-controllers).
 - Prepared or have three existing network boundaries:
    - Public/DMZ network
    - Intermediary network
@@ -462,7 +462,7 @@ Complete the following steps to adopt the worker using the UI:
 
 1. Click **New**.
 
-1. (Optional) You can use the workers page to construct the contents of the `worker.hcl` file, if you did not [create the configuration file](/boundary/docs/install-boundary/self-managed/configure-workers#create-the-worker-configurations) as part of the installation process above.
+1. (Optional) You can use the workers page to construct the contents of the `worker.hcl` file, if you did not [create the configuration file](/boundary/docs/deploy/self-managed/configure-workers#create-the-worker-configurations) as part of the installation process above.
 Provide the following details, and Boundary constructs the worker configuration file for you:
    - Boundary Cluster ID
    - Worker Public Address
@@ -608,5 +608,5 @@ Complete the following steps to adopt the worker using the CLI:
 
 After configuring workers, you should:
 
-- [Initialize Boundary](/boundary/docs/install-boundary/self-managed/initialize)
-- [Install the Boundary Clients](/boundary/docs/install-boundary/self-managed/install-clients)
+- [Initialize Boundary](/boundary/docs/deploy/self-managed/initialize)
+- [Install the Boundary Clients](/boundary/docs/deploy/self-managed/install-clients)

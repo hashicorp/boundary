@@ -44,7 +44,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/overview/vs/sdp',
-    destination: 'boundary/docs/overview/pam',
+    destination: 'boundary/docs/overview/sdp',
     permanent: true,
   },
   {
@@ -88,43 +88,123 @@ module.exports = [
     permanent: true,
   },
   {
-    source: 'boundary/docs/install-boundary/architecture/system-requirements',
-    destination: 'boundary/docs/architecture/system-requirements',
+    source: '/boundary/docs/install-boundary/architecture/system-requirements',
+    destination: '/boundary/docs/architecture/system-requirements',
     permanent: true,
   },
   {
-    source: 'boundary/docs/install-boundary/index',
-    destination: 'boundary/docs/install-boundary/self-managed/index',
+    source: '/boundary/docs/install-boundary/index',
+    destination: '/boundary/docs/deploy/self-managed/index',
     permanent: true,
   },
   {
-    source: 'boundary/docs/install-boundary/configure-controllers',
-    destination: 'boundary/docs/install-boundary/self-managed/configure-controllers',
+    source: '/boundary/docs/install-boundary/self-managed/index',
+    destination: '/boundary/docs/deploy/self-managed/index',
     permanent: true,
   },
   {
-    source: 'boundary/docs/install-boundary/configure-workers',
-    destination: 'boundary/docs/install-boundary/self-managed/configure-workers',
+    source: '/boundary/docs/install-boundary/configure-controllers',
+    destination: '/boundary/docs/deploy/self-managed/configure-controllers',
     permanent: true,
   },
   {
-    source: 'boundary/docs/install-boundary/deploy',
-    destination: 'boundary/docs/install-boundary/self-managed/deploy',
+    source: '/boundary/docs/install-boundary/self-managed/configure-controllers',
+    destination: '/boundary/docs/deploy/self-managed/configure-controllers',
     permanent: true,
   },
   {
-    source: 'boundary/docs/install-boundary/self-managed/initialize',
-    destination: 'boundary/docs/install-boundary/self-managed/initialize',
+    source: '/boundary/docs/install-boundary/configure-workers',
+    destination: '/boundary/docs/deploy/self-managed/configure-workers',
     permanent: true,
   },
   {
-    source: 'boundary/docs/install-boundary/install-clients',
-    destination: 'boundary/docs/install-boundary/self-managed/install-clients',
+    source: '/boundary/docs/install-boundary/self-managed/configure-workers',
+    destination: '/boundary/docs/deploy/self-managed/configure-workers',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/deploy',
+    destination: '/boundary/docs/deploy/self-managed/deploy',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/self-managed/deploy',
+    destination: '/boundary/docs/deploy/self-managed/deploy',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/initialize',
+    destination: '/boundary/docs/deploy/self-managed/initialize',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/self-managed/initialize',
+    destination: '/boundary/docs/deploy/self-manaaged/initialize',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/install-clients',
+    destination: '/boundary/docs/deploy/self-managed/install-clients',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/self-managed/install-clients',
+    destination: '/boundary/docs/deploy/self-managed/install-clients',
     permanent: true,
   },
   {
     source: 'boundary/docs/install-boundary/systemd',
-    destination: 'boundary/docs/install-boundary/self-managed/systemd',
+    destination: 'boundary/docs/deploy/self-managed/systemd',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/self-managed/systemd',
+    destination: '/boundary/docs/deploy/self-managed/systemd',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns',
+    destination: '/boundary/docs/deploy/terraform-patterns',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns/index',
+    destination: '/boundary/docs/deploy/terraform-patterns/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns/terraform-credentials-and-credential-stores',
+    destination: '/boundary/docs/deploy/terraform-patterns/terraform-credentials-and-credential-stores',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns/terraform-groups-and-rbac',
+    destination: '/boundary/docs/deploy/terraform-patterns/terraform-groups-and-rbac',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns/terraform-hosts-and-host-management',
+    destination: '/boundary/docs/deploy/terraform-patterns/terraform-hosts-and-host-management',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns/terraform-scopes',
+    destination: '/boundary/docs/deploy/terraform-patterns/terraform-scopes',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns/terraform-session-recording',
+    destination: '/boundary/docs/deploy/terraform-patterns/terraform-session-recording',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns/terraform-targets',
+    destination: '/boundary/docs/deploy/terraform-patterns/terraform-targets',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/terraform-patterns/terraform-users-and-auth-methods',
+    destination: '/boundary/docs/deploy/terraform-patterns/terraform-users-and-auth-methods',
     permanent: true,
   },
   {
@@ -185,67 +265,67 @@ module.exports = [
   },
   {
     source: '/boundary/docs/install-boundary/install',
-    destination: '/boundary/docs/install-boundary/self-managed/deploy',
+    destination: '/boundary/docs/deploy/self-managed/deploy',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/fault-tolerance',
-    destination: '/boundary/docs/install-boundary/architecture/fault-tolerance',
+    destination: '/boundary/docs/architecture/fault-tolerance',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/high-availability',
-    destination: '/boundary/docs/install-boundary/architecture/high-availability',
+    destination: '/boundary/docs/architecture/high-availability',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/high-availability',
-    destination: '/boundary/docs/install-boundary/architecture/high-availability',
+    destination: '/boundary/docs/architecture/high-availability',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing',
-    destination: '/boundary/docs/install-boundary',
+    destination: '/boundary/docs/deploy',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/no-gen-resources',
-    destination: '/boundary/docs/install-boundary/no-gen-resources',
+    destination: '/boundary/docs/deploy/self-managed/initialize',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/no-gen-resources',
-    destination: '/boundary/docs/install-boundary/self-managed/initialize',
+    destination: '/boundary/docs/deploy/self-managed/initialize',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/postgres',
-    destination: '/boundary/docs/install-boundary/architecture/system-requirements',
+    destination: '/boundary/docs/architecture/system-requirements',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/postgres',
-    destination: '/boundary/docs/install-boundary/architecture/system-requirements',
+    destination: '/boundary/docs/architecture/system-requirements',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/system-requirements',
-    destination: '/boundary/docs/install-boundary/architecture/system-requirements',
+    destination: '/boundary/docs/architecture/system-requirements',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/reference-architectures',
-    destination: '/boundary/docs/install-boundary/architecture/recommended-architecture',
+    destination: '/boundary/docs/architecture/recommended-architecture',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/recommended-architecture',
-    destination: 'boundary/docs/install-boundary/architecture/recommended-architecture',
+    destination: 'boundary/docs/architecture/recommended-architecture',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/systemd',
-    destination: '/boundary/docs/install-boundary/systemd',
+    destination: 'boundary/docs/deploy/self-managed/systemd',
     permanent: true,
   },
   {
@@ -255,33 +335,47 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/security/data-encryption',
-    destination: '/boundary/docs/security/encryption/data-encryption',
+    destination: '/boundary/docs/secure/encrypt/data-encryption',
     permanent: true,
   },
   {
     source: '/boundary/docs/concepts/security/connections-tls',
-    destination: '/boundary/docs/security/encryption/connections-tls',
+    destination: '/boundary/docs/secure/encrypt/connections-tls',
     permanent: true,
   },
   {
     source: '/boundary/docs/concepts/filtering/worker-tags',
-    destination: '/boundary/docs/security/worker-tags',
+    destination: '/boundary/docs/secure/worker-tags',
     permanent: true,
   },
   {
+    source: '/boundary/docs/security/encryption/connections-tls',
+    destination: '/boundary/docs/secure/encrypt/connections-tls',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/security/encryption/data-encryption',
+    destination: '/boundary/docs/secure/encrypt/data-encryption',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/security/worker-tags',
+    destination: '/boundary/docs/secure/worker-tags',
+  },
+  {
     source: '/boundary/docs/concepts/service-discovery',
-    destination: '/boundary/docs/concepts/host-discovery',
+    destination: '/boundary/docs/hosts',
     permanent: true,
   },
   {
     source: '/boundary/docs/operations/manage-recorded-sessions',
-    destination: '/boundary/docs/operations/session-recordings',
+    destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
     permanent: true,
   },
   {
     source: '/boundary/docs/common-workflows/workflow-ssh-proxycommand',
     destination:
-      '/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand',
+      '/boundary/docs/targets/connections/workflow-ssh-proxycommand',
     permanent: true,
   },
   {
@@ -600,6 +694,16 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/target-aliases/transparent-sessions',
+    destination: '/boundary/docs/targets/connections/transparent-sessions',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/target-aliases/interoperability-matrix',
+    destination: '/boundary/docs/interoperability-matrix/index',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/security/permissions',
     destination: '/boundary/docs/configuration/identity-access-management',
     permanent: true,
@@ -720,8 +824,38 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/troubleshoot/troubleshoot-recorded-sessions',
+    destination: '/boundary/docs/session-recording/configuration/troubleshoot-recorded-sessions',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/troubleshoot/common-errors',
     destination: '/boundary/docs/errors/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/security',
+    destination: '/boundary/docs/secure/encrypt/data-encryption',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/filtering',
+    destination: '/boundary/docs/filtering',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/filtering/index',
+    destination: '/boundary/docs/filtering/index',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/filtering/events',
+    destination: '/boundary/docs/filtering/events',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/filtering/resource-listing',
+    destination: '/boundary/docs/filtering/resource-listing',
     permanent: true,
   },
 ]
