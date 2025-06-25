@@ -41,7 +41,9 @@ func request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler ru
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_AuthMethodService_ListAuthMethods_0(ctx context.Context, marshaler 
 		protoReq ListAuthMethodsRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_AuthMethodService_CreateAuthMethod_0(ctx context.Context, marshaler
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -143,6 +150,9 @@ func request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, marshaler
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -213,7 +223,9 @@ func request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, marshaler
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -252,6 +264,9 @@ func request_AuthMethodService_ChangeState_0(ctx context.Context, marshaler runt
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -294,6 +309,9 @@ func request_AuthMethodService_Authenticate_0(ctx context.Context, marshaler run
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["auth_method_id"]
 	if !ok {
@@ -641,7 +659,8 @@ type response_AuthMethodService_GetAuthMethod_0 struct {
 }
 
 func (m response_AuthMethodService_GetAuthMethod_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetAuthMethodResponse
+	return response.Item
 }
 
 type response_AuthMethodService_CreateAuthMethod_0 struct {
@@ -649,7 +668,8 @@ type response_AuthMethodService_CreateAuthMethod_0 struct {
 }
 
 func (m response_AuthMethodService_CreateAuthMethod_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateAuthMethodResponse
+	return response.Item
 }
 
 type response_AuthMethodService_UpdateAuthMethod_0 struct {
@@ -657,7 +677,8 @@ type response_AuthMethodService_UpdateAuthMethod_0 struct {
 }
 
 func (m response_AuthMethodService_UpdateAuthMethod_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateAuthMethodResponse
+	return response.Item
 }
 
 type response_AuthMethodService_ChangeState_0 struct {
@@ -665,7 +686,8 @@ type response_AuthMethodService_ChangeState_0 struct {
 }
 
 func (m response_AuthMethodService_ChangeState_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.ChangeStateResponse
+	return response.Item
 }
 
 var (
