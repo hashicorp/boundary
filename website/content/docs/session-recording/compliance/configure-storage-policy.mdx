@@ -90,7 +90,7 @@ Complete the following steps to create a storage policy in Boundary for session 
        -delete-after-overridable true
    ```
 
-   The following [attributes](/boundary/docs/concepts/domain-model/storage-policies) can be used when defining a storage policy:
+   The following [attributes](/boundary/docs/domain-model/storage-policies) can be used when defining a storage policy:
 
    - `name`: (Optional) An optional human readable name.
    - `description`: (Optional) An optional human readable description.
@@ -694,6 +694,6 @@ If `delete_after` or `delete_time` is after the current time, the session record
 
 After the storage policy is configured in Boundary, new recordings within the applied scope adhere to the defined policy. To retroactively apply the configured policy to existing recordings, refer to [update storage bucket policies](/boundary/docs/configuration/session-recording/update-storage-policy).
 
-[storage bucket]: /boundary/docs/concepts/domain-model/storage-buckets
-[storage policy]: /boundary/docs/concepts/domain-model/storage-policy
-[session recordings]: /boundary/docs/concepts/domain-model/session-recordings
+[storage bucket]: /boundary/docs/domain-model/storage-buckets
+[storage policy]: /boundary/docs/domain-model/storage-policy
+[session recordings]: /boundary/docs/domain-model/session-recordings

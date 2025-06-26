@@ -26,9 +26,9 @@ To configure credential brokering or credential injection with static credential
 
 
 # Credentials
-Vault can work with Boundary to be a credential [store](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-stores) and [library](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-libraries), which allows for credentials to be stored in Vault and used by Boundary. There are two configuration options:
+Vault can work with Boundary to be a credential [store](https://developer.hashicorp.com/boundary/docs/domain-model/credential-stores) and [library](https://developer.hashicorp.com/boundary/docs/domain-model/credential-libraries), which allows for credentials to be stored in Vault and used by Boundary. There are two configuration options:
 
-Within Boundary, you can configure Vault as a [credential store](/boundary/docs/concepts/domain-model/credential-stores) and [credential library](/boundary/docs/concepts/domain-model/credential-libraries).
+Within Boundary, you can configure Vault as a [credential store](/boundary/docs/domain-model/credential-stores) and [credential library](/boundary/docs/domain-model/credential-libraries).
 
 There are two configuration options:
 
@@ -86,14 +86,14 @@ When you connect to a target that uses Vault for dynamic SSH certificates, a new
 
 Within Boundary you can configure one or more credential stores. There are two types of credential stores:
 
-- [Static credential store](/boundary/docs/concepts/domain-model/credential-stores#static-credential-store)
-- [Vault credential store](/boundary/docs/concepts/domain-model/credential-stores#vault-policies)
+- [Static credential store](/boundary/docs/domain-model/credential-stores#static-credential-store)
+- [Vault credential store](/boundary/docs/domain-model/credential-stores#vault-policies)
 
 A static credential store is built into Boundary if you want to manage secrets without integrating it with Vault. The Vault credential store can fetch secrets from Vault on behalf of Boundary users.
 
-Organizations may have valid reasons for using multiple credential stores within Boundary. You can only create credential stores at the [project](/boundary/docs/concepts/domain-model/scopes#projects) scope, and each project can contain multiple credential stores. Projects within an org scope may have different requirements from their credential stores. For example, within an org scope you may have two projects: Database and Compute. These two projects may need to be isolated, and can have a dedicated credential store per project.
+Organizations may have valid reasons for using multiple credential stores within Boundary. You can only create credential stores at the [project](/boundary/docs/domain-model/scopes#projects) scope, and each project can contain multiple credential stores. Projects within an org scope may have different requirements from their credential stores. For example, within an org scope you may have two projects: Database and Compute. These two projects may need to be isolated, and can have a dedicated credential store per project.
 
-When integrated with Vault, Boundary has to be assigned a periodic, renewable, [orphan token](/boundary/docs/concepts/domain-model/credential-stores#vault-token-requirements) from Vault. Each credential needs a separate Vault token.
+When integrated with Vault, Boundary has to be assigned a periodic, renewable, [orphan token](/boundary/docs/domain-model/credential-stores#vault-token-requirements) from Vault. Each credential needs a separate Vault token.
 
 The following have no impact on Vault's [client count](/vault/docs/concepts/client-count/counting):
 

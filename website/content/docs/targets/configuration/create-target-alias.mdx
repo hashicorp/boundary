@@ -63,7 +63,7 @@ Complete the following steps to create a new alias and associate it with a targe
        -authorize-session-host-id hst_1234567890
    ```
 
-   You can use any of the following [attributes](/boundary/docs/concepts/domain-model/aliases) when you create an alias:
+   You can use any of the following [attributes](/boundary/docs/domain-model/aliases) when you create an alias:
 
    - `-description=<string>` - Specifies the optional description you want to use for identification purposes.
    - `-destination-id=<string>` - Specifies the ID of the target that the alias references.
@@ -125,7 +125,7 @@ Complete the following steps to create a new target and new alias at the same ti
        -with-alias-value example.alias.boundary
    ```
 
-   You can use any of the following [attributes](/boundary/docs/concepts/domain-model/targets) when you create a target:
+   You can use any of the following [attributes](/boundary/docs/domain-model/targets) when you create a target:
 
     - `description` - (optional)
      An optional description that you can use for identification purposes.
@@ -155,7 +155,7 @@ A value of `-1` means the connections are unlimited.
    - `-with-alias-value=<string>` - The value of the alias that you want to use to represent the target.
      Use this parameter to create the alias and target, and associate them with each other, at the same time.
 
-     Note that you can create SSH or TCP [target types](/boundary/docs/concepts/domain-model/targets#target-types).
+     Note that you can create SSH or TCP [target types](/boundary/docs/domain-model/targets#target-types).
      The example command in this section creates an SSH target.
 
 </Tab>
@@ -197,7 +197,7 @@ If you [created an alias](#create-an-alias-for-an-existing-target) without assoc
        -authorize-session-host-id hst_1234567890
    ```
 
-   You can use any of the following [attributes](/boundary/docs/concepts/domain-model/aliases) when you update an alias:
+   You can use any of the following [attributes](/boundary/docs/domain-model/aliases) when you update an alias:
 
    - `-description=<string>` - Specifies the optional description you want to use for identification purposes.
    - `-destination-id=<string>` - Specifies the ID of the target that the alias references.
@@ -217,9 +217,9 @@ If you [created an alias](#create-an-alias-for-an-existing-target) without assoc
 
 Target aliases point directly to the target they are associated with. You can assign targets a host set or a direct target address.
 
-[Host sets](/boundary/docs/concepts/domain-model/host-sets) are sets of functionally equivalent hosts, and are commonly used for deployments at scale.  When Boundary authorizes a session, a target assigned a host set will select a host from the host set at random to use for all connections for the session.
+[Host sets](/boundary/docs/domain-model/host-sets) are sets of functionally equivalent hosts, and are commonly used for deployments at scale.  When Boundary authorizes a session, a target assigned a host set will select a host from the host set at random to use for all connections for the session.
 
-You assign [direct target addresses](/boundary/docs/concepts/domain-model/targets#address) directly to the target. They refer to a specific network resource, like an IP address. Boundary only connects to the direct target address when it establishes a connection to the associated target.
+You assign [direct target addresses](/boundary/docs/domain-model/targets#address) directly to the target. They refer to a specific network resource, like an IP address. Boundary only connects to the direct target address when it establishes a connection to the associated target.
 
 When you create a target alias, you can also assign it to a specific host. Assigning an alias to a specific host is useful if you want to avoid creating multiple targets for specific hosts using direct target addresses.
 

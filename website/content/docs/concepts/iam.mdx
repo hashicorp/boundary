@@ -11,34 +11,34 @@ description: >-
 There are 6 key components to Boundary's identity and access management system: **Scopes**, **Auth Methods**, **Accounts**, **Users**, **Groups**, and **Roles**.
 
 ### Scopes
-[Scopes](/boundary/docs/concepts/domain-model/scopes) can be considered as containers for resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
+[Scopes](/boundary/docs/domain-model/scopes) can be considered as containers for resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
 - **Global** - The highest-level scope of Boundary where administrators configure and manage Boundary for the entire company.
 - **Org (Organization)** - Org scopes are contained in the global scope and are typically used to represent business units, organizations, or departments.
 Org scopes can also be used to contain multiple production-level auth methods in separate scopes.
 - **Project** - Project scopes are contained in Org scopes and be used to separate different business workflows. For example, projects can be used to represent different teams, products, or environments (test, dev, prod).
 
 ### Auth methods
-[Auth Methods](/boundary/docs/concepts/domain-model/auth-methods) are resources that authenticate users to
+[Auth Methods](/boundary/docs/domain-model/auth-methods) are resources that authenticate users to
 Boundary. Auth methods can only be contained by the global or Org scopes. The available auth methods are:
 - Username/Password
 - [OIDC](/boundary/tutorials/identity-management/oidc-auth)
 - LDAP
 
 ### Accounts
-[Accounts](/boundary/docs/concepts/domain-model/accounts) are resources that represent an authenticated user from a trusted identity provider through a Boundary auth method. Accounts must belong to an auth method, and can be associated with a single Boundary user. Boundary accounts can belong to the global or Org Scopes.
+[Accounts](/boundary/docs/domain-model/accounts) are resources that represent an authenticated user from a trusted identity provider through a Boundary auth method. Accounts must belong to an auth method, and can be associated with a single Boundary user. Boundary accounts can belong to the global or Org Scopes.
 
 ### Users
-[Users](/boundary/docs/concepts/domain-model/users) are resources that represent an individual person or entity for the purposes of
+[Users](/boundary/docs/domain-model/users) are resources that represent an individual person or entity for the purposes of
 access control. A user can contain multiple accounts from multiple auth methods, and can belong to the global or Org Scopes.
 
 ### Groups
-[Groups](/boundary/docs/concepts/domain-model/groups) are resources that represent a collection of users, and can be contained by any
-scope. [Managed groups](/boundary/docs/concepts/domain-model/managed-groups) are a special kind of group that syncs with the auth
+[Groups](/boundary/docs/domain-model/groups) are resources that represent a collection of users, and can be contained by any
+scope. [Managed groups](/boundary/docs/domain-model/managed-groups) are a special kind of group that syncs with the auth
 method's identity provider to provide up-to-date information.
 
 ### Roles
-[Roles](/boundary/docs/concepts/domain-model/roles) are resources that contain a collection of
-[permissions](/boundary/docs/concepts/security/permissions) which are granted to any principal (user or group) from any scope. Roles
+[Roles](/boundary/docs/domain-model/roles) are resources that contain a collection of
+[permissions](/boundary/docs/rbac/permissions/assignable-permissions) which are granted to any principal (user or group) from any scope. Roles
 can be contained by any scope, and the permissions can be applied to the same scope or any child scope.
 
 ## Access management
@@ -54,7 +54,7 @@ With the [OIDC](/boundary/tutorials/identity-management/oidc-auth) and LDAP auth
 as the auth method. The accounts and users are only created once the user authenticates to Boundary for the first time.
 The same applies to OIDC/LDAP [managed groups](/boundary/tutorials/identity-management/oidc-idp-groups).
 
-You can configure the `max_age` in the [OIDC attributes](/boundary/docs/concepts/domain-model/auth-methods#oidc-auth-method-attributes) to indicate to the OIDC provider how much time is allowed to pass until a user is challenged to authenticate again.
+You can configure the `max_age` in the [OIDC attributes](/boundary/docs/domain-model/auth-methods#oidc-auth-method-attributes) to indicate to the OIDC provider how much time is allowed to pass until a user is challenged to authenticate again.
 However, the user will not be prompted to authenticate until the controller's `auth_token_time_to_live` [parameter](/boundary/docs/configuration/controller#auth_token_time_to_live) has expired.
 The default value is 7 days.
 

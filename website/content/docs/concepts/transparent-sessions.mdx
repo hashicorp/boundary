@@ -13,13 +13,13 @@ Transparent sessions shift Boundary from an active connection model to a passive
 
 As long as Boundary authenticates a user and the user is authorized to access the target, Boundary intercepts the DNS call and routes traffic through a session automatically.
 
-Transparent sessions require [aliases](/boundary/docs/concepts/aliases) and the [Boundary Client Agent](/boundary/docs/api-clients/client-agent).
+Transparent sessions require [aliases](/boundary/docs/concepts/aliases) and the [Boundary Client Agent](/boundary/docs/client-agent).
 
 The Boundary Desktop client facilitates quick target discovery and session establishment using your preferred client. If you configure aliases for your targets, install the Boundary Client Agent, and ensure you are authenticated to the cluster, connections are transparent to the user. Boundary provides OS notifications to make it clear when you connect to a target using a transparent session.
 
 Boundary supports Windows and MacOS for transparent sessions.
 
-Refer to the [Configure transparent sessions](/boundary/docs/configuration/target-aliases/transparent-sessions) page to get started.
+Refer to the [Configure transparent sessions](/boundary/docs/targets/connections/transparent-sessions) page to get started.
 
 ## Known issues
 
@@ -28,7 +28,7 @@ Refer to the following table for known issues:
 | Issue | Description |
 | ----- | ----------- |
 | Connection is reset when trying to reconnect | If you use an SSH transparent session and then cancel the connection, you may have trouble reconnecting until Boundary cleans up the session. |
-| SSH connection fails with man-in-the-middle warning | On Linux systems, the initial transparent session may be successful, but any subsequent connections prompt a warning that you may be experiencing a man-in-the-middle attack. <br /><br /> For more information, refer to [WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!](/boundary/docs/api-clients/client-agent#warning-remote-host-indentification-has-changed-it-is-possible-that-someone-is-doing-something-nasty) in the **Common error messages** section.|
+| SSH connection fails with man-in-the-middle warning | On Linux systems, the initial transparent session may be successful, but any subsequent connections prompt a warning that you may be experiencing a man-in-the-middle attack. <br /><br /> For more information, refer to [WARNING! Remote host indentification has changed! It is possible that someone is doing something nasty!](/boundary/docs/client-agent#warning-remote-host-indentification-has-changed-it-is-possible-that-someone-is-doing-something-nasty) in the **Common error messages** section.|
 | Boundary Client Agent authentication does not persist across restarts | When you reboot, you are required to re-authenticate to the Client Agent before you can use transparent sessions. |
 | Windows installer prompts for restart | When you install Boundary, the Windows installer occasionally prompts you to restart your computer, however it is not necessary. |
 | Boundary Client Agent resumes on reboot | If the Client Agent is paused and the machine is rebooted, the Client Agent will be resumed after the reboot. |
@@ -43,5 +43,5 @@ Refer to the following table for known issues:
 Refer to the following topics for more information:
 
 - [Aliases](/boundary/docs/concepts/aliases)
-- [Boundary Client Agent](/boundary/docs/api-clients/client-agent)
-- [Configure transparent sessions](/boundary/docs/configuration/target-aliases/transparent-sessions)
+- [Boundary Client Agent](/boundary/docs/client-agent)
+- [Configure transparent sessions](/boundary/docs/targets/connections/transparent-sessions)
