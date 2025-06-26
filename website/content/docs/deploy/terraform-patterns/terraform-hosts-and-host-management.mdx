@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Terraform patterns for Boundary hosts and host management
+page_title: Terraform patterns for hosts and host management
 description: >-
    Use Terraform patterns to create and manage Boundary hosts and host catalogs. Learn how to add static or plugin-based hosts to static or dynamic host catalogs.
 ---
 
-# Terraform patterns for Boundary hosts and host management
+# Terraform patterns for hosts and host management
 
 Before you can access a system, you must create a target. Targets require an address or host, and credentials to connect to that host.
 
@@ -16,8 +16,8 @@ Instead, HashiCorp recommends adding hosts to a host set, and then attaching the
 
 This document assumes the reader has:
 
-- An understanding of [Terraform](/terraform/docs) fundamentals
-- An existing Boundary installation. Refer to [Initialize Boundary](/boundary/docs/deploy/self-managed/initialize) to learn about deploying Boundary.
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
 - Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
 
 ## Static host catalog configuration

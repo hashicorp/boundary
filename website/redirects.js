@@ -124,12 +124,12 @@ module.exports = [
   },
   {
     source: '/boundary/docs/install-boundary/deploy',
-    destination: '/boundary/docs/deploy/self-managed/deploy',
+    destination: '/boundary/docs/deploy/self-managed/install',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/self-managed/deploy',
-    destination: '/boundary/docs/deploy/self-managed/deploy',
+    destination: '/boundary/docs/deploy/self-managed/install',
     permanent: true,
   },
   {
@@ -250,22 +250,22 @@ module.exports = [
   },
   {
     source: '/boundary/docs/oss/operations/health',
-    destination: '/boundary/docs/operations/health',
+    destination: '/boundary/docs/monitor/health',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/operations',
-    destination: '/boundary/docs/operations',
+    destination: '/boundary/docs/monitor',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/operations/metrics',
-    destination: '/boundary/docs/operations/metrics',
+    destination: '/boundary/docs/monitor/metrics',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/install',
-    destination: '/boundary/docs/deploy/self-managed/deploy',
+    destination: '/boundary/docs/deploy/self-managed/install',
     permanent: true,
   },
   {
@@ -856,6 +856,16 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/filtering/resource-listing',
     destination: '/boundary/docs/filtering/resource-listing',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/release-notes/index',
+    destination: '/boundary/docs',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/release-notes',
+    destination: '/boundary/docs',
     permanent: true,
   },
 ]

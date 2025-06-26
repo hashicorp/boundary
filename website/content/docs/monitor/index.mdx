@@ -5,23 +5,43 @@ description: >-
   Discover resources to help you learn more about maintaining and operating Boundary, including information about metrics and health.
 ---
 
-# Maintaining and operating Boundary
+# Monitor Boundary
 
 Visibility into various components of Boundary plays an important role in
-ensuring the health of its controllers and workers. While additional monitoring
-components are planned for subsequent Boundary releases, metrics for controllers
-and workers can now be exported and then collected by Prometheus. Metrics
+ensuring the health of its controllers and workers.
+
+You can export metrics for controllers
+and workers and then configure them to be collected by Prometheus. Metrics
 provide insight into the current state of a Boundary deployment by enabling the
 diagnosis of deployed controllers and workers. Enabling metrics assists in the
 detection and mitigation of anomalies in a deployment.
-
 These docs describe the available metrics and the naming and labeling standards
-used. Additionally, the health of controllers can be monitored using the
+used.
+
+Additionally, the health of controllers can be monitored using the
 `/health` endpoint. The health endpoint is enabled by defining a listener in
 Boundary's configuration file, and a health response may be configured to add a
 shutdown grace period process.
 
-* Refer to the [Metrics](/boundary/docs/oss/operations/metrics) documentation to learn
-  more about Boundary metrics.
-* Refer to the [Health Endpoint](/boundary/docs/oss/operations/health) documentation to
-  learn more about Boundary health endpoints.
+You can also configure Boundary to monitor events.
+You can choose to monitor audit, observation, system, and telemetry events.
+Boundary supports both file and stderr sinks for events and you can send events to multiple sinks.
+
+Listeners let you configure the addresses and ports on which Boundary responds to requests.
+You can configure TCP and Unix listeners.
+Boundary also supports custom response headers for any requests made on controllers.
+You can define headers based on the status code that is returned.
+
+## More information
+
+Refer to the following topics for information on the various ways to monitor Boundary:
+
+- [Listeners](/boundary/docs/monitor/listener)
+   - [TCP listeners](/boundary/docs/monitor/listener/tcp)
+   - [Unix listeners](/boundary/docs/monitor/listener/unix)
+- [Monitor metrics](/boundary/docs/monitor/metrics)
+- [Monitor health](/boundary/docs/monitor/health)
+- [Monitor events](/boundary/docs/monitor/events)
+   - [Common sink parameters](/boundary/docs/monitor/events/common)
+   - [File sink](/boundary/docs/monitor/events/file)
+   - [Stderr sink](/boundary//docs/monitor/events/stderr)

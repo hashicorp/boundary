@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Terraform patterns for Boundary targets
+page_title: Terraform patterns for targets
 description: >-
    Use Terraform patterns to create and manage Boundary targets. Learn how to configure SSH and TCP targets, inject passwords, and enable session recording.
 ---
 
-# Terraform patterns for Boundary targets
+# Terraform patterns for targets
 
 Once you have defined a host, a host catalog, and a credential store, you
 can create [targets](/boundary/docs/domain-model/targets).
@@ -14,8 +14,8 @@ can create [targets](/boundary/docs/domain-model/targets).
 
 This document assumes the reader has:
 
-- An understanding of [Terraform](/terraform/docs) fundamentals
-- An existing Boundary installation. Refer to [Initialize Boundary](/boundary/docs/deploy/self-managed/initialize) to learn about deploying Boundary.
+- An understanding of [Terraform](/terraform/docs) fundamentals.
+- An existing Boundary installation. Refer to [Deploy Boundary in a self-managed environment](/boundary/docs/deploy/self-managed) to learn about deploying Boundary.
 - Configured the [Terraform Boundary provider](/boundary/docs/deploy/terraform-patterns/#terraform-provider-configuration).
 - Defined a host, [host catalog](/boundary/docs/deploy/terraform-patterns/terraform-hosts-and-host-management), and [credential store](/boundary/docs/deploy/terraform-patterns/terraform-credentials-and-credential-stores).
 - (Optional) Configured a storage policy and storage bucket for any targets you want to enable for [session recording](/boundary/docs/deploy/terraform-patterns/terraform-session-recording).
