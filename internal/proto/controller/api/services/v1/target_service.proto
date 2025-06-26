@@ -21,8 +21,8 @@ service TargetService {
       "A target represents an endpoint or resource that users can access through Boundary sessions. "
       "The target service provides endpoints that let you manage targets in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets";
-      description: "Read about targets in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets"
+      description: "Read about targets in the Boundary domain model"
     }
   };
 

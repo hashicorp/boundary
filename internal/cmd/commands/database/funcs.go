@@ -46,11 +46,13 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initiali
 	// This is an advisory lock on the DB which is released when the DB session ends.
 	if err := man.ExclusiveLock(ctx); err != nil {
 		ui.Error("Unable to capture a lock on the database.")
+		_ = man.Close(ctx)
 		return noop, 2
 	}
 	unlock := func() {
 		// We don't report anything since this should resolve itself anyways.
 		_ = man.ExclusiveUnlock(ctx)
+		_ = man.Close(ctx)
 	}
 
 	st, err := man.CurrentState(ctx)

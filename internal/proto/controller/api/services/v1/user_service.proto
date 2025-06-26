@@ -20,8 +20,8 @@ service UserService {
       "A user can be a human individual or a service account that accesses resources. "
       "The user service provides endpoints that let you manage users in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users";
-      description: "Read about users in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users"
+      description: "Read about users in the Boundary domain model"
     }
   };
 

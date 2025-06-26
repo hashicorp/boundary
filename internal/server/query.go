@@ -223,4 +223,12 @@ const (
          where last_status_time > now() - interval '%d seconds'
            and operational_state = 'active';
 `
+
+	updateController = `
+		update server_controller  
+           set address     = @controller_address,  
+               description = @controller_description,  
+               update_time = now()  
+         where private_id = @controller_private_id;  
+`
 )

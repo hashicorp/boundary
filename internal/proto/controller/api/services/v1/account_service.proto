@@ -21,8 +21,8 @@ service AccountService {
       "The account service exposes endpoints for interacting with accounts in Boundary. "
       "Accounts belong to an auth method and are associated with users."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/accounts";
-      description: "Read about accounts in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/accounts"
+      description: "Read about accounts in the Boundary domain model"
     }
   };
 

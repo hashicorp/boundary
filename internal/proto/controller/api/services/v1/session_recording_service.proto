@@ -20,8 +20,8 @@ service SessionRecordingService {
       "It provides an audit trail of user activity and lets administrators monitor access. "
       "The session recording service provides endpoints that let you manage session recordings in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings";
-      description: "Read about session recordings in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings"
+      description: "Read about session recordings in the Boundary domain model"
     }
   };
 

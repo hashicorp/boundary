@@ -72,7 +72,7 @@ message AuthMethod {
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "default",
       (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-        example: "{\"min_login_name_length\": 10, \"min_password_length\": 16}",
+        example: "{\"min_login_name_length\": 10, \"min_password_length\": 16}"
         description:
           "The attributes that are applicable for the specific auth method type. "
           "The schema of this field depends on the type of the auth method "
@@ -522,7 +522,7 @@ message LdapAuthMethodAttributes {
     json_name = "user_filter",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
-      this: "attributes.user_filter",
+      this: "attributes.user_filter"
       that: "UserFilter"
     }
   ]; // @gotags: `class:"public"`
@@ -574,7 +574,7 @@ message LdapAuthMethodAttributes {
     json_name = "group_filter",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
-      this: "attributes.group_filter",
+      this: "attributes.group_filter"
       that: "GroupFilter"
     }
   ]; // @gotags: `class:"public"`
@@ -598,7 +598,7 @@ message LdapAuthMethodAttributes {
     json_name = "client_certificate",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
-      this: "attributes.client_certificate",
+      this: "attributes.client_certificate"
       that: "ClientCertificate"
     }
   ]; // @gotags: `class:"public"`
@@ -609,7 +609,7 @@ message LdapAuthMethodAttributes {
     json_name = "client_certificate_key",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
-      this: "attributes.client_certificate_key",
+      this: "attributes.client_certificate_key"
       that: "ClientCertificateKey"
     },
     (google.api.field_behavior) = INPUT_ONLY
@@ -629,7 +629,7 @@ message LdapAuthMethodAttributes {
     json_name = "bind_dn",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
-      this: "attributes.bind_dn",
+      this: "attributes.bind_dn"
       that: "BindDn"
     }
   ]; // @gotags: `class:"public"`
@@ -640,7 +640,7 @@ message LdapAuthMethodAttributes {
     json_name = "bind_password",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
-      this: "attributes.bind_password",
+      this: "attributes.bind_password"
       that: "BindPassword"
     },
     (google.api.field_behavior) = INPUT_ONLY
@@ -683,7 +683,7 @@ message LdapAuthMethodAttributes {
     json_name = "maximum_page_size",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
-      this: "attributes.maximum_page_size",
+      this: "attributes.maximum_page_size"
       that: "MaximumPageSize"
     }
   ]; // @gotags: `class:"public"`
@@ -698,7 +698,7 @@ message LdapAuthMethodAttributes {
     json_name = "dereference_aliases",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
-      this: "attributes.dereference_aliases",
+      this: "attributes.dereference_aliases"
       that: "DereferenceAliases"
     }
   ]; // @gotags: `class:"public"`

@@ -125,6 +125,7 @@ func testInitStore(t testing.TB, cleanup func() error, url string) {
 	require.NoError(t, err)
 	sm, err := schema.NewManager(ctx, schema.Dialect(dialect), d)
 	require.NoError(t, err)
+	t.Cleanup(func() { sm.Close(context.Background()) })
 	_, err = sm.ApplyMigrations(ctx)
 	require.NoError(t, err)
 }
@@ -157,10 +158,6 @@ order by ccu.table_name,pgc.conname `
 	rw := dbw.New(db)
 	rows, err := rw.Query(testCtx, constraintSql, []any{tableName})
 	require.NoError(err)
-	type result struct {
-		Name      string
-		TableName string
-	}
 	results := []constraintResults{}
 	for rows.Next() {
 		var r constraintResults

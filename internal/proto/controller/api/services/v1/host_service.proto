@@ -22,8 +22,8 @@ service HostService {
       "address that is reachable from a Boundary worker. "
       "The host service provides endpoints for managing hosts in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/hosts";
-      description: "Read about hosts in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/hosts"
+      description: "Read about hosts in the Boundary domain model"
     }
   };
 
