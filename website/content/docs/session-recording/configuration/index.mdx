@@ -30,7 +30,7 @@ Determining how much storage you need to allocate on workers and the external st
 
 When you estimate worker storage requirements, consider the number of concurrent sessions that will be recorded on that worker. Boundary writes the BSR to the worker's local storage while the session is active, and then moves it to the remote storage bucket when the session is closed.
 
-When you estimate storage requirements for the external storage provider, consider your [storage policy](/boundary/docs/concepts/domain-model/storage-policy) and how long a BSR will be retained in the external storage bucket.
+When you estimate storage requirements for the external storage provider, consider your [storage policy](/boundary/docs/domain-model/storage-policy) and how long a BSR will be retained in the external storage bucket.
 
 <Warning>
 

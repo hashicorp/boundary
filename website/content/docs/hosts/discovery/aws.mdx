@@ -185,7 +185,7 @@ The required fields for creating a dynamic host catalog depend on whether you co
     - `access_key_id`: The access key ID for the IAM user to use with this host catalog.
     - `secret_access_key`: The secret access key for the IAM user to use with this host catalog.
 
-  Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+  Refer to [the domain model documentation](/boundary/docs/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
 
 </Tab>
 
@@ -220,7 +220,7 @@ The required fields for creating a dynamic host catalog depend on whether you co
     - `role_tags`: The key-value pair tags that you configured for the `AssumeRole` provider.
     - `worker-filter` A boolean expression to filter which workers can handle dynamic host catalog commands for this host catalog. This should match a valid filter expression for the self-managed worker deployed in AWS. Refer to worker [Filter examples](/boundary/docs/secure/worker-tags#filter-workers-using-tags) to learn more.
 
-  Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+  Refer to [the domain model documentation](/boundary/docs/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
 
 </Tab>
 </Tabs>
@@ -264,7 +264,7 @@ Replace the values in the configuration with the following required AWS secrets 
   - `access_key_id`: The access key ID for the IAM user to use with this host catalog.
   - `secret_access_key`: The secret access key for the IAM user to use with this host catalog.
 
-Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+Refer to [the domain model documentation](/boundary/docs/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
 
 </Tab>
 <Tab heading="Dynamic credentials" group="dynamic">
@@ -303,7 +303,7 @@ Replace the values in the configuration with the following required AWS secrets 
   - `role_session_name`: The session name that you configured for the `AssumeRole` provider.
   - `role_tags`: The key-value pair tags that you configured for the `AssumeRole` provider.
 
-Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+Refer to [the domain model documentation](/boundary/docs/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
 
 </Tab>
 </Tabs>
@@ -313,7 +313,7 @@ Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/h
 
 ## Create a host set to connect with AWS
 
-[Host sets](/boundary/docs/concepts/domain-model/host-sets) specify which AWS filters should be used to identify the discovered hosts that should be added as members.
+[Host sets](/boundary/docs/domain-model/host-sets) specify which AWS filters should be used to identify the discovered hosts that should be added as members.
 
 Complete the following steps to create a host set:
 
@@ -356,7 +356,7 @@ Complete the following steps to create a host set:
   When multiple filters fields are provided, they must all match for a host to match.
   In the example above, an instance must have either tags `foo` or `bar`, and must have the tag `baz`.
 
-  For more fields that you can use when creating host sets, refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).
+  For more fields that you can use when creating host sets, refer to [the domain model documentation](/boundary/docs/domain-model/host-sets).
 
 </Tab>
 <Tab heading="Terraform" group="terraform">
@@ -383,7 +383,7 @@ When the values in a single `filters` field are separated by a comma, either can
 When multiple filters fields are provided, they must all match for a host to match.
 In the example above, an instance must have either tags `foo` or `bar`, and must have the tag `baz`.
 
-For more fields that you can use when creating host sets, refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).
+For more fields that you can use when creating host sets, refer to [the domain model documentation](/boundary/docs/domain-model/host-sets).
 
 
 </Tab>
