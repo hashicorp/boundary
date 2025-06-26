@@ -16,7 +16,7 @@ Boundary supports and how they are used within the system.
 ## The `worker-auth-storage` KMS key
 
 The `worker-auth-storage` KMS key can be used by [Workers registered using worker-led or controller-led
-methods](/boundary/docs/configuration/worker/worker-configuration) for storage of authentication
+methods](/boundary/docs/workers/configure-workers/worker-configuration#authorization-methods) for storage of authentication
 keys. It is optional for workers; if not specified the authentication keys
 will not be encrypted on disk. This can not used by workers registered using an external KMS.
 
@@ -41,7 +41,7 @@ The current scoped DEKs and their purposes are detailed below:
 
 - `audit`: This is used to encrypt secret values in the event log. For more
   information about the event log, refer to
-  [the events config](/boundary/docs/configuration/events).
+  [the events config](/boundary/docs/monitor/events).
 
 - `database`: This is the general-purpose DEK used to encrypt values within the
   database. Values that are encrypted are those generally considered to be
@@ -111,7 +111,7 @@ been destroyed and any existing data will have been re-encrypted.
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-The `bsr` KMS key is required for [session recording](/boundary/docs/configuration/session-recording).
+The `bsr` KMS key is required for [session recording](/boundary/docs/session-recording).
 If you do not add a `bsr` key to your controller configuration, you will receive an error when you attempt to enable session recording.
 The key is used for encrypting data and checking the integrity of recordings.
 
@@ -128,9 +128,9 @@ You can configure `previous-root` KMS keys for self-managed Enterprise or Commun
 
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
 to authenticate a Worker to the Controller. Specifics of this mechanism can be
-found on the [Connections/TLS page](/boundary/docs/security/encryption/connections-tls). If
+found on the [Connections/TLS page](/boundary/docs/secure/encryption/connections-tls). If
 a worker is registered with [worker-led or controller-led
-methods](/boundary/docs/configuration/worker/worker-configuration) this is unnecessary.
+methods](/boundary/docs/workers/configure-workers/worker-configuration#authorization-methods) this is unnecessary.
 
 You can configure `worker-auth` KMS keys for HCP, Enterprise, and Community edition deployments.
 However, you cannot configure `worker-auth` keys for the first set of workers that connect to your HCP workers.

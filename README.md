@@ -71,7 +71,7 @@ You can use [any cloud KMS or Vault's Transit Secrets Engine to satisfy the KMS 
 Running Boundary in a more permanent context requires a few more steps, such
 as writing some simple configuration files to tell the nodes how to reach their
 database and KMS. The steps below, along with the extra information needed
-for permanent installations, are detailed in our [Installation Guide](https://developer.hashicorp.com/boundary/docs/deploy/self-managed/deploy).
+for permanent installations, are detailed in our [Installation Guide](https://developer.hashicorp.com/boundary/docs/deploy/self-managed/install).
 
 > ⚠️  Do _not_ use the `main` branch except for dev or test cases. Boundary 0.10 introduced release branches which should be safe to track, however, migrations in `main` may be renumbered if needed. The Boundary team will not be able to provide assistance if running `main` over the long term results in migration breakages or other bugs.
 

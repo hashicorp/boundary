@@ -998,7 +998,7 @@ open-source release of 0.12.3; the same fixes will be in 0.13.0 OSS.
   Encryption Keys (KEKs) and Data Encryption Keys (DEKs) using the new key rotation
   and key version destruction functionality. To learn more about this new feature,
   refer to the
-  [documentation](https://developer.hashicorp.com/boundary/docs/security/encryption/data-encryption).
+  [documentation](https://developer.hashicorp.com/boundary/docs/secure/encryption/data-encryption).
 
   Upgrade notice: If the Database purpose DEK for a scope is destroyed, you must use
   the API to cancel any sessions that predate the upgrade.

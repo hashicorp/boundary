@@ -153,8 +153,8 @@
             "path": "deploy/self-managed"
           },
           {
-            "title": "Deploy Boundary",
-            "path": "deploy/self-managed/deploy"
+            "title": "Install Boundary",
+            "path": "deploy/self-managed/install"
           },
           {
             "title": "Configure controllers",
@@ -307,10 +307,6 @@
   {
     "title": "Release notes",
     "routes": [
-      {
-        "title": "Overview",
-        "path": "release-notes"
-      },
       {
         "title": "v0.19.0",
         "path": "release-notes/v0_19_0"
@@ -813,12 +809,53 @@
   },
   {
     "title": "Client Agent",
-    "path": "client-agent",
-    "badge": {
-      "text": "HCP/ENT",
-      "type": "outlined",
-      "color": "neutral"
-    }
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "client-agent",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      },
+      {
+        "title": "Configure the Client Agent",
+        "path": "client-agent/configuration",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      },
+      {
+        "title": "Manage the Client Agent",
+        "path": "client-agent/manage",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      },
+      {
+        "title": "Troubleshoot issues",
+        "path": "client-agent/troubleshoot",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      },
+      {
+        "title": "Conflicting software",
+        "path": "client-agent/conflicting-software",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      }
+    ]
   },
   {
     "title": "Client cache",

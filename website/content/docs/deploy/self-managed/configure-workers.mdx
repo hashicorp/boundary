@@ -59,7 +59,7 @@ Refer to your cloud provider's documentation, for more information.
 After you create the requisite key or keys in the cloud provider of your choice, you can begin configuring the workers.
 
 The following configuration examples all employ the worker-led authorization flow.
-For more information on configuring KMS authentication for Boundary workers, refer to the [KMS authentication configuration documenation](/boundary/docs/configuration/worker/worker-configuration).
+For more information on configuring KMS authentication for Boundary workers, refer to the [KMS authentication configuration documenation](/boundary/docs/workers/configure-workers/worker-configuration#kms-configuration).
 
 If you use Boundary Enterprise, you can configure multiple workers to act in three different roles: ingress, intermediary, and egress.
 For Community Edition, workers only serve one role, acting as both the point of ingress and egress.
@@ -306,7 +306,7 @@ If present, `boundary server` starts a worker subprocess.
    The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
    This configuration may or may not work for your organization's logging solution.
 
-- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/security/encryption/data-encryption).
+- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/secure/encryption/data-encryption).
 
    Refer to the links below for configuration information for the different cloud KMS blocks:
 
@@ -317,7 +317,7 @@ If present, `boundary server` starts a worker subprocess.
    - [AliCloud](/boundary/docs/configuration/kms/alicloudkms)
    - [Vault Transit](/boundary/docs/configuration/kms/transit)
 
-Refer to the documentation for additional [top-level configuration options](/boundary/docs/configuration) and additional [controller-specific options](/boundary/docs/configuration/controller).
+Refer to the documentation for additional [top-level configuration options](/boundary/docs/configuration) and additional [worker-specific options](/boundary/docs/workers).
 
 </Tab>
 <Tab heading="Community Edition">
@@ -420,7 +420,7 @@ If present, `boundary server` starts a worker subprocess.
    The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
    This configuration may or may not work for your organization's logging solution.
 
-- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/security/encryption/data-encryption).
+- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/secure/encryption/data-encryption).
 
    Refer to the links below for configuration information for the different cloud KMS blocks:
 
@@ -431,7 +431,7 @@ If present, `boundary server` starts a worker subprocess.
    - [AliCloud](/boundary/docs/configuration/kms/alicloudkms)
    - [Vault Transit](/boundary/docs/configuration/kms/transit)
 
-Refer to the documentation for additional [top-level configuration options](/boundary/docs/configuration) and additional [controller-specific options](/boundary/docs/configuration/controller).
+Refer to the documentation for additional [top-level configuration options](/boundary/docs/configuration) and additional [worker-specific options](/boundary/docs/workers).
 
 
 </Tab>
@@ -445,9 +445,9 @@ Run the following commands to start the service:
 1. `sudo systemctl enable boundary`
 1. `sudo systemctl start boundary`
 
-## Adopt the Workers (optional)
+## Adopt the workers (optional)
 
-If you use the Workers as outlined above, you must adopt the Boundary Workers.
+If you use the workers as outlined above, you must adopt the Boundary workers.
 Complete the following steps to adopt the workers:
 
 <Tabs>
@@ -606,7 +606,9 @@ Complete the following steps to adopt the worker using the CLI:
 </Tab>
 </Tabs>
 
-After configuring workers, you should:
+## Next steps
 
-- [Initialize Boundary](/boundary/docs/deploy/self-managed/initialize)
-- [Install the Boundary Clients](/boundary/docs/deploy/self-managed/install-clients)
+After you configure workers, you should:
+
+1. [Initialize Boundary](/boundary/docs/deploy/self-managed/initialize)
+1. [Install the Boundary Clients](/boundary/docs/deploy/self-managed/install-clients)
