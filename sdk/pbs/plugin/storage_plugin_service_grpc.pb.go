@@ -90,8 +90,9 @@ func NewStoragePluginServiceClient(cc grpc.ClientConnInterface) StoragePluginSer
 }
 
 func (c *storagePluginServiceClient) NormalizeStorageBucketData(ctx context.Context, in *NormalizeStorageBucketDataRequest, opts ...grpc.CallOption) (*NormalizeStorageBucketDataResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(NormalizeStorageBucketDataResponse)
-	err := c.cc.Invoke(ctx, StoragePluginService_NormalizeStorageBucketData_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, StoragePluginService_NormalizeStorageBucketData_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}

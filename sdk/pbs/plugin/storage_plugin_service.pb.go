@@ -1183,7 +1183,18 @@ var File_plugin_v1_storage_plugin_service_proto protoreflect.FileDescriptor
 
 const file_plugin_v1_storage_plugin_service_proto_rawDesc = "" +
 	"\n" +
-	"&plugin/v1/storage_plugin_service.proto\x12\tplugin.v1\x1a?controller/api/resources/storagebuckets/v1/storage_bucket.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"q\n" +
+	"&plugin/v1/storage_plugin_service.proto\x12\tplugin.v1\x1a0controller/api/resources/plugins/v1/plugin.proto\x1a?controller/api/resources/storagebuckets/v1/storage_bucket.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa5\x01\n" +
+	"!NormalizeStorageBucketDataRequest\x127\n" +
+	"\n" +
+	"attributes\x18\n" +
+	" \x01(\v2\x17.google.protobuf.StructR\n" +
+	"attributes\x12G\n" +
+	"\x06plugin\x18\x14 \x01(\v2/.controller.api.resources.plugins.v1.PluginInfoR\x06plugin\"]\n" +
+	"\"NormalizeStorageBucketDataResponse\x127\n" +
+	"\n" +
+	"attributes\x18\n" +
+	" \x01(\v2\x17.google.protobuf.StructR\n" +
+	"attributes\"q\n" +
 	"\x1cOnCreateStorageBucketRequest\x12Q\n" +
 	"\x06bucket\x18\n" +
 	" \x01(\v29.controller.api.resources.storagebuckets.v1.StorageBucketR\x06bucket\"\x81\x01\n" +
@@ -1263,8 +1274,9 @@ const file_plugin_v1_storage_plugin_service_proto_rawDesc = "" +
 	"\x16STATE_TYPE_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rSTATE_TYPE_OK\x10\x01\x12\x14\n" +
 	"\x10STATE_TYPE_ERROR\x10\x02\x12\x16\n" +
-	"\x12STATE_TYPE_UNKNOWN\x10\x032\xf1\x05\n" +
-	"\x14StoragePluginService\x12j\n" +
+	"\x12STATE_TYPE_UNKNOWN\x10\x032\xec\x06\n" +
+	"\x14StoragePluginService\x12y\n" +
+	"\x1aNormalizeStorageBucketData\x12,.plugin.v1.NormalizeStorageBucketDataRequest\x1a-.plugin.v1.NormalizeStorageBucketDataResponse\x12j\n" +
 	"\x15OnCreateStorageBucket\x12'.plugin.v1.OnCreateStorageBucketRequest\x1a(.plugin.v1.OnCreateStorageBucketResponse\x12j\n" +
 	"\x15OnUpdateStorageBucket\x12'.plugin.v1.OnUpdateStorageBucketRequest\x1a(.plugin.v1.OnUpdateStorageBucketResponse\x12j\n" +
 	"\x15OnDeleteStorageBucket\x12'.plugin.v1.OnDeleteStorageBucketRequest\x1a(.plugin.v1.OnDeleteStorageBucketResponse\x12d\n" +
