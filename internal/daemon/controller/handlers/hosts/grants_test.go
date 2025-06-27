@@ -189,6 +189,41 @@ func TestGrants_ReadActions(t *testing.T) {
 				},
 			},
 			{
+				name: "project role grant this pinned id returns all created hosts in catalog 1",
+				input: &pbs.ListHostsRequest{
+					HostCatalogId: hc.GetPublicId(),
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=" + hc.PublicId + ";type=*;actions=list,read;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: nil,
+				wantOutfields: map[string][]string{
+					wantHs[0]: {globals.IdField},
+					wantHs[1]: {globals.IdField},
+					wantHs[2]: {globals.IdField},
+					wantHs[3]: {globals.IdField},
+					wantHs[4]: {globals.IdField},
+				},
+			},
+			{
+				name: "project role grant this wrong pinned id returns error",
+				input: &pbs.ListHostsRequest{
+					HostCatalogId: hc.GetPublicId(),
+				},
+				userFunc: iam.TestUserGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, password.TestAuthMethodWithAccount, []iam.TestRoleGrantsRequest{
+					{
+						RoleScopeId: proj.PublicId,
+						Grants:      []string{"ids=" + hc2.PublicId + ";type=*;actions=list,read;output_fields=id"},
+						GrantScopes: []string{globals.GrantScopeThis},
+					},
+				}),
+				wantErr: handlers.ForbiddenError(),
+			},
+			{
 				name: "org2 role grant this returns all created hosts in catalog 2",
 				input: &pbs.ListHostsRequest{
 					HostCatalogId: hc2.GetPublicId(),
