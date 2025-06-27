@@ -999,7 +999,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	for _, sw := range selectedWorkers {
 		workerAddresses = append(workerAddresses, sw.Address)
 	}
-	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, workerAddresses)
+	var proxyCert *session.ProxyCertificate
+	if t.GetProxyServerCertificate() != nil {
+		pc := t.GetProxyServerCertificate()
+		proxyCert = &session.ProxyCertificate{
+			PrivateKey:  pc.PrivateKeyPem,
+			Certificate: pc.CertificatePem,
+		}
+	}
+	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, workerAddresses, session.WithProxyCertificate(proxyCert))
 	if err != nil {
 		return nil, err
 	}

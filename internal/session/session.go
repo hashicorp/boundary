@@ -613,27 +613,33 @@ func (s *deletedSession) TableName() string {
 // It's stored during session authorization and used at connection authorization
 // time to lookup the proxy certificate, if applicable
 type ProxyCertificate struct {
-	SessionId   string `gorm:"not_null"`
-	Certificate []byte `gorm:"not_null"`
+	SessionId           string `gorm:"primary_key"`
+	Certificate         []byte `gorm:"not_null"`
+	PrivateKey          []byte `gorm:"-" wrapping:"pt,private_key"`
+	PrivateKeyEncrypted []byte `gorm:"not_null" wrapping:"ct,private_key"`
+	KeyId               string `gorm:"not_null"`
 }
 
 // NewProxyCertificate creates a new in memory ProxyCertificate
-func NewProxyCertificate(ctx context.Context, sessionId string, certificate []byte) (*ProxyCertificate, error) {
+func NewProxyCertificate(ctx context.Context, sessionId string, privateKey, certificate []byte) (*ProxyCertificate, error) {
 	const op = "session.NewProxyCertificate"
 	switch {
 	case sessionId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	case len(certificate) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
+	case len(privateKey) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private key")
 	}
 
 	return &ProxyCertificate{
 		SessionId:   sessionId,
 		Certificate: certificate,
+		PrivateKey:  privateKey,
 	}, nil
 }
 
-func alloProxyCertificate() *ProxyCertificate {
+func allocProxyCertificate() *ProxyCertificate {
 	return &ProxyCertificate{}
 }
 
@@ -641,10 +647,19 @@ func alloProxyCertificate() *ProxyCertificate {
 func (t *ProxyCertificate) Clone() *ProxyCertificate {
 	spc := &ProxyCertificate{
 		SessionId: t.SessionId,
+		KeyId:     t.KeyId,
 	}
 	if t.Certificate != nil {
 		spc.Certificate = make([]byte, len(t.Certificate))
 		copy(spc.Certificate, t.Certificate)
+	}
+	if t.PrivateKey != nil {
+		spc.PrivateKey = make([]byte, len(t.PrivateKey))
+		copy(spc.PrivateKey, t.PrivateKey)
+	}
+	if t.PrivateKeyEncrypted != nil {
+		spc.PrivateKeyEncrypted = make([]byte, len(t.PrivateKeyEncrypted))
+		copy(spc.PrivateKeyEncrypted, t.PrivateKeyEncrypted)
 	}
 
 	return spc
@@ -658,8 +673,41 @@ func (t *ProxyCertificate) VetForWrite(ctx context.Context, _ db.Reader, opType 
 		return errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	case len(t.Certificate) == 0:
 		return errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
+	case len(t.PrivateKeyEncrypted) == 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing encrypted private key")
+	case t.KeyId == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing key id")
 	}
 
+	return nil
+}
+
+// Encrypt the proxy cert before writing it to the db
+func (t *ProxyCertificate) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "session.(ProxyCertificate).Encrypt"
+	if cipher == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
+	if err := structwrapping.WrapStruct(ctx, cipher, t, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	}
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to read cipher key id"))
+	}
+	t.KeyId = keyId
+	return nil
+}
+
+// Decrypt the proxy cert after reading it from the db
+func (t *ProxyCertificate) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "session.(ProxyCertificate).Decrypt"
+	if cipher == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
+	if err := structwrapping.UnwrapStruct(ctx, cipher, t, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+	}
 	return nil
 }
 

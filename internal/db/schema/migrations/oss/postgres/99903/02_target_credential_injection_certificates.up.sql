@@ -116,14 +116,22 @@ create trigger remove_target_alias_certificates_for_updated_alias before update 
     for each row execute procedure remove_target_alias_certificates_for_updated_alias();
 
 create table session_proxy_certificate(
-  session_id wt_public_id not null
+  session_id wt_public_id primary key
     constraint session_fkey
       references session (public_id)
       on delete cascade
       on update cascade,
   certificate bytea not null
     constraint certificate_must_not_be_empty
-      check(length(certificate) > 0)
+      check(length(certificate) > 0),
+  private_key_encrypted bytea not null -- encrypted PEM encoded priv key
+    constraint private_key_must_not_be_empty
+      check(length(private_key_encrypted) > 0),
+  key_id kms_private_id not null -- key used to encrypt entries
+    constraint kms_data_key_version_fkey
+      references kms_data_key_version (private_id)
+      on delete restrict
+      on update cascade
 );
 
 comment on table session_proxy_certificate is

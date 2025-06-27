@@ -443,11 +443,16 @@ func TestProxyCertificate(t *testing.T) {
 	if _, err := rand.Read(cert); err != nil {
 		require.NotNil(t, err)
 	}
+	privKey := make([]byte, 20)
+	if _, err := rand.Read(privKey); err != nil {
+		require.NotNil(t, err)
+	}
 
 	tests := []struct {
 		name            string
 		sessionId       string
 		certificate     []byte
+		privKey         []byte
 		expected        *ProxyCertificate
 		wantErr         bool
 		wantErrContains string
@@ -456,22 +461,33 @@ func TestProxyCertificate(t *testing.T) {
 			name:        "valid-target-cert",
 			sessionId:   sId,
 			certificate: cert,
+			privKey:     privKey,
 			expected: &ProxyCertificate{
 				SessionId:   sId,
 				Certificate: cert,
+				PrivateKey:  privKey,
 			},
 		},
 		{
 			name:            "missing-session-id",
 			certificate:     cert,
+			privKey:         privKey,
 			wantErr:         true,
 			wantErrContains: "missing session id",
 		},
 		{
 			name:            "missing-cert",
 			sessionId:       sId,
+			privKey:         privKey,
 			wantErr:         true,
 			wantErrContains: "missing certificate",
+		},
+		{
+			name:            "missing-priv-key",
+			sessionId:       sId,
+			certificate:     cert,
+			wantErr:         true,
+			wantErrContains: "missing private key",
 		},
 	}
 
@@ -480,7 +496,7 @@ func TestProxyCertificate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			gotCert, err := NewProxyCertificate(ctx, tt.sessionId, tt.certificate)
+			gotCert, err := NewProxyCertificate(ctx, tt.sessionId, tt.privKey, tt.certificate)
 
 			if tt.wantErr {
 				assert.Error(err)
