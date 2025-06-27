@@ -202,11 +202,11 @@ func TestGrants_ReadActions(t *testing.T) {
 				}),
 				wantErr: nil,
 				wantOutfields: map[string][]string{
-					wantHs[10]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
-					wantHs[11]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
-					wantHs[12]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
-					wantHs[13]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
-					wantHs[14]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
+					wantHs[5]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
+					wantHs[6]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
+					wantHs[7]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
+					wantHs[8]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
+					wantHs[9]: {globals.IdField, globals.HostCatalogIdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.HostSetIdsField, StaticHostAttributes, globals.AuthorizedActionsField},
 				},
 			},
 			{
@@ -223,11 +223,11 @@ func TestGrants_ReadActions(t *testing.T) {
 				}),
 				wantErr: nil,
 				wantOutfields: map[string][]string{
-					wantHs[10]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
-					wantHs[11]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
-					wantHs[12]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
-					wantHs[13]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
-					wantHs[14]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
+					wantHs[5]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
+					wantHs[6]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
+					wantHs[7]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
+					wantHs[8]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
+					wantHs[9]: {globals.IdField, globals.ScopeField, globals.CreatedTimeField, globals.UpdatedTimeField, globals.VersionField, globals.TypeField, globals.AuthorizedActionsField, StaticHostAttributes},
 				},
 			},
 			{
