@@ -69,22 +69,7 @@ func (m *mysqlFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 
 	switch m.flagMySQLStyle {
 	case "mysql":
-		if port != "" {
-			args = append(args, "-P", port)
-		}
-		args = append(args, "-h", ip)
-
-		if c.flagDbname != "" {
-			args = append(args, "-D", c.flagDbname)
-		}
-
-		switch {
-		case username != "":
-			args = append(args, "-u", username)
-		case c.flagUsername != "":
-			args = append(args, "-u", c.flagUsername)
-		}
-
+		// Handle password first - defaults-file must be the first argument
 		if password != "" {
 			passfile, err := os.CreateTemp("", "*")
 			if err != nil {
@@ -103,11 +88,31 @@ func (m *mysqlFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 			if err := passfile.Close(); err != nil {
 				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
 			}
-			args = append(args, "-p"+password)
+			// --defaults-file must be the first argument
+			args = append(args, fmt.Sprintf("--defaults-file=%s", passfile.Name()))
 
 			if c.flagDbname == "" {
 				c.UI.Warn("Credentials are being brokered but no -dbname parameter provided. mysql may misinterpret another parameter as the database name.")
 			}
+		} else {
+			// If no password provided, add -p to prompt for password
+			args = append(args, "-p")
+		}
+
+		if port != "" {
+			args = append(args, "-P", port)
+		}
+		args = append(args, "-h", ip)
+
+		if c.flagDbname != "" {
+			args = append(args, "-D", c.flagDbname)
+		}
+
+		switch {
+		case username != "":
+			args = append(args, "-u", username)
+		case c.flagUsername != "":
+			args = append(args, "-u", c.flagUsername)
 		}
 	}
 	return
