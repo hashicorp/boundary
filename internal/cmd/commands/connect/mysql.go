@@ -81,7 +81,7 @@ func (m *mysqlFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 				}
 				return nil
 			})
-			_, err = passfile.WriteString(fmt.Sprintf("[client]\npassword=%s", password))
+			_, err = passfile.Write([]byte("[client]\npassword=" + password))
 			if err != nil {
 				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
 			}
