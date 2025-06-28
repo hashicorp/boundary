@@ -117,4 +117,4 @@ func (m *mysqlFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 		}
 	}
 	return
-} 
+}
