@@ -945,6 +945,10 @@
             "path": "commands/connect/kube"
           },
           {
+            "title": "mysql",
+            "path": "commands/connect/mysql"
+          },
+          {
             "title": "postgres",
             "path": "commands/connect/postgres"
           },
