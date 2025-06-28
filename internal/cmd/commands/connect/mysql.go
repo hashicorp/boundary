@@ -89,7 +89,7 @@ func (m *mysqlFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Crede
 				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
 			}
 			// --defaults-file must be the first argument
-			args = append(args, fmt.Sprintf("--defaults-file=%s", passfile.Name()))
+			args = append([]string{"--defaults-file=" + passfile.Name()}, args...)
 
 			if c.flagDbname == "" {
 				c.UI.Warn("Credentials are being brokered but no -dbname parameter provided. mysql may misinterpret another parameter as the database name.")
