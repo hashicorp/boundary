@@ -303,3 +303,55 @@ func StartOpenSshServer(t testing.TB, pool *dockertest.Pool, network *dockertest
 		UriNetwork: networkAlias,
 	}
 }
+
+// StartMysql starts a MySQL database in a docker container.
+// Returns information about the container
+func StartMysql(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
+	t.Log("Starting MySQL database...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
+
+	err = pool.Client.PullImage(docker.PullImageOptions{
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:        tag,
+	}, docker.AuthConfiguration{})
+	require.NoError(t, err)
+
+	networkAlias := "e2emysql"
+	mysqlDb := "e2eboundarydb"
+	mysqlUser := "e2eboundary"
+	mysqlPassword := "e2eboundary"
+	mysqlRootPassword := "rootpassword"
+
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:        tag,
+		Env: []string{
+			"MYSQL_DATABASE=" + mysqlDb,
+			"MYSQL_USER=" + mysqlUser,
+			"MYSQL_PASSWORD=" + mysqlPassword,
+			"MYSQL_ROOT_PASSWORD=" + mysqlRootPassword,
+		},
+		ExposedPorts: []string{"3306/tcp"},
+		Name:         networkAlias,
+		Networks:     []*dockertest.Network{network},
+	})
+	require.NoError(t, err)
+
+	return &Container{
+		Resource: resource,
+		UriLocalhost: fmt.Sprintf("%s:%s@tcp(%s)/%s",
+			mysqlUser,
+			mysqlPassword,
+			resource.GetHostPort("3306/tcp"),
+			mysqlDb,
+		),
+		UriNetwork: fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+			mysqlUser,
+			mysqlPassword,
+			networkAlias,
+			"3306",
+			mysqlDb,
+		),
+	}
+}
