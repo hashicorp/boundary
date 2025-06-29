@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/sdk
 go 1.24.0
 
 require (
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/hashicorp/eventlogger v0.2.11
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0
 	github.com/hashicorp/go-hclog v1.6.3
