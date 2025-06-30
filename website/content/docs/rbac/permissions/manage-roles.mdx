@@ -11,7 +11,7 @@ description: >-
 
 - [Users](/boundary/docs/domain-model/users)
 - [Groups](/boundary/docs/domain-model/groups)
-- [Managed Groups](/boundary/docs/domain-model/managed-groups)
+- [Managed groups](/boundary/docs/domain-model/managed-groups)
 
 You can define a role in the global, org, or project scopes.
 
@@ -25,7 +25,7 @@ All resource IDs in this guide are examples. Boundary generates unique IDs for e
 
 ## Create a role
 
-Roles can live in the global, org, or project scopes. In this example, we create a role in the generated org scope in [Boundary's `dev` mode](/boundary/docs/getting-started/dev-mode/dev-mode).
+Roles can live in the global, org, or project scopes. In this example, we create a role in the generated org scope in [Boundary's `dev` mode](/boundary/docs/getting-started/dev-mode).
 
 <Tabs>
 <Tab heading="CLI" group="cli">
@@ -219,7 +219,7 @@ resource "boundary_role" "listonly" {
 
 ## Assign grants to a role
 
-Grants describe the actions that the principals are allowed to perform. For more information on how to format grants, refer to [Permission grant formats](/boundary/docs/configuration/identity-access-management/permission-grant-formats).
+Grants describe the actions that the principals are allowed to perform. For more information on how to format grants, refer to [Permission grant formats](/boundary/docs/rbac/permissions/permission-grant-formats).
 
 In this example, we give a role read and list permissions for all resources. The grant we apply for the role is:
 
@@ -414,6 +414,6 @@ resource "boundary_role" "listonly" {
 
 ## More information
 
-1. Refer to [Assignable permissions](/boundary/docs/configuration/identity-access-management/assignable-permissions) for more information about the permissions you can assign to Boundary principals.
-1. Refer to [Permission grant formats](/boundary/docs/configuration/identity-access-management/permission-grant-formats) for more information about grant strings and example formats.
-1. Refer to the [Resource table](/boundary/docs/configuration/identity-access-management/resource-table) for a cheat sheet to help you manage your permissions.
+1. Refer to [Assignable permissions](/boundary/docs/rbac/permissions/assignable-permissions) for more information about the permissions you can assign to Boundary principals.
+1. Refer to [Permission grant formats](/boundary/docs/rbac/permissions/permission-grant-formats) for more information about grant strings and example formats.
+1. Refer to the [Resource tables](/boundary/docs/rbac/permissions/resource-table) for a cheat sheet to help you manage your permissions.

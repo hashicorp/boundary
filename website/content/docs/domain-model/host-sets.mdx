@@ -21,14 +21,14 @@ which belong to the same [project][] as the target.
 A host set has the following configurable attributes:
 
 - `name` - (optional)
-  If set, the `name` must be unique within the host set's parent [host catalog][].
+  If set, the `name` must be unique within the host set's parent host catalog.
 
 - `description` - (optional)
 
 - `preferred_endpoints` - (optional)
   A list of selector strings in the format of either `cidr:<valid IPv4/6 CIDR>`
-  or `dns:<globbed name>` used to select the addresses of [hosts][] when
-  establishing a [session][] with a [target][].
+  or `dns:<globbed name>` used to select the addresses of hosts when
+  establishing a [session][] with a target.
 
 ### Plugin host set attributes
 
@@ -38,13 +38,13 @@ A host set has the following configurable attributes:
   syntax which is usable by the backing service.
 
 - `sync_interval_seconds` - (optional)
-  The number of seconds between the time boundary syncs the [hosts][] in this
+  The number of seconds between the time boundary syncs the hosts in this
   set using this host set's plugin. Defaults to `600` seconds, or 10 minutes.
 
 ## Referenced by
 
 - [Host][]
-- [Host Catalog][]
+- [Host catalog][]
 - [Target][]
 
 [host catalog]: /boundary/docs/domain-model/host-catalogs
@@ -62,4 +62,4 @@ A host set has the following configurable attributes:
 
 The following services are relevant to this resource:
 
-- [Host Set Service](/boundary/api-docs/host-set-service)
+- [Host set service](/boundary/api-docs/host-set-service)

@@ -5,7 +5,7 @@ description: >-
   Learn about Boundary's HTTP API standards, status codes, path layout, methods, and headers. Understand how rate limiting helps manage system resources.
 ---
 
-# API
+# Boundary API overview
 
 Boundary's API is a JSON-based HTTP API that adheres to a set of standards that are rigidly followed. At its core, it is a standards-compliant JSON API for both input and output.
 
@@ -99,8 +99,8 @@ If you do not provide an `X-Correlation-ID` header, Boundary generates a unique 
 
 If your controllers try to process every API request, they may either run out of resources or overwhelm the database server.
 Boundary features API rate limiting to help prevent system resources from being overwhlemed by too many simultaneous requests.
-For more information, refer to [API rate limiting](/boundary/docs/api-clients/api/rate-limiting).
+For more information, refer to [API rate limiting](/boundary/docs/api/rate-limiting).
 
 When you search for Boundary resources using the `list` operation, you could potentially receive a very large number of results.
 Boundary uses an API pagination feature to enable you to search and filter large lists of search results without overwhelming your system resources.
-Refer to [API list pagination](/boundary/docs/api-clients/api/pagination) for more information about pagination and using the local cache for searches.
+Refer to [API list pagination](/boundary/docs/api/pagination) for more information about pagination and using the local cache for searches.

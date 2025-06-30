@@ -18,15 +18,15 @@ from the same host catalog as the host.
 
 Plugin-based hosts are read-only.  They are synced by an installed plugin on
 the boundary system using the configuration provided it from the
-[host catalog][] and [host set][] at an interval (configurable in the
-[host set][]).
+host catalog and host set at an interval (configurable in the
+host set).
 
 ## Attributes
 
 A host has the following configurable attributes:
 
 - `name` - (optional)
-  If set, the `name` must be unique within the host's parent [host catalog][].
+  If set, the `name` must be unique within the host's parent host catalog.
 
 - `description` - (optional)
 
@@ -39,8 +39,8 @@ Static host types have the following additional attribute:
 
 ## Referenced by
 
-- [Host Catalog][]
-- [Host Set][]
+- [Host catalog][]
+- [Host set][]
 
 [host catalog]: /boundary/docs/domain-model/host-catalogs
 [host catalogs]: /boundary/docs/domain-model/host-catalogs
@@ -51,4 +51,4 @@ Static host types have the following additional attribute:
 
 The following services are relevant to this resource:
 
-- [Host Service](/boundary/api-docs/host-service)
+- [Host service](/boundary/api-docs/host-service)

@@ -20,7 +20,7 @@ A user receives all the [permissions][]
 of the roles assigned directly to the user
 and all the permissions of roles assigned to [groups][] the user is in.
 
-Users can be defined at either a [Global][] or [Organization][] [scope][].
+Users can be defined at either a [global][] or [organization][] [scope][].
 A user can only be associated with accounts from an [auth method][]
 configured in the same scope.
 
@@ -29,7 +29,7 @@ configured in the same scope.
 A user has the following configurable attributes:
 
 - `name` - (optional)
-  If set, the `name` must be unique within the user's immediate parent [scope][].
+  If set, the `name` must be unique within the user's immediate parent scope.
 
 - `description` - (optional)
 
@@ -48,7 +48,7 @@ A user has the following configurable attributes:
 [group]: /boundary/docs/domain-model/groups
 [groups]: /boundary/docs/domain-model/groups
 [organization]: /boundary/docs/domain-model/scopes#organizations
-[permissions]: /boundary/docs/concepts/security/permissions
+[permissions]: /boundary/docs/rbac/permissions
 [role]: /boundary/docs/domain-model/roles
 [roles]: /boundary/docs/domain-model/roles
 [scope]: /boundary/docs/domain-model/scopes
@@ -57,4 +57,4 @@ A user has the following configurable attributes:
 
 The following services are relevant to this resource:
 
-- [User Service](/boundary/api-docs/user-service)
+- [User service](/boundary/api-docs/user-service)

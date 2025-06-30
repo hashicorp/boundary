@@ -12,7 +12,7 @@ The integration between Boundary and Vault improves two main areas of concern fo
 - Security posture for remote access
 - Workflow efficiency
 
-Integrating Boundary and Vault achieves these goals by enabling end-users to access targets without needing to manually distribute credentials.
+Integrating Boundary and Vault achieves these goals by enabling end-users to access targets without needing to manually distribute credentials. You must bring your own Vault deployment to Boundary.
 
 From a security perspective, you can configure credentials to be dynamic and ephemeral, and only valid for the lifetime of the session. Or you can attach a specific time to live (TTL) to the Vault token, resulting in a session having a finite amount of time.
 
@@ -22,11 +22,10 @@ Timely access to resources creates improvements in workflow efficiency by removi
 
 ## Credential management
 
-To configure credential brokering or credential injection with static credentials on Vault, please see [Manage static credentials with Vault](/boundary/docs/configuration/credential-management/static-cred-vault).
+To configure credential brokering or credential injection with static credentials on Vault, please see [Manage static credentials with Vault](/boundary/docs/credentials/static-cred-vault).
 
 
 # Credentials
-Vault can work with Boundary to be a credential [store](https://developer.hashicorp.com/boundary/docs/domain-model/credential-stores) and [library](https://developer.hashicorp.com/boundary/docs/domain-model/credential-libraries), which allows for credentials to be stored in Vault and used by Boundary. There are two configuration options:
 
 Within Boundary, you can configure Vault as a [credential store](/boundary/docs/domain-model/credential-stores) and [credential library](/boundary/docs/domain-model/credential-libraries).
 
@@ -40,12 +39,6 @@ Generic secrets reference a Vault key-value path where static secrets are stored
 SSH certificates have the advantages of using Vault as the certificate authority (CA) and being able to use the [HashiCorp Vault SSH Secrets Engine](/vault/docs/secrets/ssh).
 
 You can inject both generic secrets and SSH certificates directly into Boundary sessions using an HCP Boundary or Boundary Enterprise deployment.
-
-<Note>
-
-  You must bring your own Vault deployment to Boundary.
-
-</Note>
 
 ### Brokered credentials
 
@@ -93,6 +86,8 @@ A static credential store is built into Boundary if you want to manage secrets w
 
 Organizations may have valid reasons for using multiple credential stores within Boundary. You can only create credential stores at the [project](/boundary/docs/domain-model/scopes#projects) scope, and each project can contain multiple credential stores. Projects within an org scope may have different requirements from their credential stores. For example, within an org scope you may have two projects: Database and Compute. These two projects may need to be isolated, and can have a dedicated credential store per project.
 
+Credential stores may contain multiple credential libraries. This means a single Vault token can provide access to all the Vault paths defined in the credential libraries. HashiCorp recommends that you operate using the model of least privilege when setting up credential stores.
+
 When integrated with Vault, Boundary has to be assigned a periodic, renewable, [orphan token](/boundary/docs/domain-model/credential-stores#vault-token-requirements) from Vault. Each credential needs a separate Vault token.
 
 The following have no impact on Vault's [client count](/vault/docs/concepts/client-count/counting):
@@ -102,14 +97,12 @@ The following have no impact on Vault's [client count](/vault/docs/concepts/clie
 - The number of sessions that get created
 - The number of credential libraries the credential store contains
 
-<Note>
-
-Credential stores may contain multiple credential libraries. This means a single Vault token can provide access to all the Vault paths defined in the credential libraries. HashiCorp recommends that you operate using the model of least privilege when setting up credential stores.
-
-</Note>
-
 ## Vault as an identity provider
 
 Boundary supports OIDC, LDAP, and username/password as [authentication methods](/boundary/docs/concepts/iam#access-management). Boundary can use Vault as an [OIDC bridge provider](/vault/tutorials/auth-methods/oidc-identity-provider). This allows Vault to delegate authentication to an external OIDC provider, such as Google Cloud, Okta, or Microsoft Entra ID.
 
 These providers then map the authenticated user's claims to Vault policies and identities. This allows users to authenticate to Boundary with any of Vault's supported authentication methods, even ones that Boundary does not natively support. When Boundary uses Vault as an OIDC provider, each user leveraging the authentication method then counts as a Vault client.
+
+## More information
+
+Refer to [Create a Vault credential store](/boundary/docs/credentials/static-cred-vault) for more information.

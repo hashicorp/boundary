@@ -11,7 +11,7 @@ An auth method is a resource that provides a mechanism for [users][] to
 authenticate to Boundary. An auth method contains [accounts][] which link an
 individual user to a set of credentials and [managed groups][] which groups
 [accounts][] that satisfy criteria and can be used as principals in [roles][].
-Auth methods can be defined at either a [Global][] or [Organization][]
+Auth methods can be defined at either a [global][] or [organization][]
 [scope][].
 
 ## Attributes
@@ -205,7 +205,7 @@ The ldap auth method has the following additional attributes:
 
 - [Account][]
 - [Global][]
-- [Managed Group][]
+- [Managed group][]
 - [Organization][]
 
 [account]: /boundary/docs/domain-model/accounts
@@ -222,5 +222,5 @@ The ldap auth method has the following additional attributes:
 
 The following services are relevant to this resource:
 
-- [Auth Method Service](/boundary/api-docs/auth-method-service)
-- [Auth Token Service](/boundary/api-docs/auth-token-service)
+- [Auth method service](/boundary/api-docs/auth-method-service)
+- [Auth token service](/boundary/api-docs/auth-token-service)
