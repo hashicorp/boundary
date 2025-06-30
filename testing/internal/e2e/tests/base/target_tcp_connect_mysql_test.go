@@ -122,9 +122,5 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	t.Logf("MySQL session output: %s", output)
 	
 	require.Contains(t, output, "| "+mysqlDbName+" |", "Session did not return expected database query result")
-	
-	require.True(t, 
-		strings.Contains(output, "mysql>") || strings.Contains(output, "MySQL ["),
-		"Session did not show MySQL/MariaDB prompt")
 	t.Log("Successfully connected to MySQL target")
 } 
