@@ -40,7 +40,9 @@ func request_TestResourceService_TestListResource_0(ctx context.Context, marshal
 		protoReq TestListResourceRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.TestListResource(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -61,6 +63,9 @@ func request_TestResourceService_TestCreateResource_0(ctx context.Context, marsh
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.TestCreateResource(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -92,6 +97,9 @@ func request_TestResourceService_TestUpdateResource_0(ctx context.Context, marsh
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -162,7 +170,9 @@ func request_TestResourceService_TestGetResource_0(ctx context.Context, marshale
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -395,7 +405,8 @@ type response_TestResourceService_TestCreateResource_0 struct {
 }
 
 func (m response_TestResourceService_TestCreateResource_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.TestCreateResourceResponse
+	return response.Item
 }
 
 type response_TestResourceService_TestUpdateResource_0 struct {
@@ -403,7 +414,8 @@ type response_TestResourceService_TestUpdateResource_0 struct {
 }
 
 func (m response_TestResourceService_TestUpdateResource_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.TestUpdateResourceResponse
+	return response.Item
 }
 
 type response_TestResourceService_TestGetResource_0 struct {
@@ -411,7 +423,8 @@ type response_TestResourceService_TestGetResource_0 struct {
 }
 
 func (m response_TestResourceService_TestGetResource_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.TestGetResourceResponse
+	return response.Item
 }
 
 var (

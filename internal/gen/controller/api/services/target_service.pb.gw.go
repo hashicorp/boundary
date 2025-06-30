@@ -41,7 +41,9 @@ func request_TargetService_GetTarget_0(ctx context.Context, marshaler runtime.Ma
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_TargetService_ListTargets_0(ctx context.Context, marshaler runtime.
 		protoReq ListTargetsRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_TargetService_CreateTarget_0(ctx context.Context, marshaler runtime
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -143,6 +150,9 @@ func request_TargetService_UpdateTarget_0(ctx context.Context, marshaler runtime
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -213,7 +223,9 @@ func request_TargetService_DeleteTarget_0(ctx context.Context, marshaler runtime
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -252,6 +264,9 @@ func request_TargetService_AuthorizeSession_0(ctx context.Context, marshaler run
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -295,6 +310,9 @@ func request_TargetService_AddTargetHostSources_0(ctx context.Context, marshaler
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -336,6 +354,9 @@ func request_TargetService_SetTargetHostSources_0(ctx context.Context, marshaler
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -379,6 +400,9 @@ func request_TargetService_RemoveTargetHostSources_0(ctx context.Context, marsha
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -420,6 +444,9 @@ func request_TargetService_AddTargetCredentialSources_0(ctx context.Context, mar
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -463,6 +490,9 @@ func request_TargetService_SetTargetCredentialSources_0(ctx context.Context, mar
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -504,6 +534,9 @@ func request_TargetService_RemoveTargetCredentialSources_0(ctx context.Context, 
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	val, ok := pathParams["id"]
 	if !ok {
@@ -1036,7 +1069,8 @@ type response_TargetService_GetTarget_0 struct {
 }
 
 func (m response_TargetService_GetTarget_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetTargetResponse
+	return response.Item
 }
 
 type response_TargetService_CreateTarget_0 struct {
@@ -1044,7 +1078,8 @@ type response_TargetService_CreateTarget_0 struct {
 }
 
 func (m response_TargetService_CreateTarget_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateTargetResponse
+	return response.Item
 }
 
 type response_TargetService_UpdateTarget_0 struct {
@@ -1052,7 +1087,8 @@ type response_TargetService_UpdateTarget_0 struct {
 }
 
 func (m response_TargetService_UpdateTarget_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateTargetResponse
+	return response.Item
 }
 
 type response_TargetService_AuthorizeSession_0 struct {
@@ -1060,7 +1096,8 @@ type response_TargetService_AuthorizeSession_0 struct {
 }
 
 func (m response_TargetService_AuthorizeSession_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AuthorizeSessionResponse
+	return response.Item
 }
 
 type response_TargetService_AddTargetHostSources_0 struct {
@@ -1068,7 +1105,8 @@ type response_TargetService_AddTargetHostSources_0 struct {
 }
 
 func (m response_TargetService_AddTargetHostSources_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddTargetHostSourcesResponse
+	return response.Item
 }
 
 type response_TargetService_SetTargetHostSources_0 struct {
@@ -1076,7 +1114,8 @@ type response_TargetService_SetTargetHostSources_0 struct {
 }
 
 func (m response_TargetService_SetTargetHostSources_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetTargetHostSourcesResponse
+	return response.Item
 }
 
 type response_TargetService_RemoveTargetHostSources_0 struct {
@@ -1084,7 +1123,8 @@ type response_TargetService_RemoveTargetHostSources_0 struct {
 }
 
 func (m response_TargetService_RemoveTargetHostSources_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveTargetHostSourcesResponse
+	return response.Item
 }
 
 type response_TargetService_AddTargetCredentialSources_0 struct {
@@ -1092,7 +1132,8 @@ type response_TargetService_AddTargetCredentialSources_0 struct {
 }
 
 func (m response_TargetService_AddTargetCredentialSources_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.AddTargetCredentialSourcesResponse
+	return response.Item
 }
 
 type response_TargetService_SetTargetCredentialSources_0 struct {
@@ -1100,7 +1141,8 @@ type response_TargetService_SetTargetCredentialSources_0 struct {
 }
 
 func (m response_TargetService_SetTargetCredentialSources_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.SetTargetCredentialSourcesResponse
+	return response.Item
 }
 
 type response_TargetService_RemoveTargetCredentialSources_0 struct {
@@ -1108,7 +1150,8 @@ type response_TargetService_RemoveTargetCredentialSources_0 struct {
 }
 
 func (m response_TargetService_RemoveTargetCredentialSources_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.RemoveTargetCredentialSourcesResponse
+	return response.Item
 }
 
 var (

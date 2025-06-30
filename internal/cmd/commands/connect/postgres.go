@@ -98,6 +98,7 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Cr
 			})
 			_, err = passfile.WriteString(fmt.Sprintf("*:*:*:*:%s", password))
 			if err != nil {
+				_ = passfile.Close()
 				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
 			}
 			if err := passfile.Close(); err != nil {

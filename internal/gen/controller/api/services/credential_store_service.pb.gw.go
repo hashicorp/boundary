@@ -41,7 +41,9 @@ func request_CredentialStoreService_GetCredentialStore_0(ctx context.Context, ma
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_CredentialStoreService_ListCredentialStores_0(ctx context.Context, 
 		protoReq ListCredentialStoresRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -113,6 +117,9 @@ func request_CredentialStoreService_CreateCredentialStore_0(ctx context.Context,
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateCredentialStore(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -143,6 +150,9 @@ func request_CredentialStoreService_UpdateCredentialStore_0(ctx context.Context,
 	}
 	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -213,7 +223,9 @@ func request_CredentialStoreService_DeleteCredentialStore_0(ctx context.Context,
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -483,7 +495,8 @@ type response_CredentialStoreService_GetCredentialStore_0 struct {
 }
 
 func (m response_CredentialStoreService_GetCredentialStore_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetCredentialStoreResponse
+	return response.Item
 }
 
 type response_CredentialStoreService_CreateCredentialStore_0 struct {
@@ -491,7 +504,8 @@ type response_CredentialStoreService_CreateCredentialStore_0 struct {
 }
 
 func (m response_CredentialStoreService_CreateCredentialStore_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.CreateCredentialStoreResponse
+	return response.Item
 }
 
 type response_CredentialStoreService_UpdateCredentialStore_0 struct {
@@ -499,7 +513,8 @@ type response_CredentialStoreService_UpdateCredentialStore_0 struct {
 }
 
 func (m response_CredentialStoreService_UpdateCredentialStore_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.UpdateCredentialStoreResponse
+	return response.Item
 }
 
 var (
