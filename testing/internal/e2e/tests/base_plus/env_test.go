@@ -13,9 +13,6 @@ type config struct {
 	PostgresDbName          string `envconfig:"E2E_POSTGRES_DB_NAME" required:"true"`
 	PostgresUser            string `envconfig:"E2E_POSTGRES_USER" required:"true"`
 	PostgresPassword        string `envconfig:"E2E_POSTGRES_PASSWORD" required:"true"`
-	MysqlDbName             string `envconfig:"E2E_MYSQL_DB_NAME" required:"true"`
-	MysqlUser               string `envconfig:"E2E_MYSQL_USER" required:"true"`
-	MysqlPassword           string `envconfig:"E2E_MYSQL_PASSWORD" required:"true"`
 	LdapAddress             string `envconfig:"E2E_LDAP_ADDR" required:"true"`      // e.g. ldap://ldap
 	LdapDomainDn            string `envconfig:"E2E_LDAP_DOMAIN_DN" required:"true"` // e.g. dc=example,dc=org
 	LdapAdminDn             string `envconfig:"E2E_LDAP_ADMIN_DN" required:"true"`  // e.g. cn=admin,dc=example,dc=org
