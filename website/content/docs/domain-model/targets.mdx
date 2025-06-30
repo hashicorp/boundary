@@ -35,7 +35,7 @@ or host in any host set referenced by the target.
 A target has the following configurable attributes:
 
 - `name` - (required)
-  The `name` must be unique within the target's [project][].
+  The `name` must be unique within the target's project.
 
 - `description` - (optional)
   An optional description of the target for identificaiton purposes.
@@ -51,7 +51,7 @@ A target has the following configurable attributes:
   A boolean expression to [filter][] which egress workers can handle sessions
   for this target.
   Egress worker filters determine which workers are used to access targets.
-  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities) connections.
+  You can configure an egress filter to enable [multi-hop](/boundary/docs/workers#multi-hop-worker-capabilities) connections.
   If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
 
 - `ingress_worker_filter` - (optional) <sup>HCP/ENT</sup>
@@ -113,7 +113,7 @@ TCP targets have the following additional attribute:
 
 SSH targets use injected application credentials to authenticate an SSH session between the client and end host.
 Injected credentials allow users to securely connect to remost hosts using SSH, while never being in the possession of a valid credential for that target host.
-The injected credentials can be a username/password or username/private key credential from Vault [credential libraries][] or they can be static [credentials][] or an SSH certificate from Vault SSH credential libraries.
+The injected credentials can be a username/password or username/private key credential from Vault credential libraries or they can be static [credentials][] or an SSH certificate from Vault SSH credential libraries.
 
 SSH targets require you to configure injected credentials to create a session.
 If you attempt to create a session against an SSH target without configuring injected credentials, it results in an error.
@@ -135,12 +135,12 @@ SSH targets have the following additional attributes:
 
 ## Referenced by
 
-- [Credential Library][]
-- [Host Set][]
+- [Credential library][]
+- [Host set][]
 - [Project][]
 - [Session][]
-- [Session Recordings][]
-- [Worker Filtering][]
+- [Session recordings][]
+- [Worker filtering][]
 
 [credentials]: /boundary/docs/domain-model/credentials
 [credential library]: /boundary/docs/domain-model/credential-libraries
@@ -153,8 +153,8 @@ SSH targets have the following additional attributes:
 [host sets]: /boundary/docs/domain-model/host-sets
 [host]: /boundary/docs/domain-model/hosts
 [hosts]: /boundary/docs/domain-model/hosts
-[permission]: /boundary/docs/concepts/security/permissions
-[permissions]: /boundary/docs/concepts/security/permissions
+[permission]: /boundary/docs/rbac/permissions
+[permissions]: /boundary/docs/rbac/permissions
 [project]: /boundary/docs/domain-model/scopes#projects
 [projects]: /boundary/docs/domain-model/scopes#projects
 [role]: /boundary/docs/domain-model/roles
@@ -171,4 +171,4 @@ SSH targets have the following additional attributes:
 
 The following services are relevant to this resource:
 
-- [Target Service](/boundary/api-docs/target-service)
+- [Target service](/boundary/api-docs/target-service)

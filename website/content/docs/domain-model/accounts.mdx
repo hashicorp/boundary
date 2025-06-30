@@ -21,7 +21,7 @@ in the same scope as the account's [auth method][].
 All account types have the following configurable attributes:
 
 - `name` - (optional)
-  If set, the `name` must be unique within the account's [auth method][].
+  If set, the `name` must be unique within the account's auth method.
 
 - `description` - (optional)
 
@@ -30,7 +30,7 @@ All account types have the following configurable attributes:
 Password account types have the following additional attributes:
 
 - `login_name` - (required)
-  Must be unique within the account's [auth method][].
+  Must be unique within the account's auth method.
   Can only contain lower case letters.
 
 - `password` - (optional)
@@ -41,7 +41,7 @@ Password account types have the following additional attributes:
 LDAP account types have the following additional attributes:
 
 - `login_name` - (required)
-  Must be unique within the account's [auth method][].
+  Must be unique within the account's auth method.
   Can only contain lower case letters.
 
 - `full_name` - (output only)
@@ -65,8 +65,8 @@ LDAP account types have the following additional attributes:
 
 ## Referenced by
 
-- [Auth Method][]
-- [Managed Group][]
+- [Auth method][]
+- [Managed group][]
 - [User][]
 
 [auth method]: /boundary/docs/domain-model/auth-methods
@@ -77,4 +77,4 @@ LDAP account types have the following additional attributes:
 
 The following services are relevant to this resource:
 
-- [Account Service](/boundary/api-docs/account-service)
+- [Account service](/boundary/api-docs/account-service)

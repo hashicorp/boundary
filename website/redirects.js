@@ -240,7 +240,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/oss/installing/dev-mode',
-    destination: '/boundary/docs/getting-started/dev-mode/dev-mode',
+    destination: '/boundary/docs/getting-started/dev-mode/index',
     permanent: true,
   },
   {
@@ -330,7 +330,12 @@ module.exports = [
   },
   {
     source: '/boundary/docs/oss',
-    destination: '/boundary/docs/community',
+    destination: '/boundary/docs/what-is-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/community',
+    destination: '/boundary/docs/what-is-boundary',
     permanent: true,
   },
   {
@@ -591,6 +596,11 @@ module.exports = [
   {
     source: '/boundary/docs/configuration/identity-access-management/permission-grant-formats',
     destination: '/boundary/docs/rbac/permissions/permission-grant-formats',
+    permanent: true
+  },
+  {
+    source: '/boundary/docs/common-workflows/manage-roles',
+    destination: '/boundary/docs/rbac/permissions/manage-roles',
     permanent: true
   },
   {

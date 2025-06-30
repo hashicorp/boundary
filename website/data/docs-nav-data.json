@@ -63,7 +63,7 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "getting-started/dev-mode/dev-mode"
+            "path": "getting-started/dev-mode"
           },
           {
             "title": "Run and log in",
@@ -722,6 +722,10 @@
             "path": "rbac/permissions/permission-grant-formats"
           },
           {
+            "title": "Manage roles",
+            "path": "rbac/permissions/manage-roles"
+          },
+          {
             "title": "Resource tables",
             "path": "rbac/permissions/resource-table"
           }
@@ -763,18 +767,33 @@
     "routes": [
       {
         "title": "Overview",
-        "path": "hcp"
+        "path": "hcp",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
       },
       {
         "title": "Get started",
         "routes": [
           {
             "title": "Deploy and log in",
-            "path": "hcp/get-started/deploy-and-login"
+            "path": "hcp/get-started/deploy-and-login",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           },
           {
             "title": "Connect to a target",
-            "path": "hcp/get-started/connect-to-target"
+            "path": "hcp/get-started/connect-to-target",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           }
         ]
       }
@@ -785,19 +804,39 @@
     "routes": [
       {
         "title": "Overview",
-        "path": "enterprise"
+        "path": "enterprise",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
       },
       {
         "title": "Licensing",
-        "path": "enterprise/licensing"
+        "path": "enterprise/licensing",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
       },
       {
         "title": "Automated license reporting",
-        "path": "enterprise/automated-license-reporting"
+        "path": "enterprise/automated-license-reporting",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
       },
       {
         "title": "Supported versions policy",
-        "path": "enterprise/supported-versions"
+        "path": "enterprise/supported-versions",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
       }
     ]
   },
@@ -1900,6 +1939,10 @@
         "path": "domain-model/managed-groups"
       },
       {
+        "title": "Roles",
+        "path": "domain-model/roles"
+      },
+      {
         "title": "Scopes",
         "path": "domain-model/scopes"
       },
@@ -1941,10 +1984,6 @@
       {
         "title": "Targets",
         "path": "domain-model/targets"
-      },
-      {
-        "title": "Roles",
-        "path": "domain-model/roles"
       },
       {
         "title": "Users",
@@ -2043,10 +2082,6 @@
       {
         "title": "Overview",
         "path": "common-workflows"
-      },
-      {
-        "title": "Manage roles",
-        "path": "common-workflows/manage-roles"
       },
       {
         "title": "Manage scopes",

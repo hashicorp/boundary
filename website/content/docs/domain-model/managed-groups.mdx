@@ -19,7 +19,7 @@ a principal within [roles][] to assign grants.
 All managed group types have the following configurable attributes:
 
 - `name` - (optional)
-  If set, the `name` must be unique within the account's [auth method][].
+  If set, the `name` must be unique within the account's auth method.
 
 - `description` - (optional)
 
@@ -36,8 +36,8 @@ OIDC managed groups have the following additional attributes:
   A boolean expression defining a filter run against the provided information.
   For general syntax information refer to the [filtering concepts][] page; for more specific information on the data available for this purpose refer to the [managed groups filtering][] page.
 
-[filtering concepts]: /boundary/docs/concepts/filtering
-[managed groups filtering]: /boundary/docs/concepts/filtering/managed-groups
+[filtering concepts]: /boundary/docs/filtering
+[managed groups filtering]: /boundary/docs/rbac/users/managed-groups
 
 ### LDAP managed group information and attributes
 
@@ -52,7 +52,7 @@ LDAP managed groups have the following additional attributes:
 ## Referenced by
 
 - [Accounts][]
-- [Auth Method][]
+- [Auth method][]
 
 [accounts]: /boundary/docs/domain-model/accounts
 [auth method]: /boundary/docs/domain-model/auth-methods
@@ -62,7 +62,7 @@ LDAP managed groups have the following additional attributes:
 
 The following services are relevant to this resource:
 
-- [Managed Group Service](/boundary/api-docs/managed-group-service)
+- [Managed group service](/boundary/api-docs/managed-group-service)
 
 ## Tutorial
 

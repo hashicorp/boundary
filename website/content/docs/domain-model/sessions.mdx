@@ -20,15 +20,15 @@ If a user has the proper [permissions][],
 a session is created
 and the [expiration time][] and [connection limit][]
 are set based on the [target's attributes][].
-If the [target][] is associated with [credential libraries][],
-[credentials][] are retrieved and returned from each
-[credential library][].
+If the target is associated with [credential libraries][],
+credentials are retrieved and returned from each
+credential library.
 A snapshot of the data
 relevant to authorizing the session
 is also captured and stored in the Boundary data warehouse
 when the session is created.
 
-Sessions are created in the [project][] of the corresponding [target][].
+Sessions are created in the [project][] of the corresponding target.
 Deleting a project will terminate all of the active sessions in the project
 but will not effect any session data in the data warehouse.
 Historical data in the data warehouse is never deleted.
@@ -42,11 +42,11 @@ A session is forcefully terminated when one of the following occurs:
 - An authorized user manually cancels the session.
 
 - Any resource associated with the session is deleted
-  or removed from the [target][].
-  This includes: the [host][], the [host set][], the [host catalog][],
-  a [credential][], a [credential library][], a [credential store][],
-  the [target][] itself, the [project][], the [organization][],
-  the [user][], the user's [account][], or the account's [authentication method][].
+  or removed from the target.
+  This includes: the host, the [host set][], the [host catalog][],
+  a credential, a credential library, a [credential store][],
+  the target itself, the project, the [organization][],
+  the user, the user's [account][], or the account's [authentication method][].
 
 In addition to the above,
 a session terminates non-forcefully
@@ -54,7 +54,7 @@ when the user closes all connections
 and no additional connections are allowed
 because of a connection limit.
 
-Any [credentials][] associated with the session are revoked when the session is
+Any credentials associated with the session are revoked when the session is
 terminated.
 
 Permissions are only evaluated at session establishment.
@@ -64,7 +64,7 @@ Changes to a user's permissions do not effect existing sessions.
 
 - [Project][]
 - [Credential][]
-- [Host Set][]
+- [Host set][]
 - [Target][]
 
 [expiration time]: /boundary/docs/domain-model/targets#session_max_seconds
@@ -95,13 +95,13 @@ Changes to a user's permissions do not effect existing sessions.
 [organizations]: /boundary/docs/domain-model/scopes#organizations
 [project]: /boundary/docs/domain-model/scopes#projects
 [projects]: /boundary/docs/domain-model/scopes#projects
-[permissions]: /boundary/docs/concepts/security/permissions
+[permissions]: /boundary/docs/rbac/permissions
 
 ## Service API docs
 
 The following services are relevant to this resource:
 
-- [Session Service](/boundary/api-docs/session-service)
+- [Session service](/boundary/api-docs/session-service)
 
 ## Tutorial
 
