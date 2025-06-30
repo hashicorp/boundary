@@ -41,7 +41,9 @@ func request_AuthTokenService_GetAuthToken_0(ctx context.Context, marshaler runt
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -79,7 +81,9 @@ func request_AuthTokenService_ListAuthTokens_0(ctx context.Context, marshaler ru
 		protoReq ListAuthTokensRequest
 		metadata runtime.ServerMetadata
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -111,7 +115,9 @@ func request_AuthTokenService_DeleteAuthToken_0(ctx context.Context, marshaler r
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -307,7 +313,8 @@ type response_AuthTokenService_GetAuthToken_0 struct {
 }
 
 func (m response_AuthTokenService_GetAuthToken_0) XXX_ResponseBody() interface{} {
-	return m.Item
+	response := m.GetAuthTokenResponse
+	return response.Item
 }
 
 var (
