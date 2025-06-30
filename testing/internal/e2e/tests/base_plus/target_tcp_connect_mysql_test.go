@@ -12,7 +12,6 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/stretchr/testify/require"
-
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
