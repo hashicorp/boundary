@@ -117,7 +117,14 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, f)
-	require.Contains(t, buf.String(), "mysql>", "Session did not return expected MySQL prompt")
-	require.Contains(t, buf.String(), mysqlDbName, "Session did not return expected output")
+	
+	output := buf.String()
+	t.Logf("MySQL session output: %s", output)
+	
+	require.Contains(t, output, "| "+mysqlDbName+" |", "Session did not return expected database query result")
+	
+	require.True(t, 
+		strings.Contains(output, "mysql>") || strings.Contains(output, "MySQL ["),
+		"Session did not show MySQL/MariaDB prompt")
 	t.Log("Successfully connected to MySQL target")
 } 
