@@ -8,23 +8,53 @@ import (
 	"context"
 	"io"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/creack/pty"
 	"github.com/stretchr/testify/require"
+	"github.com/ory/dockertest/v3"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
+	"github.com/hashicorp/boundary/testing/internal/e2e/infra"
 )
 
 // TestCliTcpTargetConnectMysql uses the boundary cli to connect to a
 // target using `connect mysql`
 func TestCliTcpTargetConnectMysql(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadTestConfig()
-	require.NoError(t, err)
 
 	ctx := context.Background()
+	
+	// Create docker test infrastructure
+	pool, err := dockertest.NewPool("")
+	require.NoError(t, err)
+	
+	network, err := pool.CreateNetwork("e2e-mysql-test")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		pool.RemoveNetwork(network)
+	})
+
+	// Start MySQL container (using official MySQL image)
+	mysqlContainer := infra.StartMysql(t, pool, network, "mysql", "8.0")
+	t.Cleanup(func() {
+		pool.Purge(mysqlContainer.Resource)
+	})
+
+	// Wait for MySQL to be ready
+	err = pool.Retry(func() error {
+		return exec.CommandContext(ctx, "docker", "exec", mysqlContainer.Resource.Container.ID, 
+			"mysql", "-ue2eboundary", "-pe2eboundary", "-e", "SELECT 1").Run()
+	})
+	require.NoError(t, err, "MySQL container failed to start")
+
+	// MySQL credentials (these are set in infra.StartMysql)
+	mysqlUser := "e2eboundary"
+	mysqlPassword := "e2eboundary" 
+	mysqlDbName := "e2eboundarydb"
+
 	boundary.AuthenticateAdminCli(t, ctx)
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
@@ -36,22 +66,27 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
+	
+	// Use localhost address and extract only port number from Docker's host:port format
+	hostPort := mysqlContainer.Resource.GetHostPort("3306/tcp")
+	mysqlPort := strings.Split(hostPort, ":")[1] // Extract port from "localhost:55058" format
 	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
-		c.TargetPort,
-		target.WithAddress(c.TargetAddress),
+		mysqlPort,
+		target.WithAddress("localhost"),
 	)
 	require.NoError(t, err)
+	
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
 	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
 		t,
 		ctx,
 		storeId,
-		c.MysqlUser,
-		c.MysqlPassword,
+		mysqlUser,
+		mysqlPassword,
 	)
 	require.NoError(t, err)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
@@ -62,7 +97,7 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		"boundary",
 		"connect", "mysql",
 		"-target-id", targetId,
-		"-dbname", c.MysqlDbName,
+		"-dbname", mysqlDbName,
 	)
 	f, err := pty.Start(cmd)
 	require.NoError(t, err)
@@ -83,6 +118,6 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, f)
 	require.Contains(t, buf.String(), "mysql>", "Session did not return expected MySQL prompt")
-	require.Contains(t, buf.String(), c.MysqlDbName, "Session did not return expected output")
+	require.Contains(t, buf.String(), mysqlDbName, "Session did not return expected output")
 	t.Log("Successfully connected to MySQL target")
 } 
