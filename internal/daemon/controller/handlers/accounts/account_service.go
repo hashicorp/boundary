@@ -63,8 +63,6 @@ const (
 	emailAttrField    = "attributes.email"
 	dnAttrField       = "attributes.dn"
 	memberOfAttrField = "attributes.member_of_groups"
-
-	domain = "auth"
 )
 
 var (

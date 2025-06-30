@@ -21,8 +21,8 @@ service HostSetService {
       "A host set is a resource that represents a collection of hosts that are considered equivalent for the purposes of access control. "
       "The host set service provides endpoints for managing host sets in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-sets";
-      description: "Read about host sets in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-sets"
+      description: "Read about host sets in the Boundary domain model"
     }
   };
 

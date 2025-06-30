@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/internal/server"
 )
 
 // In the future we could make this configurable
@@ -36,7 +36,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 			return
 
 		case <-timer.C:
-			if err := c.upsertController(cancelCtx); err != nil {
+			if err := c.updateController(cancelCtx); err != nil {
 				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for status update"))
 			}
 			timer.Reset(statusInterval)
@@ -46,20 +46,47 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 
 func (c *Controller) upsertController(ctx context.Context) error {
 	const op = "controller.(Controller).upsertController"
-	controller := &store.Controller{
-		PrivateId: c.conf.RawConfig.Controller.Name,
-		Address:   c.conf.RawConfig.Controller.PublicClusterAddr,
+	var opts []server.Option
+	if c.conf.RawConfig.Controller.Description != "" {
+		opts = append(opts, server.WithDescription(c.conf.RawConfig.Controller.Description))
 	}
+	if c.conf.RawConfig.Controller.PublicClusterAddr != "" {
+		opts = append(opts, server.WithAddress(c.conf.RawConfig.Controller.PublicClusterAddr))
+	}
+
+	controller := server.NewController(c.conf.RawConfig.Controller.Name, opts...)
+	repo, err := c.ServersRepoFn()
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status upsert"))
+	}
+
+	_, err = repo.UpsertController(ctx, controller)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status upsert"))
+	}
+
+	return nil
+}
+
+func (c *Controller) updateController(ctx context.Context) error {
+	const op = "controller.(Controller).updateController"
+	var opts []server.Option
+	if c.conf.RawConfig.Controller.Description != "" {
+		opts = append(opts, server.WithDescription(c.conf.RawConfig.Controller.Description))
+	}
+	if c.conf.RawConfig.Controller.PublicClusterAddr != "" {
+		opts = append(opts, server.WithAddress(c.conf.RawConfig.Controller.PublicClusterAddr))
+	}
+	controller := server.NewController(c.conf.RawConfig.Controller.Name, opts...)
 	repo, err := c.ServersRepoFn()
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status update"))
 	}
 
-	_, err = repo.UpsertController(ctx, controller)
+	_, err = repo.UpdateControllerStatus(ctx, controller)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status update"))
 	}
-
 	return nil
 }
 
@@ -71,7 +98,6 @@ func (c *Controller) startNonceCleanupTicking(cancelCtx context.Context) {
 		case <-cancelCtx.Done():
 			event.WriteSysEvent(cancelCtx, op, "recovery nonce ticking shutting down")
 			return
-
 		case <-timer.C:
 			repo, err := c.ServersRepoFn()
 			if err != nil {
@@ -108,7 +134,6 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 		case <-cancelCtx.Done():
 			event.WriteSysEvent(cancelCtx, op, "terminating completed sessions ticking shutting down")
 			return
-
 		case <-timer.C:
 			repo, err := c.SessionRepoFn()
 			if err != nil {
@@ -143,7 +168,6 @@ func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
 		case <-cancelCtx.Done():
 			event.WriteSysEvent(cancelCtx, op, "closing expired pending tokens ticking shutting down")
 			return
-
 		case <-timer.C:
 			repo, err := c.AuthTokenRepoFn()
 			if err != nil {
@@ -187,7 +211,6 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 			case <-cancelCtx.Done():
 				event.WriteSysEvent(cancelCtx, op, "context done, shutting down")
 				return
-
 			case <-timer.C:
 				connectionState := m.Connected()
 				if len(connectionState.WorkerIds()) > 0 {
@@ -203,7 +226,6 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 					}
 					connectionState.DisconnectMissingWorkers(knownWorkers)
 				}
-
 				if len(connectionState.UnmappedKeyIds()) > 0 {
 					repo, err := c.WorkerAuthRepoStorageFn()
 					if err != nil {
@@ -218,7 +240,6 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 					connectionState.DisconnectMissingUnmappedKeyIds(authorized)
 				}
 			}
-
 			timer.Reset(getRandomInterval())
 		}
 	}()
