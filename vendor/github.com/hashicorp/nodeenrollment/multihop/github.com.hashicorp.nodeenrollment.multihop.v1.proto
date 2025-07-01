@@ -1,0 +1,27 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+option go_package = "github.com/hashicorp/nodeenrollment/multihop";
+
+package github.com.hashicorp.nodeenrollment.multihop.v1;
+
+import "types/github.com.hashicorp.nodeenrollment.types.v1.proto";
+
+// MultihopService provides gRPC-based implementations of some actions within
+// the library. This allows the node to either implement the action directly (if
+// a server) or forward it (if another node).
+service MultihopService {
+  // FetchNodeCredentials provides lookup capability for nodes to fetch
+  // credentials.
+  rpc FetchNodeCredentials(github.com.hashicorp.nodeenrollment.types.v1.FetchNodeCredentialsRequest) returns (github.com.hashicorp.nodeenrollment.types.v1.FetchNodeCredentialsResponse) {}
+
+  // GenerateServerCertificates provides a capability to get a server
+  // certificate for an incoming fetch or authentication request.
+  rpc GenerateServerCertificates(github.com.hashicorp.nodeenrollment.types.v1.GenerateServerCertificatesRequest) returns (github.com.hashicorp.nodeenrollment.types.v1.GenerateServerCertificatesResponse) {}
+
+  // RotateNodeCredentials a way for a node to request rotation of its
+  // credentials.
+  rpc RotateNodeCredentials(github.com.hashicorp.nodeenrollment.types.v1.RotateNodeCredentialsRequest) returns (github.com.hashicorp.nodeenrollment.types.v1.RotateNodeCredentialsResponse) {}
+}

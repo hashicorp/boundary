@@ -1,0 +1,103 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package github.com.hashicorp.go.kms.wrapping.plugin.v2;
+
+import "github.com.hashicorp.go.kms.wrapping.v2.types.proto";
+
+option go_package = "github.com/hashicorp/go-kms-wrapping/v2/plugin;plugin";
+
+message TypeRequest {}
+
+message TypeResponse {
+  string type = 10;
+}
+
+message KeyIdRequest {}
+
+message KeyIdResponse {
+  string key_id = 10 [json_name = "key_id"];
+}
+
+message SetConfigRequest {
+  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+}
+
+message SetConfigResponse {
+  github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig wrapper_config = 10;
+}
+
+message EncryptRequest {
+  bytes plaintext = 10;
+  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+}
+
+message EncryptResponse {
+  github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo ciphertext = 10;
+}
+
+message DecryptRequest {
+  github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo ciphertext = 10;
+  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+}
+
+message DecryptResponse {
+  bytes plaintext = 10;
+}
+
+service Wrapping {
+  rpc Type(TypeRequest) returns (TypeResponse);
+  rpc KeyId(KeyIdRequest) returns (KeyIdResponse);
+  rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
+  rpc Encrypt(EncryptRequest) returns (EncryptResponse);
+  rpc Decrypt(DecryptRequest) returns (DecryptResponse);
+
+  // Init & finalize functions
+  rpc Init(InitRequest) returns (InitResponse);
+  rpc Finalize(FinalizeRequest) returns (FinalizeResponse);
+
+  // HMAC related functions
+  rpc HmacKeyId(HmacKeyIdRequest) returns (HmacKeyIdResponse);
+
+  // KeyBytes function
+  rpc KeyBytes(KeyBytesRequest) returns (KeyBytesResponse);
+}
+
+message InitRequest {
+  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+}
+message InitResponse {}
+
+message FinalizeRequest {
+  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+}
+message FinalizeResponse {}
+
+message HmacKeyIdRequest {}
+message HmacKeyIdResponse {
+  string key_id = 10 [json_name = "key_id"];
+}
+
+message KeyBytesRequest {}
+message KeyBytesResponse {
+  bytes key_bytes = 10 [json_name = "key_bytes"];
+}
+
+message SignRequest {
+  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 10;
+  bytes msg = 20;
+}
+message SignResponse {
+  github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo sig_info = 10;
+}
+
+message VerifyRequest {
+  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 10;
+  bytes msg = 20;
+  github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo sig_info = 30;
+}
+message VerifyResponse {
+  bool verified = 10;
+}

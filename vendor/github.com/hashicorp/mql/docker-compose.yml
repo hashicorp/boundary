@@ -1,0 +1,14 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+version: '3'
+
+services:
+  postgres:
+    image: 'postgres:latest'
+    ports:
+      - 9920:5432
+    environment:
+      - POSTGRES_DB=go_db
+      - POSTGRES_USER=go_db
+      - POSTGRES_PASSWORD=go_db

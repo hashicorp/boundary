@@ -1,0 +1,19 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+version: v1beta1
+
+build:
+  roots:
+    - internal/proto/local
+
+lint:
+  use:
+    - DEFAULT
+  ignore:
+    - google
+  ignore_only:
+
+breaking:
+  use:
+    - WIRE_JSON
