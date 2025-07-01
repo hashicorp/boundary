@@ -34,13 +34,15 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	network, err := pool.CreateNetwork("e2e-mysql-test")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		pool.RemoveNetwork(network)
+		err := pool.RemoveNetwork(network)
+		require.NoError(t, err, "Failed to remove test network")
 	})
 
 	// Start MySQL container (using official MySQL image)
 	mysqlContainer := infra.StartMysql(t, pool, network, "mysql", "8.0")
 	t.Cleanup(func() {
-		pool.Purge(mysqlContainer.Resource)
+		err := pool.Purge(mysqlContainer.Resource)
+		require.NoError(t, err, "Failed to purge MySQL container")
 	})
 
 	// Wait for MySQL to be ready
