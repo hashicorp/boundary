@@ -26,23 +26,23 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId                  string
-	withName                      string
-	withDescription               string
-	withLimit                     int
-	withGrantScopeIds             []string
-	withSkipVetForWrite           bool
-	withDisassociate              bool
-	withSkipAdminRoleCreation     bool
-	withSkipDefaultRoleCreation   bool
-	withUserId                    string
-	withRandomReader              io.Reader
-	withAccountIds                []string
-	withPrimaryAuthMethodId       string
-	withReader                    db.Reader
-	withWriter                    db.Writer
-	withStartPageAfterItem        pagination.Item
-	withTestCacheMultiGrantTuples *[]multiGrantTuple
+	withPublicId                string
+	withName                    string
+	withDescription             string
+	withLimit                   int
+	withRecursive               bool
+	withGrantScopeIds           []string
+	withSkipVetForWrite         bool
+	withDisassociate            bool
+	withSkipAdminRoleCreation   bool
+	withSkipDefaultRoleCreation bool
+	withUserId                  string
+	withRandomReader            io.Reader
+	withAccountIds              []string
+	withPrimaryAuthMethodId     string
+	withReader                  db.Reader
+	withWriter                  db.Writer
+	withStartPageAfterItem      pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -52,6 +52,7 @@ func getDefaultOptions() options {
 		withDescription:     "",
 		withLimit:           0,
 		withSkipVetForWrite: false,
+		withRecursive:       false,
 	}
 }
 
@@ -66,6 +67,13 @@ func WithPublicId(id string) Option {
 func WithDescription(desc string) Option {
 	return func(o *options) {
 		o.withDescription = desc
+	}
+}
+
+// WithRecursive indicates that this request is a recursive request
+func WithRecursive(isRecursive bool) Option {
+	return func(o *options) {
+		o.withRecursive = isRecursive
 	}
 }
 
@@ -174,11 +182,5 @@ func WithReaderWriter(r db.Reader, w db.Writer) Option {
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) {
 		o.withStartPageAfterItem = item
-	}
-}
-
-func withTestCacheMultiGrantTuples(cache *[]multiGrantTuple) Option {
-	return func(o *options) {
-		o.withTestCacheMultiGrantTuples = cache
 	}
 }

@@ -1295,7 +1295,7 @@ func TestCreate(t *testing.T) {
 	r := iam.TestRole(t, conn, "global")
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
-	_ = iam.TestRoleGrantScope(t, conn, r.GetPublicId(), globals.GrantScopeDescendants)
+	_ = iam.TestRoleGrantScope(t, conn, r, globals.GrantScopeDescendants)
 
 	// Ensure we are using the OSS worker filter function. This prevents us from
 	// running tests in parallel.
@@ -1453,7 +1453,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			errStr: "unable to create target alias",
+			errStr: "PermissionDenied",
 		},
 		{
 			name: "Create a target with duplicate aliasses",

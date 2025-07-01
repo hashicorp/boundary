@@ -10,6 +10,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -24,141 +25,134 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
+var (
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = errors.New
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
+)
 
 func request_TargetService_GetTarget_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetTargetRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetTargetRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.GetTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_GetTarget_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetTargetRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetTargetRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.GetTarget(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_TargetService_ListTargets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
+var filter_TargetService_ListTargets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
 func request_TargetService_ListTargets_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListTargetsRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq ListTargetsRequest
+		metadata runtime.ServerMetadata
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_TargetService_ListTargets_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.ListTargets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_ListTargets_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListTargetsRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq ListTargetsRequest
+		metadata runtime.ServerMetadata
+	)
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_TargetService_ListTargets_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.ListTargets(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_CreateTarget_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateTargetRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
+	var (
+		protoReq CreateTargetRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_CreateTarget_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateTargetRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
+	var (
+		protoReq CreateTargetRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.CreateTarget(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
-var (
-	filter_TargetService_UpdateTarget_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
+var filter_TargetService_UpdateTarget_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 
 func request_TargetService_UpdateTarget_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateTargetRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq UpdateTargetRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -167,45 +161,35 @@ func request_TargetService_UpdateTarget_0(ctx context.Context, marshaler runtime
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_TargetService_UpdateTarget_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.UpdateTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_UpdateTarget_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateTargetRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq UpdateTargetRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
@@ -215,523 +199,391 @@ func local_request_TargetService_UpdateTarget_0(ctx context.Context, marshaler r
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_TargetService_UpdateTarget_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.UpdateTarget(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_DeleteTarget_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteTargetRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteTargetRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.DeleteTarget(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_DeleteTarget_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteTargetRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteTargetRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.DeleteTarget(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_AuthorizeSession_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AuthorizeSessionRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq AuthorizeSessionRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.AuthorizeSession(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_AuthorizeSession_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AuthorizeSessionRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq AuthorizeSessionRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.AuthorizeSession(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_AddTargetHostSources_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AddTargetHostSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq AddTargetHostSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.AddTargetHostSources(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_AddTargetHostSources_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AddTargetHostSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq AddTargetHostSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.AddTargetHostSources(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_SetTargetHostSources_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SetTargetHostSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq SetTargetHostSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.SetTargetHostSources(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_SetTargetHostSources_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SetTargetHostSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq SetTargetHostSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.SetTargetHostSources(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_RemoveTargetHostSources_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq RemoveTargetHostSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq RemoveTargetHostSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.RemoveTargetHostSources(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_RemoveTargetHostSources_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq RemoveTargetHostSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq RemoveTargetHostSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.RemoveTargetHostSources(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_AddTargetCredentialSources_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AddTargetCredentialSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq AddTargetCredentialSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.AddTargetCredentialSources(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_AddTargetCredentialSources_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AddTargetCredentialSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq AddTargetCredentialSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.AddTargetCredentialSources(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_SetTargetCredentialSources_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SetTargetCredentialSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq SetTargetCredentialSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.SetTargetCredentialSources(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_SetTargetCredentialSources_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SetTargetCredentialSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq SetTargetCredentialSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.SetTargetCredentialSources(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_TargetService_RemoveTargetCredentialSources_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq RemoveTargetCredentialSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq RemoveTargetCredentialSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := client.RemoveTargetCredentialSources(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_TargetService_RemoveTargetCredentialSources_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq RemoveTargetCredentialSourcesRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq RemoveTargetCredentialSourcesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
+	val, ok := pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
-
 	msg, err := server.RemoveTargetCredentialSources(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterTargetServiceHandlerServer registers the http handlers for service TargetService to "mux".
 // UnaryRPC     :call TargetServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterTargetServiceHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server TargetServiceServer) error {
-
-	mux.Handle("GET", pattern_TargetService_GetTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_TargetService_GetTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/GetTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/GetTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -743,20 +595,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_GetTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_GetTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_GetTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_GetTarget_0{resp.(*GetTargetResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("GET", pattern_TargetService_ListTargets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_TargetService_ListTargets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/ListTargets", runtime.WithHTTPPathPattern("/v1/targets"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/ListTargets", runtime.WithHTTPPathPattern("/v1/targets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -768,20 +615,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_TargetService_ListTargets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_TargetService_CreateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_CreateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/CreateTarget", runtime.WithHTTPPathPattern("/v1/targets"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/CreateTarget", runtime.WithHTTPPathPattern("/v1/targets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -793,20 +635,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_CreateTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_CreateTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_CreateTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_CreateTarget_0{resp.(*CreateTargetResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("PATCH", pattern_TargetService_UpdateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_TargetService_UpdateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/UpdateTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/UpdateTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -818,20 +655,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_UpdateTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_UpdateTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_UpdateTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_UpdateTarget_0{resp.(*UpdateTargetResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("DELETE", pattern_TargetService_DeleteTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_TargetService_DeleteTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/DeleteTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/DeleteTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -843,20 +675,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_TargetService_DeleteTarget_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_TargetService_AuthorizeSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_AuthorizeSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AuthorizeSession", runtime.WithHTTPPathPattern("/v1/targets/{id=**}:authorize-session"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AuthorizeSession", runtime.WithHTTPPathPattern("/v1/targets/{id=**}:authorize-session"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -868,20 +695,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_AuthorizeSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AuthorizeSession_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_AuthorizeSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AuthorizeSession_0{resp.(*AuthorizeSessionResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_AddTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_AddTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-host-sources"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-host-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -893,20 +715,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_AddTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AddTargetHostSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_AddTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AddTargetHostSources_0{resp.(*AddTargetHostSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_SetTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_SetTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-host-sources"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-host-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -918,20 +735,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_SetTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_SetTargetHostSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_SetTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_SetTargetHostSources_0{resp.(*SetTargetHostSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_RemoveTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_RemoveTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-host-sources"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-host-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -943,20 +755,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_RemoveTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetHostSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_RemoveTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetHostSources_0{resp.(*RemoveTargetHostSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_AddTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_AddTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-credential-sources"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-credential-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -968,20 +775,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_AddTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AddTargetCredentialSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_AddTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AddTargetCredentialSources_0{resp.(*AddTargetCredentialSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_SetTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_SetTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-credential-sources"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-credential-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -993,20 +795,15 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_SetTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_SetTargetCredentialSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_SetTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_SetTargetCredentialSources_0{resp.(*SetTargetCredentialSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_RemoveTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_RemoveTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-credential-sources"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-credential-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1018,9 +815,7 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_RemoveTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetCredentialSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_RemoveTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetCredentialSources_0{resp.(*RemoveTargetCredentialSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
@@ -1029,25 +824,24 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 // RegisterTargetServiceHandlerFromEndpoint is same as RegisterTargetServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterTargetServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
-
 	return RegisterTargetServiceHandler(ctx, mux, conn)
 }
 
@@ -1061,16 +855,13 @@ func RegisterTargetServiceHandler(ctx context.Context, mux *runtime.ServeMux, co
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "TargetServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "TargetServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "TargetServiceClient" to call the correct interceptors.
+// "TargetServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client TargetServiceClient) error {
-
-	mux.Handle("GET", pattern_TargetService_GetTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_TargetService_GetTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/GetTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/GetTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1081,18 +872,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_GetTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_GetTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_GetTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_GetTarget_0{resp.(*GetTargetResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("GET", pattern_TargetService_ListTargets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_TargetService_ListTargets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/ListTargets", runtime.WithHTTPPathPattern("/v1/targets"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/ListTargets", runtime.WithHTTPPathPattern("/v1/targets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1103,18 +889,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_TargetService_ListTargets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_TargetService_CreateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_CreateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/CreateTarget", runtime.WithHTTPPathPattern("/v1/targets"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/CreateTarget", runtime.WithHTTPPathPattern("/v1/targets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1125,18 +906,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_CreateTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_CreateTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_CreateTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_CreateTarget_0{resp.(*CreateTargetResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("PATCH", pattern_TargetService_UpdateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_TargetService_UpdateTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/UpdateTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/UpdateTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1147,18 +923,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_UpdateTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_UpdateTarget_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_UpdateTarget_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_UpdateTarget_0{resp.(*UpdateTargetResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("DELETE", pattern_TargetService_DeleteTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_TargetService_DeleteTarget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/DeleteTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/DeleteTarget", runtime.WithHTTPPathPattern("/v1/targets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1169,18 +940,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_TargetService_DeleteTarget_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_TargetService_AuthorizeSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_AuthorizeSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AuthorizeSession", runtime.WithHTTPPathPattern("/v1/targets/{id=**}:authorize-session"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AuthorizeSession", runtime.WithHTTPPathPattern("/v1/targets/{id=**}:authorize-session"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1191,18 +957,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_AuthorizeSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AuthorizeSession_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_AuthorizeSession_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AuthorizeSession_0{resp.(*AuthorizeSessionResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_AddTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_AddTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-host-sources"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-host-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1213,18 +974,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_AddTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AddTargetHostSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_AddTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AddTargetHostSources_0{resp.(*AddTargetHostSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_SetTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_SetTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-host-sources"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-host-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1235,18 +991,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_SetTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_SetTargetHostSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_SetTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_SetTargetHostSources_0{resp.(*SetTargetHostSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_RemoveTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_RemoveTargetHostSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-host-sources"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetHostSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-host-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1257,18 +1008,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_RemoveTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetHostSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_RemoveTargetHostSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetHostSources_0{resp.(*RemoveTargetHostSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_AddTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_AddTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-credential-sources"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-credential-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1279,18 +1025,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_AddTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AddTargetCredentialSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_AddTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_AddTargetCredentialSources_0{resp.(*AddTargetCredentialSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_SetTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_SetTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-credential-sources"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-credential-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1301,18 +1042,13 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_SetTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_SetTargetCredentialSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_SetTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_SetTargetCredentialSources_0{resp.(*SetTargetCredentialSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
-	mux.Handle("POST", pattern_TargetService_RemoveTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_TargetService_RemoveTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-credential-sources"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetCredentialSources", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-credential-sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1323,152 +1059,127 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
-		forward_TargetService_RemoveTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetCredentialSources_0{resp}, mux.GetForwardResponseOptions()...)
-
+		forward_TargetService_RemoveTargetCredentialSources_0(annotatedContext, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetCredentialSources_0{resp.(*RemoveTargetCredentialSourcesResponse)}, mux.GetForwardResponseOptions()...)
 	})
-
 	return nil
 }
 
 type response_TargetService_GetTarget_0 struct {
-	proto.Message
+	*GetTargetResponse
 }
 
 func (m response_TargetService_GetTarget_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*GetTargetResponse)
+	response := m.GetTargetResponse
 	return response.Item
 }
 
 type response_TargetService_CreateTarget_0 struct {
-	proto.Message
+	*CreateTargetResponse
 }
 
 func (m response_TargetService_CreateTarget_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*CreateTargetResponse)
+	response := m.CreateTargetResponse
 	return response.Item
 }
 
 type response_TargetService_UpdateTarget_0 struct {
-	proto.Message
+	*UpdateTargetResponse
 }
 
 func (m response_TargetService_UpdateTarget_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*UpdateTargetResponse)
+	response := m.UpdateTargetResponse
 	return response.Item
 }
 
 type response_TargetService_AuthorizeSession_0 struct {
-	proto.Message
+	*AuthorizeSessionResponse
 }
 
 func (m response_TargetService_AuthorizeSession_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*AuthorizeSessionResponse)
+	response := m.AuthorizeSessionResponse
 	return response.Item
 }
 
 type response_TargetService_AddTargetHostSources_0 struct {
-	proto.Message
+	*AddTargetHostSourcesResponse
 }
 
 func (m response_TargetService_AddTargetHostSources_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*AddTargetHostSourcesResponse)
+	response := m.AddTargetHostSourcesResponse
 	return response.Item
 }
 
 type response_TargetService_SetTargetHostSources_0 struct {
-	proto.Message
+	*SetTargetHostSourcesResponse
 }
 
 func (m response_TargetService_SetTargetHostSources_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*SetTargetHostSourcesResponse)
+	response := m.SetTargetHostSourcesResponse
 	return response.Item
 }
 
 type response_TargetService_RemoveTargetHostSources_0 struct {
-	proto.Message
+	*RemoveTargetHostSourcesResponse
 }
 
 func (m response_TargetService_RemoveTargetHostSources_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*RemoveTargetHostSourcesResponse)
+	response := m.RemoveTargetHostSourcesResponse
 	return response.Item
 }
 
 type response_TargetService_AddTargetCredentialSources_0 struct {
-	proto.Message
+	*AddTargetCredentialSourcesResponse
 }
 
 func (m response_TargetService_AddTargetCredentialSources_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*AddTargetCredentialSourcesResponse)
+	response := m.AddTargetCredentialSourcesResponse
 	return response.Item
 }
 
 type response_TargetService_SetTargetCredentialSources_0 struct {
-	proto.Message
+	*SetTargetCredentialSourcesResponse
 }
 
 func (m response_TargetService_SetTargetCredentialSources_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*SetTargetCredentialSourcesResponse)
+	response := m.SetTargetCredentialSourcesResponse
 	return response.Item
 }
 
 type response_TargetService_RemoveTargetCredentialSources_0 struct {
-	proto.Message
+	*RemoveTargetCredentialSourcesResponse
 }
 
 func (m response_TargetService_RemoveTargetCredentialSources_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*RemoveTargetCredentialSourcesResponse)
+	response := m.RemoveTargetCredentialSourcesResponse
 	return response.Item
 }
 
 var (
-	pattern_TargetService_GetTarget_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, ""))
-
-	pattern_TargetService_ListTargets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "targets"}, ""))
-
-	pattern_TargetService_CreateTarget_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "targets"}, ""))
-
-	pattern_TargetService_UpdateTarget_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, ""))
-
-	pattern_TargetService_DeleteTarget_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, ""))
-
-	pattern_TargetService_AuthorizeSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 3, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "authorize-session"))
-
-	pattern_TargetService_AddTargetHostSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "add-host-sources"))
-
-	pattern_TargetService_SetTargetHostSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "set-host-sources"))
-
-	pattern_TargetService_RemoveTargetHostSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "remove-host-sources"))
-
-	pattern_TargetService_AddTargetCredentialSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "add-credential-sources"))
-
-	pattern_TargetService_SetTargetCredentialSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "set-credential-sources"))
-
+	pattern_TargetService_GetTarget_0                     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, ""))
+	pattern_TargetService_ListTargets_0                   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "targets"}, ""))
+	pattern_TargetService_CreateTarget_0                  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "targets"}, ""))
+	pattern_TargetService_UpdateTarget_0                  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, ""))
+	pattern_TargetService_DeleteTarget_0                  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, ""))
+	pattern_TargetService_AuthorizeSession_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 3, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "authorize-session"))
+	pattern_TargetService_AddTargetHostSources_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "add-host-sources"))
+	pattern_TargetService_SetTargetHostSources_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "set-host-sources"))
+	pattern_TargetService_RemoveTargetHostSources_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "remove-host-sources"))
+	pattern_TargetService_AddTargetCredentialSources_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "add-credential-sources"))
+	pattern_TargetService_SetTargetCredentialSources_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "set-credential-sources"))
 	pattern_TargetService_RemoveTargetCredentialSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "remove-credential-sources"))
 )
 
 var (
-	forward_TargetService_GetTarget_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_ListTargets_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_CreateTarget_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_UpdateTarget_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_DeleteTarget_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_AuthorizeSession_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_AddTargetHostSources_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_SetTargetHostSources_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_RemoveTargetHostSources_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_AddTargetCredentialSources_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_SetTargetCredentialSources_0 = runtime.ForwardResponseMessage
-
+	forward_TargetService_GetTarget_0                     = runtime.ForwardResponseMessage
+	forward_TargetService_ListTargets_0                   = runtime.ForwardResponseMessage
+	forward_TargetService_CreateTarget_0                  = runtime.ForwardResponseMessage
+	forward_TargetService_UpdateTarget_0                  = runtime.ForwardResponseMessage
+	forward_TargetService_DeleteTarget_0                  = runtime.ForwardResponseMessage
+	forward_TargetService_AuthorizeSession_0              = runtime.ForwardResponseMessage
+	forward_TargetService_AddTargetHostSources_0          = runtime.ForwardResponseMessage
+	forward_TargetService_SetTargetHostSources_0          = runtime.ForwardResponseMessage
+	forward_TargetService_RemoveTargetHostSources_0       = runtime.ForwardResponseMessage
+	forward_TargetService_AddTargetCredentialSources_0    = runtime.ForwardResponseMessage
+	forward_TargetService_SetTargetCredentialSources_0    = runtime.ForwardResponseMessage
 	forward_TargetService_RemoveTargetCredentialSources_0 = runtime.ForwardResponseMessage
 )

@@ -202,7 +202,7 @@
       {
         "title": "Transparent sessions",
         "badge": {
-          "text": "HCP/ENT BETA",
+          "text": "HCP/ENT",
           "type": "outlined",
           "color": "neutral"
         },
@@ -609,11 +609,20 @@
           {
             "title": "Connect using transparent sessions",
             "badge": {
-              "text": "HCP/ENT BETA",
+              "text": "HCP/ENT",
               "type": "outlined",
               "color": "neutral"
             },
             "path": "configuration/target-aliases/transparent-sessions"
+          },
+          {
+            "title": "Transparent sessions interoperability matrix",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "configuration/target-aliases/interoperability-matrix"
           }
         ]
       },
@@ -871,19 +880,6 @@
         ]
       },
       {
-        "title": "billing",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "commands/billing"
-          },
-          {
-            "title": "monthly-active-users",
-            "path": "commands/billing/monthly-active-users"
-          }
-        ]
-      },
-      {
         "title": "authenticate",
         "routes": [
           {
@@ -901,6 +897,69 @@
           {
             "title": "password",
             "path": "commands/authenticate/password"
+          }
+        ]
+      },
+      {
+        "title": "billing",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/billing"
+          },
+          {
+            "title": "monthly-active-users",
+            "path": "commands/billing/monthly-active-users"
+          }
+        ]
+      },
+      {
+        "title": "cache",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/cache"
+          },
+          {
+            "title": "add-token",
+            "path": "commands/cache/add-token"
+          },
+          {
+            "title": "start",
+            "path": "commands/cache/start"
+          },
+          {
+            "title": "status",
+            "path": "commands/cache/status"
+          },
+          {
+            "title": "stop",
+            "path": "commands/cache/stop"
+          }
+        ]
+      },
+      {
+        "title": "client-agent",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/client-agent"
+          },
+          {
+            "title": "pause",
+            "path": "commands/client-agent/pause"
+          },
+          {
+            "title": "resume",
+            "path": "commands/client-agent/resume"
+          },
+          {
+            "title": "sessions",
+            "path": "commands/client-agent/sessions"
+          },
+          {
+            "title": "status",
+            "path": "commands/client-agent/status"
           }
         ]
       },
@@ -1046,31 +1105,6 @@
           {
             "title": "update",
             "path": "commands/credentials/update"
-          }
-        ]
-      },
-      {
-        "title": "cache",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "commands/cache"
-          },
-          {
-            "title": "add-token",
-            "path": "commands/cache/add-token"
-          },
-          {
-            "title": "start",
-            "path": "commands/cache/start"
-          },
-          {
-            "title": "status",
-            "path": "commands/cache/status"
-          },
-          {
-            "title": "stop",
-            "path": "commands/cache/stop"
           }
         ]
       },
@@ -1693,7 +1727,7 @@
       {
         "title": "Client Agent",
         "badge": {
-          "text": "HCP/ENT BETA",
+          "text": "HCP/ENT",
           "type": "outlined",
           "color": "neutral"
         },
