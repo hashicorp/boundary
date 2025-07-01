@@ -12,12 +12,12 @@ import (
 	"testing"
 
 	"github.com/creack/pty"
-	"github.com/stretchr/testify/require"
-	"github.com/ory/dockertest/v3"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/hashicorp/boundary/testing/internal/e2e/infra"
+	"github.com/ory/dockertest/v3"
+	"github.com/stretchr/testify/require"
 )
 
 // TestCliTcpTargetConnectMysql uses the boundary cli to connect to a
@@ -26,11 +26,11 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
 	ctx := context.Background()
-	
+
 	// Create docker test infrastructure
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
-	
+
 	network, err := pool.CreateNetwork("e2e-mysql-test")
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -45,14 +45,14 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 
 	// Wait for MySQL to be ready
 	err = pool.Retry(func() error {
-		return exec.CommandContext(ctx, "docker", "exec", mysqlContainer.Resource.Container.ID, 
+		return exec.CommandContext(ctx, "docker", "exec", mysqlContainer.Resource.Container.ID,
 			"mysql", "-ue2eboundary", "-pe2eboundary", "-e", "SELECT 1").Run()
 	})
 	require.NoError(t, err, "MySQL container failed to start")
 
 	// MySQL credentials (these are set in infra.StartMysql)
 	mysqlUser := "e2eboundary"
-	mysqlPassword := "e2eboundary" 
+	mysqlPassword := "e2eboundary"
 	mysqlDbName := "e2eboundarydb"
 
 	boundary.AuthenticateAdminCli(t, ctx)
@@ -66,7 +66,7 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	
+
 	// Use localhost address and extract only port number from Docker's host:port format
 	hostPort := mysqlContainer.Resource.GetHostPort("3306/tcp")
 	mysqlPort := strings.Split(hostPort, ":")[1] // Extract port from "localhost:55058" format
@@ -78,7 +78,7 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		target.WithAddress("localhost"),
 	)
 	require.NoError(t, err)
-	
+
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
 	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
@@ -120,4 +120,4 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	require.Contains(t, buf.String(), "mysql>", "Session did not return expected MySQL prompt")
 	require.Contains(t, buf.String(), mysqlDbName, "Session did not return expected output")
 	t.Log("Successfully connected to MySQL target")
-} 
+}
