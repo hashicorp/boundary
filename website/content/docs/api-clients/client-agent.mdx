@@ -9,8 +9,6 @@ description: >-
 
 @include 'alerts/enterprise-only.mdx'
 
-@include 'alerts/beta.mdx'
-
 The Boundary Client Agent is Boundary's DNS daemon.
 When the Boundary Client Agent runs alongside an authenticated Boundary client, the agent establishes itself as the primary resolver on the system and intercepts DNS requests.
 
@@ -58,8 +56,7 @@ $ boundary client-agent sessions
 
 ### Grants
 
-The default grants that Boundary creates for anonymous and authenticated users are sufficient to get started with the Client Agent for the public beta.
-However, in a production scenario, you may want to provide the least amount of privileges necessary for users.
+In a production environment, you may want to provide the least amount of privileges necessary for users.
 For a Boundary user to be able to use the Client Agent to establish a transparent session, they must:
 
 - be able to authenticate using an auth method.
@@ -76,11 +73,27 @@ type=auth-token;ids=*;actions=read:self
 
 HashiCorp highly recommends that you also grant users the permission to list resolvable aliases, as the Client Agent periodically fetches a list of aliases to match incoming DNS requests against.
 Without that permission, every DNS request on the system is sent to the Boundary controller, which can easily overwhelm it.
+
 You can use the following grant string to grant the permission to list resolvable aliases:
 
 ```
 type=user;ids=*;actions=list-resolvable-aliases
 ```
+
+<Warning>
+
+A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to list resolvable aliases.
+Clusters created before April 26, 2025 may be missing the following grants:
+
+   `ids={{.User.Id}};type=user;actions=list-resolvable-aliases`
+
+   `ids=*;type=target;actions=list,read`
+
+If your cluster is missing these grants, HashiCorp recommends adding them.
+
+For more information, refer to the [known issue](/boundary/docs/release-notes/v0_19_0#hcp-grants).
+
+</Warning>
 
 ## Configuration
 
@@ -119,7 +132,7 @@ The configuration file contains the following fields:
 
    Example:
    ```hcl
-   interface_to_use=en1
+   interface_to_use="en1"
    ```
 
 - `log_file` - Specifies where to write the Boundary Client Agent log file to.
@@ -564,6 +577,8 @@ Restarting your computer may resolve the conflict.
 ## Conflicting software
 
 Some software is known to cause conflicts with the Boundary Client Agent.
+Refer to the [transparent sessions interoperability matrix](/boundary/docs/configuration/target-aliases/interoperability-matrix) for a list of the third-party products that have been tested for use with the Boundary Client Agent.
+
 The following sections are an incomplete list of potential conflicts and any available workarounds for issues.
 
 ### Cloudflare WARP client

@@ -30,7 +30,10 @@ import (
 )
 
 const (
-	gatewayTarget = ""
+	// Indicate to the gRPC client logic that we're handling the dialing ourselves
+	// through the grpc.WithContextDialer option and that it should not attempt
+	// its own DNS resolution.
+	gatewayTarget = "passthrough:"
 
 	// userAgentsKey defines the gRPC metadata key used to forward the User-Agent header to the gRPC server.
 	userAgentsKey = "userAgents"
@@ -86,7 +89,6 @@ func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
 	if correlationId == "" {
 		var err error
 		correlationId, err = uuid.GenerateUUID()
-
 		// GenerateUUID should not return an error. If it does, panic since there is no
 		// err return path here.
 		if err != nil {

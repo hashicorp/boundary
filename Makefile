@@ -66,6 +66,12 @@ install: build
 install-no-plugins: export SKIP_PLUGIN_BUILD=1
 install-no-plugins: install
 
+.PHONY: build-pprof
+build-pprof: BUILD_TAGS+=pprof
+build-pprof:
+	@echo "==> Building Boundary with memory pprof enabled"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+
 .PHONY: build-memprof
 build-memprof: BUILD_TAGS+=memprofiler
 build-memprof:
@@ -155,6 +161,12 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_global_individual_org_grant_scope.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_global_individual_project_grant_scope.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_org_individual_grant_scope.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_global.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_org.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_project.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/principal_role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant_scope.pb.go

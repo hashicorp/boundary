@@ -1695,7 +1695,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			expErrStr:          "Failed to parse worker upstreams: failed to unmarshal env/file contents: invalid character 'i' looking for beginning of value",
 		},
 		{
-			name: "Unsupported object",
+			name: "Duplicate field",
 			in: `
 			worker {
 				name = "test"
@@ -1707,7 +1707,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			`,
 			expWorkerUpstreams: nil,
 			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: unexpected type \"[]map[string]interface {}\"",
+			expErrStr:          "The argument \"ip\" at 6:6 was already set. Each argument can only be defined once",
 		},
 		{
 			name: "Worker initial_upstreams set to invalid url",
