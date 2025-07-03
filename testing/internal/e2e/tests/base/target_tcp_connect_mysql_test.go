@@ -31,10 +31,11 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
 
-	network, err := pool.CreateNetwork("e2e-mysql-test")
+	network, err := pool.CreateNetwork("e2e_network")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		pool.RemoveNetwork(network)
+		cleanupErr := pool.RemoveNetwork(network)
+		require.NoError(t, cleanupErr, "Failed to remove test network during cleanup")
 	})
 
 	// Start MySQL container (using official MySQL image)
