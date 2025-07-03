@@ -95,12 +95,18 @@ func (r *Repository) UpdateControllerStatus(ctx context.Context, controller *Con
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			rowsUpdated, err = w.Exec(ctx, updateController,
-				[]any{
-					sql.Named("controller_address", controller.Address),
-					sql.Named("controller_description", controller.Description),
-					sql.Named("controller_private_id", controller.PrivateId),
-				})
+			params := []any{
+				sql.Named("controller_private_id", controller.PrivateId),
+				sql.Named("controller_address", controller.Address),
+			}
+
+			if controller.Description != "" {
+				params = append(params, sql.Named("controller_description", controller.Description))
+			} else {
+				params = append(params, sql.Named("controller_description", nil))
+			}
+
+			rowsUpdated, err = w.Exec(ctx, updateController, params)
 			switch {
 			case err != nil:
 				return errors.Wrap(ctx, err, op+":Update")
