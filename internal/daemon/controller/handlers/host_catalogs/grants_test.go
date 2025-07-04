@@ -516,7 +516,17 @@ func TestGrants_ReadActions(t *testing.T) {
 		user, account := iam.TestUserManagedGroupGrantsFunc(t, conn, kmsCache, globals.GlobalPrefix, ldap.TestAuthMethodWithAccountInManagedGroup, []iam.TestRoleGrantsRequest{
 			{
 				RoleScopeId: globals.GlobalPrefix,
-				Grants:      []string{"ids=*;type=*;actions=*"},
+				Grants:      []string{"ids=*;type=host-catalog;actions=*"},
+				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			},
+			{
+				RoleScopeId: globals.GlobalPrefix,
+				Grants:      []string{"ids=*;type=host;actions=*"},
+				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
+			},
+			{
+				RoleScopeId: globals.GlobalPrefix,
+				Grants:      []string{"ids=*;type=host-set;actions=*"},
 				GrantScopes: []string{globals.GrantScopeThis, globals.GrantScopeDescendants},
 			},
 		})()
