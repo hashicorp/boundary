@@ -42,7 +42,7 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 
 	container := mysqlContainer.Resource.Container
 
-	// Extract MySQL credentials and connection info using helper function
+	// MySQL credentials (these are set in infra.StartMysql)
 	mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort := extractMySQLInfo(container)
 
 	t.Logf("MySQL container info: user=%s, db=%s, host=%s, port=%s",
@@ -138,7 +138,6 @@ func extractMySQLInfo(container *docker.Container) (mysqlUser, mysqlPassword, my
 	// Get network alias from container name (remove leading "/")
 	networkAlias = strings.TrimPrefix(container.Name, "/")
 
-	// MySQL port (could be extracted from ExposedPorts if needed)
 	mysqlPort = "3306"
 
 	return mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort
