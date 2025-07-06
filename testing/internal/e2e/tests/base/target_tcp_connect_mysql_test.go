@@ -8,7 +8,6 @@ import (
 	"context"
 	"io"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/creack/pty"
@@ -68,14 +67,14 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	require.NoError(t, err)
 
 	// Use localhost address and extract only port number from Docker's host:port format
-	hostPort := mysqlContainer.Resource.GetHostPort("3306/tcp")
-	mysqlPort := strings.Split(hostPort, ":")[1] // Extract port from "localhost:55058" format
+	// hostPort := mysqlContainer.Resource.GetHostPort("3306/tcp")
+	mysqlPort := "3306"
 	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
 		mysqlPort,
-		target.WithAddress("localhost"),
+		target.WithAddress("e2emysql"),
 	)
 	require.NoError(t, err)
 
