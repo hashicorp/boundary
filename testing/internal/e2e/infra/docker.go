@@ -340,12 +340,5 @@ func StartMysql(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 
 	return &Container{
 		Resource: resource,
-		UriNetwork: fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
-			mysqlUser,
-			mysqlPassword,
-			networkAlias,
-			"3306",
-			mysqlDb,
-		),
 	}
 }

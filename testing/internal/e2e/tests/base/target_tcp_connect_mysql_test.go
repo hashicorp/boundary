@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/hashicorp/boundary/testing/internal/e2e/infra"
 	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,8 +40,13 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		pool.Purge(mysqlContainer.Resource)
 	})
 
-	// MySQL credentials (these are set in infra.StartMysql)
-	mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort := parseMySQLDSN(mysqlContainer.UriNetwork)
+	container := mysqlContainer.Resource.Container
+
+	// Extract MySQL credentials and connection info using helper function
+	mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort := extractMySQLInfo(container)
+
+	t.Logf("MySQL container info: user=%s, db=%s, host=%s, port=%s",
+		mysqlUser, mysqlDb, networkAlias, mysqlPort)
 
 	// Wait for MySQL to be ready
 	err = pool.Retry(func() error {
@@ -115,22 +121,25 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	t.Log("Successfully connected to MySQL target")
 }
 
-// Helper function to parse MySQL DSN
-func parseMySQLDSN(dsn string) (mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort string) {
-	parts := strings.Split(dsn, "@")
-	credsPart := parts[0]
-	creds := strings.Split(credsPart, ":")
-	mysqlUser = creds[0]
-	mysqlPassword = creds[1]
+// Helper function to extract MySQL credentials and connection info from container
+func extractMySQLInfo(container *docker.Container) (mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort string) {
+	// Extract environment variables
+	for _, env := range container.Config.Env {
+		switch {
+		case strings.HasPrefix(env, "MYSQL_USER="):
+			mysqlUser = strings.TrimPrefix(env, "MYSQL_USER=")
+		case strings.HasPrefix(env, "MYSQL_PASSWORD="):
+			mysqlPassword = strings.TrimPrefix(env, "MYSQL_PASSWORD=")
+		case strings.HasPrefix(env, "MYSQL_DATABASE="):
+			mysqlDb = strings.TrimPrefix(env, "MYSQL_DATABASE=")
+		}
+	}
 
-	dbParts := strings.Split(parts[1], "/")
-	mysqlDb = dbParts[1]
+	// Get network alias from container name (remove leading "/")
+	networkAlias = strings.TrimPrefix(container.Name, "/")
 
-	hostParts := strings.Split(parts[1], "(")
-	hostPort := strings.Split(hostParts[1], ")")[0]
-	hostPortFields := strings.Split(hostPort, ":")
-	networkAlias = hostPortFields[0]
-	mysqlPort = hostPortFields[1]
+	// MySQL port (could be extracted from ExposedPorts if needed)
+	mysqlPort = "3306"
 
 	return mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort
 }
