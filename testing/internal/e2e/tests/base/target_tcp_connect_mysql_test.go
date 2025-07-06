@@ -144,4 +144,3 @@ func extractMySQLInfo(container *docker.Container) (mysqlUser, mysqlPassword, my
 
 	return mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort
 }
-
