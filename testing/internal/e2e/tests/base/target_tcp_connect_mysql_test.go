@@ -91,10 +91,10 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	)
 	f, err := pty.Start(cmd)
 	require.NoError(t, err)
-	// t.Cleanup(func() {
-	// 	err := f.Close()
-	// 	require.NoError(t, err)
-	// })
+	t.Cleanup(func() {
+		err := f.Close()
+		require.NoError(t, err)
+	})
 
 	_, err = f.Write([]byte("SHOW TABLES;\n")) // list all tables
 	require.NoError(t, err)
