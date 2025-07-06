@@ -37,7 +37,9 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 
 	mysqlContainer := infra.StartMysql(t, pool, &network[0], "mysql", "8.0")
 	t.Cleanup(func() {
-		pool.Purge(mysqlContainer.Resource)
+		if err := pool.Purge(mysqlContainer.Resource); err != nil {
+			t.Logf("Failed to purge MySQL container: %v", err)
+		}
 	})
 
 	container := mysqlContainer.Resource.Container
