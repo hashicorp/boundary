@@ -43,16 +43,18 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	})
 
 	container := mysqlContainer.Resource.Container
+	require.NotNil(t, container, "MySQL container should not be nil")
 
 	// MySQL credentials (these are set in infra.StartMysql)
-	mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort := extractMySQLInfo(container)
+	mysqlUser, mysqlPassword, mysqlDb, networkAlias := extractMySQLInfo(container)
+	mysqlPort := strings.Split(mysqlContainer.UriNetwork, ":")[2]
 
 	t.Logf("MySQL container info: user=%s, db=%s, host=%s, port=%s",
 		mysqlUser, mysqlDb, networkAlias, mysqlPort)
 
 	// Wait for MySQL to be ready
 	err = pool.Retry(func() error {
-		return exec.CommandContext(ctx, "docker", "exec", mysqlContainer.Resource.Container.ID,
+		return exec.CommandContext(ctx, "docker", "exec", container.ID,
 			"mysql", "-u"+mysqlUser, "-p"+mysqlPassword, "-e", "SELECT 1").Run()
 	})
 	require.NoError(t, err, "MySQL container failed to start")
@@ -124,7 +126,7 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 }
 
 // Helper function to extract MySQL credentials and connection info from container
-func extractMySQLInfo(container *docker.Container) (mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort string) {
+func extractMySQLInfo(container *docker.Container) (mysqlUser, mysqlPassword, mysqlDb, networkAlias string) {
 	// Extract environment variables
 	for _, env := range container.Config.Env {
 		switch {
@@ -140,7 +142,5 @@ func extractMySQLInfo(container *docker.Container) (mysqlUser, mysqlPassword, my
 	// Get network alias from container name (remove leading "/")
 	networkAlias = strings.TrimPrefix(container.Name, "/")
 
-	mysqlPort = "3306"
-
-	return mysqlUser, mysqlPassword, mysqlDb, networkAlias, mysqlPort
+	return mysqlUser, mysqlPassword, mysqlDb, networkAlias
 }

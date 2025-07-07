@@ -338,5 +338,9 @@ func StartMysql(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 	})
 	require.NoError(t, err)
 
-	return &Container{Resource: resource}
+	return &Container{
+		Resource:     resource,
+		UriLocalhost: "http://localhost:3306",
+		UriNetwork:   "http://e2emysql:3306",
+	}
 }
