@@ -701,7 +701,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	res := auth.VerifyResults{}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
+	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive), auth.WithFetchAdditionalResourceGrants(additionalResourceGrants...)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
