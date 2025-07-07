@@ -106,7 +106,7 @@ Refer to the following sections for `tcp` listener parameters.
 - `default` `(key-value-map: {})` - A map of string header names to an array of
   string values. The default headers are set on all endpoints regardless of
   the status code value. For an example, refer to the
-  [Configuring custom http response headers](#configuring-custom-http-response-headers)
+  [Listeners custom http response headers](#listener-s-custom-response-headers)
   section.
 
 - `<collective status code>` `(key-value-map: {})` - A map of string header names
@@ -127,7 +127,7 @@ Refer to the following sections for `tcp` listener parameters.
 - `default` `(key-value-map: {})` - A map of string header names to an array of
   string values. The default headers are set on all endpoints regardless of
   the status code value. For an example, refer to the
-  [Configuring custom http response headers](#configuring-custom-http-response-headers)
+  [Listeners custom http response headers](#listener-s-custom-response-headers)
   section.
 
 - `<collective status code>` `(key-value-map: {})` - A map of string header names
@@ -145,10 +145,9 @@ Refer to the following sections for `tcp` listener parameters.
 
 ### TLS
 
-~> `tls` parameters are valid for `api` and `ops` listeners. `cluster`
+The `tls` parameters are valid for `api` and `ops` listeners. The `cluster`
 and `proxy` connections use their own ephemeral TLS stacks. For more
-information, see [the connections security concepts
-page](/boundary/docs/secure/encryption/connections-tls).
+information, refer to [TLS in Boundary](/boundary/docs/secure/encryption/connections-tls).
 
 - `tls_disable` `(string: "false")` – Specifies if TLS will be disabled. Boundary
   assumes TLS by default, so you must explicitly disable TLS to opt-in to
@@ -173,13 +172,13 @@ page](/boundary/docs/secure/encryption/connections-tls).
 - `tls_min_version` `(string: "tls12")` – Specifies the minimum supported
   version of TLS. Accepted values are "tls10", "tls11", "tls12" or "tls13".
 
-  !> TLS 1.1 and lower are generally considered insecure.
+  TLS 1.1 and lower are generally considered insecure.
 
 - `tls_max_version` `(string: "tls13")` – Specifies the maximum supported
   version of TLS, useful if appliances (e.g. load balancers) are not yet capable
   of higher levels. Accepted values are "tls10", "tls11", "tls12" or "tls13".
 
-  !> TLS 1.1 and lower are generally considered insecure.
+  TLS 1.1 and lower are generally considered insecure.
 
 - `tls_cipher_suites` `(string: "")` – Override the default list of supported
   ciphersuites (which varies by TLS version) with the the specified

@@ -24,7 +24,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/roadmap',
-    destination: 'boundary/docs/what-is-boundary',
+    destination: '/boundary/docs/what-is-boundary',
     permanent: true,
   },
   {
@@ -34,32 +34,32 @@ module.exports = [
   },
   {
     source: '/boundary/docs/overview/vs/other-software',
-    destination: 'boundary/docs/overview/use-cases',
+    destination: '/boundary/docs/overview/use-cases',
     permanent: true,
   },
   {
     source: '/boundary/docs/overview/vs/pam',
-    destination: 'boundary/docs/overview/pam',
+    destination: '/boundary/docs/overview/pam',
     permanent: true,
   },
   {
     source: '/boundary/docs/overview/vs/sdp',
-    destination: 'boundary/docs/overview/sdp',
+    destination: '/boundary/docs/overview/sdp',
     permanent: true,
   },
   {
     source: '/boundary/docs/overview/vs/secrets-management',
-    destination: 'boundary/docs/overview/secrets-management',
+    destination: '/boundary/docs/overview/secrets-management',
     permanent: true,
   },
   {
     source: '/boundary/docs/overview/vs/vpn',
-    destination: 'boundary/docs/overview/vpn',
+    destination: '/boundary/docs/overview/vpn',
     permanent: true,
   },
   {
     source: '/boundary/docs/overview/vs/zero-trust',
-    destination: 'boundary/dos/overview/zero-trust',
+    destination: '/boundary/dos/overview/zero-trust',
     permanent: true,
   },
   {
@@ -153,8 +153,8 @@ module.exports = [
     permanent: true,
   },
   {
-    source: 'boundary/docs/install-boundary/systemd',
-    destination: 'boundary/docs/deploy/self-managed/systemd',
+    source: '/boundary/docs/install-boundary/systemd',
+    destination: '/boundary/docs/deploy/self-managed/systemd',
     permanent: true,
   },
   {
@@ -320,12 +320,12 @@ module.exports = [
   },
   {
     source: '/boundary/docs/install-boundary/recommended-architecture',
-    destination: 'boundary/docs/architecture/recommended-architecture',
+    destination: '/boundary/docs/architecture/recommended-architecture',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/systemd',
-    destination: 'boundary/docs/deploy/self-managed/systemd',
+    destination: '/boundary/docs/deploy/self-managed/systemd',
     permanent: true,
   },
   {
@@ -669,6 +669,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/concepts/index',
+    destination: '/boundary/docs/what-is-boundary',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/service-discovery',
     destination: '/boundary/docs/concepts/host-discovery',
     permanent: true,
@@ -686,6 +691,21 @@ module.exports = [
   {
     source: '/boundary/docs/configuration/worker/pki-worker',
     destination: '/boundary/docs/configuration/worker/worker-configuration',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/listener',
+    destination: '/boundary/docs/monitor/listeners',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/listener/tcp',
+    destination: '/boundary/docs/monitor/listeners/tcp',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/listener/unix',
+    destination: '/boundary/docs/monitor/listeners/unix',
     permanent: true,
   },
   {
