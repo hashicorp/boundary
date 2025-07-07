@@ -81,10 +81,6 @@
     "title": "Key concepts",
     "routes": [
       {
-        "title": "Overview",
-        "path": "concepts"
-      },
-      {
         "title": "Auditing",
         "path": "concepts/auditing"
       },
@@ -257,15 +253,15 @@
         "routes": [
           {
             "title": "Listeners",
-            "path": "monitor/listener"
+            "path": "monitor/listeners"
           },
           {
             "title": "TCP listeners",
-            "path": "monitor/listener/tcp"
+            "path": "monitor/listeners/tcp"
           },
           {
             "title": "Unix listeners",
-            "path": "monitor/listener/unix"
+            "path": "monitor/listeners/unix"
           }
         ]
       },
