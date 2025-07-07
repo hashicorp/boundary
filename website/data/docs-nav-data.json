@@ -176,6 +176,10 @@
         ]
       },
       {
+        "title": "On HashiCorp Cloud Platform (HCP)",
+        "href": "hcp/get-started/deploy-and-login"
+      },
+      {
         "title": "Terraform patterns",
         "routes": [
           {
@@ -792,6 +796,15 @@
             }
           }
         ]
+      },
+      {
+        "title": "Documentation",
+        "href": "https://cloud.hashicorp.com/docs/boundary",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
       }
     ]
   },
@@ -828,6 +841,24 @@
       {
         "title": "Supported versions policy",
         "path": "enterprise/supported-versions",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      },
+      {
+        "title": "Deployment guide",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/enterprise/ent-deployment-guide",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      },
+      {
+        "title": "Reference architecture",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/enterprise/ent-reference-architecture",
         "badge": {
           "text": "HCP/ENT",
           "type": "outlined",
