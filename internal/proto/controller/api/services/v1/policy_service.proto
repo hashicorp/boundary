@@ -21,8 +21,8 @@ service PolicyService {
       "The policy service provides endpoints that let you manage policies in Boundary. "
       "Policies are used to define rules for the lifecycle of session recordings."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-policy";
-      description: "Read about policies in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-policy"
+      description: "Read about policies in the Boundary domain model"
     }
   };
   // GetPolicy returns a policy with the given id, if it exists. The request

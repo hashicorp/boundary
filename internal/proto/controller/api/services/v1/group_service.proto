@@ -20,8 +20,8 @@ service GroupService {
       "treated equally for the purposes of access control. "
       "The group service provides endpoints for managing groups in Boundary. "
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups";
-      description: "Read about groups in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups"
+      description: "Read about groups in the Boundary domain model"
     }
   };
 

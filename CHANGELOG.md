@@ -6,10 +6,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* cli: Added `boundary connect mysql` command for connecting to MySQL targets.
-  This new helper command allows users to authorize sessions against MySQL 
-  targets and automatically invoke a MySQL client with the appropriate 
-  connection parameters and credentials.
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
 
@@ -106,47 +102,7 @@ maintainability of worker queries, and improve DB performance. ([PR](https://git
 * Go Cryptography dependency update to address CVE-2024-45337
     ([PR](https://github.com/hashicorp/boundary/pull/5354)).
 
-## 0.18.3 (2025/02/10) (Enterprise only)
-### Bug fixes
-
-* Fix bug where database transactions were not using the correct reader & writer functions
-  and context.
-    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
-* Remove unnecessary subquery from alias refresh
-    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
-
-### Security
-
-* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
-    ([PR])(https://github.com/hashicorp/boundary/pull/5406).
-* Go Cryptography dependency update to address CVE-2024-45337
-    ([PR](https://github.com/hashicorp/boundary/pull/5365)).
-
-## 0.17.4 (2025/02/10) (Enterprise only)
-### Bug fixes
-
-* Fix bug where database transactions were not using the correct reader & writer functions
-  and context.
-    ([PR](https://github.com/hashicorp/boundary/pull/5522)).
-* Remove unnecessary subquery from alias refresh
-    ([PR](https://github.com/hashicorp/boundary/pull/5481)).
-
-### Security
-
-* Go Networking dependency update to address CVE-2024-45338 and GO-2024-3333
-    ([PR])(https://github.com/hashicorp/boundary/pull/5528).
-* Go Cryptography dependency update to address CVE-2024-45337
-    ([PR](https://github.com/hashicorp/boundary/pull/5366)).
-
 ## 0.18.2 (2024/12/12)
-### Bug fixes
-
-* Fixed an issue where session recordings would fail when large numbers of
-  sessions were created around the same time. ([PR](https://github.com/hashicorp/boundary-plugin-aws/pull/55))
-* Fixed an issue where the controller would incorrectly handle HTTP requests
-  and stop prematurely. ([PR](https://github.com/hashicorp/boundary/pull/5304))
-
-## 0.17.3 (2024/12/12)
 ### Bug fixes
 
 * Fixed an issue where session recordings would fail when large numbers of
