@@ -360,8 +360,8 @@ func TestApplyMigrationWithHooks(t *testing.T) {
 				Editions: []schema.EditionState{
 					{
 						Name:                  "hooks",
-						BinarySchemaVersion:   1001,
-						DatabaseSchemaVersion: 1001,
+						BinarySchemaVersion:   2001,
+						DatabaseSchemaVersion: 2001,
 						DatabaseSchemaState:   schema.Equal,
 					},
 				},
@@ -379,7 +379,7 @@ func TestApplyMigrationWithHooks(t *testing.T) {
 						0,
 						edition.WithPreHooks(
 							map[int]*migration.Hook{
-								1001: {
+								2001: {
 									CheckFunc: func(ctx context.Context, tx *sql.Tx) (migration.Problems, error) {
 										return migration.Problems{"failed"}, nil
 									},
@@ -393,7 +393,7 @@ func TestApplyMigrationWithHooks(t *testing.T) {
 			},
 			nil,
 			schema.MigrationCheckError{
-				Version:           1001,
+				Version:           2001,
 				Edition:           "hooks",
 				Problems:          migration.Problems{"failed"},
 				RepairDescription: "repair all the things",
@@ -403,8 +403,8 @@ func TestApplyMigrationWithHooks(t *testing.T) {
 				Editions: []schema.EditionState{
 					{
 						Name:                  "hooks",
-						BinarySchemaVersion:   1001,
-						DatabaseSchemaVersion: 1,
+						BinarySchemaVersion:   2001,
+						DatabaseSchemaVersion: 0,
 						DatabaseSchemaState:   schema.Behind,
 					},
 				},
@@ -447,8 +447,8 @@ func TestApplyMigrationWithHooks(t *testing.T) {
 				Editions: []schema.EditionState{
 					{
 						Name:                  "hooks",
-						BinarySchemaVersion:   1001,
-						DatabaseSchemaVersion: 1001,
+						BinarySchemaVersion:   2001,
+						DatabaseSchemaVersion: 2001,
 						DatabaseSchemaState:   schema.Equal,
 					},
 				},
@@ -494,7 +494,7 @@ func TestApplyMigrationWithHooks(t *testing.T) {
 				Editions: []schema.EditionState{
 					{
 						Name:                  "hooks",
-						BinarySchemaVersion:   1001,
+						BinarySchemaVersion:   2001,
 						DatabaseSchemaVersion: 1,
 						DatabaseSchemaState:   schema.Behind,
 					},
