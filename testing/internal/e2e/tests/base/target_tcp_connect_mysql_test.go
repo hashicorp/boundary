@@ -34,12 +34,12 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	require.NoError(t, err, "Failed to get e2e_cluster network")
 
 	c := infra.StartMysql(t, pool, &network[0], "mysql", "8.0")
+	require.NotNil(t, c, "MySQL container should not be nil")
 	t.Cleanup(func() {
 		if err := pool.Purge(c.Resource); err != nil {
 			t.Logf("Failed to purge MySQL container: %v", err)
 		}
 	})
-	require.NotNil(t, c, "MySQL container should not be nil")
 
 	u, err := url.Parse(c.UriNetwork)
 	require.NoError(t, err, "Failed to parse MySQL URL")
