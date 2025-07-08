@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"sync"
@@ -32,6 +33,8 @@ type driver interface {
 	StartRun(context.Context) error
 	// CommitRun commits a transaction, if there is an error it should rollback the transaction.
 	CommitRun(context.Context) error
+	// RollbackRun rolls back a transaction.
+	RollbackRun(context.Context) error
 	// CheckHook is a hook that runs prior to a migration's statements.
 	// It should run in the same transaction a corresponding Run call.
 	CheckHook(context.Context, migration.CheckFunc) (migration.Problems, error)
@@ -244,34 +247,42 @@ func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]Re
 	const op = "schema.(Manager).runMigrations"
 
 	var logEntries []RepairLog
-	var err error
+	var errFinal error
 
 	if startErr := b.driver.StartRun(ctx); startErr != nil {
-		err = errors.Wrap(ctx, startErr, op)
-		return nil, err
+		errFinal = errors.Wrap(ctx, startErr, op)
+		return nil, errFinal
 	}
 
 	defer func() {
+		if errFinal != nil {
+			errRollback := b.driver.RollbackRun(ctx)
+			if errRollback != nil {
+				errFinal = stderrors.Join(errFinal, errRollback)
+			}
+			errFinal = errors.Wrap(ctx, errFinal, op)
+			return
+		}
 		if commitErr := b.driver.CommitRun(ctx); commitErr != nil {
-			err = errors.Wrap(ctx, commitErr, op)
+			errFinal = errors.Wrap(ctx, commitErr, op)
 		}
 	}()
 
 	if ensureErr := b.driver.EnsureVersionTable(ctx); ensureErr != nil {
-		err = errors.Wrap(ctx, ensureErr, op)
-		return nil, err
+		errFinal = errors.Wrap(ctx, ensureErr, op)
+		return nil, errFinal
 	}
 
 	if ensureErr := b.driver.EnsureMigrationLogTable(ctx); ensureErr != nil {
-		err = errors.Wrap(ctx, ensureErr, op)
-		return nil, err
+		errFinal = errors.Wrap(ctx, ensureErr, op)
+		return nil, errFinal
 	}
 
 	for p.Next() {
 		select {
 		case <-ctx.Done():
-			err = errors.Wrap(ctx, ctx.Err(), op)
-			return nil, err
+			errFinal = errors.Wrap(ctx, ctx.Err(), op)
+			return nil, errFinal
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
@@ -279,22 +290,25 @@ func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]Re
 		if h := p.PreHook(); h != nil {
 			problems, err := b.driver.CheckHook(ctx, h.CheckFunc)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
+				errFinal = errors.Wrap(ctx, err, op)
+				return nil, errFinal
 			}
 
 			if len(problems) > 0 {
 				if !b.selectedRepairs.IsSet(p.Edition(), p.Version()) {
-					return nil, MigrationCheckError{
+					errFinal = MigrationCheckError{
 						Version:           p.Version(),
 						Edition:           p.Edition(),
 						Problems:          problems,
 						RepairDescription: h.RepairDescription,
 					}
+					return nil, errFinal
 				}
 
 				repairs, err := b.driver.RepairHook(ctx, h.RepairFunc)
 				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
+					errFinal = errors.Wrap(ctx, err, op)
+					return nil, errFinal
 				}
 				logEntries = append(logEntries, RepairLog{
 					Version: p.Version(),
@@ -304,8 +318,8 @@ func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]Re
 			}
 		}
 		if runErr := b.driver.Run(ctx, bytes.NewReader(p.Statements()), p.Version(), p.Edition()); runErr != nil {
-			err = errors.Wrap(ctx, runErr, op)
-			return nil, err
+			errFinal = errors.Wrap(ctx, runErr, op)
+			return nil, errFinal
 		}
 	}
 

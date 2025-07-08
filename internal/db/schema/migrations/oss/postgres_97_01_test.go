@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/db/schema/internal/postgres"
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
 	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss/internal/hook97001"
 	"github.com/hashicorp/boundary/testing/dbtest"
@@ -49,7 +50,8 @@ import (
 //   - this cannot be created
 func TestMigrationHook97001(t *testing.T) {
 	const (
-		priorMigration = 96001
+		priorMigration  = 95001
+		latestMigration = 97005
 	)
 	dialect := dbtest.Postgres
 	ctx := context.Background()
@@ -158,6 +160,19 @@ func TestMigrationHook97001(t *testing.T) {
 	`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(t, err)
+
+	// migrate to latest - make sure it fails
+	// migration to the prior migration (before the one we want to test)
+	latestm, err := schema.NewManager(ctx, schema.Dialect(dialect), d)
+	require.NoError(t, err)
+	_, err = latestm.ApplyMigrations(ctx)
+	require.Error(t, err)
+
+	driver, err := postgres.New(ctx, d)
+	require.NoError(t, err)
+	schemaVer, _, err := driver.CurrentState(ctx, "oss")
+	require.NoError(t, err)
+	require.Equal(t, priorMigration, schemaVer)
 
 	tx, err := d.BeginTx(ctx, nil)
 	require.NoError(t, err)
