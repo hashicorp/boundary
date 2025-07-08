@@ -19,8 +19,8 @@ service RoleService {
       "A role represents a collection of permissions that define what actions a user or service account can perform within the system. "
       "The role service provides endpoints that let you manage roles in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles";
-      description: "Read about roles in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles"
+      description: "Read about roles in the Boundary domain model"
     }
   };
 

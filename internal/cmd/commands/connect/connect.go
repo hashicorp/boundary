@@ -77,9 +77,6 @@ type Command struct {
 	// Postgres
 	postgresFlags
 
-	// MySQL
-	mysqlFlags
-
 	// RDP
 	rdpFlags
 
@@ -106,8 +103,6 @@ func (c *Command) Synopsis() string {
 		return httpSynopsis
 	case "postgres":
 		return postgresSynopsis
-	case "mysql":
-		return mysqlSynopsis
 	case "rdp":
 		return rdpSynopsis
 	case "ssh":
@@ -227,9 +222,6 @@ func (c *Command) Flags() *base.FlagSets {
 	case "postgres":
 		postgresOptions(c, set)
 
-	case "mysql":
-		mysqlOptions(c, set)
-
 	case "rdp":
 		rdpOptions(c, set)
 
@@ -317,8 +309,6 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.flagExec = c.sshFlags.defaultExec()
 		case "postgres":
 			c.flagExec = c.postgresFlags.defaultExec()
-		case "mysql":
-			c.flagExec = c.mysqlFlags.defaultExec()
 		case "rdp":
 			c.flagExec = c.rdpFlags.defaultExec()
 		case "kube":
@@ -650,16 +640,6 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		args = append(args, pgArgs...)
 		envs = append(envs, pgEnvs...)
 		creds = pgCreds
-
-	case "mysql":
-		mysqlArgs, mysqlEnvs, mysqlCreds, mysqlErr := c.mysqlFlags.buildArgs(c, port, host, addr, creds)
-		if mysqlErr != nil {
-			argsErr = mysqlErr
-			break
-		}
-		args = append(args, mysqlArgs...)
-		envs = append(envs, mysqlEnvs...)
-		creds = mysqlCreds
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, host, addr)...)
