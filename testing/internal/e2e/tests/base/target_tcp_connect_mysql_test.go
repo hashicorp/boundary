@@ -39,7 +39,6 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 			t.Logf("Failed to purge MySQL container: %v", err)
 		}
 	})
-
 	require.NotNil(t, c, "MySQL container should not be nil")
 
 	u, err := url.Parse(c.UriNetwork)
