@@ -340,7 +340,7 @@ func StartMysql(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 
 	return &Container{
 		Resource:     resource,
-		UriLocalhost: "http://localhost:3306",
-		UriNetwork:   "http://e2emysql:3306",
+		UriLocalhost: fmt.Sprintf("mysql://%s:%s@localhost:3306/%s", mysqlUser, mysqlPassword, mysqlDb),
+		UriNetwork:   fmt.Sprintf("mysql://%s:%s@%s:3306/%s", mysqlUser, mysqlPassword, networkAlias, mysqlDb),
 	}
 }

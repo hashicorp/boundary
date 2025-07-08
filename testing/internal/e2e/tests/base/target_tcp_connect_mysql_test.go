@@ -7,8 +7,8 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net/url"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/creack/pty"
@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/hashicorp/boundary/testing/internal/e2e/infra"
 	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +24,6 @@ import (
 // target using `connect mysql`
 func TestCliTcpTargetConnectMysql(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-
 	ctx := context.Background()
 
 	pool, err := dockertest.NewPool("")
@@ -35,32 +33,32 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	network, err := pool.NetworksByName("e2e_cluster")
 	require.NoError(t, err, "Failed to get e2e_cluster network")
 
-	mysqlContainer := infra.StartMysql(t, pool, &network[0], "mysql", "8.0")
+	c := infra.StartMysql(t, pool, &network[0], "mysql", "8.0")
 	t.Cleanup(func() {
-		if err := pool.Purge(mysqlContainer.Resource); err != nil {
+		if err := pool.Purge(c.Resource); err != nil {
 			t.Logf("Failed to purge MySQL container: %v", err)
 		}
 	})
 
-	container := mysqlContainer.Resource.Container
-	require.NotNil(t, container, "MySQL container should not be nil")
+	require.NotNil(t, c, "MySQL container should not be nil")
 
-	// MySQL credentials (these are set in infra.StartMysql)
-	mysqlUser, mysqlPassword, mysqlDb := extractMySQLInfo(container)
-	mysqlPort := strings.Split(mysqlContainer.UriNetwork, ":")[2]
-	networkAlias := container.Name[1:] // Remove leading '/' from container name
+	u, err := url.Parse(c.UriNetwork)
+	require.NoError(t, err, "Failed to parse MySQL URL")
 
-	t.Logf("MySQL container info: user=%s, db=%s, host=%s, port=%s, alias=%s",
-		mysqlUser, mysqlDb, networkAlias, mysqlPort, networkAlias)
+	user, hostname, port, db := u.User.Username(), u.Hostname(), u.Port(), u.Path[1:]
+	pw, pwSet := u.User.Password()
+	t.Logf("MySQL info: user=%s, db=%s, host=%s, port=%s, password-set:%t",
+		user, db, hostname, port, pwSet)
 
 	// Wait for MySQL to be ready
 	err = pool.Retry(func() error {
-		return exec.CommandContext(ctx, "docker", "exec", container.ID,
-			"mysql", "-u"+mysqlUser, "-p"+mysqlPassword, "-e", "SELECT 1").Run()
+		return exec.CommandContext(ctx, "docker", "exec", hostname,
+			"mysql", "-u"+user, "-p"+pw, "-e", "SELECT 1").Run()
 	})
 	require.NoError(t, err, "MySQL container failed to start")
 
 	boundary.AuthenticateAdminCli(t, ctx)
+
 	orgId, err := boundary.CreateOrgCli(t, ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -69,6 +67,7 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
+
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
 
@@ -76,21 +75,23 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		t,
 		ctx,
 		projectId,
-		mysqlPort,
-		target.WithAddress(networkAlias),
+		port,
+		target.WithAddress(hostname),
 	)
 	require.NoError(t, err)
 
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
+
 	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
 		t,
 		ctx,
 		storeId,
-		mysqlUser,
-		mysqlPassword,
+		user,
+		pw,
 	)
 	require.NoError(t, err)
+
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
 	require.NoError(t, err)
 
@@ -98,7 +99,7 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		"boundary",
 		"connect", "mysql",
 		"-target-id", targetId,
-		"-dbname", mysqlDb,
+		"-dbname", db,
 	)
 	f, err := pty.Start(cmd)
 	require.NoError(t, err)
@@ -107,13 +108,13 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = f.Write([]byte("SHOW TABLES;\n")) // list all tables
+	_, err = f.Write([]byte("SHOW TABLES;\n"))
 	require.NoError(t, err)
-	_, err = f.Write([]byte("SELECT DATABASE();\n")) // show current database
+	_, err = f.Write([]byte("SELECT DATABASE();\n"))
 	require.NoError(t, err)
-	_, err = f.Write([]byte("EXIT;\n")) // exit mysql session
+	_, err = f.Write([]byte("EXIT;\n"))
 	require.NoError(t, err)
-	_, err = f.Write([]byte{4}) // EOT (End of Transmission - marks end of file stream)
+	_, err = f.Write([]byte{4})
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
@@ -122,23 +123,6 @@ func TestCliTcpTargetConnectMysql(t *testing.T) {
 	output := buf.String()
 	t.Logf("MySQL session output: %s", output)
 
-	require.Contains(t, output, "| "+mysqlDb+" |", "Session did not return expected database query result")
+	require.Contains(t, output, "| "+db+" |", "Session did not return expected database query result")
 	t.Log("Successfully connected to MySQL target")
-}
-
-// Helper function to extract MySQL credentials and connection info from container
-func extractMySQLInfo(container *docker.Container) (mysqlUser, mysqlPassword, mysqlDb string) {
-	// Extract environment variables
-	for _, env := range container.Config.Env {
-		switch {
-		case strings.HasPrefix(env, "MYSQL_USER="):
-			mysqlUser = strings.TrimPrefix(env, "MYSQL_USER=")
-		case strings.HasPrefix(env, "MYSQL_PASSWORD="):
-			mysqlPassword = strings.TrimPrefix(env, "MYSQL_PASSWORD=")
-		case strings.HasPrefix(env, "MYSQL_DATABASE="):
-			mysqlDb = strings.TrimPrefix(env, "MYSQL_DATABASE=")
-		}
-	}
-
-	return mysqlUser, mysqlPassword, mysqlDb
 }
