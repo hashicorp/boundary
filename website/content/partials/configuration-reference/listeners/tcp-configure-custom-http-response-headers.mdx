@@ -1,0 +1,83 @@
+This example shows configuring custom http response headers. Operators can configure
+`"custom_api_response_headers"` and `"custom_ui_response_headers"` sub-stanzas in the listener stanza to
+set custom http headers that are appropriate to their applications. Examples of such headers are
+`"Strict-Transport-Security"` and `"Content-Security-Policy"` which are known HTTP headers, and could be
+configured to harden the security of an application communicating with the Boundary endpoints. Note that
+vulnerability scans often examine such security related HTTP headers. In addition, you can configure
+application-specific custom headers. For example, `"X-Custom-Header"` has been configured in the example
+below.
+
+```hcl
+listener "tcp" {
+  custom_api_response_headers {
+    "default" = {
+      "Strict-Transport-Security" = ["max-age=31536000; includeSubDomains"],
+      "X-Custom-Header" = ["Custom Header Default Value"],
+    },
+    "2xx" = {
+      "X-Custom-Header" = ["Custom Header Value 1", "Custom Header Value 2"],
+    },
+    "301" = {
+      "Strict-Transport-Security" = ["max-age=31536000"],
+    },
+  }
+  custom_ui_response_headers {
+    "default" = {
+      "Strict-Transport-Security" = ["max-age=31536000; includeSubDomains"],
+      "Content-Security-Policy" = ["default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"],
+      "X-Custom-Header" = ["Custom Header Default Value"],
+    },
+    "2xx" = {
+      "X-Custom-Header" = ["Custom Header Value 1", "Custom Header Value 2"],
+    },
+    "301" = {
+      "Strict-Transport-Security" = ["max-age=31536000"],
+      "Content-Security-Policy" = ["default-src 'none'; script-src 'none'; connect-src 'none'"],
+    },
+  }
+}
+```
+
+Note that Boundary requires `script-src 'wasm-unsafe-eval'` for playback of session recordings.
+
+In situations where a header is defined under several status code subsections,
+Boundary returns the header matching the most specific response code. For example,
+with the config example below, a `307` response would return `307 Custom header value`,
+while a `306` would return `3xx Custom header value`.
+
+```hcl
+listener "tcp" {
+  custom_api_response_headers {
+    "default" = {
+       "X-Custom-Header" = ["default Custom header value"]
+    },
+    "3xx" = {
+       "X-Custom-Header" = ["3xx Custom header value"]
+    },
+    "307" = {
+       "X-Custom-Header" = ["307 Custom header value"]
+    }
+  }
+}
+```
+
+There may also be situations where default or collective status headers have been defined,
+but you do not want them returned for a specific status code. You can unset headers at any
+level by defining the headers as an empty list.
+
+```hcl
+listener "tcp" {
+  custom_api_response_headers {
+    "default" = {
+       "X-Custom-Header" = ["default Custom header value"]
+    },
+    "3xx" = {
+       "X-Custom-Header" = ["3xx Custom header value"]
+    },
+    "307" = {
+		// Do not return this header for 307 responses
+       "X-Custom-Header" = []
+    }
+  }
+}
+```

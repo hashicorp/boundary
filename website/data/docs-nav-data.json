@@ -2018,8 +2018,29 @@
         "path": "configuration"
       },
       {
-        "title": "Controller",
+        "title": "Controllers",
         "path": "configuration/controller"
+      },
+      {
+        "title": "Events",
+        "routes": [
+          {
+            "title": "Events",
+            "path": "configuration/events"
+          },
+          {
+            "title": "Common sink parameters",
+            "path": "configuration/events/common-sink-parameters"
+          },
+          {
+            "title": "File sink",
+            "path": "configuration/events/file-sink"
+          },
+          {
+            "title": "Stderr sink",
+            "path": "configuration/events/stderr-sink"
+          }
+        ]
       },
       {
         "title": "KMS",
@@ -2055,6 +2076,19 @@
           {
             "title": "Vault transit",
             "path": "configuration/kms/transit"
+          }
+        ]
+      },
+      {
+        "title": "Listeners",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/listeners"
+          },
+          {
+            "title": "TCP",
+            "path": "configuration/listeners/tcp-listeners"
           }
         ]
       },
