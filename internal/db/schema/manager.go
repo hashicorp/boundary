@@ -254,11 +254,10 @@ func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]Re
 	}
 
 	defer func() {
-		// rolling back a commited run is a no-op, so we can safely call this every time
+		// rolling back a committed run is a no-op, so we can safely call this every time
 		if err := b.driver.RollbackRun(ctx); err != nil {
 			retErr = stderrors.Join(retErr, err)
 		}
-		return
 	}()
 
 	if ensureErr := b.driver.EnsureVersionTable(ctx); ensureErr != nil {
