@@ -2089,6 +2089,10 @@
           {
             "title": "TCP",
             "path": "configuration/listeners/tcp-listeners"
+          },
+          {
+            "title": "Unix",
+            "path": "configuration/listeners/unix-listeners"
           }
         ]
       },
