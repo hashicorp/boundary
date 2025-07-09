@@ -208,6 +208,9 @@ func (p *Postgres) RollbackRun(ctx context.Context) error {
 	defer func() {
 		p.tx = nil
 	}()
+
+	// p.tx is set to nil after the commit so if p.tx == nil, we assume that the transaction has
+	// already been committed and do nothing
 	if p.tx == nil {
 		return nil
 	}
