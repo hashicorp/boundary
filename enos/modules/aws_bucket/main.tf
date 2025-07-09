@@ -25,6 +25,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "example" {
       days = 7
     }
     status = "Enabled"
+    filter {}
   }
 }
 
