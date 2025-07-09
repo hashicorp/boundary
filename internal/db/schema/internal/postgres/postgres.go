@@ -202,7 +202,7 @@ func (p *Postgres) CommitRun(ctx context.Context) error {
 	return nil
 }
 
-// RollbackRun rolls back a transaction.
+// RollbackRun rolls back a transaction. If no transaction is active, it will return nil.
 func (p *Postgres) RollbackRun(ctx context.Context) error {
 	const op = "postgres.(Postgres).RollbackRun"
 	defer func() {
