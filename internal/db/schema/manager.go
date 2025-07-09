@@ -243,11 +243,8 @@ func (b *Manager) ApplyMigrations(ctx context.Context) ([]RepairLog, error) {
 // runMigrations passes migration queries to a database driver and manages
 // the version and dirty bit. Cancellation or deadline/timeout is managed
 // through the passed in context.
-func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]RepairLog, error) {
+func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) (logEntries []RepairLog, retErr error) {
 	const op = "schema.(Manager).runMigrations"
-
-	var logEntries []RepairLog
-	var retErr error
 
 	if startErr := b.driver.StartRun(ctx); startErr != nil {
 		return nil, errors.Wrap(ctx, startErr, op)
@@ -312,5 +309,5 @@ func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]Re
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	return logEntries, retErr
+	return logEntries, nil
 }
