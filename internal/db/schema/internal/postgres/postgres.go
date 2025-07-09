@@ -209,7 +209,7 @@ func (p *Postgres) RollbackRun(ctx context.Context) error {
 		p.tx = nil
 	}()
 	if p.tx == nil {
-		return errors.New(ctx, errors.MigrationIntegrity, op, "no pending transaction")
+		return nil
 	}
 	if err := p.tx.Rollback(); err != nil {
 		if errors.Is(err, sql.ErrTxDone) {
