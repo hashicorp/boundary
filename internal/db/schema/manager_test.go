@@ -404,7 +404,7 @@ func TestApplyMigrationWithHooks(t *testing.T) {
 					{
 						Name:                  "hooks",
 						BinarySchemaVersion:   2001,
-						DatabaseSchemaVersion: 0,
+						DatabaseSchemaVersion: 1,
 						DatabaseSchemaState:   schema.Behind,
 					},
 				},
