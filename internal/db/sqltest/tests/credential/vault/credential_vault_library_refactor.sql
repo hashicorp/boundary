@@ -555,14 +555,17 @@ begin;
     $$,
     $$
       values
-        (    'cvl_______b1'::wt_public_id,      'blue vault library'::wt_name),
-        (    'cvl__ssh__b1'::wt_public_id,  'blue vault ssh library'::wt_name),
-        (    'cvl_______g1'::wt_public_id,     'green vault library'::wt_name),
-        (    'cvl__ssh__g1'::wt_public_id, 'green vault ssh library'::wt_name),
-        (    'cvl_______r1'::wt_public_id,       'red vault library'::wt_name),
-        (    'cvl__ssh__r1'::wt_public_id,   'red vault ssh library'::wt_name),
-        (  'clvlt_V134iOjA'::wt_public_id,  'vault_generic1_updated'::wt_name),
-        ('clvsclt_35iWGH12'::wt_public_id,         'vault_ssh_cert1'::wt_name)
+        (    'cvl__ldap_b1'::wt_public_id,  'blue vault ldap library'::wt_name),
+        (    'cvl_______b1'::wt_public_id,       'blue vault library'::wt_name),
+        (    'cvl__ssh__b1'::wt_public_id,   'blue vault ssh library'::wt_name),
+        (    'cvl__ldap_g1'::wt_public_id, 'green vault ldap library'::wt_name),
+        (    'cvl_______g1'::wt_public_id,      'green vault library'::wt_name),
+        (    'cvl__ssh__g1'::wt_public_id,  'green vault ssh library'::wt_name),
+        (    'cvl__ldap_r1'::wt_public_id,   'red vault ldap library'::wt_name),
+        (    'cvl_______r1'::wt_public_id,        'red vault library'::wt_name),
+        (    'cvl__ssh__r1'::wt_public_id,    'red vault ssh library'::wt_name),
+        (  'clvlt_V134iOjA'::wt_public_id,   'vault_generic1_updated'::wt_name),
+        ('clvsclt_35iWGH12'::wt_public_id,          'vault_ssh_cert1'::wt_name);
     $$
   );
 
@@ -578,7 +581,7 @@ begin;
         (    'cvl_______b1'::wt_public_id,     'blue vault library'::wt_name),
         (    'cvl_______g1'::wt_public_id,    'green vault library'::wt_name),
         (    'cvl_______r1'::wt_public_id,      'red vault library'::wt_name),
-        (  'clvlt_V134iOjA'::wt_public_id, 'vault_generic1_updated'::wt_name)
+        (  'clvlt_V134iOjA'::wt_public_id, 'vault_generic1_updated'::wt_name);
     $$
   );
 

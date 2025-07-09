@@ -493,6 +493,13 @@ begin;
     ('cvs__rcolors', 'cvl__ssh__r1', 'red vault ssh library',   '/ssh/issue/red',   'webdev', 'ecdsa',   521),
     ('cvs__gcolors', 'cvl__ssh__g1', 'green vault ssh library', '/ssh/issue/green', 'dba',    'rsa',     4096);
 
+  insert into credential_vault_ldap_library
+    (store_id,       public_id,      name,                       vault_path,                                                 credential_type)
+   values
+    ('cvs__bcolors', 'cvl__ldap_b1', 'blue vault ldap library',  '/ldap/static-cred/blue',                                   'username_password_domain'),
+    ('cvs__rcolors', 'cvl__ldap_r1', 'red vault ldap library',   '/ldap/creds/red',                                          'username_password_domain'),
+    ('cvs__gcolors', 'cvl__ldap_g1', 'green vault ldap library', '/ldap/static-cred/org-colors-r-us/group-green-color/green','username_password_domain');
+
   insert into credential_static_store
     (project_id,     public_id,      name,                            description)
   values

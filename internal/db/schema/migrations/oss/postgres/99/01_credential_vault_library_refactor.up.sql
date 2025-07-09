@@ -378,6 +378,7 @@ begin;
       from final;
 
   -- Replaces view defined in 98/02_username_password_domain_vault.up.sql
+  -- Replaced in 100/01_credential_vault_ldap_library.up.sql
   drop view credential_vault_library_issue_credentials;
   create view credential_vault_library_issue_credentials as
   with
