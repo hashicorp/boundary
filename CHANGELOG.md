@@ -14,7 +14,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/5846))
 
 * ui: Sorting functionality added to aliases, groups, roles, scopes, targets, session recordings, sessions, users, auth methods, credential stores, and host catalogs resource tables.
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/2773)).
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2773))
 
 ### Bug fixes
 
