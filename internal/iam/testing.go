@@ -6,16 +6,12 @@ package iam
 import (
 	"context"
 	"crypto/rand"
-	"slices"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
-	iamstore "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -201,122 +197,30 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	require := require.New(t)
 	rw := db.New(conn)
 
+	role, err := NewRole(ctx, scopeId, opt...)
+	require.NoError(err)
 	id, err := newRoleId(ctx)
 	require.NoError(err)
+	role.PublicId = id
+	require.NoError(rw.Create(ctx, role))
+	require.NotEmpty(role.PublicId)
+
 	grantScopeIds := opts.withGrantScopeIds
-
-	// finalGrantScopes holds all 'GrantScopes' which will be in the final *Role object
-	var finalGrantScopes []*RoleGrantScope
-
-	grantThis := false
-	// default to `this` when no grant scope is specified - this is done as a part of role creation
-	// to avoid bumping role version with TestRoleGrantScope operation
-	// of in 'role_grant_scope' tables
-	// This is a part of grants refactor in for release 0.20.0 which moves 'this' grants to the role tables instead
-	// Using WithGrantScopeIds to add 'this' grant scope will be handled by TestRoleGrantScope calls later
-	// which bumps the role version to 2 since the 'this' grant scope will be added as a separate operation
 	if len(grantScopeIds) == 0 {
-		grantThis = true
+		grantScopeIds = []string{globals.GrantScopeThis}
 	}
-	var role *Role
-	switch {
-	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
-		g := &globalRole{
-			GlobalRole: &iamstore.GlobalRole{
-				PublicId:           id,
-				ScopeId:            scopeId,
-				Name:               opts.withName,
-				Description:        opts.withDescription,
-				GrantThisRoleScope: grantThis,
-				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope later
-			},
-		}
-		require.NoError(rw.Create(ctx, g))
-		require.NotEmpty(g.PublicId)
-		role = g.toRole()
-		// adding 'this' role grant scope is done manually to handle cases where 'this' grant is added by default
-		// which will NOT update the role version and will not show up from call later on
-		if grantThis {
-			gs, _ := g.grantThisRoleScope()
-			finalGrantScopes = append(finalGrantScopes, gs)
-		}
-	case strings.HasPrefix(scopeId, globals.OrgPrefix):
-		o := &orgRole{
-			OrgRole: &iamstore.OrgRole{
-				PublicId:           id,
-				ScopeId:            scopeId,
-				Name:               opts.withName,
-				Description:        opts.withDescription,
-				GrantThisRoleScope: grantThis,
-				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope later
-			},
-		}
-		require.NoError(rw.Create(ctx, o))
-		require.NotEmpty(o.PublicId)
-		role = o.toRole()
-		// adding 'this' role grant scope is done manually to handle cases where 'this' grant is added by default
-		// which will NOT update the role version and will not show up from call later on
-		if grantThis {
-			gs, _ := o.grantThisRoleScope()
-			finalGrantScopes = append(finalGrantScopes, gs)
-		}
-	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
-		p := &projectRole{
-			ProjectRole: &iamstore.ProjectRole{
-				PublicId:           id,
-				ScopeId:            scopeId,
-				Name:               opts.withName,
-				Description:        opts.withDescription,
-				GrantThisRoleScope: grantThis,
-			},
-		}
-		require.NoError(rw.Create(ctx, p))
-		require.NotEmpty(p.PublicId)
-		role = p.toRole()
-		// adding 'this' role grant scope is done manually to handle cases where 'this' grant is added by default
-		// which will NOT update the role version and will not show up from call later on
-		if grantThis {
-			gs, _ := p.grantThisRoleScope()
-			finalGrantScopes = append(finalGrantScopes, gs)
-		}
-	default:
-		t.Logf("invalid scope id: %s", scopeId)
-		t.FailNow()
-	}
-
 	for _, gsi := range grantScopeIds {
 		if gsi == "testing-none" {
 			continue
 		}
-		gs := TestRoleGrantScope(t, conn, role, gsi)
-		finalGrantScopes = append(finalGrantScopes, gs)
+		gs, err := NewRoleGrantScope(ctx, id, gsi)
+		require.NoError(err)
+		require.NoError(rw.Create(ctx, gs))
+		role.GrantScopes = append(role.GrantScopes, gs)
 	}
 	require.Equal(opts.withDescription, role.Description)
 	require.Equal(opts.withName, role.Name)
-
-	var final *Role
-	switch {
-	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
-		g := allocGlobalRole()
-		g.PublicId = id
-		require.NoError(rw.LookupByPublicId(ctx, &g))
-		final = g.toRole()
-	case strings.HasPrefix(scopeId, globals.OrgPrefix):
-		o := allocOrgRole()
-		o.PublicId = id
-		require.NoError(rw.LookupByPublicId(ctx, &o))
-		final = o.toRole()
-	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
-		p := allocProjectRole()
-		p.PublicId = id
-		require.NoError(rw.LookupByPublicId(ctx, &p))
-		final = p.toRole()
-	default:
-		t.Logf("invalid scope id: %s", scopeId)
-		t.FailNow()
-	}
-	final.GrantScopes = finalGrantScopes
-	return final
+	return role
 }
 
 // TestRoleWithGrants creates a role suitable for testing along with grants
@@ -324,60 +228,23 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 // this function does not provide any default grant scope unlike TestRole
 func TestRoleWithGrants(t testing.TB, conn *db.DB, scopeId string, grantScopeIDs []string, grants []string) *Role {
 	t.Helper()
+
 	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
-	grantsThis := false
-	if slices.Contains(grantScopeIDs, globals.GrantScopeThis) || len(grantScopeIDs) == 0 {
-		grantsThis = true
-	}
+
+	role, err := NewRole(ctx, scopeId)
+	require.NoError(err)
 	id, err := newRoleId(ctx)
 	require.NoError(err)
-	var role *Role
-	switch {
-	case strings.HasPrefix(scopeId, globals.GlobalPrefix):
-		g := &globalRole{
-			GlobalRole: &iamstore.GlobalRole{
-				PublicId:           id,
-				ScopeId:            scopeId,
-				GrantThisRoleScope: grantsThis,
-				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope call after this
-			},
-		}
-		require.NoError(rw.Create(ctx, g))
-		require.NotEmpty(g.PublicId)
-		role = g.toRole()
-	case strings.HasPrefix(scopeId, globals.OrgPrefix):
-		o := &orgRole{
-			OrgRole: &iamstore.OrgRole{
-				PublicId:           id,
-				ScopeId:            scopeId,
-				GrantThisRoleScope: grantsThis,
-				GrantScope:         globals.GrantScopeIndividual, // handled by TestRoleGrantScope call after this
-			},
-		}
-		require.NoError(rw.Create(ctx, o))
-		require.NotEmpty(o.PublicId)
-		role = o.toRole()
-	case strings.HasPrefix(scopeId, globals.ProjectPrefix):
-		p := &projectRole{
-			ProjectRole: &iamstore.ProjectRole{
-				PublicId: id,
-				ScopeId:  scopeId,
-			},
-		}
-		require.NoError(rw.Create(ctx, p))
-		require.NotEmpty(p.PublicId)
-		role = p.toRole()
-	default:
-		t.Logf("invalid scope id: %s", scopeId)
-		t.FailNow()
-	}
+	role.PublicId = id
+	require.NoError(rw.Create(ctx, role))
+	require.NotEmpty(role.PublicId)
+
 	for _, gsi := range grantScopeIDs {
-		if gsi == "testing-none" {
-			continue
-		}
-		gs := TestRoleGrantScope(t, conn, role, gsi)
+		gs, err := NewRoleGrantScope(ctx, id, gsi)
+		require.NoError(err)
+		require.NoError(rw.Create(ctx, gs))
 		role.GrantScopes = append(role.GrantScopes, gs)
 	}
 	for _, g := range grants {
@@ -398,177 +265,15 @@ func TestRoleGrant(t testing.TB, conn *db.DB, roleId, grant string, opt ...Optio
 	return g
 }
 
-func TestRoleGrantScope(t testing.TB, conn *db.DB, r *Role, grantScopeId string, opt ...Option) *RoleGrantScope {
+func TestRoleGrantScope(t testing.TB, conn *db.DB, roleId, grantScopeId string, opt ...Option) *RoleGrantScope {
 	t.Helper()
-	if r.ScopeId == grantScopeId {
-		grantScopeId = globals.GrantScopeThis
-	}
-	switch grantScopeId {
-	case globals.GrantScopeThis:
-		return testRoleGrantScopeThis(t, conn, r)
-	case globals.GrantScopeDescendants, globals.GrantScopeChildren:
-		return testRoleGrantScopeSpecial(t, conn, r, grantScopeId)
-	default:
-		return testRoleGrantScopeIndividual(t, conn, r, grantScopeId)
-	}
-}
-
-// testRoleGrantScopeThis is a utility function for adding 'this' to a role's Grant scopes
-// this function is not meant to be called directly - use `TestRoleGrantScope` or `TestRoleWithGrants`
-func testRoleGrantScopeThis(t testing.TB, conn *db.DB, r *Role) *RoleGrantScope {
+	require := require.New(t)
 	rw := db.New(conn)
-	ctx := context.Background()
-	var result *RoleGrantScope
-	switch {
-	case strings.HasPrefix(r.ScopeId, globals.GlobalPrefix):
-		g := allocGlobalRole()
-		g.PublicId = r.PublicId
-		g.GrantThisRoleScope = true
-		_, err := rw.Update(ctx, &g, []string{"GrantThisRoleScope"}, []string{})
-		require.NoError(t, err)
-		result = &RoleGrantScope{
-			CreateTime:       g.GrantThisRoleScopeUpdateTime,
-			RoleId:           g.PublicId,
-			ScopeIdOrSpecial: globals.GrantScopeThis,
-		}
-	case strings.HasPrefix(r.ScopeId, globals.OrgPrefix):
-		o := allocOrgRole()
-		o.PublicId = r.PublicId
-		o.GrantThisRoleScope = true
-		_, err := rw.Update(ctx, &o, []string{"GrantThisRoleScope"}, []string{})
-		require.NoError(t, err)
-		result = &RoleGrantScope{
-			CreateTime:       o.GrantThisRoleScopeUpdateTime,
-			RoleId:           o.PublicId,
-			ScopeIdOrSpecial: globals.GrantScopeThis,
-		}
-	case strings.HasPrefix(r.ScopeId, globals.ProjectPrefix):
-		p := allocProjectRole()
-		p.PublicId = r.PublicId
-		p.GrantThisRoleScope = true
-		_, err := rw.Update(ctx, &p, []string{"GrantThisRoleScope"}, []string{})
-		require.NoError(t, err)
-		result = &RoleGrantScope{
-			CreateTime:       p.GrantThisRoleScopeUpdateTime,
-			RoleId:           p.PublicId,
-			ScopeIdOrSpecial: globals.GrantScopeThis,
-		}
-	default:
-		t.Logf("invalid scope type for this grant: %s", r.ScopeId)
-		t.FailNow()
-	}
-	return result
-}
 
-// testRoleGrantScopeThis is a utility function for adding special scopes (children, descendants) to a role's Grant scopes
-// this function is not meant to be called directly - use `TestRoleGrantScope` or `TestRoleWithGrants`
-func testRoleGrantScopeSpecial(t testing.TB, conn *db.DB, r *Role, grantScopeId string) *RoleGrantScope {
-	rw := db.New(conn)
-	ctx := context.Background()
-	allowedGrantScopeId := []string{
-		globals.GrantScopeChildren,
-		globals.GrantScopeDescendants,
-	}
-	// ensure that only special scopes are passed in here
-	require.Contains(t, allowedGrantScopeId, grantScopeId)
-	var result *RoleGrantScope
-	switch {
-	case strings.HasPrefix(r.ScopeId, globals.GlobalPrefix):
-		g := allocGlobalRole()
-		g.PublicId = r.PublicId
-		g.GrantScope = grantScopeId
-		_, err := rw.Update(ctx, &g, []string{"GrantScope"}, []string{})
-		require.NoError(t, err)
-		result = &RoleGrantScope{
-			CreateTime:       g.GrantScopeUpdateTime,
-			RoleId:           g.PublicId,
-			ScopeIdOrSpecial: grantScopeId,
-		}
-	case strings.HasPrefix(r.ScopeId, globals.OrgPrefix):
-		// 'descendants' grants isn't allowed for org but not handling that case to reduce code duplication and
-		// the constraint check in the DB will return an error anyway
-		o := allocOrgRole()
-		o.PublicId = r.PublicId
-		o.GrantScope = grantScopeId
-		_, err := rw.Update(ctx, &o, []string{"GrantScope"}, []string{})
-		require.NoError(t, err)
-		result = &RoleGrantScope{
-			CreateTime:       o.GrantThisRoleScopeUpdateTime,
-			RoleId:           o.PublicId,
-			ScopeIdOrSpecial: grantScopeId,
-		}
-	default:
-		t.Logf("invalid scope type for children grant: %s", r.ScopeId)
-		t.FailNow()
-	}
-	return result
-}
-
-func testRoleGrantScopeIndividual(t testing.TB, conn *db.DB, r *Role, grantScopeId string) *RoleGrantScope {
-	rw := db.New(conn)
-	ctx := context.Background()
-
-	var result *RoleGrantScope
-	switch {
-	case strings.HasPrefix(r.ScopeId, globals.GlobalPrefix):
-		// perform a read to get 'role.GrantScope' because there are two allowed values: [children, individual]
-		g := allocGlobalRole()
-		g.PublicId = r.PublicId
-		require.NoError(t, rw.LookupByPublicId(ctx, &g))
-		switch {
-		case strings.HasPrefix(grantScopeId, globals.OrgPrefix):
-			orgGrantScope := &globalRoleIndividualOrgGrantScope{
-				GlobalRoleIndividualOrgGrantScope: &iamstore.GlobalRoleIndividualOrgGrantScope{
-					RoleId:     g.PublicId,
-					ScopeId:    grantScopeId,
-					GrantScope: g.GrantScope,
-				},
-			}
-			require.NoError(t, rw.Create(ctx, orgGrantScope))
-			result = &RoleGrantScope{
-				CreateTime:       orgGrantScope.CreateTime,
-				RoleId:           orgGrantScope.RoleId,
-				ScopeIdOrSpecial: orgGrantScope.ScopeId,
-			}
-		case strings.HasPrefix(grantScopeId, globals.ProjectPrefix):
-			projGrantScope := &globalRoleIndividualProjectGrantScope{
-				GlobalRoleIndividualProjectGrantScope: &iamstore.GlobalRoleIndividualProjectGrantScope{
-					RoleId:     g.PublicId,
-					ScopeId:    grantScopeId,
-					GrantScope: g.GrantScope,
-				},
-			}
-			require.NoError(t, rw.Create(ctx, projGrantScope))
-			result = &RoleGrantScope{
-				CreateTime:       projGrantScope.CreateTime,
-				RoleId:           projGrantScope.RoleId,
-				ScopeIdOrSpecial: projGrantScope.ScopeId,
-			}
-		default:
-			t.Logf("invalid scope id for global role invidual grant scope: %s", grantScopeId)
-			t.FailNow()
-		}
-	case strings.HasPrefix(r.ScopeId, globals.OrgPrefix):
-		o := &orgRoleIndividualGrantScope{
-			OrgRoleIndividualGrantScope: &iamstore.OrgRoleIndividualGrantScope{
-				RoleId:     r.PublicId,
-				ScopeId:    grantScopeId,
-				GrantScope: globals.GrantScopeIndividual,
-			},
-		}
-		require.NoError(t, rw.Create(ctx, o))
-		result = &RoleGrantScope{
-			CreateTime:       o.CreateTime,
-			RoleId:           o.RoleId,
-			ScopeIdOrSpecial: o.ScopeId,
-		}
-	default:
-		t.Logf("invalid scope for individual scope grant: %s", r.ScopeId)
-		t.FailNow()
-		return nil
-	}
-
-	return result
+	gs, err := NewRoleGrantScope(context.Background(), roleId, grantScopeId, opt...)
+	require.NoError(err)
+	require.NoError(rw.Create(context.Background(), gs))
+	return gs
 }
 
 // TestGroup creates a group suitable for testing.
@@ -638,109 +343,6 @@ func TestManagedGroupRole(t testing.TB, conn *db.DB, roleId, managedGrpId string
 	err = rw.Create(context.Background(), r)
 	require.NoError(err)
 	return r
-}
-
-type TestRoleGrantsRequest struct {
-	RoleScopeId string
-	GrantScopes []string
-	Grants      []string
-}
-
-// TestUserManagedGroupGrantsFunc returns a function that creates a user which has been given
-// the request grants through managed group.
-// Note: This method is not responsible for associating the user to the managed group. That action needs to be done
-// by the caller
-// This function returns iam.User and the AccountID from the account setup func
-func TestUserManagedGroupGrantsFunc(
-	t *testing.T,
-	conn *db.DB,
-	kmsCache *kms.Kms,
-	scopeId string,
-	managedGroupAccountSetupFunc auth.TestAuthMethodWithAccountInManagedGroup,
-	testRoleGrants []TestRoleGrantsRequest,
-) func() (*User, auth.Account) {
-	return func() (*User, auth.Account) {
-		t.Helper()
-		ctx := context.Background()
-		rw := db.New(conn)
-		repo, err := NewRepository(ctx, rw, rw, kmsCache)
-		require.NoError(t, err)
-		_, account, mg := managedGroupAccountSetupFunc(t, conn, kmsCache, scopeId)
-		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
-		for _, trg := range testRoleGrants {
-			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
-			_ = TestManagedGroupRole(t, conn, role.PublicId, mg.GetPublicId())
-		}
-		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
-		require.NoError(t, err)
-		require.Len(t, acctIDs, 1)
-		return user, account
-	}
-}
-
-// TestUserDirectGrantsFunc returns a function that creates and returns user which has been given
-// the request grants via direct association.
-// This function returns iam.User and the AccountID from the account setup func
-func TestUserDirectGrantsFunc(
-	t *testing.T,
-	conn *db.DB,
-	kmsCache *kms.Kms,
-	scopeId string,
-	setupFunc auth.TestAuthMethodWithAccountFunc,
-	testRoleGrants []TestRoleGrantsRequest,
-) func() (*User, auth.Account) {
-	return func() (*User, auth.Account) {
-		t.Helper()
-		_, account := setupFunc(t, conn)
-		ctx := context.Background()
-		rw := db.New(conn)
-		repo, err := NewRepository(ctx, rw, rw, kmsCache)
-		require.NoError(t, err)
-		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
-		require.NoError(t, err)
-		for _, trg := range testRoleGrants {
-			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
-			_ = TestUserRole(t, conn, role.PublicId, user.PublicId)
-		}
-		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
-		require.NoError(t, err)
-		require.Len(t, acctIDs, 1)
-		return user, account
-	}
-}
-
-// TestUserGroupGrantsFunc returns a function that creates a user which has been given
-// the request grants by being a part of a group.
-// Group is created as a part of this method
-// This function returns iam.User and the AccountID from the account setup func
-func TestUserGroupGrantsFunc(
-	t *testing.T,
-	conn *db.DB,
-	kmsCache *kms.Kms,
-	scopeId string,
-	setupFunc auth.TestAuthMethodWithAccountFunc,
-	testRoleGrants []TestRoleGrantsRequest,
-) func() (*User, auth.Account) {
-	return func() (*User, auth.Account) {
-		t.Helper()
-		_, account := setupFunc(t, conn)
-		ctx := context.Background()
-		rw := db.New(conn)
-		repo, err := NewRepository(ctx, rw, rw, kmsCache)
-		require.NoError(t, err)
-		group := TestGroup(t, conn, scopeId)
-		user := TestUser(t, repo, scopeId, WithAccountIds(account.GetPublicId()))
-		for _, trg := range testRoleGrants {
-			role := TestRoleWithGrants(t, conn, trg.RoleScopeId, trg.GrantScopes, trg.Grants)
-			_ = TestGroupRole(t, conn, role.PublicId, group.PublicId)
-		}
-		_, err = repo.AddGroupMembers(ctx, group.PublicId, group.Version, []string{user.PublicId})
-		require.NoError(t, err)
-		user, acctIDs, err := repo.LookupUser(ctx, user.PublicId)
-		require.NoError(t, err)
-		require.Len(t, acctIDs, 1)
-		return user, account
-	}
 }
 
 // testAccount is a temporary test function.  TODO - replace with an auth

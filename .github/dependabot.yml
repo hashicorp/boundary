@@ -9,42 +9,8 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every Sunday
-      interval: "weekly"
-      day: "sunday"
-    groups:
-      # Group all GitHub Actions updates into a single PR
-      actions:
-        patterns:
-          - "*"
-
-  - package-ecosystem: "gomod"
-    directories: 
-      - "/"
-      - "/api"
-      - "/sdk"
-      - "/plugins/kms/mains/ocikms/"
-      - "/plugins/kms/mains/awskms/"
-      - "/plugins/kms/mains/azurekeyvault/"
-      - "/plugins/kms/mains/transit/"
-      - "/plugins/kms/mains/gcpckms/"
-      - "/plugins/kms/mains/alicloudkms/"
-      - "/plugins/boundary/mains/gcp"
-      - "/plugins/boundary/mains/azure"
-      - "/plugins/boundary/mains/aws"
-      - "/plugins/boundary/mains/minio"
-    schedule:
-      # Check for updates to Go modules every Sunday
-      interval: "weekly"
-      day: "sunday"
-    groups:
-      # Group all Go module updates into one PR for version updates
-      # and one for security updates.
-      go:
-        patterns:
-          - "*"
-        applies-to: "version-updates"
-      go-security:
-        patterns:
-          - "*"
-        applies-to: "security-updates"
+      # Check for updates to GitHub Actions every weekday
+      interval: "daily"
+    allow:
+      # Allow updates for internal actions
+      - dependency-name: "hashicorp/*"

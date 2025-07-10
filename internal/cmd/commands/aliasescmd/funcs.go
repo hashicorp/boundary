@@ -12,6 +12,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+type extraCmdVars struct {
+	flagMembers []string
+}
+
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {

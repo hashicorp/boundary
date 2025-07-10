@@ -10,7 +10,6 @@ package attribute
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 
@@ -25,81 +24,71 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var (
-	_ codes.Code
-	_ io.Reader
-	_ status.Status
-	_ = errors.New
-	_ = runtime.String
-	_ = utilities.NewDoubleArray
-	_ = metadata.Join
-)
+var _ codes.Code
+var _ io.Reader
+var _ status.Status
+var _ = runtime.String
+var _ = utilities.NewDoubleArray
+var _ = metadata.Join
 
 func request_TestResourceService_TestListResource_0(ctx context.Context, marshaler runtime.Marshaler, client TestResourceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq TestListResourceRequest
-		metadata runtime.ServerMetadata
-	)
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
+	var protoReq TestListResourceRequest
+	var metadata runtime.ServerMetadata
+
 	msg, err := client.TestListResource(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_TestResourceService_TestListResource_0(ctx context.Context, marshaler runtime.Marshaler, server TestResourceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq TestListResourceRequest
-		metadata runtime.ServerMetadata
-	)
+	var protoReq TestListResourceRequest
+	var metadata runtime.ServerMetadata
+
 	msg, err := server.TestListResource(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_TestResourceService_TestCreateResource_0(ctx context.Context, marshaler runtime.Marshaler, client TestResourceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq TestCreateResourceRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq TestCreateResourceRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
+
 	msg, err := client.TestCreateResource(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_TestResourceService_TestCreateResource_0(ctx context.Context, marshaler runtime.Marshaler, server TestResourceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq TestCreateResourceRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq TestCreateResourceRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.TestCreateResource(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_TestResourceService_TestUpdateResource_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+var (
+	filter_TestResourceService_TestUpdateResource_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+)
 
 func request_TestResourceService_TestUpdateResource_0(ctx context.Context, marshaler runtime.Marshaler, client TestResourceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq TestUpdateResourceRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
+	var protoReq TestUpdateResourceRequest
+	var metadata runtime.ServerMetadata
+
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -108,35 +97,45 @@ func request_TestResourceService_TestUpdateResource_0(ctx context.Context, marsh
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_TestResourceService_TestUpdateResource_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.TestUpdateResource(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_TestResourceService_TestUpdateResource_0(ctx context.Context, marshaler runtime.Marshaler, server TestResourceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq TestUpdateResourceRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
+	var protoReq TestUpdateResourceRequest
+	var metadata runtime.ServerMetadata
+
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
@@ -146,76 +145,103 @@ func local_request_TestResourceService_TestUpdateResource_0(ctx context.Context,
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_TestResourceService_TestUpdateResource_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.TestUpdateResource(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_TestResourceService_TestGetResource_0(ctx context.Context, marshaler runtime.Marshaler, client TestResourceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq TestGetResourceRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq TestGetResourceRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.TestGetResource(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_TestResourceService_TestGetResource_0(ctx context.Context, marshaler runtime.Marshaler, server TestResourceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq TestGetResourceRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq TestGetResourceRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.TestGetResource(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 // RegisterTestResourceServiceHandlerServer registers the http handlers for service TestResourceService to "mux".
 // UnaryRPC     :call TestResourceServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterTestResourceServiceHandlerFromEndpoint instead.
-// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterTestResourceServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server TestResourceServiceServer) error {
-	mux.Handle(http.MethodGet, pattern_TestResourceService_TestListResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_TestResourceService_TestListResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestListResource", runtime.WithHTTPPathPattern("/v1/test-resources"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestListResource", runtime.WithHTTPPathPattern("/v1/test-resources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -227,15 +253,20 @@ func RegisterTestResourceServiceHandlerServer(ctx context.Context, mux *runtime.
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_TestResourceService_TestListResource_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_TestResourceService_TestCreateResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_TestResourceService_TestCreateResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestCreateResource", runtime.WithHTTPPathPattern("/v1/test-resources"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestCreateResource", runtime.WithHTTPPathPattern("/v1/test-resources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -247,15 +278,20 @@ func RegisterTestResourceServiceHandlerServer(ctx context.Context, mux *runtime.
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_TestResourceService_TestCreateResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestCreateResource_0{resp.(*TestCreateResourceResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_TestResourceService_TestCreateResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestCreateResource_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPatch, pattern_TestResourceService_TestUpdateResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("PATCH", pattern_TestResourceService_TestUpdateResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestUpdateResource", runtime.WithHTTPPathPattern("/v1/test-resources/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestUpdateResource", runtime.WithHTTPPathPattern("/v1/test-resources/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -267,15 +303,20 @@ func RegisterTestResourceServiceHandlerServer(ctx context.Context, mux *runtime.
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_TestResourceService_TestUpdateResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestUpdateResource_0{resp.(*TestUpdateResourceResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_TestResourceService_TestUpdateResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestUpdateResource_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodGet, pattern_TestResourceService_TestGetResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_TestResourceService_TestGetResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestGetResource", runtime.WithHTTPPathPattern("/v1/test-resources/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestGetResource", runtime.WithHTTPPathPattern("/v1/test-resources/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -287,7 +328,9 @@ func RegisterTestResourceServiceHandlerServer(ctx context.Context, mux *runtime.
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_TestResourceService_TestGetResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestGetResource_0{resp.(*TestGetResourceResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_TestResourceService_TestGetResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestGetResource_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil
@@ -296,24 +339,25 @@ func RegisterTestResourceServiceHandlerServer(ctx context.Context, mux *runtime.
 // RegisterTestResourceServiceHandlerFromEndpoint is same as RegisterTestResourceServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterTestResourceServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.NewClient(endpoint, opts...)
+	conn, err := grpc.DialContext(ctx, endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
+
 	return RegisterTestResourceServiceHandler(ctx, mux, conn)
 }
 
@@ -327,13 +371,16 @@ func RegisterTestResourceServiceHandler(ctx context.Context, mux *runtime.ServeM
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "TestResourceServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "TestResourceServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "TestResourceServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
+// "TestResourceServiceClient" to call the correct interceptors.
 func RegisterTestResourceServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client TestResourceServiceClient) error {
-	mux.Handle(http.MethodGet, pattern_TestResourceService_TestListResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_TestResourceService_TestListResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestListResource", runtime.WithHTTPPathPattern("/v1/test-resources"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestListResource", runtime.WithHTTPPathPattern("/v1/test-resources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -344,13 +391,18 @@ func RegisterTestResourceServiceHandlerClient(ctx context.Context, mux *runtime.
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_TestResourceService_TestListResource_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_TestResourceService_TestCreateResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_TestResourceService_TestCreateResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestCreateResource", runtime.WithHTTPPathPattern("/v1/test-resources"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestCreateResource", runtime.WithHTTPPathPattern("/v1/test-resources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -361,13 +413,18 @@ func RegisterTestResourceServiceHandlerClient(ctx context.Context, mux *runtime.
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_TestResourceService_TestCreateResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestCreateResource_0{resp.(*TestCreateResourceResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_TestResourceService_TestCreateResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestCreateResource_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPatch, pattern_TestResourceService_TestUpdateResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("PATCH", pattern_TestResourceService_TestUpdateResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestUpdateResource", runtime.WithHTTPPathPattern("/v1/test-resources/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestUpdateResource", runtime.WithHTTPPathPattern("/v1/test-resources/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -378,13 +435,18 @@ func RegisterTestResourceServiceHandlerClient(ctx context.Context, mux *runtime.
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_TestResourceService_TestUpdateResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestUpdateResource_0{resp.(*TestUpdateResourceResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_TestResourceService_TestUpdateResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestUpdateResource_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodGet, pattern_TestResourceService_TestGetResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_TestResourceService_TestGetResource_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestGetResource", runtime.WithHTTPPathPattern("/v1/test-resources/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/testing.attribute.v1.TestResourceService/TestGetResource", runtime.WithHTTPPathPattern("/v1/test-resources/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -395,48 +457,57 @@ func RegisterTestResourceServiceHandlerClient(ctx context.Context, mux *runtime.
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_TestResourceService_TestGetResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestGetResource_0{resp.(*TestGetResourceResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_TestResourceService_TestGetResource_0(annotatedContext, mux, outboundMarshaler, w, req, response_TestResourceService_TestGetResource_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
+
 	return nil
 }
 
 type response_TestResourceService_TestCreateResource_0 struct {
-	*TestCreateResourceResponse
+	proto.Message
 }
 
 func (m response_TestResourceService_TestCreateResource_0) XXX_ResponseBody() interface{} {
-	response := m.TestCreateResourceResponse
+	response := m.Message.(*TestCreateResourceResponse)
 	return response.Item
 }
 
 type response_TestResourceService_TestUpdateResource_0 struct {
-	*TestUpdateResourceResponse
+	proto.Message
 }
 
 func (m response_TestResourceService_TestUpdateResource_0) XXX_ResponseBody() interface{} {
-	response := m.TestUpdateResourceResponse
+	response := m.Message.(*TestUpdateResourceResponse)
 	return response.Item
 }
 
 type response_TestResourceService_TestGetResource_0 struct {
-	*TestGetResourceResponse
+	proto.Message
 }
 
 func (m response_TestResourceService_TestGetResource_0) XXX_ResponseBody() interface{} {
-	response := m.TestGetResourceResponse
+	response := m.Message.(*TestGetResourceResponse)
 	return response.Item
 }
 
 var (
-	pattern_TestResourceService_TestListResource_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "test-resources"}, ""))
+	pattern_TestResourceService_TestListResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "test-resources"}, ""))
+
 	pattern_TestResourceService_TestCreateResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "test-resources"}, ""))
+
 	pattern_TestResourceService_TestUpdateResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "test-resources", "id"}, ""))
-	pattern_TestResourceService_TestGetResource_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "test-resources", "id"}, ""))
+
+	pattern_TestResourceService_TestGetResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "test-resources", "id"}, ""))
 )
 
 var (
-	forward_TestResourceService_TestListResource_0   = runtime.ForwardResponseMessage
+	forward_TestResourceService_TestListResource_0 = runtime.ForwardResponseMessage
+
 	forward_TestResourceService_TestCreateResource_0 = runtime.ForwardResponseMessage
+
 	forward_TestResourceService_TestUpdateResource_0 = runtime.ForwardResponseMessage
-	forward_TestResourceService_TestGetResource_0    = runtime.ForwardResponseMessage
+
+	forward_TestResourceService_TestGetResource_0 = runtime.ForwardResponseMessage
 )

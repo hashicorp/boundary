@@ -102,7 +102,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -240,7 +240,7 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -278,7 +278,7 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -315,7 +315,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -351,7 +351,7 @@ func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*p
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -369,7 +369,7 @@ func (s Service) AddUserAccounts(ctx context.Context, req *pbs.AddUserAccountsRe
 	if err := validateAddUserAccountsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddAccounts, false)
+	authResults := s.authResult(ctx, req.GetId(), action.AddAccounts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -407,7 +407,7 @@ func (s Service) SetUserAccounts(ctx context.Context, req *pbs.SetUserAccountsRe
 	if err := validateSetUserAccountsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetAccounts, false)
+	authResults := s.authResult(ctx, req.GetId(), action.SetAccounts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -445,7 +445,7 @@ func (s Service) RemoveUserAccounts(ctx context.Context, req *pbs.RemoveUserAcco
 	if err := validateRemoveUserAccountsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveAccounts, false)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveAccounts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -483,7 +483,7 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 		return nil, err
 	}
 
-	authResults := s.authResult(ctx, req.GetId(), action.ListResolvableAliases, false)
+	authResults := s.authResult(ctx, req.GetId(), action.ListResolvableAliases)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -492,12 +492,18 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 	if !ok {
 		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
-
-	// fetch ACL and grantsHash for target resource so we can resolve ListResolvableAliasesPermissions
-	// because permissions in authResults only contains permissions relevant to resource.User
-	acl, grantsHash, err := s.aclAndGrantHashForUser(ctx, req.GetId(), []resource.Type{resource.Target})
+	acl := authResults.ACL()
+	grantsHash, err := authResults.GrantsHash(ctx)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	if req.GetId() != authResults.UserId {
+		var err error
+		acl, grantsHash, err = s.aclAndGrantHashForUser(ctx, req.GetId())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+		}
 	}
 
 	permissions := acl.ListResolvableAliasesPermissions(resource.Target, targets.IdActions)
@@ -591,18 +597,13 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 
 // aclAndGrantHashForUser returns an ACL from the grants provided to the user and
 // the hash of those grants.
-func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string, resourceType []resource.Type) (perms.ACL, []byte, error) {
+func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string) (perms.ACL, []byte, error) {
 	const op = "users.(Service).aclAndGrantHashForUser"
 	iamRepo, err := s.repoFn()
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
-	// Need to resolve all possible permissions for a user on a specific resource type because this request
-	// does not have a request scope. A user may be associated with a role at a higher-level scope
-	// (e.g. user in an org can be a principal of a role in the global scope) so we always have to
-	// look up the user's grants as if the request is a global-scoped to resolve the user's
-	// full permissions tree
-	grantTuples, err := iamRepo.GrantsForUser(ctx, userId, resourceType, globals.GlobalPrefix, iam.WithRecursive(true))
+	grantTuples, err := iamRepo.GrantsForUser(ctx, userId)
 	if err != nil {
 		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
@@ -785,7 +786,7 @@ func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []s
 	return out, accts, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -794,7 +795,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
+	opts := []auth.Option{auth.WithType(resource.User), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -821,7 +822,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, resource.User, opts...)
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.Option) (*pb.User, error) {
@@ -886,8 +887,6 @@ func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.
 	return &out, nil
 }
 
-// toResolvableAliasProto converts *talias.Alias to *aliaspb.Alias only including fields specified in output_fields.
-// These fields are not included in the result set: Name, Description, Version
 func toResolvableAliasProto(a *talias.Alias, opt ...handlers.Option) (*aliaspb.Alias, error) {
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
@@ -917,6 +916,7 @@ func toResolvableAliasProto(a *talias.Alias, opt ...handlers.Option) (*aliaspb.A
 	if outputFields.Has(globals.TypeField) {
 		pbItem.Type = "target"
 	}
+
 	return pbItem, nil
 }
 

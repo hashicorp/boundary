@@ -105,62 +105,49 @@ begin;
     ('g___cr-group', 'u______carly'),
     ('g___cg-group', 'u_______cora');
 
-  insert into iam_role_global
-    (scope_id,       public_id,      name,      grant_this_role_scope,      grant_scope)
+  insert into iam_role
+    (scope_id,       public_id,      name)
   values
-    ('global', 'r_go____name', 'Color Namer', false, 'individual'),
-    ('global', 'r_gp____spec', 'Blue Color Inspector', false, 'individual'),
-    ('global', 'r_gg_____buy', 'Purchaser', true, 'individual'),
-    ('global', 'r_gg____shop', 'Shopper', true, 'individual');
+    ('p____bcolors', 'r_pp_bc__mix', 'Color Mixer'),
+    ('p____rcolors', 'r_pp_rc__mix', 'Color Mixer'),
+    ('p____gcolors', 'r_pp_gc__mix', 'Color Mixer'),
+    ('o_____colors', 'r_op_bc__art', 'Blue Color Artist'),
+    ('o_____colors', 'r_op_rc__art', 'Red Color Artist'),
+    ('o_____colors', 'r_op_gc__art', 'Green Color Artist'),
+    ('o_____colors', 'r_oo_____art', 'Color Artist'),
+          ('global', 'r_go____name', 'Color Namer'),
+          ('global', 'r_gp____spec', 'Blue Color Inspector'),
+          ('global', 'r_gg_____buy', 'Purchaser'),
+          ('global', 'r_gg____shop', 'Shopper');
 
-  insert into iam_role_global_individual_org_grant_scope
-    (role_id,       scope_id,       grant_scope)
+  insert into iam_role_grant_scope
+    (role_id,        scope_id_or_special)
   values
-    ('r_go____name', 'o_____colors', 'individual');
-
-  insert into iam_role_global_individual_project_grant_scope
-    (role_id,       scope_id,       grant_scope)
-  values
-    ('r_gp____spec', 'p____bcolors', 'individual');
-
-
-  insert into iam_role_org
-    (scope_id,       public_id,      name,      grant_this_role_scope,      grant_scope)
-  values
-    ('o_____colors', 'r_op_bc__art', 'Blue Color Artist', false, 'individual'),
-    ('o_____colors', 'r_op_rc__art', 'Red Color Artist', false, 'individual'),
-    ('o_____colors', 'r_op_gc__art', 'Green Color Artist', false, 'individual'),
-    ('o_____colors', 'r_oo_____art', 'Color Artist', false, 'individual');
-
-  insert into iam_role_org_individual_grant_scope
-    (role_id,       scope_id,       grant_scope)
-  values
-    ('r_op_bc__art', 'p____bcolors', 'individual'),
-    ('r_op_rc__art', 'p____rcolors', 'individual'),
-    ('r_op_gc__art', 'p____gcolors', 'individual');
-
-
-  insert into iam_role_project
-    (scope_id,       public_id,      name,      grant_this_role_scope)
-  values
-    ('p____bcolors', 'r_pp_bc__mix', 'Color Mixer', true),
-    ('p____rcolors', 'r_pp_rc__mix', 'Color Mixer', true),
-    ('p____gcolors', 'r_pp_gc__mix', 'Color Mixer', true);
+    ('r_pp_bc__mix', 'this'),
+    ('r_pp_rc__mix', 'p____rcolors'),
+    ('r_pp_gc__mix', 'this'),
+    ('r_op_bc__art', 'p____bcolors'),
+    ('r_op_rc__art', 'p____rcolors'),
+    ('r_op_gc__art', 'p____gcolors'),
+    ('r_go____name', 'o_____colors'),
+    ('r_gp____spec', 'p____bcolors'),
+    ('r_gg_____buy', 'global'),
+    ('r_gg____shop', 'global');
 
   insert into iam_role_grant
-    (role_id,        canonical_grant,                                    raw_grant)
+    (role_id,        canonical_grant,             raw_grant)
   values
-    ('r_gg_____buy', 'ids=*;type=*;actions=update',                      'ids=*;type=*;actions=update'),
-    ('r_gg____shop', 'ids=*;type=*;actions=read;output_fields=id',       'ids=*;type=*;actions=read;output_fields=id'),
-    ('r_go____name', 'ids=*;type=group;actions=create,update,read,list', 'ids=*;type=group;actions=create,update,read,'),
-    ('r_gp____spec', 'ids=*;type=group;actions=delete',                  'ids=*;type=group;actions=delete'),
-    ('r_oo_____art', 'ids=*;type=group;actions=create',                  'ids=*;type=group;actions=create'),
-    ('r_op_bc__art', 'ids=*;type=auth-token;actions=create',             'ids=*;type=auth-token;actions=create'),
-    ('r_op_rc__art', 'ids=*;type=target;actions=create',                 'ids=*;type=targets;actions=create'),
-    ('r_op_gc__art', 'ids=*;type=auth-method;actions=authenticate',      'ids=*;type=auth-method;actions=create'),
-    ('r_pp_bc__mix', 'ids=*;type=group;actions=add-members',             'ids=*;type=group;actions=add-members'),
-    ('r_pp_rc__mix', 'ids=*;type=group;actions=set-members',             'ids=*;type=group;actions=set-members'),
-    ('r_pp_gc__mix', 'ids=*;type=group;actions=delete-members',          'ids=*;type=group;actions=delete-members');
+    ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
+    ('r_gg____shop', 'type=*;action=view',        'view anything'),
+    ('r_go____name', 'type=color;action=name',    'name colors'),
+    ('r_gp____spec', 'type=color;action=inspect', 'inspect colors'),
+    ('r_oo_____art', 'type=color;action=create',  'create color'),
+    ('r_op_bc__art', 'type=color;action=create',  'create color'),
+    ('r_op_rc__art', 'type=color;action=create',  'create color'),
+    ('r_op_gc__art', 'type=color;action=create',  'create color'),
+    ('r_pp_bc__mix', 'type=color;action=mix',     'mix color'),
+    ('r_pp_rc__mix', 'type=color;action=mix',     'mix color'),
+    ('r_pp_gc__mix', 'type=color;action=mix',     'mix color');
 
   insert into iam_group_role
     (role_id,        principal_id)

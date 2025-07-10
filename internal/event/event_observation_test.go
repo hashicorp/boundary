@@ -503,50 +503,6 @@ func Test_composeFromTelemetryFiltering(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:   "with-request-client-headers-with-telemetry",
-			fromOp: Op("with-request-client-headers-with-telemetry"),
-			opts: []Option{
-				WithId("with-request-client-headers-with-telemetry"),
-				WithRequestInfo(TestRequestInfo(t)),
-				WithFlush(),
-				WithRequest(&Request{
-					Operation: "op",
-					Endpoint:  "/auth-tokens/<id>",
-					Details:   testWorkerStatus(t),
-					UserAgents: []*UserAgent{{
-						Product:        "Boundary-client-agent",
-						ProductVersion: "0.1.4",
-					}},
-				}),
-				WithTelemetry(),
-			},
-			wantObservation: &observation{
-				ID:          "with-request-client-headers-with-telemetry",
-				Flush:       true,
-				Version:     errorVersion,
-				Op:          Op("with-request-client-headers-with-telemetry"),
-				RequestInfo: TestRequestInfo(t),
-				Request: &Request{
-					Operation: "op",
-					Endpoint:  "/auth-tokens/<id>",
-					Details:   testWorkerStatus(t),
-					UserAgents: []*UserAgent{{
-						Product:        "Boundary-client-agent",
-						ProductVersion: "0.1.4",
-					}},
-				},
-			},
-			wantFilteredRequest: &Request{
-				Operation: "op",
-				Endpoint:  "/auth-tokens/<id>",
-				Details:   testWorkerStatusObservable(t),
-				UserAgents: []*UserAgent{{
-					Product:        "Boundary-client-agent",
-					ProductVersion: "0.1.4",
-				}},
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

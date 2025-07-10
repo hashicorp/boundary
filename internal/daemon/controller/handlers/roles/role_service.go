@@ -104,7 +104,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -244,7 +244,7 @@ func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.Get
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -282,7 +282,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -320,7 +320,7 @@ func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -356,7 +356,7 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -374,7 +374,7 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 	if err := validateAddRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddPrincipals, false)
+	authResults := s.authResult(ctx, req.GetId(), action.AddPrincipals)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -412,7 +412,7 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 	if err := validateSetRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetPrincipals, false)
+	authResults := s.authResult(ctx, req.GetId(), action.SetPrincipals)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -450,7 +450,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 	if err := validateRemoveRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemovePrincipals, false)
+	authResults := s.authResult(ctx, req.GetId(), action.RemovePrincipals)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -488,7 +488,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 	if err := validateAddRoleGrantsRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddGrants, false)
+	authResults := s.authResult(ctx, req.GetId(), action.AddGrants)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -526,7 +526,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 	if err := validateSetRoleGrantsRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetGrants, false)
+	authResults := s.authResult(ctx, req.GetId(), action.SetGrants)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -564,7 +564,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 	if err := validateRemoveRoleGrantsRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveGrants, false)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveGrants)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -602,7 +602,7 @@ func (s Service) AddRoleGrantScopes(ctx context.Context, req *pbs.AddRoleGrantSc
 	if err := validateRoleGrantScopesRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddGrantScopes, false)
+	authResults := s.authResult(ctx, req.GetId(), action.AddGrantScopes)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -641,7 +641,7 @@ func (s Service) SetRoleGrantScopes(ctx context.Context, req *pbs.SetRoleGrantSc
 	if err := validateRoleGrantScopesRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetGrantScopes, false)
+	authResults := s.authResult(ctx, req.GetId(), action.SetGrantScopes)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -680,7 +680,7 @@ func (s Service) RemoveRoleGrantScopes(ctx context.Context, req *pbs.RemoveRoleG
 	if err := validateRoleGrantScopesRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveGrants, false)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveGrants)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -952,7 +952,7 @@ func (s Service) addGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 
 	deduped := strutil.RemoveDuplicates(req.GetGrantScopeIds(), false)
 
-	if err := validateAndCleanRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
+	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
@@ -980,7 +980,7 @@ func (s Service) setGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 
 	deduped := strutil.RemoveDuplicates(req.GetGrantScopeIds(), false)
 
-	if err := validateAndCleanRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
+	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
@@ -1005,6 +1005,7 @@ func (s Service) removeGrantScopesInRepo(ctx context.Context, req grantScopeRequ
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
+
 	_, err = repo.DeleteRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
@@ -1020,7 +1021,7 @@ func (s Service) removeGrantScopesInRepo(ctx context.Context, req grantScopeRequ
 	return out, pr, roleGrants, grantScopes, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, isResursive bool) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -1029,7 +1030,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRes
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isResursive)}
+	opts := []auth.Option{auth.WithType(resource.Role), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1056,7 +1057,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRes
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, resource.Role, opts...)
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole, grants []*iam.RoleGrant, grantScopes []*iam.RoleGrantScope, opt ...handlers.Option) (*pb.Role, error) {
@@ -1457,15 +1458,13 @@ func validateRoleGrantScopesRequest(ctx context.Context, req grantScopeRequest) 
 	return nil
 }
 
-// validateAndCleanRoleGrantScopesHierarchy is the companion to the domain-side logic to
+// validateRoleGrantScopesHierarchy is the companion to the domain-side logic to
 // validate scopes. It doesn't do all of the same checking but will allow for
 // better error messages when possible. We perform this check after
 // authentication to limit the possibility of an anonymous user causing DB load
 // due to this lookup, which is not a cheap one.
-// This function also converts grant scope that is the role's scope ID to 'this'
-// by mutating grantScopes input
-func validateAndCleanRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository, roleId string, grantScopes []string) error {
-	const op = "service.(Service).validateAndCleanRoleGrantScopesHierarchy"
+func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository, roleId string, grantScopes []string) error {
+	const op = "service.(Service).validateRoleGrantScopesHierarchy"
 	// We want to ensure that the values being passed in make sense to whatever
 	// extent we can right now, so we can provide nice errors back instead of DB
 	// errors.
@@ -1475,18 +1474,12 @@ func validateAndCleanRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Rep
 	}
 	switch {
 	case role.ScopeId == scope.Global.String():
-		for i, grantScope := range grantScopes {
-			if grantScope == scope.Global.String() {
-				grantScopes[i] = globals.GrantScopeThis
-			}
-		}
+		// Nothing, any grant scope is allowed for global
 	case strings.HasPrefix(role.ScopeId, scope.Project.Prefix()):
 		// In this case only "this" or the same project scope is allowed
-		for i, grantScope := range grantScopes {
+		for _, grantScope := range grantScopes {
 			switch grantScope {
-			case globals.GrantScopeThis:
-			case role.ScopeId:
-				grantScopes[i] = globals.GrantScopeThis
+			case globals.GrantScopeThis, role.ScopeId:
 			default:
 				return handlers.InvalidArgumentErrorf(
 					"Invalid grant scope.",
@@ -1497,11 +1490,10 @@ func validateAndCleanRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Rep
 		}
 	case strings.HasPrefix(role.ScopeId, scope.Org.Prefix()):
 		// Orgs can have "this", its own scope, a project scope, or "children"
-		for i, grantScope := range grantScopes {
+		for _, grantScope := range grantScopes {
 			switch {
-			case grantScope == role.ScopeId:
-				grantScopes[i] = globals.GrantScopeThis
-			case grantScope == globals.GrantScopeThis,
+			case grantScope == role.ScopeId,
+				grantScope == globals.GrantScopeThis,
 				grantScope == globals.GrantScopeChildren,
 				strings.HasPrefix(grantScope, scope.Project.Prefix()):
 			default:

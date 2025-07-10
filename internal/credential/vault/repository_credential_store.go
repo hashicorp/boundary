@@ -200,6 +200,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s: name %s already exists", cs.ProjectId, cs.Name)))
@@ -630,6 +631,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil
 		},
 	)
+
 	if err != nil {
 		return nil, db.NoRowsAffected, err
 	}
@@ -699,6 +701,7 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 			return nil
 		},
 	)
+
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", cs.PublicId)))
 	}

@@ -94,16 +94,17 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
 					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
 				}
-			default:
+			case at != nil:
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
+				var apiErr *api.Error
 				switch {
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
 						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
 					}
-					event.WriteSysEvent(ctx, op, "Removed auth token from db because it was not found to be valid in boundary", "auth token id", at.Id)
+					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
 					continue
-				case err != nil:
+				case err != nil && !errors.Is(err, apiErr):
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating keyring stored token against boundary", "auth token id", at.Id))
 					continue
 				}
@@ -113,18 +114,17 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 		if atv, ok := r.repo.idToKeyringlessAuthToken.Load(t.Id); ok {
 			if at, ok := atv.(*authtokens.AuthToken); ok {
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
+				var apiErr *api.Error
 				switch {
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					r.repo.idToKeyringlessAuthToken.Delete(t.Id)
-					event.WriteSysEvent(ctx, op, "Removed auth token from in memory cache because it was not found to be valid in boundary", "auth token id", at.Id)
-					if err := r.repo.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
-					}
+					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
 					continue
-				case err != nil:
+				case err != nil && !errors.Is(err, apiErr):
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating in memory stored token against boundary", "auth token id", at.Id))
 					continue
 				}
+
 				ret[*t] = at.Token
 			}
 		}

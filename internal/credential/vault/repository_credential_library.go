@@ -106,6 +106,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, projectId stri
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in credential store: %s: name %s already exists", l.StoreId, l.Name)))
@@ -317,6 +318,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, projectId stri
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op,
@@ -446,6 +448,7 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, projectId stri
 			return err
 		},
 	)
+
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", l.PublicId)))
 	}

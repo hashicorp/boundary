@@ -36,6 +36,7 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -55,7 +56,28 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+const (
+	credentialDomain = "credential"
+	hostDomain       = "host"
+)
+
+// extraWorkerFilterFunc takes in a set of workers and returns another set,
+// after any filtering it wishes to perform. When calling one of these
+// functions, the current set should be passed in and the returned set should be
+// used if there is no error; it is up to the filter writer to ensure that what
+// is returned, if no filtering is desired, is the input set.
+//
+// This is generally used to take in a set selected already from the database
+// and possible filtered via target worker filters and provide additional
+// filtering capabilities on those remaining workers.
+type extraWorkerFilterFunc func(ctx context.Context, workers []*server.Worker, host, port string) ([]*server.Worker, error)
+
 var (
+	// ExtraWorkerFilters contains any custom worker filters that should be
+	// layered in at session authorization time. These will be executed in-order
+	// with the results from one fed into the next.
+	ExtraWorkerFilters []extraWorkerFilterFunc
+
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.NewActionSet(
@@ -187,7 +209,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -340,7 +362,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -380,7 +402,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -427,7 +449,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -467,7 +489,7 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -485,7 +507,7 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 	if err := validateAddHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddHostSources, false)
+	authResults := s.authResult(ctx, req.GetId(), action.AddHostSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -527,7 +549,7 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 	if err := validateSetHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetHostSources, false)
+	authResults := s.authResult(ctx, req.GetId(), action.SetHostSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -567,7 +589,7 @@ func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTar
 	if err := validateRemoveHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSources, false)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -607,7 +629,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 	if err := validateAddCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialSources, false)
+	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -648,7 +670,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 	if err := validateSetCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialSources, false)
+	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -689,7 +711,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	if err := validateRemoveCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialSources, false)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -752,7 +774,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession, false,
+	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession,
 		target.WithName(req.GetName()),
 		target.WithProjectId(req.GetScopeId()),
 		target.WithProjectName(req.GetScopeName()),
@@ -768,11 +790,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if authResults.RoundTripValue == nil {
 		return nil, stderrors.New("authorize session: expected to get a target back from auth results")
 	}
-	roundTripTarget, ok := authResults.RoundTripValue.(target.Target)
+	t, ok := authResults.RoundTripValue.(target.Target)
 	if !ok {
 		return nil, stderrors.New("authorize session: round tripped auth results value is not a target")
 	}
-	if roundTripTarget == nil {
+	if t == nil {
 		return nil, stderrors.New("authorize session: round tripped target is nil")
 	}
 
@@ -794,7 +816,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, handlers.ForbiddenError()
 	}
 
-	if roundTripTarget.GetDefaultPort() == 0 {
+	if t.GetDefaultPort() == 0 {
 		return nil, handlers.ConflictErrorf("Target does not have default port defined.")
 	}
 
@@ -803,15 +825,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, err := repo.LookupTarget(ctx, roundTripTarget.GetPublicId())
+	t, err = repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
+			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 		}
 		return nil, err
 	}
 	if t == nil {
-		return nil, handlers.NotFoundErrorf("Target %q not found.", roundTripTarget.GetPublicId())
+		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 	}
 	hostSources := t.GetHostSources()
 	credSources := t.GetCredentialSources()
@@ -910,9 +932,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			"No host was discovered after checking target address and host sources.")
 	}
 
-	// Ensure we don't have a port from the address and that any ipv6 addresses
-	// are formatted properly
-	if h, err = util.ParseAddress(ctx, h); err != nil {
+	// Ensure we don't have a port from the address
+	_, err = util.ParseAddress(ctx, h)
+	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoint host address"))
 	}
 
@@ -1555,7 +1577,7 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	a := action.Create
-	opts := []auth.Option{auth.WithAction(a)}
+	opts := []auth.Option{auth.WithType(resource.Alias), auth.WithAction(a)}
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
 		res.Error = err
@@ -1571,16 +1593,16 @@ func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) aut
 		return res
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	ret := auth.Verify(ctx, resource.Alias, opts...)
+	ret := auth.Verify(ctx, opts...)
 	return ret
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool, lookupOpt ...target.Option) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
 	var t target.Target
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
+	opts := []auth.Option{auth.WithType(resource.Target), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1623,7 +1645,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	ret := auth.Verify(ctx, resource.Target, opts...)
+	ret := auth.Verify(ctx, opts...)
 	ret.RoundTripValue = t
 	return ret
 }
@@ -1817,13 +1839,15 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			}
 		}
 		if address := item.GetAddress(); address != nil {
-			_, err := util.ParseAddress(context.Background(), address.GetValue())
+			if len(address.GetValue()) < static.MinHostAddressLength ||
+				len(address.GetValue()) > static.MaxHostAddressLength {
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			}
+			_, _, err := net.SplitHostPort(address.GetValue())
 			switch {
 			case err == nil:
-			case errors.Is(err, util.ErrInvalidAddressLength):
-				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			case errors.Is(err, util.ErrInvalidAddressContainsPort):
 				badFields[globals.AddressField] = "Address does not support a port."
+			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
@@ -1895,13 +1919,15 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			}
 		}
 		if address := item.GetAddress(); address != nil {
-			_, err := util.ParseAddress(context.Background(), address.GetValue())
+			if len(address.GetValue()) < static.MinHostAddressLength ||
+				len(address.GetValue()) > static.MaxHostAddressLength {
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			}
+			_, _, err := net.SplitHostPort(address.GetValue())
 			switch {
 			case err == nil:
-			case errors.Is(err, util.ErrInvalidAddressLength):
-				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-			case errors.Is(err, util.ErrInvalidAddressContainsPort):
 				badFields[globals.AddressField] = "Address does not support a port."
+			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}

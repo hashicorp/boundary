@@ -378,76 +378,72 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 }
 
 func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, dialOptions ...grpc.DialOption) error {
-	conn, err := grpc.NewClient(gatewayTarget, dialOptions...)
-	if err != nil {
-		return err
-	}
 	// Register*ServiceHandlerServer methods ignore the passed in context.
 	// Passing it in anyways in case this changes in the future.
-	if err := services.RegisterHostCatalogServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterHostCatalogServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register host catalog service handler: %w", err)
 	}
-	if err := services.RegisterHostSetServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterHostSetServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register host set service handler: %w", err)
 	}
-	if err := services.RegisterHostServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterHostServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	if err := services.RegisterAccountServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterAccountServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	if err := services.RegisterAuthMethodServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterAuthMethodServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register auth method service handler: %w", err)
 	}
-	if err := services.RegisterAuthTokenServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterAuthTokenServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register auth token service handler: %w", err)
 	}
-	if err := services.RegisterScopeServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterScopeServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register scope service handler: %w", err)
 	}
-	if err := services.RegisterUserServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterUserServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register user service handler: %w", err)
 	}
-	if err := services.RegisterTargetServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterTargetServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register target service handler: %w", err)
 	}
-	if err := services.RegisterGroupServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterGroupServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register group service handler: %w", err)
 	}
-	if err := services.RegisterRoleServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterRoleServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register role service handler: %w", err)
 	}
-	if err := services.RegisterSessionServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterSessionServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register session service handler: %w", err)
 	}
-	if err := services.RegisterManagedGroupServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterManagedGroupServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register managed groups service handler: %w", err)
 	}
-	if err := services.RegisterCredentialStoreServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterCredentialStoreServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register credential store service handler: %w", err)
 	}
-	if err := services.RegisterCredentialLibraryServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterCredentialLibraryServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register credential library service handler: %w", err)
 	}
-	if err := services.RegisterWorkerServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterWorkerServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register worker service handler: %w", err)
 	}
-	if err := services.RegisterCredentialServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterCredentialServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register credential service handler: %w", err)
 	}
-	if err := services.RegisterSessionRecordingServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register session recording service handler: %w", err)
 	}
-	if err := services.RegisterStorageBucketServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterStorageBucketServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register storage bucket service handler: %w", err)
 	}
-	if err := services.RegisterAliasServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterAliasServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register alias service handler: %w", err)
 	}
-	if err := services.RegisterPolicyServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterPolicyServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register policy handler: %w", err)
 	}
-	if err := services.RegisterBillingServiceHandler(ctx, gwMux, conn); err != nil {
+	if err := services.RegisterBillingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register billing service handler: %w", err)
 	}
 

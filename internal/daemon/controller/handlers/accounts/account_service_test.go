@@ -33,7 +33,6 @@ import (
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -45,6 +44,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+const domain = "auth"
 
 var (
 	pwAuthorizedActions = []string{
@@ -2426,41 +2427,6 @@ func TestCreateOidc(t *testing.T) {
 			},
 		},
 		{
-			name: "Create a valid Account with IPv6 issuer address",
-			req: &pbs.CreateAccountRequest{
-				Item: &pb.Account{
-					AuthMethodId: am.GetPublicId(),
-					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
-					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
-					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						OidcAccountAttributes: &pb.OidcAccountAttributes{
-							Issuer:  "https://[2001:BEEF:0000:0000:0000:0000:0000:0001]:44344/v1/myissuer",
-							Subject: "valid-account-ipv6-iss",
-						},
-					},
-				},
-			},
-			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
-				Item: &pb.Account{
-					AuthMethodId: am.GetPublicId(),
-					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
-					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
-					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Version:      1,
-					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						OidcAccountAttributes: &pb.OidcAccountAttributes{
-							Subject: "valid-account-ipv6-iss",
-							Issuer:  "https://[2001:beef::1]:44344/v1/myissuer",
-						},
-					},
-					AuthorizedActions: oidcAuthorizedActions,
-				},
-			},
-		},
-		{
 			name: "Create a valid Account without type defined",
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
@@ -2599,25 +2565,6 @@ func TestCreateOidc(t *testing.T) {
 			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Malformed issuer url",
-			req: &pbs.CreateAccountRequest{
-				Item: &pb.Account{
-					AuthMethodId: am.GetPublicId(),
-					Name:         &wrapperspb.StringValue{Value: "name-ipv6-iss"},
-					Description:  &wrapperspb.StringValue{Value: "desc-ipv6-iss"},
-					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						OidcAccountAttributes: &pb.OidcAccountAttributes{
-							Issuer:  "https://2000:0005::0001]", // missing '[' after https://
-							Subject: "valid-account-ipv6-iss",
-						},
-					},
-				},
-			},
-			res: nil,
-			err: handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, `Error: "Error in provided request.", Details: {{name: "attributes.issuer", desc: "Cannot be parsed as a url. parse \"https://2000:0005::0001]\": invalid port \":0001]\" after host"}}`),
 		},
 	}
 	for _, tc := range cases {
@@ -4454,7 +4401,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 
-	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -4497,9 +4444,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	iam.TestManagedGroupRole(t, conn, ldapRole.GetPublicId(), ldapMg.GetPublicId())
 	iam.TestRoleGrant(t, conn, ldapRole.GetPublicId(), "ids=ttcp_ldap;actions=read")
 
-	// targets must be in a project scope so we're passing in a scope ID which we expect the user to have access to
-	// which is the project under the role's org
-	grants, err := iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
+	grants, err := iamRepo.GrantsForUser(ctx, user.GetPublicId())
 	require.NoError(t, err)
 
 	// Verify we see both grants
@@ -4523,7 +4468,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	assert.Equal(t, 1, numDeleted)
 
 	// Verify we don't see the ldap grant anymore
-	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
+	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId())
 	require.NoError(t, err)
 	foundOidc = false
 	foundLdap = false
@@ -4546,7 +4491,7 @@ func TestGrantsAcrossManagedGroups(t *testing.T) {
 	assert.Equal(t, 1, numDeleted)
 
 	// Verify we don't see the oidc grant anymore
-	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId(), []resource.Type{resource.Target}, proj.PublicId)
+	grants, err = iamRepo.GrantsForUser(ctx, user.GetPublicId())
 	require.NoError(t, err)
 	foundOidc = false
 	foundLdap = false

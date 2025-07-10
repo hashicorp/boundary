@@ -30,7 +30,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -63,6 +62,8 @@ const (
 	emailAttrField    = "attributes.email"
 	dnAttrField       = "attributes.dn"
 	memberOfAttrField = "attributes.member_of_groups"
+
+	domain = "auth"
 )
 
 var (
@@ -150,7 +151,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -368,7 +369,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -410,7 +411,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 
-	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create, false)
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -449,7 +450,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		return nil, err
 	}
 
-	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update, false)
+	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -485,7 +486,7 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 	if err := validateDeleteRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -504,7 +505,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -543,7 +544,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword, false)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -692,11 +693,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	}
 	attrs := item.GetOidcAccountAttributes()
 	if attrs.GetIssuer() != "" {
-		niss, err := parseutil.NormalizeAddr(attrs.GetIssuer())
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to normalize issuer"), errors.WithCode(errors.InvalidParameter))
-		}
-		u, err := url.Parse(niss)
+		u, err := url.Parse(attrs.GetIssuer())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse issuer"), errors.WithCode(errors.InvalidParameter))
 		}
@@ -1030,7 +1027,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 	return out, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type, isRecursive bool) (auth.AuthMethod, requestauth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, requestauth.VerifyResults) {
 	res := requestauth.VerifyResults{}
 	pwRepo, err := s.pwRepoFn()
 	if err != nil {
@@ -1049,7 +1046,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []requestauth.Option{requestauth.WithAction(a), requestauth.WithRecursive(isRecursive)}
+	opts := []requestauth.Option{requestauth.WithType(resource.Account), requestauth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -1129,7 +1126,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		authMeth = am
 	}
 	opts = append(opts, requestauth.WithScopeId(authMeth.GetScopeId()), requestauth.WithPin(parentId))
-	return authMeth, requestauth.Verify(ctx, resource.Account, opts...)
+	return authMeth, requestauth.Verify(ctx, opts...)
 }
 
 func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
@@ -1326,10 +1323,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAccountRequest) e
 					if err != nil {
 						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
-					if du != nil {
-						if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-							badFields[issuerField] = "The path segment of the url should be empty."
-						}
+					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+						badFields[issuerField] = "The path segment of the url should be empty."
 					}
 				}
 				if attrs.GetFullName() != "" {

@@ -12,31 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestCatalog creates a static host catalog to the provided DB
-// with the provided project id.  If any errors are encountered during the creation of
-// the host catalog, the test will fail.
-// Name and description are the only valid options. All other options are
-// ignored.
-func TestCatalog(t testing.TB, conn *db.DB, projectId string, opt ...Option) *HostCatalog {
-	t.Helper()
-	ctx := context.Background()
-	assert := assert.New(t)
-
-	cat, err := NewHostCatalog(ctx, projectId, opt...)
-	assert.NoError(err)
-	assert.NotNil(cat)
-	id, err := newHostCatalogId(ctx)
-	assert.NoError(err)
-	assert.NotEmpty(id)
-	cat.PublicId = id
-
-	w := db.New(conn)
-	err2 := w.Create(ctx, cat)
-	assert.NoError(err2)
-
-	return cat
-}
-
 // TestCatalogs creates count number of static host catalogs to the provided DB
 // with the provided project id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
@@ -111,31 +86,6 @@ func TestHosts(t testing.TB, conn *db.DB, catalogId string, count int) []*Host {
 		hosts = append(hosts, host)
 	}
 	return hosts
-}
-
-// TestSet creates a static host set in the provided DB
-// with the provided catalog id. The catalog must have been created
-// previously. Name and description are the only valid options. All other options are
-// ignored. The test will fail if any errors are encountered.
-func TestSet(t testing.TB, conn *db.DB, catalogId string, opt ...Option) *HostSet {
-	t.Helper()
-	ctx := context.Background()
-	assert := assert.New(t)
-
-	set, err := NewHostSet(ctx, catalogId, opt...)
-	assert.NoError(err)
-	assert.NotNil(set)
-
-	id, err := newHostSetId(ctx)
-	assert.NoError(err)
-	assert.NotEmpty(id)
-	set.PublicId = id
-
-	w := db.New(conn)
-	err2 := w.Create(ctx, set)
-	assert.NoError(err2)
-
-	return set
 }
 
 // TestSets creates count number of static host sets in the provided DB
