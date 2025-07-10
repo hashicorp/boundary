@@ -28,7 +28,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   Boundary to conform with RFC 5952.
   ([PR](https://github.com/hashicorp/boundary/pull/5599))
 
-* Redundant grant scopes are no longer allowed. For example, if an org scope inherits a grant from the global scope, you cannot apply the same grant directly to the org scope.
+* Redundant grant scopes are no longer allowed. For example, if an org scope inherits a grant from the global scope, you cannot apply the same grant directly to the org scope. Passing the `-repair` flag to the `boundary database migrate` command will find and remove any redundant grant scopes in the database.
   ([PR](https://github.com/hashicorp/boundary/pull/5846))
 
 ## 0.19.2 (2025/05/08)
