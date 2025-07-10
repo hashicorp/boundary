@@ -34,10 +34,14 @@ $ boundary roles remove-grant-scopes [options] [args]
 ### Command options
 
 - `-grant-scope-id=<string>` - The scope IDs that inherit grants removed from the role.
-You can specify the following values:
+  You can specify the following values:
   - `this` - Applies to the current scope.
   - `children` - Applies to all direct children of the scope and can only be used with global and org scopes.
   - `descendants` - Applies to all descendants of the scope and can only be used with the global scope.
+
+  Boundary does not allow you to create redudnant grant scopes.
+  For example, if an org scope inherits a grant from the global scope, you cannot apply the same grant directly to the org scope.
+
 - `-id=<string>` - The ID of the role you want to remove grant scopes from.
 - `-version=<int>` The version of the role to remove grant scopes from.
 If you do not specify a version, the command performs a check-and-set automatically.
