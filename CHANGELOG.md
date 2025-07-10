@@ -2,12 +2,24 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.19.3 (2025/07/10)
 
 ### New and Improved
 
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
+
+* Improved grants system performance by refactoring the IAM data model. In the previous version, Boundary always fetches all grants and grant scopes of a user to perform permissions checks. This refactor 
+   allows Boundary to only fetch the grants and grant scopes that are relevant to the current request, significantly improving performance for users with large numbers of roles and grant scopes.
+  ([PR](https://github.com/hashicorp/boundary/pull/5846))
+
+* ui: Sorting functionality added to aliases, groups, roles, scopes, targets, session recordings, sessions, users, auth methods, credential stores, and host catalogs resource tables.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2773))
+
+### Bug fixes
+
+* Fixed the `children` grant scope not behaving properly with `list-resolvable-aliases` ([PR](https://github.com/hashicorp/boundary/pull/5869/files)) ([PR](https://github.com/hashicorp/boundary/pull/5846))
+* Fixed [issue 5003](https://github.com/hashicorp/boundary/issues/5003) where resource ID grants were prioritized over `ids=*` grants, causing grants to be overly restrictive under some circumstances. ([PR](https://github.com/hashicorp/boundary/pull/5877))
 
 ### Deprecations/Changes
 
@@ -18,6 +30,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   Additionally, an input address containing an IPv6 literal may be modified by
   Boundary to conform with RFC 5952.
   ([PR](https://github.com/hashicorp/boundary/pull/5599))
+
+* Redundant grant scopes are no longer allowed. For example, if an org scope inherits a grant from the global scope, you cannot apply the same grant directly to the org scope. Passing the `-repair` flag to the `boundary database migrate` command will find and remove any redundant grant scopes in the database.
+  ([PR](https://github.com/hashicorp/boundary/pull/5846))
 
 ## 0.19.2 (2025/05/08)
 ### New and Improved
