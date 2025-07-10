@@ -13,6 +13,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
    allows Boundary to only fetch the grants and grant scopes that are relevant to the current request, significantly improving performance for users with large numbers of roles and grant scopes.
   ([PR](https://github.com/hashicorp/boundary/pull/5846))
 
+* ui: Sorting functionality added to aliases, groups, roles, scopes, targets, session recordings, sessions, users, auth methods, credential stores, and host catalogs resource tables.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2773)).
+
 ### Bug fixes
 
 * Fixed the `children` grant scope not behaving properly with `list-resolvable-aliases` ([PR](https://github.com/hashicorp/boundary/pull/5869/files)) ([PR](https://github.com/hashicorp/boundary/pull/5846))
