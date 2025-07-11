@@ -424,6 +424,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/configuration/worker-configuration',
+    destination: '/boundary/docs/workers/configure-workers/registration',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/configuration/target-aliases',
     destination: '/boundary/docs/targets/configuration',
     permanent: true,
@@ -435,7 +440,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/configuration/target-aliases/connect-target-alias',
-    destination: '/boundary/docs/targets/configuration/connect-target-alias',
+    destination: '/boundary/docs/targets/connections/connect-target-alias',
     permanent: true,
   },
   {
@@ -465,7 +470,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/connection-workflows/multi-hop',
-    destination: '/boundary/docs/targets/connections/multi-hop',
+    destination: '/boundary/docs/targets/configuration/multi-hop',
     permanent: true,
   },
   {
