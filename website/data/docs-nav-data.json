@@ -403,7 +403,7 @@
         "routes": [
           {
             "title": "Register workers",
-            "path": "workers/configure-workers/worker-configuration"
+            "path": "workers/configure-workers/registration"
           }
         ]
       }
@@ -454,8 +454,8 @@
             "path": "targets/configuration/create-target-alias"
           },
           {
-            "title": "Connect using a target alias",
-            "path": "targets/configuration/connect-target-alias"
+            "title": "Multi-hop sessions",
+            "path": "targets/configuration/multi-hop"
           }
         ]
       },
@@ -479,8 +479,8 @@
             "path": "targets/connections/workflow-ssh-proxycommand"
           },
           {
-            "title": "Multi-hop sessions",
-            "path": "targets/connections/multi-hop"
+            "title": "Connect using a target alias",
+            "path": "targets/connections/connect-target-alias"
           },
           {
             "title": "Connect using transparent sessions",
