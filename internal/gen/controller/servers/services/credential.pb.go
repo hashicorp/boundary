@@ -31,6 +31,7 @@ type Credential struct {
 	//	*Credential_UsernamePassword
 	//	*Credential_SshPrivateKey
 	//	*Credential_SshCertificate
+	//	*Credential_UsernamePasswordDomain
 	Credential    isCredential_Credential `protobuf_oneof:"credential"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -100,6 +101,15 @@ func (x *Credential) GetSshCertificate() *SshCertificate {
 	return nil
 }
 
+func (x *Credential) GetUsernamePasswordDomain() *UsernamePasswordDomain {
+	if x != nil {
+		if x, ok := x.Credential.(*Credential_UsernamePasswordDomain); ok {
+			return x.UsernamePasswordDomain
+		}
+	}
+	return nil
+}
+
 type isCredential_Credential interface {
 	isCredential_Credential()
 }
@@ -116,11 +126,17 @@ type Credential_SshCertificate struct {
 	SshCertificate *SshCertificate `protobuf:"bytes,4,opt,name=ssh_certificate,json=sshCertificate,proto3,oneof"`
 }
 
+type Credential_UsernamePasswordDomain struct {
+	UsernamePasswordDomain *UsernamePasswordDomain `protobuf:"bytes,5,opt,name=username_password_domain,json=usernamePasswordDomain,proto3,oneof"`
+}
+
 func (*Credential_UsernamePassword) isCredential_Credential() {}
 
 func (*Credential_SshPrivateKey) isCredential_Credential() {}
 
 func (*Credential_SshCertificate) isCredential_Credential() {}
+
+func (*Credential_UsernamePasswordDomain) isCredential_Credential() {}
 
 // UsernamePassword is a credential containing a username and a password.
 type UsernamePassword struct {
@@ -177,6 +193,70 @@ func (x *UsernamePassword) GetPassword() string {
 	return ""
 }
 
+// UsernamePasswordDomain is a credential containing a username, password, and domain.
+type UsernamePasswordDomain struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The username of the credential
+	Username string `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
+	// The password of the credential
+	Password string `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty"` // @gotags: `class:"secret"`
+	// The domain of the credential
+	Domain        string `protobuf:"bytes,30,opt,name=domain,proto3" json:"domain,omitempty"` // @gotags: `class:"public"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsernamePasswordDomain) Reset() {
+	*x = UsernamePasswordDomain{}
+	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsernamePasswordDomain) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsernamePasswordDomain) ProtoMessage() {}
+
+func (x *UsernamePasswordDomain) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsernamePasswordDomain.ProtoReflect.Descriptor instead.
+func (*UsernamePasswordDomain) Descriptor() ([]byte, []int) {
+	return file_controller_servers_services_v1_credential_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *UsernamePasswordDomain) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UsernamePasswordDomain) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *UsernamePasswordDomain) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
 // SshPrivateKey is a credential containing a username a private key and an optional
 // private key passphrase.
 type SshPrivateKey struct {
@@ -193,7 +273,7 @@ type SshPrivateKey struct {
 
 func (x *SshPrivateKey) Reset() {
 	*x = SshPrivateKey{}
-	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[2]
+	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -205,7 +285,7 @@ func (x *SshPrivateKey) String() string {
 func (*SshPrivateKey) ProtoMessage() {}
 
 func (x *SshPrivateKey) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[2]
+	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -218,7 +298,7 @@ func (x *SshPrivateKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SshPrivateKey.ProtoReflect.Descriptor instead.
 func (*SshPrivateKey) Descriptor() ([]byte, []int) {
-	return file_controller_servers_services_v1_credential_proto_rawDescGZIP(), []int{2}
+	return file_controller_servers_services_v1_credential_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SshPrivateKey) GetUsername() string {
@@ -258,7 +338,7 @@ type SshCertificate struct {
 
 func (x *SshCertificate) Reset() {
 	*x = SshCertificate{}
-	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[3]
+	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -270,7 +350,7 @@ func (x *SshCertificate) String() string {
 func (*SshCertificate) ProtoMessage() {}
 
 func (x *SshCertificate) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[3]
+	mi := &file_controller_servers_services_v1_credential_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -283,7 +363,7 @@ func (x *SshCertificate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SshCertificate.ProtoReflect.Descriptor instead.
 func (*SshCertificate) Descriptor() ([]byte, []int) {
-	return file_controller_servers_services_v1_credential_proto_rawDescGZIP(), []int{3}
+	return file_controller_servers_services_v1_credential_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SshCertificate) GetUsername() string {
@@ -311,18 +391,24 @@ var File_controller_servers_services_v1_credential_proto protoreflect.FileDescri
 
 const file_controller_servers_services_v1_credential_proto_rawDesc = "" +
 	"\n" +
-	"/controller/servers/services/v1/credential.proto\x12\x1econtroller.servers.services.v1\"\xc4\x02\n" +
+	"/controller/servers/services/v1/credential.proto\x12\x1econtroller.servers.services.v1\"\xb8\x03\n" +
 	"\n" +
 	"Credential\x12_\n" +
 	"\x11username_password\x18\x02 \x01(\v20.controller.servers.services.v1.UsernamePasswordH\x00R\x10usernamePassword\x12W\n" +
 	"\x0fssh_private_key\x18\x03 \x01(\v2-.controller.servers.services.v1.SshPrivateKeyH\x00R\rsshPrivateKey\x12Y\n" +
-	"\x0fssh_certificate\x18\x04 \x01(\v2..controller.servers.services.v1.SshCertificateH\x00R\x0esshCertificateB\f\n" +
+	"\x0fssh_certificate\x18\x04 \x01(\v2..controller.servers.services.v1.SshCertificateH\x00R\x0esshCertificate\x12r\n" +
+	"\x18username_password_domain\x18\x05 \x01(\v26.controller.servers.services.v1.UsernamePasswordDomainH\x00R\x16usernamePasswordDomainB\f\n" +
 	"\n" +
 	"credentialJ\x04\b\x01\x10\x02R\ruser_password\"J\n" +
 	"\x10UsernamePassword\x12\x1a\n" +
 	"\busername\x18\n" +
 	" \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x14 \x01(\tR\bpassword\"\x82\x01\n" +
+	"\bpassword\x18\x14 \x01(\tR\bpassword\"h\n" +
+	"\x16UsernamePasswordDomain\x12\x1a\n" +
+	"\busername\x18\n" +
+	" \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x14 \x01(\tR\bpassword\x12\x16\n" +
+	"\x06domain\x18\x1e \x01(\tR\x06domain\"\x82\x01\n" +
 	"\rSshPrivateKey\x12\x1a\n" +
 	"\busername\x18\n" +
 	" \x01(\tR\busername\x12\x1f\n" +
@@ -348,22 +434,24 @@ func file_controller_servers_services_v1_credential_proto_rawDescGZIP() []byte {
 	return file_controller_servers_services_v1_credential_proto_rawDescData
 }
 
-var file_controller_servers_services_v1_credential_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_servers_services_v1_credential_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_controller_servers_services_v1_credential_proto_goTypes = []any{
-	(*Credential)(nil),       // 0: controller.servers.services.v1.Credential
-	(*UsernamePassword)(nil), // 1: controller.servers.services.v1.UsernamePassword
-	(*SshPrivateKey)(nil),    // 2: controller.servers.services.v1.SshPrivateKey
-	(*SshCertificate)(nil),   // 3: controller.servers.services.v1.SshCertificate
+	(*Credential)(nil),             // 0: controller.servers.services.v1.Credential
+	(*UsernamePassword)(nil),       // 1: controller.servers.services.v1.UsernamePassword
+	(*UsernamePasswordDomain)(nil), // 2: controller.servers.services.v1.UsernamePasswordDomain
+	(*SshPrivateKey)(nil),          // 3: controller.servers.services.v1.SshPrivateKey
+	(*SshCertificate)(nil),         // 4: controller.servers.services.v1.SshCertificate
 }
 var file_controller_servers_services_v1_credential_proto_depIdxs = []int32{
 	1, // 0: controller.servers.services.v1.Credential.username_password:type_name -> controller.servers.services.v1.UsernamePassword
-	2, // 1: controller.servers.services.v1.Credential.ssh_private_key:type_name -> controller.servers.services.v1.SshPrivateKey
-	3, // 2: controller.servers.services.v1.Credential.ssh_certificate:type_name -> controller.servers.services.v1.SshCertificate
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 1: controller.servers.services.v1.Credential.ssh_private_key:type_name -> controller.servers.services.v1.SshPrivateKey
+	4, // 2: controller.servers.services.v1.Credential.ssh_certificate:type_name -> controller.servers.services.v1.SshCertificate
+	2, // 3: controller.servers.services.v1.Credential.username_password_domain:type_name -> controller.servers.services.v1.UsernamePasswordDomain
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_controller_servers_services_v1_credential_proto_init() }
@@ -375,6 +463,7 @@ func file_controller_servers_services_v1_credential_proto_init() {
 		(*Credential_UsernamePassword)(nil),
 		(*Credential_SshPrivateKey)(nil),
 		(*Credential_SshCertificate)(nil),
+		(*Credential_UsernamePasswordDomain)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -382,7 +471,7 @@ func file_controller_servers_services_v1_credential_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_controller_servers_services_v1_credential_proto_rawDesc), len(file_controller_servers_services_v1_credential_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
