@@ -1,4 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
 
 scenario "e2e_aws_rdp_target" {
   terraform_cli = terraform_cli.default

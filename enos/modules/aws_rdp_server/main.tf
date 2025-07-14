@@ -19,8 +19,8 @@ data "aws_ami" "infra" {
   most_recent = true
   owners      = ["amazon"]
   filter {
-    name     = "name"
-    values   = ["Windows_Server-${var.server_version}-English-Full-Base*"]
+    name   = "name"
+    values = ["Windows_Server-${var.server_version}-English-Full-Base*"]
   }
 }
 
