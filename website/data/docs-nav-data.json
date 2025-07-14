@@ -180,34 +180,34 @@
         "href": "hcp/get-started/deploy-and-login"
       },
       {
-        "title": "Terraform patterns",
+        "title": "Using Terraform",
         "routes": [
           {
             "title": "Overview",
             "path": "deploy/terraform-patterns"
           },
           {
-            "title": "Scopes",
+            "title": "Configure scopes",
             "path": "deploy/terraform-patterns/terraform-scopes"
           },
           {
-            "title": "Users and auth methods",
+            "title": "Configure users and auth methods",
             "path": "deploy/terraform-patterns/terraform-users-and-auth-methods"
           },
           {
-            "title": "Groups and RBAC",
+            "title": "Configure groups and RBAC",
             "path": "deploy/terraform-patterns/terraform-groups-and-rbac"
           },
           {
-            "title": "Hosts and host management",
+            "title": "Configure hosts and host management",
             "path": "deploy/terraform-patterns/terraform-hosts-and-host-management"
           },
           {
-            "title": "Credentials and credential stores",
+            "title": "Configure credentials and credential stores",
             "path": "deploy/terraform-patterns/terraform-credentials-and-credential-stores"
           },
           {
-            "title": "Session recording",
+            "title": "Configure session recording",
             "badge": {
               "text": "HCP/ENT",
               "type": "outlined",
@@ -216,7 +216,7 @@
             "path": "deploy/terraform-patterns/terraform-session-recording"
           },
           {
-            "title": "Targets",
+            "title": "Configure targets",
             "path": "deploy/terraform-patterns/terraform-targets"
           }
         ]
@@ -541,15 +541,6 @@
         "title": "Record and play back session activity",
         "routes": [
           {
-            "title": "Overview",
-            "path": "session-recording/configuration",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            }
-          },
-          {
             "title": "Configure workers for storage",
             "path": "session-recording/configuration/configure-worker-storage",
             "badge": {
@@ -632,15 +623,6 @@
         "title": "Implement session recording compliance standards",
         "routes": [
           {
-            "title": "Overview",
-            "path": "session-recording/compliance",
-            "badge": {
-              "text": "HCP/ENT",
-              "type": "outlined",
-              "color": "neutral"
-            }
-          },
-          {
             "title": "Configure storage policies",
             "path": "session-recording/compliance/configure-storage-policy",
             "badge": {
@@ -710,7 +692,7 @@
         "title": "Limit access to resources using RBAC",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Permissions",
             "path": "rbac/permissions"
           },
           {

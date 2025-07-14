@@ -5,7 +5,7 @@ description: >-
   Discover resources to help you learn more about maintaining and operating Boundary, including information about metrics and health.
 ---
 
-# Monitor Boundary overview
+# Monitor Boundary
 
 Visibility into various components of Boundary plays an important role in
 ensuring the health of its controllers and workers.
@@ -32,13 +32,22 @@ You can configure TCP and Unix listeners.
 Boundary also supports custom response headers for any requests made on controllers.
 You can define headers based on the status code that is returned.
 
+## Tutorials
+
+To learn how to configure event filtering and sinks, complete the [Event filtering and sink configuration](/boundary/tutorials/self-managed-deployment/event-logging) tutorial.
+
+To learn how to configure metrics collection, complete the [Visualize metrics with Prometheus](/boundary/tutorials/self-managed-deployment/prometheus-metrics) tutorial.
+
 ## More information
 
-Refer to the following topics for information on the various ways to monitor Boundary:
+Refer to the following topics for the parameters you use to configure the addresses and ports on which Boundary responds to requests:
 
 - [Listeners](/boundary/docs/monitor/listeners)
    - [TCP listeners](/boundary/docs/monitor/listeners/tcp)
    - [Unix listeners](/boundary/docs/monitor/listeners/unix)
+
+Refer to the following topics for more information on the various ways to monitor Boundary:
+
 - [Monitor metrics](/boundary/docs/monitor/metrics)
 - [Monitor health](/boundary/docs/monitor/health)
 - [Monitor events](/boundary/docs/monitor/events)
