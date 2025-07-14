@@ -17,11 +17,11 @@ When you update a storage policy, new session recordings within a scope where th
 
 This page describes the process for applying updated storage policies to existing recordings within a scope.
 
-For more information about setting up storage bucket policies, refer to the [configure storage bucket policies](/boundary/docs/configuration/session-recording/configure-storage-policy) page.
+For more information about setting up storage bucket policies, refer to the [configure storage bucket policies](/boundary/docs/session-recording/compliance/configure-storage-policy) page.
 
 ## Requirements
 
-This page continues the workflows outlined in the [configure storage bucket policies](/boundary/docs/configuration/session-recording/configure-storage-policy) page. The requirements outlined in that page are prerequisites for the workflow defined below.
+This page continues the workflows outlined in the [configure storage bucket policies](/boundary/docs/session-recording/compliance/configure-storage-policy) page. The requirements outlined in that page are prerequisites for the workflow defined below.
 
 To apply an updated storage policy to existing session recordings, you first need:
 
@@ -39,7 +39,7 @@ A storage policy defines how long the recording within a scope should retain its
 
 Over time, you may update storage policies to reflect new organizational requirements, compliance changes, or cost management strategies. While updated policies automatically apply to new session recordings within the scopes associated with that policy, existing recordings maintain the previous policies unless you apply the new policy directly to those recordings.
 
-In the [configure storage bucket policies](/boundary/docs/configuration/session-recording/configure-storage-policy) page, the following policy was created to implement compliance with SOC-2 retention requirement of 7 years:
+In the [configure storage bucket policies](/boundary/docs/session-recording/compliance/configure-storage-policy) page, the following policy was created to implement compliance with SOC-2 retention requirement of 7 years:
 
 - Name: `soc2-policy`
 - Description: `SOC 2 compliant storage policy for session recordings`
@@ -194,7 +194,7 @@ $ curl --header "Content-Type: application/json" \
 </Tab>
 </Tabs>
 
-This policy was applied to the `prod-databases` org in the [configure storage bucket policies](/boundary/docs/configuration/session-recording/configure-storage-policy) page.
+This policy was applied to the `prod-databases` org in the [configure storage bucket policies](/boundary/docs/session-recording/compliance/configure-storage-policy) page.
 
 New recordings within the `prod-databases` org will automatically have the updated version of the `soc2-policy` applied.
 

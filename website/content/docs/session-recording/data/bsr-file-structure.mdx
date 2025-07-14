@@ -21,7 +21,7 @@ If you use a multiplexed protocol, there are subdirectories for the channels.
 Every directory contains a SHA256SUMS and SHA256SUMS.sig file, to be used for cryptographically verifying the contents of
 that directory. The SHA256SUMS file contains rows of file names paired with a checksum for file contents. The
 SHA256SUMS.sign is a copy of the SHA256SUMS file, signed with the BSR’s private key. For more information on verifying a
-session recording, refer to [Validating the integrity of session recordings](/boundary/docs/operations/session-recordings/validate-session-recordings).
+session recording, refer to [Validating the integrity of session recordings](/boundary/docs/session-recording/compliance/validate-session-recordings).
 
 The example BSR below is for a multiplexed session recording with the ID `sr_iNCdGSREeX`. The session recording contains one connection,
 `cr_3bB78W53Y9`. Connection `cr_3bB78W53Y9` contains two channels, `chr_VUnVuVnITu` and `chr_nITuVUnVuV`.
@@ -268,4 +268,4 @@ requests: inbound
 }
 ```
 
-For more information, refer to the [overview of configuring session recording](/boundary/docs/configuration/session-recording).
+For more information, refer to the [overview of session recording](/boundary/docs/session-recording).

@@ -7,11 +7,15 @@ description: >-
 
 # Overview of workers
 
+Workers are primarily used as network proxies for Boundary sessions, they allow you to access private targets. Instead of exposing a private network to the public, or allowing users to have access to entire private networks, workers create a direct network tunnel between users and targets.
+
+Workers are services that can run on a container or virtual machine. You should deploy them strategically within networks to provide access to targets.
+In all editions of Boundary, workers are fully self-managed and can be deployed anywhere.
+In HCP Boundary, HCP-managed workers are automatically deployed with the cluster.
+
 All workers within Boundary use certificates and encryption keys to identify
 themselves and protect data in transit. However, there are three different
 ways to register them so that registration of workers can fit into any workflow: controller-led, worker-led, and via external KMS.
-
-The sub-pages linked at the bottom of this page explain the differences in their configuration.
 
 You must register workers using the worker-led or controller-led methods in the system with an API call. These workers require storage on disk to store the current set of credentials. Workers using an external KMS auto-register after authenticating. This makes them an easy mechanism to use for automatic scaling.
 This also means they do not need to store
@@ -112,9 +116,22 @@ upstream worker and outbound access to the destination host or service.
 
 ## Tutorials
 
-Refer to the [Self-Managed Worker Registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage Workers.
+Refer to the [Self-managed worker registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage Workers.
 
-Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial to learn how to configure a multi-hop session.
+Refer to the [Manage multi-hop sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial to learn how to configure a multi-hop session.
 
 [target]: /boundary/docs/domain-model/targets
 [target worker filters]: /boundary/docs/secure/worker-tags
+
+## More information
+
+To learn more about workers and deployment, see:
+
+* [Worker configuration](/boundary/docs/workers)
+* [Recommended architecture](/boundary/docs/architecture/recommended-architecture)
+* [Worker system requirements](/boundary/docs/architecture/system-requirements)
+* [Worker management tutorials](/boundary/tutorials/worker-management)
+
+## Next steps
+
+Register workers to ensure they can authenticate to Boundary.

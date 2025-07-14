@@ -510,12 +510,12 @@ module.exports = [
   },
   {
     source: '/boundary/docs/configuration/session-recording',
-    destination: '/boundary/docs/session-recording/configuration',
+    destination: '/boundary/docs/session-recording',
     permanent: true
   },
   {
     source: '/boundary/docs/configuration/session-recording/index',
-    destination: '/boundary/docs/session-recording/configuration/index',
+    destination: '/boundary/docs/session-recording/index',
     permanent: true
   },
   {
@@ -570,12 +570,12 @@ module.exports = [
   },
   {
     source: '/boundary/docs/monitor/session-recordings',
-    destination: '/boundary/docs/session-recordings/compliance',
+    destination: '/boundary/docs/session-recording',
     permanent: true
   },
   {
     source: '/boundary/docs/monitor/session-recordings/index',
-    destination: '/boundary/docs/session-recordings/compliance/index',
+    destination: '/boundary/docs/session-recording/index',
     permanent: true
   },
   {
