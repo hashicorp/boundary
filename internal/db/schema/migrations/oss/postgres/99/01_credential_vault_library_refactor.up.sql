@@ -49,6 +49,7 @@ begin;
     'a row in the credential_vault_library table during the time range in the valid_range column.';
 
   -- Updates the function defined in 71/16_recording_dynamic_credential.up.sql
+  -- Updated in 100/01_credential_vault_ldap_library.up.sql
   drop trigger insert_recording_dynamic_credentials on recording_session;
   drop function insert_recording_dynamic_credentials();
   create function insert_recording_dynamic_credentials() returns trigger
@@ -262,6 +263,7 @@ begin;
   --   > credential_vault_library_hst_aggregate: Renamed to credential_vault_generic_library_hst_aggregate.
 
   -- Replaces view defined in 98/04_rdp_targets.up.sql
+  -- Replaced in 100/01_credential_vault_ldap_library.up.sql
   drop view whx_credential_dimension_source;
   create view whx_credential_dimension_source as
     with vault_generic_library as (

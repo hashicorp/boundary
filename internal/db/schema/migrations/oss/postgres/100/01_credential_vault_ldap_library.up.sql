@@ -250,4 +250,257 @@ insert into oplog_ticket (name, version)
 values
     ('credential_vault_ldap_library', 1);
 
+  create table credential_vault_ldap_library_hst (
+    public_id wt_public_id not null,
+    project_id wt_public_id not null,
+    store_id wt_public_id not null,
+    name wt_name,
+    description wt_description,
+    vault_path text not null,
+    credential_type text not null,
+    history_id wt_url_safe_id default wt_url_safe_id() primary key
+      constraint credential_library_history_base_fkey
+        references credential_library_history_base (history_id)
+        on delete cascade
+        on update cascade,
+    valid_range tstzrange not null default tstzrange(current_timestamp, null),
+    constraint credential_vault_ldap_library_hst_valid_range_excl
+      exclude using gist (public_id with =, valid_range with &&)
+  );
+  comment on table credential_vault_ldap_library_hst is
+    'credential_vault_ldap_library_hst is a history table where each row contains values from a row '
+    'in the credential_vault_ldap_library table during the time range in the valid_range column';
+
+  create trigger insert_credential_library_history_subtype before insert on credential_vault_ldap_library_hst
+    for each row execute function insert_credential_library_history_subtype();
+
+  create trigger delete_credential_library_history_subtype after delete on credential_vault_ldap_library_hst
+    for each row execute function delete_credential_library_history_subtype();
+
+  create trigger hst_on_insert after insert on credential_vault_ldap_library
+    for each row execute function hst_on_insert();
+
+  create trigger hst_on_update after update on credential_vault_ldap_library
+    for each row execute function hst_on_update();
+
+  create trigger hst_on_delete after delete on credential_vault_ldap_library
+    for each row execute function hst_on_delete();
+
+  create view credential_vault_ldap_library_hst_aggregate as
+  select
+    rdc.recording_id,
+    vll.public_id,
+    vll.name,
+    vll.description,
+    vll.vault_path,
+    vll.credential_type,
+    vsh.public_id as store_public_id,
+    vsh.project_id as store_project_id,
+    vsh.name as store_name,
+    vsh.description as store_description,
+    vsh.vault_address as store_vault_address,
+    vsh.namespace as store_namespace,
+    vsh.tls_server_name as store_tls_server_name,
+    vsh.tls_skip_verify as store_tls_skip_verify,
+    vsh.worker_filter as store_worker_filter,
+    string_agg(distinct rdc.credential_purpose, '|') as purposes
+  from credential_vault_ldap_library_hst as vll
+     left join recording_dynamic_credential as rdc on vll.history_id = rdc.credential_library_hst_id
+     join credential_vault_store_hst as vsh on rdc.credential_vault_store_hst_id = vsh.history_id
+  group by vll.history_id, rdc.recording_id, vsh.history_id;
+  comment on view credential_vault_ldap_library_hst_aggregate is
+    'credential_vault_ldap_library_hst_aggregate contains the vault ldap library history data along with its store and purpose data.';
+
+  create table credential_vault_ldap_library_deleted (
+    public_id wt_public_id primary key,
+    delete_time wt_timestamp not null
+  );
+  comment on table credential_vault_ldap_library_deleted is
+    'credential_vault_ldap_library_deleted holds the ID and delete_time '
+    'of every deleted vault ldap credential'
+    'It is automatically trimmed of records older than 30 days by a job.';
+
+  create index credential_vault_ldap_library_deleted_delete_time_idx on credential_vault_ldap_library_deleted (delete_time);
+
+  create trigger insert_deleted_id after delete on credential_vault_ldap_library
+    for each row execute function insert_deleted_id('credential_vault_ldap_library_deleted');
+
+  -- Replaces the function in 99/01_credential_vault_library_refactor.up.sql
+  drop trigger insert_recording_dynamic_credentials on recording_session;
+  drop function insert_recording_dynamic_credentials();
+  create function insert_recording_dynamic_credentials() returns trigger
+  as $$
+  begin
+    with
+    session_recording(session_id, recording_id) as (
+      select session_id, public_id
+        from recording_session
+       where session_id = new.session_id
+    ),
+    session_dynamic_creds(library_id, purpose, recording_id) as (
+      select library_id, credential_purpose, recording_id
+        from session_credential_dynamic
+        join session_recording using (session_id)
+    ),
+    library_history(public_id, store_id, library_hst_id, valid_range) as (
+      select public_id, store_id, history_id, valid_range
+        from credential_vault_generic_library_hst
+       union
+      select public_id, store_id, history_id, valid_range
+        from credential_vault_ssh_cert_library_hst
+       union
+      select public_id, store_id, history_id, valid_range
+        from credential_vault_ldap_library_hst
+    ),
+    final(recording_id, library_id, store_id, library_hst_id, store_hst_id, cred_purpose) as (
+      select sdc.recording_id, lib.public_id, lib.store_id, lib.library_hst_id, store_hst.history_id, sdc.purpose
+        from library_history as lib
+        join credential_vault_store_hst as store_hst on lib.store_id = store_hst.public_id
+         and store_hst.valid_range @> current_timestamp
+        join session_dynamic_creds as sdc on lib.public_id = sdc.library_id
+       where lib.public_id in (select library_id from session_dynamic_creds)
+         and lib.valid_range @> current_timestamp
+    )
+    insert into recording_dynamic_credential
+          (recording_id, credential_vault_store_hst_id, credential_library_hst_id, credential_purpose)
+    select recording_id, store_hst_id,                  library_hst_id,            cred_purpose
+      from final;
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function insert_recording_dynamic_credentials is
+    'insert_recording_dynamic_credentials is an after insert trigger for the recording_session table.';
+
+  create trigger insert_recording_dynamic_credentials after insert on recording_session
+    for each row execute procedure insert_recording_dynamic_credentials();
+
+  -- Replaces view defined in 99/01_credential_vault_library_refactor.up.sql
+  drop view whx_credential_dimension_source;
+  create view whx_credential_dimension_source as
+    with vault_generic_library as (
+      select vcl.public_id                                        as public_id,
+             'vault generic credential library'                   as type,
+             coalesce(vcl.name,        'None')                    as name,
+             coalesce(vcl.description, 'None')                    as description,
+             vcl.vault_path                                       as vault_path,
+             vcl.http_method                                      as http_method,
+             case
+               when vcl.http_method = 'GET' then 'Not Applicable'
+               else coalesce(vcl.http_request_body::text, 'None')
+             end                                                  as http_request_body,
+             'Not Applicable'                                     as username,
+             'Not Applicable'                                     as key_type_and_bits
+        from credential_vault_generic_library as vcl
+    ),
+    vault_ssh_cert_library as (
+      select vsccl.public_id                                      as public_id,
+             'vault ssh certificate credential library'           as type,
+             coalesce(vsccl.name,        'None')                  as name,
+             coalesce(vsccl.description, 'None')                  as description,
+             vsccl.vault_path                                     as vault_path,
+             'Not Applicable'                                     as http_method,
+             'Not Applicable'                                     as http_request_body,
+             vsccl.username                                       as username,
+             case
+               when vsccl.key_type = 'ed25519' then vsccl.key_type
+               else vsccl.key_type || '-' || vsccl.key_bits::text
+             end                                                  as key_type_and_bits
+        from credential_vault_ssh_cert_library as vsccl
+    ),
+    vault_ldap_library as (
+      select vldapcl.public_id                                    as public_id,
+             'vault ldap credential library'                      as type,
+             coalesce(vldapcl.name,        'None')                as name,
+             coalesce(vldapcl.description, 'None')                as description,
+             vldapcl.vault_path                                   as vault_path,
+             'Not Applicable'                                     as http_method,
+             'Not Applicable'                                     as http_request_body,
+             'Not Applicable'                                     as username,
+             'Not Applicable'                                     as key_type_and_bits
+        from credential_vault_ldap_library as vldapcl
+    ),
+    final as (
+          select s.public_id                                                                         as session_id,
+                 scd.credential_purpose                                                              as credential_purpose,
+                 cl.public_id                                                                        as credential_library_id,
+                 coalesce(vcl.type,              vsccl.type,              vldapcl.type)              as credential_library_type,
+                 coalesce(vcl.name,              vsccl.name,              vldapcl.name)              as credential_library_name,
+                 coalesce(vcl.description,       vsccl.description,       vldapcl.description)       as credential_library_description,
+                 coalesce(vcl.vault_path,        vsccl.vault_path,        vldapcl.vault_path)        as credential_library_vault_path,
+                 coalesce(vcl.http_method,       vsccl.http_method,       vldapcl.http_method)       as credential_library_vault_http_method,
+                 coalesce(vcl.http_request_body, vsccl.http_request_body, vldapcl.http_request_body) as credential_library_vault_http_request_body,
+                 coalesce(vcl.username,          vsccl.username,          vldapcl.username)          as credential_library_username,
+                 coalesce(vcl.key_type_and_bits, vsccl.key_type_and_bits, vldapcl.key_type_and_bits) as credential_library_key_type_and_bits,
+                 cs.public_id                                                                        as credential_store_id,
+                 case
+                   when vcs is null then 'None'
+                   else 'vault credential store'
+                 end                                                                                 as credential_store_type,
+                 coalesce(vcs.name,              'None')                                             as credential_store_name,
+                 coalesce(vcs.description,       'None')                                             as credential_store_description,
+                 coalesce(vcs.namespace,         'None')                                             as credential_store_vault_namespace,
+                 coalesce(vcs.vault_address,     'None')                                             as credential_store_vault_address,
+                 t.public_id                                                                         as target_id,
+                 case
+                   when tt.type = 'tcp' then 'tcp target'
+                   when tt.type = 'ssh' then 'ssh target'
+                   when tt.type = 'rdp' then 'rdp target'
+                   else 'Unknown'
+                 end                                                                                 as target_type,
+                 coalesce(tt.name,               'None')                                             as target_name,
+                 coalesce(tt.description,        'None')                                             as target_description,
+                 coalesce(tt.default_port,       0)                                                  as target_default_port_number,
+                 tt.session_max_seconds                                                              as target_session_max_seconds,
+                 tt.session_connection_limit                                                         as target_session_connection_limit,
+                 p.public_id                                                                         as project_id,
+                 coalesce(p.name,                'None')                                             as project_name,
+                 coalesce(p.description,         'None')                                             as project_description,
+                 o.public_id                                                                         as organization_id,
+                 coalesce(o.name,                'None')                                             as organization_name,
+                 coalesce(o.description,         'None')                                             as organization_description
+            from session_credential_dynamic as scd
+            join session                    as s       on scd.session_id = s.public_id
+            join credential_library         as cl      on scd.library_id = cl.public_id
+            join credential_store           as cs      on cl.store_id    = cs.public_id
+            join target                     as t       on s.target_id    = t.public_id
+            join iam_scope                  as p       on p.public_id    = t.project_id and p.type = 'project'
+            join iam_scope                  as o       on p.parent_id    = o.public_id  and o.type = 'org'
+       left join vault_generic_library      as vcl     on cl.public_id   = vcl.public_id
+       left join vault_ssh_cert_library     as vsccl   on cl.public_id   = vsccl.public_id
+       left join vault_ldap_library         as vldapcl on cl.public_id   = vldapcl.public_id
+       left join credential_vault_store     as vcs     on cs.public_id   = vcs.public_id
+       left join target_all_subtypes        as tt      on t.public_id    = tt.public_id
+    )
+    select session_id,
+           credential_purpose,
+           credential_library_id,
+           credential_library_type,
+           credential_library_name,
+           credential_library_description,
+           credential_library_vault_path,
+           credential_library_vault_http_method,
+           credential_library_vault_http_request_body,
+           credential_library_username,
+           credential_library_key_type_and_bits,
+           credential_store_id,
+           credential_store_type,
+           credential_store_name,
+           credential_store_description,
+           credential_store_vault_namespace,
+           credential_store_vault_address,
+           target_id,
+           target_type,
+           target_name,
+           target_description,
+           target_default_port_number,
+           target_session_max_seconds,
+           target_session_connection_limit,
+           project_id,
+           project_name,
+           project_description,
+           organization_id,
+           organization_name,
+           organization_description
+      from final;
+
 commit;
