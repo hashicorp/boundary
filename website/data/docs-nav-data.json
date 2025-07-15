@@ -439,10 +439,6 @@
     "title": "Configure targets",
     "routes": [
       {
-        "title": "Overview",
-        "path": "targets"
-      },
-      {
         "title": "Set up a target",
         "routes": [
           {

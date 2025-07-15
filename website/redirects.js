@@ -373,8 +373,23 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/operations',
+    destination: '/boundary/docs/monitor',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/operations/manage-recorded-sessions',
     destination: '/boundary/docs/session-recording/configuration/manage-recorded-sessions',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/operations/metrics',
+    destination: '/boundary/docs/monitor/health',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/operations/health',
+    destination: '/boundary/docs/monitor/health',
     permanent: true,
   },
   {
@@ -396,6 +411,26 @@ module.exports = [
   {
     source: '/boundary/docs/configuration/worker/worker-configuration',
     destination: '/boundary/docs/configure-workers/worker-configuration',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/events',
+    destination: '/boundary/docs/monitor/events',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/events/common',
+    destination: '/boundary/docs/monitor/events/common',
+    permanent: true,
+  },
+  {
+    source: '/boundayr/docs/configuration/events/file',
+    destination: '/boundary/docs/monitor/events/file',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/events/stderr',
+    destination: '/boundary/docs/monitor/events/stderr',
     permanent: true,
   },
   {
