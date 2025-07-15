@@ -1,0 +1,33 @@
+<Tabs>
+<Tab heading="UI" group="ui">
+
+Example of a filter configured on a target in the Admin UI:
+
+![Example of a target ingress worker filter](/img/ui/target-ingress-worker-filter_light.png#light-theme-only)
+![Example of a target ingress worker filter](/img/ui/target-ingress-worker-filter_dark.png#dark-theme-only)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Example of a filter configured on a target with the CLI:
+
+```
+$ boundary targets update tcp -id tssh_1234567890 -egress-worker-filter='"prod" in "/tags/type"'
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Example of a filter configured on a target with Terraform:
+
+```hcl
+resource "boundary_target" "aws-webservers-prod" {
+  type                 = "ssh"
+  name                 = "aws-web-prod"
+  description          = "AWS EC2 Targets"
+  egress_worker_filter = "\"prod\" in \"/tags/type\""
+}
+```
+
+</Tab>
+</Tabs>

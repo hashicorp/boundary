@@ -1,0 +1,20 @@
+---
+layout: docs
+page_title: Configure a worker filter
+description: >-
+  Learn about configuring a filter to control which workers are allowed to manage a session.
+---
+
+# Configure a worker filter
+
+Once workers have tags, you can use these tags to control which
+workers are allowed to manage a given session by specifying worker filter attributes
+when you configure [targets](/boundary/docs/domain-model/targets).
+
+The `egress_worker_filter` attribute controls which workers are used for egress to a target. This is the worker
+that accesses the target.
+
+The `ingress_worker_filter`<sup>HCP/ENT</sup> attribute controls which workers are used for ingress to a target.
+This is the worker a client connects to when initiating a connection to a target.
+
+@include '/workers/worker-filter-for-targets.mdx'
