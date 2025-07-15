@@ -114,12 +114,12 @@ module.exports = [
   },
   {
     source: '/boundary/docs/install-boundary/configure-workers',
-    destination: '/boundary/docs/deploy/self-managed/configure-workers',
+    destination: '/boundary/docs/deploy/self-managed/deploy-workers',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/self-managed/configure-workers',
-    destination: '/boundary/docs/deploy/self-managed/configure-workers',
+    destination: '/boundary/docs/deploy/self-managed/deploy-workers',
     permanent: true,
   },
   {
@@ -350,7 +350,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/filtering/worker-tags',
-    destination: '/boundary/docs/secure/worker-tags',
+    destination: '/boundary/docs/workers/worker-tags',
     permanent: true,
   },
   {
@@ -365,7 +365,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/security/worker-tags',
-    destination: '/boundary/docs/secure/worker-tags',
+    destination: '/boundary/docs/workers/worker-tags',
   },
   {
     source: '/boundary/docs/concepts/service-discovery',
@@ -410,7 +410,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/configuration/worker/worker-configuration',
-    destination: '/boundary/docs/configure-workers/worker-configuration',
+    destination: '/boundary/docs/workers/registration',
     permanent: true,
   },
   {
@@ -445,22 +445,22 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/host-discovery/aws',
-    destination: '/boundary/docs/hosts/discovery/aws',
+    destination: '/boundary/docs/hosts/aws',
     permanent: true,
   },
   {
     source: '/boundary/docs/concepts/host-discovery/azure',
-    destination: '/boundary/docs/hosts/discovery/azure',
+    destination: '/boundary/docs/hosts/azure',
     permanent: true,
   },
   {
     source: '/boundary/docs/concepts/host-discovery/gcp',
-    destination: '/boundary/docs/hosts/discovery/gcp',
+    destination: '/boundary/docs/hosts/gcp',
     permanent: true,
   },
   {
     source: '/boundary/docs/configuration/worker-configuration',
-    destination: '/boundary/docs/workers/configure-workers/registration',
+    destination: '/boundary/docs/workers/registration',
     permanent: true,
   },
   {
@@ -505,7 +505,12 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/connection-workflows/multi-hop',
-    destination: '/boundary/docs/targets/configuration/multi-hop',
+    destination: '/boundary/docs/workers/multi-hop',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/connection-workflows/multi-hop',
+    destination: '/boundary/docs/workers/multi-hop/index',
     permanent: true,
   },
   {

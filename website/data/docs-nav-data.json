@@ -157,8 +157,8 @@
             "path": "deploy/self-managed/configure-controllers"
           },
           {
-            "title": "Configure workers",
-            "path": "deploy/self-managed/configure-workers"
+            "title": "Deploy workers",
+            "path": "deploy/self-managed/deploy-workers"
           },
           {
             "title": "Initialize Boundary",
@@ -238,10 +238,6 @@
             "path": "secure/encryption/connections-tls"
           }
         ]
-      },
-      {
-        "title": "Control access using worker tags",
-        "path": "secure/worker-tags"
       }
     ]
   },
@@ -399,13 +395,52 @@
         "path": "workers"
       },
       {
-        "title": "Provide access to hosts in my network",
+        "title": "Create the worker configuration",
+        "path": "workers/create"
+      },
+      {
+        "title": "Register workers",
+        "path": "workers/registration"
+      },
+      {
+        "title": "Configure multi-hop sessions",
         "routes": [
           {
-            "title": "Register workers",
-            "path": "workers/configure-workers/registration"
+            "title": "Multi-hop sessions",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "workers/multi-hop"
+          },
+          {
+            "title": "On Boundary Enterprise",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "workers/multi-hop/enterprise"
+          },
+          {
+            "title": "On HashiCorp Cloud Platform (HCP)",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "workers/multi-hop/hcp"
           }
         ]
+      },
+      {
+        "title": "Route traffic through a worker",
+        "path": "workers/worker-tags"
+      },
+      {
+        "title": "Configure a worker filter",
+        "path": "workers/filters"
       }
     ]
   },
@@ -417,21 +452,16 @@
         "path": "hosts"
       },
       {
-        "title": "Sync hosts from my cloud provider",
-        "routes": [
-          {
-            "title": "AWS dynamic hosts",
-            "path": "hosts/discovery/aws"
-          },
-          {
-            "title": "Azure dynamic hosts",
-            "path": "hosts/discovery/azure"
-          },
-          {
-            "title": "GCP dynamic hosts",
-            "path": "hosts/discovery/gcp"
-          }
-        ]
+        "title": "Sync AWS hosts",
+        "path": "hosts/aws"
+      },
+      {
+        "title": "Sync Azure hosts",
+        "path": "hosts/azure"
+      },
+      {
+        "title": "Sync GCP hosts",
+        "path": "hosts/gcp"
       }
     ]
   },
@@ -448,10 +478,6 @@
           {
             "title": "Create a target alias",
             "path": "targets/configuration/create-target-alias"
-          },
-          {
-            "title": "Multi-hop sessions",
-            "path": "targets/configuration/multi-hop"
           }
         ]
       },
