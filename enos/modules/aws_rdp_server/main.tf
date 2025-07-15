@@ -65,6 +65,9 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
+    ])
   }
 
   ingress {
@@ -74,6 +77,9 @@ resource "aws_security_group" "rdp_ingress" {
     cidr_blocks = flatten([
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)],
     ])
   }
 
@@ -85,6 +91,9 @@ resource "aws_security_group" "rdp_ingress" {
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
     ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
+    ])
   }
 
   ingress {
@@ -94,6 +103,9 @@ resource "aws_security_group" "rdp_ingress" {
     cidr_blocks = flatten([
       formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses),
       join(",", data.aws_vpc.infra.cidr_block_associations.*.cidr_block),
+    ])
+    ipv6_cidr_blocks = flatten([
+      [for ip in coalesce(data.enos_environment.current.public_ipv6_addresses, []) : cidrsubnet("${ip}/64", 0, 0)]
     ])
   }
 }
@@ -111,10 +123,11 @@ resource "aws_security_group" "allow_all_internal" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
 }
 
@@ -135,6 +148,7 @@ resource "aws_instance" "rdp_target" {
   vpc_security_group_ids = [aws_security_group.rdp_ingress.id, aws_security_group.allow_all_internal.id]
   key_name               = aws_key_pair.rdp-key.key_name
   subnet_id              = data.aws_subnets.infra.ids[0]
+  ipv6_address_count     = 1
 
   root_block_device {
     volume_type           = "gp2"
@@ -142,6 +156,7 @@ resource "aws_instance" "rdp_target" {
     delete_on_termination = "true"
     encrypted             = true
   }
+
 
   user_data_replace_on_change = true
 
@@ -172,4 +187,8 @@ locals {
 resource "time_sleep" "wait_10_minutes" {
   depends_on      = [aws_instance.rdp_target]
   create_duration = "10m"
+}
+
+output "ipv6" {
+  value = flatten(aws_instance.rdp_target.*.ipv6_addresses)
 }

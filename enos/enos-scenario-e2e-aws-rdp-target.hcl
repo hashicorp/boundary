@@ -11,7 +11,6 @@ scenario "e2e_aws_rdp_target" {
 
   matrix {
     rdp_server = ["2016", "2019", "2022", "2025"]
-    ip_version = ["4", "dual"]
   }
 
   locals {
@@ -35,7 +34,7 @@ scenario "e2e_aws_rdp_target" {
   }
 
   step "create_base_infra" {
-    module = matrix.ip_version == "4" ? module.aws_vpc : module.aws_vpc_ipv6
+    module = module.aws_vpc_ipv6
 
     depends_on = [
       step.find_azs,
@@ -77,5 +76,9 @@ scenario "e2e_aws_rdp_target" {
 
   output "rdp_target_private_ip" {
     value = step.create_rdp_server.private_ip
+  }
+
+  output "rdp_target_ipv6" {
+    value = step.create_rdp_server.ipv6
   }
 }
