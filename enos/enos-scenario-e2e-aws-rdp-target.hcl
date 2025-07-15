@@ -15,18 +15,12 @@ scenario "e2e_aws_rdp_target" {
   }
 
   locals {
-    build_path = {
-      "local" = "/tmp",
-      "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
-    }
-
     tags = merge({
       "Project Name" : var.project_name
       "Project" : "Enos",
       "Environment" : "ci"
     }, var.tags)
 
-    collocated_tag = "collocated"
   }
 
   step "find_azs" {
