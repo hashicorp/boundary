@@ -62,6 +62,12 @@ kms "awskms" {
   kms_key_id = "${kms_key_id}"
 }
 
+kms "awskms" {
+  purpose    = "recovery"
+  region     = "${region}"
+  kms_key_id = "${kms_key_id}"
+}
+
 events {
   audit_enabled        = true
   observations_enabled = true
