@@ -100,7 +100,7 @@ resource "aws_security_group" "rdp_ingress" {
 
 // Create an AWS security group to allow all traffic originating from the default vpc
 resource "aws_security_group" "allow_all_internal" {
-  name   = "${var.prefix}-allow-all-internal-${local.username}"
+  name   = "${var.prefix}-allow-all-internal-${local.username}-${var.vpc_id}"
   vpc_id = var.vpc_id
 
   ingress {

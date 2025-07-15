@@ -10,19 +10,11 @@ scenario "e2e_aws_rdp_target" {
   ]
 
   matrix {
-    builder    = ["local", "crt"]
     rdp_server = ["2016", "2019", "2022", "2025"]
     ip_version = ["4", "dual"]
   }
 
   locals {
-    aws_ssh_private_key_path  = abspath(var.aws_ssh_private_key_path)
-    boundary_install_dir      = abspath(var.boundary_install_dir)
-    local_boundary_dir        = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
-    local_boundary_ui_src_dir = var.local_boundary_ui_src_dir != null ? abspath(var.local_boundary_ui_src_dir) : null
-    boundary_license_path     = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    vault_license_path        = abspath(var.vault_license_path != null ? var.vault_license_path : joinpath(path.root, "./support/vault.hclic"))
-
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -85,7 +77,7 @@ scenario "e2e_aws_rdp_target" {
     value = step.create_rdp_server.public-dns-address
   }
 
-  output "public_ip" {
+  output "rdp_target_public_ip" {
     value = step.create_rdp_server.public_ip
   }
 
