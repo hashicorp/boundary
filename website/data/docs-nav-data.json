@@ -478,6 +478,15 @@
           {
             "title": "Create a target alias",
             "path": "targets/configuration/create-target-alias"
+          },
+          {
+            "title": "Configure transparent sessions",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "targets/configuration/configure-transparent-sessions"
           }
         ]
       },

@@ -28,10 +28,6 @@ If you are using pre-0.15 workers with pre-0.15 upstream configurations, please 
 
 </Note>
 
-## Common worker parameters
-
-@include '/configuration-reference/workers/common-worker-parameters.mdx'
-
 ## Signals
 
 The `SIGHUP` signal causes a worker to reload its configuration file to pick up any updates for the `initial_upstreams` and `tags` values.
@@ -44,7 +40,7 @@ before shutting down. Workers in a graceful shutdown state do not receive any ne
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-[Session recording](/boundary/docs/session-recording) requires at least one worker with access to local and remote storage.
+Session recording requires at least one worker with access to local and remote storage.
 Workers used for session recording require an accessible directory defined by `recording_storage_path` for storing in-progress session recordings. On session closure, a local session recording is moved to remote storage and deleted locally.
 
 The `recording_storage_minimum_available_capacity` value determines the minimum amount of storage space that is required for workers to perform session recording operations. If a worker is at or below the storage threshold, Boundary does not use the worker to record sessions or play back recordings.
@@ -60,11 +56,11 @@ worker {
 }
 ```
 
-## Multi-hop worker capabilities
+## Multi-hop sessions
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-[Multi-hop](/boundary/docs/workers/multi-hop) capabilities, including multi-hop sessions and Vault private access,
+Multi-hop capabilities, including multi-hop sessions and Vault private access,
 is when a session or Vault credential request goes through more than one worker.
 To enable this, you must connect two or more workers to each other in some
 configuration. There are no limits on the number of workers allowed in a
@@ -83,9 +79,14 @@ You can deploy multi-hop workers in scenarios where inbound network traffic is
 not allowed. A worker in a private network can send outbound communication to
 its upstream worker, and create a reverse proxy to establish a session.
 
-You can configure [target worker filters][] with multi-hop workers to allow for
+You can configure target worker filters with multi-hop workers to allow for
 fine-grained control on which workers handle ingress and egress for session
-traffic to a [target][]. Ingress worker filters specify the workers you use to initiate a session, and egress worker filters specify the workers you use to access targets.
+traffic to a target. Ingress worker filters specify the workers you use to initiate a session, and egress worker filters specify the workers you use to access targets.
+
+## Common worker parameters
+
+@include '/configuration-reference/workers/common-worker-parameters.mdx'
+
 
 ## Complete configuration example
 
@@ -93,22 +94,27 @@ traffic to a [target][]. Ingress worker filters specify the workers you use to i
 
 ## Tutorials
 
-Refer to the [Self-managed worker registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage Workers.
+Refer to the [worker management](/boundary/tutorials/worker-management) tutorials for practice managing workers, configuring multi-hop sessions, and creating worker-aware targets.
+
+Refer to the [Self-managed worker registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage workers.
 
 Refer to the [Manage multi-hop sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial to learn how to configure a multi-hop session.
 
-[target]: /boundary/docs/domain-model/targets
-[target worker filters]: /boundary/docs/workers/worker-tags
-
 ## More information
 
-To learn more about workers and deployment, see:
+To configure and register a worker, refer to the following topics:
 
-* [Worker configuration](/boundary/docs/configuration/workers)
-* [Recommended architecture](/boundary/docs/architecture/recommended-architecture)
-* [Worker system requirements](/boundary/docs/architecture/system-requirements)
-* [Worker management tutorials](/boundary/tutorials/worker-management)
+- [Create the worker configuration](/boundary/docs/workers/create)
+- [Register workers](/boundary/docs/workers/registration)
 
-## Next steps
+Refer to the following topics for more information about configuring workers for specific applications or workflows:
 
-Register workers to ensure they can authenticate to Boundary.
+- [Overview of multi-hop sessions](/boundary/docs/workers/multi-hop)
+  - [Configure multi-hop sessions for Boundary Enterprise](/boundary/docs/workers/multi-hop/enterprise)
+  - [Configure multi-hop sessions for HCP Boundary](/boundary/docs/workers/multi-hop/hcp)
+- [Overview of session recording](/boundary/docs/session-recording)
+  - [Configure workers for session recording](/boundary/docs/session-recording/configuration/configure-worker-storage)
+- [Configure workers for access to Vault](/boundary/docs/workers/worker-tags#example-worker-filter-for-vault-credential-store)
+- [Configure workers for dynamic host discovery from cloud providers](/boundary/docs/hosts)
+- [Route traffic through a worker](/boundary/docs/workers/worker-tags)
+- [Configure self-managed workers for HCP Boundary](/hcp/docs/boundary/self-managed-workers)
