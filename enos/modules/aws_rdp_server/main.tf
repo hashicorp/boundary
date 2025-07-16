@@ -188,7 +188,3 @@ resource "time_sleep" "wait_10_minutes" {
   depends_on      = [aws_instance.rdp_target]
   create_duration = "10m"
 }
-
-output "ipv6" {
-  value = flatten(aws_instance.rdp_target.*.ipv6_addresses)
-}

@@ -22,3 +22,7 @@ output "password" {
   description = "This is the decrypted administrator password for the EC2 instance"
   value       = nonsensitive(local.password)
 }
+
+output "ipv6" {
+  value = flatten(aws_instance.rdp_target.*.ipv6_addresses)
+}
