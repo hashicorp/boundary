@@ -25,7 +25,7 @@ Further, security teams seek to prevent incidents and proactively identify poten
 
 ## Session recording
 
-Boundary provides auditing capabilities via [session recording](/boundary/docs/session-recording).
+Boundary provides auditing capabilities via session recording.
 In Boundary, a session represents a set of connections between a user and a host from a target.
 The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
 All sessions have a fixed time limit, and all connections are proxied through a worker.
@@ -33,4 +33,11 @@ All sessions have a fixed time limit, and all connections are proxied through a 
 Sessions are recorded by workers.
 Workers are the proxy between an end user and a target.
 No session data is routed through a controller during the recording stage.
-The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated. Session recordings are stored in the [BSR](/boundary/docs/session-recording/data/bsr-file-structure) (Boundary Session Recording) format.
+The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated. Session recordings are stored in the BSR (Boundary Session Recording) format.
+
+## More information
+
+Refer to the following topics for more information:
+
+- [Session recording](/boundary/docs/session-recording)
+- [BSR file data structure](/boundary/docs/session-recording/data/bsr-file-structure)

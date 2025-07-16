@@ -1,0 +1,79 @@
+---
+layout: docs
+page_title: Configure transparent sessions
+description: >-
+  Learn how to configure transparent sessions to enhance end-user workflows and simplify target access.
+---
+
+# Configure transparent sessions
+
+@include 'alerts/enterprise-only.mdx'
+
+Transparent sessions shift Boundary from an active connection model to a passive connection model. Boundary operates in the background instead of requiring you to remember specific resource IDs or ephemeral ports to connect to targets.
+
+As long as Boundary authenticates a user and the user is authorized to access the target, Boundary intercepts the DNS call and routes traffic through a session automatically.
+
+Transparent sessions require [aliases](/boundary/docs/targets/configuration) and the [Boundary Client Agent](/boundary/docs/client-agent).
+
+The Boundary Desktop client facilitates quick target discovery and session establishment using your preferred client. If you configure aliases for your targets, install the Boundary Client Agent, and ensure you are authenticated to the cluster, connections are transparent to the user. Boundary provides OS notifications to make it clear when you connect to a target using a transparent session.
+
+Boundary supports Windows and MacOS for transparent sessions.
+
+## Requirements
+
+Before you configure transparent sessions, you must:
+
+- Ensure that any previous versions of the Boundary Desktop or CLI client in your local environment are fully uninstalled before you install the Boundary clients using the latest Boundary installer.
+- Download the appropriate Boundary installer for your Windows or MacOS environment from the [Install Boundary](/boundary/install#installer) page or the [releases](https://releases.hashicorp.com/boundary-installer) page.
+- Install the Boundary Client Agent, CLI, and Desktop client.
+   - Refer to [Install the Boundary clients](/boundary/docs/deploy/self-managed/install-clients) for instructions.
+   - Refer to the [transparent sessions interoperability matrix](/boundary/docs/interoperability-matrix) for a list of third-party products that have been tested for use with the Boundary installer and Client Agent.
+- Ensure that both IPv4 and IPv6 protocols are enabled for your environment. The [Client Agent](/boundary/docs/client-agent) requires both protocols to start and perform DNS lookups.
+
+You should also make sure you have the appropriate grants configured so that you can resolve aliases and establish transparent sessions.
+For more information, refer to the [Grants](/boundary/docs/client-agent#grants) section in the Client Agent documentation.
+
+<Warning>
+
+A known issue regarding how grants were previously created in HCP Boundary may cause you to receive a 500 error when you attempt to list resolvable aliases.
+Clusters created before April 26, 2025 may be missing the following grants:
+
+`ids={{.User.Id}};type=user;actions=list-resolvable-aliases`
+
+`ids=*;type=target;actions=list,read`
+
+If your cluster is missing these grants, HashiCorp recommends adding them.
+
+For more information, refer to the [known issue](/boundary/docs/release-notes/v0_19_0#hcp-grants).
+
+</Warning>
+
+## Configure targets
+
+The following section details how to configure targets to use transparent sessions.
+
+<Tip>
+
+If you use a cluster that was created earlier than release 0.16.0, you must add the grant `list-resolvable-aliases` so that the client agent can populate the local alias cache.
+
+As an example, you could add the grant:
+
+`type=user;actions=list-resolvable-aliases;ids=*`.
+
+For more information, refer to the [Grants](/boundary/docs/client-agent#grants) section in the Client Agent documentation.
+
+</Tip>
+
+Complete the following steps to configure targets:
+
+1. Authenticate to Boundary using the CLI or Desktop client.
+1. [Create a new target with an alias](/boundary/docs/targets/configuration/create-target-alias#create-an-alias-during-target-creation) or [create an alias for an existing target](/boundary/docs/targets/configuration/create-target-alias#create-an-alias-for-an-existing-target).
+Ensure that you have authorization to establish a session to the target.
+
+## Next steps
+
+Open the client of your choice and [connect to your target using the alias](/boundary/docs/targets/connections/transparent-sessions).
+
+## More information
+
+Refer to [Troubleshoot issues with the Client Agent](/boundary/docs/client-agent/troubleshoot) for a list of [known issues](/boundary/docs/client-agent/troubleshoot#transparent-sessions-known-issues) involving transparent sessions.
