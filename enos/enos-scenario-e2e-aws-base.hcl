@@ -34,8 +34,9 @@ scenario "e2e_aws_base" {
 
     variables {
       instance_type = [
+        var.controller_instance_type,
         var.worker_instance_type,
-        var.controller_instance_type
+        var.target_instance_type
       ]
     }
   }
