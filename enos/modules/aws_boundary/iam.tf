@@ -32,9 +32,8 @@ data "aws_iam_policy_document" "boundary_profile" {
 }
 
 resource "aws_iam_role" "boundary_instance_role" {
-  name                  = "boundary_instance_role-${random_string.cluster_id.result}"
-  assume_role_policy    = data.aws_iam_policy_document.boundary_instance_role.json
-  force_detach_policies = true
+  name               = "boundary_instance_role-${random_string.cluster_id.result}"
+  assume_role_policy = data.aws_iam_policy_document.boundary_instance_role.json
 }
 
 resource "aws_iam_instance_profile" "boundary_profile" {

@@ -37,7 +37,7 @@ golangci-lint:
 
 	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
 		curl -sSfL \
-			https://raw.githubusercontent.com/golangci/golangci-lint/3f6f9043a8d0048ec075d2ace970b256cdf37a96/install.sh | sh -s -- -b $(GO_PATH)/bin v1.64.7; \
+			https://raw.githubusercontent.com/golangci/golangci-lint/9a8a056e9fe49c0e9ed2287aedce1022c79a115b/install.sh | sh -s -- -b $(GO_PATH)/bin v1.60.3; \
 	fi;
 
 .PHONY: cleangen
@@ -65,12 +65,6 @@ install: build
 .PHONY: install-no-plugins
 install-no-plugins: export SKIP_PLUGIN_BUILD=1
 install-no-plugins: install
-
-.PHONY: build-pprof
-build-pprof: BUILD_TAGS+=pprof
-build-pprof:
-	@echo "==> Building Boundary with memory pprof enabled"
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 .PHONY: build-memprof
 build-memprof: BUILD_TAGS+=memprofiler
@@ -161,12 +155,6 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/role_global_individual_org_grant_scope.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/role_global_individual_project_grant_scope.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/role_org_individual_grant_scope.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/role_global.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/role_org.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/role_project.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/principal_role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant_scope.pb.go

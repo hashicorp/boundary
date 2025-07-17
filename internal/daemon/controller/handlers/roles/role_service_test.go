@@ -219,7 +219,8 @@ func TestList(t *testing.T) {
 	var wantProjRoles []*pb.Role
 	var totalRoles []*pb.Role
 	for i := 0; i < 10; i++ {
-		or := iam.TestRole(t, conn, oWithRoles.GetPublicId(), iam.WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
+		_ = iam.TestRoleGrantScope(t, conn, or.GetPublicId(), globals.GrantScopeChildren)
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
 			Id:                or.GetPublicId(),
 			ScopeId:           or.GetScopeId(),
@@ -907,7 +908,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeIds:     []string{globals.GrantScopeThis},
-					Version:           1,
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -927,7 +928,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeIds:     []string{globals.GrantScopeThis},
-					Version:           1,
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -949,7 +950,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeIds:     []string{globals.GrantScopeThis},
-					Version:           1,
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -2601,9 +2602,9 @@ func TestAddGrantScopes(t *testing.T) {
 		{
 			name:     "Add grant scopes on role with grant scopes - global",
 			scopeId:  scope.Global.String(),
-			existing: []string{"global"},
+			existing: []string{"global", o.PublicId},
 			add:      []string{"children", p.PublicId},
-			result:   []string{"this", p.PublicId, "children"},
+			result:   []string{"global", o.PublicId, p.PublicId, "children"},
 		},
 		{
 			name:     "Add duplicate grant on role with grant scopes - global",
@@ -2623,8 +2624,8 @@ func TestAddGrantScopes(t *testing.T) {
 			name:     "Add grant scope matching existing grant scopes - global",
 			scopeId:  scope.Global.String(),
 			existing: []string{"this"},
-			add:      []string{"this"},
-			result:   []string{"this"},
+			add:      []string{"this", "children"},
+			wantErr:  true,
 		},
 		{
 			name:     "Add invalid grant scope - global",
@@ -2638,16 +2639,14 @@ func TestAddGrantScopes(t *testing.T) {
 			scopeId:  scope.Global.String(),
 			existing: []string{scope.Global.String()},
 			add:      []string{"this"},
-			result:   []string{"this"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Add scope to this grant scope - global",
 			scopeId:  scope.Global.String(),
 			existing: []string{"this"},
 			add:      []string{scope.Global.String()},
-			result:   []string{"this"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Add children when descendants exists - global",
@@ -2675,7 +2674,6 @@ func TestAddGrantScopes(t *testing.T) {
 			existing: []string{o.PublicId, p.PublicId},
 			add:      []string{"children"},
 			result:   []string{o.PublicId, p.PublicId, "children"},
-			wantErr:  true,
 		},
 		{
 			name:     "Add duplicate grant on role with grant scopes - org",
@@ -2689,8 +2687,7 @@ func TestAddGrantScopes(t *testing.T) {
 			scopeId:  o.PublicId,
 			existing: []string{"this"},
 			add:      []string{"this", "children"},
-			result:   []string{"this", "children"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Add invalid grant scope - org",
@@ -2711,16 +2708,14 @@ func TestAddGrantScopes(t *testing.T) {
 			scopeId:  o.PublicId,
 			existing: []string{o.PublicId},
 			add:      []string{"this"},
-			result:   []string{"this"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Add scope to this grant scope - org",
 			scopeId:  o.PublicId,
 			existing: []string{"this"},
 			add:      []string{o.PublicId},
-			result:   []string{"this"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Add other org/proj scopes - org",
@@ -2733,7 +2728,7 @@ func TestAddGrantScopes(t *testing.T) {
 			name:    "Add grant scopes on empty role - proj with id",
 			scopeId: p.PublicId,
 			add:     []string{p.PublicId},
-			result:  []string{"this"},
+			result:  []string{p.PublicId},
 		},
 		{
 			name:    "Add grant scopes on empty role - proj with this",
@@ -2773,16 +2768,14 @@ func TestAddGrantScopes(t *testing.T) {
 			scopeId:  p.PublicId,
 			existing: []string{p.PublicId},
 			add:      []string{"this"},
-			result:   []string{"this"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Add scope to this grant scope - proj",
 			scopeId:  p.PublicId,
 			existing: []string{"this"},
 			add:      []string{p.PublicId},
-			result:   []string{"this"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Add other org/proj scopes - proj",
@@ -2798,20 +2791,14 @@ func TestAddGrantScopes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
 			for _, e := range tc.existing {
-				_ = iam.TestRoleGrantScope(t, conn, role, e)
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
 			}
-			noAuthCtx := auth.DisabledAuthTestContext(repoFn, tc.scopeId)
-			readbackRole, err := s.GetRole(noAuthCtx, &pbs.GetRoleRequest{
-				Id: role.PublicId,
-			})
-			require.NoError(err)
-
 			req := &pbs.AddRoleGrantScopesRequest{
 				Id:      role.GetPublicId(),
-				Version: readbackRole.GetItem().GetVersion(),
+				Version: role.GetVersion(),
 			}
 			req.GrantScopeIds = tc.add
-			got, err := s.AddRoleGrantScopes(noAuthCtx, req)
+			got, err := s.AddRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.wantErr {
 				assert.Error(err)
 				if tc.wantErrContains != "" {
@@ -2941,7 +2928,7 @@ func TestSetGrantScopes(t *testing.T) {
 			scopeId:  scope.Global.String(),
 			existing: []string{"this"},
 			set:      []string{scope.Global.String(), "children"},
-			result:   []string{"this", "children"},
+			result:   []string{scope.Global.String(), "children"},
 		},
 		{
 			name:     "Set other org/proj scopes - global",
@@ -2962,16 +2949,14 @@ func TestSetGrantScopes(t *testing.T) {
 			scopeId:  scope.Global.String(),
 			existing: []string{},
 			set:      []string{scope.Global.String(), "children", "this"},
-			result:   []string{"this", "children"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Set both grant scope - global",
 			scopeId:  scope.Global.String(),
 			existing: []string{},
 			set:      []string{"this", scope.Global.String(), "children"},
-			result:   []string{"this", "children"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Set children and descendants - global",
@@ -3004,8 +2989,8 @@ func TestSetGrantScopes(t *testing.T) {
 			name:     "Set duplicate grant on role with grant scopes - org",
 			scopeId:  o.PublicId,
 			existing: []string{"this"},
-			set:      []string{"children", "children"},
-			result:   []string{"children"},
+			set:      []string{p.PublicId, "children", "children"},
+			result:   []string{p.PublicId, "children"},
 		},
 		{
 			name:     "Set grant scope matching existing grant scopes - org",
@@ -3026,7 +3011,7 @@ func TestSetGrantScopes(t *testing.T) {
 			scopeId:  o.PublicId,
 			existing: []string{"this"},
 			set:      []string{o.PublicId, "children"},
-			result:   []string{"this", "children"},
+			result:   []string{o.PublicId, "children"},
 		},
 		{
 			name:     "Set invalid grant scope - org",
@@ -3047,22 +3032,20 @@ func TestSetGrantScopes(t *testing.T) {
 			scopeId:  o.PublicId,
 			existing: []string{},
 			set:      []string{o.PublicId, "children", "this"},
-			result:   []string{"this", "children"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Set both grant scope - org",
 			scopeId:  o.PublicId,
 			existing: []string{},
 			set:      []string{"this", o.PublicId, "children"},
-			result:   []string{"this", "children"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:    "Set grant scopes on empty role - proj with id",
 			scopeId: p.PublicId,
 			set:     []string{p.PublicId},
-			result:  []string{"this"},
+			result:  []string{p.PublicId},
 		},
 		{
 			name:    "Set grant scopes on empty role - proj with this",
@@ -3088,7 +3071,7 @@ func TestSetGrantScopes(t *testing.T) {
 			scopeId:  p.PublicId,
 			existing: []string{"this"},
 			set:      []string{p.PublicId},
-			result:   []string{"this"},
+			result:   []string{p.PublicId},
 		},
 		{
 			name:     "Set other org/proj scopes - org",
@@ -3123,16 +3106,14 @@ func TestSetGrantScopes(t *testing.T) {
 			scopeId:  p.PublicId,
 			existing: []string{},
 			set:      []string{p.PublicId, "this"},
-			result:   []string{"this"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Set both grant scope - proj",
 			scopeId:  p.PublicId,
 			existing: []string{},
 			set:      []string{"this", p.PublicId},
-			result:   []string{"this"},
-			wantErr:  false,
+			wantErr:  true,
 		},
 		{
 			name:     "Set other org/proj scopes - proj",
@@ -3148,18 +3129,14 @@ func TestSetGrantScopes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
 			for _, e := range tc.existing {
-				_ = iam.TestRoleGrantScope(t, conn, role, e)
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
 			}
-			noAuthCtx := auth.DisabledAuthTestContext(repoFn, tc.scopeId)
-			readbackRole, err := s.GetRole(noAuthCtx, &pbs.GetRoleRequest{
-				Id: role.PublicId,
-			})
-			require.NoError(err)
-			got, err := s.SetRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), &pbs.SetRoleGrantScopesRequest{
-				Id:            role.GetPublicId(),
-				Version:       readbackRole.GetItem().GetVersion(),
-				GrantScopeIds: tc.set,
-			})
+			req := &pbs.SetRoleGrantScopesRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+			}
+			req.GrantScopeIds = tc.set
+			got, err := s.SetRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.wantErr {
 				assert.Error(err)
 				if tc.wantErrContains != "" {
@@ -3256,15 +3233,15 @@ func TestRemoveGrantScopes(t *testing.T) {
 		{
 			name:     "Remove partial - global",
 			scopeId:  scope.Global.String(),
-			existing: []string{"this", "descendants"},
-			remove:   []string{"descendants"},
-			result:   []string{"this"},
+			existing: []string{"this", o.PublicId, "descendants", p.PublicId},
+			remove:   []string{o.PublicId, p.PublicId},
+			result:   []string{"this", "descendants"},
 		},
 		{
 			name:     "Remove duplicate - global",
 			scopeId:  scope.Global.String(),
-			existing: []string{"this", "children", p.PublicId},
-			remove:   []string{"children", p.PublicId, "children"},
+			existing: []string{"this", "children", o.PublicId},
+			remove:   []string{"children", o.PublicId, "children"},
 			result:   []string{"this"},
 		},
 		{
@@ -3290,15 +3267,15 @@ func TestRemoveGrantScopes(t *testing.T) {
 		{
 			name:     "Remove partial - org",
 			scopeId:  o.PublicId,
-			existing: []string{"this", p.PublicId},
-			remove:   []string{"this"},
-			result:   []string{p.PublicId},
+			existing: []string{"children", o.PublicId, p.PublicId},
+			remove:   []string{"children"},
+			result:   []string{o.PublicId, p.PublicId},
 		},
 		{
 			name:     "Remove duplicate - org",
 			scopeId:  o.PublicId,
-			existing: []string{"this", "children"},
-			remove:   []string{"children", "children"},
+			existing: []string{"this", p.PublicId, "children"},
+			remove:   []string{"children", p.PublicId, "children"},
 			result:   []string{"this"},
 		},
 		{
@@ -3318,8 +3295,8 @@ func TestRemoveGrantScopes(t *testing.T) {
 		{
 			name:     "Remove all - proj",
 			scopeId:  p.PublicId,
-			existing: []string{"this"},
-			remove:   []string{"this"},
+			existing: []string{p.PublicId},
+			remove:   []string{p.PublicId},
 		},
 		{
 			name:     "Remove duplicate - proj",
@@ -3349,20 +3326,14 @@ func TestRemoveGrantScopes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
 			for _, e := range tc.existing {
-				_ = iam.TestRoleGrantScope(t, conn, role, e)
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
 			}
-			noAuthCtx := auth.DisabledAuthTestContext(repoFn, tc.scopeId)
-			// have to read back the role to get the correct role version
-			readbackRole, err := s.GetRole(noAuthCtx, &pbs.GetRoleRequest{
-				Id: role.PublicId,
-			})
-			require.NoError(err)
 			req := &pbs.RemoveRoleGrantScopesRequest{
 				Id:      role.GetPublicId(),
-				Version: readbackRole.GetItem().GetVersion(),
+				Version: role.GetVersion(),
 			}
 			req.GrantScopeIds = tc.remove
-			got, err := s.RemoveRoleGrantScopes(noAuthCtx, req)
+			got, err := s.RemoveRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -3374,11 +3345,12 @@ func TestRemoveGrantScopes(t *testing.T) {
 		})
 	}
 
-	role := iam.TestRole(t, conn, p.GetPublicId(), iam.WithGrantScopeIds([]string{"this"}))
+	role := iam.TestRole(t, conn, p.GetPublicId(), iam.WithGrantScopeIds([]string{"testing-none"}))
 	failCases := []struct {
 		name string
 		req  *pbs.RemoveRoleGrantScopesRequest
-		err  error
+
+		err error
 	}{
 		{
 			name: "Bad Version",

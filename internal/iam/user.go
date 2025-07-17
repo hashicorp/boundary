@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -80,8 +81,8 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, o
 	return nil
 }
 
-func (u *User) getResourceType() resource.Type {
-	return resource.User
+func (u *User) validScopeTypes() []scope.Type {
+	return []scope.Type{scope.Global, scope.Org}
 }
 
 // GetScope returns the scope for the User

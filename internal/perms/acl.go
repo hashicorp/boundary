@@ -333,7 +333,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			r.Id == "" &&
 			grant.Type == r.Type &&
 			grant.Type != resource.Unknown &&
-			r.Type.TopLevelType() &&
+			resource.TopLevelType(r.Type) &&
 			(action.List.IsActionOrParent(aType) ||
 				action.Create.IsActionOrParent(aType)):
 
@@ -357,7 +357,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			grant.Id == r.Pin &&
 			grant.Type != resource.Unknown &&
 			(grant.Type == r.Type || grant.Type == resource.All) &&
-			!r.Type.TopLevelType():
+			!resource.TopLevelType(r.Type):
 
 			found = true
 		}
@@ -427,13 +427,8 @@ func (a ACL) ListResolvableAliasesPermissions(requestedType resource.Type, actio
 			p.RoleParentScopeId = scope.Global.String()
 		}
 		if a.buildPermission(&scopes.ScopeInfo{ParentScopeId: scopeId}, requestedType, actions, false, &p) {
-			if p.All {
-				// only cache to childrenScopes when all IDs are granted because if the role with 'children' grant specifies
-				// resource IDs, the IDs may not overlap with the children scope roles which means we cannot skip
-				// parsing permissions on the children roles
-				childrenScopes[scopeId] = struct{}{}
-			}
 			perms = append(perms, p)
+			childrenScopes[scopeId] = struct{}{}
 		}
 	}
 
@@ -473,21 +468,21 @@ func (a ACL) ListResolvableAliasesPermissions(requestedType resource.Type, actio
 				// so skip it
 				continue
 			}
-		case p.RoleScopeId == scope.Global.String() && strings.HasPrefix(grantScopeId, scope.Org.Prefix()):
-			// Handle the case where the parent scope is global, and the grant is at the org level.
-			// Direct grants must either match the parent scope or be downstream. This condition
-			// accounts for a scenario where a child grant exists at the org level while the parent
-			// is global. If the grant were for projects, it would require a descendants grant instead.
-			// Skip processing if the current scope is already accounted for in the childrenScopes map.
-			if _, ok := childrenScopes[p.RoleScopeId]; ok {
+		default:
+			// Since direct grants must be the same scope or downstream, the
+			// only possibility left for a children grant is that the parent is
+			// global and the grant is on the org -- if it was for projects it
+			// would need to be a descendants grant
+			if _, ok := childrenScopes[scope.Global.String()]; ok {
+				// We already looked at this scope in the children grants, so skip it
 				continue
 			}
 		}
+
 		if a.buildPermission(&scopes.ScopeInfo{Id: grantScopeId}, requestedType, actions, false, &p) {
 			perms = append(perms, p)
 		}
 	}
-
 	return perms
 }
 

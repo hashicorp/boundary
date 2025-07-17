@@ -5,9 +5,8 @@ package iam
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"slices"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -16,12 +15,9 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/lib/pq"
 )
 
-// AddRoleGrants will add role grants associated with the role ID in the
+// AddRoleGrant will add role grants associated with the role ID in the
 // repository. No options are currently supported. Zero is not a valid value for
 // the WithVersion option and will return an error.
 func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, _ ...Option) ([]*RoleGrant, error) {
@@ -35,6 +31,8 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	if roleVersion == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
+	role := allocRole()
+	role.PublicId = roleId
 
 	newRoleGrants := make([]*RoleGrant, 0, len(grants))
 	for _, grant := range grants {
@@ -45,47 +43,32 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 		newRoleGrants = append(newRoleGrants, roleGrant)
 	}
 
-	scp, err := getRoleScope(ctx, r.reader, roleId)
+	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-
-			var updatedRole Resource
-			switch scp.GetType() {
-			case scope.Global.String():
-				g := allocGlobalRole()
-				g.PublicId = roleId
-				g.Version = roleVersion + 1
-				updatedRole = &g
-			case scope.Org.String():
-				o := allocOrgRole()
-				o.PublicId = roleId
-				o.Version = roleVersion + 1
-				updatedRole = &o
-			case scope.Project.String():
-				p := allocProjectRole()
-				p.PublicId = roleId
-				p.Version = roleVersion + 1
-				updatedRole = &p
-			default:
-				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
-			}
-			roleTicket, err := w.GetTicket(ctx, updatedRole)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
+
+			// We need to update the role version as that's the aggregate
+			updatedRole := allocRole()
+			updatedRole.PublicId = roleId
+			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -101,8 +84,8 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{scp.PublicId},
-				"scope-type":         []string{scp.Type},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -133,11 +116,14 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 	if roleVersion == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	scp, err := getRoleScope(ctx, r.reader, roleId)
+	role := allocRole()
+	role.PublicId = roleId
+
+	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope to create metadata", roleId)))
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -149,32 +135,15 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			var updatedRole Resource
-			switch scp.GetType() {
-			case scope.Global.String():
-				g := allocGlobalRole()
-				g.PublicId = roleId
-				g.Version = roleVersion + 1
-				updatedRole = &g
-			case scope.Org.String():
-				o := allocOrgRole()
-				o.PublicId = roleId
-				o.Version = roleVersion + 1
-				updatedRole = &o
-			case scope.Project.String():
-				p := allocProjectRole()
-				p.PublicId = roleId
-				p.Version = roleVersion + 1
-				updatedRole = &p
-			default:
-				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
-			}
-			roleTicket, err := w.GetTicket(ctx, updatedRole)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
+			updatedRole := allocRole()
+			updatedRole.PublicId = roleId
+			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -231,8 +200,8 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-				"scope-id":           []string{scp.PublicId},
-				"scope-type":         []string{scp.Type},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -264,6 +233,9 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	if grants == nil {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing grants")
 	}
+
+	role := allocRole()
+	role.PublicId = roleId
 
 	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
 
@@ -320,11 +292,12 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	if len(addRoleGrants) == 0 && len(deleteRoleGrants) == 0 {
 		return currentRoleGrants, db.NoRowsAffected, nil
 	}
-	scp, err := getRoleScope(ctx, r.reader, roleId)
+
+	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope id", roleId)))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scp.GetPublicId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -336,33 +309,15 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			var updatedRole Resource
-			switch scp.GetType() {
-			case scope.Global.String():
-				g := allocGlobalRole()
-				g.PublicId = roleId
-				g.Version = roleVersion + 1
-				updatedRole = &g
-			case scope.Org.String():
-				o := allocOrgRole()
-				o.PublicId = roleId
-				o.Version = roleVersion + 1
-				updatedRole = &o
-			case scope.Project.String():
-				p := allocProjectRole()
-				p.PublicId = roleId
-				p.Version = roleVersion + 1
-				updatedRole = &p
-			default:
-				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown scope type %s for scope %s", scp.GetType(), scp.GetPublicId()))
-			}
-			roleTicket, err := w.GetTicket(ctx, updatedRole)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-
+			updatedRole := allocRole()
+			updatedRole.PublicId = roleId
+			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -396,8 +351,8 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String(), oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{scp.PublicId},
-				"scope-type":         []string{scp.Type},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -432,233 +387,110 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 	return roleGrants, nil
 }
 
-type grantsForUserResults struct {
-	// roleId is the public ID of the role.
-	roleId string
-	// roleScopeId is the scope ID of the role.
-	roleScopeId string
-	// roleParentScopeId is the parent scope ID of the role.
-	roleParentScopeId string
-	// grantScope is the grant scope of the role.
-	// The valid values are: "individual", "children" and "descendants".
-	grantScope string
-	// grantThisRoleScope is a boolean that indicates if the role has a grant
-	// for itself aka "this" or "individual" scope.
-	grantThisRoleScope bool
-	// individualGrantScopes represents the individual grant scopes for the role.
-	// This is a slice of strings that may be empty if the role does
-	// not have individual grants.
-	individualGrantScopes []string
-	// canonicalGrants represents the canonical grants for the role.
-	// This is a slice of strings that may be empty if the role does
-	// not have canonical grants associated with it.
-	canonicalGrants []string
+// ListRoleGrantScopes returns the grant scopes for the roleId and supports the WithLimit
+// option.
+func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleIds []string, opt ...Option) ([]*RoleGrantScope, error) {
+	const op = "iam.(Repository).ListRoleGrantScopes"
+	if len(roleIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
+	}
+	query := "?"
+	var args []any
+	for i, roleId := range roleIds {
+		if roleId == "" {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
+		}
+		if i > 0 {
+			query = query + ", ?"
+		}
+		args = append(args, roleId)
+	}
+	var roleGrantScopes []*RoleGrantScope
+	if err := r.list(ctx, &roleGrantScopes, fmt.Sprintf("role_id in (%s)", query), args, opt...); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup role grant scopes"))
+	}
+	return roleGrantScopes, nil
 }
 
-// GrantsForUser returns perms.GrantTuples associated to a userId scoped down to the requested scope and resource type.
-// Use WithRecursive option to indicate that the request is a recursive list request
-// Supported options: WithRecursive
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, res []resource.Type, reqScopeId string, opt ...Option) (perms.GrantTuples, error) {
+type multiGrantTuple struct {
+	RoleId            string
+	RoleScopeId       string
+	RoleParentScopeId string
+	GrantScopeIds     string
+	Grants            string
+}
+
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
-	if res == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing resource type")
-	}
-	if slices.Contains(res, resource.Unknown) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type cannot be unknown")
-	}
-	if slices.Contains(res, resource.All) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type cannot be all")
-	}
-	switch {
-	case strings.HasPrefix(reqScopeId, globals.GlobalPrefix):
-	case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
-	case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
-	case reqScopeId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
-	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "request scope must be global scope, an org scope, or a project scope")
-	}
 
-	// Determine which query to use based on the resources, request scope, and recursive option
 	opts := getOpts(opt...)
-	query, err := r.resolveQuery(ctx, res, reqScopeId, opts.withRecursive)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to resolve query"))
-	}
 
-	// Execute the query to get the user's grants
-	var (
-		args      []any
-		userIds   []string
-		resources []string
+	const (
+		anonUser = `where public_id in (?)`
+		authUser = `where public_id in ('u_anon', 'u_auth', ?)`
 	)
+
+	var query string
 	switch userId {
 	case globals.AnonymousUserId:
-		userIds = []string{globals.AnonymousUserId}
+		query = fmt.Sprintf(grantsForUserQuery, anonUser)
 	default:
-		userIds = []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, userId}
+		query = fmt.Sprintf(grantsForUserQuery, authUser)
 	}
 
-	resources = []string{resource.Unknown.String(), resource.All.String()}
-	for _, res := range res {
-		resources = append(resources, res.String())
-	}
-
-	args = append(args,
-		sql.Named("user_ids", pq.Array(userIds)),
-		sql.Named("resources", pq.Array(resources)),
-		sql.Named("request_scope_id", reqScopeId),
-	)
-
-	var grants []grantsForUserResults
-	rows, err := r.reader.Query(ctx, query, args)
+	var grants []multiGrantTuple
+	rows, err := r.reader.Query(ctx, query, []any{userId})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g grantsForUserResults
-		if err := rows.Scan(
-			&g.roleId,
-			&g.roleScopeId,
-			&g.roleParentScopeId,
-			&g.grantScope,
-			&g.grantThisRoleScope,
-			pq.Array(&g.individualGrantScopes),
-			pq.Array(&g.canonicalGrants),
-		); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &grants); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		grants = append(grants, g)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	ret := make(perms.GrantTuples, 0, len(grants))
+
+	ret := make(perms.GrantTuples, 0, len(grants)*3)
 	for _, grant := range grants {
-
-		if grant.grantScope != globals.GrantScopeIndividual {
-			for _, canonicalGrant := range grant.canonicalGrants {
+		for _, grantScopeId := range strings.Split(grant.GrantScopeIds, "^") {
+			for _, canonicalGrant := range strings.Split(grant.Grants, "^") {
 				gt := perms.GrantTuple{
-					RoleId:            grant.roleId,
-					RoleScopeId:       grant.roleScopeId,
-					RoleParentScopeId: grant.roleParentScopeId,
-					GrantScopeId:      grant.grantScope,
+					RoleId:            grant.RoleId,
+					RoleScopeId:       grant.RoleScopeId,
+					RoleParentScopeId: grant.RoleParentScopeId,
+					GrantScopeId:      grantScopeId,
 					Grant:             canonicalGrant,
 				}
-				ret = append(ret, gt)
-			}
-		}
-
-		if grant.grantThisRoleScope {
-			switch {
-			case opts.withRecursive:
-				// Recursive requests can list the entire scope tree at any request scope
-				fallthrough
-			case reqScopeId == grant.roleScopeId:
-				// Non-recursive requests' role scope must match the request scope
-				for _, canonicalGrant := range grant.canonicalGrants {
-					gt := perms.GrantTuple{
-						RoleId:            grant.roleId,
-						RoleScopeId:       grant.roleScopeId,
-						RoleParentScopeId: grant.roleParentScopeId,
-						GrantScopeId:      grant.roleScopeId,
-						Grant:             canonicalGrant,
-					}
-					ret = append(ret, gt)
-				}
-			}
-		}
-
-		// loop over grants creating tuple with grant_scope = s.ScopeId
-		for _, individualGrantScope := range grant.individualGrantScopes {
-			for _, canonicalGrant := range grant.canonicalGrants {
-				gt := perms.GrantTuple{
-					RoleId:            grant.roleId,
-					RoleScopeId:       grant.roleScopeId,
-					RoleParentScopeId: grant.roleParentScopeId,
-					GrantScopeId:      individualGrantScope,
-					Grant:             canonicalGrant,
+				if gt.GrantScopeId == globals.GrantScopeThis || gt.GrantScopeId == "" {
+					gt.GrantScopeId = grant.RoleScopeId
 				}
 				ret = append(ret, gt)
 			}
 		}
 	}
+
+	if opts.withTestCacheMultiGrantTuples != nil {
+		for i, grant := range grants {
+			grant.testStableSort()
+			grants[i] = grant
+		}
+		*opts.withTestCacheMultiGrantTuples = grants
+	}
+
 	return ret, nil
 }
 
-func (r *Repository) resolveQuery(
-	ctx context.Context,
-	res []resource.Type,
-	reqScopeId string,
-	isRecursive bool,
-) (string, error) {
-	const op = "iam.(Repository).resolveQuery"
-	if res == nil {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "missing resource type")
-	}
-	if slices.Contains(res, resource.Unknown) {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "resource type cannot be unknown")
-	}
-	if slices.Contains(res, resource.All) {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "resource type cannot be all")
-	}
-	if reqScopeId == "" {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "missing request scope id")
-	}
-
-	// Use the largest set of allowed scopes for the given resources
-	var resourceAllowedIn []scope.Type
-	for _, re := range res {
-		a, err := scope.AllowedIn(ctx, re)
-		if err != nil {
-			return "", errors.Wrap(ctx, err, op)
-		}
-		if len(a) > len(resourceAllowedIn) {
-			resourceAllowedIn = a
-		}
-	}
-
-	// Recursive query
-	if isRecursive {
-		return grantsForUserRecursiveQuery, nil
-	}
-
-	// Non-recursive queries
-	switch {
-	case slices.Equal(resourceAllowedIn, []scope.Type{scope.Global}):
-		if reqScopeId != globals.GlobalPrefix {
-			return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be global for %s resources", res))
-		}
-		return grantsForUserGlobalResourcesQuery, nil
-	case slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org}):
-		switch {
-		case strings.HasPrefix(reqScopeId, globals.GlobalPrefix):
-			return grantsForUserGlobalResourcesQuery, nil
-		case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
-			return grantsForUserOrgResourcesQuery, nil
-		default:
-			return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be global or org for %s resources", res))
-		}
-	case slices.Equal(resourceAllowedIn, []scope.Type{scope.Global, scope.Org, scope.Project}):
-		switch {
-		case strings.HasPrefix(reqScopeId, globals.GlobalPrefix):
-			return grantsForUserGlobalResourcesQuery, nil
-		case strings.HasPrefix(reqScopeId, globals.OrgPrefix):
-			return grantsForUserOrgResourcesQuery, nil
-		case strings.HasPrefix(reqScopeId, globals.ProjectPrefix):
-			return grantsForUserProjectResourcesQuery, nil
-		default:
-			return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid scope id %s", reqScopeId))
-		}
-	case slices.Equal(resourceAllowedIn, []scope.Type{scope.Project}):
-		if !strings.HasPrefix(reqScopeId, globals.ProjectPrefix) {
-			return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("request scope id must be project for %s resources", res))
-		}
-		return grantsForUserProjectResourcesQuery, nil
-	}
-	return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid resource type: %v", res))
+func (m *multiGrantTuple) testStableSort() {
+	grantScopeIds := strings.Split(m.GrantScopeIds, "^")
+	sort.Strings(grantScopeIds)
+	m.GrantScopeIds = strings.Join(grantScopeIds, "^")
+	gts := strings.Split(m.Grants, "^")
+	sort.Strings(gts)
+	m.Grants = strings.Join(gts, "^")
 }

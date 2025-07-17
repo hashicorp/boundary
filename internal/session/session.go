@@ -473,7 +473,7 @@ func newCert(ctx context.Context, jobId string, addresses []string, exp time.Tim
 	for _, addr := range addresses {
 		// First ensure we aren't looking at ports, regardless of IP or not
 		host, _, err := util.SplitHostPort(addr)
-		if err != nil && !errors.Is(err, util.ErrMissingPort) {
+		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		// Now figure out if it's an IP address or not. If ParseIP likes it, add

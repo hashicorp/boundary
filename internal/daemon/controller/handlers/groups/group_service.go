@@ -95,7 +95,7 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List, req.GetRecursive())
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -233,7 +233,7 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -271,7 +271,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create, false)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -309,7 +309,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Update, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -345,7 +345,7 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete, false)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -363,7 +363,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 	if err := validateAddGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddMembers, false)
+	authResults := s.authResult(ctx, req.GetId(), action.AddMembers)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -401,7 +401,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 	if err := validateSetGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetMembers, false)
+	authResults := s.authResult(ctx, req.GetId(), action.SetMembers)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -439,7 +439,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 	if err := validateRemoveGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveMembers, false)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveMembers)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -625,7 +625,7 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	return out, m, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type, isRecursive bool) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -634,7 +634,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithAction(a), auth.WithRecursive(isRecursive)}
+	opts := []auth.Option{auth.WithType(resource.Group), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -661,7 +661,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, isRec
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, resource.Group, opts...)
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(ctx context.Context, in *iam.Group, members []*iam.GroupMember, opt ...handlers.Option) (*pb.Group, error) {

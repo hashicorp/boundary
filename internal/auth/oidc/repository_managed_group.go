@@ -69,6 +69,7 @@ func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg 
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf(
@@ -228,6 +229,7 @@ func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublic
 			return nil
 		},
 	)
+
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(withPublicId))
 	}
@@ -315,6 +317,7 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 			return nil
 		},
 	)
+
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op,

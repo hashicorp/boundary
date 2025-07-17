@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,20 +20,16 @@ func Test_GetOpts(t *testing.T) {
 	withKms := new(kms.Kms)
 	res := new(perms.Resource)
 
-	// test default values
-	defaultOpts := getDefaultOptions()
-	assert.Equal(t, options{}, defaultOpts)
-
 	opts := getOpts(
 		WithScopeId("foo"),
 		WithPin("bar"),
 		WithId("zip"),
 		WithAction(action.AddHosts),
+		WithType(resource.Group),
 		WithUserId("user"),
 		WithKms(withKms),
 		WithRecoveryTokenNotAllowed(true),
 		WithAnonymousUserNotAllowed(true),
-		WithRecursive(true),
 		WithResource(res),
 		WithActions([]string{"callback"}),
 	)
@@ -41,11 +38,11 @@ func Test_GetOpts(t *testing.T) {
 		withPin:                     "bar",
 		withId:                      "zip",
 		withAction:                  action.AddHosts,
+		withType:                    resource.Group,
 		withUserId:                  "user",
 		withKms:                     withKms,
 		withRecoveryTokenNotAllowed: true,
 		withAnonymousUserNotAllowed: true,
-		withRecursive:               true,
 		withResource:                res,
 		withActions:                 []string{"callback"},
 	}

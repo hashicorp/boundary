@@ -32,7 +32,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/target/tcp"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mr-tron/base58"
@@ -356,9 +355,7 @@ func Test_unaryCtxInterceptor(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			// Use resource.Scope here but resource type shouldn't matter since we're only validating that auth.Verify
-			// can use the 'context' with additional ctx.Value from the interceptor
-			verifyResults := auth.Verify(retCtx.(context.Context), resource.Scope)
+			verifyResults := auth.Verify(retCtx.(context.Context))
 			assert.NotEmpty(verifyResults)
 		})
 	}
@@ -644,9 +641,7 @@ func Test_streamCtxInterceptor(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			// Use resource.Scope here but resource type shouldn't matter since we're only validating that auth.Verify
-			// can use the 'context' with additional ctx.Value from the interceptor
-			verifyResults := auth.Verify(hdCtx.(context.Context), resource.Scope)
+			verifyResults := auth.Verify(hdCtx.(context.Context))
 			assert.NotEmpty(verifyResults)
 		})
 	}
@@ -875,114 +870,6 @@ func Test_statusCodeInterceptor(t *testing.T) {
 			} else {
 				require.Len(statusHdr, 0)
 			}
-		})
-	}
-}
-
-func Test_parseUserAgents(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name         string
-		rawUserAgent string
-		expected     []*event.UserAgent
-	}{
-		{
-			name:         "valid single user-agent",
-			rawUserAgent: "Boundary-client-agent/0.1.4",
-			expected: []*event.UserAgent{
-				{
-					Product:        "Boundary-client-agent",
-					ProductVersion: "0.1.4",
-				},
-			},
-		},
-		{
-			name:         "multiple valid agents with comments",
-			rawUserAgent: "Boundary-client-agent/0.1.4 (foo; bar); AnotherApp/2.0.0 (baz )",
-			expected: []*event.UserAgent{
-				{
-					Product:        "Boundary-client-agent",
-					ProductVersion: "0.1.4",
-					Comments:       []string{"foo", "bar"},
-				},
-				{
-					Product:        "AnotherApp",
-					ProductVersion: "2.0.0",
-					Comments:       []string{"baz"},
-				},
-			},
-		},
-		{
-			name:         "complex but valid user agents",
-			rawUserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 surveyon/2.9.5 (iPhone; CPU iPhone OS 12_5_7 like Mac OS X)",
-			expected: []*event.UserAgent{
-				{
-					Product:        "Mozilla",
-					ProductVersion: "5.0",
-					Comments:       []string{"Macintosh", "Intel Mac OS X 10_15_7"},
-				},
-				{
-					Product:        "AppleWebKit",
-					ProductVersion: "537.36",
-					Comments:       []string{"KHTML, like Gecko"},
-				},
-				{
-					Product:        "Chrome",
-					ProductVersion: "87.0.4280.88",
-				},
-				{
-					Product:        "Safari",
-					ProductVersion: "537.36",
-				},
-				{
-					Product:        "surveyon",
-					ProductVersion: "2.9.5",
-					Comments:       []string{"iPhone", "CPU iPhone OS 12_5_7 like Mac OS X"},
-				},
-			},
-		},
-		{
-			name:         "invalid client-agent version format (starts with 'v')",
-			rawUserAgent: "Boundary-client-agent/v0.1.4",
-			expected:     nil,
-		},
-		{
-			name:         "invalid client-agent version format (non-semver)",
-			rawUserAgent: "Boundary-client-agent/0.1.x",
-			expected:     nil,
-		},
-		{
-			name:         "empty user-agent",
-			rawUserAgent: "",
-			expected:     nil,
-		},
-		{
-			name:         "valid non client-agent user-agent",
-			rawUserAgent: "SomeOtherApp/v1.2.3",
-			expected: []*event.UserAgent{
-				{
-					Product:        "SomeOtherApp",
-					ProductVersion: "v1.2.3",
-				},
-			},
-		},
-		{
-			name:         "mixed valid and invalid agents",
-			rawUserAgent: "Boundary-client-agent/0.1.4 NoVersionApp SomeOtherApp/",
-			expected: []*event.UserAgent{
-				{
-					Product:        "Boundary-client-agent",
-					ProductVersion: "0.1.4",
-				},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := parseUserAgents(tt.rawUserAgent)
-			assert.ElementsMatch(t, tt.expected, result)
 		})
 	}
 }

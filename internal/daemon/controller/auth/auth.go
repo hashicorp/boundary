@@ -173,7 +173,7 @@ func NewVerifierContext(ctx context.Context,
 // may come from the URL and may come from the token) and whether or not to
 // proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
-func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret VerifyResults) {
+func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	const op = "auth.Verify"
 	ret.Error = handlers.ForbiddenError()
 	v, ok := ctx.Value(verifierKey).(*verifier)
@@ -272,11 +272,11 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 		ScopeId: opts.withScopeId,
 		Id:      opts.withId,
 		Pin:     opts.withPin,
-		Type:    resourceType,
+		Type:    opts.withType,
 		// Parent Scope ID will be filled in via performAuthCheck
 	}
 	// Global scope has no parent ID; account for this
-	if opts.withId == scope.Global.String() && resourceType == resource.Scope {
+	if opts.withId == scope.Global.String() && opts.withType == resource.Scope {
 		v.res.ScopeId = scope.Global.String()
 	}
 
@@ -284,12 +284,10 @@ func Verify(ctx context.Context, resourceType resource.Type, opt ...Option) (ret
 		v.decryptToken(ctx)
 	}
 
-	resourcesToFetchGrants := append([]resource.Type{resourceType}, opts.withFetchAdditionalResourceGrants...)
-
 	var authResults perms.ACLResults
 	var userData template.Data
 	var err error
-	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx, resourcesToFetchGrants, opts.withRecursive)
+	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error performing authn/authz check"))
 		return
@@ -493,7 +491,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 	}
 }
 
-func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.Type, isRecursiveRequest bool) (
+func (v verifier) performAuthCheck(ctx context.Context) (
 	aclResults perms.ACLResults,
 	userData template.Data,
 	scopeInfo *scopes.ScopeInfo,
@@ -653,8 +651,7 @@ func (v verifier) performAuthCheck(ctx context.Context, resourceType []resource.
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
-	iamOpt := []iam.Option{iam.WithRecursive(isRecursiveRequest)}
-	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id, resourceType, scopeInfo.Id, iamOpt...)
+	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op)
 		return

@@ -10,7 +10,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 
@@ -25,134 +24,141 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var (
-	_ codes.Code
-	_ io.Reader
-	_ status.Status
-	_ = errors.New
-	_ = runtime.String
-	_ = utilities.NewDoubleArray
-	_ = metadata.Join
-)
+var _ codes.Code
+var _ io.Reader
+var _ status.Status
+var _ = runtime.String
+var _ = utilities.NewDoubleArray
+var _ = metadata.Join
 
 func request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetAuthMethodRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq GetAuthMethodRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.GetAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_AuthMethodService_GetAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetAuthMethodRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq GetAuthMethodRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.GetAuthMethod(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_AuthMethodService_ListAuthMethods_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+var (
+	filter_AuthMethodService_ListAuthMethods_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
 
 func request_AuthMethodService_ListAuthMethods_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ListAuthMethodsRequest
-		metadata runtime.ServerMetadata
-	)
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
+	var protoReq ListAuthMethodsRequest
+	var metadata runtime.ServerMetadata
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthMethodService_ListAuthMethods_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.ListAuthMethods(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_AuthMethodService_ListAuthMethods_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ListAuthMethodsRequest
-		metadata runtime.ServerMetadata
-	)
+	var protoReq ListAuthMethodsRequest
+	var metadata runtime.ServerMetadata
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthMethodService_ListAuthMethods_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.ListAuthMethods(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_AuthMethodService_CreateAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq CreateAuthMethodRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq CreateAuthMethodRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
+
 	msg, err := client.CreateAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_AuthMethodService_CreateAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq CreateAuthMethodRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq CreateAuthMethodRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.CreateAuthMethod(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
-var filter_AuthMethodService_UpdateAuthMethod_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+var (
+	filter_AuthMethodService_UpdateAuthMethod_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+)
 
 func request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq UpdateAuthMethodRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
+	var protoReq UpdateAuthMethodRequest
+	var metadata runtime.ServerMetadata
+
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
 		if fieldMask, err := runtime.FieldMaskFromRequestBody(newReader(), protoReq.Item); err != nil {
@@ -161,35 +167,45 @@ func request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, marshaler
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthMethodService_UpdateAuthMethod_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := client.UpdateAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq UpdateAuthMethodRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
+	var protoReq UpdateAuthMethodRequest
+	var metadata runtime.ServerMetadata
+
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if protoReq.UpdateMask == nil || len(protoReq.UpdateMask.GetPaths()) == 0 {
@@ -199,166 +215,223 @@ func local_request_AuthMethodService_UpdateAuthMethod_0(ctx context.Context, mar
 			protoReq.UpdateMask = fieldMask
 		}
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthMethodService_UpdateAuthMethod_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+
 	msg, err := server.UpdateAuthMethod(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteAuthMethodRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq DeleteAuthMethodRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.DeleteAuthMethod(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteAuthMethodRequest
+	var metadata runtime.ServerMetadata
+
 	var (
-		protoReq DeleteAuthMethodRequest
-		metadata runtime.ServerMetadata
-		err      error
+		val string
+		ok  bool
+		err error
+		_   = err
 	)
-	val, ok := pathParams["id"]
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.DeleteAuthMethod(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_AuthMethodService_ChangeState_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ChangeStateRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq ChangeStateRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := client.ChangeState(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_AuthMethodService_ChangeState_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq ChangeStateRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq ChangeStateRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	val, ok := pathParams["id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
+
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
+
 	msg, err := server.ChangeState(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 func request_AuthMethodService_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq AuthenticateRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq AuthenticateRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
-	val, ok := pathParams["auth_method_id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["auth_method_id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "auth_method_id")
 	}
+
 	protoReq.AuthMethodId, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
+
 	msg, err := client.Authenticate(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
+
 }
 
 func local_request_AuthMethodService_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, server AuthMethodServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq AuthenticateRequest
-		metadata runtime.ServerMetadata
-		err      error
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	var protoReq AuthenticateRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	val, ok := pathParams["auth_method_id"]
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["auth_method_id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "auth_method_id")
 	}
+
 	protoReq.AuthMethodId, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
+
 	msg, err := server.Authenticate(ctx, &protoReq)
 	return msg, metadata, err
+
 }
 
 // RegisterAuthMethodServiceHandlerServer registers the http handlers for service AuthMethodService to "mux".
 // UnaryRPC     :call AuthMethodServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterAuthMethodServiceHandlerFromEndpoint instead.
-// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AuthMethodServiceServer) error {
-	mux.Handle(http.MethodGet, pattern_AuthMethodService_GetAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_AuthMethodService_GetAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/GetAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/GetAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -370,15 +443,20 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_AuthMethodService_GetAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_GetAuthMethod_0{resp.(*GetAuthMethodResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_AuthMethodService_GetAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_GetAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodGet, pattern_AuthMethodService_ListAuthMethods_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_AuthMethodService_ListAuthMethods_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ListAuthMethods", runtime.WithHTTPPathPattern("/v1/auth-methods"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ListAuthMethods", runtime.WithHTTPPathPattern("/v1/auth-methods"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -390,15 +468,20 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_AuthMethodService_ListAuthMethods_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_AuthMethodService_CreateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_AuthMethodService_CreateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/CreateAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/CreateAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -410,15 +493,20 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_AuthMethodService_CreateAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_CreateAuthMethod_0{resp.(*CreateAuthMethodResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_AuthMethodService_CreateAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_CreateAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPatch, pattern_AuthMethodService_UpdateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("PATCH", pattern_AuthMethodService_UpdateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/UpdateAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/UpdateAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -430,15 +518,20 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_AuthMethodService_UpdateAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_UpdateAuthMethod_0{resp.(*UpdateAuthMethodResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_AuthMethodService_UpdateAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_UpdateAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodDelete, pattern_AuthMethodService_DeleteAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("DELETE", pattern_AuthMethodService_DeleteAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/DeleteAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/DeleteAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -450,15 +543,20 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_AuthMethodService_DeleteAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_AuthMethodService_ChangeState_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_AuthMethodService_ChangeState_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ChangeState", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}:change-state"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ChangeState", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}:change-state"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -470,15 +568,20 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_AuthMethodService_ChangeState_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_ChangeState_0{resp.(*ChangeStateResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_AuthMethodService_ChangeState_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_ChangeState_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_AuthMethodService_Authenticate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_AuthMethodService_Authenticate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/Authenticate", runtime.WithHTTPPathPattern("/v1/auth-methods/{auth_method_id}:authenticate"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/Authenticate", runtime.WithHTTPPathPattern("/v1/auth-methods/{auth_method_id}:authenticate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -490,7 +593,9 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_AuthMethodService_Authenticate_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
 
 	return nil
@@ -499,24 +604,25 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 // RegisterAuthMethodServiceHandlerFromEndpoint is same as RegisterAuthMethodServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterAuthMethodServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.NewClient(endpoint, opts...)
+	conn, err := grpc.DialContext(ctx, endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
+
 	return RegisterAuthMethodServiceHandler(ctx, mux, conn)
 }
 
@@ -530,13 +636,16 @@ func RegisterAuthMethodServiceHandler(ctx context.Context, mux *runtime.ServeMux
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "AuthMethodServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "AuthMethodServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "AuthMethodServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
+// "AuthMethodServiceClient" to call the correct interceptors.
 func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client AuthMethodServiceClient) error {
-	mux.Handle(http.MethodGet, pattern_AuthMethodService_GetAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_AuthMethodService_GetAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/GetAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/GetAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -547,13 +656,18 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_AuthMethodService_GetAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_GetAuthMethod_0{resp.(*GetAuthMethodResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_AuthMethodService_GetAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_GetAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodGet, pattern_AuthMethodService_ListAuthMethods_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("GET", pattern_AuthMethodService_ListAuthMethods_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ListAuthMethods", runtime.WithHTTPPathPattern("/v1/auth-methods"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ListAuthMethods", runtime.WithHTTPPathPattern("/v1/auth-methods"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -564,13 +678,18 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_AuthMethodService_ListAuthMethods_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_AuthMethodService_CreateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_AuthMethodService_CreateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/CreateAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/CreateAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -581,13 +700,18 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_AuthMethodService_CreateAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_CreateAuthMethod_0{resp.(*CreateAuthMethodResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_AuthMethodService_CreateAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_CreateAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPatch, pattern_AuthMethodService_UpdateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("PATCH", pattern_AuthMethodService_UpdateAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/UpdateAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/UpdateAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -598,13 +722,18 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_AuthMethodService_UpdateAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_UpdateAuthMethod_0{resp.(*UpdateAuthMethodResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_AuthMethodService_UpdateAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_UpdateAuthMethod_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodDelete, pattern_AuthMethodService_DeleteAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("DELETE", pattern_AuthMethodService_DeleteAuthMethod_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/DeleteAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/DeleteAuthMethod", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -615,13 +744,18 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_AuthMethodService_DeleteAuthMethod_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_AuthMethodService_ChangeState_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_AuthMethodService_ChangeState_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ChangeState", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}:change-state"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/ChangeState", runtime.WithHTTPPathPattern("/v1/auth-methods/{id}:change-state"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -632,13 +766,18 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_AuthMethodService_ChangeState_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_ChangeState_0{resp.(*ChangeStateResponse)}, mux.GetForwardResponseOptions()...)
+
+		forward_AuthMethodService_ChangeState_0(annotatedContext, mux, outboundMarshaler, w, req, response_AuthMethodService_ChangeState_0{resp}, mux.GetForwardResponseOptions()...)
+
 	})
-	mux.Handle(http.MethodPost, pattern_AuthMethodService_Authenticate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+
+	mux.Handle("POST", pattern_AuthMethodService_Authenticate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/Authenticate", runtime.WithHTTPPathPattern("/v1/auth-methods/{auth_method_id}:authenticate"))
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthMethodService/Authenticate", runtime.WithHTTPPathPattern("/v1/auth-methods/{auth_method_id}:authenticate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -649,63 +788,78 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
+
 		forward_AuthMethodService_Authenticate_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
 	})
+
 	return nil
 }
 
 type response_AuthMethodService_GetAuthMethod_0 struct {
-	*GetAuthMethodResponse
+	proto.Message
 }
 
 func (m response_AuthMethodService_GetAuthMethod_0) XXX_ResponseBody() interface{} {
-	response := m.GetAuthMethodResponse
+	response := m.Message.(*GetAuthMethodResponse)
 	return response.Item
 }
 
 type response_AuthMethodService_CreateAuthMethod_0 struct {
-	*CreateAuthMethodResponse
+	proto.Message
 }
 
 func (m response_AuthMethodService_CreateAuthMethod_0) XXX_ResponseBody() interface{} {
-	response := m.CreateAuthMethodResponse
+	response := m.Message.(*CreateAuthMethodResponse)
 	return response.Item
 }
 
 type response_AuthMethodService_UpdateAuthMethod_0 struct {
-	*UpdateAuthMethodResponse
+	proto.Message
 }
 
 func (m response_AuthMethodService_UpdateAuthMethod_0) XXX_ResponseBody() interface{} {
-	response := m.UpdateAuthMethodResponse
+	response := m.Message.(*UpdateAuthMethodResponse)
 	return response.Item
 }
 
 type response_AuthMethodService_ChangeState_0 struct {
-	*ChangeStateResponse
+	proto.Message
 }
 
 func (m response_AuthMethodService_ChangeState_0) XXX_ResponseBody() interface{} {
-	response := m.ChangeStateResponse
+	response := m.Message.(*ChangeStateResponse)
 	return response.Item
 }
 
 var (
-	pattern_AuthMethodService_GetAuthMethod_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "id"}, ""))
-	pattern_AuthMethodService_ListAuthMethods_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "auth-methods"}, ""))
+	pattern_AuthMethodService_GetAuthMethod_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "id"}, ""))
+
+	pattern_AuthMethodService_ListAuthMethods_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "auth-methods"}, ""))
+
 	pattern_AuthMethodService_CreateAuthMethod_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "auth-methods"}, ""))
+
 	pattern_AuthMethodService_UpdateAuthMethod_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "id"}, ""))
+
 	pattern_AuthMethodService_DeleteAuthMethod_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "id"}, ""))
-	pattern_AuthMethodService_ChangeState_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "id"}, "change-state"))
-	pattern_AuthMethodService_Authenticate_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "auth_method_id"}, "authenticate"))
+
+	pattern_AuthMethodService_ChangeState_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "id"}, "change-state"))
+
+	pattern_AuthMethodService_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "auth_method_id"}, "authenticate"))
 )
 
 var (
-	forward_AuthMethodService_GetAuthMethod_0    = runtime.ForwardResponseMessage
-	forward_AuthMethodService_ListAuthMethods_0  = runtime.ForwardResponseMessage
+	forward_AuthMethodService_GetAuthMethod_0 = runtime.ForwardResponseMessage
+
+	forward_AuthMethodService_ListAuthMethods_0 = runtime.ForwardResponseMessage
+
 	forward_AuthMethodService_CreateAuthMethod_0 = runtime.ForwardResponseMessage
+
 	forward_AuthMethodService_UpdateAuthMethod_0 = runtime.ForwardResponseMessage
+
 	forward_AuthMethodService_DeleteAuthMethod_0 = runtime.ForwardResponseMessage
-	forward_AuthMethodService_ChangeState_0      = runtime.ForwardResponseMessage
-	forward_AuthMethodService_Authenticate_0     = runtime.ForwardResponseMessage
+
+	forward_AuthMethodService_ChangeState_0 = runtime.ForwardResponseMessage
+
+	forward_AuthMethodService_Authenticate_0 = runtime.ForwardResponseMessage
 )

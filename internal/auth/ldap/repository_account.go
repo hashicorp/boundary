@@ -65,6 +65,7 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, _ ...Option)
 			return nil
 		},
 	)
+
 	if err != nil {
 		switch {
 		case errors.IsUniqueError(err):

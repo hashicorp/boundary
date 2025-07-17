@@ -83,7 +83,7 @@ func main() {
 		}
 
 		var pin string
-		if parent := res.Parent(); parent != res {
+		if parent := resource.Parent(res); parent != res {
 			pin = parent.String()
 		}
 		collectionEndpoints := &Endpoint{

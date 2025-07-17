@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -29,8 +30,10 @@ func TestWorkerStatusReport(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
-	c := server.NewController("test_controller1", server.WithAddress("127.0.0."))
-	_, err := serverRepo.UpsertController(ctx, c)
+	_, err := serverRepo.UpsertController(ctx, &store.Controller{
+		PrivateId: "test_controller1",
+		Address:   "127.0.0.1",
+	})
 	require.NoError(t, err)
 
 	repo, err := session.NewRepository(ctx, rw, rw, kms)

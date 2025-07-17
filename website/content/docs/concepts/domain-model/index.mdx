@@ -83,6 +83,11 @@ significant number of resources exist.
   issued from a configured [authentication method][]
   which can be used to establish the identity of a [user][].
 
+- **[Alias][]** :
+  A resource
+  that represents a globally unique, DNS-like string that is
+  associated with a destination resource, such as a [target][].
+
 - **[Credential][]** :
   A data structure containing one or more secrets
   that binds an identity to a set of permissions or capabilities
@@ -152,6 +157,11 @@ significant number of resources exist.
    A storage bucket is used to store [session recordings][].
    The storage bucket represents a bucket in an external object store.
 
+- **[Storage policy][]** :
+   A storage policy defines the rules for storing
+   [session recordings][] in a [storage bucket][].
+   The storage policy may specify the retention period for the recordings.
+
 - **[Target][]** :
   A resource
   that represents a networked service
@@ -178,6 +188,7 @@ Refer to the [Scopes] section to help you understand the structure of resources 
 [iam]: https://en.wikipedia.org/wiki/Identity_management
 [account]: /boundary/docs/concepts/domain-model/accounts
 [accounts]: /boundary/docs/concepts/domain-model/accounts
+[alias]: /boundary/docs/concepts/domain-model/aliases
 [authentication method]: /boundary/docs/concepts/domain-model/auth-methods
 [authentication methods]: /boundary/docs/concepts/domain-model/auth-methods
 [credential library]: /boundary/docs/concepts/domain-model/credential-libraries
@@ -204,6 +215,7 @@ Refer to the [Scopes] section to help you understand the structure of resources 
 [session recordings]: /boundary/docs/concepts/domain-model/session-recordings
 [sessions]: /boundary/docs/concepts/domain-model/sessions
 [storage bucket]: /boundary/docs/concepts/domain-model/storage-buckets
+[storage policy]: /boundary/docs/concepts/domain-model/storage-policy
 [target]: /boundary/docs/concepts/domain-model/targets
 [targets]: /boundary/docs/concepts/domain-model/targets
 [user]: /boundary/docs/concepts/domain-model/users
