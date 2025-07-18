@@ -27,8 +27,7 @@ scenario "e2e_aws_rdp_target" {
 
     variables {
       instance_type = [
-        var.worker_instance_type,
-        var.controller_instance_type
+        var.windows_instance_type,
       ]
     }
   }
@@ -53,8 +52,9 @@ scenario "e2e_aws_rdp_target" {
     ]
 
     variables {
-      vpc_id         = step.create_base_infra.vpc_id
-      server_version = matrix.rdp_server
+      vpc_id                   = step.create_base_infra.vpc_id
+      server_version           = matrix.rdp_server
+      rdp_target_instance_type = var.windows_instance_type
     }
   }
 
