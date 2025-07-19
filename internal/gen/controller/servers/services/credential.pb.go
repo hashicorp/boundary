@@ -126,7 +126,7 @@ func (*Credential_SshCertificate) isCredential_Credential() {}
 type UsernamePassword struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The username of the credential
-	Username string `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"public"`
+	Username string `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty"` // @gotags: `class:"sensitive"`
 	// The password of the credential
 	Password      string `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty"` // @gotags: `class:"secret"`
 	unknownFields protoimpl.UnknownFields
