@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/netip"
 	"os"
 	"strconv"
@@ -424,6 +425,12 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
 		return base.CommandCliError
 	}
+
+	if !isPortAvailable(c.flagListenPort, c.flagListenAddr) {
+		c.PrintCliError(errors.New("Port is already in use"))
+		return base.CommandCliError
+	}
+
 	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
@@ -731,4 +738,13 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		return
 	}
 	c.execCmdReturnValue.Store(0)
+}
+
+func isPortAvailable(listenPort int64, listenAddr string) bool {
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", listenAddr, listenPort))
+	if err != nil {
+		return false
+	}
+	_ = listener.Close()
+	return true
 }
