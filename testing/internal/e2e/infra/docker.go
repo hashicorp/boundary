@@ -347,10 +347,12 @@ func StartMysql(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 
 // StartCassandra starts a Cassandra database in a docker container.
 // Returns information about the container
-func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
+func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) (*Container, error) {
 	t.Log("Starting Cassandra database...")
 	c, err := LoadConfig()
 	require.NoError(t, err)
+
+	networkAlias := "e2ecassandra"
 
 	err = pool.Client.PullImage(docker.PullImageOptions{
 		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
@@ -358,42 +360,47 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 	}, docker.AuthConfiguration{})
 	require.NoError(t, err)
 
-	networkAlias := "e2ecassandra"
-
-	cassandraKeyspace := "e2eboundarydb"
-	cassandraUser := "e2eboundary"
-	cassandraPassword := "e2eboundary"
-
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
-		Tag:        tag,
-		Env: []string{
-			"CASSANDRA_CLUSTER_NAME=e2e-boundary-cluster",
-			"CASSANDRA_AUTHENTICATOR=PasswordAuthenticator",
-		},
-
+		Repository:   fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:          tag,
 		ExposedPorts: []string{"9042/tcp"},
 		Name:         networkAlias,
 		Networks:     []*dockertest.Network{network},
 	})
 	require.NoError(t, err)
 
+	err = enableCassandraPasswordAuth(t, pool, resource)
+	require.NoError(t, err)
+
 	return &Container{
-		Resource: resource,
+		Resource:     resource,
+		UriLocalhost: fmt.Sprintf("cassandra://%s:9042", networkAlias),
+		UriNetwork:   fmt.Sprintf("cassandra://%s:9042", networkAlias),
+	}, nil
+}
 
-		UriLocalhost: fmt.Sprintf("cassandra://%s:%s@%s/%s",
-			cassandraUser,
-			cassandraPassword,
-			resource.GetHostPort("9042/tcp"),
-			cassandraKeyspace,
-		),
+func enableCassandraPasswordAuth(t testing.TB, pool *dockertest.Pool, resource *dockertest.Resource) error {
+	t.Helper()
 
-		UriNetwork: fmt.Sprintf("cassandra://%s:%s@%s:%s/%s",
-			cassandraUser,
-			cassandraPassword,
-			networkAlias,
-			"9042",
-			cassandraKeyspace,
-		),
+	// Update configuration using sed commands
+	sedCommands := []string{
+		"sed", "-i",
+		"-e", "s/^authenticator:.*/authenticator: PasswordAuthenticator/",
+		"-e", "s/^authorizer:.*/authorizer: CassandraAuthorizer/",
+		"-e", "s/^role_manager:.*/role_manager: CassandraRoleManager/",
+		"/etc/cassandra/cassandra.yaml",
 	}
+
+	exitCode, err := resource.Exec(sedCommands, dockertest.ExecOptions{})
+	if err != nil || exitCode != 0 {
+		return fmt.Errorf("failed to update cassandra.yaml: %w", err)
+	}
+
+	// Restart the container to apply changes
+	err = pool.Client.RestartContainer(resource.Container.ID, 60)
+	if err != nil {
+		return fmt.Errorf("failed to restart Cassandra container: %w", err)
+	}
+
+	return nil
 }

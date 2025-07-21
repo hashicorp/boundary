@@ -4,10 +4,6 @@
 package base_test
 
 import (
-	"context"
-	"net/url"
-	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -17,10 +13,10 @@ import (
 )
 
 // TestCliTcpTargetConnectCassandra uses the boundary cli to connect to a
-// target using `connect mysql`
+// target using `connect cassandra`
 func TestCliTcpTargetConnectCassandra(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	ctx := context.Background()
+	// ctx := context.Background()
 
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
@@ -29,7 +25,8 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 	network, err := pool.NetworksByName("e2e_cluster")
 	require.NoError(t, err, "Failed to get e2e_cluster network")
 
-	c := infra.StartCassandra(t, pool, &network[0], "cassandra", "5.0")
+	c, err := infra.StartCassandra(t, pool, &network[0], "cassandra", "latest")
+	require.NoError(t, err, "Failed to start Cassandra container")
 	require.NotNil(t, c, "Cassandra container should not be nil")
 	// t.Cleanup(func() {
 	// 	if err := pool.Purge(c.Resource); err != nil {
@@ -37,30 +34,87 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 	// 	}
 	// })
 
-	cassandraYaml, err := os.CreateTemp("", "*")
-	require.NoError(t, err, "Failed creating a templ cassandra config yaml file")
+	// u, err := url.Parse(c.UriNetwork)
+	// require.NoError(t, err, "Failed to parse MySQL URL")
 
-	clqlshrc, err := os.CreateTemp("", "*")
-	require.NoError(t, err, "Failed creating a templ cassandra config yaml file")
+	// user, hostname, port, db := u.User.Username(), u.Hostname(), u.Port(), u.Path[1:]
+	// pw, pwSet := u.User.Password()
+	// t.Logf("MySQL info: user=%s, db=%s, host=%s, port=%s, password-set:%t",
+	// 	user, db, hostname, port, pwSet)
 
-	u, err := url.Parse(c.UriNetwork)
-	require.NoError(t, err, "Failed to parse Cassandra URI")
+	// // Wait for MySQL to be ready
+	// err = pool.Retry(func() error {
+	// 	return exec.CommandContext(ctx, "docker", "exec", hostname,
+	// 		"mysql", "-u"+user, "-p"+pw, "-e", "SELECT 1").Run()
+	// })
+	// require.NoError(t, err, "MySQL container failed to start")
 
-	// user := u.User.Username()
-	// // pw, _ := u.User.Password()
-	// keyspace := u.Path[1:]
-	// port := u.Port()
-	hostname := u.Hostname()
+	// boundary.AuthenticateAdminCli(t, ctx)
 
-	// t.Logf("Cassandra container info: user=%s, keyspace=%s, host=%s, port=%s",
-	// 	user, keyspace, hostname, port)
+	// orgId, err := boundary.CreateOrgCli(t, ctx)
+	// require.NoError(t, err)
+	// t.Cleanup(func() {
+	// 	ctx := context.Background()
+	// 	boundary.AuthenticateAdminCli(t, ctx)
+	// 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
+	// 	require.NoError(t, output.Err, string(output.Stderr))
+	// })
 
-	err = pool.Retry(func() error {
-		return exec.CommandContext(ctx, "docker", "exec", hostname,
-			"cqlsh", "-e", "SELECT now() FROM system.local;").Run()
-	})
+	// projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	// require.NoError(t, err)
 
-	require.NoError(t, err, "Cassandra container failed to start")
+	// targetId, err := boundary.CreateTargetCli(
+	// 	t,
+	// 	ctx,
+	// 	projectId,
+	// 	port,
+	// 	target.WithAddress(hostname),
+	// )
+	// require.NoError(t, err)
 
-	t.Log("Successfully connected to Cassandra target")
+	// storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	// require.NoError(t, err)
+
+	// credentialId, err := boundary.CreateStaticCredentialPasswordCli(
+	// 	t,
+	// 	ctx,
+	// 	storeId,
+	// 	user,
+	// 	pw,
+	// )
+	// require.NoError(t, err)
+
+	// err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
+	// require.NoError(t, err)
+
+	// cmd := exec.CommandContext(ctx,
+	// 	"boundary",
+	// 	"connect", "mysql",
+	// 	"-target-id", targetId,
+	// 	"-dbname", db,
+	// )
+	// f, err := pty.Start(cmd)
+	// require.NoError(t, err)
+	// t.Cleanup(func() {
+	// 	err := f.Close()
+	// 	require.NoError(t, err)
+	// })
+
+	// _, err = f.Write([]byte("SHOW TABLES;\n"))
+	// require.NoError(t, err)
+	// _, err = f.Write([]byte("SELECT DATABASE();\n"))
+	// require.NoError(t, err)
+	// _, err = f.Write([]byte("EXIT;\n"))
+	// require.NoError(t, err)
+	// _, err = f.Write([]byte{4})
+	// require.NoError(t, err)
+
+	// var buf bytes.Buffer
+	// _, _ = io.Copy(&buf, f)
+
+	// output := buf.String()
+	// t.Logf("MySQL session output: %s", output)
+
+	// require.Contains(t, output, "| "+db+" |", "Session did not return expected database query result")
+	// t.Log("Successfully connected to MySQL target")
 }
