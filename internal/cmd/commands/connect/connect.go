@@ -426,15 +426,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	ok, err := isPortAvailable(c.flagListenPort, c.flagListenAddr)
-
-	if err != nil {
+	if err = isPortAvailable(c.flagListenPort, c.flagListenAddr); err != nil {
 		c.PrintCliError(fmt.Errorf("Error checking port availability: %w", err))
-		return base.CommandCliError
-	}
-
-	if !ok {
-		c.PrintCliError(fmt.Errorf("Port %d is already in use", c.flagListenPort))
 		return base.CommandCliError
 	}
 
@@ -747,14 +740,14 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	c.execCmdReturnValue.Store(0)
 }
 
-func isPortAvailable(listenPort int64, listenAddr string) (bool, error) {
+func isPortAvailable(listenPort int64, listenAddr string) error {
 	address := fmt.Sprintf("%s:%d", listenAddr, listenPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		if errors.Is(err, syscall.EADDRINUSE) {
-			return false, nil
+			return fmt.Errorf("port %d is already in use", listenPort)
 		}
-		return false, err // Unexpected error
+		return err
 	}
 	defer func() {
 		err = listener.Close()
@@ -762,5 +755,5 @@ func isPortAvailable(listenPort int64, listenAddr string) (bool, error) {
 			fmt.Printf("Failed to close listener: %v\n", err)
 		}
 	}()
-	return true, nil
+	return nil
 }
