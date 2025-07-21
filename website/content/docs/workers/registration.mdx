@@ -173,7 +173,7 @@ are used to connect to upstream Boundary clusters.
 ## Resources
 
 For more on how `tags{}` in the above configuration are used to facilitate
-routing to the correct target, refer to [Use worker tags to control access](/boundary/docs/workers/worker-tags).
+routing to the correct target, refer to [Route traffic through a worker](/boundary/docs/workers/worker-tags).
 
 
 ## KMS configuration
@@ -192,6 +192,6 @@ kms "aead" {
 
 <Note>
 
-The `name` and `description` fields are not valid configuration fields for workers that use worker-led or controller-led authorization. You can only set these fields through the API and they are only valid for workers that use the [KMS authorization method](/boundary/docs/workers/configure-workers/registration#kms-led-authorization-authentication-flow).
+The `name` and `description` fields are not valid configuration fields for workers that use worker-led or controller-led authorization. You can only set these fields through the API and they are only valid for workers that use the [KMS authorization method](/boundary/docs/workers/registration#kms-led-authorization-authentication-flow).
 
 </Note>

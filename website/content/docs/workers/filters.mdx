@@ -53,8 +53,8 @@ resource "boundary_target" "aws-webservers-prod" {
 
 ### Example worker filter for Vault credential store
 
-Tags are used to control which [workers] can manage Vault requests by specifying
-a `worker_filter`attribute when configuring [credential stores].
+Tags are used to control which workers can manage Vault requests by specifying
+a `worker_filter`attribute when configuring [credential stores](/boundary/docs/domain-model/credential-stores#vault-credential-store-attributes).
 
 This allows the use of private Vault instances with Boundary. Workers
 deployed in the same network as a private Vault instance can access and relay
@@ -65,9 +65,6 @@ Vault requests to Boundary controllers.
   A worker that matches the worker filter must exist before you define the Vault credential store, as it will perform the Vault calls needed to set up the credential store with Boundary.
 
 </Tip>
-
-[workers]: /boundary/docs/workers/configure-workers/registration
-[credential stores]: /boundary/docs/domain-model/credential-stores#vault-credential-store-attributes
 
 <Tabs>
 <Tab heading="UI" group="ui">

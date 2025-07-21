@@ -25,7 +25,7 @@ SSH request message chunks follow the SSH connection and channel request definit
 using a protobuf definition provided here: [SSH Chunks](https://github.com/hashicorp/boundary/blob/main/internal/bsr/proto/ssh/v1/ssh_chunks.proto).
 
 Boundary session recording playback generates an asciinema from a session channel’s `messages-outbound.data` file. For more
-information on finding and viewing BSR data using the asciinema, refer to [Find and view recorded sessions](https://developer.hashicorp.com/boundary/docs/operations/session-recordings/manage-recorded-sessions).
+information on finding and viewing BSR data using the asciinema, refer to [Find and view recorded sessions](/boundary/docs/session-recording/configuration/manage-recorded-sessions).
 
 While Boundary does not currently provide tooling to read other BSR .data files, the BSR definition is available in our
 [community repository](https://github.com/hashicorp/boundary/tree/main/internal/bsr), and you can use it to develop external tooling.

@@ -18,7 +18,7 @@ Before you deploy workers, you should have completed the following steps:
 
 In the following configuration files, there are common configuration components as well as some unique components depending on the role the Boundary worker performs.
 There are three files, one for each worker in a unique network boundary.
-Additionally, Boundary Enterprise supports a [multi-hop configuration](/boundary/docs/workers#multi-hop-worker-capabilities) in which the Boundary workers can serve one of three purposes: an ingress worker, an ingress/egress worker, or an egress worker.
+Additionally, Boundary Enterprise supports a [multi-hop configuration](/boundary/docs/workers/multi-hop) in which the Boundary workers can serve one of three purposes: an ingress worker, an ingress/egress worker, or an egress worker.
 
 ## Prepare the environment files
 
@@ -55,7 +55,7 @@ Refer to your cloud provider's documentation, for more information.
 After you create the requisite key or keys in the cloud provider of your choice, you can begin configuring the workers.
 
 The following configuration examples all employ the worker-led authorization flow.
-For more information on configuring KMS authentication for Boundary workers, refer to the [KMS authentication configuration documenation](/boundary/docs/workers/configure-workers/registration#kms-configuration).
+For more information on configuring KMS authentication for Boundary workers, refer to the [KMS authentication configuration documenation](/boundary/docs/workers/registration#kms-configuration).
 
 If you use Boundary Enterprise, you can configure multiple workers to act in three different roles: ingress, intermediary, and egress.
 For Community Edition, workers only serve one role, acting as both the point of ingress and egress.
@@ -64,11 +64,11 @@ Select your Boundary edition, and complete the following steps to configure work
 <Tabs>
 <Tab heading="Enterprise">
 
-For Boundary Enterprise, you can configure ingress, intermediary, and egress workers to take advantage of [multi-hop worker capabilities](/boundary/docs/workers#multi-hop-worker-capabilities).
+For Boundary Enterprise, you can configure ingress, intermediary, and egress workers to take advantage of [multi-hop worker capabilities](/boundary/docs/workers#multi-hop-sessions).
 
 Note that "ingress," "intermediary," and "egress" are general ways to describe how the respective worker interacts with resources.
 A worker can serve more than one of those roles at a time.
-Refer to [Multi-hop sessions](/boundary/docs/concepts/workers#multi-hop-sessions) for more information.
+Refer to [Multi-hop sessions](/boundary/docs/workers/multi-hop) for more information.
 
 Complete the steps below to configure workers for Boundary Enterprise.
 
