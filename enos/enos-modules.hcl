@@ -43,10 +43,6 @@ module "aws_bucket" {
   source = "./modules/aws_bucket"
 }
 
-module "aws_rdp_server" {
-  source = "./modules/aws_rdp_server"
-}
-
 module "build_crt" {
   source = "./modules/build_crt"
 }

@@ -265,9 +265,3 @@ variable "gcp_client_email" {
   sensitive   = true
   default     = null
 }
-
-variable "windows_instance_type" {
-  description = "Instance type for Windows client nodes"
-  type        = string
-  default     = "m7i-flex.xlarge"
-}

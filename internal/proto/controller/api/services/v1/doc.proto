@@ -36,11 +36,11 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
     contact: {
       name: "HashiCorp Boundary"
       url: "https://www.boundaryproject.io/"
-    };
+    }
     license: {
       name: "Business Source License 1.1"
       url: "https://github.com/hashicorp/boundary/blob/main/LICENSE"
-    };
+    }
   }
   host: "your-boundary-hostname.com"
   external_docs: {
@@ -52,7 +52,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   consumes: "application/json"
   produces: "application/json"
   responses: {
-    key: "default";
+    key: "default"
     value: {
       description: "Returned when there is an error processing the request."
       schema: {

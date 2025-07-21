@@ -18,8 +18,8 @@ service SessionService {
       "A session represents a temporary, authorized access connection between a user and a target resource. "
       "The session service provides endpoints that let you manage sessions in Boundary."
     external_docs: {
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions";
-      description: "Read about sessions in the Boundary domain model";
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions"
+      description: "Read about sessions in the Boundary domain model"
     }
   };
 
