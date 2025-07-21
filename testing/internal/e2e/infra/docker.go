@@ -344,3 +344,56 @@ func StartMysql(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 		UriNetwork:   fmt.Sprintf("mysql://%s:%s@%s:3306/%s", mysqlUser, mysqlPassword, networkAlias, mysqlDb),
 	}
 }
+
+// StartCassandra starts a Cassandra database in a docker container.
+// Returns information about the container
+func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string) *Container {
+	t.Log("Starting Cassandra database...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
+
+	err = pool.Client.PullImage(docker.PullImageOptions{
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:        tag,
+	}, docker.AuthConfiguration{})
+	require.NoError(t, err)
+
+	networkAlias := "e2ecassandra"
+
+	cassandraKeyspace := "e2eboundarydb"
+	cassandraUser := "e2eboundary"
+	cassandraPassword := "e2eboundary"
+
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
+		Tag:        tag,
+		Env: []string{
+			"CASSANDRA_CLUSTER_NAME=e2e-boundary-cluster",
+			"CASSANDRA_AUTHENTICATOR=PasswordAuthenticator",
+		},
+
+		ExposedPorts: []string{"9042/tcp"},
+		Name:         networkAlias,
+		Networks:     []*dockertest.Network{network},
+	})
+	require.NoError(t, err)
+
+	return &Container{
+		Resource: resource,
+
+		UriLocalhost: fmt.Sprintf("cassandra://%s:%s@%s/%s",
+			cassandraUser,
+			cassandraPassword,
+			resource.GetHostPort("9042/tcp"),
+			cassandraKeyspace,
+		),
+
+		UriNetwork: fmt.Sprintf("cassandra://%s:%s@%s:%s/%s",
+			cassandraUser,
+			cassandraPassword,
+			networkAlias,
+			"9042",
+			cassandraKeyspace,
+		),
+	}
+}
