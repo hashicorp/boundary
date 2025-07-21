@@ -80,6 +80,9 @@ type Command struct {
 	// MySQL
 	mysqlFlags
 
+	// Cassandra
+	cassandraFlags
+
 	// RDP
 	rdpFlags
 
@@ -108,6 +111,8 @@ func (c *Command) Synopsis() string {
 		return postgresSynopsis
 	case "mysql":
 		return mysqlSynopsis
+	case "cassandra":
+		return cassandraSynopsis
 	case "rdp":
 		return rdpSynopsis
 	case "ssh":
@@ -230,6 +235,9 @@ func (c *Command) Flags() *base.FlagSets {
 	case "mysql":
 		mysqlOptions(c, set)
 
+	case "cassandra":
+		cassandraOptions(c, set)
+
 	case "rdp":
 		rdpOptions(c, set)
 
@@ -319,6 +327,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.flagExec = c.postgresFlags.defaultExec()
 		case "mysql":
 			c.flagExec = c.mysqlFlags.defaultExec()
+		case "cassandra":
+			c.flagExec = c.cassandraFlags.defaultExec()
 		case "rdp":
 			c.flagExec = c.rdpFlags.defaultExec()
 		case "kube":
@@ -660,6 +670,16 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		args = append(args, mysqlArgs...)
 		envs = append(envs, mysqlEnvs...)
 		creds = mysqlCreds
+
+	case "cassandra":
+		cassandraArgs, cassandraEnvs, cassandraCreds, cassandraErr := c.cassandraFlags.buildArgs(c, port, host, addr, creds)
+		if cassandraErr != nil {
+			argsErr = cassandraErr
+			break
+		}
+		args = append(args, cassandraArgs...)
+		envs = append(envs, cassandraEnvs...)
+		creds = cassandraCreds
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, host, addr)...)
