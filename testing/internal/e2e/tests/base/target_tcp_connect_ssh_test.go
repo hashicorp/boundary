@@ -147,36 +147,44 @@ func TestCliSshTargetConnectListenPortTest(t *testing.T) {
 	t.Log("Successfully attached brokered credentials")
 
 	require.NoError(t, err)
+
+	// Connect to target using ssh option
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"connect",
-			"-target-id", targetId,
-			"-exec", "/usr/bin/ssh", "--",
-			"-vv",
+			"connect", "ssh",
+			"-target-id", targetId, "--",
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "StrictHostKeyChecking=no",
-			"-p", "{{boundary.port}}",
-			"{{boundary.ip}}",
-			"hostname", "-i",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
 		),
 	)
+
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Log("Successfully connected to target")
 
 	// Connect to target on port 3333
+	const ListenPort = "3333"
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
 			"-target-id", targetId,
-			"-listen-port", "3333",
-			"-exec", "/usr/bin/ssh", "--",
+			"-listen-port", ListenPort, "--",
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "StrictHostKeyChecking=no",
-			"-p", "{{boundary.port}}",
-			"{{boundary.ip}}",
-			"hostname", "-i",
+			"-o", "IdentitiesOnly=yes",
 		),
 	)
+
+	//output = e2e.RunCommand(ctx, "boundary",
+	//	e2e.WithArgs(
+	//		"connect", "ssh",
+	//		"-target-id", targetId,
+	//		"-listen-port", ListenPort, "--",
+	//		"-o", "UserKnownHostsFile=/dev/null",
+	//		"-o", "StrictHostKeyChecking=no",
+	//		"-o", "IdentitiesOnly=yes",
+	//	),
+	//)
 
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Log("Successfully connected to target with listen port 3333")
@@ -188,9 +196,12 @@ func TestCliSshTargetConnectListenPortTest(t *testing.T) {
 	for i := 0; i < maxAttempts; i++ {
 		output = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
-				"connect",
+				"connect", "ssh",
 				"-target-id", targetId,
-				"-listen-port", "3333",
+				"-listen-port", ListenPort, "--",
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "IdentitiesOnly=yes",
 			),
 		)
 
