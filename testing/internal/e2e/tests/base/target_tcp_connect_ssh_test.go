@@ -185,7 +185,7 @@ func TestCliSshTargetConnectListenPortTest(t *testing.T) {
 	for i := 0; i < maxAttempts; i++ {
 		output = e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
-				"connect", "ssh",
+				"connect",
 				"-target-id", targetId,
 				"-listen-port", ListenPort, "--",
 				"-o", "UserKnownHostsFile=/dev/null",
@@ -195,7 +195,7 @@ func TestCliSshTargetConnectListenPortTest(t *testing.T) {
 		)
 
 		require.Error(t, output.Err, string(output.Stderr))
-		require.Contains(t, string(output.Stderr), "Port is already in use")
+		require.Contains(t, string(output.Stderr), "address already in use")
 		require.Equal(t, commandCliError, output.ExitCode)
 	}
 }
