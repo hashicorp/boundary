@@ -103,7 +103,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 		err := f.Close()
 		require.NoError(t, err)
 	})
-	// Run CQL commands to interact with the premade keyspace
+
 	_, err = f.Write([]byte("DESCRIBE KEYSPACES;\n"))
 	require.NoError(t, err)
 	_, err = f.Write([]byte("SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '" + keyspace + "';\n"))
