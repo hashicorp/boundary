@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net"
 	"net/netip"
 	"os"
 	"strconv"
@@ -426,11 +425,6 @@ func (c *Command) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	if err = isPortAvailable(c.flagListenPort, c.flagListenAddr); err != nil {
-		c.PrintCliError(fmt.Errorf("Error checking port availability: %w", err))
-		return base.CommandCliError
-	}
-
 	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
@@ -455,7 +449,10 @@ func (c *Command) Run(args []string) (retCode int) {
 	proxyError := new(atomic.Error)
 	go func() {
 		defer close(clientProxyCloseCh)
-		proxyError.Store(clientProxy.Start())
+		if err = clientProxy.Start(); err != nil {
+			c.proxyCancel()
+			proxyError.Store(err)
+		}
 	}()
 	go func() {
 		defer close(connCountCloseCh)
@@ -479,7 +476,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
 
-		proxyAddr := clientProxy.ListenerAddress(context.Background())
+		proxyAddr := clientProxy.ListenerAddress(c.proxyCtx)
 		var clientProxyHost, clientProxyPort string
 		clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
 		if err != nil && !errors.Is(err, util.ErrMissingPort) {
@@ -738,22 +735,4 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		return
 	}
 	c.execCmdReturnValue.Store(0)
-}
-
-func isPortAvailable(listenPort int64, listenAddr string) error {
-	address := fmt.Sprintf("%s:%d", listenAddr, listenPort)
-	listener, err := net.Listen("tcp", address)
-	if err != nil {
-		if errors.Is(err, syscall.EADDRINUSE) {
-			return fmt.Errorf("port %d is already in use", listenPort)
-		}
-		return err
-	}
-	defer func() {
-		err = listener.Close()
-		if err != nil {
-			fmt.Printf("Failed to close listener: %v\n", err)
-		}
-	}()
-	return nil
 }
