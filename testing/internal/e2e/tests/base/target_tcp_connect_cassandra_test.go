@@ -37,11 +37,11 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 
 	c := infra.StartCassandraWithAuth(t, pool, &network[0], "cassandra", "5.0", ctx)
 	require.NotNil(t, c, "Cassandra container should not be nil")
-	// t.Cleanup(func() {
-	// 	if err := pool.Purge(c.Resource); err != nil {
-	// 		t.Logf("Failed to purge Cassandra container: %v", err)
-	// 	}
-	// })
+	t.Cleanup(func() {
+		if err := pool.Purge(c.Resource); err != nil {
+			t.Logf("Failed to purge Cassandra container: %v", err)
+		}
+	})
 
 	u, err := url.Parse(c.UriNetwork)
 	t.Log(u)
