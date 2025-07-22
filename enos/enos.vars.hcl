@@ -13,28 +13,28 @@
 // Build edition
 // If using community edition, set to "oss"
 // If using enterprise edition, set to "enterprise"
-boundary_edition = "oss"
+// boundary_edition = "oss"
 
 // Prevents the end-to-end test suites from running when starting scenarios.
 // Recommend setting this to true unless running in CI.
-e2e_debug_no_run = true
+// e2e_debug_no_run = true
 
 // The AWS region you want to create the resources in. Make sure you choose a
 // region where you've got an AWS keypair. Applies to AWS scenarios only.
-aws_region = "us-east-1"
+// aws_region = "us-east-1"
 
 // The name of the AWS keypair in EC2 -> Key Pairs. Ensure this key pair is
 // available in the selected region. Applies to AWS scenarios only.
-aws_ssh_keypair_name = "mykeypair"
+// aws_ssh_keypair_name = "mykeypair"
 
 // The path to the local copy of the private key associated with your keypair.
 // Applies to AWS scenarios only.
-aws_ssh_private_key_path = "/Users/ryan.derr/Downloads/BoundaryRyanTest.pem"
+// aws_ssh_private_key_path = "/Users/<user>/.ssh/mykeypair.pem
 
 // Name of user. This is used to tag resources in AWS to more easily identify
 // your resources. Can be set to any string.
 /// Applies to AWS scenarios only.
-enos_user = "enos"
+// enos_user = "enos"
 
 // ENTERPRISE ONLY
 // Path to a license file
@@ -81,12 +81,12 @@ enos_user = "enos"
 
 // The directory that contains the copy of the boundary cli that the e2e tests
 // will use in CI. Only needed if e2e_debug_no_run = false.
-local_boundary_dir = "/Users/ryan.derr/Code/boundary/bin/boundary"
+// local_boundary_dir = "/Users/<user>/.go/bin"
 
 // The directory that contains the source code of boundary/boundary-enterprise.
 // This is used in docker scenarios in CI in order to mount the source code into
 // the container. Only needed if e2e_debug_no_run = false.
-local_boundary_src_dir = "/Users/ryan.derr/Code/boundary"
+// local_boundary_src_dir = "/Users/<user>/Developer/boundary"
 
 // The directory that contains the source code of boundary-ui. This is used for
 // front-end e2e testing (UI scenarios) in CI. Only needed if e2e_debug_no_run = false.
