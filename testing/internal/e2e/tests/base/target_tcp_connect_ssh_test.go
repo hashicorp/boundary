@@ -175,17 +175,6 @@ func TestCliSshTargetConnectListenPortTest(t *testing.T) {
 		),
 	)
 
-	//output = e2e.RunCommand(ctx, "boundary",
-	//	e2e.WithArgs(
-	//		"connect", "ssh",
-	//		"-target-id", targetId,
-	//		"-listen-port", ListenPort, "--",
-	//		"-o", "UserKnownHostsFile=/dev/null",
-	//		"-o", "StrictHostKeyChecking=no",
-	//		"-o", "IdentitiesOnly=yes",
-	//	),
-	//)
-
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Log("Successfully connected to target with listen port 3333")
 
