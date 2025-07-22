@@ -29,7 +29,7 @@ aws_ssh_keypair_name = "mykeypair"
 
 // The path to the local copy of the private key associated with your keypair.
 // Applies to AWS scenarios only.
-aws_ssh_private_key_path = "/Users/bgajjala/Desktop/bgajjala-mysql.pem"
+aws_ssh_private_key_path = "/Users/ryan.derr/Downloads/BoundaryRyanTest.pem"
 
 // Name of user. This is used to tag resources in AWS to more easily identify
 // your resources. Can be set to any string.
@@ -81,12 +81,12 @@ enos_user = "enos"
 
 // The directory that contains the copy of the boundary cli that the e2e tests
 // will use in CI. Only needed if e2e_debug_no_run = false.
-local_boundary_dir = "/Users/bgajjala/code/boundary/bin"
+local_boundary_dir = "/Users/ryan.derr/Code/boundary/bin/boundary"
 
 // The directory that contains the source code of boundary/boundary-enterprise.
 // This is used in docker scenarios in CI in order to mount the source code into
 // the container. Only needed if e2e_debug_no_run = false.
-local_boundary_src_dir = "/Users/bgajjala/code/boundary"
+local_boundary_src_dir = "/Users/ryan.derr/Code/boundary"
 
 // The directory that contains the source code of boundary-ui. This is used for
 // front-end e2e testing (UI scenarios) in CI. Only needed if e2e_debug_no_run = false.

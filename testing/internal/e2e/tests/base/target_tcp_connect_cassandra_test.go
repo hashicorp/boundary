@@ -72,14 +72,13 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Logf("Restarting Cassandra Container")
-	err = pool.Client.RestartContainer(c.Resource.Container.ID, uint(pool.MaxWait.Seconds()))
+	err = pool.Client.RestartContainer(c.Resource.Container.ID, 0)
 	require.NoError(t, err)
 
 	err = pool.Retry(func() error {
 		return exec.CommandContext(ctx, "docker", "exec", hostname,
-			"cqlsh", "-u cassandra", "-p cassandra", "-e", "SELECT now() FROM system.local;").Run()
+			"cqlsh", "-u", "cassandra", "-p", "cassandra", "-e", "SELECT now() FROM system.local;").Run()
 	})
-
 	require.NoError(t, err, "Cassandra container failed after restart")
 
 	cqlCommands := []string{
@@ -99,8 +98,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 			t.Logf("Error: %s", err.Error())
 			t.Logf("Output: %s", string(output))
 		}
-		require.NoError(t, err, fmt.Sprintf("Failed to execute CQL: %s\nError: %s\nOutput: %s",
-			cqlCmd, err.Error(), string(output)))
+		require.NoError(t, err, "Failed to generate keyspaces, users, or tables")
 	}
 	t.Log("Successfully connected to Cassandra target")
 }
