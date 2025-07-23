@@ -476,32 +476,33 @@ func (c *Command) Run(args []string) (retCode int) {
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
 
-		proxyAddr := clientProxy.ListenerAddress(c.proxyCtx)
-		var clientProxyHost, clientProxyPort string
-		clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
-		if err != nil && !errors.Is(err, util.ErrMissingPort) {
-			c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
-			return base.CommandCliError
-		}
-		c.sessInfo.Address = clientProxyHost
+		if proxyAddr := clientProxy.ListenerAddress(c.proxyCtx); proxyAddr != "" {
+			var clientProxyHost, clientProxyPort string
+			clientProxyHost, clientProxyPort, err = util.SplitHostPort(proxyAddr)
+			if err != nil && !errors.Is(err, util.ErrMissingPort) {
+				c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
+				return base.CommandCliError
+			}
+			c.sessInfo.Address = clientProxyHost
 
-		if clientProxyPort != "" {
-			c.sessInfo.Port, err = strconv.Atoi(clientProxyPort)
-			if err != nil {
-				c.PrintCliError(fmt.Errorf("error parsing listener port: %w", err))
-				return base.CommandCliError
+			if clientProxyPort != "" {
+				c.sessInfo.Port, err = strconv.Atoi(clientProxyPort)
+				if err != nil {
+					c.PrintCliError(fmt.Errorf("error parsing listener port: %w", err))
+					return base.CommandCliError
+				}
 			}
-		}
-		switch base.Format(c.UI) {
-		case "table":
-			c.UI.Output(generateSessionInfoTableOutput(c.sessInfo))
-		case "json":
-			out, err := json.Marshal(&c.sessInfo)
-			if err != nil {
-				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
-				return base.CommandCliError
+			switch base.Format(c.UI) {
+			case "table":
+				c.UI.Output(generateSessionInfoTableOutput(c.sessInfo))
+			case "json":
+				out, err := json.Marshal(&c.sessInfo)
+				if err != nil {
+					c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
+					return base.CommandCliError
+				}
+				c.UI.Output(string(out))
 			}
-			c.UI.Output(string(out))
 		}
 	}
 
@@ -517,6 +518,12 @@ func (c *Command) Run(args []string) (retCode int) {
 		retCode = int(c.execCmdReturnValue.Load())
 	}
 
+	for _, f := range c.cleanupFuncs {
+		if err := f(); err != nil {
+			c.PrintCliError(err)
+		}
+	}
+
 	termInfo := TerminationInfo{Reason: "Unknown"}
 	select {
 	case <-c.Context.Done():
@@ -530,13 +537,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		} else if clientProxy.ConnectionsLeft() == 0 {
 			termInfo.Reason = "No connections left in session"
 		} else if err := proxyError.Load(); err != nil {
-			termInfo.Reason = "Error from proxy client: " + err.Error()
-		}
-	}
-
-	for _, f := range c.cleanupFuncs {
-		if err := f(); err != nil {
-			c.PrintCliError(err)
+			c.PrintCliError(fmt.Errorf("Error from proxy client: %w", err))
+			return base.CommandCliError
 		}
 	}
 
