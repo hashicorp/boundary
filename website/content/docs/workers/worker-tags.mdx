@@ -13,6 +13,8 @@ locally. As an example, you can use filters to ensure that traffic going into a
 public cloud is only handled by workers running within that same cloud.
 Tags can also be used determine which worker should perform session recording duties.
 
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
+
 You can configure worker tags using the worker config file, the Admin UI, the CLI, or the API. Select a tag below to view examples.
 
 <Tip>
@@ -386,12 +388,8 @@ Following are some examples of using these values in filters that can be applied
 
 - Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`
 
-<Tip>
-
-  Each tag can have multiple values, so you must use the `in` operator to match values. If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
-
-</Tip>
+Each tag can have multiple values, so you must use the `in` operator to match values. If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
 
 ## Next steps
 
-You can [configure a worker filter](/boundary/docs/workers/filters) to control which workers are allowed to manage a given session.
+You can [configure a worker filter](/boundary/docs/workers/filters) to control which workers are allowed to manage a given session, act as a Vault credential store, or store session recordings.

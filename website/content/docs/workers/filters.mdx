@@ -7,6 +7,22 @@ description: >-
 
 # Configure a worker filter
 
+You can use tags to configure a worker filter that controls which workers are allowed to perform specific functions.
+Following are some examples of using these values in filters that can be applied to targets, Vault credential stores, or storage buckets:
+
+- Name regex: `"/name" matches "web-prod-us-east-[12]"`, which would
+  match workers whose names are `web-prod-us-east-1` or `web-prod-us-east-2`
+
+- Region: `"us-east-1" in "/tags/region"`.
+
+- Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`
+
+Each tag can have multiple values, so you must use the `in` operator to match values. If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
+
+## Example worker filter for targets
+
 Once workers have tags, you can use these tags to control which
 workers are allowed to manage a given session by specifying worker filter attributes
 when you configure [targets](/boundary/docs/domain-model/targets).
@@ -51,7 +67,7 @@ resource "boundary_target" "aws-webservers-prod" {
 </Tab>
 </Tabs>
 
-### Example worker filter for Vault credential store
+## Example worker filter for Vault credential store
 
 Tags are used to control which workers can manage Vault requests by specifying
 a `worker_filter`attribute when configuring [credential stores](/boundary/docs/domain-model/credential-stores#vault-credential-store-attributes).
@@ -101,7 +117,7 @@ resource "boundary_credential_store_vault" "vault_cred_store" {
 </Tab>
 </Tabs>
 
-### Example worker filter for storage buckets
+## Example worker filter for storage buckets
 
 <EnterpriseAlert product="boundary">Storage buckets are used for session recording, which requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 

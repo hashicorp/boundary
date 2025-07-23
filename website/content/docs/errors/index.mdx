@@ -26,7 +26,7 @@ Error information:
 
 This error message indicates the user does not have permission to access the requested target. Ensure the right IAM policies are configured for the
 user attempting to create a session. Users need to belong to a role in the target's scope with an authorize-session grant to access the target.
-The [Resource tables](/boundary/docs/rbac/permissions/resource-table) page is a great reference for how to configure
+The [Resource tables](/boundary/docs/rbac/resource-table) page is a great reference for how to configure
 the right permission grants for Boundary roles.
 
 ## Error from controller when performing authorize-session action against given target
@@ -101,3 +101,7 @@ Error: error creating storage bucket: {"kind":"Internal","message":"storage_buck
 You may experience this error when deploying Boundary controllers in Docker when enabling IMDSv2. The fix is to extend the `http-put-response-hop-limit` option key to a value of 2 or greater.
 
 For more information, refer to [Boundary Client in Docker Additional Configuration When Using IMDSv2](https://support.hashicorp.com/hc/en-us/articles/36515134051859-Boundary-Client-in-Docker-Additional-Configuration-When-Using-IMDSv2).```
+
+## More information
+
+Refer to [Filtering and listing resources](/boundary/docs/filtering) for more information about Boundary's filter syntax and best practices.
