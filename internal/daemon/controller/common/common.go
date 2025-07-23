@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	pluginstorage "github.com/hashicorp/boundary/internal/storage/plugin"
+	"github.com/hashicorp/boundary/internal/warehouse"
 )
 
 type (
@@ -45,4 +46,5 @@ type (
 	BillingRepoFactory             func() (*billing.Repository, error)
 	AliasRepoFactory               func() (*alias.Repository, error)
 	TargetAliasRepoFactory         func() (*target.Repository, error)
+	WarehouseRepoFactory           func() (*warehouse.Repository, error)
 )

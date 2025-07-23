@@ -54,6 +54,7 @@ import (
 	pluginstorage "github.com/hashicorp/boundary/internal/storage/plugin"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/warehouse"
 	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
@@ -155,6 +156,7 @@ type Controller struct {
 	BillingRepoFn             common.BillingRepoFactory
 	AliasRepoFn               common.AliasRepoFactory
 	TargetAliasRepoFn         common.TargetAliasRepoFactory
+	WarehouseRepoFn           common.WarehouseRepoFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -482,6 +484,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.TargetAliasRepoFn = func() (*talias.Repository, error) {
 		return talias.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.WarehouseRepoFn = func() (*warehouse.Repository, error) {
+		return warehouse.NewRepository(ctx, dbase)
 	}
 
 	// Check that credentials are available at startup, to avoid some harmless

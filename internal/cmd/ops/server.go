@@ -16,6 +16,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/daemon/mcpserver"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
@@ -156,6 +157,14 @@ func createOpsHandler(ctx context.Context, lncfg *listenerutil.ListenerConfig, c
 		mux.Handle("/health", h)
 	}
 	mux.Handle("/metrics", promhttp.Handler())
+
+	// Add MCP server handler to ops handler on http://127.0.0.1:9203/mcp
+	mcpHandler, err := mcpserver.GetMCPServerHandler(ctx, c.WarehouseRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get MCP server handler: %w", err)
+	}
+	fmt.Println("==> MCP server is enabled, listening on /mcp")
+	mux.Handle("/mcp", mcpHandler)
 	return cleanhttp.PrintablePathCheckHandler(mux, nil), nil
 }
 
