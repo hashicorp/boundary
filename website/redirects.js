@@ -630,27 +630,27 @@ module.exports = [
   },
   {
     source: '/boundary/docs/configuration/identity-access-management/index',
-    destination: '/boundary/docs/rbac/permissions/index',
+    destination: '/boundary/docs/rbac/index',
     permanent: true
   },
   {
     source: '/boundary/docs/configuration/identity-access-management/assignable-permissions',
-    destination: '/boundary/docs/rbac/permissions/assignable-permissions',
+    destination: '/boundary/docs/rbac/assignable-permissions',
     permanent: true
   },
   {
     source: '/boundary/docs/configuration/identity-access-management/permission-grant-formats',
-    destination: '/boundary/docs/rbac/permissions/permission-grant-formats',
+    destination: '/boundary/docs/rbac/permission-grant-formats',
     permanent: true
   },
   {
     source: '/boundary/docs/common-workflows/manage-roles',
-    destination: '/boundary/docs/rbac/permissions/manage-roles',
+    destination: '/boundary/docs/rbac/manage-roles',
     permanent: true
   },
   {
     source: '/boundary/docs/configuration/identity-access-management/resource-table',
-    destination: '/boundary/docs/rbac/permissions/resource-table',
+    destination: '/boundary/docs/rbac/resource-table',
     permanent: true
   },
   {
@@ -915,22 +915,27 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/filtering',
-    destination: '/boundary/docs/filtering',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/filtering/index',
-    destination: '/boundary/docs/filtering/index',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/filtering/events',
     destination: '/boundary/docs/filtering/events',
     permanent: true,
   },
   {
+    source: '/boundary/docs/concepts/filtering/index',
+    destination: '/boundary/docs/filtering/events',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/filtering/events',
+    destination: '/boundary/docs/monitor/events/filter-events',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/filtering/resource-listing',
-    destination: '/boundary/docs/filtering/resource-listing',
+    destination: '/boundary/docs/filtering',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/concepts/filtering/resource-listing',
+    destination: '/boundary/docs/filtering/index',
     permanent: true,
   },
   {

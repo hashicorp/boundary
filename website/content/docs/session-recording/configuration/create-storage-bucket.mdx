@@ -9,7 +9,7 @@ description: >-
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
 
-User sessions can be recorded and audited using Boundary 0.13 or greater. A Boundary resource known as a [storage bucket](/boundary/docs/domain-model/storage-buckets) is used to store the recorded sessions.
+You can record and audit user sessions. A Boundary resource known as a [storage bucket](/boundary/docs/domain-model/storage-buckets) is used to store the recorded sessions.
 The storage bucket represents a bucket in an external storage provider.
 Before you can enable session recording, you must create one or more storage buckets in Boundary and associate them with the external store.
 
@@ -482,3 +482,4 @@ The following docs are relevant to configuring storage buckets:
 - [Storage bucket worker filter example](/boundary/docs/workers/filters#example-worker-filter-for-storage-buckets)
 - [Boundary AWS plugin](https://github.com/hashicorp/boundary-plugin-aws)
 - [Boundary MinIO plugin](https://github.com/hashicorp/boundary-plugin-minio)
+- [Filtering and listing resources](/boundary//docs/filtering)
