@@ -41,7 +41,7 @@ An [auth method](/boundary/docs/domain-model/auth-methods) is the mechanism in B
 
 Boundary’s method of access management starts at the lowest level with Actions. Actions are capabilities that can be performed against Boundary resources. Boundary supports generic Actions such as, Create, Read, Update, Delete, and List. However, there are many more that are resource-type-specific actions that can be used in grants.
 
-The next level of access management is a [grant](/boundary/docs/rbac/permissions#grant-strings). A grant in Boundary contains an action(s) and the resource(s) that the action(s) are permitted to be performed against. This can be thought of like a rule.
+The next level of access management is a [grant](/boundary/docs/rbac#grant-strings). A grant in Boundary contains an action(s) and the resource(s) that the action(s) are permitted to be performed against. This can be thought of like a rule.
 
 For example, a grant can specify the List Action against a specific resource. Grants can specify resource types or resource IDs and may also be implemented as a rule.
 
@@ -208,5 +208,5 @@ Refer to the [scopes] section to help you understand the structure of resources 
 [targets]: /boundary/docs/domain-model/targets
 [user]: /boundary/docs/domain-model/users
 [users]: /boundary/docs/domain-model/users
-[permission]: /boundary/docs/rbac/permissions
-[permissions]: /boundary/docs/rbac/permissions
+[permission]: /boundary/docs/rbac
+[permissions]: /boundary/docs/rbac

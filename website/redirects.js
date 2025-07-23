@@ -915,12 +915,12 @@ module.exports = [
   },
   {
     source: '/boundary/docs/concepts/filtering',
-    destination: '/boundary/docs/filtering/events',
+    destination: '/boundary/docs/filtering',
     permanent: true,
   },
   {
     source: '/boundary/docs/concepts/filtering/index',
-    destination: '/boundary/docs/filtering/events',
+    destination: '/boundary/docs/filtering/index',
     permanent: true,
   },
   {
@@ -931,11 +931,6 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/filtering/resource-listing',
     destination: '/boundary/docs/filtering',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/concepts/filtering/resource-listing',
-    destination: '/boundary/docs/filtering/index',
     permanent: true,
   },
   {
