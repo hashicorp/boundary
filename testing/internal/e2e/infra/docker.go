@@ -5,10 +5,8 @@ package infra
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -363,6 +361,8 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 
 	networkAlias := "e2ecassandra"
 	cassandraKeyspace := "e2eboundarykeyspace"
+	cassandraUser := "e2eboundary"
+	cassandraPassword := "e2eboundary"
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
@@ -377,98 +377,82 @@ func StartCassandra(t testing.TB, pool *dockertest.Pool, network *dockertest.Net
 	})
 	require.NoError(t, err)
 
-	err = pool.Retry(func() error {
-		return exec.Command("docker", "exec", networkAlias,
-			"cqlsh", "-e", "SELECT now() FROM system.local;").Run()
-	})
-	require.NoError(t, err, "Cassandra failed to start")
-
-	t.Log("Creating Keyspace")
-	cmd := fmt.Sprintf("CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};", cassandraKeyspace)
-	err = exec.Command("docker", "exec", networkAlias,
-		"cqlsh", "-e", cmd).Run()
-
-	require.NoError(t, err)
+	setupCassandraAuthAndUser(t, resource, pool, cassandraUser, cassandraPassword, cassandraKeyspace, networkAlias, cassandraKeyspace)
 
 	return &Container{
 		Resource: resource,
-
-		UriLocalhost: fmt.Sprintf("cassandra://%s/%s",
-			resource.GetHostPort("9042/tcp"),
-			cassandraKeyspace,
-		),
-
-		UriNetwork: fmt.Sprintf("cassandra://%s:9042/%s",
-			networkAlias,
-			cassandraKeyspace,
-		),
-	}
-}
-
-// StartCassandraWithAuth starts a Cassandra database in a docker container with authentication enabled.
-// Returns information about the container
-func StartCassandraWithAuth(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, repository, tag string, ctx context.Context) *Container {
-	t.Log("Starting Cassandra database with authentication...")
-
-	c := StartCassandra(t, pool, network, repository, tag)
-
-	u, err := url.Parse(c.UriNetwork)
-	require.NoError(t, err)
-
-	keyspace := u.Path[1:]
-	cassandraUser := "e2eboundary"
-	cassandraPassword := "e2eboundary"
-	networkAlias := c.Resource.Container.Name[1:]
-
-	t.Logf("Enabling Password Auth for Cassandra")
-	sedCommands := []string{
-		"sed", "-i",
-		"-e", "s/^authenticator:.*/authenticator: PasswordAuthenticator/",
-		"-e", "s/^authorizer:.*/authorizer: CassandraAuthorizer/",
-		"-e", "s/^role_manager:.*/role_manager: CassandraRoleManager/",
-		"/etc/cassandra/cassandra.yaml",
-	}
-	_, err = c.Resource.Exec(sedCommands, dockertest.ExecOptions{})
-	require.NoError(t, err)
-
-	t.Log("Restarting Cassandra Container")
-	err = pool.Client.RestartContainer(c.Resource.Container.ID, uint(pool.MaxWait.Seconds()))
-	require.NoError(t, err)
-
-	err = pool.Retry(func() error {
-		return exec.CommandContext(ctx, "docker", "exec", networkAlias,
-			"cqlsh", "-u", "cassandra", "-p", "cassandra", "-e", "SELECT now() FROM system.local;").Run()
-	})
-	require.NoError(t, err)
-
-	t.Log("Creating User")
-	cqlCommands := []string{
-		fmt.Sprintf("CREATE ROLE IF NOT EXISTS %s WITH PASSWORD = '%s' AND LOGIN = true;", cassandraUser, cassandraPassword),
-		fmt.Sprintf("GRANT ALL PERMISSIONS ON KEYSPACE %s TO %s;", keyspace, cassandraUser),
-		fmt.Sprintf("USE %s; CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY, name TEXT, created_at TIMESTAMP);", keyspace),
-	}
-
-	for _, cmd := range cqlCommands {
-		err = exec.CommandContext(ctx, "docker", "exec", networkAlias,
-			"cqlsh", "-u", "cassandra", "-p", "cassandra", "-e", cmd).Run()
-		require.NoError(t, err, fmt.Sprintf("Failed to execute: %s", cmd))
-	}
-
-	return &Container{
-		Resource: c.Resource,
 		UriLocalhost: fmt.Sprintf(
 			"cassandra://%s:%s@%s/%s",
 			cassandraUser,
 			cassandraPassword,
-			c.Resource.GetHostPort("9042/tcp"),
-			keyspace,
+			resource.GetHostPort("9042/tcp"),
+			cassandraKeyspace,
 		),
 		UriNetwork: fmt.Sprintf(
 			"cassandra://%s:%s@%s:9042/%s",
 			cassandraUser,
 			cassandraPassword,
 			networkAlias,
-			keyspace,
+			cassandraKeyspace,
 		),
 	}
+}
+
+// setupCassandraAuthAndUser enables authentication on a Cassandra container and creates a user with permissions.
+func setupCassandraAuthAndUser(t testing.TB, resource *dockertest.Resource, pool *dockertest.Pool, cassandraUser, cassandraPassword, keyspace, networkAlias string, cassandraKeyspace string) {
+	t.Log("Configuring Cassandra authentication and user permissions...")
+
+	err := pool.Retry(func() error {
+		return exec.Command("docker", "exec", networkAlias,
+			"cqlsh", "-e", "SELECT now() FROM system.local;").Run()
+	})
+	require.NoError(t, err, "Cassandra container did not become ready")
+
+	t.Logf("Initializing Cassandra keyspace: %s...", cassandraKeyspace)
+	cmd := fmt.Sprintf("CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};", cassandraKeyspace)
+	err = exec.Command("docker", "exec", networkAlias, "cqlsh", "-e", cmd).Run()
+	require.NoError(t, err)
+
+	// Modify cassandra.yaml to enable authentication and authorization, as the base container does not enable these settings by default.
+	sedCmd := []string{
+		"sed", "-i",
+		"-e", "s/^authenticator:.*/authenticator: PasswordAuthenticator/",
+		"-e", "s/^authorizer:.*/authorizer: CassandraAuthorizer/",
+		"-e", "s/^role_manager:.*/role_manager: CassandraRoleManager/",
+		"/etc/cassandra/cassandra.yaml",
+	}
+	_, err = resource.Exec(sedCmd, dockertest.ExecOptions{})
+	require.NoError(t, err)
+
+	// Restart container to apply authentication changes in cassandra.yaml.
+	// Cassandra requires a restart for configuration changes to take effect.
+	err = pool.Client.RestartContainer(resource.Container.ID, uint(pool.MaxWait.Seconds()))
+	require.NoError(t, err)
+	t.Log("Waiting for Cassandra container to restart and apply authentication settings...")
+
+	// Wait for Cassandra to become available with authentication enabled
+	err = pool.Retry(func() error {
+		return exec.Command(
+			"docker", "exec", networkAlias,
+			"cqlsh", "-u", "cassandra", "-p", "cassandra",
+			"-e", "SELECT now() FROM system.local;",
+		).Run()
+	})
+	require.NoError(t, err)
+
+	t.Log("Creating Cassandra user and granting permissions...")
+	cql := []string{
+		fmt.Sprintf("CREATE ROLE IF NOT EXISTS %s WITH PASSWORD = '%s' AND LOGIN = true;", cassandraUser, cassandraPassword),
+		fmt.Sprintf("GRANT ALL PERMISSIONS ON KEYSPACE %s TO %s;", keyspace, cassandraUser),
+		fmt.Sprintf("USE %s; CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY, name TEXT, created_at TIMESTAMP);", keyspace),
+	}
+
+	for _, cmd := range cql {
+		err = exec.Command(
+			"docker", "exec", networkAlias,
+			"cqlsh", "-u", "cassandra", "-p", "cassandra", "-e", cmd,
+		).Run()
+		require.NoError(t, err, fmt.Sprintf("Failed to execute: %s", cmd))
+	}
+	require.NoError(t, err)
 }

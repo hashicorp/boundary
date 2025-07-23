@@ -6,6 +6,7 @@ package base_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/url"
 	"os/exec"
@@ -28,6 +29,8 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
+
+	// Increase timeout to accommodate Cassandra's longer startup duration
 	pool.MaxWait = 90 * time.Second
 	ctx := context.Background()
 
@@ -35,7 +38,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 	network, err := pool.NetworksByName("e2e_cluster")
 	require.NoError(t, err, "Failed to get e2e_cluster network")
 
-	c := infra.StartCassandraWithAuth(t, pool, &network[0], "cassandra", "5.0", ctx)
+	c := infra.StartCassandra(t, pool, &network[0], "cassandra", "latest")
 	require.NotNil(t, c, "Cassandra container should not be nil")
 	t.Cleanup(func() {
 		if err := pool.Purge(c.Resource); err != nil {
@@ -106,7 +109,7 @@ func TestCliTcpTargetConnectCassandra(t *testing.T) {
 
 	_, err = f.Write([]byte("DESCRIBE KEYSPACES;\n"))
 	require.NoError(t, err)
-	_, err = f.Write([]byte("SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '" + keyspace + "';\n"))
+	_, err = f.Write([]byte(fmt.Sprintf("SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '%s';\n", keyspace)))
 	require.NoError(t, err)
 	_, err = f.Write([]byte("exit\n"))
 	require.NoError(t, err)
