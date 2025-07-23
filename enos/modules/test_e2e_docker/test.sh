@@ -15,7 +15,26 @@ apt update
 # lsb-release is used for adding the hashicorp apt source
 # postgresql-client is used for postgres tests
 # default-mysql-client is used for mysql tests
-apt install unzip pass lsb-release postgresql-client default-mysql-client -y
+# wget is used for downloading external dependencies and repository keys
+# apt-transport-https enables HTTPS transport for APT repositories
+apt install unzip pass lsb-release postgresql-client default-mysql-client  wget apt-transport-https -y
+
+# Function to install Cassandra
+install_cassandra() {
+  # Add Cassandra repository key
+  wget -q -O - https://www.apache.org/dist/cassandra/KEYS | apt-key add -
+  
+  # Add Cassandra repository
+  echo "deb https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
+  
+  # Update package list and install Cassandra
+  apt update
+  apt install cassandra -y
+}
+
+# Install Cassandra
+install_cassandra
+
 
 # Create a GPG key
 export KEY_PW=boundary
