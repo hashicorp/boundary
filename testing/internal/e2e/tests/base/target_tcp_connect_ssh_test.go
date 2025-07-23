@@ -6,6 +6,9 @@ package base_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
 	"os"
 	"strings"
 	"testing"
@@ -107,9 +110,10 @@ func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	t.Log("Successfully connected to target")
 }
 
-// TestCliSshTargetConnectListenPortTest uses the boundary cli to create an ssh target,
-// attach injected credentials to the target, and connect to the target multiple times on the same listen port.
-func TestCliSshTargetConnectListenPortTest(t *testing.T) {
+// TestCliTcpTargetConnectListenPortTest uses the boundary cli to create a target and
+// connect to it multiple times on the same listen port. The cli should return an error when
+// a port is already in use.
+func TestCliTcpTargetConnectListenPortTest(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -126,17 +130,9 @@ func TestCliSshTargetConnectListenPortTest(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
-	require.NoError(t, err)
-	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
-	require.NoError(t, err)
-	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	require.NoError(t, err)
-	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
-	require.NoError(t, err)
-	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
-	require.NoError(t, err)
-	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
+		target.WithAddress(c.TargetAddress),
+	)
 	require.NoError(t, err)
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
@@ -146,56 +142,102 @@ func TestCliSshTargetConnectListenPortTest(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("Successfully attached brokered credentials")
 
-	require.NoError(t, err)
-
-	// Connect to target using ssh option
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"connect", "ssh",
-			"-target-id", targetId, "--",
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		),
-	)
-
-	require.NoError(t, output.Err, string(output.Stderr))
-	t.Log("Successfully connected to target")
-
-	// Connect to target on port 3333
+	// Connect to target with client port 3333
 	const ListenPort = "3333"
-	output = e2e.RunCommand(ctx, "boundary",
+
+	ctxCancel, cancel := context.WithCancel(ctx)
+	sessionChannel := make(chan *e2e.CommandResult)
+
+	go func() {
+		sessionChannel <- e2e.RunCommand(ctxCancel, "boundary",
+			e2e.WithArgs(
+				"connect",
+				"-target-id", targetId,
+				"-listen-port", ListenPort,
+			),
+		)
+	}()
+	t.Cleanup(cancel)
+
+	s := boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusPending.String())
+	t.Log(fmt.Sprintf("Successfully connected to target with listen port %s", ListenPort))
+
+	t.Logf("Starting new connection to target with same listen port %s", ListenPort)
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
 			"-target-id", targetId,
-			"-listen-port", ListenPort, "--",
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes",
+			"-listen-port", ListenPort,
 		),
 	)
 
-	require.NoError(t, output.Err, string(output.Stderr))
-	t.Log("Successfully connected to target with listen port 3333")
+	// Starting a proxy with same listen port already in use returns termination info instead of an error,
+	// so we should expect exit code 0 with the error message in Stdout
+	require.Contains(t, string(output.Stdout), "address already in use")
+	require.Equal(t, 0, output.ExitCode)
+}
 
-	// Testing multiple connections with same listen port
-	const commandCliError = 2
-	const maxAttempts = 10
+// TestCliTcpTargetConnectDefaultClientPortTest uses the boundary cli to create a target and
+// connect to it multiple times on the same client port. The test is similar to the one above,
+// but sets DefaultClientPort instead of ListenPort
+func TestCliTcpTargetConnectDefaultClientPortTest(t *testing.T) {
+	const DefaultClientPort = 3333
+	e2e.MaybeSkipTest(t)
+	c, err := loadTestConfig()
+	require.NoError(t, err)
 
-	for i := 0; i < maxAttempts; i++ {
-		output = e2e.RunCommand(ctx, "boundary",
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
+		target.WithAddress(c.TargetAddress),
+		target.WithDefaultClientPort(DefaultClientPort),
+	)
+	require.NoError(t, err)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	credentialId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
+	require.NoError(t, err)
+	t.Log("Successfully attached brokered credentials")
+
+	// Connect to target with DefaultClientPort set
+	ctxCancel, cancel := context.WithCancel(ctx)
+	sessionChannel := make(chan *e2e.CommandResult)
+
+	go func() {
+		sessionChannel <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
-				"connect", "ssh",
+				"connect",
 				"-target-id", targetId,
-				"-listen-port", ListenPort, "--",
-				"-o", "UserKnownHostsFile=/dev/null",
-				"-o", "StrictHostKeyChecking=no",
-				"-o", "IdentitiesOnly=yes",
 			),
 		)
+	}()
+	t.Cleanup(cancel)
 
-		require.Error(t, output.Err, string(output.Stderr))
-		require.Contains(t, string(output.Stderr), "Port is already in use")
-		require.Equal(t, commandCliError, output.ExitCode)
-	}
+	s := boundary.WaitForSessionCli(t, ctx, projectId)
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusPending.String())
+	t.Log(fmt.Sprintf("Successfully connected to target with client port %d", DefaultClientPort))
+
+	t.Logf("Starting new connection to target on client port %d", DefaultClientPort)
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect",
+			"-target-id", targetId,
+		),
+	)
+
+	require.Contains(t, string(output.Stdout), "address already in use")
+	require.Equal(t, 0, output.ExitCode)
 }
