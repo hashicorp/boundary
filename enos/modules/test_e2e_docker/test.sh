@@ -17,7 +17,7 @@ apt update
 # default-mysql-client is used for mysql tests
 # wget is used for downloading external dependencies and repository keys
 # apt-transport-https enables HTTPS transport for APT repositories
-apt install unzip pass lsb-release postgresql-client default-mysql-client  wget apt-transport-https -y
+apt install unzip pass lsb-release postgresql-client default-mysql-client wget apt-transport-https -y
 
 # Function to install Cassandra
 install_cassandra() {
