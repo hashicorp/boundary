@@ -12,6 +12,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   connection parameters and credentials.
 * Adds support to parse User-Agent headers and emit them in telemetry events
   ([PR](https://github.com/hashicorp/boundary/pull/5645)).
+* cli: Added `boundary connect cassandra` command for connecting to Cassandra targets.
+  This new helper command allows users to authorize sessions against Cassandra 
+  targets and automatically invoke a Cassandra client with the appropriate 
+  connection parameters and credentials. Currently only supports `PasswordAuthenticator`.
 
 ### Deprecations/Changes
 
